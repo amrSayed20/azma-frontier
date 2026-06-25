@@ -1,0 +1,826 @@
+/**
+ * AZMA OS – Ras Al-Amr Chamber (Hollywood Master Director Console Layout)
+ * File: app/ras-amr/ras-amr.css
+ */
+
+:root {
+  --chamber-bg: #020202;
+  --panel-bg: rgba(10, 10, 10, 0.85);
+  --neon-gold-primary: #D4AF37;
+  --neon-gold-bright: #FFD700;
+  --neon-gold-dim: #8B6508;
+  --neon-gold-shadow: rgba(255, 215, 0, 0.25);
+  --neon-gold-heavy-shadow: rgba(255, 215, 0, 0.6);
+  --text-main: #FFFFFF;
+  --text-muted: #8E8E93;
+  --os-surface-elevated: #0d0d0d;
+  --os-surface-highlight: #151515;
+}
+
+/* ========================================= */
+/* STRICT STAGE CONFINEMENT                  */
+/* ========================================= */
+body, html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden !important;
+  background-color: var(--chamber-bg);
+}
+
+.ras-amr-viewport {
+  position: fixed;
+  inset: 0;
+  background-color: var(--chamber-bg);
+  color: var(--text-main);
+  font-family: system-ui, -apple-system, sans-serif;
+  direction: rtl;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: filter 0.3s ease;
+}
+
+/* ========================================= */
+/* NEON GOLDEN INJECTION FLASH ANIMATION     */
+/* ========================================= */
+.neon-flash-active {
+  animation: goldenPulseFlash 0.8s cubic-bezier(0.25, 1, 0.25, 1) forwards;
+}
+
+@keyframes goldenPulseFlash {
+  0% { box-shadow: inset 0 0 100px rgba(255, 215, 0, 0.6); filter: brightness(1.5); }
+  100% { box-shadow: inset 0 0 0px transparent; filter: brightness(1); }
+}
+
+/* ========================================= */
+/* GLOBAL SOVEREIGN BACK NAVIGATION          */
+/* ========================================= */
+.sovereign-exit-btn {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  z-index: 100;
+  background: transparent;
+  border: 1px solid var(--neon-gold-dim);
+  color: var(--neon-gold-bright);
+  font-size: 12px;
+  font-weight: bold;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px var(--neon-gold-shadow);
+}
+
+.sovereign-exit-btn:hover {
+  background: rgba(255, 215, 0, 0.1);
+  border-color: var(--neon-gold-bright);
+  box-shadow: 0 0 15px var(--neon-gold-bright);
+  transform: translateX(3px);
+}
+
+/* ========================================= */
+/* NEON GOLDEN LIGHTING PHYSICS              */
+/* ========================================= */
+.neon-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.cyber-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(255, 215, 0, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 215, 0, 0.015) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+.neon-pulse-glow {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  filter: blur(160px);
+  opacity: 0.4;
+}
+
+.np-left {
+  top: -10%;
+  left: -5%;
+  background: radial-gradient(circle, var(--neon-gold-primary), transparent 70%);
+}
+
+.np-right {
+  bottom: -10%;
+  right: -5%;
+  background: radial-gradient(circle, var(--neon-gold-dim), transparent 70%);
+}
+
+.neon-border {
+  border: 1px solid var(--neon-gold-dim);
+  box-shadow: 0 0 15px var(--neon-gold-shadow), inset 0 0 10px rgba(0,0,0,0.8);
+}
+
+.neon-border-heavy {
+  border: 2px solid var(--neon-gold-primary);
+  box-shadow: 0 0 25px var(--neon-gold-shadow), inset 0 0 30px rgba(0, 0, 0, 0.9);
+}
+
+/* ========================================= */
+/* INTERFACE GRID STRUCTURING                */
+/* ========================================= */
+.chamber-grid-layout {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  height: 100vh;
+  padding: 60px 25px 20px 25px; 
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 310px 1fr 340px;
+  gap: 20px;
+}
+
+.control-panel {
+  background: var(--panel-bg);
+  border-radius: 16px;
+  backdrop-filter: blur(25px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: calc(100vh - 100px);
+}
+
+.panel-header {
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.08);
+  background: linear-gradient(180deg, rgba(0,0,0,0.4), transparent);
+}
+
+.neon-tag {
+  font-size: 9px;
+  font-weight: 900;
+  color: var(--neon-gold-bright);
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+  text-shadow: 0 0 8px var(--neon-gold-bright);
+}
+
+.panel-header h2 {
+  margin: 0 0 4px 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.panel-header p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ============================================ */
+/* SOVEREIGN SUMMONING BRIDGE TRIGGER BUTTON    */
+/* ============================================ */
+.summon-bridge-trigger-btn {
+  width: 100%;
+  margin-top: 14px;
+  background: linear-gradient(135deg, #151105, #2c2205);
+  border: 1px solid var(--neon-gold-primary);
+  border-radius: 8px;
+  padding: 10px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
+}
+
+.summon-bridge-trigger-btn:hover {
+  background: linear-gradient(135deg, var(--neon-gold-dim), var(--neon-gold-primary));
+  color: #000;
+  box-shadow: 0 0 20px var(--neon-gold-bright);
+}
+
+.summon-pulse-icon {
+  animation: iconPulse 1s infinite alternate;
+}
+
+@keyframes iconPulse {
+  from { transform: scale(0.9); opacity: 0.7; }
+  to { transform: scale(1.1); opacity: 1; filter: drop-shadow(0 0 5px var(--neon-gold-bright)); }
+}
+
+/* ========================================= */
+/* SMART QUEUE STYLE SYSTEM                  */
+/* ========================================= */
+.queue-container {
+  flex: 1;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.custom-scroll::-webkit-scrollbar { width: 4px; }
+.custom-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-scroll::-webkit-scrollbar-thumb { background: var(--neon-gold-dim); border-radius: 4px; }
+
+.queue-item-card {
+  background: rgba(20, 20, 20, 0.6);
+  border: 1px solid rgba(255, 215, 0, 0.05);
+  border-radius: 10px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.queue-item-card:hover {
+  background: rgba(30, 30, 30, 0.8);
+  border-color: var(--neon-gold-dim);
+  transform: translateY(-2px);
+}
+
+.active-neon-card {
+  background: rgba(212, 175, 55, 0.08) !important;
+  border-color: var(--neon-gold-bright) !important;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.15), inset 0 0 10px rgba(255, 215, 0, 0.05);
+}
+
+.item-meta { display: flex; justify-content: space-between; margin-bottom: 8px; }
+
+.item-type-badge {
+  font-size: 9px;
+  background: rgba(255, 215, 0, 0.15);
+  color: var(--neon-gold-bright);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.item-source { font-size: 10px; color: var(--text-muted); }
+
+.item-title {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--text-main);
+}
+
+.active-neon-card .item-title {
+  color: var(--os-gold-light);
+  text-shadow: 0 0 8px var(--neon-gold-shadow);
+}
+
+.item-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid rgba(255,255,255,0.03);
+  padding-top: 8px;
+}
+
+.item-status-text { color: var(--neon-gold-primary); }
+
+/* ========================================= */
+/* CINEMATIC CENTRAL VISION CORE              */
+/* ========================================= */
+.main-director-core {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: calc(100vh - 100px);
+}
+
+.cinema-monitor-frame {
+  flex: 1;
+  background: #000000;
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.monitor-glass-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.monitor-safe-area-lines {
+  position: absolute;
+  inset: 15px;
+  border: 1px dashed rgba(255, 215, 0, 0.05);
+  pointer-events: none;
+}
+
+.monitor-meta-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: monospace;
+  position: relative;
+  z-index: 10;
+}
+
+.rec-indicator {
+  color: #FF3B30;
+  animation: pulseOpacity 1s infinite alternate;
+}
+
+.monitor-center-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.active-rendering-visualization { text-align: center; }
+
+.hologram-asset-icon {
+  font-size: 4rem;
+  color: var(--neon-gold-bright);
+  text-shadow: 0 0 30px var(--neon-gold-bright);
+  margin-bottom: 15px;
+  animation: coreFloat 4s ease-in-out infinite alternate;
+}
+
+.visualized-title {
+  margin: 0 0 6px 0;
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.visualized-subtitle { margin: 0; font-size: 12px; color: var(--neon-gold-primary); }
+
+.idle-monitor-text { color: var(--text-muted); font-size: 14px; }
+
+.monitor-meta-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: monospace;
+  position: relative;
+  z-index: 10;
+}
+
+.waveform-sim {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  width: 80px;
+  height: 20px;
+}
+
+.wave-bar { flex: 1; background: var(--neon-gold-primary); border-radius: 2px; }
+
+/* HOLLYWOOD TIMELINE PANEL */
+.sovereign-timeline-panel {
+  background: rgba(5, 5, 5, 0.9);
+  border-radius: 14px;
+  padding: 15px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.timeline-ruler {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--text-muted);
+  font-family: monospace;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  padding-bottom: 5px;
+}
+
+.timeline-track {
+  height: 45px;
+  background: #000;
+  border-radius: 6px;
+  position: relative;
+  border: 1px solid rgba(255,215,0,0.05);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+}
+
+.timeline-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #FF3B30;
+  box-shadow: 0 0 10px #FF3B30;
+  z-index: 10;
+}
+
+.timeline-block-filled {
+  height: 70%;
+  background: linear-gradient(90deg, var(--neon-gold-dim), var(--neon-gold-primary));
+  border: 1px solid var(--neon-gold-bright);
+  border-radius: 4px;
+  color: #000;
+  font-size: 11px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  box-shadow: 0 0 12px var(--neon-gold-shadow);
+}
+
+.console-status-strip { display: flex; padding: 0 5px; }
+
+.status-node { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted); }
+
+.pulse-dot.gold {
+  width: 8px;
+  height: 8px;
+  background: var(--neon-gold-bright);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--neon-gold-bright);
+  animation: pulseOpacity 1.5s infinite alternate;
+}
+
+/* ========================================= */
+/* HOLLYWOOD CONSOLE SWITCHER & TOOLS        */
+/* ========================================= */
+.mode-switcher-rack { display: flex; padding: 15px; gap: 10px; background: rgba(0,0,0,0.3); }
+
+.mode-btn {
+  flex: 1;
+  padding: 10px;
+  font-size: 11px;
+  font-weight: bold;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 215, 0, 0.1);
+  background: var(--os-surface-elevated);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: inherit;
+}
+
+.active-smart {
+  background: linear-gradient(180deg, var(--neon-gold-dim), rgba(0,0,0,0.5)) !important;
+  border-color: var(--neon-gold-primary) !important;
+  color: #fff !important;
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);
+}
+
+.active-manual {
+  background: linear-gradient(180deg, #4A3600, rgba(0,0,0,0.5)) !important;
+  border-color: var(--neon-gold-bright) !important;
+  color: #fff !important;
+  box-shadow: 0 0 15px var(--neon-gold-shadow);
+}
+
+.tools-rack-grid {
+  flex: 1;
+  padding: 15px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.tool-console-button {
+  background: linear-gradient(145deg, #121212, #070707);
+  border: 1px solid rgba(255, 215, 0, 0.06);
+  border-radius: 12px;
+  padding: 15px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: inherit;
+  position: relative;
+  overflow: hidden;
+}
+
+.tool-console-button:hover { border-color: var(--neon-gold-dim); transform: scale(1.03); }
+
+.tool-selected-neon {
+  border-color: var(--neon-gold-bright) !important;
+  background: linear-gradient(145deg, #1e170a, #0a0a0a) !important;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);
+}
+
+.dimmed-tool { opacity: 0.25; pointer-events: none; }
+
+.tool-btn-icon { font-size: 22px; }
+
+.tool-btn-label {
+  font-size: 11px;
+  color: var(--text-main);
+  text-align: center;
+  font-weight: bold;
+}
+
+.tool-selected-neon .tool-btn-label { color: var(--neon-gold-bright); }
+
+.tool-btn-light-corner { position: absolute; top: 0; left: 0; width: 4px; height: 4px; background: transparent; }
+
+.tool-selected-neon .tool-btn-light-corner {
+  background: var(--neon-gold-bright);
+  box-shadow: 0 0 8px var(--neon-gold-bright);
+}
+
+/* EXECUTIVE COMMAND PANEL */
+.executive-actions-panel {
+  padding: 15px;
+  border-top: 1px solid rgba(255, 215, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(0,0,0,0.4);
+}
+
+.action-trigger-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.3s;
+}
+
+.render-btn {
+  background: linear-gradient(135deg, var(--neon-gold-dark), var(--neon-gold-primary));
+  border: 1px solid var(--neon-gold-light);
+  color: #000;
+  box-shadow: 0 0 15px var(--neon-gold-shadow);
+}
+
+.render-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 25px var(--neon-gold-heavy-shadow);
+  background: linear-gradient(135deg, var(--neon-gold-primary), var(--neon-gold-bright));
+}
+
+.render-btn.rendering { opacity: 0.7; animation: pulseOpacity 1s infinite alternate; }
+
+.forward-btn { background: #000; border: 1px solid var(--neon-gold-dim); color: var(--neon-gold-bright); }
+
+.forward-btn:hover {
+  background: rgba(255, 215, 0, 0.05);
+  border-color: var(--neon-gold-bright);
+  box-shadow: 0 0 15px var(--neon-gold-shadow);
+}
+
+/* ======================================================== */
+/* 4. SOVEREIGN SUMMONING BRIDGE: HOLOGRAPHIC HUD OVERLAY   */
+/* ======================================================== */
+.summon-hud-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(20px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  box-sizing: border-box;
+}
+
+.hud-window-container {
+  width: 100%;
+  max-width: 960px;
+  height: calc(100vh - 120px);
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.hud-header {
+  padding: 25px 30px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.hud-badge {
+  display: inline-block;
+  font-size: 8px;
+  font-weight: 900;
+  color: var(--neon-gold-bright);
+  background: rgba(255, 215, 0, 0.12);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+
+.hud-title-block h2 {
+  margin: 0 0 4px 0;
+  font-size: 1.4rem;
+  color: #fff;
+  font-weight: 800;
+  text-shadow: 0 0 15px var(--neon-gold-shadow);
+}
+
+.hud-title-block p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.hud-close-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  transition: all 0.3s;
+}
+
+.hud-close-btn:hover {
+  background: rgba(255, 68, 68, 0.15);
+  border-color: #ff4444;
+  color: #ff4444;
+  box-shadow: 0 0 15px rgba(255, 68, 68, 0.2);
+}
+
+.hud-body-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  overflow: hidden;
+}
+
+/* Sidebar Vault Selector within HUD */
+.hud-vaults-picker {
+  background: rgba(0, 0, 0, 0.3);
+  border-left: 1px solid rgba(255, 215, 0, 0.08);
+  padding: 20px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.hud-vault-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: right;
+  font-family: inherit;
+  font-size: 13px;
+  transition: all 0.3s ease;
+}
+
+.hud-vault-tab:hover {
+  background: rgba(255, 215, 0, 0.03);
+  color: var(--text-main);
+}
+
+.active-hud-tab {
+  background: rgba(212, 175, 55, 0.08) !important;
+  border-color: var(--neon-gold-primary) !important;
+  color: var(--neon-gold-bright) !important;
+  text-shadow: 0 0 10px var(--neon-gold-shadow);
+}
+
+.hud-tab-icon { font-size: 18px; }
+
+/* Grid Viewer for items inside HUD */
+.hud-items-viewer {
+  padding: 30px;
+  overflow-y: auto;
+  background: rgba(5, 5, 5, 0.2);
+}
+
+.viewer-title-context {
+  margin: 0 0 20px 0;
+  font-size: 13px;
+  color: var(--neon-gold-primary);
+  font-weight: 600;
+}
+
+.hud-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.hud-asset-item-chip {
+  background: linear-gradient(145deg, rgba(20,20,20,0.8), rgba(10,10,10,0.95));
+  border: 1px solid rgba(255, 215, 0, 0.05);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  transition: all 0.3s;
+}
+
+.hud-asset-item-chip:hover {
+  border-color: var(--neon-gold-dim);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+  transform: translateY(-2px);
+}
+
+.hud-item-graphic {
+  font-size: 24px;
+  color: var(--neon-gold-dim);
+}
+
+.hud-asset-item-chip:hover .hud-item-graphic {
+  color: var(--neon-gold-bright);
+  text-shadow: 0 0 10px var(--neon-gold-bright);
+}
+
+.hud-item-name {
+  font-size: 13px;
+  font-weight: bold;
+  color: #fff;
+}
+
+.hud-inject-btn {
+  width: 100%;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid var(--neon-gold-dim);
+  color: var(--neon-gold-primary);
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.hud-asset-item-chip:hover .hud-inject-btn {
+  background: var(--neon-gold-primary);
+  color: #000;
+  border-color: var(--neon-gold-bright);
+  box-shadow: 0 0 10px var(--neon-gold-shadow);
+}
+
+/* ========================================= */
+/* MOTION & LIGHTING EFFECTS                 */
+/* ========================================= */
+.fade-in { animation: fadeIn 0.4s ease-out forwards; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes coreFloat {
+  0% { transform: translateY(-6px); }
+  100% { transform: translateY(6px); }
+}
+
+@keyframes radarSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulseOpacity {
+  0% { opacity: 0.4; }
+  100% { opacity: 1; }
+}

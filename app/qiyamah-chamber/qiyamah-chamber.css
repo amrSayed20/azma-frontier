@@ -1,0 +1,126 @@
+/**
+ * AZMA OS – Qiyamah Chamber (The Generative Genesis Forge)
+ * Status: Final Build (Crimson Neon, Floating Panels, Live Accounting)
+ */
+
+:root {
+  --chamber-bg: #050202; /* Deepest Obsidian with a hint of red */
+  --crimson-neon: #ff2a2a;
+  --crimson-dim: #8b0000;
+  --gold-neon: #D4AF37;
+  --gold-dim: #8B6508;
+  --panel-glass: rgba(15, 5, 5, 0.7);
+  --text-main: #f0e6d2;
+  --text-muted: #a89f91;
+}
+
+body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--chamber-bg); overflow: hidden; }
+
+.qiyamah-viewport { position: fixed; inset: 0; color: var(--text-main); font-family: system-ui, sans-serif; direction: rtl; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+/* The Forge Background */
+.forge-background { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.crimson-nebula { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100vw; height: 100vh; background: radial-gradient(circle at center, rgba(139, 0, 0, 0.15) 0%, transparent 60%); z-index: 1; }
+.cyber-grid-red { position: absolute; inset: 0; background-image: linear-gradient(rgba(255, 42, 42, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 42, 42, 0.03) 1px, transparent 1px); background-size: 40px 40px; transform: perspective(1000px) rotateX(60deg) translateY(-100px) translateZ(-200px); animation: gridMove 15s linear infinite; }
+
+/* Navigation */
+.sovereign-exit-btn { position: absolute; top: 20px; right: 20px; z-index: 100; background: rgba(0, 0, 0, 0.8); border: 1px solid var(--gold-dim); color: var(--gold-neon); padding: 8px 16px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; transition: 0.3s; }
+.sovereign-exit-btn:hover { background: rgba(212, 175, 55, 0.1); border-color: var(--gold-neon); box-shadow: 0 0 15px rgba(212, 175, 55, 0.3); }
+
+/* Neon Borders */
+.neon-border-red { border: 1px solid var(--crimson-dim); box-shadow: 0 0 15px rgba(255, 42, 42, 0.2), inset 0 0 10px rgba(139, 0, 0, 0.5); }
+.neon-border-gold { border: 1px solid var(--gold-neon); box-shadow: 0 0 15px rgba(212, 175, 55, 0.2), inset 0 0 10px rgba(0,0,0,0.8); }
+
+/* Live Accounting HUD */
+.accounting-hud { position: absolute; top: 20px; left: 20px; z-index: 100; background: rgba(10, 0, 0, 0.9); padding: 10px 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; backdrop-filter: blur(10px); }
+.hud-label { font-size: 11px; color: var(--text-muted); font-weight: bold; }
+.hud-value { font-family: monospace; font-size: 20px; font-weight: 900; color: var(--crimson-neon); text-shadow: 0 0 10px rgba(255, 42, 42, 0.6); }
+
+/* Layout Structure */
+.qiyamah-layout { display: flex; width: 100%; max-width: 1400px; height: calc(100vh - 100px); z-index: 10; gap: 40px; padding: 20px; align-items: center; justify-content: center; }
+
+/* The Central Canvas */
+.genesis-canvas { flex: 1; height: 100%; border: 2px dashed rgba(212, 175, 55, 0.2); border-radius: 20px; display: flex; align-items: center; justify-content: center; position: relative; transition: 0.4s; background: radial-gradient(circle, rgba(20, 5, 5, 0.6), rgba(0,0,0,0.8)); }
+.empty-canvas:hover { border-color: var(--gold-neon); background: radial-gradient(circle, rgba(212, 175, 55, 0.05), rgba(0,0,0,0.8)); }
+.active-canvas { border-style: solid; border-color: var(--crimson-dim); box-shadow: inset 0 0 50px rgba(139, 0, 0, 0.2); }
+.generating-state { border-color: var(--crimson-neon); box-shadow: 0 0 40px rgba(255, 42, 42, 0.2), inset 0 0 100px rgba(139, 0, 0, 0.4); animation: pulse-border 2s infinite; }
+
+.empty-prompt { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.pulse-core { width: 40px; height: 40px; background: var(--gold-dim); border-radius: 50%; box-shadow: 0 0 30px var(--gold-neon); animation: pulse-core 3s infinite; }
+.empty-prompt h2 { color: var(--gold-neon); margin: 0; font-size: 24px; letter-spacing: 2px; }
+.empty-prompt p { color: var(--text-muted); font-size: 14px; }
+.import-btn { background: rgba(0,0,0,0.5); color: var(--gold-neon); border: 1px solid var(--gold-dim); padding: 10px 20px; border-radius: 6px; cursor: pointer; transition: 0.3s; font-family: inherit; font-weight: bold; margin-top: 10px; }
+.import-btn:hover { background: rgba(212, 175, 55, 0.1); border-color: var(--gold-neon); }
+
+/* Asset Nodes */
+.asset-node { background: rgba(0,0,0,0.8); padding: 30px; border-radius: 12px; text-align: center; max-width: 400px; backdrop-filter: blur(10px); }
+.node-type-badge { font-family: monospace; font-size: 12px; color: var(--gold-neon); letter-spacing: 2px; margin-bottom: 15px; }
+.node-content { font-size: 16px; line-height: 1.6; color: var(--text-main); font-style: italic; }
+
+/* Generating Progress */
+.genesis-progress { display: flex; flex-direction: column; align-items: center; gap: 30px; }
+.progress-circle { width: 150px; height: 150px; border-radius: 50%; border: 4px solid var(--crimson-dim); border-top-color: var(--crimson-neon); display: flex; align-items: center; justify-content: center; animation: spin 2s linear infinite; box-shadow: 0 0 30px rgba(255, 42, 42, 0.3); }
+.progress-value { font-family: monospace; font-size: 32px; font-weight: bold; color: #fff; animation: spin-reverse 2s linear infinite; }
+.generating-text { color: var(--crimson-neon); font-size: 18px; letter-spacing: 1px; }
+
+/* Floating Glass Panels (Right Side) */
+.floating-panels-container { width: 350px; display: flex; flex-direction: column; gap: 20px; height: 100%; justify-content: center; z-index: 20; }
+.glass-panel { background: var(--panel-glass); backdrop-filter: blur(20px); border-radius: 12px; padding: 25px; }
+.panel-tag { font-family: monospace; font-size: 10px; color: var(--crimson-neon); letter-spacing: 2px; margin-bottom: 5px; }
+.glass-panel h3 { color: #fff; margin: 0 0 20px 0; font-size: 18px; }
+
+.control-group { margin-bottom: 20px; }
+.control-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; font-weight: bold; }
+.cyber-select { width: 100%; background: rgba(0,0,0,0.6); border: 1px solid var(--crimson-dim); color: var(--text-main); padding: 10px; border-radius: 6px; font-family: inherit; outline: none; transition: 0.3s; }
+.cyber-select:focus { border-color: var(--crimson-neon); box-shadow: 0 0 10px rgba(255, 42, 42, 0.2); }
+.cyber-slider { width: 100%; accent-color: var(--crimson-neon); cursor: pointer; }
+
+.trigger-genesis-btn { background: linear-gradient(135deg, var(--crimson-dim), var(--crimson-neon)); border: 1px solid #ff4d4d; color: #fff; font-weight: 900; font-size: 16px; padding: 20px; border-radius: 12px; cursor: pointer; transition: 0.3s; font-family: inherit; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 10px 20px rgba(139, 0, 0, 0.4); margin-top: 10px; }
+.trigger-genesis-btn:hover { background: linear-gradient(135deg, var(--crimson-neon), #ff6666); box-shadow: 0 0 30px rgba(255, 42, 42, 0.6); transform: scale(1.02); }
+
+/* The Execution Bill Modal */
+.bill-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+.execution-bill { background: #0a0505; padding: 40px; border-radius: 16px; width: 450px; box-shadow: 0 20px 50px rgba(0,0,0,1); }
+.bill-title { color: var(--gold-neon); text-align: center; border-bottom: 1px dashed var(--crimson-dim); padding-bottom: 15px; margin-top: 0; }
+.bill-details { display: flex; flex-direction: column; gap: 15px; margin: 25px 0; }
+.bill-row { display: flex; justify-content: space-between; color: var(--text-main); font-size: 14px; }
+.bill-divider { border-color: rgba(255, 255, 255, 0.1); margin: 10px 0; }
+.total-row { font-weight: bold; font-size: 16px; }
+.total-cost { color: var(--crimson-neon); font-family: monospace; font-size: 20px; }
+.balance-row { color: var(--text-muted); font-size: 12px; }
+.bill-actions { display: flex; gap: 15px; margin-top: 30px; }
+.cancel-btn { flex: 1; background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); padding: 12px; border-radius: 8px; cursor: pointer; font-family: inherit; transition: 0.3s; }
+.cancel-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.confirm-btn { flex: 2; background: rgba(20, 15, 5, 0.9); color: var(--gold-neon); font-weight: bold; padding: 12px; border-radius: 8px; cursor: pointer; font-family: inherit; transition: 0.3s; }
+.confirm-btn:hover { background: rgba(212, 175, 55, 0.2); box-shadow: 0 0 20px rgba(212, 175, 55, 0.3); }
+
+/* The Neon Vortex Routing (Final Master) */
+.final-master-node { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 40px; background: rgba(0,0,0,0.8); border-radius: 16px; }
+.master-badge { color: var(--gold-neon); font-size: 18px; font-weight: bold; letter-spacing: 1px; }
+.vortex-routing p { color: var(--text-muted); margin-bottom: 10px; }
+.vortex-orbits { display: flex; gap: 20px; }
+.orbit-btn { background: rgba(10, 10, 10, 0.8); border: 1px solid #444; border-radius: 50%; width: 100px; height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; color: #fff; cursor: pointer; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); font-family: inherit; position: relative; overflow: hidden; }
+.orbit-btn span { font-weight: bold; font-size: 12px; z-index: 2; }
+.orbit-btn small { font-size: 9px; color: var(--text-muted); z-index: 2; }
+.orbit-btn::before { content: ''; position: absolute; inset: 0; border-radius: 50%; opacity: 0; transition: 0.4s; z-index: 1; }
+
+.orbit-ras::before { box-shadow: inset 0 0 30px #00a8ff; }
+.orbit-ras:hover { border-color: #00a8ff; transform: scale(1.1); box-shadow: 0 0 20px rgba(0, 168, 255, 0.4); }
+.orbit-ras:hover::before { opacity: 1; }
+
+.orbit-vault::before { box-shadow: inset 0 0 30px var(--gold-neon); }
+.orbit-vault:hover { border-color: var(--gold-neon); transform: scale(1.1); box-shadow: 0 0 20px rgba(212, 175, 55, 0.4); }
+.orbit-vault:hover::before { opacity: 1; }
+
+.orbit-makman::before { box-shadow: inset 0 0 30px #ff9f43; }
+.orbit-makman:hover { border-color: #ff9f43; transform: scale(1.1); box-shadow: 0 0 20px rgba(255, 159, 67, 0.4); }
+.orbit-makman:hover::before { opacity: 1; }
+
+
+/* Animations */
+@keyframes gridMove { 0% { background-position: 0 0; } 100% { background-position: 0 40px; } }
+@keyframes pulse-core { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 50px var(--gold-neon); } }
+@keyframes pulse-text { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; text-shadow: 0 0 20px rgba(255, 42, 42, 0.8); } }
+@keyframes pulse-border { 0%, 100% { border-color: rgba(255, 42, 42, 0.5); } 50% { border-color: var(--crimson-neon); } }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes spin-reverse { 0% { transform: rotate(0deg); } 100% { transform: rotate(-360deg); } }

@@ -1,0 +1,123 @@
+/**
+ * AZMA OS – Al-Hujjah Al-Damighah (The Sovereign Knowledge Reactor)
+ * Status: Final Integrated Build (Full Gold Scheme & Triple Routing)
+ */
+
+:root {
+  --chamber-bg: #030303;
+  --panel-bg: rgba(15, 12, 5, 0.85); 
+  --neon-gold-primary: #D4AF37;
+  --neon-gold-bright: #FFD700;
+  --neon-gold-dim: #8B6508;
+  --neon-gold-shadow: rgba(255, 215, 0, 0.15);
+  
+  --text-main: #E8D595; 
+  --text-muted: #A8955B; 
+  --text-sacred: #FFF2A8; 
+}
+
+body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--chamber-bg); overflow: hidden; }
+
+.hujjah-viewport { position: fixed; inset: 0; color: var(--text-main); font-family: system-ui, sans-serif; direction: rtl; display: flex; flex-direction: column; }
+
+.neon-layer { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.cyber-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(212, 175, 55, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(212, 175, 55, 0.02) 1px, transparent 1px); background-size: 50px 50px; }
+
+.neon-border { border: 1px solid var(--neon-gold-dim); box-shadow: 0 0 15px var(--neon-gold-shadow), inset 0 0 10px rgba(0,0,0,0.5); }
+.neon-border-gold { border: 1px solid var(--neon-gold-primary); box-shadow: 0 0 25px rgba(255, 215, 0, 0.2), inset 0 0 20px rgba(0,0,0,0.8); }
+
+.top-nav-links { position: absolute; top: 15px; right: 20px; z-index: 100; display: flex; gap: 10px; }
+
+.sovereign-exit-btn { background: rgba(0, 0, 0, 0.7); border: 1px solid var(--neon-gold-dim); color: var(--neon-gold-bright); font-size: 12px; font-weight: bold; padding: 8px 16px; border-radius: 6px; cursor: pointer; transition: 0.3s; }
+.sovereign-exit-btn:hover { background: rgba(212, 175, 55, 0.1); border-color: var(--neon-gold-bright); box-shadow: 0 0 15px var(--neon-gold-shadow); }
+
+.chamber-grid-layout { position: relative; z-index: 10; width: 100%; height: 100vh; padding: 60px 20px 20px 20px; box-sizing: border-box; display: grid; grid-template-columns: 280px 1fr 350px; gap: 20px; }
+
+/* Control Panels */
+.control-panel { background: var(--panel-bg); border-radius: 12px; backdrop-filter: blur(20px); display: flex; flex-direction: column; padding: 20px; height: calc(100vh - 100px); box-sizing: border-box; }
+.panel-header { border-bottom: 1px solid rgba(212, 175, 55, 0.2); padding-bottom: 15px; margin-bottom: 15px; flex-shrink: 0; }
+.neon-tag { font-size: 10px; font-weight: 900; color: var(--neon-gold-bright); letter-spacing: 2px; margin-bottom: 5px; }
+.panel-header h2 { margin: 0; font-size: 1.2rem; color: var(--neon-gold-primary); }
+
+/* Left Wing: Domains */
+.domains-container { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding-left: 5px; }
+.domain-btn { background: rgba(10, 8, 5, 0.8); border: 1px solid rgba(212, 175, 55, 0.2); color: var(--text-main); padding: 15px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.3s; font-family: inherit; text-align: right; }
+.domain-btn:hover { background: rgba(212, 175, 55, 0.1); border-color: var(--neon-gold-dim); }
+.domain-btn.active { background: linear-gradient(90deg, rgba(30, 25, 10, 0.9), rgba(10, 10, 10, 0.9)); border-color: var(--neon-gold-primary); color: var(--neon-gold-bright); box-shadow: inset 0 0 15px var(--neon-gold-shadow); border-right: 4px solid var(--neon-gold-bright); }
+.domain-icon { font-size: 18px; }
+
+/* Center: Oracle Display */
+.center-stage { display: flex; flex-direction: column; gap: 15px; height: calc(100vh - 100px); }
+
+.oracle-search-form { display: flex; background: rgba(10, 8, 5, 0.9); border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+.oracle-input { flex: 1; background: transparent; border: none; color: var(--neon-gold-bright); padding: 15px 20px; font-size: 14px; font-family: inherit; font-weight: bold; }
+.oracle-input::placeholder { color: var(--text-muted); font-weight: normal; }
+.oracle-input:focus { outline: none; }
+.oracle-submit-btn { background: var(--neon-gold-dim); color: #000; border: none; padding: 0 25px; font-weight: bold; font-size: 13px; cursor: pointer; transition: 0.3s; font-family: inherit; }
+.oracle-submit-btn:hover:not(:disabled) { background: var(--neon-gold-primary); box-shadow: 0 0 15px var(--neon-gold-shadow); }
+.oracle-submit-btn:disabled { background: #443; cursor: not-allowed; color: #887; }
+
+.oracle-display { flex: 1; background: radial-gradient(circle at center, #110e05, #050402); border-radius: 12px; padding: 20px; overflow-y: auto; position: relative; }
+.empty-state { text-align: center; color: var(--text-muted); margin-top: 20%; font-size: 14px; font-style: italic; }
+.scanning-animation { text-align: center; color: var(--neon-gold-bright); margin-top: 20%; font-size: 14px; font-family: monospace; animation: pulse 0.5s infinite; }
+
+/* The Strict Rules Cards */
+.results-list { display: flex; flex-direction: column; gap: 15px; }
+.result-card { background: rgba(15, 12, 5, 0.8); border: 1px solid var(--neon-gold-dim); border-radius: 8px; padding: 15px; position: relative; }
+.result-text { font-size: 15px; color: var(--text-main); margin: 0 0 15px 0; line-height: 1.6; }
+
+.sacred-card { border-color: var(--neon-gold-bright); background: rgba(212, 175, 55, 0.05); border-right: 4px solid var(--neon-gold-bright); }
+.sacred-card .result-text { color: var(--text-sacred); font-weight: bold; font-size: 17px; }
+.sacred-badge { position: absolute; top: -10px; left: 15px; background: #000; border: 1px solid var(--neon-gold-bright); color: var(--neon-gold-bright); font-size: 10px; padding: 2px 8px; border-radius: 4px; }
+
+.lore-card { border-color: #A0522D; background: rgba(160, 82, 45, 0.05); border-right: 4px dashed #A0522D; } 
+.lore-card .result-text { color: #D2B48C; font-style: italic; }
+.lore-badge { position: absolute; top: -10px; left: 15px; background: #000; border: 1px solid #A0522D; color: #D2B48C; font-size: 10px; padding: 2px 8px; border-radius: 4px; }
+
+.empirical-card { border-color: #4682B4; border-right: 4px solid #4682B4; }
+.empirical-card .result-text { color: #B0C4DE; }
+
+.result-meta { display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed rgba(212, 175, 55, 0.2); padding-top: 10px; }
+.result-source { font-size: 11px; color: var(--text-muted); font-family: monospace; }
+.extract-btn { background: transparent; border: 1px solid var(--neon-gold-primary); color: var(--neon-gold-bright); padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; transition: 0.3s; font-family: inherit; }
+.extract-btn:hover { background: var(--neon-gold-dim); color: #000; }
+
+.firewall-alert { background: rgba(255, 0, 0, 0.1); border: 2px solid #FF0000; color: #FF6666; padding: 20px; border-radius: 8px; text-align: center; font-weight: bold; margin-top: 20%; animation: pulse 1s infinite; }
+
+/* Right Wing: Synthesis */
+.synthesis-desk { justify-content: space-between; }
+
+.format-selector { margin-bottom: 15px; flex-shrink: 0; }
+.format-tabs { display: flex; gap: 5px; margin-top: 8px; }
+.f-tab { flex: 1; background: rgba(0,0,0,0.5); border: 1px solid var(--neon-gold-dim); color: var(--text-muted); padding: 8px 5px; border-radius: 4px; font-size: 11px; cursor: pointer; transition: 0.3s; font-family: inherit; font-weight: bold; }
+.f-tab:hover { border-color: var(--neon-gold-bright); color: var(--text-main); }
+.f-tab.active { background: rgba(212, 175, 55, 0.15); border-color: var(--neon-gold-primary); color: var(--neon-gold-bright); box-shadow: inset 0 0 10px var(--neon-gold-shadow); }
+
+.synthesis-workspace { flex: 1; display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+.gold-label { font-size: 12px; color: var(--neon-gold-primary); font-weight: bold; }
+.cyber-input { background: rgba(0,0,0,0.6); border: 1px solid rgba(212, 175, 55, 0.3); color: var(--text-main); padding: 12px; border-radius: 6px; font-family: inherit; font-size: 13px; transition: 0.3s; line-height: 1.6; }
+.cyber-input:focus { outline: none; border-color: var(--neon-gold-bright); box-shadow: 0 0 10px rgba(212, 175, 55, 0.1); }
+.synthesis-area { flex: 1; resize: none; }
+.synthesis-area::placeholder { color: var(--text-muted); }
+
+/* Sovereign Dispatch Matrix (Triple Routing) */
+.dispatch-actions-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex-shrink: 0; margin-top: 10px; }
+.route-btn { border: 1px solid var(--neon-gold-bright); font-weight: bold; font-size: 11px; padding: 10px 5px; border-radius: 8px; cursor: pointer; transition: 0.3s; font-family: inherit; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.btn-icon { font-size: 16px; }
+
+.push-qiyamah { background: rgba(40, 10, 10, 0.8); color: #ff6b6b; border-color: #8b0000; }
+.push-qiyamah:hover:not(:disabled) { background: rgba(255, 0, 0, 0.15); border-color: #ff4444; box-shadow: 0 0 15px rgba(255, 68, 68, 0.4); transform: translateY(-2px); }
+
+.push-vault { background: rgba(10, 8, 5, 0.9); color: var(--neon-gold-primary); border-color: var(--neon-gold-dim); }
+.push-vault:hover:not(:disabled) { background: rgba(212, 175, 55, 0.1); border-color: var(--neon-gold-bright); box-shadow: 0 0 10px var(--neon-gold-shadow); transform: translateY(-2px); }
+
+.push-makman { background: linear-gradient(135deg, var(--neon-gold-dim), var(--neon-gold-primary)); color: #000; }
+.push-makman:hover:not(:disabled) { background: linear-gradient(135deg, var(--neon-gold-primary), #fff); box-shadow: 0 0 20px var(--neon-gold-bright); transform: translateY(-2px); }
+
+.route-btn:disabled { background: #222; border-color: #444; color: #666; cursor: not-allowed; box-shadow: none; transform: none; opacity: 0.5; }
+
+.custom-scroll::-webkit-scrollbar { width: 5px; }
+.custom-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-scroll::-webkit-scrollbar-thumb { background: var(--neon-gold-dim); border-radius: 10px; }
+
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }

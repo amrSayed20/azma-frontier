@@ -1,27 +1,137 @@
-@import "tailwindcss";
-
-:root {
-  --background: #050505;
-  --foreground: #ffffff;
-}
-
-html,
-body {
-  background: #050505;
-  color: white;
-  margin: 0;
-  padding: 0;
-  overflow-x: hidden;
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
+  .sovereign-shell{
+  min-height:100vh;
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  justify-content:center;
+  align-items:center;
   background:
-    radial-gradient(circle at top, rgba(255,140,0,0.08), transparent 30%),
-    radial-gradient(circle at bottom, rgba(255,180,0,0.06), transparent 30%),
-    #050505;
+    radial-gradient(circle at top,#2b1d08 0%,#111318 35%,#08090c 100%);
 }
+
+.smoke-layer{
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 20% 30%,rgba(255,180,40,.08),transparent 35%),
+    radial-gradient(circle at 80% 70%,rgba(255,180,40,.05),transparent 40%),
+    radial-gradient(circle at center,rgba(255,255,255,.02),transparent 60%);
+  filter:blur(80px);
+}
+
+.gold-layer{
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(253,230,138,.06),
+      transparent,
+      rgba(245,158,11,.05)
+    );
+}
+
+.gate-center{
+  position:relative;
+  z-index:10;
+  width:90%;
+  max-width:1200px;
+  text-align:center;
+}
+
+.azma-title{
+  font-size:6rem;
+  font-weight:900;
+  letter-spacing:.25em;
+  color:#fde68a;
+  text-shadow:
+    0 0 20px rgba(253,230,138,.35),
+    0 0 60px rgba(245,158,11,.25);
+}
+
+.gate-heading{
+  color:white;
+  margin-top:20px;
+  font-size:2.2rem;
+}
+
+.gate-description{
+  color:#d4d4d4;
+  margin-top:15px;
+  font-size:1.1rem;
+}
+
+.gate-grid{
+  margin-top:60px;
+  display:flex;
+  justify-content:center;
+}
+
+.gate-card{
+  width:420px;
+  border-radius:30px;
+  padding:35px;
+  background:rgba(0,0,0,.35);
+  border:1px solid rgba(253,230,138,.2);
+  backdrop-filter:blur(12px);
+  box-shadow:
+    0 0 30px rgba(253,230,138,.08),
+    inset 0 0 30px rgba(255,255,255,.02);
+}
+
+.gate-icon{
+  font-size:4rem;
+  margin-bottom:20px;
+}
+/* ==========================================
+   AZMA OS - Phase 11: Sovereign Vault
+   The Glass Panel Foundation (Al-Mantahaa)
+   Pure CSS Implementation for Zero-Error Workspace
+   ========================================== */
+
+/*
+ * .glass-panel
+ * القاعدة البصرية الموحدة لحجرات AZMA OS
+ */
+.glass-panel {
+  /* الخلفية الفحمية (#121212) مع شفافية 70% */
+  background-color: rgba(18, 18, 18, 0.7);
+  
+  /* التمويه الزجاجي (Backdrop Blur) */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  
+  /* الحدود البرونزية (#CD7F32) مع شفافية 30% */
+  border: 1px solid rgba(205, 127, 50, 0.3);
+  
+  /* الظلال الزجاجية الذهبية (#D4AF37) */
+  box-shadow: 0 8px 32px 0 rgba(212, 175, 55, 0.1);
+  
+  /* هندسة الحواف وحماية النصوص */
+  border-radius: 1rem;
+  color: #f3f4f6;
+  overflow: hidden;
+  
+  /* النعومة في الانتقال */
+  transition: all 0.3s ease-in-out;
+}
+
+/*
+ * .glass-panel-interactive
+ * نسخة تفاعلية للأزرار والبطاقات داخل الحجرات
+ */
+.glass-panel-interactive {
+  cursor: pointer;
+}
+
+.glass-panel-interactive:hover {
+  /* زيادة العتامة الفحمية إلى 80% */
+  background-color: rgba(18, 18, 18, 0.8);
+  
+  /* إضاءة الحدود بالذهبي (#D4AF37) بنسبة 50% */
+  border-color: rgba(212, 175, 55, 0.5);
+  
+  /* الرفع المادي للأعلى */
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px 0 rgba(212, 175, 55, 0.15);
+} 

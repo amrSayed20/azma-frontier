@@ -1,0 +1,384 @@
+/**
+ * AZMA OS - Sovereign High Council
+ * Cinematic Design System
+ * 
+ * Imperial futuristic aesthetic with:
+ * - Living light effects
+ * - Intelligent motion
+ * - Cinematic depth
+ * - Black & gold color palette
+ * - Arabic-Latin bilingual typography
+ */
+
+:root {
+  --sovereign-gold: rgb(251, 191, 36);
+  --sovereign-gold-light: rgb(251, 206, 78);
+  --sovereign-slate-950: rgb(2, 6, 23);
+  --sovereign-slate-900: rgb(15, 23, 42);
+  --sovereign-slate-800: rgb(30, 41, 59);
+  --sovereign-slate-700: rgb(51, 65, 85);
+}
+
+/* Cosmic Background */
+.sovereign-cosmos {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(
+    135deg,
+    var(--sovereign-slate-950) 0%,
+    var(--sovereign-slate-900) 50%,
+    #000 100%
+  );
+  overflow: hidden;
+}
+
+.cosmic-star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  animation: twinkle 3s ease-in-out infinite;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* Living Light Effects */
+.living-light {
+  position: relative;
+  overflow: hidden;
+}
+
+.living-light::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: radial-gradient(
+    circle,
+    rgba(251, 191, 36, 0.1) 0%,
+    transparent 70%
+  );
+  animation: living-light 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes living-light {
+  0%, 100% {
+    transform: scale(0.8);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.6;
+  }
+}
+
+/* Intelligent Motion */
+.intelligent-motion {
+  animation: intelligent-motion 3s ease-in-out infinite;
+}
+
+@keyframes intelligent-motion {
+  0% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-4px);
+    opacity: 0.5;
+  }
+}
+
+/* Cinematic Depth */
+.cinematic-depth {
+  position: relative;
+  perspective: 1000px;
+}
+
+.cinematic-depth::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+  pointer-events: none;
+}
+
+/* Command Hall Cards */
+.command-hall-card {
+  position: relative;
+  border: 1px solid rgba(251, 191, 36, 0.1);
+  background: linear-gradient(
+    135deg,
+    rgba(30, 41, 59, 0.5) 0%,
+    rgba(15, 23, 42, 0.5) 100%
+  );
+  backdrop-filter: blur(8px);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.command-hall-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(251, 191, 36, 0.1) 0%,
+    rgba(251, 191, 36, 0) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.command-hall-card:hover {
+  border-color: rgba(251, 191, 36, 0.3);
+  box-shadow: 
+    0 0 20px rgba(251, 146, 60, 0.1),
+    inset 0 0 20px rgba(251, 191, 36, 0.05);
+  transform: translateY(-2px);
+}
+
+.command-hall-card:hover::before {
+  opacity: 1;
+}
+
+/* Typography System */
+.font-imperial {
+  font-family: 'Inter', 'Cairo', system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.heading-gold {
+  background: linear-gradient(
+    to right,
+    var(--sovereign-gold) 0%,
+    var(--sovereign-gold-light) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 700;
+}
+
+.text-arabic {
+  font-family: 'Cairo', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Glow Effects */
+.glow-gold {
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);
+}
+
+.glow-gold-intense {
+  box-shadow: 
+    0 0 30px rgba(251, 191, 36, 0.4),
+    0 0 60px rgba(251, 191, 36, 0.2);
+}
+
+/* Status Indicators */
+.status-dot {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.status-healthy {
+  background: rgb(34, 197, 94);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+}
+
+.status-degraded {
+  background: rgb(234, 179, 8);
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.5);
+}
+
+.status-critical {
+  background: rgb(239, 68, 68);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+  animation: pulse-urgent 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-urgent {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Navigation */
+.sovereign-nav {
+  position: relative;
+  border-bottom: 1px solid rgba(251, 191, 36, 0.1);
+  background: rgba(2, 6, 23, 0.5);
+  backdrop-filter: blur(12px);
+}
+
+.nav-link {
+  position: relative;
+  color: rgb(156, 163, 175);
+  padding: 1rem 1.5rem;
+  font-weight: 500;
+  transition: color 0.3s ease;
+  overflow: hidden;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(
+    to right,
+    var(--sovereign-gold),
+    transparent
+  );
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.3s ease;
+}
+
+.nav-link:hover {
+  color: var(--sovereign-gold);
+}
+
+.nav-link:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+.nav-link.active {
+  color: var(--sovereign-gold);
+}
+
+.nav-link.active::after {
+  transform: scaleX(1);
+}
+
+/* Modal & Overlays */
+.sovereign-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sovereign-modal {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    var(--sovereign-slate-800) 0%,
+    var(--sovereign-slate-900) 100%
+  );
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 1rem;
+  padding: 2rem;
+  max-width: 600px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Buttons */
+.btn-sovereign {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  background: linear-gradient(
+    135deg,
+    rgba(251, 191, 36, 0.1) 0%,
+    rgba(251, 191, 36, 0.05) 100%
+  );
+  color: var(--sovereign-gold);
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.btn-sovereign::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.btn-sovereign:hover {
+  border-color: rgba(251, 191, 36, 0.5);
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);
+}
+
+.btn-sovereign:hover::before {
+  transform: translateX(100%);
+}
+
+.btn-sovereign:active {
+  transform: scale(0.98);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sovereign-modal {
+    padding: 1.5rem;
+    max-width: 100%;
+    margin: 1rem;
+  }
+
+  .command-hall-card {
+    padding: 1rem;
+  }
+
+  .heading-gold {
+    font-size: 1.875rem;
+  }
+}
