@@ -9,6 +9,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import type {
+  HallRuntimeInsight,
+  RuntimeHealthIndicatorView,
+  SovereignHighCouncilRuntimeView,
+} from '@/src/system-root/founder-experience/sovereign-high-council-runtime-gateway';
 
 interface CommandHallCard {
   readonly hallId: string;
@@ -18,79 +23,12 @@ interface CommandHallCard {
   readonly color: string;
 }
 
-interface HallRuntimeInsight {
-  readonly headline: string;
-  readonly details: readonly string[];
-}
-
-interface RuntimeView {
-  readonly generatedAt: string;
-  readonly founderId: string;
-  readonly systemStatus: 'healthy' | 'degraded' | 'critical';
-  readonly founderBriefings: {
-    readonly founder: {
-      readonly summary: string;
-      readonly keySignals: readonly string[];
-    };
-    readonly executive: {
-      readonly summary: string;
-      readonly keySignals: readonly string[];
-    };
-    readonly strategic: {
-      readonly summary: string;
-      readonly keySignals: readonly string[];
-    };
-  };
-  readonly constitutionalIntelligenceSummary: string;
-  readonly strategicRecommendations: readonly string[];
-  readonly doctrine: {
-    readonly selectedPathId: string;
-    readonly confidence: string;
-    readonly confidenceReason: string;
-    readonly rankings: readonly {
-      readonly pathId: string;
-      readonly score: number;
-      readonly why: string;
-      readonly whyNot: string;
-    }[];
-  };
-  readonly simulation: {
-    readonly summary: string;
-    readonly recommendedPathId?: string;
-    readonly topFutures: readonly {
-      readonly pathId: string;
-      readonly rank: number;
-      readonly score: number;
-      readonly riskLevel: string;
-      readonly probability: number;
-    }[];
-  };
-  readonly personality: {
-    readonly greeting: string;
-    readonly assessment: string;
-    readonly recommendation: string;
-    readonly constitutionalAnchor: string;
-  };
-  readonly runtimeSnapshots: {
-    readonly constitutionLoaded: boolean;
-    readonly executivePackages: number;
-    readonly strategicPackages: number;
-    readonly simulationPackages: number;
-    readonly busMessagesRouted: number;
-    readonly perceptionPackages: number;
-    readonly alWateenPackages: number;
-    readonly doctrinePackages: number;
-    readonly councilSynchronizations: number;
-  };
-  readonly hallInsights: Readonly<Record<string, HallRuntimeInsight>>;
-}
-
 export default function SovereignHighCouncilPage() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedHall, setSelectedHall] = useState<CommandHallCard | null>(null);
   const [founderId, setFounderId] = useState('founder-imperial');
-  const [runtimeView, setRuntimeView] = useState<RuntimeView | null>(null);
+  const [runtimeView, setRuntimeView] = useState<SovereignHighCouncilRuntimeView | null>(null);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -114,7 +52,7 @@ export default function SovereignHighCouncilPage() {
             throw new Error(`Runtime integration failed with status ${runtimeResponse.status}`);
           }
 
-          const runtimeData = (await runtimeResponse.json()) as RuntimeView;
+          const runtimeData = (await runtimeResponse.json()) as SovereignHighCouncilRuntimeView;
           setRuntimeView(runtimeData);
           setRuntimeError(null);
         }
@@ -311,8 +249,84 @@ export default function SovereignHighCouncilPage() {
                 </div>
 
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
-                  <h3 className="text-sm font-semibold text-gold mb-2">Constitutional Intelligence</h3>
+                  <h3 className="text-sm font-semibold text-gold mb-2">Constitutional Status</h3>
                   <p className="text-sm text-gray-300">{runtimeView?.constitutionalIntelligenceSummary ?? 'Awaiting constitutional synthesis...'}</p>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-400">
+                    <RuntimeFact label="Loaded" value={runtimeView?.constitutionalStatus.loaded ? 'yes' : 'no'} />
+                    <RuntimeFact label="Version" value={runtimeView?.constitutionalStatus.version ?? 'N/A'} />
+                    <RuntimeFact label="Decision" value={runtimeView?.constitutionalStatus.decision ?? 'N/A'} />
+                    <RuntimeFact label="Compliance" value={runtimeView?.constitutionalStatus.complianceStatus ?? 'N/A'} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
+                  <h3 className="text-sm font-semibold text-gold mb-2">Executive Briefing</h3>
+                  <p className="text-sm text-gray-300">{runtimeView?.executiveBriefing.summary ?? 'Awaiting executive briefing...'}</p>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-400">
+                    <RuntimeFact label="Risk" value={runtimeView?.executiveBriefing.overallRisk ?? 'N/A'} />
+                    <RuntimeFact label="Plan" value={runtimeView?.executiveBriefing.planStatus ?? 'N/A'} />
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
+                  <h3 className="text-sm font-semibold text-gold mb-2">Strategic Briefing</h3>
+                  <p className="text-sm text-gray-300">{runtimeView?.strategicBriefing.summary ?? 'Awaiting strategic briefing...'}</p>
+                  <p className="text-xs text-amber-300 mt-3">{runtimeView?.strategicBriefing.leadingOpportunity ?? 'Opportunity stream pending.'}</p>
+                </div>
+
+                <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
+                  <h3 className="text-sm font-semibold text-gold mb-2">Future Simulation</h3>
+                  <p className="text-sm text-gray-300">{runtimeView?.simulation.summary ?? 'Awaiting simulation package...'}</p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Recommended Path: {runtimeView?.simulation.recommendedPathId ?? 'N/A'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
+                  <h3 className="text-sm font-semibold text-gold mb-2">Doctrine Recommendation</h3>
+                  <p className="text-sm text-gray-300">{runtimeView?.founderExperience.doctrineRecommendation ?? 'Awaiting doctrine recommendation...'}</p>
+                  <p className="text-xs text-gray-500 mt-2">Selected Path: {runtimeView?.doctrine.selectedPathId ?? 'N/A'}</p>
+                </div>
+
+                <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
+                  <h3 className="text-sm font-semibold text-gold mb-2">WHY / WHY NOT</h3>
+                  <div className="space-y-2">
+                    <p className="text-xs text-amber-300">WHY: {runtimeView?.founderExperience.why ?? 'N/A'}</p>
+                    <p className="text-xs text-gray-400">WHY NOT: {runtimeView?.founderExperience.whyNot ?? 'N/A'}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
+                  <h3 className="text-sm font-semibold text-gold mb-2">Founder Levels</h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    <RuntimeLevel label="Confidence" value={runtimeView?.founderExperience.confidenceLevel ?? 'N/A'} />
+                    <RuntimeLevel label="Risk" value={runtimeView?.founderExperience.riskLevel ?? 'N/A'} />
+                    <RuntimeLevel label="Opportunity" value={runtimeView?.founderExperience.opportunityLevel ?? 'N/A'} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
+                  <h3 className="text-sm font-semibold text-gold mb-2">Runtime Synchronization</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    <RuntimeFact label="Synchronized" value={runtimeView?.synchronizationStatus.synchronized ? 'yes' : 'no'} />
+                    <RuntimeFact label="Bus" value={runtimeView?.synchronizationStatus.busHealthy ? 'healthy' : 'critical'} />
+                    <RuntimeFact label="Al-Wateen" value={runtimeView?.synchronizationStatus.alWateenHealthy ? 'healthy' : 'critical'} />
+                    <RuntimeFact label="Coherence" value={runtimeView?.synchronizationStatus.coherenceScore ?? 0} />
+                    <RuntimeFact label="Queue" value={runtimeView?.synchronizationStatus.queueDepth ?? 0} />
+                    <RuntimeFact label="Blocked" value={runtimeView?.synchronizationStatus.invalidMessagesBlocked ?? 0} />
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
+                  <h3 className="text-sm font-semibold text-gold mb-2">Al-Wateen Personality</h3>
+                  <p className="text-sm text-gray-300">{runtimeView?.personality.greeting ?? 'Awaiting personality response...'}</p>
+                  <p className="text-xs text-gray-400 mt-2">{runtimeView?.personality.assessment ?? 'N/A'}</p>
                 </div>
               </div>
 
@@ -327,33 +341,36 @@ export default function SovereignHighCouncilPage() {
                 </div>
 
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
-                  <h3 className="text-sm font-semibold text-gold mb-2">Doctrine WHY / WHY NOT</h3>
-                  <p className="text-xs text-gray-300 mb-2">
-                    Selected Path: {runtimeView?.doctrine.selectedPathId ?? 'N/A'}
-                  </p>
-                  {runtimeView?.doctrine.rankings.slice(0, 1).map((ranking) => (
-                    <div key={ranking.pathId} className="space-y-1">
-                      <p className="text-xs text-amber-300">WHY: {ranking.why}</p>
-                      <p className="text-xs text-gray-400">WHY NOT: {ranking.whyNot}</p>
-                    </div>
-                  ))}
+                  <h3 className="text-sm font-semibold text-gold mb-2">Executive Recommendations</h3>
+                  <ul className="space-y-1 text-xs text-gray-400">
+                    {(runtimeView?.executiveBriefing.recommendations ?? []).slice(0, 3).map((recommendation) => (
+                      <li key={recommendation}>- {recommendation}</li>
+                    ))}
+                  </ul>
                 </div>
 
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
-                  <h3 className="text-sm font-semibold text-gold mb-2">Simulation Summary</h3>
-                  <p className="text-sm text-gray-300">{runtimeView?.simulation.summary ?? 'Awaiting simulation package...'}</p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Recommended Path: {runtimeView?.simulation.recommendedPathId ?? 'N/A'}
-                  </p>
+                  <h3 className="text-sm font-semibold text-gold mb-2">Strategic Threat</h3>
+                  <p className="text-xs text-gray-400">{runtimeView?.strategicBriefing.leadingThreat ?? 'Threat stream pending.'}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-9 gap-3">
+                <RuntimeMetric label="Constitution" value={runtimeView?.runtimeSnapshots.constitutionLoaded ? 1 : 0} />
                 <RuntimeMetric label="Exec" value={runtimeView?.runtimeSnapshots.executivePackages} />
                 <RuntimeMetric label="Strategic" value={runtimeView?.runtimeSnapshots.strategicPackages} />
                 <RuntimeMetric label="Simulation" value={runtimeView?.runtimeSnapshots.simulationPackages} />
                 <RuntimeMetric label="Bus Routed" value={runtimeView?.runtimeSnapshots.busMessagesRouted} />
+                <RuntimeMetric label="Perception" value={runtimeView?.runtimeSnapshots.perceptionPackages} />
+                <RuntimeMetric label="Al-Wateen" value={runtimeView?.runtimeSnapshots.alWateenPackages} />
+                <RuntimeMetric label="Doctrine" value={runtimeView?.runtimeSnapshots.doctrinePackages} />
                 <RuntimeMetric label="Council Sync" value={runtimeView?.runtimeSnapshots.councilSynchronizations} />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {(runtimeView?.systemHealthIndicators ?? []).map((indicator) => (
+                  <RuntimeHealthIndicator key={indicator.system} indicator={indicator} />
+                ))}
               </div>
             </section>
 
@@ -476,7 +493,7 @@ function CommandHallCard({ hall, insight, onClick }: CommandHallCardProps) {
 
 interface CommandHallDetailProps {
   readonly hall: CommandHallCard;
-  readonly runtimeView: RuntimeView | null;
+  readonly runtimeView: SovereignHighCouncilRuntimeView | null;
   readonly insight?: HallRuntimeInsight;
   readonly onBack: () => void;
 }
@@ -535,6 +552,44 @@ function RuntimeMetric({ label, value }: { label: string; value: number | undefi
     <div className="rounded-lg border border-gold/10 bg-slate-900/40 px-3 py-2">
       <p className="text-xs text-gray-500">{label}</p>
       <p className="text-sm text-amber-300 font-semibold">{value ?? 0}</p>
+    </div>
+  );
+}
+
+function RuntimeFact({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-lg border border-gold/10 bg-slate-950/30 px-3 py-2">
+      <p className="text-[10px] uppercase text-gray-500">{label}</p>
+      <p className="text-xs text-gray-300 truncate">{value}</p>
+    </div>
+  );
+}
+
+function RuntimeLevel({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-gold/10 bg-slate-950/30 px-3 py-3 text-center">
+      <p className="text-[10px] uppercase text-gray-500">{label}</p>
+      <p className="text-sm text-amber-300 font-semibold capitalize">{value}</p>
+    </div>
+  );
+}
+
+function RuntimeHealthIndicator({ indicator }: { indicator: RuntimeHealthIndicatorView }) {
+  const dotClass =
+    indicator.status === 'healthy'
+      ? 'bg-green-400'
+      : indicator.status === 'degraded'
+        ? 'bg-yellow-400'
+        : 'bg-red-400';
+
+  return (
+    <div className="rounded-lg border border-gold/10 bg-slate-900/40 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-gold">{indicator.system}</h3>
+        <span className={`h-2.5 w-2.5 rounded-full ${dotClass}`} />
+      </div>
+      <p className="text-xs text-gray-400 mt-2 line-clamp-2">{indicator.summary}</p>
+      <p className="text-xs text-amber-300/80 mt-2">{indicator.metric}</p>
     </div>
   );
 }

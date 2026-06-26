@@ -15,6 +15,7 @@ import {
 import { createCouncilRuntime } from '../../core/sovereign-high-council-runtime';
 
 export type RuntimeHealth = 'healthy' | 'degraded' | 'critical';
+export type FounderExperienceLevel = 'low' | 'medium' | 'high' | 'critical';
 
 export interface HallRuntimeInsight {
   readonly headline: string;
@@ -33,14 +34,44 @@ export interface DoctrineRankingView {
   readonly whyNot: string;
 }
 
+export interface RuntimeHealthIndicatorView {
+  readonly system: string;
+  readonly status: RuntimeHealth;
+  readonly summary: string;
+  readonly metric: string;
+}
+
 export interface SovereignHighCouncilRuntimeView {
   readonly generatedAt: string;
   readonly founderId: string;
   readonly systemStatus: RuntimeHealth;
+  readonly constitutionalStatus: {
+    readonly loaded: boolean;
+    readonly version: string;
+    readonly complianceStatus: string;
+    readonly decision: string;
+    readonly complianceScore: number;
+    readonly priority: string;
+    readonly reason: string;
+  };
   readonly founderBriefings: {
     readonly founder: FounderBriefingView;
     readonly executive: FounderBriefingView;
     readonly strategic: FounderBriefingView;
+  };
+  readonly executiveBriefing: {
+    readonly summary: string;
+    readonly overallRisk: string;
+    readonly planStatus: string;
+    readonly priority: string;
+    readonly recommendations: readonly string[];
+  };
+  readonly strategicBriefing: {
+    readonly summary: string;
+    readonly forecastConfidence: number;
+    readonly leadingOpportunity: string;
+    readonly leadingThreat: string;
+    readonly objectives: readonly string[];
   };
   readonly constitutionalIntelligenceSummary: string;
   readonly strategicRecommendations: readonly string[];
@@ -61,6 +92,14 @@ export interface SovereignHighCouncilRuntimeView {
       readonly probability: number;
     }[];
   };
+  readonly founderExperience: {
+    readonly doctrineRecommendation: string;
+    readonly why: string;
+    readonly whyNot: string;
+    readonly confidenceLevel: string;
+    readonly riskLevel: FounderExperienceLevel;
+    readonly opportunityLevel: FounderExperienceLevel;
+  };
   readonly personality: {
     readonly greeting: string;
     readonly assessment: string;
@@ -78,6 +117,17 @@ export interface SovereignHighCouncilRuntimeView {
     readonly doctrinePackages: number;
     readonly councilSynchronizations: number;
   };
+  readonly synchronizationStatus: {
+    readonly synchronized: boolean;
+    readonly busHealthy: boolean;
+    readonly alWateenHealthy: boolean;
+    readonly coherenceScore: number;
+    readonly queueDepth: number;
+    readonly invalidMessagesBlocked: number;
+    readonly lastBusSynchronizationAt?: string;
+    readonly lastCouncilSynchronizationAt?: string;
+  };
+  readonly systemHealthIndicators: readonly RuntimeHealthIndicatorView[];
   readonly hallInsights: Readonly<Record<string, HallRuntimeInsight>>;
 }
 
@@ -112,6 +162,46 @@ function deriveSystemStatus(input: {
   }
 
   if (input.coherenceScore < 70) {
+    return 'degraded';
+  }
+
+  return 'healthy';
+}
+
+function deriveRiskLevel(riskLevel: string | undefined): FounderExperienceLevel {
+  if (riskLevel === 'critical' || riskLevel === 'high' || riskLevel === 'medium' || riskLevel === 'low') {
+    return riskLevel;
+  }
+
+  return 'medium';
+}
+
+function deriveOpportunityLevel(score: number | undefined): FounderExperienceLevel {
+  if (score === undefined) {
+    return 'medium';
+  }
+
+  if (score >= 85) {
+    return 'critical';
+  }
+
+  if (score >= 70) {
+    return 'high';
+  }
+
+  if (score >= 45) {
+    return 'medium';
+  }
+
+  return 'low';
+}
+
+function deriveHealthStatus(value: number, degradedAt: number, criticalAt: number): RuntimeHealth {
+  if (value <= criticalAt) {
+    return 'critical';
+  }
+
+  if (value <= degradedAt) {
     return 'degraded';
   }
 
@@ -213,6 +303,81 @@ export function buildSovereignHighCouncilRuntimeView(input?: {
   const perceptionSnapshot = perceptionRuntime.snapshot();
   const doctrineSnapshot = doctrineRuntime.snapshot();
   const councilSnapshot = councilRuntime.snapshot();
+  const selectedRanking =
+    councilResult.doctrinePackage.ranking.find(
+      (ranked) => ranked.pathId === councilResult.doctrinePackage.recommendation.selectedPathId
+    ) ?? councilResult.doctrinePackage.ranking[0];
+  const selectedFuture =
+    futurePackage.rankedFutures.find((future) => future.pathId === futurePackage.recommendedPathId) ??
+    futurePackage.rankedFutures[0];
+  const selectedOpportunity = futurePackage.opportunities.find(
+    (opportunity) => opportunity.pathId === futurePackage.recommendedPathId
+  );
+  const leadingOpportunity =
+    strategicPackage.opportunities[0]?.title ?? selectedOpportunity?.summary ?? 'Runtime opportunity synthesis unavailable';
+  const leadingThreat = strategicPackage.threats[0];
+  const executivePackage = executiveRuntime.getLatestDecisionPackage();
+  const synchronizationHealthy =
+    busDiagnostics.healthy &&
+    alWateenDiagnostics.healthy &&
+    councilResult.unifiedPackage.correlation.coherenceScore >= 70 &&
+    busDiagnostics.invalidMessagesBlocked === 0;
+  const systemHealthIndicators: readonly RuntimeHealthIndicatorView[] = [
+    {
+      system: 'Constitution Runtime',
+      status: constitutionState?.loaded ? 'healthy' : 'critical',
+      summary: `Version ${constitutionState?.constitutionVersion ?? 'unknown'} with ${constitutionState?.articleCount ?? 0} articles loaded.`,
+      metric: `${constitutionState?.policyCount ?? 0} policies`,
+    },
+    {
+      system: 'Executive Intelligence',
+      status: deriveHealthStatus(executiveSnapshot.totalDecisionPackages, 0, -1),
+      summary: executivePackage?.situation.constitutionalSignals[0] ?? 'Executive package stream active.',
+      metric: `${executiveSnapshot.totalDecisionPackages} packages`,
+    },
+    {
+      system: 'Strategic Intelligence',
+      status: deriveHealthStatus(strategicPackage.forecast.confidence, 55, 35),
+      summary: strategicPackage.forecast.narrative,
+      metric: `${strategicSnapshot.totalPackages} packages`,
+    },
+    {
+      system: 'Future Simulation',
+      status: deriveRiskLevel(selectedFuture?.riskLevel) === 'critical' ? 'critical' : selectedFuture?.riskLevel === 'high' ? 'degraded' : 'healthy',
+      summary: futurePackage.recommendationSummary,
+      metric: `${futureSnapshot.totalSimulatedPaths} paths`,
+    },
+    {
+      system: 'Sovereign Intelligence Bus',
+      status: busDiagnostics.healthy ? 'healthy' : 'critical',
+      summary: `Queue depth ${busDiagnostics.queueDepth}; invalid messages blocked ${busDiagnostics.invalidMessagesBlocked}.`,
+      metric: `${busSnapshot.totalRoutedMessages} routed`,
+    },
+    {
+      system: 'Sovereign Perception Layer',
+      status: deriveHealthStatus(perceptionSnapshot.totalPackages, 0, -1),
+      summary: `Observation coverage includes ${perceptionSnapshot.totalObservations} runtime signals.`,
+      metric: `${perceptionSnapshot.totalPackages} packages`,
+    },
+    {
+      system: 'Al-Wateen Living Intelligence',
+      status: alWateenDiagnostics.healthy ? 'healthy' : 'critical',
+      summary: councilResult.unifiedPackage.understanding.perceptionSummary,
+      metric: `${alWateenRuntime.snapshot().totalPackages} packages`,
+    },
+    {
+      system: 'Imperial Decision Doctrine',
+      status: councilResult.doctrinePackage.ethicalPolicy.compliant ? 'healthy' : 'critical',
+      summary: councilResult.doctrinePackage.recommendation.justification.constitutionalExplanation,
+      metric: `${doctrineSnapshot.totalPackages} packages`,
+    },
+    {
+      system: 'Sovereign High Council Runtime',
+      status: synchronizationHealthy ? 'healthy' : 'degraded',
+      summary: `Founder session ${councilResult.session.sessionId} synchronized.`,
+      metric: `${councilSnapshot.state.totalSynchronizations} syncs`,
+    },
+  ];
 
   const hallInsights: Readonly<Record<string, HallRuntimeInsight>> = {
     'ch-sovereign-assistant': {
@@ -299,6 +464,15 @@ export function buildSovereignHighCouncilRuntimeView(input?: {
       coherenceScore: councilResult.unifiedPackage.correlation.coherenceScore,
       blockedMessages: busSnapshot.invalidMessagesBlocked,
     }),
+    constitutionalStatus: {
+      loaded: constitutionState?.loaded ?? false,
+      version: constitutionState?.constitutionVersion ?? 'unknown',
+      complianceStatus: evaluation.status,
+      decision: evaluation.decision,
+      complianceScore: evaluation.complianceScore,
+      priority: constitutionState?.lastPriority ?? action.priority,
+      reason: evaluation.reasons[0] ?? 'Constitution Runtime completed evaluation.',
+    },
     founderBriefings: {
       founder: {
         summary: councilResult.briefingBundle.founderBriefing.summary,
@@ -312,6 +486,22 @@ export function buildSovereignHighCouncilRuntimeView(input?: {
         summary: councilResult.briefingBundle.strategicBriefing.summary,
         keySignals: councilResult.briefingBundle.strategicBriefing.keySignals,
       },
+    },
+    executiveBriefing: {
+      summary: councilResult.unifiedPackage.understanding.executiveSummary,
+      overallRisk: executivePackage?.risks.overallRisk ?? 'medium',
+      planStatus: executivePackage?.plan.status ?? 'pending-founder-review',
+      priority: executivePackage?.priority.executivePriority ?? action.priority,
+      recommendations: executivePackage?.recommendations.map((recommendation) => recommendation.summary) ?? [],
+    },
+    strategicBriefing: {
+      summary: councilResult.unifiedPackage.understanding.strategicSummary,
+      forecastConfidence: strategicPackage.forecast.confidence,
+      leadingOpportunity,
+      leadingThreat: leadingThreat
+        ? `${leadingThreat.title}: ${leadingThreat.rationale}`
+        : 'Strategic threat stream reports no leading threat.',
+      objectives: strategicPackage.objectives.map((objective) => `${objective.title}: ${objective.status}`),
     },
     constitutionalIntelligenceSummary: councilResult.unifiedPackage.understanding.constitutionalSummary,
     strategicRecommendations: strategicPackage.recommendations.map((recommendation) => recommendation.summary),
@@ -337,6 +527,14 @@ export function buildSovereignHighCouncilRuntimeView(input?: {
         probability: future.probability,
       })),
     },
+    founderExperience: {
+      doctrineRecommendation: councilResult.doctrinePackage.recommendation.justification.constitutionalExplanation,
+      why: selectedRanking?.why ?? councilResult.doctrinePackage.recommendation.justification.strategicExplanation,
+      whyNot: selectedRanking?.whyNot ?? councilResult.doctrinePackage.recommendation.justification.uncertaintyStatement,
+      confidenceLevel: councilResult.doctrinePackage.recommendation.justification.confidence,
+      riskLevel: deriveRiskLevel(selectedFuture?.riskLevel),
+      opportunityLevel: deriveOpportunityLevel(selectedOpportunity?.score),
+    },
     personality: {
       greeting: personality.response.greeting,
       assessment: personality.response.assessment,
@@ -354,6 +552,17 @@ export function buildSovereignHighCouncilRuntimeView(input?: {
       doctrinePackages: doctrineSnapshot.totalPackages,
       councilSynchronizations: councilSnapshot.state.totalSynchronizations,
     },
+    synchronizationStatus: {
+      synchronized: synchronizationHealthy,
+      busHealthy: busDiagnostics.healthy,
+      alWateenHealthy: alWateenDiagnostics.healthy,
+      coherenceScore: councilResult.unifiedPackage.correlation.coherenceScore,
+      queueDepth: busDiagnostics.queueDepth,
+      invalidMessagesBlocked: busDiagnostics.invalidMessagesBlocked,
+      lastBusSynchronizationAt: busSnapshot.lastSynchronizationAt?.toISOString(),
+      lastCouncilSynchronizationAt: councilSnapshot.state.lastSyncedAt?.toISOString(),
+    },
+    systemHealthIndicators,
     hallInsights,
   };
 }
