@@ -47,5 +47,8 @@ export * from './quality-agent';
 export * from './services/runtime-services';
 export * from './services/al-wateen-runtime';
 export * from './services/al-wateen-bootstrap';
+export * from './living-intelligence';
+export * from './personality';
+export * from './decision-doctrine';
 
 export * from './ui/dashboard-contracts';
