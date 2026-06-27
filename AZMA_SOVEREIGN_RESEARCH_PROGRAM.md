@@ -1,0 +1,36 @@
+# AZMA Sovereign Research Program
+
+## Phase 28 Status
+
+This document defines the Phase 28 research roadmap only.
+
+No implementation, no architectural redesign, no source-code changes, and no infrastructure generation are authorized in this phase.
+
+## Domain Roadmap
+
+| Domain | Research objective | Evaluation scope | Expected deliverables | Success criteria | Dependencies | Estimated research priority |
+|---|---|---|---|---|---|---|
+| Large Language Models (LLMs) | Define model capability requirements for sovereign text and reasoning workloads. | Reasoning depth, context length, controllability, inference efficiency, licensing posture. | Domain requirement spec, evaluation rubric, workload taxonomy. | Requirements and rubric approved for future study kickoff. | Constitutional trilogy, convergence blueprint. | Critical |
+| Image Generation | Define requirements for high-quality image synthesis in sovereign workflows. | Visual fidelity, prompt adherence, style control, throughput, safety constraints. | Image research scope brief and test scenario catalog. | Scope ratified with measurable image outcome criteria. | LLM prompt policy definitions. | High |
+| Video Generation | Define requirements for long-form and short-form video creation. | Temporal consistency, motion quality, duration scaling, render cost profile. | Video research framework and scenario matrix. | Approved evaluation scope for cinematic and utility outputs. | Image generation scope, storage scope. | Critical |
+| Image Editing | Define editing requirements for correction, transformation, and compositing. | Edit precision, mask/control methods, artifact handling, reversibility. | Editing objective matrix and quality definitions. | Clear edit success standards and failure thresholds. | Image generation scope. | High |
+| Video Editing | Define requirements for post-generation and post-production operations. | Scene editing, continuity preservation, timing control, output integrity. | Video editing research charter and workflow map. | Approved editing lifecycle criteria. | Video generation scope, storage scope. | High |
+| Speech-to-Text | Define transcription requirements across accents, noise, and domain terms. | Accuracy, latency, multilingual behavior, diarization needs. | STT requirement profile and evaluation checklist. | Accepted metrics for transcription quality and speed. | Audio governance and privacy constraints. | High |
+| Text-to-Speech | Define speech synthesis requirements for sovereign assistant voice output. | Naturalness, intelligibility, style control, latency, locale support. | TTS scope brief and quality rubric. | Ratified synthesis criteria and test conditions. | STT scope, voice policy boundaries. | High |
+| Voice Cloning | Define governance and technical requirements for controlled voice replication. | Identity safety, consent controls, similarity bands, misuse risk boundaries. | Voice cloning policy-aligned research charter. | Explicit constitutional boundaries and measurable compliance criteria. | Security technologies, identity policy. | Critical |
+| Music Generation | Define requirements for soundtrack and compositional generation tasks. | Composition quality, genre control, duration control, licensing sensitivity. | Music research objective set and scoring rubric draft. | Approved music quality and rights-safe criteria. | Audio pipeline scope. | Medium |
+| Sound Effects | Define requirements for event-driven sound design generation. | Realism, timing fit, layering behavior, production usability. | SFX research brief and use-case taxonomy. | Accepted criteria for cinematic and utility sound effects. | Audio and video domain scopes. | Medium |
+| Camera & Cinematic Control | Define requirements for virtual camera behavior and cinematic directives. | Shot control, camera movement semantics, cinematic consistency. | Cinematic control specification and scenario catalog. | Approved control vocabulary and evaluable outcomes. | Video generation/editing scope. | High |
+| Agent Frameworks | Define framework requirements for sovereign multi-agent orchestration. | Task decomposition, tool governance, traceability, failure handling. | Agent framework requirement map and governance checklist. | Ratified framework criteria aligned with constitutional runtime rules. | DNA orchestration boundaries, security governance. | Critical |
+| Workflow Orchestration | Define workflow execution requirements for cross-domain AI pipelines. | Determinism, retries, state tracking, observability hooks. | Workflow research charter and lifecycle model. | Approved orchestration success metrics and boundary rules. | Agent framework scope, queue scope. | Critical |
+| GPU Infrastructure | Define sovereign compute requirements for AI workload execution. | Capacity planning, scheduling model, utilization objectives, cost envelopes. | GPU infrastructure research blueprint and demand model. | Ratified compute requirements and planning assumptions. | Workflow and model domain scopes. | Critical |
+| Queue Systems | Define queue requirements for asynchronous, resilient execution at scale. | Throughput, ordering policies, retry semantics, dead-letter handling. | Queue research scope and reliability criteria. | Approved queue reliability and performance criteria. | Workflow orchestration scope. | Critical |
+| Streaming Architecture | Define requirements for progressive generation and live output delivery. | Stream latency, chunking strategy, session continuity, backpressure behavior. | Streaming charter and protocol requirement matrix. | Ratified streaming performance and resilience criteria. | Queue scope, storage scope. | High |
+| Storage Architecture | Define storage requirements for media, artifacts, logs, and governance traces. | Durability, lifecycle tiers, access patterns, compliance constraints. | Storage requirement model and data class taxonomy. | Approved storage classes with measurable durability/access targets. | Security technologies, telemetry governance. | Critical |
+| Vector Databases | Define requirements for embedding storage and similarity retrieval. | Index performance, update patterns, recall behavior, governance controls. | Vector DB research scope and retrieval objective matrix. | Accepted retrieval quality and performance criteria. | Search and retrieval scope, storage scope. | High |
+| Search & Retrieval | Define retrieval architecture requirements for evidence-grounded intelligence. | Recall/precision goals, hybrid retrieval behavior, latency constraints. | Retrieval research charter and evaluation framework. | Approved retrieval quality thresholds and test plan template. | LLM scope, vector DB scope. | Critical |
+| Security Technologies | Define security technology requirements for sovereign AI operations. | Identity trust, secrets handling, policy enforcement, threat response readiness. | Security research scope, control matrix, risk criteria. | Ratified security baseline requirements for all future studies. | All domains; constitutional governance. | Critical |
+
+## Final Statement
+
+Phase 28 establishes the Sovereign Research roadmap structure only. Technology selection, vendor comparison, benchmarking, and implementation are deferred to subsequent approved research studies.

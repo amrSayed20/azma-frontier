@@ -6,8 +6,10 @@
  */
 
 import { HealthReport } from '../types/al-wateen.types';
+import { AlertSeverity, HealthCheckStatus } from '../types/al-wateen.types';
 import { ILogger } from '../utils/logger';
 import { ASSISTANT_CONFIG } from '../utils/constants';
+import { AlWateenRegistry } from '../registry/al-wateen-registry';
 import { HealthCheckRegistry } from './health-checks';
 import { AlWateenHealthReporter } from './health-reporter';
 
@@ -24,10 +26,12 @@ export class AlWateenHealthEngine implements HealthEngine {
   private lastReports: Map<string, HealthReport> = new Map();
   private readonly checkRegistry: HealthCheckRegistry;
   private readonly reporter: AlWateenHealthReporter;
+  private readonly componentRegistry?: AlWateenRegistry;
 
-  constructor(private readonly logger: ILogger) {
+  constructor(private readonly logger: ILogger, componentRegistry?: AlWateenRegistry) {
     this.checkRegistry = new HealthCheckRegistry();
     this.reporter = new AlWateenHealthReporter();
+    this.componentRegistry = componentRegistry;
     this.logger.info('AlWateenHealthEngine', 'Initialized');
   }
 
@@ -81,11 +85,11 @@ export class AlWateenHealthEngine implements HealthEngine {
       return {
         componentId,
         componentType,
-        status: 'UNKNOWN' as any,
+        status: HealthCheckStatus.UNKNOWN,
         timestamp: Date.now(),
         checks: [],
         lastUpdate: Date.now(),
-        severity: 'ERROR' as any,
+        severity: AlertSeverity.ERROR,
         message: `Failed to perform health check: ${error}`
       };
     }
@@ -101,8 +105,22 @@ export class AlWateenHealthEngine implements HealthEngine {
 
   private async performPeriodicHealthChecks(): Promise<void> {
     try {
-      // Periodic health checks would run on registered components
-      // This is a placeholder for the monitoring loop
+      const components = this.componentRegistry?.getAll() ?? [];
+
+      if (components.length === 0) {
+        this.logger.debug('AlWateenHealthEngine', 'No registered components available for periodic health checks');
+        return;
+      }
+
+      for (const component of components) {
+        const report = await this.checkComponentHealth(component.id, component.type);
+        this.logger.debug('AlWateenHealthEngine', `Periodic health check completed for ${component.id}`, {
+          componentId: component.id,
+          componentType: component.type,
+          status: report.status,
+          severity: report.severity
+        });
+      }
     } catch (error) {
       this.logger.error(
         'AlWateenHealthEngine',
@@ -114,7 +132,9 @@ export class AlWateenHealthEngine implements HealthEngine {
 
   public shutdown(): void {
     if (this.isRunning) {
-      this.healthCheckInterval && clearInterval(this.healthCheckInterval);
+      if (this.healthCheckInterval) {
+        clearInterval(this.healthCheckInterval);
+      }
       this.isRunning = false;
     }
     this.lastReports.clear();

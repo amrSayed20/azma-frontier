@@ -16,7 +16,6 @@ import { AlWateenTelemetryEngine } from '../telemetry/telemetry-engine';
 import { AlWateenExecutiveReportEngine } from '../reports/executive-report-engine';
 import { AlWateenNotificationEngine } from '../notifications/notification-engine';
 import { AlWateenSchedulerEngine } from '../scheduler/scheduler-engine';
-import { ASSISTANT_CONFIG } from '../utils/constants';
 import { AssistantStatus } from '../types/al-wateen.types';
 
 export interface BootstrapConfig {
@@ -46,7 +45,6 @@ export class AssistantBootstrap {
     const logger = new Logger();
     logger.info('AssistantBootstrap', 'Starting initialization');
 
-    const initTimeout = config.initTimeoutMs || ASSISTANT_CONFIG.INIT_TIMEOUT_MS;
     const enableMonitoring = config.enableMonitoring !== false;
     const enableHealthChecks = config.enableHealthChecks !== false;
     const enableTelemetry = config.enableTelemetry !== false;
@@ -60,7 +58,7 @@ export class AssistantBootstrap {
       logger.info('AssistantBootstrap', 'Registry initialized');
 
       const monitoring = new AlWateenMonitoringEngine(logger);
-      const health = new AlWateenHealthEngine(logger);
+      const health = new AlWateenHealthEngine(logger, registry);
       const recovery = new AlWateenRecoveryEngine(logger);
       const providers = new AlWateenProviderManager(logger);
       const telemetry = new AlWateenTelemetryEngine(logger);
