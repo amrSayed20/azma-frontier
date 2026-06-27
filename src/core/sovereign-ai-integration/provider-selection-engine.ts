@@ -20,10 +20,8 @@ export class ProviderSelectionEngine {
       const hasCapability = provider.descriptor.capabilities.includes(request.capability);
       const hasModel = Boolean(this.modelRegistry.findByCapability(provider.descriptor.providerId, request.capability));
       const available = this.availabilityMonitor.isAvailable(telemetry, provider.descriptor.maxConcurrentRequests);
-      const preferredProviderMatches =
-        request.preferredProviderId === undefined || request.preferredProviderId === provider.descriptor.providerId;
 
-      return hasCapability && hasModel && available && preferredProviderMatches;
+      return hasCapability && hasModel && available;
     });
 
     return candidates.sort((a, b) => this.score(b, request) - this.score(a, request));
@@ -34,7 +32,8 @@ export class ProviderSelectionEngine {
     const availabilityScore = this.availabilityMonitor.score(telemetry);
     const performanceScore = this.performanceAnalyzer.score(telemetry);
     const costScore = this.costAnalyzer.score(provider.descriptor, request);
+    const preferenceScore = request.preferredProviderId === provider.descriptor.providerId ? 0.15 : 0;
 
-    return availabilityScore * 0.35 + performanceScore * 0.45 + costScore * 0.2;
+    return availabilityScore * 0.3 + performanceScore * 0.4 + costScore * 0.15 + preferenceScore;
   }
 }
