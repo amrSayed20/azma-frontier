@@ -14,6 +14,15 @@ export * from './policy-decision-trace-errors';
 export * from './policy-decision-trace';
 export * from './wp-005-immutable-audit-backbone';
 export * from './wp-005-errors';
+export * from './wp-006-rationale-linkage-types';
+export * from './wp-006-constitutional-rationale-linkage';
+export * from './wp-006-runtime-integration';
+export * from './wp-006-simulation-harness';
+// WP-007: Runtime Admission Controller (Canonical Runtime Engine)
+export * from './wp-007-runtime-engine';
+export * from './wp-007-adapter';
+export * from './wp-007-types';
+export * from './wp-007-admission-controller';
 export * from './constitution-state';
 export * from './constitution-history';
 export * from './constitution-event-manager';
