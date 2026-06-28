@@ -7,12 +7,17 @@ import { createEscalationHierarchyContract, EscalationHierarchyContract } from '
 import { EscalationHierarchySnapshot, EscalationRequest, EscalationResolutionRequest, EscalationResolutionResult, EscalationRoute, EscalationTrace } from './escalation-hierarchy-contract-types';
 import { createPolicyRuleBoundaryContract, PolicyRuleBoundaryContract } from './policy-rule-boundary-contract';
 import { PolicyBoundaryEvaluation, PolicyBoundaryRequest, PolicyBoundarySnapshot, PolicyBoundaryTrace } from './policy-rule-boundary-contract-types';
+import { createPolicyDecisionTraceSchema, PolicyDecisionTraceSchema } from './policy-decision-trace';
+import { PolicyDecisionTraceRequest, PolicyDecisionTraceResponse, PolicyDecisionTraceQueryRequest, PolicyDecisionTraceQueryResult, PolicyDecisionTraceAuditReport, PolicyDecisionTraceSnapshot, PolicyDecisionTraceStatistics, PolicyDecisionTrace } from './policy-decision-trace-types';
+import { createImmutableDecisionAuditBackbone, ImmutableDecisionAuditBackbone, AuditEventMetadata, AuditQueryCriteria, AuditBackboneSnapshot, AuditBackboneStatistics } from './wp-005-immutable-audit-backbone';
 
 export class ConstitutionRuntime {
   private readonly engine: ConstitutionEngine;
   private readonly authorityMap: ConstitutionalAuthorityMap;
   private readonly escalationContract: EscalationHierarchyContract;
   private readonly policyBoundaryContract: PolicyRuleBoundaryContract;
+  private readonly policyDecisionTraceSchema: PolicyDecisionTraceSchema;
+  private readonly immutableAuditBackbone: ImmutableDecisionAuditBackbone;
 
   constructor(
     engine: ConstitutionEngine = createConstitutionRuntimeEngine(),
@@ -26,6 +31,8 @@ export class ConstitutionRuntime {
       this.escalationContract,
       () => this.engine.getRegistry().getPolicies()
     );
+    this.policyDecisionTraceSchema = createPolicyDecisionTraceSchema();
+    this.immutableAuditBackbone = createImmutableDecisionAuditBackbone();
   }
 
   public loadConstitution(): ConstitutionLoadResult {
@@ -121,5 +128,105 @@ export class ConstitutionRuntime {
 
   public getPolicyBoundarySnapshot(): PolicyBoundarySnapshot {
     return this.policyBoundaryContract.getSnapshot();
+  }
+
+  /**
+   * Public interface: Policy Decision Trace Schema Interface (WP-004).
+   * Records immutable traces of all policy decisions for constitutional audit.
+   */
+  public recordPolicyDecisionTrace(request: PolicyDecisionTraceRequest): PolicyDecisionTraceResponse {
+    return this.policyDecisionTraceSchema.recordTrace(request);
+  }
+
+  public queryPolicyDecisionTraces(request: PolicyDecisionTraceQueryRequest): PolicyDecisionTraceQueryResult {
+    return this.policyDecisionTraceSchema.queryTraces(request);
+  }
+
+  public auditPolicyDecisionTraces(): PolicyDecisionTraceAuditReport {
+    return this.policyDecisionTraceSchema.generateAuditReport();
+  }
+
+  public getPolicyDecisionTraceSnapshot(): PolicyDecisionTraceSnapshot {
+    return this.policyDecisionTraceSchema.getSnapshot();
+  }
+
+  public getPolicyDecisionTraceStatistics(): PolicyDecisionTraceStatistics {
+    return this.policyDecisionTraceSchema.getStatistics();
+  }
+
+  public verifyPolicyDecisionTraceChain(): boolean {
+    return this.policyDecisionTraceSchema.verifyChainIntegrity();
+  }
+
+  /**
+   * Public interface: Immutable Decision Audit Backbone Interface (WP-005).
+   * Provides persistent, queryable audit trail for all policy decisions with recovery support.
+   * Exposes Phase 2 abstractions for future work packages (WP-006+).
+   */
+
+  /**
+   * Persist a recorded decision trace to the immutable audit backbone.
+   * Phase 2: Abstracts AuditEventMetadata for WP-011 telemetry, WP-013+ lifecycle events.
+   */
+  public async persistDecisionTraceToAudit(
+    traceId: string,
+    metadata: Partial<AuditEventMetadata>,
+  ): Promise<{ success: boolean; auditId: string; error?: string }> {
+    try {
+      const trace = this.policyDecisionTraceSchema.getTrace(traceId);
+      if (!trace) {
+        return { success: false, auditId: '', error: 'Trace not found' };
+      }
+      return this.immutableAuditBackbone.recordDecisionTrace(trace, metadata);
+    } catch (error) {
+      return { success: false, auditId: '', error: (error as Error).message };
+    }
+  }
+
+  /**
+   * Query the immutable audit backbone using Phase 2 QueryableAuditStore interface.
+   * Supports: actor, source, correlation, tags, time ranges.
+   * Used by WP-011 (telemetry queries), WP-012 (alert queries), WP-044 (validation).
+   */
+  public async queryAuditBackbone(criteria: AuditQueryCriteria): Promise<PolicyDecisionTrace[]> {
+    return this.immutableAuditBackbone.query(criteria);
+  }
+
+  /**
+   * Verify integrity of the audit backbone chain.
+   * Used by WP-044 (constitutional traceability validation), WP-048 (recovery rehearsal).
+   */
+  public async verifyAuditIntegrity(): Promise<{ valid: boolean; chainIntegrityScore: number }> {
+    return this.immutableAuditBackbone.verifyAuditIntegrity();
+  }
+
+  /**
+   * Get statistics on the audit backbone.
+   * Exposes indices for WP-011 telemetry categorization, WP-013+ event correlation.
+   */
+  public async getAuditBackboneStatistics(): Promise<AuditBackboneStatistics> {
+    return this.immutableAuditBackbone.getStatistics();
+  }
+
+  /**
+   * Get snapshot of audit backbone state.
+   * Used by WP-044 (validation suite), WP-047 (rehearsal).
+   */
+  public async getAuditBackboneSnapshot(): Promise<AuditBackboneSnapshot> {
+    return this.immutableAuditBackbone.getSnapshot();
+  }
+
+  /**
+   * Phase 2 RecoveryInterface: Validate recovery path for WP-046 rollback support.
+   */
+  public async validateAuditRecoveryPath(fromTime: number, toTime: number): Promise<boolean> {
+    return this.immutableAuditBackbone.validateRecoveryPath(fromTime, toTime);
+  }
+
+  /**
+   * Phase 2 RecoveryInterface: Get snapshot at specific timestamp for WP-046, WP-048.
+   */
+  public async getAuditSnapshotAt(timestamp: number): Promise<PolicyDecisionTrace | null> {
+    return this.immutableAuditBackbone.getSnapshotAt(timestamp);
   }
 }
