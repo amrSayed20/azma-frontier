@@ -9,6 +9,13 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import './hujjah-al-damighah.css';
 
+type SearchResult = {
+  id: number;
+  type: 'sacred' | 'lore' | 'empirical' | 'general';
+  text: string;
+  source: string;
+};
+
 const knowledgeDomains = [
   { id: 'religious', name: 'ديني (عقائدي/فقهي)', icon: '⚖️' },
   { id: 'medical', name: 'طبي (تشريحي/حديث)', icon: '🧬' },
@@ -25,7 +32,7 @@ export default function HujjahAlDamighah() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [firewallBreach, setFirewallBreach] = useState(false);
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
   
   // Synthesis States
   const [synthesizedProof, setSynthesizedProof] = useState('');
@@ -48,7 +55,7 @@ export default function HujjahAlDamighah() {
     setResults([]);
 
     setTimeout(() => {
-      let mockData: any[] = [];
+      let mockData: SearchResult[] = [];
       if (activeDomain === 'religious') {
         mockData = [
           { id: 1, type: 'sacred', text: '﴿ إِنَّا نَحْنُ نَزَّلْنَا الذِّكْرَ وَإِنَّا لَهُ لَحَافِظُونَ ﴾', source: 'القرآن الكريم - سورة الحجر: 9' },
@@ -149,7 +156,7 @@ export default function HujjahAlDamighah() {
                   <div key={res.id} className={`result-card ${res.type}-card`}>
                     {res.type === 'lore' && <span className="lore-badge">قيل / يُحكى</span>}
                     {res.type === 'sacred' && <span className="sacred-badge">مرجعية قطعية</span>}
-                    <p className="result-text">"{res.text}"</p>
+                    <p className="result-text">&quot;{res.text}&quot;</p>
                     <div className="result-meta">
                       <span className="result-source">المصدر: {res.source}</span>
                       <button className="extract-btn" onClick={() => handleSynthesize(res.text, res.source)}>

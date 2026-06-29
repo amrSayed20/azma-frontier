@@ -41,7 +41,7 @@ export class IntelligenceEngine {
         for (const evidence of extractedEvidence) {
           bundleManager.addEvidence(evidence);
         }
-      } catch (error) {
+      } catch {
         // Silent continuation: The Intelligence Engine must not crash if a single document fails
         console.warn(`[Intelligence Engine] Failed to extract from document ID: ${result.id}`);
       }

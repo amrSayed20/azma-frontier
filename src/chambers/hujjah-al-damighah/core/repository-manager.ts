@@ -68,7 +68,7 @@ export class RepositoryManager {
     const searchPromises = Array.from(this.providers.values()).map(async (provider) => {
       try {
         return await provider.search(query, limit);
-      } catch (error) {
+      } catch {
         // Architectural Defense: A failing provider must not crash the broader investigation
         console.warn(`[RepositoryManager] Search failed for provider [${provider.providerId}]. Bypassing.`);
         return [];

@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { describe, expect, test } from '@jest/globals';
 import { ConstitutionRuntime } from './constitution-runtime';
 
 function createRuntime(): ConstitutionRuntime {
@@ -8,81 +7,83 @@ function createRuntime(): ConstitutionRuntime {
   return runtime;
 }
 
-test('WP-001 authority query returns deterministic owner and trace ids', () => {
-  const runtime = createRuntime();
+describe('WP-001 constitutional authority map', () => {
+  test('authority query returns deterministic owner and trace ids', () => {
+    const runtime = createRuntime();
 
-  const first = runtime.queryAuthority({
-    domain: 'governance',
-    actionType: 'governance',
-    contextClass: 'test-governance',
-  });
-
-  const second = runtime.queryAuthority({
-    domain: 'governance',
-    actionType: 'governance',
-    contextClass: 'test-governance',
-  });
-
-  assert.equal(first.effectiveOwner, 'sovereign-high-council');
-  assert.equal(first.effectiveTier, 'sovereign-high-council');
-  assert.equal(first.ruleId, second.ruleId);
-  assert.equal(first.traceId, second.traceId);
-});
-
-test('WP-001 validation denies unauthorized actor', () => {
-  const runtime = createRuntime();
-
-  assert.throws(() => {
-    runtime.validateAuthority({
-      actor: 'shared-constitutional',
+    const first = runtime.queryAuthority({
       domain: 'governance',
       actionType: 'governance',
-      contextClass: 'unauthorized-check',
+      contextClass: 'test-governance',
     });
-  });
-});
 
-test('WP-001 high-impact validation requires escalation for non-sovereign owner', () => {
-  const runtime = createRuntime();
+    const second = runtime.queryAuthority({
+      domain: 'governance',
+      actionType: 'governance',
+      contextClass: 'test-governance',
+    });
 
-  const result = runtime.validateAuthority({
-    actor: 'constitution-runtime',
-    domain: 'policy',
-    actionType: 'governance',
-    contextClass: 'high-impact-policy',
-    highImpact: true,
-  });
-
-  assert.equal(result.decision, 'escalate-required');
-});
-
-test('WP-001 authority trace resolves constitutional anchors', () => {
-  const runtime = createRuntime();
-
-  const trace = runtime.traceAuthorityRule('authority-rule-governance');
-
-  assert.equal(trace.domain, 'governance');
-  assert.ok(trace.constitutionalAnchors.length > 0);
-});
-
-test('WP-001 model validation passes completeness and traceability checks', () => {
-  const runtime = createRuntime();
-  const snapshot = runtime.getAuthorityMapSnapshot();
-
-  assert.ok(snapshot.domainMatrix.length >= 14);
-  assert.ok(snapshot.traceabilityMatrix.length >= 14);
-
-  const firstQuery = runtime.queryAuthority({
-    domain: 'security',
-    actionType: 'security',
-    contextClass: 'determinism-a',
-  });
-  const secondQuery = runtime.queryAuthority({
-    domain: 'security',
-    actionType: 'security',
-    contextClass: 'determinism-b',
+    expect(first.effectiveOwner).toBe('sovereign-high-council');
+    expect(first.effectiveTier).toBe('sovereign-high-council');
+    expect(first.ruleId).toBe(second.ruleId);
+    expect(first.traceId).toBe(second.traceId);
   });
 
-  assert.equal(firstQuery.effectiveOwner, secondQuery.effectiveOwner);
-  assert.equal(firstQuery.ruleId, secondQuery.ruleId);
+  test('validation denies unauthorized actor', () => {
+    const runtime = createRuntime();
+
+    expect(() => {
+      runtime.validateAuthority({
+        actor: 'shared-constitutional',
+        domain: 'governance',
+        actionType: 'governance',
+        contextClass: 'unauthorized-check',
+      });
+    }).toThrow();
+  });
+
+  test('high-impact validation requires escalation for non-sovereign owner', () => {
+    const runtime = createRuntime();
+
+    const result = runtime.validateAuthority({
+      actor: 'constitution-runtime',
+      domain: 'policy',
+      actionType: 'governance',
+      contextClass: 'high-impact-policy',
+      highImpact: true,
+    });
+
+    expect(result.decision).toBe('escalate-required');
+  });
+
+  test('authority trace resolves constitutional anchors', () => {
+    const runtime = createRuntime();
+
+    const trace = runtime.traceAuthorityRule('authority-rule-governance');
+
+    expect(trace.domain).toBe('governance');
+    expect(trace.constitutionalAnchors.length).toBeGreaterThan(0);
+  });
+
+  test('model validation passes completeness and traceability checks', () => {
+    const runtime = createRuntime();
+    const snapshot = runtime.getAuthorityMapSnapshot();
+
+    expect(snapshot.domainMatrix.length).toBeGreaterThanOrEqual(14);
+    expect(snapshot.traceabilityMatrix.length).toBeGreaterThanOrEqual(14);
+
+    const firstQuery = runtime.queryAuthority({
+      domain: 'security',
+      actionType: 'security',
+      contextClass: 'determinism-a',
+    });
+    const secondQuery = runtime.queryAuthority({
+      domain: 'security',
+      actionType: 'security',
+      contextClass: 'determinism-b',
+    });
+
+    expect(firstQuery.effectiveOwner).toBe(secondQuery.effectiveOwner);
+    expect(firstQuery.ruleId).toBe(secondQuery.ruleId);
+  });
 });

@@ -6,7 +6,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import './qiyamah-chamber.css';
 
@@ -26,7 +26,6 @@ export default function QiyamahChamber() {
   const [voiceType, setVoiceType] = useState('sovereign_male');
   
   // Accounting State (Live HUD & Execution Bill)
-  const [liveCost, setLiveCost] = useState(0);
   const [showBill, setShowBill] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
@@ -35,16 +34,15 @@ export default function QiyamahChamber() {
   const [masterReady, setMasterReady] = useState(false);
 
   // --- 1. The Generative Accounting Engine (Live HUD) ---
-  useEffect(() => {
+  const liveCost = useMemo(() => {
     let cost = 0;
     if (activeAsset) {
-      // Base calculation
-      cost += duration * 2; // 2 AZMA Credits per second
-      if (style === 'cinematic' || style === 'hyper_real') cost += 50; // High tier styles cost more
+      cost += duration * 2;
+      if (style === 'cinematic' || style === 'hyper_real') cost += 50;
       if (style === 'documentary') cost += 20;
-      if (voiceType === 'clone') cost += 100; // Voice cloning is expensive
+      if (voiceType === 'clone') cost += 100;
     }
-    setLiveCost(cost);
+    return cost;
   }, [duration, style, voiceType, activeAsset]);
 
   // --- 2. The Interactive Canvas (Drop Handlers) ---

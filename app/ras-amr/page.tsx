@@ -265,7 +265,7 @@ export default function RasAmrChamber() {
               className="action-trigger-btn forward-btn"
               onClick={() => router.push('/makman-al-ghayah')}
             >
-              👑 ترحيل العمل المكتمل لـ "مكمن الغاية"
+              👑 ترحيل العمل المكتمل لـ &quot;مكمن الغاية&quot;
             </button>
           </div>
         </aside>

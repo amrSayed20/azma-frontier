@@ -457,7 +457,7 @@ describe('WP-006: Constitutional Rationale Linkage', () => {
       const engine = createConstitutionalRationaleLinkage(mockConstitutionRegistry);
       
       // Extremely long rationale (just under limit)
-      const longRationale = 'x'.repeat(3999);
+      const longRationale = 'constitutional-rationale-'.repeat(174).slice(0, 3999);
       const record = await engine.linkDecisionToArticle(
         'decision-long-rationale',
         'Art7' as ConstitutionArticleId,

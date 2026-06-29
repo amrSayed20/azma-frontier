@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { describe, expect, test } from '@jest/globals';
 import { ConstitutionRuntime } from './constitution-runtime';
 
 function createAction(overrides: Partial<Parameters<ConstitutionRuntime['evaluatePolicyBoundary']>[0]['action']> = {}) {
@@ -25,58 +24,60 @@ function createRuntime(): ConstitutionRuntime {
   return runtime;
 }
 
-test('WP-003 evaluates policy boundary and produces traceable result', () => {
-  const runtime = createRuntime();
-  const result = runtime.evaluatePolicyBoundary({
-    boundaryId: 'pb-001',
-    actor: 'sovereign-high-council',
-    action: createAction(),
-    highImpact: true,
+describe('WP-003 policy rule boundary contract', () => {
+  test('evaluates policy boundary and produces traceable result', () => {
+    const runtime = createRuntime();
+    const result = runtime.evaluatePolicyBoundary({
+      boundaryId: 'pb-001',
+      actor: 'sovereign-high-council',
+      action: createAction(),
+      highImpact: true,
+    });
+
+    expect(['allow', 'deny', 'defer', 'escalate']).toContain(result.decision);
+    expect(result.traceId.startsWith('trace-policy-boundary-')).toBe(true);
+
+    const trace = runtime.tracePolicyBoundary('pb-001');
+    expect(trace.constitutionalAnchors.length).toBeGreaterThan(0);
   });
 
-  assert.ok(['allow', 'deny', 'defer', 'escalate'].includes(result.decision));
-  assert.ok(result.traceId.startsWith('trace-policy-boundary-'));
+  test('failure injection blocks unauthorized actor boundary evaluation', () => {
+    const runtime = createRuntime();
 
-  const trace = runtime.tracePolicyBoundary('pb-001');
-  assert.ok(trace.constitutionalAnchors.length > 0);
-});
+    expect(() => {
+      runtime.evaluatePolicyBoundary({
+        boundaryId: 'pb-unauthorized',
+        actor: 'shared-constitutional',
+        action: createAction(),
+        highImpact: false,
+      });
+    }).toThrow();
+  });
 
-test('WP-003 failure injection blocks unauthorized actor boundary evaluation', () => {
-  const runtime = createRuntime();
-
-  assert.throws(() => {
-    runtime.evaluatePolicyBoundary({
-      boundaryId: 'pb-unauthorized',
-      actor: 'shared-constitutional',
-      action: createAction(),
+  test('boundary condition escalates when no scope coverage exists', () => {
+    const runtime = createRuntime();
+    const result = runtime.evaluatePolicyBoundary({
+      boundaryId: 'pb-coverage',
+      actor: 'constitution-runtime',
+      action: createAction({ scope: 'provider-management', actionType: 'provider-management' }),
       highImpact: false,
     });
-  });
-});
 
-test('WP-003 boundary condition escalates when no scope coverage exists', () => {
-  const runtime = createRuntime();
-  const result = runtime.evaluatePolicyBoundary({
-    boundaryId: 'pb-coverage',
-    actor: 'constitution-runtime',
-    action: createAction({ scope: 'provider-management', actionType: 'provider-management' }),
-    highImpact: false,
+    expect(result.decision).toBe('escalate');
+    expect(result.escalationId).toBeTruthy();
   });
 
-  assert.equal(result.decision, 'escalate');
-  assert.ok(result.escalationId);
-});
+  test('remains compatible with WP-002 by producing escalation route when required', () => {
+    const runtime = createRuntime();
+    const result = runtime.evaluatePolicyBoundary({
+      boundaryId: 'pb-interop',
+      actor: 'sovereign-high-council',
+      action: createAction({ actionType: 'governance', scope: 'governance' }),
+      highImpact: true,
+    });
 
-test('WP-003 remains compatible with WP-002 by producing escalation route when required', () => {
-  const runtime = createRuntime();
-  const result = runtime.evaluatePolicyBoundary({
-    boundaryId: 'pb-interop',
-    actor: 'sovereign-high-council',
-    action: createAction({ actionType: 'governance', scope: 'governance' }),
-    highImpact: true,
+    expect(result.escalationId).toBeTruthy();
+    const escalationTrace = runtime.traceEscalation(result.escalationId as string);
+    expect(escalationTrace.route.length).toBeGreaterThan(0);
   });
-
-  assert.ok(result.escalationId);
-  const escalationTrace = runtime.traceEscalation(result.escalationId as string);
-  assert.ok(escalationTrace.route.length > 0);
 });

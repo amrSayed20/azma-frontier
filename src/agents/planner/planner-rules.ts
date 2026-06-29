@@ -1,8 +1,7 @@
 import { 
   ProjectCategory, 
   WorkflowStep, 
-  AgentRequirement, 
-  ChamberId 
+  AgentRequirement 
 } from './planner-types';
 
 export class PlannerRulesEngine {
