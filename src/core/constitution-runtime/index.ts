@@ -23,6 +23,11 @@ export * from './wp-007-runtime-engine';
 export * from './wp-007-adapter';
 export * from './wp-007-types';
 export * from './wp-007-admission-controller';
+// WP-008: Scheduling Kernel (Layer 3 — canonical entry point for Layer 4+)
+export * from './wp-008-kernel';
+export * from './wp-008-adapter';
+// WP-009/010/011: Memory Layer (Layer 4 — canonical entry point for Layer 5+)
+export * from './wp-011-kernel';
 export * from './constitution-state';
 export * from './constitution-history';
 export * from './constitution-event-manager';
