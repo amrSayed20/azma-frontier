@@ -12,8 +12,20 @@
  * - Deterministic scheduling across all request types
  */
 
-import type { ConstitutionArticleId } from './wp-001-types';
-import type { DecisionTrace, AuditTrailId } from './wp-002-types';
+import type { ConstitutionArticleId } from './constitution-types';
+
+/**
+ * Unique identifier for audit trail entries
+ * References Layer 2 immutable audit backbone
+ */
+export type AuditTrailId = string & { readonly __brand: 'AuditTrailId' };
+
+/**
+ * Create a branded AuditTrailId
+ */
+export function createAuditTrailId(value: string): AuditTrailId {
+  return value as AuditTrailId;
+}
 
 /**
  * Request priority levels (inbound from admission gate)
@@ -24,6 +36,17 @@ export enum RequestPriority {
   HIGH = 'HIGH',              // Agent requests, chamber integrations
   NORMAL = 'NORMAL',          // Standard chamber requests
   LOW = 'LOW',                // Observability, telemetry, cleanup
+}
+
+/**
+ * Scheduling decision trace (Layer 3 local format)
+ * Simple trace format for Layer 3 internal use
+ * Converts to full PolicyDecisionTrace when recording to Layer 2 audit trail
+ */
+export interface SchedulingDecisionTrace {
+  readonly decision: string;
+  readonly reasoning: readonly string[];
+  readonly timestamp: Date;
 }
 
 /**
@@ -64,7 +87,7 @@ export interface SchedulingDecision {
   readonly requestId: string;
   readonly priority: RequestPriority;
   readonly scheduledTime: Date;
-  readonly decisionTrace: DecisionTrace;
+  readonly decisionTrace: SchedulingDecisionTrace;
   readonly constitutionArticleId: ConstitutionArticleId;
   readonly auditTrailId: AuditTrailId;
 }

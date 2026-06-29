@@ -17,10 +17,8 @@
 
 import type {
   SchedulingRequest,
-  RequestPriority,
   QueueStatistics,
   RequestQueueServiceContract,
-  SchedulingError,
 } from './wp-008-types';
 import { RequestPriority as Priority } from './wp-008-types';
 

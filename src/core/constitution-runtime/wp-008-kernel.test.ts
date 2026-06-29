@@ -18,25 +18,23 @@ import {
   createHighPriorityPolicy,
   createNormalPriorityPolicy,
   createLowPriorityPolicy,
+  RequestPriority as Priority,
+  createAuditTrailId,
 } from './wp-008-kernel';
-import type {
-  SchedulingRequest,
-  RequestPriority,
-} from './wp-008-types';
-import { RequestPriority as Priority } from './wp-008-types';
+import type { SchedulingRequest } from './wp-008-types';
 
 /**
  * Helper: Create a test request
  */
 function createTestRequest(
   id: string,
-  priority: RequestPriority = Priority.NORMAL,
+  priority: Priority = Priority.NORMAL,
   metadata: Record<string, unknown> = {}
 ): SchedulingRequest {
   return {
     requestId: id,
     priority,
-    constitutionArticleId: 'ARTICLE-1-FOUNDATION' as any,
+    constitutionArticleId: 'constitutional-structure',
     enqueuedAt: new Date(),
     expiresAt: new Date(Date.now() + 60000), // 1 minute from now
     requestMetadata: metadata,
@@ -178,7 +176,7 @@ describe('PriorityAssignmentService', () => {
   });
 
   test('should register a priority policy', async () => {
-    const policy = createCriticalPriorityPolicy('ARTICLE-1-FOUNDATION');
+    const policy = createCriticalPriorityPolicy('constitutional-structure');
     await service.registerPolicy(policy);
 
     const policies = await service.getPolicies();
@@ -186,14 +184,14 @@ describe('PriorityAssignmentService', () => {
   });
 
   test('should reject duplicate policy registration', async () => {
-    const policy = createCriticalPriorityPolicy('ARTICLE-1-FOUNDATION');
+    const policy = createCriticalPriorityPolicy('constitutional-structure');
     await service.registerPolicy(policy);
 
     await expect(service.registerPolicy(policy)).rejects.toThrow('Policy already registered');
   });
 
   test('should assign CRITICAL priority based on policy', async () => {
-    const policy = createCriticalPriorityPolicy('ARTICLE-1-FOUNDATION');
+    const policy = createCriticalPriorityPolicy('constitutional-structure');
     await service.registerPolicy(policy);
 
     const req = createTestRequest('req-1', Priority.NORMAL, {
@@ -205,7 +203,7 @@ describe('PriorityAssignmentService', () => {
   });
 
   test('should assign HIGH priority based on policy', async () => {
-    const policy = createHighPriorityPolicy('ARTICLE-1-FOUNDATION');
+    const policy = createHighPriorityPolicy('constitutional-structure');
     await service.registerPolicy(policy);
 
     const req = createTestRequest('req-1', Priority.NORMAL, {
@@ -226,8 +224,8 @@ describe('PriorityAssignmentService', () => {
   });
 
   test('should evaluate policies in registration order', async () => {
-    const criticalPolicy = createCriticalPriorityPolicy('ARTICLE-1-FOUNDATION');
-    const highPolicy = createHighPriorityPolicy('ARTICLE-1-FOUNDATION');
+    const criticalPolicy = createCriticalPriorityPolicy('constitutional-structure');
+    const highPolicy = createHighPriorityPolicy('constitutional-structure');
 
     await service.registerPolicy(criticalPolicy);
     await service.registerPolicy(highPolicy);
@@ -243,7 +241,7 @@ describe('PriorityAssignmentService', () => {
   });
 
   test('should handle policies with multiple criteria (AND logic)', async () => {
-    const policy = createHighPriorityPolicy('ARTICLE-1-FOUNDATION');
+    const policy = createHighPriorityPolicy('constitutional-structure');
     await service.registerPolicy(policy);
 
     // Request with only requestType = AGENT matches
@@ -339,8 +337,8 @@ describe('SchedulingDecisionService', () => {
       priority: Priority.NORMAL,
       scheduledTime: new Date(),
       decisionTrace: { decision: 'test', reasoning: [], timestamp: new Date() },
-      constitutionArticleId: 'ARTICLE-1' as any,
-      auditTrailId: 'audit-1' as any,
+      constitutionArticleId: 'constitutional-structure' as const,
+      auditTrailId: createAuditTrailId('audit-1'),
     };
 
     await expect(service.recordDecisionToAuditTrail(fakeDecision)).rejects.toThrow(
@@ -352,7 +350,7 @@ describe('SchedulingDecisionService', () => {
     const req = createTestRequest('req-1', Priority.NORMAL);
     const decision = await service.makeDecision(req, Priority.NORMAL);
 
-    expect(decision.decisionTrace.reasoning).toContain('Constitutional authority: ARTICLE-1-FOUNDATION');
+    expect(decision.decisionTrace.reasoning).toContain('Constitutional authority: constitutional-structure');
   });
 });
 
@@ -373,9 +371,9 @@ describe('Scheduling Kernel Integration', () => {
 
   test('complete scheduling pipeline: enqueue -> assign priority -> decide -> audit', async () => {
     // Register policies
-    await priorityService.registerPolicy(createCriticalPriorityPolicy('ARTICLE-1-FOUNDATION'));
-    await priorityService.registerPolicy(createHighPriorityPolicy('ARTICLE-1-FOUNDATION'));
-    await priorityService.registerPolicy(createNormalPriorityPolicy('ARTICLE-1-FOUNDATION'));
+    await priorityService.registerPolicy(createCriticalPriorityPolicy('constitutional-structure'));
+    await priorityService.registerPolicy(createHighPriorityPolicy('constitutional-structure'));
+    await priorityService.registerPolicy(createNormalPriorityPolicy('constitutional-structure'));
 
     // Create and enqueue request
     const req = createTestRequest('req-1', Priority.NORMAL, {
@@ -403,16 +401,16 @@ describe('Scheduling Kernel Integration', () => {
 
   test('should handle high-volume scheduling correctly', async () => {
     // Register all priority policies
-    await priorityService.registerPolicy(createCriticalPriorityPolicy('ARTICLE-1-FOUNDATION'));
-    await priorityService.registerPolicy(createHighPriorityPolicy('ARTICLE-1-FOUNDATION'));
-    await priorityService.registerPolicy(createNormalPriorityPolicy('ARTICLE-1-FOUNDATION'));
-    await priorityService.registerPolicy(createLowPriorityPolicy('ARTICLE-1-FOUNDATION'));
+    await priorityService.registerPolicy(createCriticalPriorityPolicy('constitutional-structure'));
+    await priorityService.registerPolicy(createHighPriorityPolicy('constitutional-structure'));
+    await priorityService.registerPolicy(createNormalPriorityPolicy('constitutional-structure'));
+    await priorityService.registerPolicy(createLowPriorityPolicy('constitutional-structure'));
 
     // Enqueue 1000 requests
     for (let i = 0; i < 1000; i++) {
       const priority = [Priority.CRITICAL, Priority.HIGH, Priority.NORMAL, Priority.LOW][
         i % 4
-      ] as RequestPriority;
+      ] as Priority;
       const req = createTestRequest(`req-${i}`, priority);
       await queueService.enqueue(req);
     }
@@ -440,7 +438,7 @@ describe('Scheduling Kernel Integration', () => {
     ];
 
     // Register policies once
-    await priorityService.registerPolicy(createNormalPriorityPolicy('ARTICLE-1-FOUNDATION'));
+    await priorityService.registerPolicy(createNormalPriorityPolicy('constitutional-structure'));
 
     // First run: enqueue in specific order
     for (const req of requests) {
@@ -485,7 +483,7 @@ describe('Error Handling and Edge Cases', () => {
     const badPolicy = {
       policyId: 'bad-policy',
       priority: Priority.CRITICAL,
-      constitutionArticleId: 'ARTICLE-1' as any,
+      constitutionArticleId: 'constitutional-structure' as const,
       criteriaFunctions: [
         () => {
           throw new Error('Criteria error');

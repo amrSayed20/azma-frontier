@@ -20,6 +20,7 @@ import type {
   PriorityPolicy,
   PriorityAssignmentServiceContract,
 } from './wp-008-types';
+import type { ConstitutionArticleId } from './constitution-types';
 import { RequestPriority as Priority } from './wp-008-types';
 
 /**
@@ -101,11 +102,11 @@ export class PriorityAssignmentService implements PriorityAssignmentServiceContr
  * Factory for creating constitutional priority policies
  * Each policy cites constitutional authority
  */
-export function createCriticalPriorityPolicy(constitutionArticleId: string): PriorityPolicy {
+export function createCriticalPriorityPolicy(constitutionArticleId: ConstitutionArticleId): PriorityPolicy {
   return {
     policyId: `policy-critical-${constitutionArticleId}`,
     priority: Priority.CRITICAL,
-    constitutionArticleId: constitutionArticleId as any, // Type assertion - constitutional reference
+    constitutionArticleId,
     criteriaFunctions: [
       // CRITICAL: Constitutional violations or security threats
       (req) => {
@@ -119,11 +120,11 @@ export function createCriticalPriorityPolicy(constitutionArticleId: string): Pri
   };
 }
 
-export function createHighPriorityPolicy(constitutionArticleId: string): PriorityPolicy {
+export function createHighPriorityPolicy(constitutionArticleId: ConstitutionArticleId): PriorityPolicy {
   return {
     policyId: `policy-high-${constitutionArticleId}`,
     priority: Priority.HIGH,
-    constitutionArticleId: constitutionArticleId as any,
+    constitutionArticleId,
     criteriaFunctions: [
       // HIGH: Agent requests and chamber operations
       (req) => {
@@ -135,11 +136,11 @@ export function createHighPriorityPolicy(constitutionArticleId: string): Priorit
   };
 }
 
-export function createNormalPriorityPolicy(constitutionArticleId: string): PriorityPolicy {
+export function createNormalPriorityPolicy(constitutionArticleId: ConstitutionArticleId): PriorityPolicy {
   return {
     policyId: `policy-normal-${constitutionArticleId}`,
     priority: Priority.NORMAL,
-    constitutionArticleId: constitutionArticleId as any,
+    constitutionArticleId,
     criteriaFunctions: [
       // NORMAL: Standard requests (default)
       () => true, // Matches all
@@ -148,11 +149,11 @@ export function createNormalPriorityPolicy(constitutionArticleId: string): Prior
   };
 }
 
-export function createLowPriorityPolicy(constitutionArticleId: string): PriorityPolicy {
+export function createLowPriorityPolicy(constitutionArticleId: ConstitutionArticleId): PriorityPolicy {
   return {
     policyId: `policy-low-${constitutionArticleId}`,
     priority: Priority.LOW,
-    constitutionArticleId: constitutionArticleId as any,
+    constitutionArticleId,
     criteriaFunctions: [
       // LOW: Observability, telemetry, cleanup
       (req) => {

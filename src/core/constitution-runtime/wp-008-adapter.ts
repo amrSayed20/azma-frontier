@@ -15,6 +15,7 @@
  */
 
 import type { SchedulingKernelContract, SchedulingRequest, RequestPriority } from './wp-008-types';
+import type { ConstitutionArticleId } from './constitution-types';
 import { RequestPriority as Priority } from './wp-008-types';
 
 /**
@@ -45,7 +46,7 @@ export class Layer3Adapter {
    */
   async processAdmittedRequest(admittedRequest: {
     readonly requestId: string;
-    readonly constitutionArticleId: string;
+    readonly constitutionArticleId: ConstitutionArticleId;
     readonly requestMetadata: Readonly<Record<string, unknown>>;
   }): Promise<{
     readonly success: boolean;
@@ -56,7 +57,7 @@ export class Layer3Adapter {
     const schedulingRequest: SchedulingRequest = {
       requestId: admittedRequest.requestId,
       priority: Priority.NORMAL, // Will be assigned in step 3
-      constitutionArticleId: admittedRequest.constitutionArticleId as any,
+      constitutionArticleId: admittedRequest.constitutionArticleId,
       enqueuedAt: new Date(),
       expiresAt: new Date(Date.now() + 60000), // 1 minute TTL
       requestMetadata: admittedRequest.requestMetadata,

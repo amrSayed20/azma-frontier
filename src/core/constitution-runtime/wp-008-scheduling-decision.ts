@@ -19,9 +19,9 @@ import type {
   RequestPriority,
   SchedulingDecision,
   SchedulingDecisionServiceContract,
+  AuditTrailId,
 } from './wp-008-types';
-import type { AuditTrailId } from './wp-002-types';
-import { createAuditTrailId } from './wp-002-types';
+import { createAuditTrailId } from './wp-008-types';
 
 /**
  * SchedulingDecisionService: Decision making and audit trail recording
@@ -78,7 +78,7 @@ export class SchedulingDecisionService implements SchedulingDecisionServiceContr
       scheduledTime,
       decisionTrace,
       constitutionArticleId: req.constitutionArticleId,
-      auditTrailId: `audit-${this.decisionSequence}` as any, // Placeholder - would be real audit trail ID
+      auditTrailId: createAuditTrailId(`sched-${this.decisionSequence}`),
     };
 
     // Store decision
