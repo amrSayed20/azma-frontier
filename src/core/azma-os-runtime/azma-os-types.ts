@@ -5,6 +5,7 @@
  * Returned by initializeAzmaOs() after all layers and chambers are active.
  *
  * LAYER COMPOSITION:
+ *   Layer 2  — Sovereign Operations Bus (SOB)
  *   Layer 3  — Scheduling Kernel (WP-008)
  *   Layer 4  — Memory Layer (WP-009/010/011)
  *   Layer 7  — Agent Society (WP-013/020)
@@ -13,6 +14,7 @@
  *   Layer 10 — Peripheral Adapters (Chamber Integration)
  */
 
+import type { SovereignBusContract } from '../sovereign-bus/sovereign-bus-contract';
 import type { SchedulingKernelContract } from '../constitution-runtime/wp-008-types';
 import type { MemoryLayerContract } from '../constitution-runtime/wp-009-types';
 import type { AgentSocietyLayerContract } from '../constitution-runtime/wp-013-020-agent-society-types';
@@ -24,6 +26,9 @@ import type { ChamberIntegrationServices } from '../chamber-integration/services
 export interface AzmaOsRuntimeContract {
   readonly version: '1.0.0';
   readonly startedAt: Date;
+
+  // Layer 2 — Sovereign Operations Bus
+  readonly sovereignBus: SovereignBusContract;
 
   // Layer 3 — Scheduling
   readonly kernelLayer3: SchedulingKernelContract;

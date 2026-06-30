@@ -49,6 +49,7 @@ interface OperationalReadinessReport {
   readonly generatedAt: Date;
   readonly overallReady: boolean;
   readonly layers: {
+    readonly l2SovereignBus: boolean;
     readonly l3Scheduling: boolean;
     readonly l4Memory: boolean;
     readonly l7AgentSociety: boolean;
@@ -76,6 +77,39 @@ describe('AZMA OS Operational Runtime Verification', () => {
   // ── Phase 1: Runtime Bootstrap ─────────────────────────────────────────
 
   describe('Phase 1: Runtime Bootstrap', () => {
+    test('Layer 2 Sovereign Operations Bus is initialized with correct contract', () => {
+      expect(os.sovereignBus.layerName).toBe('SovereignOperationsBus');
+      expect(os.sovereignBus.version).toBe('1.0.0');
+      expect(os.sovereignBus.layerNumber).toBe(2);
+    });
+
+    test('L2 SOB has recorded RUNTIME_STARTED event from bootstrap', () => {
+      const log = os.sovereignBus.getEventLog();
+      const runtimeStarted = log.find((e) => e.eventType === 'RUNTIME_STARTED');
+      expect(runtimeStarted).toBeDefined();
+      expect(runtimeStarted?.sourceService).toBe('AzmaOsBootstrap');
+    });
+
+    test('L2 SOB has recorded CHAMBER_ACTIVATED events for all 4 chambers', () => {
+      const log = os.sovereignBus.getEventLog();
+      const activated = log.filter((e) => e.eventType === 'CHAMBER_ACTIVATED');
+      expect(activated).toHaveLength(4);
+    });
+
+    test('L2 SOB stats reflect 5 published events from bootstrap', () => {
+      const stats = os.sovereignBus.getStats();
+      // 1 RUNTIME_STARTED + 4 CHAMBER_ACTIVATED
+      expect(stats.totalPublished).toBeGreaterThanOrEqual(5);
+      expect(stats.lastEventAt).toBeInstanceOf(Date);
+    });
+
+    test('L2 SOB replay returns events in chronological order', () => {
+      const replayed = os.sovereignBus.replay({});
+      expect(replayed.length).toBeGreaterThanOrEqual(5);
+      // First event must be RUNTIME_STARTED
+      expect(replayed[0]!.eventType).toBe('RUNTIME_STARTED');
+    });
+
     test('Layer 3 Scheduling Kernel is initialized with correct contract', () => {
       expect(os.kernelLayer3.layerName).toBe('SchedulingKernel');
       expect(os.kernelLayer3.version).toBe('1.0.0');
@@ -495,7 +529,14 @@ describe('AZMA OS Operational Runtime Verification', () => {
       const queueStats = await os.kernelLayer3.requestQueueService.getStatistics();
       const activeAgents = await os.agentSociety.agentRegistryService.getActiveAgents();
 
+      const busStats = os.sovereignBus.getStats();
+
       const checks: ReadinessCheck[] = [
+        {
+          name: 'L2 Sovereign Operations Bus online',
+          passed: os.sovereignBus.layerNumber === 2,
+          detail: `Layer ${os.sovereignBus.layerNumber} v${os.sovereignBus.version}, ${busStats.totalPublished} events published`,
+        },
         {
           name: 'L3 Scheduling Kernel online',
           passed: os.kernelLayer3.layerNumber === 3,
@@ -552,6 +593,7 @@ describe('AZMA OS Operational Runtime Verification', () => {
         generatedAt: new Date(),
         overallReady: checks.every((c) => c.passed),
         layers: {
+          l2SovereignBus: os.sovereignBus.layerNumber === 2,
           l3Scheduling: os.kernelLayer3.layerNumber === 3,
           l4Memory: os.kernelLayer4.layerNumber === 4,
           l7AgentSociety: os.agentSociety.layerNumber === 7,
@@ -568,6 +610,7 @@ describe('AZMA OS Operational Runtime Verification', () => {
       };
 
       expect(report.overallReady).toBe(true);
+      expect(report.layers.l2SovereignBus).toBe(true);
       expect(report.layers.l3Scheduling).toBe(true);
       expect(report.layers.l4Memory).toBe(true);
       expect(report.layers.l7AgentSociety).toBe(true);

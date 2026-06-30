@@ -4,6 +4,7 @@
  * The single entry point that produces a fully-operational AZMA OS instance.
  *
  * STARTUP SEQUENCE (dependency-ordered):
+ *   0.  Layer 2  — Sovereign Operations Bus (createSovereignBus — first; all layers publish through it)
  *   1.  Layer 3  — Scheduling Kernel        (createSchedulingKernel)
  *   2.  Layer 4  — Memory Layer             (createMemoryLayer)
  *   3.  Layer 7  — Agent Society            (createAgentSocietyLayer)
@@ -16,6 +17,7 @@
  *  10.  Discovery — Register adapters       (ChamberLoader.registerAdapter)
  *  11.  Lifecycle — Load all chambers       (runtime.loadChamber per chamberId)
  *  12.  Lifecycle — Activate all chambers   (runtime.activateChamber per chamberId)
+ *  13.  Bus events — Publish RUNTIME_STARTED + CHAMBER_ACTIVATED per active chamber
  *
  * INVARIANTS:
  *   - All four chambers share a single L3 kernel and single L4 memory layer.
@@ -26,6 +28,7 @@
  *   - Backward compatible: existing ChamberIntegrationBootstrap is reused unmodified.
  */
 
+import { createSovereignBus } from '../sovereign-bus/sovereign-operations-bus';
 import { createSchedulingKernel } from '../constitution-runtime/wp-008-kernel';
 import { createMemoryLayer } from '../constitution-runtime/wp-011-kernel';
 import { createAgentSocietyLayer } from '../constitution-runtime/wp-020-kernel';
@@ -45,6 +48,9 @@ import type { AzmaOsRuntimeContract } from './azma-os-types';
 
 export async function initializeAzmaOs(): Promise<AzmaOsRuntimeContract> {
   const startedAt = new Date();
+
+  // ── Step 0: Sovereign Operations Bus (Layer 2 — must be first) ──────────
+  const sovereignBus = createSovereignBus();
 
   // ── Steps 1-3: Initialize kernel layers ─────────────────────────────────
   const kernelLayer3 = createSchedulingKernel();
@@ -119,9 +125,29 @@ export async function initializeAzmaOs(): Promise<AzmaOsRuntimeContract> {
     .filter((ep) => ep.status === 'ACTIVE')
     .map((ep) => ep.chamberId);
 
+  // ── Step 13: Publish lifecycle events onto the Sovereign Operations Bus ──
+  sovereignBus.publish({
+    eventType: 'RUNTIME_STARTED',
+    sourceLayer: 2,
+    sourceService: 'AzmaOsBootstrap',
+    correlationId: null,
+    payload: { version: '1.0.0', startedAt, activeChambers: [...activeChambers] },
+  });
+
+  for (const chamberId of activeChambers) {
+    sovereignBus.publish({
+      eventType: 'CHAMBER_ACTIVATED',
+      sourceLayer: 10,
+      sourceService: 'ChamberLoader',
+      correlationId: null,
+      payload: { chamberId },
+    });
+  }
+
   return {
     version: '1.0.0',
     startedAt,
+    sovereignBus,
     kernelLayer3,
     kernelLayer4,
     agentSociety,
