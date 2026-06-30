@@ -8,6 +8,8 @@
  *   Layer 3  — Scheduling Kernel (WP-008)
  *   Layer 4  — Memory Layer (WP-009/010/011)
  *   Layer 7  — Agent Society (WP-013/020)
+ *   Layer 8  — Sovereign Intelligence
+ *   Layer 9  — Sovereign Command
  *   Layer 10 — Peripheral Adapters (Chamber Integration)
  */
 
@@ -15,6 +17,8 @@ import type { SchedulingKernelContract } from '../constitution-runtime/wp-008-ty
 import type { MemoryLayerContract } from '../constitution-runtime/wp-009-types';
 import type { AgentSocietyLayerContract } from '../constitution-runtime/wp-013-020-agent-society-types';
 import type { IntelligenceRuntimeContract } from '../sovereign-intelligence/intelligence-runtime-contract';
+import type { SovereignCommandContract } from '../sovereign-command/sovereign-command-contract';
+import type { SovereignIdentityContract } from '../sovereign-identity/sovereign-identity-contract';
 import type { ChamberIntegrationServices } from '../chamber-integration/services/chamber-integration-bootstrap';
 
 export interface AzmaOsRuntimeContract {
@@ -32,6 +36,12 @@ export interface AzmaOsRuntimeContract {
 
   // Layer 8 — Sovereign Intelligence (platform service consumed by all chambers)
   readonly sovereignIntelligence: IntelligenceRuntimeContract;
+
+  // Layer 9 — Sovereign Command (Executive Intelligence Center)
+  readonly sovereignCommand: SovereignCommandContract;
+
+  // Sovereign Identity (Founder Identity + Authority — Amendment II)
+  readonly sovereignIdentity: SovereignIdentityContract;
 
   // Layer 10 — Chamber Integration infrastructure (registries, bridges, lifecycle)
   readonly chamberIntegration: ChamberIntegrationServices;

@@ -53,6 +53,7 @@ interface OperationalReadinessReport {
     readonly l4Memory: boolean;
     readonly l7AgentSociety: boolean;
     readonly l8SovereignIntelligence: boolean;
+    readonly l9SovereignCommand: boolean;
     readonly l10Chambers: boolean;
   };
   readonly chamberSummary: {
@@ -122,6 +123,45 @@ describe('AZMA OS Operational Runtime Verification', () => {
       expect(gutenberg).toBeDefined();
       expect(gutenberg?.isAvailable()).toBe(true);
     });
+
+    test('Layer 9 Sovereign Command Layer is initialized with correct contract', () => {
+      expect(os.sovereignCommand.layerName).toBe('SovereignCommand');
+      expect(os.sovereignCommand.version).toBe('1.0.0');
+      expect(os.sovereignCommand.layerNumber).toBe(9);
+      expect(os.sovereignCommand.platformVitality.serviceName).toBe('PlatformVitalityService');
+      expect(os.sovereignCommand.osHeartbeat.serviceName).toBe('OsHeartbeatService');
+      expect(os.sovereignCommand.runtimeObservatory.serviceName).toBe('RuntimeObservatoryService');
+      expect(os.sovereignCommand.incidentIntelligence.serviceName).toBe('IncidentIntelligenceService');
+      expect(os.sovereignCommand.sovereignReporting.serviceName).toBe('SovereignReportingService');
+      expect(os.sovereignCommand.sovereignGrants.serviceName).toBe('SovereignGrantService');
+      expect(os.sovereignCommand.empireChronicle.serviceName).toBe('EmpireChronicleService');
+      expect(os.sovereignCommand.executiveIntelligence.serviceName).toBe('ExecutiveIntelligenceService');
+      expect(os.sovereignCommand.empireTreasury.serviceName).toBe('EmpireTreasuryService');
+      expect(os.sovereignCommand.predictiveCommand.serviceName).toBe('PredictiveCommandService');
+      expect(os.sovereignCommand.founderApprovalGate.serviceName).toBe('FounderApprovalGateService');
+    });
+
+    test('Sovereign Identity subsystem is initialized with correct serviceName values', () => {
+      expect(os.sovereignIdentity.founderIdentity.serviceName).toBe('FounderIdentityService');
+      expect(os.sovereignIdentity.founderSession.serviceName).toBe('FounderSessionService');
+      expect(os.sovereignIdentity.sovereignAuthority.serviceName).toBe('SovereignAuthorityService');
+    });
+
+    test('L9 OsHeartbeat aggregates all OS layers correctly', async () => {
+      const heartbeat = await os.sovereignCommand.osHeartbeat.getHeartbeat();
+      expect(heartbeat.l3Scheduling.layerNumber).toBe(3);
+      expect(heartbeat.l4Memory.layerNumber).toBe(4);
+      expect(heartbeat.l7AgentSociety.layerNumber).toBe(7);
+      expect(heartbeat.l8Intelligence.layerNumber).toBe(8);
+      expect(heartbeat.l10Chambers).toHaveLength(4);
+    }, 30_000);
+
+    test('L9 Platform Vitality confirms the Empire is alive', async () => {
+      const signal = await os.sovereignCommand.platformVitality.getVitalitySignal();
+      expect(signal.fiveQuestions.isAlive).toBe(true);
+      expect(signal.fiveQuestions.isHealthy).toBe(true);
+      expect(['ALIVE', 'DEGRADED']).toContain(signal.status);
+    }, 30_000);
 
     test('OS startup timestamp is valid', () => {
       expect(os.startedAt).toBeInstanceOf(Date);
@@ -492,6 +532,11 @@ describe('AZMA OS Operational Runtime Verification', () => {
           detail: `Layer ${os.sovereignIntelligence.layerNumber} v${os.sovereignIntelligence.version}, ${os.sovereignIntelligence.getAvailableSources().length} source(s) registered`,
         },
         {
+          name: 'L9 Sovereign Command online',
+          passed: os.sovereignCommand.layerNumber === 9,
+          detail: `Layer ${os.sovereignCommand.layerNumber} v${os.sovereignCommand.version}, 11 executive services active`,
+        },
+        {
           name: 'Scheduling kernel processed requests',
           passed: queueStats.totalEnqueued >= 2,
           detail: `${queueStats.totalEnqueued} requests enqueued`,
@@ -511,6 +556,7 @@ describe('AZMA OS Operational Runtime Verification', () => {
           l4Memory: os.kernelLayer4.layerNumber === 4,
           l7AgentSociety: os.agentSociety.layerNumber === 7,
           l8SovereignIntelligence: os.sovereignIntelligence.layerNumber === 8,
+          l9SovereignCommand: os.sovereignCommand.layerNumber === 9,
           l10Chambers: os.activeChambers.length === 4,
         },
         chamberSummary: {
@@ -526,6 +572,7 @@ describe('AZMA OS Operational Runtime Verification', () => {
       expect(report.layers.l4Memory).toBe(true);
       expect(report.layers.l7AgentSociety).toBe(true);
       expect(report.layers.l8SovereignIntelligence).toBe(true);
+      expect(report.layers.l9SovereignCommand).toBe(true);
       expect(report.layers.l10Chambers).toBe(true);
       expect(report.chamberSummary.allActive).toBe(true);
       expect(report.chamberSummary.registered).toBe(4);
