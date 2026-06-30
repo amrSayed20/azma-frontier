@@ -23,6 +23,8 @@ const ARTICLE_ID = 'integration-with-chambers' as const;
 const PACKAGE_TTL_MS = 5 * 60 * 1000;
 
 export class SovereignIntelligenceConnector {
+  readonly serviceName = 'KnowledgePipeline' as const;
+
   private readonly packageBuilder = new KnowledgePackageBuilder();
   private readonly sourceManager: KnowledgeSourceManager;
 

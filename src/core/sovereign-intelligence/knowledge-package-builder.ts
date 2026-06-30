@@ -17,6 +17,8 @@ import { SourceVerifier } from './source-verifier';
 import { KnowledgeSummarizer } from './knowledge-summarizer';
 
 export class KnowledgePackageBuilder {
+  readonly serviceName = 'KnowledgePackageBuilder' as const;
+
   private readonly classifier = new KnowledgeDomainClassifier();
   private readonly router = new SearchAgentRouter();
   private readonly verifier = new SourceVerifier();

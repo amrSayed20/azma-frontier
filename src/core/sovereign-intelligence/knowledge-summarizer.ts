@@ -10,6 +10,8 @@ import type { KnowledgeDomain, KnowledgeSummary, VerifiedEvidenceItem } from './
 const MAX_KEY_FINDINGS = 5;
 
 export class KnowledgeSummarizer {
+  readonly serviceName = 'KnowledgeSummarizer' as const;
+
   summarize(
     query: string,
     domain: KnowledgeDomain,

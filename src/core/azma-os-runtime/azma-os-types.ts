@@ -14,6 +14,7 @@
 import type { SchedulingKernelContract } from '../constitution-runtime/wp-008-types';
 import type { MemoryLayerContract } from '../constitution-runtime/wp-009-types';
 import type { AgentSocietyLayerContract } from '../constitution-runtime/wp-013-020-agent-society-types';
+import type { IntelligenceRuntimeContract } from '../sovereign-intelligence/intelligence-runtime-contract';
 import type { ChamberIntegrationServices } from '../chamber-integration/services/chamber-integration-bootstrap';
 
 export interface AzmaOsRuntimeContract {
@@ -28,6 +29,9 @@ export interface AzmaOsRuntimeContract {
 
   // Layer 7 — Agent Society
   readonly agentSociety: AgentSocietyLayerContract;
+
+  // Layer 8 — Sovereign Intelligence (platform service consumed by all chambers)
+  readonly sovereignIntelligence: IntelligenceRuntimeContract;
 
   // Layer 10 — Chamber Integration infrastructure (registries, bridges, lifecycle)
   readonly chamberIntegration: ChamberIntegrationServices;

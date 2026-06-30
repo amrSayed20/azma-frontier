@@ -9,6 +9,8 @@
 import type { IKnowledgeSource } from './sovereign-intelligence-types';
 
 export class KnowledgeSourceManager {
+  readonly serviceName = 'KnowledgeSourceManager' as const;
+
   private readonly sources = new Map<string, IKnowledgeSource>();
 
   register(source: IKnowledgeSource): void {

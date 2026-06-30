@@ -7,15 +7,18 @@
  *   1. Layer 3  — Scheduling Kernel       (createSchedulingKernel)
  *   2. Layer 4  — Memory Layer            (createMemoryLayer)
  *   3. Layer 7  — Agent Society           (createAgentSocietyLayer)
- *   4. Layer 10 — Chamber Integration     (ChamberIntegrationBootstrap)
- *   5. Layer 10 — Peripheral Adapters     (all 4 adapters, injecting L3+L4)
- *   6. Discovery — Register manifests     (ChamberIntegrationRuntime.registerManifests)
- *   7. Discovery — Register adapters      (ChamberLoader.registerAdapter)
- *   8. Lifecycle — Load all chambers      (runtime.loadChamber per chamberId)
- *   9. Lifecycle — Activate all chambers  (runtime.activateChamber per chamberId)
+ *   4. Layer 8  — Sovereign Intelligence  (createSovereignIntelligenceLayer)
+ *   5. Layer 10 — Chamber Integration     (ChamberIntegrationBootstrap)
+ *   6. Layer 10 — Peripheral Adapters     (all 4 adapters; Hujjah injects L4+L8)
+ *   7. Discovery — Register manifests     (ChamberIntegrationRuntime.registerManifests)
+ *   8. Discovery — Register adapters      (ChamberLoader.registerAdapter)
+ *   9. Lifecycle — Load all chambers      (runtime.loadChamber per chamberId)
+ *  10. Lifecycle — Activate all chambers  (runtime.activateChamber per chamberId)
  *
  * INVARIANTS:
  *   - All four chambers share a single L3 kernel and single L4 memory layer.
+ *   - Sovereign Intelligence Layer (L8) is a platform service owned by AZMA OS;
+ *     no chamber constructs its own SIL instance.
  *   - No initialization logic is duplicated; each step delegates to its canonical module.
  *   - Backward compatible: existing ChamberIntegrationBootstrap is reused unmodified.
  */
@@ -23,6 +26,7 @@
 import { createSchedulingKernel } from '../constitution-runtime/wp-008-kernel';
 import { createMemoryLayer } from '../constitution-runtime/wp-011-kernel';
 import { createAgentSocietyLayer } from '../constitution-runtime/wp-020-kernel';
+import { createSovereignIntelligenceLayer } from '../sovereign-intelligence/sovereign-intelligence-layer';
 import { ChamberIntegrationBootstrap } from '../chamber-integration/services/chamber-integration-bootstrap';
 import { HujjahAlDamighahAdapter } from '../chamber-integration/adapters/hujjah-al-damighah-adapter';
 import { QiyamahAdapter } from '../chamber-integration/adapters/qiyamah-adapter';
@@ -35,21 +39,26 @@ import type { AzmaOsRuntimeContract } from './azma-os-types';
 export async function initializeAzmaOs(): Promise<AzmaOsRuntimeContract> {
   const startedAt = new Date();
 
-  // ── Step 1-3: Initialize kernel layers ──────────────────────────────────
+  // ── Steps 1-3: Initialize kernel layers ─────────────────────────────────
   const kernelLayer3 = createSchedulingKernel();
   const kernelLayer4 = createMemoryLayer();
   const agentSociety = createAgentSocietyLayer();
 
-  // ── Step 4: Initialize chamber integration infrastructure ───────────────
+  // ── Step 4: Initialize Sovereign Intelligence Layer (platform service) ───
+  // Owned by AZMA OS. Injected into chambers — never constructed inside chambers.
+  const sovereignIntelligence = createSovereignIntelligenceLayer(kernelLayer4, kernelLayer3);
+
+  // ── Step 5: Initialize chamber integration infrastructure ───────────────
   const chamberIntegration = ChamberIntegrationBootstrap.initialize();
   const { loader, runtime } = chamberIntegration;
 
-  // ── Step 5: Construct all four Layer 10 Peripheral Adapters ────────────
-  // All adapters receive the same shared kernel instances (L3 + L4).
+  // ── Step 6: Construct all four Layer 10 Peripheral Adapters ────────────
+  // Hujjah Al-Damighah receives SIL (L8) via injection — it is a consumer, not an owner.
+  // Remaining adapters use L3+L4 directly; they will receive SIL in future phases.
   const councilRuntime = createDefaultCouncilRuntime();
 
   const adapters = [
-    new HujjahAlDamighahAdapter(kernelLayer4, kernelLayer3),
+    new HujjahAlDamighahAdapter(kernelLayer4, sovereignIntelligence),
     new QiyamahAdapter(kernelLayer4, kernelLayer3),
     new RasAlAmrAdapter(kernelLayer4, kernelLayer3),
     new SovereignHighCouncilAdapter(councilRuntime, kernelLayer4, kernelLayer3),
@@ -90,6 +99,7 @@ export async function initializeAzmaOs(): Promise<AzmaOsRuntimeContract> {
     kernelLayer3,
     kernelLayer4,
     agentSociety,
+    sovereignIntelligence,
     chamberIntegration,
     registeredChambers,
     activeChambers,

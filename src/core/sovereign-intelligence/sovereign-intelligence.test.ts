@@ -1,7 +1,7 @@
 /**
  * Sovereign Intelligence Layer — Production-Grade Unit Tests
  *
- * Covers all 7 MVP components without mocks:
+ * Covers all 7 MVP components + Layer 8 platform service without mocks:
  *   1. KnowledgeSourceManager
  *   2. KnowledgeDomainClassifier
  *   3. SearchAgentRouter
@@ -9,6 +9,7 @@
  *   5. KnowledgeSummarizer
  *   6. KnowledgePackageBuilder
  *   7. SovereignIntelligenceConnector (real L3/L4 kernels)
+ *   8. SovereignIntelligenceLayer     (Layer 8 platform service)
  */
 
 import { describe, test, expect, beforeAll } from '@jest/globals';
@@ -21,6 +22,7 @@ import { SourceVerifier } from './source-verifier';
 import { KnowledgeSummarizer } from './knowledge-summarizer';
 import { KnowledgePackageBuilder } from './knowledge-package-builder';
 import { SovereignIntelligenceConnector } from './sovereign-intelligence-connector';
+import { SovereignIntelligenceLayer } from './sovereign-intelligence-layer';
 import type { EvidenceBundle } from '../../chambers/hujjah-al-damighah/domain/evidence.types';
 import { ConfidenceLevel } from '../../chambers/hujjah-al-damighah/domain/evidence.types';
 import type { IKnowledgeSource } from './sovereign-intelligence-types';
@@ -477,4 +479,89 @@ describe('SovereignIntelligenceConnector', () => {
       expect(ev.rank).toBeGreaterThan(0);
     }
   }, 30_000);
+});
+
+// ── Component 8: SovereignIntelligenceLayer (Layer 8 Platform Service) ────────
+
+describe('SovereignIntelligenceLayer', () => {
+  let layer: SovereignIntelligenceLayer;
+
+  beforeAll(() => {
+    const l3 = createSchedulingKernel();
+    const l4 = createMemoryLayer();
+    layer = new SovereignIntelligenceLayer(l4, l3);
+  });
+
+  test('has correct layer identity contract', () => {
+    expect(layer.layerName).toBe('SovereignIntelligence');
+    expect(layer.version).toBe('1.0.0');
+    expect(layer.layerNumber).toBe(8);
+  });
+
+  test('all sub-services are initialized with correct serviceName', () => {
+    expect(layer.sourceManager.serviceName).toBe('KnowledgeSourceManager');
+    expect(layer.domainClassifier.serviceName).toBe('KnowledgeDomainClassifier');
+    expect(layer.searchRouter.serviceName).toBe('SearchAgentRouter');
+    expect(layer.sourceVerifier.serviceName).toBe('SourceVerifier');
+    expect(layer.summarizer.serviceName).toBe('KnowledgeSummarizer');
+    expect(layer.packageBuilder.serviceName).toBe('KnowledgePackageBuilder');
+    expect(layer.pipeline.serviceName).toBe('KnowledgePipeline');
+  });
+
+  test('registers Gutenberg as an available source in the canonical source manager', () => {
+    const sources = layer.getAvailableSources();
+    expect(sources.length).toBeGreaterThanOrEqual(1);
+    const gutenberg = sources.find((s) => s.sourceId === 'gutenberg');
+    expect(gutenberg).toBeDefined();
+    expect(gutenberg?.sourceName).toBe('Project Gutenberg');
+    expect(gutenberg?.sourceType).toBe('external');
+    expect(gutenberg?.isAvailable()).toBe(true);
+  });
+
+  test('source manager has available sources', () => {
+    expect(layer.sourceManager.hasAvailableSources()).toBe(true);
+  });
+
+  test('domain classifier is functional via layer', () => {
+    expect(layer.domainClassifier.classify('write a documentary')).toBe('cinematic');
+    expect(layer.domainClassifier.classify('unknown topic')).toBe('general');
+  });
+
+  test('search router is functional via layer', () => {
+    expect(layer.searchRouter.route('cinematic')).toBe('deep-investigation');
+    expect(layer.searchRouter.route('general')).toBe('general-query');
+  });
+
+  test('process() delegates to pipeline and returns a KnowledgePackage', async () => {
+    const { pkg, fromCache } = await layer.process(
+      'conduct research on medieval history',
+      'research',
+      'layer-test-request-001',
+    );
+
+    expect(fromCache).toBe(false);
+    expect(pkg.packageId).toBeTruthy();
+    expect(pkg.domain).toBe('research');
+    expect(pkg.workflow).toBe('deep-investigation');
+    expect(pkg.summary).toBeDefined();
+    expect(pkg.rawBundle).toBeDefined();
+  }, 30_000);
+
+  test('process() returns fromCache=true on repeated query via pipeline cache', async () => {
+    const { fromCache: second } = await layer.process(
+      'conduct research on medieval history',
+      'research',
+      'layer-test-request-002',
+    );
+
+    expect(second).toBe(true);
+  }, 10_000);
+
+  test('layer can be used as IntelligenceRuntimeContract — structural type check', () => {
+    const contract = layer;
+    expect(typeof contract.process).toBe('function');
+    expect(typeof contract.getAvailableSources).toBe('function');
+    expect(contract.sourceManager).toBeDefined();
+    expect(contract.pipeline).toBeDefined();
+  });
 });

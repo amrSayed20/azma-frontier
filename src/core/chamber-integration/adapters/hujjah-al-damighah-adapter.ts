@@ -2,20 +2,20 @@
  * Layer 10 Peripheral Adapter: Hujjah Al-Damighah (Intelligence Chamber)
  *
  * LAYER CLASSIFICATION: Layer 10 (Peripheral Adapters)
- * KERNEL DEPENDENCIES: Layer 3 (Scheduling), Layer 4 (Memory)
- * CHAMBER DEPENDENCY: SovereignIntelligenceConnector (delegates to IntelligenceEngine)
+ * KERNEL DEPENDENCIES: Layer 4 (Memory)
+ * INTELLIGENCE DEPENDENCY: Layer 8 (Sovereign Intelligence — injected by AZMA OS)
  *
- * Connects the Runtime Kernel to the Sovereign Intelligence Layer without
- * duplicating any runtime logic. All investigation operations are routed
- * through the SovereignIntelligenceConnector which orchestrates classification,
- * routing, verification, summarization, and packaging.
+ * Connects the Intelligence Chamber to the OS Runtime. All intelligence
+ * operations are delegated to the Sovereign Intelligence Layer (L8) which
+ * is owned by AZMA OS and injected via constructor.
+ *
+ * Hujjah Al-Damighah is a CONSUMER of SIL, never an owner.
  */
 
 import type { ChamberAdapter, ChamberHealth, ChamberMessage } from '../types/chamber-contracts';
 import type { MemoryLayerContract } from '../../constitution-runtime/wp-009-types';
-import type { SchedulingKernelContract } from '../../constitution-runtime/wp-008-types';
 import { createAuditTrailId } from '../../constitution-runtime/wp-008-types';
-import { SovereignIntelligenceConnector } from '../../sovereign-intelligence/sovereign-intelligence-connector';
+import type { IntelligenceRuntimeContract } from '../../sovereign-intelligence/intelligence-runtime-contract';
 import { buildId } from '../utils/ids';
 
 const CHAMBER_ID = 'hujjah-al-damighah' as const;
@@ -27,18 +27,15 @@ export class HujjahAlDamighahAdapter implements ChamberAdapter {
   private active = false;
   private investigationCount = 0;
   private cacheHitCount = 0;
-  private readonly connector: SovereignIntelligenceConnector;
 
   constructor(
     private readonly memoryLayer: MemoryLayerContract,
-    private readonly schedulingKernel: SchedulingKernelContract,
-  ) {
-    this.connector = new SovereignIntelligenceConnector(memoryLayer, schedulingKernel);
-  }
+    private readonly intelligence: IntelligenceRuntimeContract,
+  ) {}
 
   async load(): Promise<void> {
-    // Warm connector sources — engine singleton initialized on first process() call
-    this.connector.getAvailableSources();
+    // Verify SIL sources are available at load time
+    this.intelligence.getAvailableSources();
   }
 
   async activate(): Promise<void> {
@@ -76,7 +73,7 @@ export class HujjahAlDamighahAdapter implements ChamberAdapter {
         investigationCount: this.investigationCount,
         cacheHitCount: this.cacheHitCount,
         cacheHitRatio: cacheStats.hitRatio,
-        availableSources: this.connector.getAvailableSources().length,
+        availableSources: this.intelligence.getAvailableSources().length,
       },
     };
   }
@@ -102,7 +99,7 @@ export class HujjahAlDamighahAdapter implements ChamberAdapter {
     }
 
     const requestId = buildId('investigate');
-    const { pkg, fromCache } = await this.connector.process(input, category, requestId);
+    const { pkg, fromCache } = await this.intelligence.process(input, category, requestId);
 
     if (fromCache) {
       this.cacheHitCount++;

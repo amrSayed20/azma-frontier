@@ -27,6 +27,8 @@ const DOMAIN_PATTERNS: readonly { domain: KnowledgeDomain; pattern: RegExp }[] =
 ];
 
 export class KnowledgeDomainClassifier {
+  readonly serviceName = 'KnowledgeDomainClassifier' as const;
+
   classify(query: string): KnowledgeDomain {
     const normalized = query.toLowerCase();
     for (const { domain, pattern } of DOMAIN_PATTERNS) {

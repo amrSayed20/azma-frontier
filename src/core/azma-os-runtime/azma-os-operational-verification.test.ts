@@ -52,6 +52,7 @@ interface OperationalReadinessReport {
     readonly l3Scheduling: boolean;
     readonly l4Memory: boolean;
     readonly l7AgentSociety: boolean;
+    readonly l8SovereignIntelligence: boolean;
     readonly l10Chambers: boolean;
   };
   readonly chamberSummary: {
@@ -99,6 +100,27 @@ describe('AZMA OS Operational Runtime Verification', () => {
       expect(os.agentSociety.agentSelectionRouter.serviceName).toBe('AgentSelectionRouter');
       expect(os.agentSociety.agentExecutionGateway.serviceName).toBe('AgentExecutionGateway');
       expect(os.agentSociety.agentLifecycleService.serviceName).toBe('AgentLifecycleService');
+    });
+
+    test('Layer 8 Sovereign Intelligence Layer is initialized with correct contract', () => {
+      expect(os.sovereignIntelligence.layerName).toBe('SovereignIntelligence');
+      expect(os.sovereignIntelligence.version).toBe('1.0.0');
+      expect(os.sovereignIntelligence.layerNumber).toBe(8);
+      expect(os.sovereignIntelligence.sourceManager.serviceName).toBe('KnowledgeSourceManager');
+      expect(os.sovereignIntelligence.domainClassifier.serviceName).toBe('KnowledgeDomainClassifier');
+      expect(os.sovereignIntelligence.searchRouter.serviceName).toBe('SearchAgentRouter');
+      expect(os.sovereignIntelligence.sourceVerifier.serviceName).toBe('SourceVerifier');
+      expect(os.sovereignIntelligence.summarizer.serviceName).toBe('KnowledgeSummarizer');
+      expect(os.sovereignIntelligence.packageBuilder.serviceName).toBe('KnowledgePackageBuilder');
+      expect(os.sovereignIntelligence.pipeline.serviceName).toBe('KnowledgePipeline');
+    });
+
+    test('L8 Sovereign Intelligence Layer has Gutenberg as a registered source', () => {
+      const sources = os.sovereignIntelligence.getAvailableSources();
+      expect(sources.length).toBeGreaterThanOrEqual(1);
+      const gutenberg = sources.find((s) => s.sourceId === 'gutenberg');
+      expect(gutenberg).toBeDefined();
+      expect(gutenberg?.isAvailable()).toBe(true);
     });
 
     test('OS startup timestamp is valid', () => {
@@ -465,6 +487,11 @@ describe('AZMA OS Operational Runtime Verification', () => {
           detail: `${memSize} constitutional memory entries`,
         },
         {
+          name: 'L8 Sovereign Intelligence online',
+          passed: os.sovereignIntelligence.layerNumber === 8,
+          detail: `Layer ${os.sovereignIntelligence.layerNumber} v${os.sovereignIntelligence.version}, ${os.sovereignIntelligence.getAvailableSources().length} source(s) registered`,
+        },
+        {
           name: 'Scheduling kernel processed requests',
           passed: queueStats.totalEnqueued >= 2,
           detail: `${queueStats.totalEnqueued} requests enqueued`,
@@ -483,6 +510,7 @@ describe('AZMA OS Operational Runtime Verification', () => {
           l3Scheduling: os.kernelLayer3.layerNumber === 3,
           l4Memory: os.kernelLayer4.layerNumber === 4,
           l7AgentSociety: os.agentSociety.layerNumber === 7,
+          l8SovereignIntelligence: os.sovereignIntelligence.layerNumber === 8,
           l10Chambers: os.activeChambers.length === 4,
         },
         chamberSummary: {
@@ -497,6 +525,7 @@ describe('AZMA OS Operational Runtime Verification', () => {
       expect(report.layers.l3Scheduling).toBe(true);
       expect(report.layers.l4Memory).toBe(true);
       expect(report.layers.l7AgentSociety).toBe(true);
+      expect(report.layers.l8SovereignIntelligence).toBe(true);
       expect(report.layers.l10Chambers).toBe(true);
       expect(report.chamberSummary.allActive).toBe(true);
       expect(report.chamberSummary.registered).toBe(4);

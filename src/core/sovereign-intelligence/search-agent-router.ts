@@ -22,6 +22,8 @@ const WORKFLOW_DEPTH: Readonly<Record<SearchWorkflow, number>> = {
 } as const;
 
 export class SearchAgentRouter {
+  readonly serviceName = 'SearchAgentRouter' as const;
+
   route(domain: KnowledgeDomain): SearchWorkflow {
     return DOMAIN_TO_WORKFLOW[domain];
   }

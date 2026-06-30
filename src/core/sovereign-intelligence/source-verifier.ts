@@ -11,6 +11,8 @@ import type { Evidence, EvidenceBundle } from '../../chambers/hujjah-al-damighah
 import type { VerifiedEvidenceItem } from './sovereign-intelligence-types';
 
 export class SourceVerifier {
+  readonly serviceName = 'SourceVerifier' as const;
+
   verify(bundle: EvidenceBundle): readonly VerifiedEvidenceItem[] {
     const deduped = this.deduplicate(bundle.evidence);
     const ranked = [...deduped].sort((a, b) => b.confidenceScore - a.confidenceScore);
