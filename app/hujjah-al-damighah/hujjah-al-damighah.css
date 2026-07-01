@@ -1,51 +1,149 @@
 /**
  * AZMA OS – Hujjah Al-Damighah
- * Phase 11 · Phase Three · First Living Chamber
- * Where Evidence Is Born.
+ * The Imperial Court of Knowledge.
+ * Constitutional Amendment I — Articles I–X
+ * Final Experience Reconstruction.
  */
 
-/* ── Design tokens ─────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════
+   ARTICLE IV — THE IMPERIAL GOLD
+   Forged. Heavy. Metallic. Ancient. Powerful.
+   Never yellow. Never plastic. Never decorative.
+   ═══════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --chamber-bg:           #030303;
-  --panel-bg:             rgba(15, 12, 5, 0.88);
-  --neon-gold-primary:    #D4AF37;
-  --neon-gold-bright:     #FFD700;
-  --neon-gold-dim:        #8B6508;
-  --neon-gold-shadow:     rgba(255, 215, 0, 0.15);
-  --text-main:            #E8D595;
-  --text-muted:           #A8955B;
-  --text-sacred:          #FFF2A8;
-  --depth-near:           rgba(212, 175, 55, 0.06);
-  --depth-far:            rgba(212, 175, 55, 0.02);
+  --chamber-bg:    #020201;
+  --archives-bg:   #050401;
+  --court-bg:      #030302;
+  --panel-bg:      rgba(8, 7, 2, 0.94);
+
+  /* Six forged tones — the Imperial Gold System */
+  --ig-1:   #3A2400;   /* iron — the forge base */
+  --ig-2:   #5C3A06;   /* deep cast gold */
+  --ig-3:   #8B6508;   /* standard metallic */
+  --ig-4:   #B8903A;   /* refined intermediate */
+  --ig-5:   #C9A84C;   /* primary metallic */
+  --ig-6:   #D4AF37;   /* bright metallic */
+  --ig-7:   #E8C547;   /* reflection */
+  --ig-8:   #F5D978;   /* specular highlight */
+
+  /* Glows */
+  --ig-glow-deep:   rgba(139, 101, 8, 0.12);
+  --ig-glow-mid:    rgba(212, 175, 55, 0.18);
+  --ig-glow-bright: rgba(212, 175, 55, 0.30);
+
+  /* Text */
+  --text-main:   #E8D595;
+  --text-muted:  #A8955B;
+  --text-sacred: #FFF2A8;
+  --text-dim:    #6B5A30;
+  --text-ghost:  #3D2E12;
+
+  /* Legacy aliases */
+  --neon-gold-primary: var(--ig-6);
+  --neon-gold-bright:  var(--ig-8);
+  --neon-gold-dim:     var(--ig-3);
+  --neon-gold-shadow:  var(--ig-glow-deep);
 }
 
-/* ── Reset ─────────────────────────────────────────────────────────────── */
+/* ── Reset ──────────────────────────────────────────────────────────────── */
 
 body, html {
   margin: 0; padding: 0;
   width: 100%; height: 100%;
-  background-color: var(--chamber-bg);
+  background: var(--chamber-bg);
   overflow: hidden;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   LIVING MOTION SYSTEMS
-   Two forces: Atmospheric Breathing + Knowledge Pulse
+   ARTICLE V — THE BREATH OF THE CHAMBER
+   Light evolves. Reflections breathe. Nothing frozen. Subconscious life.
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* ── Force One: Atmospheric Breathing (luminance ±3% / 90s cycle) ────── */
-
 @keyframes atmosphericBreath {
-  0%, 100% { filter: brightness(1.00); }
-  50%       { filter: brightness(0.97); }
+  0%, 100% { filter: brightness(1.000) contrast(1.000); }
+  33%       { filter: brightness(0.975) contrast(1.002); }
+  66%       { filter: brightness(0.988) contrast(0.999); }
 }
 
-.breathing {
-  animation: atmosphericBreath 90s ease-in-out infinite;
+.breathing { animation: atmosphericBreath 90s ease-in-out infinite; }
+
+@keyframes depthGlowBreath {
+  0%, 100% { opacity: 0.45; }
+  42%       { opacity: 0.62; }
+  71%       { opacity: 0.38; }
 }
 
-/* ── Entry Veil: Radial recession (chamber reveals from center) ──────── */
+@keyframes secondaryShift {
+  0%, 100% { opacity: 0.28; transform: translate(0, 0) scale(1.00); }
+  50%       { opacity: 0.44; transform: translate(-18px, 12px) scale(1.04); }
+}
+
+@keyframes gridBreath {
+  0%, 100% { opacity: 0.55; }
+  50%       { opacity: 0.75; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ARTICLE VI — THE MOOD OF KNOWLEDGE
+   Idle → Preparing → Investigating → Silence → Revelation → Reflection
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.hujjah-viewport .cyber-grid          { transition: opacity 2s ease; }
+.hujjah-viewport .ambient-depth-gradient { transition: filter 2s ease; }
+
+.mood-idle .cyber-grid                { opacity: 0.55; }
+.mood-idle .ambient-depth-gradient    { filter: brightness(0.80); }
+
+.mood-preparing .cyber-grid           { opacity: 0.72; }
+.mood-preparing .ambient-depth-gradient { filter: brightness(0.95); }
+
+.mood-investigating .cyber-grid       { opacity: 1.00; }
+.mood-investigating .ambient-depth-gradient { filter: brightness(1.18); }
+.mood-investigating .ambient-secondary-glow { opacity: 0.55; }
+
+.mood-silence .cyber-grid             { opacity: 0.28; transition: opacity 0.35s ease; }
+.mood-silence .ambient-depth-gradient { filter: brightness(0.45); transition: filter 0.35s ease; }
+.mood-silence .ambient-secondary-glow { opacity: 0.10; }
+
+.mood-revelation .cyber-grid          { opacity: 0.68; }
+.mood-revelation .ambient-depth-gradient { filter: brightness(1.12); }
+
+.mood-reflection .cyber-grid          { opacity: 0.50; }
+.mood-reflection .ambient-depth-gradient { filter: brightness(0.92); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ARTICLE III — THE GOLDEN LIVING FRAME
+   Each element's own rhythm. No two identical.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Archives Column Frame — 22s, begins from top */
+@keyframes frameGlowArchives {
+  0%   { box-shadow: 0 -3px 16px rgba(212,175,55,.16), 0 0 30px rgba(212,175,55,.04); }
+  28%  { box-shadow: 3px 0 16px rgba(212,175,55,.12),  0 0 30px rgba(212,175,55,.04); }
+  55%  { box-shadow: 0 3px 16px rgba(212,175,55,.18),  0 0 30px rgba(212,175,55,.04); }
+  80%  { box-shadow: -3px 0 16px rgba(212,175,55,.10), 0 0 30px rgba(212,175,55,.04); }
+  100% { box-shadow: 0 -3px 16px rgba(212,175,55,.16), 0 0 30px rgba(212,175,55,.04); }
+}
+
+.living-frame-archives {
+  animation: frameGlowArchives 22s ease-in-out infinite;
+}
+
+/* Verdict Frame — 18s, brighter, begins from bottom */
+@keyframes frameGlowVerdict {
+  0%   { box-shadow: 0 3px 20px rgba(212,175,55,.20), inset 0 0 24px rgba(0,0,0,.70); }
+  25%  { box-shadow: 3px 0 20px rgba(212,175,55,.16), inset 0 0 24px rgba(0,0,0,.70); }
+  50%  { box-shadow: 0 -3px 20px rgba(212,175,55,.22), inset 0 0 24px rgba(0,0,0,.70); }
+  75%  { box-shadow: -3px 0 20px rgba(212,175,55,.18), inset 0 0 24px rgba(0,0,0,.70); }
+  100% { box-shadow: 0 3px 20px rgba(212,175,55,.20), inset 0 0 24px rgba(0,0,0,.70); }
+}
+
+.living-frame-verdict {
+  animation: frameGlowVerdict 18s ease-in-out infinite;
+}
+
+/* ── Entry veil ──────────────────────────────────────────────────────── */
 
 @keyframes veilRecede {
   from { clip-path: circle(150% at 50% 50%); opacity: 1; }
@@ -58,7 +156,6 @@ body, html {
   background: var(--chamber-bg);
   z-index: 999;
   pointer-events: none;
-  /* Starts as full coverage; without receding class = chamber hidden */
   clip-path: circle(150% at 50% 50%);
   opacity: 1;
 }
@@ -67,94 +164,25 @@ body, html {
   animation: veilRecede 600ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-/* ── Force Two: Knowledge Pulse (intellectually alive during examination) */
-
-@keyframes knowledgePulse {
-  0%, 100% { opacity: 0.04; transform: scale(1.000); }
-  50%       { opacity: 0.08; transform: scale(1.015); }
-}
-
-.knowledge-pulse-layer {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(
-    circle at 50% 50%,
-    rgba(212, 175, 55, 0.07) 0%,
-    transparent 70%
-  );
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 1.2s ease-out;
-  z-index: 0;
-}
-
-.evidence-space.examining .knowledge-pulse-layer {
-  animation: knowledgePulse 16s ease-in-out infinite;
-}
-
-/* Pulse resolves to stillness when examining ends */
-.evidence-space:not(.examining) .knowledge-pulse-layer {
-  opacity: 0;
-  animation: none;
-}
-
-/* ── Knowledge Source: Gravity-weighted entrance ─────────────────────── */
+/* ── Gravity-weighted entrance ──────────────────────────────────────── */
 
 @keyframes gravitySettle {
   from { transform: translateY(-4px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
 
-.ev-source-card,
-.ev-result-card {
+.archive-record,
+.evidence-entry {
   opacity: 0;
   animation: gravitySettle 280ms ease-out forwards;
 }
 
-/* ── Distillation Engine: Pulsing border during examination ─────────── */
-
-@keyframes distillationBorderPulse {
-  0%, 100% {
-    box-shadow:
-      0 0 15px rgba(212, 175, 55, 0.10),
-      inset 0 0 10px rgba(0, 0, 0, 0.5),
-      0 0 0 1px rgba(212, 175, 55, 0.15);
-  }
-  50% {
-    box-shadow:
-      0 0 35px rgba(212, 175, 55, 0.22),
-      inset 0 0 10px rgba(0, 0, 0, 0.5),
-      0 0 0 1px rgba(212, 175, 55, 0.45);
-  }
-}
-
-.synthesis-desk.distillation-active {
-  animation: distillationBorderPulse 12s ease-in-out infinite;
-}
-
-/* ── Capsule spinner (subtle, inside distillation capsule) ───────────── */
-
-@keyframes capsuleSpin {
-  to { transform: rotate(360deg); }
-}
-
-.capsule-spinner {
-  width: 20px;
-  height: 20px;
-  border: 1.5px solid rgba(212, 175, 55, 0.25);
-  border-top-color: rgba(212, 175, 55, 0.75);
-  border-radius: 50%;
-  animation: capsuleSpin 2.4s linear infinite;
-  margin: 0 auto 12px;
-}
-
-/* ── "Prove it." one-time atmospheric placeholder ────────────────────── */
+/* ── Prove it overlay ───────────────────────────────────────────────── */
 
 @keyframes proveItFadeOut {
-  0%   { opacity: 0.40; }
-  75%  { opacity: 0.40; }
-  100% { opacity: 0;    }
+  0%   { opacity: 0.36; }
+  75%  { opacity: 0.36; }
+  100% { opacity: 0; }
 }
 
 .prove-it-overlay {
@@ -162,124 +190,28 @@ body, html {
   inset: 0;
   display: flex;
   align-items: center;
-  padding: 0 20px;
-  color: var(--text-muted);
+  color: var(--text-ghost);
   font-size: 14px;
   font-style: italic;
-  letter-spacing: 0.05em;
   pointer-events: none;
   animation: proveItFadeOut 3.8s ease-out forwards;
 }
 
-/* ── AZMA OS companion ───────────────────────────────────────────────── */
+/* ── Seal spinner ────────────────────────────────────────────────────── */
 
-@keyframes companionAppear {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0);    }
-}
+@keyframes sealSpin { to { transform: rotate(360deg); } }
 
-@keyframes companionDisappear {
-  from { opacity: 1; }
-  to   { opacity: 0; }
-}
-
-.azma-companion {
-  position: fixed;
-  top: 60px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  max-width: 600px;
-  padding: 12px 20px;
-  border: 1px solid rgba(212, 175, 55, 0.20);
-  border-radius: 8px;
-  background: rgba(5, 4, 2, 0.85);
-  backdrop-filter: blur(12px);
-  pointer-events: none;
-  transition: opacity 400ms ease;
-}
-
-.companion-visible {
-  animation: companionAppear 400ms ease forwards;
-  opacity: 1;
-}
-
-.companion-hidden {
-  animation: companionDisappear 400ms ease forwards;
-  opacity: 0;
-}
-
-.companion-sigil {
-  color: var(--neon-gold-primary);
-  font-size: 12px;
-  flex-shrink: 0;
-  opacity: 0.7;
-}
-
-.companion-text {
-  color: var(--text-main);
-  font-size: 13px;
-  line-height: 1.55;
-  font-style: italic;
-  letter-spacing: 0.02em;
-}
-
-/* ── Stillness moment ────────────────────────────────────────────────── */
-
-@keyframes stillnessExpand {
-  from { transform: scaleX(0); opacity: 0; }
-  to   { transform: scaleX(1); opacity: 0.4; }
-}
-
-.stillness-moment {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 0;
+.seal-spinner {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid rgba(212,175,55,.25);
+  border-top-color: rgba(212,175,55,.75);
+  border-radius: 50%;
+  animation: sealSpin 2s linear infinite;
   flex-shrink: 0;
 }
 
-.stillness-line {
-  width: 100%;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--neon-gold-dim),
-    transparent
-  );
-  animation: stillnessExpand 500ms ease-out forwards;
-  transform-origin: center;
-}
-
-.stillness-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-}
-
-.stillness-divider-line {
-  width: 60%;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(212, 175, 55, 0.3),
-    transparent
-  );
-  animation: stillnessExpand 400ms ease-out forwards;
-  transform-origin: center;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   STRUCTURAL STYLES (preserved + enhanced from existing)
-   ═══════════════════════════════════════════════════════════════════════ */
-
-/* ── Viewport ─────────────────────────────────────────────────────────── */
+/* ── Atmospheric background ─────────────────────────────────────────── */
 
 .hujjah-viewport {
   position: fixed;
@@ -290,8 +222,6 @@ body, html {
   display: flex;
   flex-direction: column;
 }
-
-/* ── Atmospheric background ───────────────────────────────────────────── */
 
 .neon-layer {
   position: absolute;
@@ -304,757 +234,966 @@ body, html {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(212, 175, 55, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(212, 175, 55, 0.025) 1px, transparent 1px);
+    linear-gradient(rgba(212,175,55,.020) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212,175,55,.020) 1px, transparent 1px);
   background-size: 50px 50px;
+  animation: gridBreath 65s ease-in-out infinite;
 }
 
 .ambient-depth-gradient {
   position: absolute;
   inset: 0;
-  background: radial-gradient(
-    ellipse 80% 60% at 50% 100%,
-    rgba(212, 175, 55, 0.03),
-    transparent 70%
-  );
+  background: radial-gradient(ellipse 85% 65% at 50% 100%, rgba(212,175,55,.05), transparent 70%);
+  animation: depthGlowBreath 72s ease-in-out infinite;
 }
 
-/* ── Borders ─────────────────────────────────────────────────────────── */
-
-.neon-border {
-  border: 1px solid var(--neon-gold-dim);
-  box-shadow: 0 0 15px var(--neon-gold-shadow), inset 0 0 10px rgba(0, 0, 0, 0.5);
-}
-
-.neon-border-gold {
-  border: 1px solid var(--neon-gold-primary);
-  box-shadow: 0 0 25px rgba(255, 215, 0, 0.18), inset 0 0 20px rgba(0, 0, 0, 0.8);
-}
-
-/* ── Navigation ──────────────────────────────────────────────────────── */
-
-.top-nav-links {
+.ambient-secondary-glow {
   position: absolute;
-  top: 15px;
-  right: 20px;
-  z-index: 100;
-  display: flex;
-  gap: 10px;
+  inset: 0;
+  background: radial-gradient(ellipse 55% 45% at 28% 18%, rgba(212,175,55,.025), transparent 65%);
+  animation: secondaryShift 115s ease-in-out infinite;
 }
 
-.sovereign-exit-btn {
-  background: rgba(0, 0, 0, 0.7);
-  border: 1px solid var(--neon-gold-dim);
-  color: var(--neon-gold-bright);
+/* ═══════════════════════════════════════════════════════════════════════
+   ARTICLE I & II — THE LIVING COMPANION
+   Own architectural space. Never obstructs.
+   Platform-wide. Three permanent modes.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.crown-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 50px;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  border-bottom: 1px solid rgba(212,175,55,.08);
+  background: rgba(2, 2, 1, 0.92);
+  backdrop-filter: blur(28px);
+}
+
+.companion-mode-cluster {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding-right: 12px;
+  border-right: 1px solid rgba(212,175,55,.10);
+}
+
+.companion-mode-btn {
+  background: transparent;
+  border: 1px solid rgba(212,175,55,.12);
+  color: var(--text-ghost);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
   font-size: 12px;
-  font-weight: bold;
-  padding: 8px 16px;
-  border-radius: 6px;
   cursor: pointer;
-  transition: 0.3s;
-}
-
-.sovereign-exit-btn:hover {
-  background: rgba(212, 175, 55, 0.1);
-  border-color: var(--neon-gold-bright);
-  box-shadow: 0 0 15px var(--neon-gold-shadow);
-}
-
-/* ── Chamber grid ─────────────────────────────────────────────────────── */
-
-.chamber-grid-layout {
-  position: relative;
-  z-index: 10;
-  width: 100%;
-  height: 100vh;
-  padding: 60px 20px 20px 20px;
-  box-sizing: border-box;
-  display: grid;
-  grid-template-columns: 280px 1fr 350px;
-  gap: 20px;
-}
-
-/* ── Control panels ───────────────────────────────────────────────────── */
-
-.control-panel {
-  background: var(--panel-bg);
-  border-radius: 12px;
-  backdrop-filter: blur(20px);
+  transition: border-color 0.25s, color 0.25s, background 0.25s;
   display: flex;
-  flex-direction: column;
-  padding: 20px;
-  height: calc(100vh - 100px);
-  box-sizing: border-box;
-  position: relative;
-  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
-.panel-header {
-  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
-  padding-bottom: 15px;
-  margin-bottom: 15px;
-  flex-shrink: 0;
+.companion-mode-btn:hover { border-color: var(--ig-4); color: var(--ig-5); }
+.companion-mode-btn.mode-active {
+  border-color: var(--ig-5);
+  color: var(--ig-7);
+  background: rgba(212,175,55,.08);
 }
 
-.neon-tag {
-  font-size: 10px;
-  font-weight: 900;
-  color: var(--neon-gold-bright);
-  letter-spacing: 2px;
-  margin-bottom: 5px;
+@keyframes companionAppear {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.panel-header h2 {
-  margin: 0;
-  font-size: 1.2rem;
-  color: var(--neon-gold-primary);
+@keyframes companionDisappear {
+  from { opacity: 1; }
+  to   { opacity: 0; }
 }
 
-/* ── Left panel: Knowledge Sources ───────────────────────────────────── */
-
-.domains-container {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow-y: auto;
-  flex-shrink: 0;
-}
-
-.domain-btn {
-  background: rgba(10, 8, 5, 0.8);
-  border: 1px solid rgba(212, 175, 55, 0.2);
-  color: var(--text-main);
-  padding: 13px 15px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: bold;
-  cursor: pointer;
+.companion-message-zone {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 10px;
-  transition: background 0.25s, border-color 0.25s;
-  font-family: inherit;
-  text-align: right;
+  padding: 0 16px;
+  min-width: 0;
 }
 
-.domain-btn:hover {
-  background: rgba(212, 175, 55, 0.08);
-  border-color: var(--neon-gold-dim);
+.companion-message-zone.companion-visible {
+  animation: companionAppear 400ms ease forwards;
+  opacity: 1;
 }
 
-.domain-btn.active {
-  background: linear-gradient(90deg, rgba(30, 25, 10, 0.9), rgba(10, 10, 10, 0.9));
-  border-color: var(--neon-gold-primary);
-  color: var(--neon-gold-bright);
-  box-shadow: inset 0 0 15px var(--neon-gold-shadow);
-  border-right: 4px solid var(--neon-gold-bright);
+.companion-message-zone.companion-hidden {
+  animation: companionDisappear 400ms ease forwards;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.domain-indicator {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--neon-gold-dim);
-  flex-shrink: 0;
-  transition: background 0.25s;
-}
+.companion-sigil { color: var(--ig-4); font-size: 11px; flex-shrink: 0; opacity: 0.70; }
 
-.domain-btn.active .domain-indicator {
-  background: var(--neon-gold-bright);
-  box-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
-}
-
-/* Evidence sources section (appears after examination) */
-
-.evidence-sources-section {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  margin-top: 6px;
-}
-
-.sources-divider {
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.2), transparent);
-  margin: 12px 0 10px;
-}
-
-.sources-label {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--neon-gold-dim);
-  letter-spacing: 1px;
-  margin: 0 0 10px;
-  text-transform: uppercase;
-}
-
-.evidence-sources-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow-y: auto;
-  flex: 1;
-}
-
-/* Evidence source cards (left panel) */
-
-.ev-source-card {
-  background: rgba(10, 8, 5, 0.7);
-  border: 1px solid rgba(212, 175, 55, 0.15);
-  border-radius: 6px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ev-provider {
-  font-size: 10px;
+.companion-text {
   color: var(--text-muted);
-  font-family: monospace;
-}
-
-.ev-source-text {
   font-size: 12px;
-  color: var(--text-main);
-  line-height: 1.5;
-  margin: 0;
-}
-
-/* Examining state in left panel */
-
-.sources-examining-state {
-  display: flex;
-  flex-direction: column;
-  margin-top: 6px;
-}
-
-.sources-examining-text {
-  font-size: 11px;
-  color: var(--text-muted);
+  line-height: 1.4;
   font-style: italic;
-  margin: 10px 0 12px;
-  text-align: center;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.sources-loading-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 0 8px;
-}
-
-@keyframes loadingBarPulse {
-  0%, 100% { opacity: 0.15; width: 40%; }
-  50%       { opacity: 0.40; width: 80%; }
-}
-
-.loading-bar {
-  height: 2px;
-  background: var(--neon-gold-dim);
-  border-radius: 2px;
-  animation: loadingBarPulse 1.8s ease-in-out infinite;
-}
-
-/* ── Center: Evidence Space ───────────────────────────────────────────── */
-
-.center-stage {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  height: calc(100vh - 100px);
-  position: relative;
-}
-
-.evidence-form-wrapper {
+.crown-nav {
   flex-shrink: 0;
-  position: relative;
-  z-index: 1;
+  padding-left: 12px;
+  border-left: 1px solid rgba(212,175,55,.10);
 }
 
-.oracle-search-form {
+.sovereign-exit-btn {
+  background: transparent;
+  border: 1px solid rgba(139,101,8,.40);
+  color: var(--ig-4);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: border-color 0.25s, color 0.25s, background 0.25s;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+}
+
+.sovereign-exit-btn:hover {
+  background: rgba(212,175,55,.06);
+  border-color: var(--ig-5);
+  color: var(--ig-6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   IMPERIAL COURT LAYOUT
+   Two architectural zones: Knowledge Archives + Main Court Space
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.imperial-court-layout {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  height: calc(100vh - 50px);
+  margin-top: 50px;
   display: flex;
-  background: rgba(10, 8, 5, 0.92);
-  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* ── Knowledge Archives — the left alcove ──────────────────────────── */
+
+.knowledge-archives {
+  width: 215px;
+  flex-shrink: 0;
+  background: var(--archives-bg);
+  border-left: 1px solid transparent; /* physical left = the separator from court */
+  background:
+    var(--archives-bg) padding-box,
+    linear-gradient(
+      to bottom,
+      var(--ig-1) 0%,
+      var(--ig-3) 25%,
+      var(--ig-4) 50%,
+      var(--ig-3) 75%,
+      var(--ig-1) 100%
+    ) border-box;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   position: relative;
 }
 
-.oracle-input-wrapper {
-  flex: 1;
+/* Subtle inner shadow on archive wall — depth effect */
+.knowledge-archives::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 20px;
+  background: linear-gradient(to left, rgba(0,0,0,.35), transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.archives-header {
+  padding: 20px 16px 14px;
+  border-bottom: 1px solid rgba(212,175,55,.08);
+  flex-shrink: 0;
+}
+
+.archives-classification {
+  font-size: 8px;
+  font-weight: 900;
+  color: var(--ig-3);
+  letter-spacing: 2.5px;
+  margin-bottom: 5px;
+  opacity: 0.65;
+}
+
+.archives-title {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--ig-4);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Domain Classifier — not buttons, engraved labels */
+
+.archive-domains {
+  padding: 10px 0;
+  flex-shrink: 0;
+}
+
+.archive-domain {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  border-right: 2px solid transparent;
+  cursor: pointer;
+  transition: background 0.20s, border-right-color 0.20s;
   position: relative;
 }
 
-.oracle-input {
+.archive-domain:hover {
+  background: rgba(212,175,55,.03);
+  border-right-color: var(--ig-2);
+}
+
+.archive-domain.archive-domain-active {
+  background: rgba(212,175,55,.05);
+  border-right-color: var(--ig-5);
+}
+
+.archive-domain-mark {
+  color: var(--ig-2);
+  font-size: 11px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: color 0.20s;
+}
+
+.archive-domain.archive-domain-active .archive-domain-mark {
+  color: var(--ig-6);
+}
+
+.archive-domain-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.archive-domain-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  transition: color 0.20s;
+}
+
+.archive-domain-sub {
+  font-size: 9px;
+  color: var(--text-ghost);
+  transition: color 0.20s;
+  letter-spacing: 0.02em;
+}
+
+.archive-domain.archive-domain-active .archive-domain-name { color: var(--ig-6); }
+.archive-domain.archive-domain-active .archive-domain-sub  { color: var(--text-dim); }
+
+.archive-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,.14), transparent);
+  margin: 8px 16px;
+  flex-shrink: 0;
+}
+
+/* Archive Records — after deliberation */
+
+.archive-records {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 12px;
+  position: relative;
+  z-index: 2;
+}
+
+.archive-records-label {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--ig-2);
+  letter-spacing: 2px;
+  padding: 8px 16px 6px;
+  text-transform: uppercase;
+}
+
+.archive-record {
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(212,175,55,.04);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.archive-record-tier {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.archive-record-excerpt {
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.45;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.archive-record-score {
+  font-size: 9px;
+  color: var(--text-ghost);
+  font-family: monospace;
+}
+
+/* Scanning indicator */
+
+.archive-scanning {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.scanning-label {
+  font-size: 9px;
+  color: var(--text-ghost);
+  font-style: italic;
+  letter-spacing: 0.05em;
+}
+
+@keyframes scanBarPulse {
+  0%, 100% { opacity: 0.10; width: 30%; }
+  50%       { opacity: 0.32; width: 75%; }
+}
+
+.scanning-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.scanning-bar {
+  height: 1px;
+  background: var(--ig-3);
+  border-radius: 1px;
+  animation: scanBarPulse 1.9s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   COURT SPACE — THE UNIFIED ARCHITECTURAL EXPERIENCE
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.court-space {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--court-bg);
+  position: relative;
+}
+
+/* Court Frieze — architectural header / architrave */
+
+.court-frieze {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  border-bottom: 1px solid rgba(212,175,55,.10);
+  background: linear-gradient(180deg, rgba(212,175,55,.030) 0%, transparent 100%);
+  flex-shrink: 0;
+}
+
+.frieze-rule {
+  flex: 1;
+  max-width: 120px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,.25), transparent);
+  display: block;
+}
+
+.frieze-glyph {
+  color: var(--ig-3);
+  font-size: 14px;
+  opacity: 0.50;
+  flex-shrink: 0;
+}
+
+.frieze-title {
+  font-size: 11px;
+  color: var(--ig-4);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+/* Case Podium — formal declaration surface */
+
+.case-podium {
+  padding: 14px 28px 14px;
+  border-bottom: 1px solid rgba(212,175,55,.08);
+  background: linear-gradient(180deg, rgba(212,175,55,.018) 0%, transparent 100%);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(16px);
+}
+
+.podium-inscription {
+  font-size: 9px;
+  color: var(--text-ghost);
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.case-form {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.case-declaration-wrapper {
+  flex: 1;
+  position: relative;
+  border-bottom: 1px solid var(--ig-2); /* signing line — formal document surface */
+}
+
+.case-declaration-wrapper:focus-within {
+  border-bottom-color: var(--ig-5);
+}
+
+.case-declaration {
   width: 100%;
   box-sizing: border-box;
   background: transparent;
   border: none;
-  color: var(--neon-gold-bright);
-  padding: 15px 20px;
-  font-size: 14px;
-  font-family: inherit;
-  font-weight: bold;
   outline: none;
-}
-
-.oracle-input::placeholder {
-  color: var(--text-muted);
-  font-weight: normal;
-}
-
-.oracle-input:disabled {
-  color: var(--text-muted);
-  cursor: wait;
-}
-
-.oracle-submit-btn {
-  background: var(--neon-gold-dim);
-  color: #000;
-  border: none;
-  padding: 0 25px;
-  font-weight: bold;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.25s, box-shadow 0.25s;
+  color: var(--ig-7);
+  font-size: 15px;
   font-family: inherit;
-  white-space: nowrap;
+  font-weight: 500;
+  padding: 8px 0;
+  letter-spacing: 0.01em;
+  caret-color: var(--ig-6);
 }
 
-.oracle-submit-btn:hover:not(:disabled) {
-  background: var(--neon-gold-primary);
-  box-shadow: 0 0 15px var(--neon-gold-shadow);
+.case-declaration::placeholder {
+  color: var(--text-ghost);
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 400;
 }
 
-.oracle-submit-btn:disabled {
-  background: #333;
-  color: #666;
-  cursor: not-allowed;
-}
-
-.oracle-submit-btn.btn-examining {
-  background: rgba(212, 175, 55, 0.15);
-  color: var(--neon-gold-dim);
+.case-declaration:disabled {
+  color: var(--text-dim);
   cursor: wait;
 }
 
-/* Evidence display */
+/* Imperial Seal Button */
 
-.oracle-display {
-  flex: 1;
-  background: radial-gradient(ellipse at center, #110e05, #050402);
-  border-radius: 12px;
-  padding: 20px;
-  overflow-y: auto;
-  position: relative;
-  z-index: 1;
-}
-
-/* States */
-
-.empty-state {
-  text-align: center;
-  color: var(--text-muted);
-  margin-top: 22%;
-  font-size: 14px;
-  font-style: italic;
-  line-height: 2;
-}
-
-.empty-subtext {
+.imperial-seal-btn {
+  background: transparent;
+  border: 1px solid var(--ig-3);
+  color: var(--ig-5);
+  padding: 8px 18px;
+  font-family: inherit;
   font-size: 12px;
-  opacity: 0.6;
-  margin: 4px 0 0;
-}
-
-.examining-state {
+  font-weight: 600;
+  cursor: pointer;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 20px;
-}
-
-@keyframes pulsing-ring {
-  0%, 100% { transform: scale(1);    opacity: 0.5; }
-  50%       { transform: scale(1.08); opacity: 0.2; }
-}
-
-.examining-pulse-ring {
-  width: 48px;
-  height: 48px;
-  border: 1px solid rgba(212, 175, 55, 0.4);
-  border-radius: 50%;
-  animation: pulsing-ring 2s ease-in-out infinite;
-}
-
-.examining-text {
-  color: var(--text-muted);
-  font-size: 13px;
-  font-style: italic;
-  margin: 0;
-  animation: atmosphericBreath 2s ease-in-out infinite;
-}
-
-.error-state {
-  text-align: center;
-  color: rgba(255, 120, 120, 0.8);
-  margin-top: 20%;
-  font-size: 14px;
-  padding: 20px;
-  border: 1px solid rgba(255, 80, 80, 0.2);
-  border-radius: 8px;
-}
-
-/* Evidence result cards */
-
-.results-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.result-card {
-  background: rgba(15, 12, 5, 0.8);
-  border: 1px solid var(--neon-gold-dim);
-  border-radius: 8px;
-  padding: 15px;
-  position: relative;
-}
-
-.ev-result-card {
-  border-right-width: 3px;
-}
-
-.ev-card-high {
-  border-color: var(--neon-gold-bright);
-  background: rgba(212, 175, 55, 0.04);
-  border-right-color: var(--neon-gold-bright);
-}
-
-.ev-card-moderate {
-  border-color: var(--neon-gold-primary);
-  border-right-color: var(--neon-gold-primary);
-}
-
-.ev-card-low {
-  border-color: var(--neon-gold-dim);
-  border-right-color: var(--neon-gold-dim);
-}
-
-.ev-card-unverified {
-  border-color: rgba(168, 149, 91, 0.4);
-  border-right-color: rgba(168, 149, 91, 0.4);
-}
-
-.result-text {
-  font-size: 14px;
-  color: var(--text-main);
-  margin: 0 0 14px;
-  line-height: 1.65;
-}
-
-.ev-result-text {
-  color: var(--text-sacred);
-}
-
-.result-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-top: 1px dashed rgba(212, 175, 55, 0.2);
-  padding-top: 10px;
-}
-
-.result-source {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-family: monospace;
-}
-
-.ev-score {
-  font-size: 11px;
-  color: var(--neon-gold-primary);
-  font-weight: 700;
-  font-family: monospace;
-}
-
-/* Evidence badges */
-
-.ev-badge {
-  display: inline-block;
-  font-size: 9px;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 3px;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
-}
-
-.ev-result-badge {
-  position: absolute;
-  top: -10px;
-  left: 14px;
-  background: #000;
-  font-size: 9px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 3px;
-  letter-spacing: 0.5px;
-}
-
-.ev-badge-high,
-.ev-result-badge.ev-badge-high {
-  border: 1px solid var(--neon-gold-bright);
-  color: var(--neon-gold-bright);
-}
-
-.ev-badge-moderate,
-.ev-result-badge.ev-badge-moderate {
-  border: 1px solid var(--neon-gold-primary);
-  color: var(--neon-gold-primary);
-}
-
-.ev-badge-low,
-.ev-result-badge.ev-badge-low {
-  border: 1px solid var(--neon-gold-dim);
-  color: var(--text-muted);
-}
-
-.ev-badge-unverified,
-.ev-result-badge.ev-badge-unverified {
-  border: 1px solid rgba(168, 149, 91, 0.4);
-  color: rgba(168, 149, 91, 0.6);
-}
-
-/* ── Right: Distillation Engine ───────────────────────────────────────── */
-
-.synthesis-desk {
-  justify-content: space-between;
-  transition: box-shadow 0.6s ease;
-}
-
-.format-selector {
-  margin-bottom: 15px;
+  gap: 8px;
+  border-radius: 2px;
+  transition: background 0.22s, border-color 0.22s, color 0.22s, box-shadow 0.22s;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
   flex-shrink: 0;
 }
 
-.format-tabs {
-  display: flex;
-  gap: 5px;
-  margin-top: 8px;
+.imperial-seal-btn:hover:not(:disabled) {
+  background: rgba(212,175,55,.07);
+  border-color: var(--ig-5);
+  color: var(--ig-7);
+  box-shadow: 0 0 12px var(--ig-glow-deep);
 }
 
-.f-tab {
+.imperial-seal-btn:disabled,
+.imperial-seal-btn.seal-examining {
+  opacity: 0.40;
+  cursor: wait;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DELIBERATION HALL
+   The living court space where truth is built.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.deliberation-hall {
   flex: 1;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--neon-gold-dim);
-  color: var(--text-muted);
-  padding: 8px 5px;
-  border-radius: 4px;
-  font-size: 11px;
-  cursor: pointer;
-  transition: 0.25s;
-  font-family: inherit;
-  font-weight: bold;
-}
-
-.f-tab:hover {
-  border-color: var(--neon-gold-bright);
-  color: var(--text-main);
-}
-
-.f-tab.active {
-  background: rgba(212, 175, 55, 0.12);
-  border-color: var(--neon-gold-primary);
-  color: var(--neon-gold-bright);
-  box-shadow: inset 0 0 10px var(--neon-gold-shadow);
-}
-
-.gold-label {
-  font-size: 11px;
-  color: var(--neon-gold-primary);
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
-
-.synthesis-workspace {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 15px;
-  min-height: 0;
-}
-
-/* Distillation capsule */
-
-.distillation-capsule {
-  flex: 1;
-  background: rgba(5, 4, 2, 0.7);
-  border: 1px solid rgba(212, 175, 55, 0.25);
-  border-radius: 8px;
-  padding: 14px;
   overflow-y: auto;
-  transition: border-color 0.4s, background 0.4s;
-  display: flex;
-  flex-direction: column;
+  padding: 28px 32px;
+  min-height: 0;
+  position: relative;
 }
 
-.distillation-capsule.capsule-examining {
-  border-color: rgba(212, 175, 55, 0.15);
-  background: rgba(5, 4, 2, 0.5);
-}
+/* Idle — the court awaits */
 
-.capsule-examining-state {
+.court-idle-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  gap: 8px;
+  height: 65%;
+  gap: 14px;
+  text-align: center;
+  margin-top: 8%;
 }
 
-.capsule-status-text {
-  color: var(--text-muted);
+.idle-seal {
+  font-size: 52px;
+  color: var(--ig-2);
+  opacity: 0.28;
+  animation: atmosphericBreath 8s ease-in-out infinite;
+  line-height: 1;
+}
+
+.idle-inscription {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-style: italic;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.idle-subtext {
+  color: var(--text-ghost);
+  font-size: 11px;
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+/* Court Deliberating — examination in progress */
+
+@keyframes pulsingRing {
+  0%, 100% { transform: scale(1);    opacity: 0.40; }
+  50%       { transform: scale(1.10); opacity: 0.15; }
+}
+
+.court-deliberating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 70px 0;
+  gap: 22px;
+}
+
+.deliberation-ring {
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(212,175,55,.30);
+  border-radius: 50%;
+  animation: pulsingRing 2.5s ease-in-out infinite;
+}
+
+.deliberation-inscription {
+  color: var(--text-dim);
   font-size: 12px;
   font-style: italic;
+  margin: 0;
+  letter-spacing: 0.05em;
+  animation: atmosphericBreath 2s ease-in-out infinite;
 }
 
-.capsule-text {
+/* Article IX — Moment of Truth */
+
+@keyframes ruleExpand {
+  from { transform: scaleX(0); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 0.45; }
+}
+
+@keyframes truthWordFade {
+  0%   { opacity: 0; }
+  20%  { opacity: 0.60; }
+  80%  { opacity: 0.60; }
+  100% { opacity: 0; }
+}
+
+.moment-of-truth {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 60px 0;
+}
+
+.truth-rule {
+  flex: 1;
+  max-width: 200px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ig-3), transparent);
+  animation: ruleExpand 500ms ease-out forwards;
+  transform-origin: center;
+}
+
+.truth-word {
+  color: var(--text-dim);
   font-size: 12px;
-  color: var(--text-main);
-  line-height: 1.75;
+  font-style: italic;
+  letter-spacing: 0.12em;
+  animation: truthWordFade 500ms ease-out forwards;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   VERDICT SANCTUM
+   The Final Verdict. Sacred space. The court pronounces.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.verdict-sanctum {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+/* Final Verdict — the court pronouncement */
+
+.final-verdict {
+  border: 1px solid transparent;
+  background:
+    rgba(12, 10, 3, 0.90) padding-box,
+    linear-gradient(
+      145deg,
+      var(--ig-2) 0%,
+      var(--ig-4) 35%,
+      var(--ig-6) 50%,
+      var(--ig-4) 65%,
+      var(--ig-2) 100%
+    ) border-box;
+  border-radius: 3px;
+  padding: 22px 26px;
+}
+
+.verdict-crown {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(212,175,55,.10);
+  flex-wrap: wrap;
+}
+
+.verdict-glyph {
+  color: var(--ig-5);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.verdict-crown-title {
+  color: var(--ig-6);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  flex: 1;
+}
+
+.verdict-format-selector {
+  display: flex;
+  gap: 6px;
+}
+
+.verdict-fmt-btn {
+  background: transparent;
+  border: 1px solid rgba(139,101,8,.40);
+  color: var(--text-dim);
+  padding: 3px 11px;
+  font-size: 10px;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+  letter-spacing: 0.03em;
+}
+
+.verdict-fmt-btn:hover { border-color: var(--ig-4); color: var(--text-muted); }
+
+.verdict-fmt-btn.vfmt-active {
+  background: rgba(212,175,55,.08);
+  border-color: var(--ig-5);
+  color: var(--ig-6);
+}
+
+.verdict-declaration {
+  color: var(--text-sacred);
+  font-size: 13.5px;
+  line-height: 1.85;
   white-space: pre-wrap;
   margin: 0;
 }
 
-.capsule-placeholder {
-  color: var(--text-muted);
-  font-size: 12px;
+.verdict-empty {
+  color: var(--text-dim);
+  font-size: 13px;
   font-style: italic;
   margin: 0;
-  text-align: center;
-  margin-top: auto;
-  margin-bottom: auto;
 }
 
-/* ── Dispatch matrix ──────────────────────────────────────────────────── */
-
-.dispatch-actions-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  flex-shrink: 0;
+.verdict-error {
+  color: rgba(220,100,100,.80);
+  font-size: 13px;
+  padding: 16px 20px;
+  border: 1px solid rgba(200,60,60,.18);
+  border-radius: 3px;
 }
 
-.route-btn {
-  border: 1px solid var(--neon-gold-bright);
-  font-weight: bold;
-  font-size: 11px;
-  padding: 10px 5px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: 0.25s;
-  font-family: inherit;
+/* ── Evidence Taxonomy — The Classified Record ──────────────────────── */
+
+.evidence-taxonomy {
   display: flex;
   flex-direction: column;
+  gap: 24px;
+}
+
+.taxonomy-header {
+  display: flex;
   align-items: center;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.taxonomy-rule {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,.14), transparent);
+  display: block;
+}
+
+.taxonomy-title {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--ig-3);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Evidence Category */
+
+.evidence-category {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.category-mark    { font-size: 15px; flex-shrink: 0; }
+.category-title   { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; }
+.category-count   { font-size: 11px; color: var(--text-dim); }
+
+.category-supported  .category-mark  { color: var(--ig-8); }
+.category-supported  .category-title { color: var(--ig-7); }
+.category-narratives .category-mark  { color: var(--ig-6); }
+.category-narratives .category-title { color: var(--ig-5); }
+.category-disputed   .category-mark  { color: var(--ig-4); }
+.category-disputed   .category-title { color: var(--text-muted); }
+.category-unverified .category-mark  { color: var(--ig-2); }
+.category-unverified .category-title { color: var(--text-dim); }
+
+.category-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 22px; /* indent below the mark */
+}
+
+/* Evidence Entry — not a card, a court record */
+
+.evidence-entry {
+  border-right: 2px solid var(--ig-2);
+  padding: 10px 14px;
+  background: rgba(8,7,2,.55);
+  display: flex;
+  flex-direction: column;
   gap: 5px;
 }
 
-.btn-icon { font-size: 16px; }
+.category-supported  .evidence-entry { border-right-color: var(--ig-7); }
+.category-narratives .evidence-entry { border-right-color: var(--ig-5); }
+.category-disputed   .evidence-entry { border-right-color: var(--ig-3); }
+.category-unverified .evidence-entry { border-right-color: var(--ig-1); }
+
+.entry-tier {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.entry-text {
+  font-size: 13px;
+  color: var(--text-main);
+  line-height: 1.68;
+  margin: 0;
+}
+
+.entry-score {
+  font-size: 9px;
+  color: var(--text-ghost);
+  font-family: monospace;
+  text-align: left;
+}
+
+/* Open Questions */
+
+.open-questions {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid rgba(139,101,8,.20);
+  border-radius: 2px;
+  background: rgba(8,7,2,.40);
+}
+
+.oq-mark { color: var(--text-dim); font-size: 16px; flex-shrink: 0; font-weight: 700; }
+.oq-text  { color: var(--text-dim); font-size: 12px; line-height: 1.65; font-style: italic; }
+
+/* ── Article VII: Knowledge Tier labels (tier-*) ────────────────────── */
+
+.tier-verified    { color: var(--ig-8); }
+.tier-primary     { color: var(--ig-7); }
+.tier-consensus   { color: var(--ig-6); }
+.tier-historical  { color: var(--ig-5); }
+.tier-scholarly   { color: var(--ig-4); }
+.tier-circulated  { color: var(--text-muted); }
+.tier-oral        { color: var(--text-dim); }
+.tier-legend      { color: var(--text-ghost); }
+
+/* ── Court Dispatch — Send to other chambers ────────────────────────── */
+
+.court-dispatch {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(212,175,55,.08);
+  flex-wrap: wrap;
+}
+
+.dispatch-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-ghost);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.dispatch-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dispatch-btn {
+  border: 1px solid;
+  padding: 7px 18px;
+  border-radius: 2px;
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.20s, border-color 0.20s, box-shadow 0.20s;
+  letter-spacing: 0.04em;
+}
 
 .push-qiyamah {
-  background: rgba(40, 10, 10, 0.8);
-  color: #ff6b6b;
-  border-color: #8b0000;
+  background: rgba(30,8,8,.80);
+  color: #c06060;
+  border-color: #5a0000;
 }
-.push-qiyamah:hover:not(:disabled) {
-  background: rgba(255, 0, 0, 0.15);
-  border-color: #ff4444;
-  box-shadow: 0 0 15px rgba(255, 68, 68, 0.4);
-  transform: translateY(-2px);
+.push-qiyamah:hover {
+  background: rgba(180,0,0,.12);
+  border-color: #cc3333;
+  box-shadow: 0 0 12px rgba(220,60,60,.25);
 }
 
 .push-vault {
-  background: rgba(10, 8, 5, 0.9);
-  color: var(--neon-gold-primary);
-  border-color: var(--neon-gold-dim);
+  background: transparent;
+  color: var(--ig-4);
+  border-color: var(--ig-2);
 }
-.push-vault:hover:not(:disabled) {
-  background: rgba(212, 175, 55, 0.1);
-  border-color: var(--neon-gold-bright);
-  box-shadow: 0 0 10px var(--neon-gold-shadow);
-  transform: translateY(-2px);
+.push-vault:hover {
+  background: rgba(212,175,55,.06);
+  border-color: var(--ig-4);
 }
 
 .push-makman {
-  background: linear-gradient(135deg, var(--neon-gold-dim), var(--neon-gold-primary));
+  background: linear-gradient(135deg, var(--ig-2), var(--ig-3));
   color: #000;
+  border-color: var(--ig-3);
 }
-.push-makman:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--neon-gold-primary), #fff8dc);
-  box-shadow: 0 0 20px var(--neon-gold-bright);
-  transform: translateY(-2px);
-}
-
-.route-btn:disabled {
-  background: #1a1a1a;
-  border-color: #333;
-  color: #555;
-  cursor: not-allowed;
-  box-shadow: none;
-  transform: none;
-  opacity: 0.5;
+.push-makman:hover {
+  background: linear-gradient(135deg, var(--ig-4), var(--ig-6));
+  border-color: var(--ig-5);
 }
 
-/* ── Scrollbar ────────────────────────────────────────────────────────── */
+/* ── Scrollbar ─────────────────────────────────────────────────────── */
 
-.custom-scroll::-webkit-scrollbar       { width: 4px; }
+.custom-scroll::-webkit-scrollbar       { width: 3px; }
 .custom-scroll::-webkit-scrollbar-track  { background: transparent; }
-.custom-scroll::-webkit-scrollbar-thumb  { background: var(--neon-gold-dim); border-radius: 10px; }
+.custom-scroll::-webkit-scrollbar-thumb  { background: var(--ig-2); border-radius: 10px; }
 
-/* ── Utility ──────────────────────────────────────────────────────────── */
+/* ── Responsive ────────────────────────────────────────────────────── */
 
-@keyframes pulse {
-  0%   { opacity: 1;   }
-  50%  { opacity: 0.5; }
-  100% { opacity: 1;   }
+@media (max-width: 900px) {
+  .knowledge-archives { width: 175px; }
+  .deliberation-hall  { padding: 20px; }
 }
 
-/* ── Responsive ───────────────────────────────────────────────────────── */
-
-@media (max-width: 1100px) {
-  .chamber-grid-layout {
-    grid-template-columns: 240px 1fr 300px;
-    gap: 14px;
-  }
-}
-
-@media (max-width: 820px) {
-  .chamber-grid-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr auto;
+@media (max-width: 680px) {
+  .imperial-court-layout { flex-direction: column; overflow-y: auto; }
+  .knowledge-archives {
+    width: 100%;
     height: auto;
-    min-height: 100vh;
-    overflow-y: auto;
+    border-left: none;
+    border-bottom: 1px solid var(--ig-2);
   }
-  .control-panel {
-    height: auto;
-    min-height: 200px;
-  }
-  .center-stage {
-    height: auto;
-    min-height: 50vh;
-  }
-  .oracle-display {
-    height: 300px;
-  }
-  .azma-companion {
-    top: 14px;
-    max-width: 90vw;
-  }
+  .court-space { min-height: 70vh; }
+  .deliberation-hall { padding: 16px; }
+  .companion-text { font-size: 11px; }
+  .crown-bar { padding: 0 10px; }
 }

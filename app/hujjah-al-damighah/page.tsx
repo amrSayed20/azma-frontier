@@ -1,7 +1,7 @@
 /**
  * AZMA OS – Hujjah Al-Damighah
- * Phase 11 · Phase Three · First Living Chamber
- * Where Evidence Is Born.
+ * The Imperial Court of Knowledge.
+ * Constitutional Amendment I — Final Experience Reconstruction.
  */
 
 'use client';
@@ -9,139 +9,240 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import './hujjah-al-damighah.css';
-import { runInvestigation, type InvestigationDTO } from './actions';
+import { runInvestigation, type InvestigationDTO, type EvidenceItemDTO } from './actions';
+import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
 
-// ── Domain catalogue ──────────────────────────────────────────────────────
+// ── Knowledge Domain Catalogue ────────────────────────────────────────────
 
 const KNOWLEDGE_DOMAINS = [
-  { id: 'religious',  nameAr: 'ديني (عقائدي/فقهي)' },
-  { id: 'medical',    nameAr: 'طبي (تشريحي/حديث)' },
-  { id: 'scientific', nameAr: 'علمي (فيزياء/فلك)' },
-  { id: 'history',    nameAr: 'تاريخي (وثائقي/مخطوطات)' },
-  { id: 'culture',    nameAr: 'ثقافي (فلسفة/أدب)' },
+  { id: 'religious',  nameAr: 'ديني', fullAr: 'عقائدي / فقهي' },
+  { id: 'medical',    nameAr: 'طبي',  fullAr: 'تشريحي / حديث'  },
+  { id: 'scientific', nameAr: 'علمي', fullAr: 'فيزياء / فلك'   },
+  { id: 'history',    nameAr: 'تاريخ', fullAr: 'وثائقي / مخطوطات' },
+  { id: 'culture',    nameAr: 'ثقافة', fullAr: 'فلسفة / أدب'   },
 ] as const;
 
-type DomainId = typeof KNOWLEDGE_DOMAINS[number]['id'];
+type DomainId     = typeof KNOWLEDGE_DOMAINS[number]['id'];
 type OutputFormat = 'short' | 'medium' | 'long';
 type Phase = 'entering' | 'idle' | 'examining' | 'stillness' | 'revealing' | 'complete';
+type Mood  = 'idle' | 'preparing' | 'investigating' | 'silence' | 'revelation' | 'reflection';
+type KnowledgeTier =
+  | 'verified'
+  | 'primary'
+  | 'consensus'
+  | 'historical'
+  | 'scholarly'
+  | 'circulated'
+  | 'oral'
+  | 'legend';
 
-// ── AZMA OS companion script ──────────────────────────────────────────────
+interface KnowledgeLayer { labelAr: string; tier: KnowledgeTier }
+
+// ── AZMA OS Companion Script ──────────────────────────────────────────────
 
 const COMPANION = {
-  entry:    'أنت في المكان الذي تُولد فيه الأدلة. أحضر فكرتك. ما تحمله عند خروجك لن يُقهر. ما الذي تحاول إثباته؟',
-  idle:     'خذ وقتك. الدليل لا يُستعجل.',
-  complete: 'ها هو ما يمكن الدفاع عنه.',
-  departure:'تفكيرك الآن مختلف. هذا هو المقصود.',
+  entry:     'أنت في المكان الذي تُولد فيه الأدلة. ما الذي تريد إثباته؟',
+  idle:      'المحكمة تنتظر. الدليل لا يُستعجل.',
+  complete:  'القضية فُحصت. ما تحمله الآن يمكن الدفاع عنه.',
+  departure: 'تفكيرك الآن مختلف. هذا هو المقصود.',
 } as const;
 
-// ── Helpers ───────────────────────────────────────────────────────────────
+// ── Article VII: Knowledge Layer Classification (No Provider Names) ────────
 
-function confidenceLabelAr(level: string): string {
-  switch (level) {
-    case 'HIGH':       return 'دليل قاطع';
-    case 'MODERATE':   return 'دليل محتمل';
-    case 'LOW':        return 'دليل أولي';
-    default:           return 'غير مُحدد';
+function resolveKnowledgeLayer(score: number, level: string, domain: DomainId): KnowledgeLayer {
+  if (level === 'HIGH' && score >= 0.85) return { labelAr: 'دليل موثَّق',        tier: 'verified'    };
+  if (level === 'HIGH' && score >= 0.75) return { labelAr: 'سجلّ أوّلي',          tier: 'primary'     };
+  if (level === 'HIGH' || score >= 0.65) {
+    if (domain === 'scientific' || domain === 'medical')
+                                          return { labelAr: 'إجماع علمي',          tier: 'consensus'   };
+    return                                       { labelAr: 'تفسير علمي',          tier: 'scholarly'   };
   }
+  if (score >= 0.50) {
+    if (domain === 'history')             return { labelAr: 'رواية تاريخية',       tier: 'historical'  };
+    return                                       { labelAr: 'تفسير علمي',          tier: 'scholarly'   };
+  }
+  if (score >= 0.35) {
+    if (domain === 'religious')           return { labelAr: 'تراث شفهي',           tier: 'oral'        };
+    return                                       { labelAr: 'ادعاء منتشر',         tier: 'circulated'  };
+  }
+  if (domain === 'culture')               return { labelAr: 'رواية ثقافية',        tier: 'oral'        };
+  return                                         { labelAr: 'موروث وأسطورة',       tier: 'legend'      };
 }
 
-function synthesizeCapsule(
+// ── Evidence Taxonomy (Final Verdict Categories) ──────────────────────────
+
+interface EvidenceBuckets {
+  supported:  EvidenceItemDTO[];
+  narratives: EvidenceItemDTO[];
+  disputed:   EvidenceItemDTO[];
+  unverified: EvidenceItemDTO[];
+}
+
+function bucketEvidence(dto: InvestigationDTO): EvidenceBuckets {
+  const ev = dto.evidence;
+  return {
+    supported:  ev.filter(e => e.confidenceLevel === 'HIGH'     && e.confidenceScore >= 0.80),
+    narratives: ev.filter(e => (e.confidenceLevel === 'HIGH'    && e.confidenceScore <  0.80)
+                              || (e.confidenceLevel === 'MODERATE' && e.confidenceScore >= 0.60)),
+    disputed:   ev.filter(e =>  e.confidenceLevel === 'MODERATE' && e.confidenceScore <  0.60),
+    unverified: ev.filter(e =>  e.confidenceLevel === 'LOW'),
+  };
+}
+
+// ── Verdict Text (The Final Pronouncement) ─────────────────────────────────
+
+function verdictText(
   dto: InvestigationDTO,
   format: OutputFormat,
   query: string,
+  domain: DomainId,
 ): string {
   if (!dto.success || dto.evidence.length === 0) {
-    return 'لم يُعثر على أدلة كافية. حاول صياغة الفكرة بطريقة مختلفة.';
+    return 'لا يوجد ما يكفي من الأدلة في المستودعات المعرفية.\nتُوصي المحكمة بإعادة صياغة القضية.';
   }
+
   const ev = dto.evidence;
-  const pct = (score: number) => `${Math.round(score * 100)}%`;
+  const buckets = bucketEvidence(dto);
+  const pct = (s: number) => `${Math.round(s * 100)}%`;
+  const topLayer = resolveKnowledgeLayer(ev[0]!.confidenceScore, ev[0]!.confidenceLevel, domain);
 
   if (format === 'short') {
-    return `الحجة المركزية:\n"${query}"\n\nتم فحصها عبر ${dto.totalSourcesScanned} مرجع.\nمؤشر الثقة: ${pct(ev[0]!.confidenceScore)}\nالمصدر: ${ev[0]!.sourceProvider}`;
+    if (buckets.supported.length > 0) {
+      return `القضية تستند إلى ${buckets.supported.length} دليل قاطع. مستوى الثقة: ${pct(dto.averageEvidenceScore)}.`;
+    }
+    return `القضية تستند إلى طبقات معرفية متعددة. أعلى طبقة: ${topLayer.labelAr}. الثقة: ${pct(dto.averageEvidenceScore)}.`;
   }
+
   if (format === 'medium') {
-    return ev.slice(0, 2).map((e, i) =>
-      `الدليل ${i + 1}:\n"${query}"\n— ${e.sourceProvider} (${pct(e.confidenceScore)})`
-    ).join('\n\n');
+    return [
+      `بعد التداول عبر ${dto.totalSourcesScanned} طبقة معرفية:`,
+      '',
+      buckets.supported.length > 0
+        ? `وُجدت ${buckets.supported.length} أدلة قاطعة تدعم القضية.`
+        : 'لم تُوجد أدلة قاطعة في هذه الطبقة.',
+      buckets.disputed.length > 0
+        ? `${buckets.disputed.length} ادعاءات تحتاج إلى تمحيص إضافي.`
+        : null,
+      `معدل الثقة العام: ${pct(dto.averageEvidenceScore)}.`,
+    ].filter(Boolean).join('\n');
   }
+
+  // Complete — full epistemic record
+  return [
+    'الحكم المفصَّل:',
+    '',
+    `فُحصت القضية عبر ${dto.totalSourcesScanned} طبقة معرفية.`,
+    `معدل الثقة الكلي: ${pct(dto.averageEvidenceScore)}`,
+    '',
+    buckets.supported.length  > 0 ? `● أدلة قاطعة: ${buckets.supported.length}`   : '○ لا أدلة قاطعة',
+    buckets.narratives.length > 0 ? `◐ روايات داعمة: ${buckets.narratives.length}` : null,
+    buckets.disputed.length   > 0 ? `◑ متنازع عليها: ${buckets.disputed.length}`   : null,
+    buckets.unverified.length > 0 ? `○ غير متحقق منها: ${buckets.unverified.length}` : null,
+    '',
+    'راجع التصنيف الكامل أدناه.',
+  ].filter(s => s !== null && s !== undefined).join('\n') as string;
+}
+
+// ── Evidence Category Component ────────────────────────────────────────────
+
+interface EvidenceCategoryProps {
+  titleAr: string;
+  type:    'supported' | 'narratives' | 'disputed' | 'unverified';
+  items:   EvidenceItemDTO[];
+  domain:  DomainId;
+}
+
+function EvidenceCategory({ titleAr, type, items, domain }: EvidenceCategoryProps) {
+  if (items.length === 0) return null;
+
+  const marks: Record<EvidenceCategoryProps['type'], string> = {
+    supported:  '●',
+    narratives: '◐',
+    disputed:   '◑',
+    unverified: '○',
+  };
+
   return (
-    `الفكرة المُقطَّرة:\n"${query}"\n\nفُحصت عبر ${dto.totalSourcesScanned} مرجع.\n\n` +
-    ev.map((e, i) =>
-      `${i + 1}. المصدر: ${e.sourceProvider}\n   الثقة: ${pct(e.confidenceScore)} — ${confidenceLabelAr(e.confidenceLevel)}`
-    ).join('\n\n')
+    <div className={`evidence-category category-${type}`}>
+      <div className="category-header">
+        <span className="category-mark">{marks[type]}</span>
+        <span className="category-title">{titleAr}</span>
+        <span className="category-count">({items.length})</span>
+      </div>
+      <div className="category-items">
+        {items.map((ev, idx) => {
+          const layer = resolveKnowledgeLayer(ev.confidenceScore, ev.confidenceLevel, domain);
+          return (
+            <div
+              key={ev.id}
+              className="evidence-entry"
+              style={{ animationDelay: `${idx * 70}ms` }}
+            >
+              <span className={`entry-tier tier-${layer.tier}`}>{layer.labelAr}</span>
+              <p className="entry-text">&ldquo;{ev.extractedText}&rdquo;</p>
+              <span className="entry-score">{Math.round(ev.confidenceScore * 100)}%</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
-// ── Component ─────────────────────────────────────────────────────────────
+// ── Main Component ─────────────────────────────────────────────────────────
 
 export default function HujjahAlDamighah() {
   const router = useRouter();
 
-  // Phase state machine
-  const [phase, setPhase] = useState<Phase>('entering');
-
-  // Entry veil
-  const [veilReceding, setVeilReceding] = useState(false);
-
-  // AZMA OS companion
+  const [phase, setPhase]                     = useState<Phase>('entering');
+  const [veilReceding, setVeilReceding]       = useState(false);
   const [companionText, setCompanionText]     = useState('');
   const [companionVisible, setCompanionVisible] = useState(false);
+  const [showProveIt, setShowProveIt]         = useState(false);
 
-  // "Prove it." one-time placeholder
-  const [showProveIt, setShowProveIt] = useState(false);
+  const [activeDomain, setActiveDomain]   = useState<DomainId>('religious');
+  const [query, setQuery]                 = useState('');
+  const [outputFormat, setOutputFormat]   = useState<OutputFormat>('short');
+  const [result, setResult]               = useState<InvestigationDTO | null>(null);
+  const [verdict, setVerdict]             = useState('');
 
-  // User input
-  const [activeDomain, setActiveDomain] = useState<DomainId>('religious');
-  const [query, setQuery]               = useState('');
-  const [outputFormat, setOutputFormat] = useState<OutputFormat>('short');
+  const idleTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const proveItTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Intelligence results
-  const [result, setResult]             = useState<InvestigationDTO | null>(null);
-  const [capsule, setCapsule]           = useState('');
+  // ── Article VI: Mood (Article VI — emotional state of the court) ───────
 
-  // Refs
-  const idleTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const proveItTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mood: Mood =
+    phase === 'examining'  ? 'investigating' :
+    phase === 'stillness'  ? 'silence'       :
+    phase === 'revealing'  ? 'revelation'    :
+    phase === 'complete'   ? 'reflection'    :
+    (phase === 'idle' && query.length > 0) ? 'preparing' :
+    'idle';
 
-  // ── Companion helpers ──────────────────────────────────────────────────
+  // ── Companion ──────────────────────────────────────────────────────────
 
   const showCompanion = useCallback((text: string) => {
     setCompanionText(text);
     setCompanionVisible(true);
   }, []);
 
-  const hideCompanion = useCallback(() => {
-    setCompanionVisible(false);
-  }, []);
-
-  // ── Idle timer ─────────────────────────────────────────────────────────
+  const hideCompanion = useCallback(() => setCompanionVisible(false), []);
 
   const resetIdleTimer = useCallback(() => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    idleTimerRef.current = setTimeout(() => {
-      showCompanion(COMPANION.idle);
-    }, 30_000);
+    idleTimerRef.current = setTimeout(() => showCompanion(COMPANION.idle), 30_000);
   }, [showCompanion]);
 
   // ── Entry sequence ─────────────────────────────────────────────────────
 
   useEffect(() => {
-    // Veil recedes (reveals the chamber)
     const t1 = setTimeout(() => setVeilReceding(true), 60);
-
-    // Phase transitions to idle after reveal
     const t2 = setTimeout(() => setPhase('idle'), 700);
-
-    // AZMA OS speaks the entry message
     const t3 = setTimeout(() => showCompanion(COMPANION.entry), 900);
-
-    // "Prove it." appears once
     const t4 = setTimeout(() => {
       setShowProveIt(true);
       proveItTimerRef.current = setTimeout(() => setShowProveIt(false), 3_800);
     }, 1_500);
-
-    // Start idle timer
     const t5 = setTimeout(() => resetIdleTimer(), 700);
 
     return () => {
@@ -152,373 +253,361 @@ export default function HujjahAlDamighah() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Submit / Investigation ─────────────────────────────────────────────
+  // ── Case Submission ────────────────────────────────────────────────────
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmedQuery = query.trim();
     if (!trimmedQuery || phase === 'examining' || phase === 'stillness') return;
 
-    // Companion retreats — chamber takes over
     hideCompanion();
     setPhase('examining');
     setResult(null);
-    setCapsule('');
+    setVerdict('');
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
 
     const dto = await runInvestigation(trimmedQuery, activeDomain);
 
-    // Constitutional stillness moment before revelation (~500ms)
+    // Article IX — The Moment of Truth: silence before certainty
     setPhase('stillness');
     await new Promise<void>((resolve) => setTimeout(resolve, 500));
 
-    // Reveal evidence
     setPhase('revealing');
     setResult(dto);
     if (dto.success) {
-      setCapsule(synthesizeCapsule(dto, outputFormat, trimmedQuery));
+      setVerdict(verdictText(dto, outputFormat, trimmedQuery, activeDomain));
     }
 
-    // After gravity-settle animations complete, companion speaks
     setTimeout(() => {
       setPhase('complete');
       showCompanion(COMPANION.complete);
     }, 920);
   }
 
-  // ── Domain change ──────────────────────────────────────────────────────
+  // ── Domain Change ──────────────────────────────────────────────────────
 
   function handleDomainChange(id: DomainId) {
     setActiveDomain(id);
     if (phase === 'complete') {
       setResult(null);
-      setCapsule('');
+      setVerdict('');
       setPhase('idle');
       hideCompanion();
     }
     resetIdleTimer();
   }
 
-  // ── Format change ──────────────────────────────────────────────────────
+  // ── Format Change ──────────────────────────────────────────────────────
 
   function handleFormatChange(fmt: OutputFormat) {
     setOutputFormat(fmt);
     if (result?.success) {
-      setCapsule(synthesizeCapsule(result, fmt, query.trim()));
+      setVerdict(verdictText(result, fmt, query.trim(), activeDomain));
     }
   }
 
-  // ── Derived state ──────────────────────────────────────────────────────
+  // ── Derived ────────────────────────────────────────────────────────────
 
-  const isExamining  = phase === 'examining' || phase === 'stillness';
-  const hasEvidence  = (phase === 'revealing' || phase === 'complete') && result?.success;
+  const isExamining = phase === 'examining' || phase === 'stillness';
+  const hasVerdict  = (phase === 'revealing' || phase === 'complete') && result !== null;
 
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <main className="hujjah-viewport breathing" dir="rtl">
+    <main className={`hujjah-viewport breathing mood-${mood}`} dir="rtl">
 
-      {/* ── Entry veil — radial recession ─────────────────────────────── */}
+      {/* ── Entry Veil ────────────────────────────────────────────────── */}
       <div
         className={`entry-veil ${veilReceding ? 'veil-receding' : ''}`}
         aria-hidden="true"
       />
 
-      {/* ── Atmospheric background ─────────────────────────────────────── */}
+      {/* ── Atmospheric Background ────────────────────────────────────── */}
       <div className="neon-layer" aria-hidden="true">
         <div className="cyber-grid" />
         <div className="ambient-depth-gradient" />
+        <div className="ambient-secondary-glow" />
       </div>
 
-      {/* ── AZMA OS Living Companion ──────────────────────────────────── */}
-      <div
-        className={`azma-companion ${companionVisible && companionText ? 'companion-visible' : 'companion-hidden'}`}
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        <span className="companion-sigil" aria-hidden="true">✦</span>
-        <span className="companion-text">{companionText}</span>
+      {/* ── Article I/II: Crown Bar — Companion has its own space ─────── */}
+      <div className="crown-bar">
+        <LivingCompanion message={companionText} visible={companionVisible} />
+        <div className="crown-nav">
+          <button
+            className="sovereign-exit-btn"
+            onClick={() => {
+              showCompanion(COMPANION.departure);
+              setTimeout(() => router.push('/ras-amr'), 800);
+            }}
+          >
+            ⮜ العودة
+          </button>
+        </div>
       </div>
 
-      {/* ── Navigation ────────────────────────────────────────────────── */}
-      <div className="top-nav-links">
-        <button
-          className="sovereign-exit-btn"
-          onClick={() => {
-            showCompanion(COMPANION.departure);
-            setTimeout(() => router.push('/ras-amr'), 800);
-          }}
-        >
-          ⮜ العودة لرأس الأمر
-        </button>
-      </div>
+      {/* ── Imperial Court Layout ─────────────────────────────────────── */}
+      <div className="imperial-court-layout">
 
-      {/* ── Three-column chamber grid ─────────────────────────────────── */}
-      <div className="chamber-grid-layout">
+        {/* ── Knowledge Archives — left alcove ────────────────────────── */}
+        <aside className="knowledge-archives living-frame-archives">
 
-        {/* ── LEFT: Knowledge Sources ─────────────────────────────────── */}
-        <aside className="control-panel domain-desk neon-border">
-          <header className="panel-header">
-            <div className="neon-tag">KNOWLEDGE SOURCES</div>
-            <h2>مصادر المعرفة</h2>
-          </header>
+          <div className="archives-header">
+            <div className="archives-classification">KNOWLEDGE ARCHIVES</div>
+            <h2 className="archives-title">أرشيف المعرفة</h2>
+          </div>
 
-          {/* Domain selector — always visible */}
-          <div className="domains-container custom-scroll">
+          <div className="archive-domains">
             {KNOWLEDGE_DOMAINS.map((domain) => (
-              <button
+              <div
                 key={domain.id}
-                className={`domain-btn ${activeDomain === domain.id ? 'active' : ''}`}
+                className={`archive-domain ${activeDomain === domain.id ? 'archive-domain-active' : ''}`}
                 onClick={() => handleDomainChange(domain.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && handleDomainChange(domain.id)}
+                aria-pressed={activeDomain === domain.id}
               >
-                <span className="domain-indicator" aria-hidden="true" />
-                {domain.nameAr}
-              </button>
+                <span className="archive-domain-mark" aria-hidden="true">◈</span>
+                <div className="archive-domain-labels">
+                  <span className="archive-domain-name">{domain.nameAr}</span>
+                  <span className="archive-domain-sub">{domain.fullAr}</span>
+                </div>
+              </div>
             ))}
           </div>
 
-          {/* Evidence source cards — appear with gravity after examination */}
-          {hasEvidence && result!.evidence.length > 0 && (
-            <div className="evidence-sources-section">
-              <div className="sources-divider" />
-              <p className="sources-label">الأدلة المستخرجة ({result!.totalSourcesScanned} مرجع)</p>
-              <div className="evidence-sources-list custom-scroll">
-                {result!.evidence.map((ev, idx) => (
+          <div className="archive-divider" />
+
+          {/* Archive Records — evidence fragments after deliberation */}
+          {hasVerdict && result!.evidence.length > 0 && (
+            <div className="archive-records custom-scroll">
+              <div className="archive-records-label">سجلات الجلسة</div>
+              {result!.evidence.map((ev, idx) => {
+                const layer = resolveKnowledgeLayer(ev.confidenceScore, ev.confidenceLevel, activeDomain);
+                return (
                   <div
                     key={ev.id}
-                    className="ev-source-card"
-                    style={{ animationDelay: `${idx * 60}ms` }}
+                    className={`archive-record tier-record-${layer.tier}`}
+                    style={{ animationDelay: `${idx * 55}ms` }}
                   >
-                    <span className={`ev-badge ev-badge-${ev.confidenceLevel.toLowerCase()}`}>
-                      {confidenceLabelAr(ev.confidenceLevel)}
+                    <span className={`archive-record-tier tier-${layer.tier}`}>
+                      {layer.labelAr}
                     </span>
-                    <p className="ev-source-text">
-                      {ev.contextWindow
-                        ? ev.contextWindow.slice(0, 100) + '...'
-                        : ev.extractedText.slice(0, 100) + '...'}
+                    <p className="archive-record-excerpt">
+                      {(ev.contextWindow || ev.extractedText).slice(0, 55)}...
                     </p>
-                    <span className="ev-provider">— {ev.sourceProvider}</span>
+                    <span className="archive-record-score">
+                      {Math.round(ev.confidenceScore * 100)}%
+                    </span>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
           )}
 
-          {/* Examination state — sources loading indicator */}
+          {/* Scanning indicator during examination */}
           {isExamining && (
-            <div className="sources-examining-state">
-              <div className="sources-divider" />
-              <p className="sources-examining-text">يتم الاستعلام من المستودعات...</p>
-              <div className="sources-loading-bars">
-                {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    className="loading-bar"
-                    style={{ animationDelay: `${i * 200}ms` }}
-                  />
+            <div className="archive-scanning">
+              <div className="scanning-label">تُفهرَس الأرشيفات</div>
+              <div className="scanning-bars">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="scanning-bar" style={{ animationDelay: `${i * 200}ms` }} />
                 ))}
               </div>
             </div>
           )}
         </aside>
 
-        {/* ── CENTER: Evidence Space ───────────────────────────────────── */}
-        <section
-          className={`center-stage evidence-space ${isExamining ? 'examining' : ''}`}
-          role="main"
-        >
-          {/* Knowledge Pulse — intellectually alive during examination */}
-          <div className="knowledge-pulse-layer" aria-hidden="true" />
+        {/* ── Main Court Space ─────────────────────────────────────────── */}
+        <section className="court-space">
 
-          {/* Inquiry form */}
-          <div className="evidence-form-wrapper">
-            <form
-              className="oracle-search-form neon-border-gold"
-              onSubmit={handleSubmit}
-            >
-              <div className="oracle-input-wrapper">
+          {/* Court Frieze — architectural header */}
+          <div className="court-frieze">
+            <span className="frieze-rule" aria-hidden="true" />
+            <span className="frieze-glyph" aria-hidden="true">⚖</span>
+            <span className="frieze-title">المحكمة الإمبراطورية للمعرفة</span>
+            <span className="frieze-glyph" aria-hidden="true">⚖</span>
+            <span className="frieze-rule" aria-hidden="true" />
+          </div>
+
+          {/* Case Podium — formal declaration surface */}
+          <div className="case-podium">
+            <div className="podium-inscription">قدّم قضيتك للمحكمة</div>
+            <form className="case-form" onSubmit={handleSubmit}>
+              <div className="case-declaration-wrapper">
                 <input
                   type="text"
-                  className="oracle-input"
+                  className="case-declaration"
                   value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    resetIdleTimer();
-                  }}
-                  placeholder="أدخل فكرتك السيادية..."
+                  onChange={(e) => { setQuery(e.target.value); resetIdleTimer(); }}
+                  placeholder="فكرتك، ادعاءك، سؤالك..."
                   disabled={isExamining}
                   autoComplete="off"
-                  aria-label="الفكرة المراد إثباتها"
+                  aria-label="القضية المراد رفعها"
                 />
-                {/* "Prove it." — one-time atmospheric placeholder */}
                 {showProveIt && !query && (
-                  <span className="prove-it-overlay" aria-hidden="true">
-                    أثبت ذلك.
-                  </span>
+                  <span className="prove-it-overlay" aria-hidden="true">أثبت ذلك.</span>
                 )}
               </div>
               <button
                 type="submit"
-                className={`oracle-submit-btn ${isExamining ? 'btn-examining' : ''}`}
+                className={`imperial-seal-btn ${isExamining ? 'seal-examining' : ''}`}
                 disabled={isExamining || !query.trim()}
-                aria-label={isExamining ? 'جارٍ الفحص' : 'فحص الفكرة'}
+                aria-label={isExamining ? 'جارٍ التداول' : 'رفع القضية'}
               >
-                {isExamining ? 'جارٍ الفحص' : 'فحص ✦'}
+                {isExamining
+                  ? <><span className="seal-spinner" aria-hidden="true" /><span>يتداول المحرك</span></>
+                  : <><span aria-hidden="true">⚖</span><span>رفع القضية</span></>
+                }
               </button>
             </form>
           </div>
 
-          {/* Stillness moment — truth deserves silence before revelation */}
-          {phase === 'stillness' && (
-            <div className="stillness-moment" aria-hidden="true">
-              <div className="stillness-line" />
-            </div>
-          )}
+          {/* Deliberation Hall — the active space */}
+          <div className="deliberation-hall custom-scroll">
 
-          {/* Evidence display area */}
-          <div className="oracle-display custom-scroll neon-border">
-
-            {/* Idle state */}
-            {(phase === 'entering' || (phase === 'idle' && !result)) && (
-              <div className="empty-state">
-                <p>المحرك في وضع الاستعداد.</p>
-                <p className="empty-subtext">الدليل لا يُطلب. يُبنى.</p>
+            {/* Idle — court awaits */}
+            {(phase === 'entering' || phase === 'idle') && !result && (
+              <div className="court-idle-state">
+                <div className="idle-seal" aria-hidden="true">⚖</div>
+                <p className="idle-inscription">المحكمة في انتظار القضية</p>
+                <p className="idle-subtext">الدليل لا يُطلب. يُبنى.</p>
               </div>
             )}
 
-            {/* Examining state */}
+            {/* Examining — deliberation in progress */}
             {phase === 'examining' && (
-              <div className="examining-state" aria-live="polite">
-                <div className="examining-pulse-ring" aria-hidden="true" />
-                <p className="examining-text">يفحص المحرك المستودعات...</p>
+              <div className="court-deliberating" aria-live="polite">
+                <div className="deliberation-ring" aria-hidden="true" />
+                <p className="deliberation-inscription">المحكمة تتداول الطبقات المعرفية...</p>
               </div>
             )}
 
-            {/* Stillness state */}
+            {/* Article IX — Stillness: truth deserves silence */}
             {phase === 'stillness' && (
-              <div className="stillness-state" aria-hidden="true">
-                <div className="stillness-divider-line" />
+              <div className="moment-of-truth" aria-hidden="true">
+                <div className="truth-rule" />
+                <span className="truth-word">لحظة...</span>
+                <div className="truth-rule" />
               </div>
             )}
 
-            {/* Error state */}
-            {(phase === 'revealing' || phase === 'complete') && result && !result.success && (
-              <div className="error-state" role="alert">
-                <p>{result.error ?? 'تعذّر الاتصال بمحركات المعرفة.'}</p>
-              </div>
-            )}
+            {/* Verdict Sanctum — the Final Verdict */}
+            {hasVerdict && result && (
+              <div className="verdict-sanctum">
 
-            {/* Evidence results */}
-            {hasEvidence && result!.evidence.length > 0 && (
-              <div className="results-list" role="list">
-                {result!.evidence.map((ev, idx) => (
-                  <article
-                    key={ev.id}
-                    className={`result-card ev-result-card ev-card-${ev.confidenceLevel.toLowerCase()}`}
-                    style={{ animationDelay: `${idx * 60}ms` }}
-                    role="listitem"
-                  >
-                    <span className={`ev-result-badge ev-badge-${ev.confidenceLevel.toLowerCase()}`}>
-                      {confidenceLabelAr(ev.confidenceLevel)}
-                    </span>
-                    <p className="result-text ev-result-text">
-                      &ldquo;{ev.extractedText}&rdquo;
-                    </p>
-                    <div className="result-meta">
-                      <span className="result-source">{ev.sourceProvider}</span>
-                      <span className="ev-score">
-                        {Math.round(ev.confidenceScore * 100)}%
-                      </span>
+                {/* Error */}
+                {!result.success && (
+                  <div className="verdict-error" role="alert">
+                    <p>{result.error ?? 'تعذّر الاتصال بالمستودعات المعرفية.'}</p>
+                  </div>
+                )}
+
+                {/* Final Verdict — the court pronouncement */}
+                {result.success && (
+                  <div className="final-verdict living-frame-verdict">
+                    <div className="verdict-crown">
+                      <span className="verdict-glyph" aria-hidden="true">⚖</span>
+                      <span className="verdict-crown-title">الحكم النهائي</span>
+                      <div className="verdict-format-selector">
+                        {(['short', 'medium', 'long'] as const).map((fmt) => (
+                          <button
+                            key={fmt}
+                            className={`verdict-fmt-btn ${outputFormat === fmt ? 'vfmt-active' : ''}`}
+                            onClick={() => handleFormatChange(fmt)}
+                          >
+                            {fmt === 'short' ? 'موجز' : fmt === 'medium' ? 'مفصَّل' : 'كامل'}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </article>
-                ))}
+                    {verdict
+                      ? <p className="verdict-declaration">{verdict}</p>
+                      : <p className="verdict-empty">لا توجد أدلة كافية لإصدار حكم.</p>
+                    }
+                  </div>
+                )}
+
+                {/* Evidence Taxonomy — the full classified record */}
+                {result.success && result.evidence.length > 0 && (() => {
+                  const buckets = bucketEvidence(result);
+                  return (
+                    <div className="evidence-taxonomy">
+                      <div className="taxonomy-header">
+                        <span className="taxonomy-rule" />
+                        <span className="taxonomy-title">السجل المصنَّف</span>
+                        <span className="taxonomy-rule" />
+                      </div>
+                      <EvidenceCategory
+                        titleAr="الأدلة المؤيدة"
+                        type="supported"
+                        items={buckets.supported}
+                        domain={activeDomain}
+                      />
+                      <EvidenceCategory
+                        titleAr="الروايات الداعمة"
+                        type="narratives"
+                        items={buckets.narratives}
+                        domain={activeDomain}
+                      />
+                      <EvidenceCategory
+                        titleAr="الادعاءات المتنازع عليها"
+                        type="disputed"
+                        items={buckets.disputed}
+                        domain={activeDomain}
+                      />
+                      <EvidenceCategory
+                        titleAr="البيانات غير المتحقق منها"
+                        type="unverified"
+                        items={buckets.unverified}
+                        domain={activeDomain}
+                      />
+                      {buckets.supported.length === 0 && (
+                        <div className="open-questions">
+                          <span className="oq-mark">?</span>
+                          <span className="oq-text">أسئلة مفتوحة — لم تُوجد أدلة قاطعة. القضية تحتاج إلى دراسة إضافية.</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Dispatch — send to other chambers */}
+                {result.success && verdict && (
+                  <div className="court-dispatch">
+                    <span className="dispatch-label">إرسال إلى</span>
+                    <div className="dispatch-btns">
+                      <button
+                        className="dispatch-btn push-qiyamah"
+                        onClick={() => router.push('/qiyamah-chamber')}
+                        aria-label="إرسال إلى غرفة القيامة"
+                      >
+                        القيامة
+                      </button>
+                      <button
+                        className="dispatch-btn push-vault"
+                        onClick={() => router.push('/sovereign-vault-palace')}
+                        aria-label="إرسال إلى الخزانة السيادية"
+                      >
+                        الخزانة
+                      </button>
+                      <button
+                        className="dispatch-btn push-makman"
+                        onClick={() => router.push('/makman-al-ghayah')}
+                        aria-label="إرسال إلى مكمن الغاية"
+                      >
+                        مكمن الغاية
+                      </button>
+                    </div>
+                  </div>
+                )}
+
               </div>
             )}
 
-            {/* Empty evidence (engine returned success but no evidence) */}
-            {hasEvidence && result!.evidence.length === 0 && (
-              <div className="empty-state">
-                <p>لم يُعثر على أدلة كافية.</p>
-                <p className="empty-subtext">حاول صياغة فكرتك بطريقة مختلفة.</p>
-              </div>
-            )}
           </div>
+
         </section>
-
-        {/* ── RIGHT: Distillation Engine ──────────────────────────────── */}
-        <aside
-          className={`control-panel synthesis-desk neon-border ${isExamining ? 'distillation-active' : ''}`}
-        >
-          <header className="panel-header">
-            <div className="neon-tag">DISTILLATION ENGINE</div>
-            <h2>محرك التقطير</h2>
-          </header>
-
-          {/* Output format selector */}
-          <div className="format-selector">
-            <label className="gold-label">حجم الإخراج:</label>
-            <div className="format-tabs">
-              {(['short', 'medium', 'long'] as const).map((fmt) => (
-                <button
-                  key={fmt}
-                  className={`f-tab ${outputFormat === fmt ? 'active' : ''}`}
-                  onClick={() => handleFormatChange(fmt)}
-                >
-                  {fmt === 'short' ? 'مكثّف' : fmt === 'medium' ? 'موسّع' : 'شامل'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Distilled evidence capsule */}
-          <div className="synthesis-workspace">
-            <label className="gold-label">الكبسولة المقطّرة:</label>
-
-            <div className={`distillation-capsule ${isExamining ? 'capsule-examining' : ''}`}>
-              {isExamining ? (
-                <div className="capsule-examining-state">
-                  <div className="capsule-spinner" aria-hidden="true" />
-                  <span className="capsule-status-text">جارٍ التقطير...</span>
-                </div>
-              ) : capsule ? (
-                <p className="capsule-text">{capsule}</p>
-              ) : (
-                <p className="capsule-placeholder">ستظهر الحجة المقطّرة هنا بعد الفحص.</p>
-              )}
-            </div>
-          </div>
-
-          {/* Sovereign Dispatch Matrix */}
-          <div className="dispatch-actions-grid">
-            <button
-              className="route-btn push-qiyamah"
-              disabled={!capsule}
-              onClick={() => router.push('/qiyamah-chamber')}
-              aria-label="إرسال إلى غرفة القيامة"
-            >
-              <span className="btn-icon" aria-hidden="true">👁️</span>
-              القيامة
-            </button>
-            <button
-              className="route-btn push-vault"
-              disabled={!capsule}
-              onClick={() => router.push('/sovereign-vault-palace')}
-              aria-label="إرسال إلى الخزانة السيادية"
-            >
-              <span className="btn-icon" aria-hidden="true">👑</span>
-              الخزانة
-            </button>
-            <button
-              className="route-btn push-makman"
-              disabled={!capsule}
-              onClick={() => router.push('/makman-al-ghayah')}
-              aria-label="إرسال إلى مكمن الغاية"
-            >
-              <span className="btn-icon" aria-hidden="true">🚀</span>
-              مكمن الغاية
-            </button>
-          </div>
-        </aside>
 
       </div>
     </main>
