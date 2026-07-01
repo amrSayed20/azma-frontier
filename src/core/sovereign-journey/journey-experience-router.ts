@@ -20,11 +20,17 @@ export class DefaultConversationalAdapter implements JourneyExperienceAdapter {
   readonly adapterId = 'default-conversational';
   readonly adapterType = 'default' as const;
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async presentWelcome(_context: JourneyCompanionContext): Promise<void> {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async presentChapter(_chapter: JourneyChapter, _context: JourneyCompanionContext): Promise<void> {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async presentChapterComplete(_chapter: JourneyChapter, _context: JourneyCompanionContext): Promise<void> {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async presentCompletion(_record: JourneyRecord): Promise<void> {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async presentPause(_record: JourneyRecord): Promise<void> {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async presentResume(_record: JourneyRecord): Promise<void> {}
 }
 
