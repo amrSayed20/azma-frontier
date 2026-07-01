@@ -22,6 +22,7 @@ import type { IntelligenceRuntimeContract } from '../sovereign-intelligence/inte
 import type { SovereignCommandContract } from '../sovereign-command/sovereign-command-contract';
 import type { SovereignIdentityContract } from '../sovereign-identity/sovereign-identity-contract';
 import type { ChamberIntegrationServices } from '../chamber-integration/services/chamber-integration-bootstrap';
+import type { SovereignJourneyEngineContract } from '../sovereign-journey/sovereign-journey-contract';
 
 export interface AzmaOsRuntimeContract {
   readonly version: '1.0.0';
@@ -35,6 +36,9 @@ export interface AzmaOsRuntimeContract {
 
   // Layer 4 — Memory
   readonly kernelLayer4: MemoryLayerContract;
+
+  // Layer 5 — Sovereign Journey Engine
+  readonly sovereignJourney: SovereignJourneyEngineContract;
 
   // Layer 7 — Agent Society
   readonly agentSociety: AgentSocietyLayerContract;

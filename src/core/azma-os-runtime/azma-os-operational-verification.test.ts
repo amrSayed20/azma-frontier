@@ -52,6 +52,7 @@ interface OperationalReadinessReport {
     readonly l2SovereignBus: boolean;
     readonly l3Scheduling: boolean;
     readonly l4Memory: boolean;
+    readonly l5SovereignJourney: boolean;
     readonly l7AgentSociety: boolean;
     readonly l8SovereignIntelligence: boolean;
     readonly l9SovereignCommand: boolean;
@@ -108,6 +109,26 @@ describe('AZMA OS Operational Runtime Verification', () => {
       expect(replayed.length).toBeGreaterThanOrEqual(5);
       // First event must be RUNTIME_STARTED
       expect(replayed[0]!.eventType).toBe('RUNTIME_STARTED');
+    });
+
+    test('Layer 5 Sovereign Journey Engine is initialized with correct contract', () => {
+      expect(os.sovereignJourney.layerName).toBe('SovereignJourneyEngine');
+      expect(os.sovereignJourney.version).toBe('1.0.0');
+      expect(os.sovereignJourney.layerNumber).toBe(5);
+    });
+
+    test('L5 Journey Engine has FIRST_JOURNEY pre-registered', () => {
+      const def = os.sovereignJourney.getJourneyDefinition('FIRST_JOURNEY');
+      expect(def.journeyTypeId).toBe('FIRST_JOURNEY');
+      expect(def.chapterSequence).toHaveLength(7);
+    });
+
+    test('L5 Journey Engine can begin and complete a journey end-to-end', () => {
+      const sid = 'os-verification-journey-session';
+      const record = os.sovereignJourney.beginJourney(sid);
+      expect(record.phase).toBe('WELCOMED');
+      const metrics = os.sovereignJourney.getJourneyMetrics();
+      expect(metrics.totalStarted).toBeGreaterThanOrEqual(1);
     });
 
     test('Layer 3 Scheduling Kernel is initialized with correct contract', () => {
@@ -530,6 +551,7 @@ describe('AZMA OS Operational Runtime Verification', () => {
       const activeAgents = await os.agentSociety.agentRegistryService.getActiveAgents();
 
       const busStats = os.sovereignBus.getStats();
+      const journeyStats = os.sovereignJourney.getStats();
 
       const checks: ReadinessCheck[] = [
         {
@@ -546,6 +568,11 @@ describe('AZMA OS Operational Runtime Verification', () => {
           name: 'L4 Memory Layer online',
           passed: os.kernelLayer4.layerNumber === 4,
           detail: `Layer ${os.kernelLayer4.layerNumber} v${os.kernelLayer4.version}`,
+        },
+        {
+          name: 'L5 Sovereign Journey Engine online',
+          passed: os.sovereignJourney.layerNumber === 5,
+          detail: `Layer ${os.sovereignJourney.layerNumber} v${os.sovereignJourney.version}, ${journeyStats.totalSessions} journey sessions`,
         },
         {
           name: 'L7 Agent Society online',
@@ -596,6 +623,7 @@ describe('AZMA OS Operational Runtime Verification', () => {
           l2SovereignBus: os.sovereignBus.layerNumber === 2,
           l3Scheduling: os.kernelLayer3.layerNumber === 3,
           l4Memory: os.kernelLayer4.layerNumber === 4,
+          l5SovereignJourney: os.sovereignJourney.layerNumber === 5,
           l7AgentSociety: os.agentSociety.layerNumber === 7,
           l8SovereignIntelligence: os.sovereignIntelligence.layerNumber === 8,
           l9SovereignCommand: os.sovereignCommand.layerNumber === 9,
@@ -613,6 +641,7 @@ describe('AZMA OS Operational Runtime Verification', () => {
       expect(report.layers.l2SovereignBus).toBe(true);
       expect(report.layers.l3Scheduling).toBe(true);
       expect(report.layers.l4Memory).toBe(true);
+      expect(report.layers.l5SovereignJourney).toBe(true);
       expect(report.layers.l7AgentSociety).toBe(true);
       expect(report.layers.l8SovereignIntelligence).toBe(true);
       expect(report.layers.l9SovereignCommand).toBe(true);

@@ -1,6 +1,6 @@
 // ── Layer identifier ─────────────────────────────────────────────────────────
 
-export type SovereignLayer = 2 | 3 | 4 | 7 | 8 | 9 | 10;
+export type SovereignLayer = 2 | 3 | 4 | 5 | 7 | 8 | 9 | 10;
 
 // ── Event type registry ──────────────────────────────────────────────────────
 
@@ -25,7 +25,16 @@ export type SovereignEventType =
   | 'AGENT_EXECUTED'
   | 'INTELLIGENCE_QUERIED'
   | 'APPROVAL_SUBMITTED'
-  | 'APPROVAL_RESOLVED';
+  | 'APPROVAL_RESOLVED'
+  | 'JOURNEY_STARTED'
+  | 'JOURNEY_CHAPTER_ENTERED'
+  | 'JOURNEY_CHAPTER_COMPLETED'
+  | 'JOURNEY_CHAPTER_SKIPPED'
+  | 'JOURNEY_PAUSED'
+  | 'JOURNEY_RESUMED'
+  | 'JOURNEY_COMPLETED'
+  | 'JOURNEY_ABANDONED'
+  | 'USER_INTENT_PROFILED';
 
 // ── Typed payload map ─────────────────────────────────────────────────────────
 
@@ -128,6 +137,54 @@ export interface SovereignEventPayloadMap {
   APPROVAL_RESOLVED: {
     readonly approvalId: string;
     readonly status: 'APPROVED' | 'REJECTED';
+  };
+  JOURNEY_STARTED: {
+    readonly sessionId: string;
+    readonly journeyId: string;
+    readonly journeyTypeId: string;
+  };
+  JOURNEY_CHAPTER_ENTERED: {
+    readonly sessionId: string;
+    readonly journeyId: string;
+    readonly chapterId: string;
+    readonly chamberHint: string | null;
+  };
+  JOURNEY_CHAPTER_COMPLETED: {
+    readonly sessionId: string;
+    readonly journeyId: string;
+    readonly chapterId: string;
+  };
+  JOURNEY_CHAPTER_SKIPPED: {
+    readonly sessionId: string;
+    readonly journeyId: string;
+    readonly chapterId: string;
+  };
+  JOURNEY_PAUSED: {
+    readonly sessionId: string;
+    readonly journeyId: string;
+    readonly chapterId: string | null;
+  };
+  JOURNEY_RESUMED: {
+    readonly sessionId: string;
+    readonly journeyId: string;
+    readonly chapterId: string | null;
+  };
+  JOURNEY_COMPLETED: {
+    readonly sessionId: string;
+    readonly journeyId: string;
+    readonly journeyTypeId: string;
+    readonly durationMs: number;
+  };
+  JOURNEY_ABANDONED: {
+    readonly sessionId: string;
+    readonly journeyId: string;
+    readonly lastPhase: string;
+  };
+  USER_INTENT_PROFILED: {
+    readonly sessionId: string;
+    readonly language: string;
+    readonly experienceLevel: string;
+    readonly intent: string;
   };
 }
 

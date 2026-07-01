@@ -34,6 +34,7 @@ import { createMemoryLayer } from '../constitution-runtime/wp-011-kernel';
 import { createAgentSocietyLayer } from '../constitution-runtime/wp-020-kernel';
 import { createSovereignIntelligenceLayer } from '../sovereign-intelligence/sovereign-intelligence-layer';
 import { createSovereignCommandLayer } from '../sovereign-command/sovereign-command-layer';
+import { createSovereignJourneyEngine } from '../sovereign-journey/sovereign-journey-engine';
 import { FounderSessionService } from '../sovereign-identity/founder-session-service';
 import { createFounderIdentityService } from '../sovereign-identity/founder-identity-service';
 import { SovereignAuthorityService } from '../sovereign-identity/sovereign-authority-service';
@@ -73,6 +74,13 @@ export async function initializeAzmaOs(): Promise<AzmaOsRuntimeContract> {
     new RasAlAmrAdapter(kernelLayer4, kernelLayer3),
     new SovereignHighCouncilAdapter(councilRuntime, kernelLayer4, kernelLayer3),
   ] as const;
+
+  // ── Step 14: Initialize Sovereign Journey Engine (Layer 5) ─────────────────
+  const sovereignJourney = createSovereignJourneyEngine({
+    sovereignBus,
+    memoryLayer: kernelLayer4,
+    sovereignIntelligence,
+  });
 
   // ── Step 7: Initialize Sovereign Command Layer (L9 — Executive Command Bridge) ─
   // getChamberAdapters is a deferred getter; adapters are registered before any
@@ -150,6 +158,7 @@ export async function initializeAzmaOs(): Promise<AzmaOsRuntimeContract> {
     sovereignBus,
     kernelLayer3,
     kernelLayer4,
+    sovereignJourney,
     agentSociety,
     sovereignIntelligence,
     sovereignCommand,

@@ -27,7 +27,8 @@ export type ConstitutionArticleId =
   | 'integration-with-ai-providers'
   | 'long-term-evolution-strategy'
   | 'constitutional-synthesis'
-  | 'ratification-principle';
+  | 'ratification-principle'
+  | 'sovereign-journey-engine';
 
 export type ConstitutionLayerName =
   | 'constitutional-knowledge'
