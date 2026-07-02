@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useVoiceMode } from './useVoiceMode';
 
 export type CompanionMode = 'silent' | 'text' | 'voice';
 
@@ -15,17 +16,31 @@ function getInitialMode(): CompanionMode {
 }
 
 interface Props {
-  message: string;
-  visible: boolean;
+  message:            string;
+  visible:            boolean;
+  textToSpeak?:       string;
+  onVoiceTranscript?: (text: string) => void;
 }
 
-export function LivingCompanion({ message, visible }: Props) {
+export function LivingCompanion({ message, visible, textToSpeak, onVoiceTranscript }: Props) {
   const [mode, setMode] = useState<CompanionMode>(getInitialMode);
+
+  const handleTranscript = useCallback((text: string) => {
+    onVoiceTranscript?.(text);
+  }, [onVoiceTranscript]);
+
+  const { isListening, isSupported, hasPermission, startListening, speak, stopSpeaking } =
+    useVoiceMode(mode === 'voice', handleTranscript);
 
   const changeMode = useCallback((m: CompanionMode) => {
     setMode(m);
     localStorage.setItem(STORAGE_KEY, m);
-  }, []);
+    if (m !== 'voice') stopSpeaking();
+  }, [stopSpeaking]);
+
+  useEffect(() => {
+    if (mode === 'voice' && textToSpeak) speak(textToSpeak);
+  }, [textToSpeak, mode, speak]);
 
   const showMessage = mode !== 'silent';
 
@@ -44,6 +59,31 @@ export function LivingCompanion({ message, visible }: Props) {
           </button>
         ))}
       </div>
+
+      {mode === 'voice' && (
+        <div className="companion-voice-zone">
+          {hasPermission === false && (
+            <span className="voice-permission-denied">يلزم الإذن بالميكروفون</span>
+          )}
+          {hasPermission !== false && !isListening && (
+            <button
+              className="voice-listen-btn"
+              onClick={startListening}
+              title="ابدأ الاستماع"
+              aria-label="تفعيل الاستماع الصوتي"
+              disabled={!isSupported}
+            >
+              ⬤ استمع
+            </button>
+          )}
+          {isListening && (
+            <span className="voice-listening-indicator" aria-live="polite">
+              <span className="voice-pulse" aria-hidden="true" />
+              يستمع…
+            </span>
+          )}
+        </div>
+      )}
 
       <div
         className={`companion-message-zone ${showMessage && visible && message ? 'companion-visible' : 'companion-hidden'}`}
