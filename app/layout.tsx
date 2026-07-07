@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "@/src/design-system/azma-identity.css";
+import "@/src/design-system/azma-behaviors.css";
+import "@/src/design-system/azma-elements.css";
+import "@/src/design-system/azma-direction.css";
+import "@/src/design-system/azma-interaction.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

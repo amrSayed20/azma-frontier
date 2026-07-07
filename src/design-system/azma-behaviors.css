@@ -1,0 +1,591 @@
+/**
+ * AZMA OS — Visual Identity Engine V1.1
+ * Behavioral CSS Layer
+ *
+ * This file is the CSS translation of src/design-system/behaviors.ts.
+ * Import AFTER azma-identity.css — it builds on the constitutional foundation.
+ *
+ * What this file defines:
+ *   — Atmospheric system (data-atmosphere="…" → global visual shift)
+ *   — Material behavioral states (data-material + data-state → appearance)
+ *   — Visual role classes (.role-sovereign, .role-primary, etc.)
+ *   — Light behavior classes (.light-resting, .light-guiding, etc.)
+ *   — Shared behavioral animations
+ *
+ * Every selector here answers "What does this mean?" not "How does this look?"
+ */
+
+@layer azma-behaviors {
+
+  /* ════════════════════════════════════════════════════════════════════
+     ATMOSPHERIC SYSTEM — Article IV
+     The atmosphere lives on the chamber root as data-atmosphere="name".
+     CSS custom properties cascade down — all ambient elements respond.
+     The chamber changes one attribute. The engine changes everything else.
+     ════════════════════════════════════════════════════════════════════ */
+
+  /* Atmosphere-aware keyframes — read variables from ancestor */
+  @keyframes azmaAtmGrid {
+    0%,  100% { opacity: var(--azma-atm-grid-from, 0.40); }
+    50%        { opacity: var(--azma-atm-grid-to,   0.60); }
+  }
+
+  @keyframes azmaAtmDepth {
+    0%,  100% { opacity: var(--azma-atm-depth-from, 0.35); }
+    50%        { opacity: var(--azma-atm-depth-to,   0.55); }
+  }
+
+  /* Apply atmosphere-aware animation to elements that opt in */
+  .azma-atm-grid  { animation: azmaAtmGrid  var(--azma-breath)     var(--azma-ease-breath) infinite; }
+  .azma-atm-depth { animation: azmaAtmDepth var(--azma-breath-alt)  var(--azma-ease-breath) infinite; }
+
+  /* ── Default atmospheric baseline ─────────────────────────────────── */
+  /* Same as calm — the palace rests until told otherwise              */
+  .azma-chamber {
+    --azma-atm-grid-from:  0.40;
+    --azma-atm-grid-to:    0.60;
+    --azma-atm-depth-from: 0.35;
+    --azma-atm-depth-to:   0.55;
+    --azma-atm-glow-floor: 0.04;
+  }
+
+  /* ── Calm ─────────────────────────────────────────────────────────── */
+  /* Nothing urgent. The citizen may move without pressure.             */
+  .azma-chamber[data-atmosphere="calm"] {
+    --azma-atm-grid-from:  0.35;
+    --azma-atm-grid-to:    0.50;
+    --azma-atm-depth-from: 0.28;
+    --azma-atm-depth-to:   0.45;
+    --azma-atm-glow-floor: 0.03;
+  }
+
+  /* ── Curious ──────────────────────────────────────────────────────── */
+  /* Light leads. The citizen is oriented. Follow the gold.            */
+  .azma-chamber[data-atmosphere="curious"] {
+    --azma-atm-grid-from:  0.40;
+    --azma-atm-grid-to:    0.58;
+    --azma-atm-depth-from: 0.32;
+    --azma-atm-depth-to:   0.50;
+    --azma-atm-glow-floor: 0.04;
+  }
+
+  /* ── Investigating ────────────────────────────────────────────────── */
+  /* The court assembles. The grid sharpens. Every detail matters.     */
+  .azma-chamber[data-atmosphere="investigating"] {
+    --azma-atm-grid-from:  0.55;
+    --azma-atm-grid-to:    0.78;
+    --azma-atm-depth-from: 0.42;
+    --azma-atm-depth-to:   0.68;
+    --azma-atm-glow-floor: 0.06;
+  }
+
+  /* ── Deliberating ─────────────────────────────────────────────────── */
+  /* Silence before judgment. The grid tightens. Light falls harder.   */
+  .azma-chamber[data-atmosphere="deliberating"] {
+    --azma-atm-grid-from:  0.60;
+    --azma-atm-grid-to:    0.82;
+    --azma-atm-depth-from: 0.48;
+    --azma-atm-depth-to:   0.75;
+    --azma-atm-glow-floor: 0.08;
+  }
+
+  /* ── Creating ─────────────────────────────────────────────────────── */
+  /* The citizen makes. The palace participates. Gold warms with purpose.*/
+  .azma-chamber[data-atmosphere="creating"] {
+    --azma-atm-grid-from:  0.45;
+    --azma-atm-grid-to:    0.65;
+    --azma-atm-depth-from: 0.38;
+    --azma-atm-depth-to:   0.60;
+    --azma-atm-glow-floor: 0.05;
+  }
+
+  /* ── Victorious ───────────────────────────────────────────────────── */
+  /* The empire acknowledges. Gold pours. The palace is full of light.  */
+  .azma-chamber[data-atmosphere="victorious"] {
+    --azma-atm-grid-from:  0.65;
+    --azma-atm-grid-to:    0.88;
+    --azma-atm-depth-from: 0.55;
+    --azma-atm-depth-to:   0.80;
+    --azma-atm-glow-floor: 0.10;
+  }
+
+  /* ── Reflective ───────────────────────────────────────────────────── */
+  /* After action. Warmth remains. The palace holds what just happened. */
+  .azma-chamber[data-atmosphere="reflective"] {
+    --azma-atm-grid-from:  0.42;
+    --azma-atm-grid-to:    0.62;
+    --azma-atm-depth-from: 0.38;
+    --azma-atm-depth-to:   0.58;
+    --azma-atm-glow-floor: 0.05;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     LIGHT BEHAVIOR CLASSES — Article II
+     Applied to the chamber root alongside atmosphere.
+     Chambers: .azma-chamber.light-investigative
+     ════════════════════════════════════════════════════════════════════ */
+
+  .azma-chamber.light-resting {
+    --azma-atm-grid-from:  0.38;
+    --azma-atm-grid-to:    0.56;
+    --azma-atm-depth-from: 0.32;
+    --azma-atm-depth-to:   0.50;
+  }
+
+  .azma-chamber.light-guiding {
+    --azma-atm-grid-from:  0.32;
+    --azma-atm-grid-to:    0.50;
+    --azma-atm-depth-from: 0.28;
+    --azma-atm-depth-to:   0.44;
+  }
+
+  .azma-chamber.light-investigative {
+    --azma-atm-grid-from:  0.55;
+    --azma-atm-grid-to:    0.78;
+    --azma-atm-depth-from: 0.42;
+    --azma-atm-depth-to:   0.68;
+  }
+
+  .azma-chamber.light-judgment {
+    --azma-atm-grid-from:  0.60;
+    --azma-atm-grid-to:    0.82;
+    --azma-atm-depth-from: 0.48;
+    --azma-atm-depth-to:   0.75;
+  }
+
+  .azma-chamber.light-celebration {
+    --azma-atm-grid-from:  0.65;
+    --azma-atm-grid-to:    0.88;
+    --azma-atm-depth-from: 0.55;
+    --azma-atm-depth-to:   0.80;
+  }
+
+  .azma-chamber.light-legacy {
+    --azma-atm-grid-from:  0.44;
+    --azma-atm-grid-to:    0.64;
+    --azma-atm-depth-from: 0.40;
+    --azma-atm-depth-to:   0.62;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     BEHAVIORAL ANIMATIONS — shared across material states
+     ════════════════════════════════════════════════════════════════════ */
+
+  /* Uncertainty — irregular, unresolved. Uses opacity so filter is preserved */
+  @keyframes azmaUncertainPulse {
+    0%,  100% { opacity: 1.00; }
+    14%        { opacity: 0.88; }
+    28%        { opacity: 0.95; }
+    42%        { opacity: 0.90; }
+    57%        { opacity: 0.96; }
+    71%        { opacity: 0.87; }
+    85%        { opacity: 0.93; }
+  }
+
+  /* Working — rhythmic processing signal */
+  @keyframes azmaWorkingPulse {
+    0%,  100% { box-shadow: 0 0  8px rgba(212,175,55,0.08); }
+    50%        { box-shadow: 0 0 16px rgba(212,175,55,0.16); }
+  }
+
+  /* Waiting — slower, patient breath */
+  @keyframes azmaWaitingBreath {
+    0%,  100% { opacity: 0.92; }
+    50%        { opacity: 1.00; }
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     MATERIAL BEHAVIORAL STATES — Article I
+     data-material + data-state → full visual translation.
+     The chamber never invents these reactions. The material knows.
+     ════════════════════════════════════════════════════════════════════ */
+
+  /* ── Obsidian — absorbs light, reflects nothing ──────────────────── */
+
+  [data-material="obsidian"][data-state="dormant"] {
+    filter:     brightness(0.82);
+    transition: filter var(--azma-t-geological) var(--azma-ease-breath);
+  }
+  [data-material="obsidian"][data-state="listening"] {
+    filter:     brightness(0.95);
+    transition: filter var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+  [data-material="obsidian"][data-state="working"] {
+    filter:     brightness(1.05);
+    box-shadow: 0 0 10px rgba(212,175,55,0.10);
+    animation:  azmaWorkingPulse var(--azma-breath-accent) var(--azma-ease-breath) infinite;
+    transition: filter var(--azma-t-architectural) var(--azma-ease-architectural);
+  }
+  [data-material="obsidian"][data-state="waiting"] {
+    filter:     brightness(0.88);
+    animation:  azmaWaitingBreath calc(var(--azma-breath-accent) * 1.5) var(--azma-ease-breath) infinite;
+    transition: filter var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+  [data-material="obsidian"][data-state="celebrating"] {
+    filter:     brightness(1.25);
+    box-shadow: 0 0 24px rgba(212,175,55,0.35);
+    transition: filter var(--azma-t-ceremonial) var(--azma-ease-architectural),
+                box-shadow var(--azma-t-ceremonial) var(--azma-ease-architectural);
+  }
+  [data-material="obsidian"][data-state="uncertain"] {
+    filter:     brightness(0.82);
+    animation:  azmaUncertainPulse 5.5s ease-in-out infinite;
+  }
+  [data-material="obsidian"][data-state="sovereign"] {
+    filter:     brightness(1.42);
+    box-shadow: 0 0 48px rgba(212,175,55,0.55);
+    animation:  none;
+    transition: filter var(--azma-t-imperial) var(--azma-ease-heavy),
+                box-shadow var(--azma-t-imperial) var(--azma-ease-heavy);
+  }
+
+  /* ── Marble — diffuses light, architectural weight ─────────────────── */
+
+  [data-material="marble"][data-state="dormant"] {
+    filter:     brightness(0.85);
+    transition: filter var(--azma-t-geological) var(--azma-ease-breath);
+  }
+  [data-material="marble"][data-state="listening"] {
+    filter:     brightness(1.00);
+    transition: filter var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+  [data-material="marble"][data-state="working"] {
+    filter:     brightness(1.10);
+    transition: filter var(--azma-t-architectural) var(--azma-ease-architectural);
+  }
+  [data-material="marble"][data-state="waiting"] {
+    filter:     brightness(0.92);
+    animation:  azmaWaitingBreath 14s var(--azma-ease-breath) infinite;
+    transition: filter var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+  [data-material="marble"][data-state="celebrating"] {
+    filter:     brightness(1.30);
+    box-shadow: 0 0 28px rgba(212,175,55,0.30);
+    transition: filter var(--azma-t-ceremonial) var(--azma-ease-architectural),
+                box-shadow var(--azma-t-ceremonial) var(--azma-ease-architectural);
+  }
+  [data-material="marble"][data-state="uncertain"] {
+    filter:     brightness(0.88);
+    animation:  azmaUncertainPulse 6.5s ease-in-out infinite;
+    opacity:    0.92;
+  }
+  [data-material="marble"][data-state="sovereign"] {
+    filter:     brightness(1.40);
+    box-shadow: 0 0 40px rgba(212,175,55,0.45);
+    animation:  none;
+    transition: filter var(--azma-t-imperial) var(--azma-ease-heavy);
+  }
+
+  /* ── Gold — emits light, the source ───────────────────────────────── */
+
+  [data-material="gold"][data-state="dormant"] {
+    filter:     brightness(0.90);
+    box-shadow: 0 0  8px rgba(212,175,55,0.08);
+    transition: filter var(--azma-t-geological) var(--azma-ease-breath);
+  }
+  [data-material="gold"][data-state="listening"] {
+    filter:     brightness(1.00);
+    box-shadow: 0 0 12px rgba(212,175,55,0.12);
+    transition: filter var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+  [data-material="gold"][data-state="working"] {
+    filter:     brightness(1.12);
+    box-shadow: 0 0 18px rgba(212,175,55,0.22);
+    animation:  azmaWorkingPulse calc(var(--azma-breath-accent) * 0.75) var(--azma-ease-breath) infinite;
+    transition: filter var(--azma-t-deliberate) var(--azma-ease-deliberate);
+  }
+  [data-material="gold"][data-state="waiting"] {
+    filter:     brightness(0.95);
+    box-shadow: 0 0  8px rgba(212,175,55,0.08);
+    animation:  azmaWaitingBreath 12s var(--azma-ease-breath) infinite;
+  }
+  [data-material="gold"][data-state="celebrating"] {
+    filter:     brightness(1.45);
+    box-shadow: 0 0 48px rgba(212,175,55,0.65);
+    transition: filter var(--azma-t-ceremonial) var(--azma-ease-architectural),
+                box-shadow var(--azma-t-ceremonial) var(--azma-ease-architectural);
+  }
+  [data-material="gold"][data-state="uncertain"] {
+    filter:     brightness(0.85);
+    box-shadow: 0 0  8px rgba(212,175,55,0.08);
+    animation:  azmaUncertainPulse 4s ease-in-out infinite;
+  }
+  [data-material="gold"][data-state="sovereign"] {
+    filter:     brightness(1.60);
+    box-shadow: 0 0 80px rgba(212,175,55,0.80);
+    animation:  none;
+    transition: filter var(--azma-t-imperial) var(--azma-ease-heavy),
+                box-shadow var(--azma-t-imperial) var(--azma-ease-heavy);
+  }
+
+  /* ── Glass — transmits light, reveals depth ─────────────────────── */
+
+  [data-material="glass"][data-state="dormant"] {
+    filter:     brightness(0.78);
+    opacity:    0.80;
+    transition: filter var(--azma-t-geological) var(--azma-ease-breath),
+                opacity var(--azma-t-geological) var(--azma-ease-breath);
+  }
+  [data-material="glass"][data-state="listening"] {
+    filter:     brightness(1.00);
+    opacity:    0.88;
+    transition: filter var(--azma-t-atmospheric) var(--azma-ease-breath),
+                opacity var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+  [data-material="glass"][data-state="working"] {
+    filter:     brightness(1.15);
+    opacity:    0.95;
+    box-shadow: 0 0 10px rgba(212,175,55,0.08);
+    transition: filter var(--azma-t-architectural) var(--azma-ease-architectural),
+                opacity var(--azma-t-architectural) var(--azma-ease-architectural);
+  }
+  [data-material="glass"][data-state="waiting"] {
+    filter:     brightness(0.90);
+    opacity:    0.82;
+    animation:  azmaWaitingBreath 12s var(--azma-ease-breath) infinite;
+  }
+  [data-material="glass"][data-state="celebrating"] {
+    filter:     brightness(1.35);
+    opacity:    1.00;
+    box-shadow: 0 0 40px rgba(212,175,55,0.40);
+    transition: filter var(--azma-t-ceremonial) var(--azma-ease-architectural),
+                opacity var(--azma-t-ceremonial) var(--azma-ease-architectural);
+  }
+  [data-material="glass"][data-state="uncertain"] {
+    filter:     brightness(0.85);
+    opacity:    0.75;
+    animation:  azmaUncertainPulse 3.5s ease-in-out infinite;
+  }
+  [data-material="glass"][data-state="sovereign"] {
+    filter:     brightness(1.50);
+    opacity:    1.00;
+    box-shadow: 0 0 60px rgba(212,175,55,0.50);
+    animation:  none;
+    transition: filter var(--azma-t-imperial) var(--azma-ease-heavy),
+                opacity var(--azma-t-imperial) var(--azma-ease-heavy);
+  }
+
+  /* ── Stone — absorbs partially, ancient and immovable ──────────────── */
+
+  [data-material="stone"][data-state="dormant"] {
+    filter:     brightness(0.72);
+    transition: filter var(--azma-t-geological) var(--azma-ease-breath);
+  }
+  [data-material="stone"][data-state="listening"] {
+    filter:     brightness(0.85);
+    transition: filter var(--azma-t-geological) var(--azma-ease-breath);
+  }
+  [data-material="stone"][data-state="working"] {
+    filter:     brightness(0.95);
+    box-shadow: 0 0  6px rgba(212,175,55,0.04);
+    transition: filter var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+  [data-material="stone"][data-state="waiting"] {
+    filter:     brightness(0.78);
+    transition: filter var(--azma-t-geological) var(--azma-ease-breath);
+  }
+  [data-material="stone"][data-state="celebrating"] {
+    filter:     brightness(1.10);
+    box-shadow: 0 0 20px rgba(212,175,55,0.25);
+    transition: filter var(--azma-t-ceremonial) var(--azma-ease-architectural),
+                box-shadow var(--azma-t-ceremonial) var(--azma-ease-architectural);
+  }
+  [data-material="stone"][data-state="uncertain"] {
+    filter:     brightness(0.70);
+    animation:  azmaUncertainPulse 7s ease-in-out infinite;
+    opacity:    0.95;
+  }
+  [data-material="stone"][data-state="sovereign"] {
+    filter:     brightness(1.20);
+    box-shadow: 0 0 28px rgba(212,175,55,0.35);
+    animation:  none;
+    transition: filter var(--azma-t-imperial) var(--azma-ease-heavy);
+  }
+
+  /* ── Brushed Metal — directional reflection ─────────────────────── */
+
+  [data-material="brushedMetal"][data-state="dormant"] {
+    filter:     brightness(0.88);
+    transition: filter var(--azma-t-geological) var(--azma-ease-breath);
+  }
+  [data-material="brushedMetal"][data-state="listening"] {
+    filter:     brightness(1.05);
+    box-shadow: 0 0  8px rgba(212,175,55,0.05);
+    transition: filter var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+  [data-material="brushedMetal"][data-state="working"] {
+    filter:     brightness(1.18);
+    box-shadow: 0 0 12px rgba(212,175,55,0.15);
+    animation:  azmaWorkingPulse var(--azma-breath-accent) var(--azma-ease-breath) infinite;
+    transition: filter var(--azma-t-architectural) var(--azma-ease-architectural);
+  }
+  [data-material="brushedMetal"][data-state="waiting"] {
+    filter:     brightness(0.95);
+    animation:  azmaWaitingBreath 10s var(--azma-ease-breath) infinite;
+    transition: filter var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+  [data-material="brushedMetal"][data-state="celebrating"] {
+    filter:     brightness(1.38);
+    box-shadow: 0 0 28px rgba(212,175,55,0.38);
+    transition: filter var(--azma-t-ceremonial) var(--azma-ease-architectural),
+                box-shadow var(--azma-t-ceremonial) var(--azma-ease-architectural);
+  }
+  [data-material="brushedMetal"][data-state="uncertain"] {
+    filter:     brightness(0.88);
+    box-shadow: 0 0  6px rgba(212,175,55,0.05);
+    animation:  azmaUncertainPulse 4.5s ease-in-out infinite;
+    opacity:    0.90;
+  }
+  [data-material="brushedMetal"][data-state="sovereign"] {
+    filter:     brightness(1.48);
+    box-shadow: 0 0 55px rgba(212,175,55,0.60);
+    animation:  none;
+    transition: filter var(--azma-t-imperial) var(--azma-ease-heavy),
+                box-shadow var(--azma-t-imperial) var(--azma-ease-heavy);
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     VISUAL ROLES — Article III
+     Every element belongs to one constitutional role.
+     The role determines everything. Not manual CSS.
+     ════════════════════════════════════════════════════════════════════ */
+
+  /* Sovereign — maximum authority. Stillness is the authority. */
+  .role-sovereign {
+    filter:         brightness(1.45);
+    z-index:        var(--azma-z-sovereign);
+    animation:      none !important;   /* authority does not move */
+    transition:     none;
+  }
+
+  /* Primary — the element the citizen came to engage */
+  .role-primary {
+    filter:         brightness(1.28);
+    z-index:        var(--azma-z-raised);
+    transition:     filter      var(--azma-t-deliberate) var(--azma-ease-deliberate),
+                    box-shadow  var(--azma-t-deliberate) var(--azma-ease-deliberate);
+  }
+  .role-primary:hover:not(:disabled) {
+    filter:         brightness(1.40);
+    box-shadow:     var(--azma-shadow-glow-soft);
+  }
+  .role-primary:active:not(:disabled) {
+    filter:         brightness(1.18);
+    transition-duration: var(--azma-t-instant);
+  }
+
+  /* Secondary — supporting presence, available but not dominant */
+  .role-secondary {
+    filter:         brightness(1.00);
+    z-index:        var(--azma-z-surface);
+    transition:     filter var(--azma-t-swift) ease-out;
+  }
+  .role-secondary:hover:not(:disabled) {
+    filter:         brightness(1.10);
+  }
+  .role-secondary:active:not(:disabled) {
+    filter:         brightness(0.95);
+    transition-duration: var(--azma-t-instant);
+  }
+
+  /* Advisory — guidance without demand */
+  .role-advisory {
+    filter:         brightness(0.78);
+    z-index:        var(--azma-z-surface);
+    transition:     filter var(--azma-t-deliberate) var(--azma-ease-deliberate);
+  }
+  .role-advisory:hover:not(:disabled) {
+    filter:         brightness(0.90);
+  }
+
+  /* Passive — context, background, the citizen does not interact here */
+  .role-passive {
+    filter:         brightness(0.62);
+    z-index:        var(--azma-z-floor);
+    pointer-events: none;
+    transition:     filter var(--azma-t-geological) var(--azma-ease-breath);
+  }
+
+  /* Silent — architecture only. The wall itself. */
+  .role-silent {
+    filter:         brightness(0.45);
+    z-index:        var(--azma-z-floor);
+    opacity:        0.55;
+    pointer-events: none;
+    transition:     none;
+  }
+
+  /* Forbidden — sealed. The citizen knows. No hover. No cursor. */
+  .role-forbidden {
+    filter:         brightness(0.35) saturate(0.3);
+    z-index:        var(--azma-z-raised);
+    pointer-events: none;
+    cursor:         not-allowed;
+    opacity:        0.60;
+    transition:     none;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     SEMANTIC ATMOSPHERE × ROLE INTERACTIONS
+     When an atmosphere is active, roles respond to it.
+     Victorious atmosphere lifts all primary roles.
+     Deliberating atmosphere makes secondary roles recede.
+     ════════════════════════════════════════════════════════════════════ */
+
+  /* Investigating: primary elements sharpen */
+  [data-atmosphere="investigating"] .role-primary {
+    filter:     brightness(1.35);
+    box-shadow: var(--azma-shadow-glow-soft);
+  }
+
+  /* Deliberating: secondary elements recede — focus on primary */
+  [data-atmosphere="deliberating"] .role-secondary {
+    filter:     brightness(0.88);
+    opacity:    0.85;
+  }
+
+  /* Victorious: primary elements radiate */
+  [data-atmosphere="victorious"] .role-primary {
+    filter:     brightness(1.45);
+    box-shadow: var(--azma-shadow-glow-medium);
+    transition: filter var(--azma-t-ceremonial) var(--azma-ease-architectural),
+                box-shadow var(--azma-t-ceremonial) var(--azma-ease-architectural);
+  }
+
+  /* Calm: everything slightly dimmed — ambient, not demanding */
+  [data-atmosphere="calm"] .role-primary {
+    filter:     brightness(1.20);
+  }
+  [data-atmosphere="calm"] .role-secondary {
+    filter:     brightness(0.92);
+  }
+
+  /* Reflective: advisory elements become more present — memory surfaces */
+  [data-atmosphere="reflective"] .role-advisory {
+    filter:     brightness(0.92);
+    opacity:    0.90;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     IMPERIAL REDUCED MOTION — Behavioral Layer
+     All behavioral animations respect the citizen's motion preference.
+     ════════════════════════════════════════════════════════════════════ */
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-material][data-state] {
+      animation:         none !important;
+      transition-duration: 0.01ms !important;
+    }
+
+    .azma-atm-grid,
+    .azma-atm-depth {
+      animation: none !important;
+    }
+
+    /* Roles retain their filter (brightness) — appearance, not motion */
+    .role-primary,
+    .role-secondary,
+    .role-advisory { transition-duration: 0.01ms !important; }
+  }
+
+}   /* end @layer azma-behaviors */

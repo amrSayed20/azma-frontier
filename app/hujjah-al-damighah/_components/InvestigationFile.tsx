@@ -3,15 +3,17 @@
 import React from 'react';
 
 interface Props {
-  onContinue:          () => void;
-  onExpand:            () => void;
-  onTransferQiyamah:   () => void;
-  onSaveVault:         () => void;
-  savedToVault:        boolean;
+  onContinue:        () => void;
+  onExpand:          () => void;
+  onChallenge:       () => void;
+  onAppeal:          () => void;
+  onTransferQiyamah: () => void;
+  onSaveVault:       () => void;
+  savedToVault:      boolean;
 }
 
 export function InvestigationFile({
-  onContinue, onExpand, onTransferQiyamah, onSaveVault, savedToVault,
+  onContinue, onExpand, onChallenge, onAppeal, onTransferQiyamah, onSaveVault, savedToVault,
 }: Props) {
   return (
     <div className="investigation-file">
@@ -27,6 +29,12 @@ export function InvestigationFile({
         </button>
         <button className="inv-action inv-expand" onClick={onExpand}>
           توسيع الأدلة
+        </button>
+        <button className="inv-action inv-challenge" onClick={onChallenge}>
+          تحدّ الحكم
+        </button>
+        <button className="inv-action inv-appeal" onClick={onAppeal}>
+          طعن بأدلة جديدة
         </button>
         <button
           className={`inv-action inv-vault ${savedToVault ? 'inv-saved' : ''}`}

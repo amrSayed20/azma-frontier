@@ -14,6 +14,25 @@ export type KnowledgeTier  =
   | 'verified' | 'primary' | 'consensus' | 'historical'
   | 'scholarly' | 'professional' | 'circulated' | 'oral' | 'legend' | 'unknown';
 
+// ── Constitutional Evidence Tiers (Article I) ─────────────────────
+export type ConstitutionalTier = 1 | 2 | 3 | 4 | 5;
+
+export const CONSTITUTIONAL_TIER_AR: Record<ConstitutionalTier, string> = {
+  1: 'حقيقة موثّقة',
+  2: 'دليل قوي',
+  3: 'سياق داعم',
+  4: 'ادعاء قيد الفحص',
+  5: 'رواية شائعة',
+};
+
+export function getConstitutionalTier(tier: KnowledgeTier): ConstitutionalTier {
+  if (tier === 'verified' || tier === 'primary')                       return 1;
+  if (tier === 'consensus' || tier === 'professional' || tier === 'scholarly') return 2;
+  if (tier === 'historical')                                           return 3;
+  if (tier === 'circulated' || tier === 'oral')                        return 4;
+  return 5; // legend, unknown
+}
+
 export interface KnowledgeLayer { labelAr: string; tier: KnowledgeTier }
 export interface EvidenceBuckets {
   supported:  EvidenceItemDTO[];
@@ -96,6 +115,54 @@ export function generateReasoningSummary(dto: InvestigationDTO): string {
     return `لا توجد أدلة قاطعة، لكن ${b.narratives.length} رواية داعمة تؤيد الموقف بثقة معتدلة (${pct}%).`;
   }
   return `بعد مراجعة ${dto.totalSourcesScanned} طبقة معرفية، لم يُعثر على دليل موثَّق. القضية تحتاج إلى دراسة أعمق.`;
+}
+
+// ── Verdict Explanation — Article III ────────────────────────────
+// Explains WHY confidence reached this level. Never announces the number alone.
+export function generateVerdictExplanation(dto: InvestigationDTO, domain: DomainId): string {
+  const b   = bucketEvidence(dto);
+  const pct = Math.round(dto.averageEvidenceScore * 100);
+  const lines: string[] = [];
+
+  if (pct >= 75) {
+    lines.push('الثقة مرتفعة لأن الأدلة القاطعة تتفوق بوضوح على الادعاءات المتنازع عليها.');
+  } else if (pct >= 55) {
+    lines.push('الثقة معتدلة — الأدلة الداعمة موجودة لكنها لا ترقى بعد إلى مستوى اليقين الكامل.');
+  } else if (pct >= 40) {
+    lines.push('الثقة محدودة — المسألة تحتوي على خلافات جوهرية بين المصادر المتاحة.');
+  } else {
+    lines.push('الثقة ضعيفة — الأدلة متعارضة أو لم تُوثَّق بما يكفي لحكم قاطع.');
+  }
+
+  if (b.supported.length > 0) {
+    const top = resolveKnowledgeLayer(b.supported[0]!.confidenceScore, b.supported[0]!.confidenceLevel, domain);
+    lines.push(`رفع الثقة: ${b.supported.length} دليل قاطع — أعلاها من مستوى "${top.labelAr}".`);
+  }
+  if (b.disputed.length > 0) {
+    lines.push(`خفّض الثقة: ${b.disputed.length} ادعاء متنازع عليه يتطلب مزيداً من التمحيص.`);
+  }
+  if (b.unverified.length > 0) {
+    lines.push(`ما يزال مجهولاً: ${b.unverified.length} رواية لم يتم التحقق منها في المستودعات المتاحة.`);
+  }
+
+  return lines.join(' ');
+}
+
+// ── What Remains Unknown — Article V ─────────────────────────────
+export function generateUnknownRemains(dto: InvestigationDTO, query: string): string {
+  const b       = bucketEvidence(dto);
+  const preview = query.slice(0, 38);
+
+  if (b.unverified.length > 0 && b.disputed.length > 0) {
+    return `في قضية "${preview}…" يبقى ${b.unverified.length + b.disputed.length} جانب دون يقين كامل. المعرفة هنا تتوسع باستمرار.`;
+  }
+  if (b.unverified.length > 0) {
+    return `${b.unverified.length} رواية في هذه القضية لم يتم التحقق منها بعد. ثمة مساحة للاكتشاف.`;
+  }
+  if (b.disputed.length > 0) {
+    return `الخلاف حول ${b.disputed.length} جوانب لم يُحسم — هذا ليس ضعفاً في المعرفة، بل دليل على حيويتها.`;
+  }
+  return 'هذا التحقيق يفتح أسئلة تستحق الاستمرار. المعرفة لا تنتهي عند حكم واحد.';
 }
 
 export function generateNextInvestigation(query: string, buckets: EvidenceBuckets): string {

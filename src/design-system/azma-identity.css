@@ -1,0 +1,400 @@
+/**
+ * AZMA OS — Visual Identity Engine
+ * Constitutional CSS Properties V1.0
+ *
+ * This file is the CSS translation of src/design-system/tokens.ts.
+ * It must be imported BEFORE any chamber-specific CSS.
+ * The import point is app/layout.tsx (root layout only).
+ *
+ * All constitutional custom properties are prefixed --azma-.
+ * Chamber-specific overrides are permitted only on the values
+ * listed in EXTENSION.overridable in tokens.ts.
+ *
+ * Every comment references its TypeScript token path.
+ * If a value changes here, it must change in tokens.ts first.
+ */
+
+@layer azma-constitution {
+
+  /* ══════════════════════════════════════════════════════════════════
+     ROOT — IMMUTABLE IMPERIAL CONSTANTS
+     These values define the empire. No chamber may override them.
+     ══════════════════════════════════════════════════════════════════ */
+
+  :root {
+
+    /* ── Void & Obsidian ─────────────────────────────────────────── */
+    /* PALETTE.void / .obsidian / .deep / .surface / .surfaceHigh    */
+    --azma-void:          #000000;
+    --azma-obsidian:      #020101;
+    --azma-deep:          #050302;
+    --azma-surface:       #080602;
+    --azma-surface-high:  #0D0A03;
+
+    /* ── Imperial Gold Scale ──────────────────────────────────────── */
+    /* PALETTE.gold[1..8] + .rgb                                      */
+    --azma-gold-1:        #3A2400;
+    --azma-gold-2:        #5C3A06;
+    --azma-gold-3:        #8B6508;
+    --azma-gold-4:        #B8903A;
+    --azma-gold-5:        #C9A84C;
+    --azma-gold-6:        #D4AF37;   /* TRUE IMPERIAL GOLD */
+    --azma-gold-7:        #E8C547;
+    --azma-gold-8:        #F5D978;
+    --azma-gold-rgb:      212, 175, 55;   /* for rgba() construction */
+
+    /* ── Glow Intensities ─────────────────────────────────────────── */
+    /* ILLUMINATION.glow.[whisper..sacred]                            */
+    --azma-glow-whisper:   rgba(212,175,55,0.04);
+    --azma-glow-dim:       rgba(212,175,55,0.08);
+    --azma-glow-ambient:   rgba(212,175,55,0.12);
+    --azma-glow-soft:      rgba(212,175,55,0.18);
+    --azma-glow-medium:    rgba(212,175,55,0.28);
+    --azma-glow-bright:    rgba(212,175,55,0.40);
+    --azma-glow-radiant:   rgba(212,175,55,0.60);
+    --azma-glow-sacred:    rgba(212,175,55,0.85);
+
+    /* ── Text Hierarchy ───────────────────────────────────────────── */
+    /* PALETTE.text.[sacred..ghost]                                   */
+    --azma-text-sacred:    #FFF2A8;
+    --azma-text-primary:   #E8D595;
+    --azma-text-muted:     #A8955B;
+    --azma-text-dim:       #6B5A30;
+    --azma-text-ghost:     #3D2E12;
+
+    /* ── Semantic Colors ──────────────────────────────────────────── */
+    /* PALETTE.semantic.[certainty..silence]                          */
+    --azma-certainty:      #4A9B6A;
+    --azma-doubt:          #7A5C1A;
+    --azma-conflict:       #8B2525;
+    --azma-silence:        #1A1410;
+
+    /* ── Shadows ──────────────────────────────────────────────────── */
+    /* SHADOWS.[inset..glowRadiant]                                   */
+    --azma-shadow-inset:         inset 0  1px  0  rgba(2,1,0,0.60), inset 0 -1px 0 rgba(212,175,55,0.06);
+    --azma-shadow-soft:          0  2px  8px  rgba(2,1,0,0.60);
+    --azma-shadow-medium:        0  4px 20px  rgba(2,1,0,0.80);
+    --azma-shadow-heavy:         0  8px 40px  rgba(2,1,0,0.90);
+    --azma-shadow-sovereign:     0 16px 60px  rgba(2,1,0,0.95);
+    --azma-shadow-glow-whisper:  0  0   6px   rgba(212,175,55,0.08);
+    --azma-shadow-glow-soft:     0  0  12px   rgba(212,175,55,0.18);
+    --azma-shadow-glow-medium:   0  0  24px   rgba(212,175,55,0.28);
+    --azma-shadow-glow-bright:   0  0  36px   rgba(212,175,55,0.40);
+    --azma-shadow-glow-radiant:  0  0  60px   rgba(212,175,55,0.60);
+
+    /* ── Z-Index Constitutional Scale ────────────────────────────── */
+    /* ELEVATION.zIndex.[floor..sovereign]                            */
+    --azma-z-floor:        0;
+    --azma-z-surface:      1;
+    --azma-z-raised:       10;
+    --azma-z-overlay:      100;
+    --azma-z-gate:         200;
+    --azma-z-ceremony:     500;
+    --azma-z-sovereign:    1000;
+
+    /* ── Typography Scale ─────────────────────────────────────────── */
+    /* TYPOGRAPHY.scale.[nano..throne]                                */
+    --azma-text-nano:      0.625rem;
+    --azma-text-micro:     0.6875rem;
+    --azma-text-tiny:      0.75rem;
+    --azma-text-small:     0.8125rem;
+    --azma-text-body:      0.875rem;
+    --azma-text-base:      1rem;
+    --azma-text-medium:    1.125rem;
+    --azma-text-large:     1.25rem;
+    --azma-text-grand:     1.5rem;
+    --azma-text-imperial:  2rem;
+    --azma-text-throne:    2.5rem;
+
+    /* ── Tracking (Letter Spacing) ───────────────────────────────── */
+    /* TYPOGRAPHY.tracking.[compressed..sacred]                       */
+    --azma-tracking-compressed: -0.01em;
+    --azma-tracking-normal:      0em;
+    --azma-tracking-open:        0.04em;
+    --azma-tracking-wide:        0.08em;
+    --azma-tracking-sovereign:   0.12em;
+    --azma-tracking-sacred:      0.20em;
+
+    /* ── Spacing Scale ────────────────────────────────────────────── */
+    /* SPACING.px[1..32]                                              */
+    --azma-space-1:    4px;
+    --azma-space-2:    8px;
+    --azma-space-3:   12px;
+    --azma-space-4:   16px;
+    --azma-space-5:   20px;
+    --azma-space-6:   24px;
+    --azma-space-7:   28px;
+    --azma-space-8:   32px;
+    --azma-space-10:  40px;
+    --azma-space-12:  48px;
+    --azma-space-16:  64px;
+    --azma-space-20:  80px;
+    --azma-space-24:  96px;
+    --azma-space-32: 128px;
+
+    /* ── Border Radius ────────────────────────────────────────────── */
+    /* SPACING.radius.[none..circle]                                  */
+    --azma-radius-none:    0px;
+    --azma-radius-slight:  2px;
+    --azma-radius-panel:   4px;
+    --azma-radius-circle:  50%;
+
+    /* ── Motion — Unified Breathing Clock ─────────────────────────── */
+    /* MOTION.ambient.[primary..echo]                                 */
+    --azma-breath:         80s;
+    --azma-breath-alt:     90s;
+    --azma-breath-accent:   8s;
+    --azma-breath-fine:     5s;
+    --azma-breath-echo:     4.5s;
+
+    /* ── Surface Response Timing ──────────────────────────────────── */
+    /* SURFACES.timing.[instant..geological]                          */
+    --azma-t-instant:       80ms;
+    --azma-t-swift:        180ms;
+    --azma-t-deliberate:   280ms;
+    --azma-t-architectural:400ms;
+    --azma-t-ceremonial:   600ms;
+    --azma-t-imperial:     950ms;
+    --azma-t-atmospheric:  2400ms;
+    --azma-t-geological:   5000ms;
+
+    /* ── Easing Functions ─────────────────────────────────────────── */
+    /* SURFACES.easing.[deliberate..marble]                           */
+    --azma-ease-deliberate:    cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --azma-ease-architectural: cubic-bezier(0.23, 1, 0.32, 1.0);
+    --azma-ease-heavy:         cubic-bezier(0.78, 0, 0.96, 0.30);
+    --azma-ease-breath:        ease-in-out;
+    --azma-ease-marble:        cubic-bezier(0.45, 0, 0.55, 1);
+
+    /* ── Accessibility ────────────────────────────────────────────── */
+    /* ACCESSIBILITY.focus / touch                                    */
+    --azma-focus-ring:        2px solid rgba(212,175,55,0.70);
+    --azma-focus-ring-offset: 2px;
+    --azma-touch-target:      44px;
+
+    /* ── Chamber Extension Points (defaults = imperial gold) ──────── */
+    /* EXTENSION.overridable — chambers may override ONLY these       */
+    --azma-accent:            212, 175, 55;   /* RGB triplet for rgba() */
+    --azma-accent-color:      #D4AF37;         /* hex for direct use     */
+    --azma-depth-glow:        rgba(212,175,55,0.04);
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     BASE CHAMBER LAW
+     Every element bearing .azma-chamber inherits these constitutional
+     defaults. Chambers add to this base — never erase it.
+     ════════════════════════════════════════════════════════════════════ */
+
+  .azma-chamber {
+    color:        var(--azma-text-primary);
+    background:   var(--azma-obsidian);
+    font-family:  system-ui, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    direction:    rtl;
+    position:     fixed;
+    inset:        0;
+    overflow:     hidden;
+  }
+
+  /* ── Universal Button Reset ──────────────────────────────────────── */
+
+  .azma-chamber button {
+    font-family: inherit;
+    cursor:      pointer;
+  }
+
+  .azma-chamber button:disabled {
+    cursor:  not-allowed;
+    opacity: 0.35;
+  }
+
+  /* ── Focus Law ───────────────────────────────────────────────────── */
+  /* Gold focus ring on keyboard navigation. Never shown on click.     */
+
+  .azma-chamber :focus-visible {
+    outline:        var(--azma-focus-ring);
+    outline-offset: var(--azma-focus-ring-offset);
+    border-radius:  var(--azma-radius-slight);
+  }
+
+  .azma-chamber :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* ── Scrollbar — imperial styling ────────────────────────────────── */
+
+  .azma-chamber ::-webkit-scrollbar {
+    width:  4px;
+    height: 4px;
+  }
+
+  .azma-chamber ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .azma-chamber ::-webkit-scrollbar-thumb {
+    background:    var(--azma-gold-2);
+    border-radius: var(--azma-radius-slight);
+  }
+
+  .azma-chamber ::-webkit-scrollbar-thumb:hover {
+    background: var(--azma-gold-4);
+  }
+
+  /* ── Text Selection ──────────────────────────────────────────────── */
+
+  .azma-chamber ::selection {
+    background: rgba(var(--azma-gold-rgb), 0.22);
+    color:      var(--azma-text-sacred);
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     ATMOSPHERIC AMBIENT SYSTEM
+     Shared animated layers available to all chambers.
+     Chambers include these divs inside their ambient container.
+     ════════════════════════════════════════════════════════════════════ */
+
+  /* The unified breath — all ambient animation derives from this */
+  @keyframes azmaBreath {
+    0%,  100% { opacity: var(--breath-from, 0.35); }
+    50%        { opacity: var(--breath-to,   0.55); }
+  }
+
+  /* Grid breath — the palace stone grid */
+  @keyframes azmaGridBreath {
+    0%,  100% { opacity: 0.40; }
+    50%        { opacity: 0.60; }
+  }
+
+  /* Depth breath — the atmospheric glow below */
+  @keyframes azmaDepthBreath {
+    0%,  100% { opacity: 0.35; }
+    50%        { opacity: 0.55; }
+  }
+
+  /* Living pulse — for dots, jewels, and fine details */
+  @keyframes azmaLivingPulse {
+    0%,  100% { opacity: 0.55; transform: scale(1);    }
+    50%        { opacity: 0.85; transform: scale(1.12); }
+  }
+
+  /* Seal breath — for authentication and ceremony seals */
+  @keyframes azmaSealBreath {
+    0%,  100% { opacity: 0.18; }
+    50%        { opacity: 0.32; }
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     TRANSITION UTILITY CLASSES
+     Composable transition helpers. Apply to any .azma-chamber element.
+     ════════════════════════════════════════════════════════════════════ */
+
+  .azma-transition-swift        { transition-duration: var(--azma-t-swift);        transition-timing-function: ease-out; }
+  .azma-transition-deliberate   { transition-duration: var(--azma-t-deliberate);   transition-timing-function: var(--azma-ease-deliberate); }
+  .azma-transition-architectural{ transition-duration: var(--azma-t-architectural); transition-timing-function: var(--azma-ease-architectural); }
+  .azma-transition-atmospheric  { transition-duration: var(--azma-t-atmospheric);  transition-timing-function: var(--azma-ease-breath); }
+
+  /* ════════════════════════════════════════════════════════════════════
+     IMPERIAL REDUCED MOTION PROTOCOL
+     Constitutional law — the empire serves every citizen.
+     When the citizen's system requests reduced motion:
+       — All ambient breathing stops
+       — All decorative animations stop
+       — Structural transitions become instant
+       — Opacity fades remain (gentle, necessary for comprehension)
+     ════════════════════════════════════════════════════════════════════ */
+
+  @media (prefers-reduced-motion: reduce) {
+
+    /* Stop all ambient breathing */
+    .azma-chamber [class*="azma-breath"],
+    .azma-chamber [class*="azma-pulse"],
+    .azma-chamber [class*="azma-glow"] {
+      animation: none !important;
+    }
+
+    /* Instant structural transitions */
+    .azma-chamber * {
+      animation-duration:        0.01ms !important;
+      animation-iteration-count: 1      !important;
+      transition-duration:       0.01ms !important;
+    }
+
+    /* Restore only essential opacity fades */
+    .azma-chamber .azma-fade-in {
+      transition-duration: 200ms !important;
+      transition-property: opacity !important;
+    }
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     SURFACE BEHAVIOR CLASSES
+     Applied to interactive surfaces across all chambers.
+     Chambers compose these classes — they do not redefine them.
+     ════════════════════════════════════════════════════════════════════ */
+
+  /* Standard architectural surface — most interactive elements */
+  .azma-surface {
+    background:  var(--azma-surface);
+    border:      1px solid transparent;
+    background-clip: padding-box;
+    transition:  filter         var(--azma-t-deliberate) var(--azma-ease-deliberate),
+                 box-shadow     var(--azma-t-deliberate) var(--azma-ease-deliberate),
+                 border-color   var(--azma-t-deliberate) var(--azma-ease-deliberate);
+  }
+
+  .azma-surface:hover {
+    filter:      brightness(1.10);
+  }
+
+  /* Gold border — architectural separator */
+  .azma-border {
+    border: 1px solid var(--azma-gold-2);
+  }
+
+  .azma-border-accent {
+    border: 1px solid rgba(var(--azma-accent), 0.35);
+  }
+
+  /* Illuminated border — active / selected states */
+  .azma-border-active {
+    border: 1px solid rgba(var(--azma-accent), 0.65);
+    box-shadow: var(--azma-shadow-glow-soft);
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     TYPOGRAPHY UTILITY CLASSES
+     Semantic text classes — meaning-carrying, not decorative.
+     ════════════════════════════════════════════════════════════════════ */
+
+  .azma-text-sacred   { color: var(--azma-text-sacred);  font-weight: 700; }
+  .azma-text-primary  { color: var(--azma-text-primary); }
+  .azma-text-muted    { color: var(--azma-text-muted);   }
+  .azma-text-dim      { color: var(--azma-text-dim);     }
+  .azma-text-ghost    { color: var(--azma-text-ghost);   }
+
+  .azma-title {
+    font-size:      var(--azma-text-grand);
+    font-weight:    700;
+    color:          var(--azma-text-sacred);
+    letter-spacing: var(--azma-tracking-wide);
+    line-height:    1.2;
+    margin:         0;
+  }
+
+  .azma-declaration {
+    font-size:      var(--azma-text-imperial);
+    font-weight:    900;
+    color:          var(--azma-gold-6);
+    letter-spacing: var(--azma-tracking-sovereign);
+    line-height:    1.1;
+    margin:         0;
+  }
+
+  .azma-label {
+    font-size:      var(--azma-text-small);
+    color:          var(--azma-text-dim);
+    letter-spacing: var(--azma-tracking-open);
+    font-weight:    400;
+  }
+
+}   /* end @layer azma-constitution */

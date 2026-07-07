@@ -109,8 +109,8 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
 }
 
 @keyframes sealPulse {
-  0%, 100% { opacity: 0.18; transform: scale(1); }
-  50%       { opacity: 0.30; transform: scale(1.04); }
+  0%, 100% { opacity: 0.18; }
+  50%       { opacity: 0.30; }
 }
 
 .gate-seal {
@@ -376,21 +376,16 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
   gap: 16px;
 }
 
-@keyframes openingSealSpin { to { transform: rotate(360deg); } }
+@keyframes openingSealBreath {
+  0%, 100% { opacity: 0.55; }
+  50%       { opacity: 0.80; }
+}
 
 .opening-seal {
   font-size: 72px;
   color: var(--ig-5);
-  animation: openingSealSpin 2s linear infinite;
+  animation: openingSealBreath 2.4s ease-in-out infinite;
   line-height: 1;
-}
-
-.opening-label {
-  font-size: 13px;
-  color: var(--text-dim);
-  font-style: italic;
-  letter-spacing: 0.08em;
-  margin: 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -712,16 +707,16 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
 }
 
 @keyframes livingDotPulse {
-  0%, 100% { opacity: 0.75; transform: scale(1); }
-  50%       { opacity: 1;    transform: scale(1.3); }
+  0%, 100% { opacity: 0.55; transform: scale(1);    }
+  50%       { opacity: 0.85; transform: scale(1.12); }
 }
 
 .portal-living-dot {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: rgba(var(--vault-rgb), 0.85);
-  animation: livingDotPulse 2s ease-in-out infinite;
+  background: rgba(var(--vault-rgb), 0.80);
+  animation: livingDotPulse 5s ease-in-out infinite;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1207,7 +1202,7 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
 }
 
 .palace-sealing {
-  animation: palaceSeal 720ms cubic-bezier(0.64, 0, 0.78, 0) forwards !important;
+  animation: palaceSeal 950ms cubic-bezier(0.78, 0, 0.96, 0.30) forwards !important;
   pointer-events: none;
 }
 
@@ -1236,4 +1231,661 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
   .vault-portal      { width: 50%; border-right: none; border-bottom: 2px solid rgba(var(--vault-rgb), 0); }
   .palace-main       { min-height: 60vh; }
   .treasure-detail   { width: 100%; border-right: none; border-top: 1px solid rgba(212,175,55,.08); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   THE PERSONALITY — Article II
+   A Palace that matures. Breathes. Remembers. Never redesigns.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Atmospheric layers transition smoothly between states ──────── */
+.palace-depth-glow    { transition: filter 3s ease-in-out; }
+.palace-secondary-glow { transition: filter 3s ease-in-out, opacity 3s ease-in-out; }
+.palace-grid           { transition: opacity 3s ease-in-out; }
+
+/* ── Familiarity warmth — the Palace matures like a family estate ─ */
+
+/* YOUNG — first encounter: atmospheric quiet, respectful distance */
+.palace-young .palace-depth-glow     { filter: brightness(0.75); }
+.palace-young .palace-secondary-glow { filter: brightness(0.65); }
+.palace-young .palace-grid            { opacity: 0.60; }
+.palace-young .atrium-title           { color: var(--ig-5); }
+
+/* FAMILIAR — returning citizen: the room brightens with recognition */
+.palace-familiar .palace-depth-glow     { filter: brightness(1.15); }
+.palace-familiar .palace-secondary-glow { filter: brightness(1.20); }
+.palace-familiar .palace-grid            { opacity: 0.85; }
+
+/* LEGACY — long-standing citizen: the Palace is richer, warmer, fully home */
+.palace-legacy .palace-depth-glow     { filter: brightness(1.35); }
+.palace-legacy .palace-secondary-glow { filter: brightness(1.40); }
+.palace-legacy .palace-grid            { opacity: 1; }
+.palace-legacy .palace-crown           { background: rgba(4,3,1,.94); border-bottom-color: rgba(212,175,55,.12); }
+.palace-legacy .vault-corridor         {
+  background:
+    rgba(6,4,1,.96) padding-box,
+    linear-gradient(to bottom, var(--ig-2), var(--ig-4) 40%, var(--ig-5) 60%, var(--ig-2)) border-box;
+}
+.palace-legacy .atrium-title           { color: var(--ig-7); }
+.palace-legacy .orb-inner              { box-shadow: 0 0 38px rgba(212,175,55,.22), inset 0 0 20px rgba(0,0,0,.40); }
+
+/* ── The gate subtitle: no demand, no explanation ───────────────── */
+.gate-subtitle {
+  font-size:      11px;
+  letter-spacing: 0.10em;
+}
+
+/* ── The ceremony honors — no announcement, only ritual ────────── */
+.ceremony-arrival {
+  gap: 10px;
+}
+
+/* ── Orb breath: dignified, slow — not software ─────────────────── */
+@keyframes orbBreath {
+  0%, 100% { transform: scale(1);    opacity: 0.70; }
+  50%       { transform: scale(1.02); opacity: 0.85; }
+}
+
+/* ── Vault door closes heavy — calm, certain, protected ─────────── */
+/* (already updated palaceSeal timing in .palace-sealing above)     */
+
+/* ── Nothing pressures. Infinite patience in the empty state. ───── */
+.treasury-empty-icon {
+  animation: openingSealBreath 9s ease-in-out infinite;
+}
+
+/* ── Accessibility — when motion is reduced, the Palace is still ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration:        0.01ms !important;
+    animation-iteration-count: 1      !important;
+    transition-duration:       0.01ms !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   THE LEGACY — Article IV
+   The Palace grows because the Citizen grows.
+   Architecture reflects creative history. Never mechanical.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Two new atmospheric layers that carry the weight of history ─ */
+
+.palace-legacy-layer {
+  position:       absolute;
+  inset:          0;
+  background:     radial-gradient(
+                    ellipse 90% 55% at 50% 105%,
+                    rgba(212,175,55,.022) 0%,
+                    transparent 65%
+                  );
+  opacity:        0;
+  pointer-events: none;
+  transition:     opacity 5s ease-in-out;
+}
+
+/* Completion shifts the weight toward the ceiling — completed work rises */
+.palace-completer .palace-legacy-layer {
+  background:
+    radial-gradient(ellipse 90% 55% at 50% 105%, rgba(212,175,55,.022) 0%, transparent 65%),
+    radial-gradient(ellipse 75% 30% at 50% -5%,  rgba(212,175,55,.014) 0%, transparent 60%);
+}
+
+/* History veins — the walls remember. Faint diagonal traces in aged stone. */
+.palace-history-vein {
+  position:       absolute;
+  inset:          0;
+  background:
+    repeating-linear-gradient(
+      74deg,
+      transparent 0px,
+      transparent 240px,
+      rgba(212,175,55,.0040) 241px,
+      rgba(212,175,55,.0055) 242px,
+      transparent 243px
+    ),
+    repeating-linear-gradient(
+      162deg,
+      transparent 0px,
+      transparent 420px,
+      rgba(212,175,55,.0028) 421px,
+      transparent 422px
+    );
+  opacity:        0;
+  pointer-events: none;
+  transition:     opacity 5s ease-in-out;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TREASURY DEPTH — architecture deepens with accumulated work     */
+
+/* EMPTY — the Palace breathes softly. Expectant. Not hollow. */
+.palace-empty .palace-legacy-layer { opacity: 0; }
+.palace-empty .orb-inner           { filter: brightness(0.72); }
+.palace-empty .orb-ring            { opacity: 0.55; }
+
+/* NEW — first treasures arrive. The Palace stirs. */
+.palace-new .palace-legacy-layer { opacity: 0.28; }
+
+/* GROWING — architecture begins to carry weight */
+.palace-growing .palace-legacy-layer { opacity: 0.52; }
+.palace-growing .grand-atrium        {
+  background: linear-gradient(180deg, rgba(212,175,55,.006) 0%, transparent 18%);
+}
+
+/* ESTABLISHED — the Palace has genuine depth now.
+   An observer without labels could feel: serious work lives here. */
+.palace-established .palace-legacy-layer  { opacity: 0.76; }
+.palace-established .palace-history-vein  { opacity: 0.55; }
+.palace-established .grand-atrium         {
+  background: linear-gradient(180deg, rgba(212,175,55,.012) 0%, transparent 22%);
+}
+.palace-established .orb-inner {
+  background: radial-gradient(ellipse at 35% 35%,
+    var(--ig-5) 0%, var(--ig-3) 48%, var(--ig-2) 100%
+  );
+  box-shadow: 0 0 42px rgba(212,175,55,.20), inset 0 0 18px rgba(0,0,0,.42);
+}
+.palace-established .orb-ring {
+  border-color:     rgba(212,175,55,.22);
+  border-top-color: var(--ig-5);
+  animation-duration: 26s;
+}
+
+/* LEGACY DEEP — the Palace belongs to someone remarkable.
+   Imagine removing every label. An observer still understands. */
+.palace-legacy-deep .palace-legacy-layer  { opacity: 1; }
+.palace-legacy-deep .palace-history-vein  { opacity: 1; }
+.palace-legacy-deep .grand-atrium         {
+  background: linear-gradient(180deg, rgba(212,175,55,.020) 0%, transparent 26%);
+}
+.palace-legacy-deep .orb-inner {
+  background: radial-gradient(ellipse at 35% 35%,
+    var(--ig-6) 0%, var(--ig-4) 42%, var(--ig-2) 100%
+  );
+  box-shadow: 0 0 58px rgba(212,175,55,.28), inset 0 0 16px rgba(0,0,0,.38);
+}
+.palace-legacy-deep .orb-ring {
+  border-color:     rgba(212,175,55,.30);
+  border-top-color: var(--ig-7);
+  animation-duration: 32s;
+}
+.palace-legacy-deep .palace-crown {
+  border-bottom-color: rgba(212,175,55,.15);
+}
+.palace-legacy-deep .corridor-header {
+  border-bottom-color: rgba(212,175,55,.12);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CRAFT BREADTH — how many domains of creation the citizen has entered
+   Changes the secondary glow pattern — the Palace reflects the range. */
+
+/* FOCUSED (1–2 vaults): one discipline, full commitment — no change.
+   The Palace holds one thing with complete authority. */
+
+/* VERSATILE (3–5 vaults): the secondary glow spreads into two corners */
+.palace-versatile .palace-secondary-glow {
+  background:
+    radial-gradient(ellipse 45% 40% at 12% 18%, rgba(212,175,55,.020), transparent 60%),
+    radial-gradient(ellipse 35% 30% at 88% 82%, rgba(212,175,55,.013), transparent 55%);
+}
+
+/* POLYMATH (6+ vaults): the full range. Light exists in every corner. */
+.palace-polymath .palace-secondary-glow {
+  background:
+    radial-gradient(ellipse 42% 38% at 10% 15%,  rgba(212,175,55,.022), transparent 58%),
+    radial-gradient(ellipse 32% 28% at 90% 80%,  rgba(212,175,55,.016), transparent 52%),
+    radial-gradient(ellipse 28% 25% at 88% 15%,  rgba(212,175,55,.010), transparent 48%),
+    radial-gradient(ellipse 24% 20% at 12% 82%,  rgba(212,175,55,.008), transparent 44%);
+}
+.palace-polymath .corridor-header { border-bottom-color: rgba(212,175,55,.10); }
+
+/* ═══════════════════════════════════════════════════════════════
+   COMPLETION GRAVITAS — the citizen who finishes their work
+   Architecture becomes more settled. More authoritative.           */
+
+/* 40%+ of treasures are sealed or archived.
+   Completed work is heavier. The Palace holds it with authority. */
+.palace-completer .palace-grid { opacity: 0.88; }
+.palace-completer .orb-ring    { border-color: rgba(212,175,55,.26); }
+
+/* Treasury records feel more like sealed history in completing palaces */
+.palace-completer .treasury-record {
+  border-color: rgba(212,175,55,.08);
+}
+.palace-completer .treasury-record:hover {
+  border-color: rgba(212,175,55,.14);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   THE SOVEREIGN FLOW — Article V
+   The Palace is the center of the Empire.
+   Treasures travel. Corridors connect. No navigation.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Journey Paths — corridors to other chambers ─────────────── */
+
+.treasure-journeys {
+  display:       flex;
+  flex-direction: column;
+  gap:           0;
+  padding:       4px 0 14px;
+  border-bottom: 1px solid rgba(212,175,55,.05);
+  margin-bottom: 4px;
+}
+
+.journey-path {
+  display:     flex;
+  align-items: center;
+  gap:         10px;
+  padding:     10px 16px;
+  background:  transparent;
+  border:      none;
+  border-right: 2px solid transparent;
+  cursor:      pointer;
+  text-align:  right;
+  width:       100%;
+  transition:  background 0.24s ease, border-right-color 0.24s ease;
+  position:    relative;
+}
+
+.journey-path::before {
+  content:       '';
+  position:      absolute;
+  inset:         0;
+  background:    rgba(var(--path-rgb), 0);
+  transition:    background 0.28s ease;
+  pointer-events: none;
+}
+
+.journey-path:hover::before { background: rgba(var(--path-rgb), 0.04); }
+.journey-path:hover         { border-right-color: rgba(var(--path-rgb), 0.48); }
+
+.path-icon {
+  font-size:  13px;
+  flex-shrink: 0;
+  color:      rgba(var(--path-rgb), 0.38);
+  line-height: 1;
+  transition: color 0.24s ease;
+  width:      16px;
+  text-align: center;
+}
+
+.journey-path:hover .path-icon { color: rgba(var(--path-rgb), 0.80); }
+
+.path-meta  { flex: 1; min-width: 0; }
+
+.path-name {
+  display:       block;
+  font-size:     11px;
+  font-weight:   600;
+  color:         var(--text-dim);
+  letter-spacing: 0.02em;
+  transition:    color 0.24s ease;
+  line-height:   1.3;
+}
+
+.path-desc {
+  display:        block;
+  font-size:      9px;
+  color:          var(--text-ghost);
+  letter-spacing: 0.02em;
+}
+
+.journey-path:hover .path-name { color: rgba(var(--path-rgb), 0.85); }
+
+.path-hujjah  { --path-rgb: 180, 40, 40;  }
+.path-qiyamah { --path-rgb: 120, 40, 200; }
+.path-rasamr  { --path-rgb: 212,175, 55;  }
+.path-makman  { --path-rgb:  30,100, 50;  }
+
+/* ── Download and duplicate actions ──────────────────────────── */
+
+.action-download:hover {
+  background:   rgba(212,175,55,.05);
+  border-color: rgba(212,175,55,.35);
+  color:        var(--ig-5);
+}
+
+.action-duplicate:hover {
+  background:   rgba(212,175,55,.04);
+  border-color: rgba(212,175,55,.28);
+  color:        var(--ig-5);
+}
+
+/* Thin separator between journey section and actions */
+.detail-actions {
+  border-top:  1px solid rgba(212,175,55,.04);
+  padding-top: 8px;
+}
+
+/* ── Makman Al-Ghayah in atrium dispatch ─────────────────────── */
+
+.route-makman:hover {
+  background:   rgba(30,100,50,.05);
+  border-color: rgba(30,100,50,.45);
+  color:        rgba(60,160,80,.80);
+}
+
+/* Atrium dispatch: 2×2 grid when 4 chambers are present */
+.atrium-dispatch-row {
+  display:               grid;
+  grid-template-columns: 1fr 1fr;
+  gap:                   8px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ARTICLE VI — THE LIVING TREASURES
+   Every treasure is a living artifact. Age, journey depth, and status are
+   expressed architecturally. No labels. The form speaks.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Breathing life — box-shadow only, never opacity, never conflicts with recordSettle */
+@keyframes treasureBreath {
+  0%,  100% { box-shadow: inset 0 0 0 1px rgba(212,175,55,0); }
+  50%        { box-shadow: inset 0 0 0 1px rgba(212,175,55,0.08); }
+}
+
+/* ── Status ─────────────────────────────────────────────────────────────── */
+
+.treasury-record.tr-living {
+  animation: recordSettle 0.55s ease-out both, treasureBreath 5.5s ease-in-out 0.6s infinite;
+}
+
+/* Sealed: faint gold left border — it completed its journey */
+.treasury-record.tr-sealed {
+  border-left: 2px solid rgba(212,175,55,0.22);
+}
+
+/* Archived: cooler, receding into the walls */
+.treasury-record.tr-archived {
+  filter: brightness(0.72);
+}
+
+/* Detail panel inherits the same */
+.treasure-detail.tr-sealed {
+  border-left: 2px solid rgba(212,175,55,0.20);
+}
+.treasure-detail.tr-archived {
+  filter: brightness(0.82);
+}
+
+/* ── Age ────────────────────────────────────────────────────────────────── */
+
+/* Fresh: subtle halo — just arrived */
+.treasury-record.tr-fresh .record-title {
+  opacity: 0.92;
+}
+
+/* Maturing: settling in */
+.treasury-record.tr-maturing .record-title {
+  opacity: 0.85;
+}
+
+/* Established: stone-weight, fully present */
+.treasury-record.tr-established {
+  letter-spacing: 0.01em;
+}
+
+/* Ancient: deeply embedded in the palace walls */
+.treasury-record.tr-ancient {
+  letter-spacing: 0.012em;
+  border-left: 2px solid rgba(212,175,55,0.14);
+}
+.treasury-record.tr-ancient .record-title {
+  opacity: 0.80;
+}
+
+/* ── Journey Depth ──────────────────────────────────────────────────────── */
+
+/* Nascent: barely traveled */
+.treasury-record.tr-nascent .record-meta {
+  opacity: 0.42;
+}
+
+/* Traveled: has moved through the empire */
+.treasury-record.tr-traveled .record-meta {
+  opacity: 0.62;
+}
+
+/* Deep: seasoned veteran of the empire — full presence */
+.treasury-record.tr-deep .record-meta {
+  opacity: 0.82;
+}
+.treasury-record.tr-deep {
+  box-shadow: inset 3px 0 0 rgba(212,175,55,0.09);
+}
+
+/* ── Journey timeline — origin and present moment ───────────────────────── */
+
+/* Origin dot: where it was born — larger, brighter */
+.journey-step.step-origin .journey-dot {
+  width:            8px;
+  height:           8px;
+  background:       rgba(212,175,55,0.70);
+  box-shadow:       0 0 4px rgba(212,175,55,0.35);
+  margin-top:       3px;
+}
+
+/* Present dot: where it lives now — pulsing gently */
+@keyframes presentDotPulse {
+  0%,  100% { box-shadow: 0 0 0   rgba(212,175,55,0.20); }
+  50%        { box-shadow: 0 0 6px rgba(212,175,55,0.45); }
+}
+.journey-step.step-present .journey-dot {
+  width:      8px;
+  height:     8px;
+  background: rgba(212,175,55,0.55);
+  animation:  presentDotPulse 3.5s ease-in-out infinite;
+  margin-top: 3px;
+}
+
+/* ── Masterpiece — palace acknowledges it ───────────────────────────────── */
+
+/* When a deeply-traveled sealed treasure is selected, the palace warms */
+.palace-masterpiece-selected .palace-depth-glow {
+  filter:     brightness(1.28);
+  transition: filter 1.8s ease-in-out;
+}
+.palace-masterpiece-selected .palace-legacy-layer {
+  opacity:    1;
+  transition: opacity 1.8s ease-in-out;
+}
+
+/* Masterpiece detail panel: the palace frames it */
+.palace-masterpiece-selected .treasure-detail {
+  border-left: 2px solid rgba(212,175,55,0.28);
+  box-shadow:  inset 0 0 40px rgba(212,175,55,0.03);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ARTICLE VII — THE LIVING COLLECTION
+   Treasures that share a creative journey recognize each other.
+   The Palace reveals the relationship. It never names it.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Palace warmth when a story is present */
+.palace-story-active .palace-secondary-glow {
+  filter:     brightness(1.14);
+  transition: filter 2.4s ease-in-out;
+}
+
+/* ── Echoes — quiet kinship between treasures ───────────────────────────── */
+
+.detail-echoes {
+  display:        flex;
+  flex-direction: column;
+  gap:            2px;
+  padding:        8px 0 4px;
+  border-top:     1px solid rgba(212,175,55,0.07);
+  margin-top:     6px;
+  margin-bottom:  4px;
+}
+
+.detail-echo-item {
+  display:     flex;
+  align-items: center;
+  gap:         10px;
+  padding:     6px 16px;
+  background:  transparent;
+  border:      none;
+  cursor:      pointer;
+  text-align:  right;
+  width:       100%;
+  direction:   rtl;
+  transition:  background 0.22s;
+}
+
+.detail-echo-item:hover {
+  background: rgba(212,175,55,0.035);
+}
+
+/* Pulse mark — the heartbeat of kinship */
+@keyframes echoPulse {
+  0%,  100% { opacity: 0.18; transform: scale(1);    }
+  50%        { opacity: 0.42; transform: scale(1.25); }
+}
+
+.echo-pulse {
+  display:      inline-block;
+  width:        5px;
+  height:       5px;
+  border-radius: 50%;
+  background:   rgba(212,175,55,0.50);
+  animation:    echoPulse 4.5s ease-in-out infinite;
+  flex-shrink:  0;
+}
+
+.detail-echo-item:nth-child(2) .echo-pulse { animation-delay: 1.5s;  }
+.detail-echo-item:nth-child(3) .echo-pulse { animation-delay: 3.0s; }
+
+.echo-title {
+  font-size:      0.79rem;
+  color:          rgba(212,175,55,0.48);
+  font-weight:    400;
+  letter-spacing: 0.01em;
+  overflow:       hidden;
+  text-overflow:  ellipsis;
+  white-space:    nowrap;
+  flex: 1;
+  transition: color 0.22s;
+}
+
+.detail-echo-item:hover .echo-title {
+  color: rgba(212,175,55,0.78);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DIRECTOR'S FINAL CUT — THE PALACE BREATHES
+   Articles I – IX: unified rhythm, memory, weight, variation, listening,
+   continuity, silence, return, and the removal of software.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Article I — Unified breath period ──────────────────────────────────── */
+
+:root {
+  --palace-breath:      80s;
+  --palace-breath-deep: 90s;
+  --palace-accent:       8s;
+}
+
+/* Ambient elements share the same clock */
+.palace-grid       { animation-duration: var(--palace-breath); }
+.palace-depth-glow { animation-duration: var(--palace-breath-deep); }
+
+/* ── Article III — Stone weight: transitions convey mass ─────────────────── */
+
+/* Heavy vault portal hover */
+.vault-portal { transition: background 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                             box-shadow  0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                             border-color 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+
+/* Vault interior settles like stone walls parting */
+.vault-interior { transition: opacity 0.42s cubic-bezier(0.23, 1, 0.32, 1.0); }
+
+/* Detail panel reveals with architectural deliberation */
+.treasure-detail { transition: opacity 0.30s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+
+/* ── Article IV — The Palace Never Repeats: visit rhythm variation ────────── */
+
+/* Each visit cycle (0–3) shifts ambient animation phase */
+[data-visit-rhythm="1"] .palace-depth-glow   { animation-delay: -27s; }
+[data-visit-rhythm="2"] .palace-depth-glow   { animation-delay: -51s; }
+[data-visit-rhythm="3"] .palace-depth-glow   { animation-delay: -14s; }
+
+[data-visit-rhythm="1"] .palace-grid         { animation-delay: -18s; }
+[data-visit-rhythm="2"] .palace-grid         { animation-delay: -37s; }
+[data-visit-rhythm="3"] .palace-grid         { animation-delay: -63s; }
+
+/* Secondary glow drifts position slightly — different atmospheric emphasis */
+[data-visit-rhythm="1"] .palace-secondary-glow { transform: translate(-5%, 3%);  }
+[data-visit-rhythm="2"] .palace-secondary-glow { transform: translate(7%, -4%);  }
+[data-visit-rhythm="3"] .palace-secondary-glow { transform: translate(-3%, 6%);  }
+
+/* ── Article V — The Palace Listens: resting atmosphere ─────────────────── */
+
+/* When no vault is open, the palace breathes slower, darker — Imperial Silence */
+.palace-resting .palace-depth-glow {
+  filter: brightness(0.82);
+  transition: filter 4s ease-in-out;
+}
+.palace-resting .palace-grid {
+  opacity: 0.32;
+  transition: opacity 4s ease-in-out;
+}
+.palace-resting .portal-living-dot {
+  animation-duration: 9s;
+}
+
+/* ── Article VII — Imperial Silence: prefers-reduced-motion ─────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .palace-grid,
+  .palace-depth-glow,
+  .gate-seal,
+  .opening-seal,
+  .portal-living-dot,
+  .palace-orb,
+  .treasury-empty-icon,
+  .treasury-record.tr-living,
+  .echo-pulse,
+  .journey-step.step-present .journey-dot {
+    animation: none !important;
+  }
+
+  /* Structural transitions: keep but make instantaneous */
+  .vault-portal,
+  .vault-interior,
+  .treasure-detail,
+  .treasury-record,
+  .journey-path,
+  .detail-action,
+  .detail-echo-item { transition-duration: 0ms !important; }
+
+  /* Cinematic seal: fade instead of clip-path when motion is reduced */
+  .palace-sealing {
+    animation: none !important;
+    opacity:   0;
+    transition: opacity 400ms ease !important;
+  }
+}
+
+/* ── Article VIII — The Return: after long absence, warmth ──────────────── */
+
+/* Palace warms when citizen has been away > 3 days */
+.palace-returned .palace-depth-glow {
+  filter: brightness(1.20);
+  transition: filter 3.5s ease-in-out;
+}
+.palace-returned .palace-legacy-layer {
+  opacity: 0.90;
+  transition: opacity 3.5s ease-in-out;
+}
+/* The grid breathes slightly brighter on return */
+.palace-returned .palace-grid {
+  opacity: 0.52;
+  transition: opacity 3.5s ease-in-out;
 }

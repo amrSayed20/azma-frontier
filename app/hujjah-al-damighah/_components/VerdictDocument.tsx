@@ -7,7 +7,8 @@ import {
   bucketEvidence,
   resolveKnowledgeLayer,
   verdictText,
-  generateReasoningSummary,
+  generateVerdictExplanation,
+  generateUnknownRemains,
   generateNextInvestigation,
 } from '../_lib/evidence-utils';
 
@@ -46,11 +47,12 @@ function VField({
 }
 
 export function VerdictDocument({ dto, query, domain, outputFormat, onFormatChange }: Props) {
-  const vText    = verdictText(dto, outputFormat, query, domain);
-  const buckets  = bucketEvidence(dto);
-  const pct      = Math.round(dto.averageEvidenceScore * 100);
-  const reasoning = generateReasoningSummary(dto);
-  const nextInv   = generateNextInvestigation(query, buckets);
+  const vText       = verdictText(dto, outputFormat, query, domain);
+  const buckets     = bucketEvidence(dto);
+  const pct         = Math.round(dto.averageEvidenceScore * 100);
+  const explanation = generateVerdictExplanation(dto, domain);
+  const unknowns    = generateUnknownRemains(dto, query);
+  const nextInv     = generateNextInvestigation(query, buckets);
   const sessionDate = new Date().toLocaleDateString('ar-SA', {
     year: 'numeric', month: 'long', day: 'numeric',
   });
@@ -103,8 +105,9 @@ export function VerdictDocument({ dto, query, domain, outputFormat, onFormatChan
             ? `${buckets.unverified.length} عنصر غير محدد`
             : 'لا توجد'}
         />
-        <VField label="ملخص الاستدلال"           value={reasoning}  large />
-        <VField label="التحقيق المقترح التالي"    value={nextInv}    italic />
+        <VField label="سبب الحكم"               value={explanation} large />
+        <VField label="ما يزال مجهولاً"          value={unknowns}   italic />
+        <VField label="التحقيق المقترح التالي"   value={nextInv}    italic />
       </div>
 
       <div className="vd-footer">

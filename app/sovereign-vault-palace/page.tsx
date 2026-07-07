@@ -98,17 +98,104 @@ function popIncomingTransfer(): SovereignTreasure | null {
   } catch { return null; }
 }
 
+// ── Living Collection — Article VII ──────────────────────────────────────
+// Treasures that share journey chambers belong to the same story.
+// The Palace reveals the relationship. It never names it.
+
+function findRelatedTreasures(
+  selected: SovereignTreasure,
+  all:      SovereignTreasure[],
+): SovereignTreasure[] {
+  const PALACE = 'القصر السيادي';
+  const selectedChambers = new Set(
+    selected.journey.filter(s => s.chamberAr !== PALACE).map(s => s.chamberAr),
+  );
+  if (selectedChambers.size === 0) return [];
+  return all
+    .filter(other => other.id !== selected.id)
+    .map(other => ({
+      treasure: other,
+      score:    other.journey.filter(
+        s => s.chamberAr !== PALACE && selectedChambers.has(s.chamberAr),
+      ).length,
+    }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map(x => x.treasure);
+}
+
+// ── Living Treasure Classifier — Article VI ──────────────────────────────
+// Every treasure has age, journey depth, and status. These become CSS classes.
+// No labels. Architecture expresses it.
+
+function getTreasureClasses(t: SovereignTreasure): string {
+  const ageDays   = (Date.now() - t.addedAt) / (1000 * 60 * 60 * 24);
+  const ageClass  = ageDays < 7    ? 'tr-fresh'
+                  : ageDays < 30   ? 'tr-maturing'
+                  : ageDays < 180  ? 'tr-established'
+                  : 'tr-ancient';
+  const depthClass = t.journey.length <= 1 ? 'tr-nascent'
+                   : t.journey.length <= 3  ? 'tr-traveled'
+                   : 'tr-deep';
+  return `${ageClass} tr-${t.status} ${depthClass}`;
+}
+
+// ── Palace Memory — familiarity grows with each return ───────────────────
+
+interface PalaceMemory { visits: number; firstAt: number | null; lastAt: number | null }
+
+function readPalaceMemory(): PalaceMemory {
+  if (typeof window === 'undefined') return { visits: 0, firstAt: null, lastAt: null };
+  try {
+    const raw = localStorage.getItem('azma.palace.memory');
+    return raw ? (JSON.parse(raw) as PalaceMemory) : { visits: 0, firstAt: null, lastAt: null };
+  } catch { return { visits: 0, firstAt: null, lastAt: null }; }
+}
+
+function recordPalaceVisit(prev: PalaceMemory): PalaceMemory {
+  const now     = Date.now();
+  const updated: PalaceMemory = { visits: prev.visits + 1, firstAt: prev.firstAt ?? now, lastAt: now };
+  try { localStorage.setItem('azma.palace.memory', JSON.stringify(updated)); } catch { /* ignore */ }
+  return updated;
+}
+
+function getAtriumGreeting(visits: number, treasureCount: number): { title: string; subtitle: string } {
+  if (visits <= 1) {
+    return {
+      title:    'هذا مكانك',
+      subtitle: treasureCount > 0
+        ? `${treasureCount} كنز يقيم هنا`
+        : 'أودع فيه ما يستحق المحافظة عليه',
+    };
+  }
+  if (visits < 8) {
+    return {
+      title:    'عدتَ',
+      subtitle: treasureCount > 0
+        ? `${treasureCount} كنز في انتظارك`
+        : 'القصر يستقبلك. أودع فيه أول كنز',
+    };
+  }
+  return {
+    title:    'عدتَ',
+    subtitle: treasureCount > 0
+      ? `${treasureCount} كنز يقيم هنا — إرثك يكبر`
+      : 'القصر يعرفك جيداً',
+  };
+}
+
 // ── Companion Messages ────────────────────────────────────────────────────
 
 const PALACE_COMPANION = {
-  gate:      'قصرك ينتظرك. أثبت ملكيتك للدخول.',
-  opening:   'البوابة تفتح. أهلاً بعودتك.',
-  atrium:    'هذا مكانك. كل ما يقيم هنا هو ملكك.',
-  vaultOpen: (name: string) => `${name} مفتوحة — كنوزك في انتظارك.`,
-  treasure:  'هذا الكنز أكمل رحلته إلى هنا.',
-  ceremony:  'كنز جديد يصل إلى قصرك.',
-  departure: 'رحلتك تستمر. القصر يبقى في انتظارك.',
-  empty:     'الخزنة هادئة. أرسل إليها أول كنز.',
+  gate:      'القصر في انتظارك.',
+  opening:   'عدتَ.',
+  atrium:    'هذا مكانك. كل ما يقيم هنا ملكك.',
+  vaultOpen: (name: string) => `${name} — كنوزك هنا.`,
+  treasure:  'هذا الكنز أكمل رحلته.',
+  ceremony:  'وصل كنز جديد.',
+  departure: 'القصر يبقى في انتظارك.',
+  empty:     'الخزنة هادئة. جاهزة.',
 } as const;
 
 // ── Phase + Auth ──────────────────────────────────────────────────────────
@@ -132,6 +219,17 @@ export default function SovereignVaultPalace() {
   const [activeVault, setActiveVault]           = useState<string | null>(null);
   const [selectedTreasure, setSelectedTreasure] = useState<SovereignTreasure | null>(null);
   const [incomingTreasure, setIncomingTreasure] = useState<SovereignTreasure | null>(null);
+
+  // Palace memory — familiarity grows with each return
+  const [palaceMemory, setPalaceMemory] = useState<PalaceMemory>(() => readPalaceMemory());
+  // Computed once at mount from previous lastAt — never re-derived in render
+  const [returnClass]                   = useState<string>(() => {
+    const m = readPalaceMemory();
+    if (m.lastAt === null) return '';
+    const DAY        = 1000 * 60 * 60 * 24;
+    const daysSince  = (Date.now() - m.lastAt) / DAY;
+    return daysSince > 3 ? 'palace-returned' : '';
+  });
 
   // Companion — lazy initializer avoids setState-in-effect
   const [companionMsg, setCompanionMsg]    = useState<string>(() => PALACE_COMPANION.gate);
@@ -163,13 +261,13 @@ export default function SovereignVaultPalace() {
     setCompanionMsg(PALACE_COMPANION.opening);
 
     setTimeout(() => {
-      // Load treasures from palace storage
-      const stored  = readPalace();
+      const stored   = readPalace();
       const incoming = popIncomingTransfer();
 
       setTreasures(stored);
       setPhase('palace');
       setCompanionMsg(PALACE_COMPANION.atrium);
+      setPalaceMemory(prev => recordPalaceVisit(prev));
 
       if (incoming) {
         setIncomingTreasure(incoming);
@@ -232,12 +330,34 @@ export default function SovereignVaultPalace() {
     setCompanionMsg(PALACE_COMPANION.treasure);
   }
 
-  // ── Transfer (Cinematic Exit) ─────────────────────────────────────────────
+  function navigateToRelated(t: SovereignTreasure) {
+    setActiveVault(t.vaultId);
+    selectTreasure(t);
+  }
+
+  // ── Transfer (Cinematic Exit) — Article V ───────────────────────────────────
 
   function handleTransfer(destination: string) {
     setCompanionMsg(PALACE_COMPANION.departure);
+    try { sessionStorage.setItem('azma.transfer.origin', 'palace'); } catch { /* ignore */ }
     setPhase('sealing');
-    setTimeout(() => router.push(destination), 720);
+    setTimeout(() => router.push(destination), 950);
+  }
+
+  function handleTreasureTransfer(t: SovereignTreasure, destination: string) {
+    try {
+      sessionStorage.setItem('azma.transfer.treasure', JSON.stringify({
+        id:      t.id,
+        titleAr: t.titleAr,
+        preview: t.preview,
+        origin:  'القصر السيادي',
+        vaultId: t.vaultId,
+      }));
+      sessionStorage.setItem('azma.transfer.origin', 'palace');
+    } catch { /* ignore */ }
+    setCompanionMsg('الكنز يواصل رحلته.');
+    setPhase('sealing');
+    setTimeout(() => router.push(destination), 950);
   }
 
   // ── Actions on Treasure ───────────────────────────────────────────────────
@@ -276,17 +396,94 @@ export default function SovereignVaultPalace() {
     setSelectedTreasure(null);
   }
 
+  function handleDownload(t: SovereignTreasure) {
+    if (typeof window === 'undefined') return;
+    const payload = JSON.stringify({
+      titleAr:   t.titleAr,
+      preview:   t.preview,
+      origin:    t.origin,
+      status:    t.status,
+      addedAt:   new Date(t.addedAt).toISOString(),
+      journey:   t.journey.map(s => ({ ...s, at: new Date(s.at).toISOString() })),
+    }, null, 2);
+    const blob = new Blob([payload], { type: 'application/json;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `${t.titleAr.slice(0, 40).replace(/[\s/\\]/g, '-')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setCompanionMsg('الكنز يتجه نحو الجهاز.');
+  }
+
+  function handleDuplicate(t: SovereignTreasure) {
+    const copy: SovereignTreasure = {
+      ...t,
+      id:      `dup-${Date.now()}`,
+      titleAr: `${t.titleAr} — نسخة`,
+      addedAt: Date.now(),
+      status:  'living',
+      journey: [
+        ...t.journey,
+        { actionAr: 'نسخ سيادي في القصر', chamberAr: 'القصر السيادي', at: Date.now() },
+      ],
+    };
+    depositToVault(copy);
+    setTreasures(readPalace());
+    setCompanionMsg('نسخة من الكنز وجدت مكانها.');
+  }
+
   // ── Derived ───────────────────────────────────────────────────────────────
 
-  const activeVaultDef = SOVEREIGN_VAULTS.find((v) => v.id === activeVault);
+  const activeVaultDef       = SOVEREIGN_VAULTS.find((v) => v.id === activeVault);
   const activeVaultTreasures = activeVault ? (treasures[activeVault] ?? []) : [];
-  const totalTreasures = Object.values(treasures).reduce((n, arr) => n + arr.length, 0);
+  const totalTreasures       = Object.values(treasures).reduce((n, arr) => n + arr.length, 0);
+  const atriumGreeting       = getAtriumGreeting(palaceMemory.visits, totalTreasures);
+  const familiarityClass     = palaceMemory.visits >= 8 ? 'palace-legacy'
+                             : palaceMemory.visits >= 3 ? 'palace-familiar'
+                             : 'palace-young';
+
+  // ── Legacy — Article IV (the Palace grows as the Citizen grows) ───────────
+  const allTreasures     = Object.values(treasures).flat();
+  const vaultsUsed       = SOVEREIGN_VAULTS.filter(v => (treasures[v.id] ?? []).length > 0).length;
+  const completedWork    = allTreasures.filter(t => t.status === 'sealed' || t.status === 'archived').length;
+
+  const legacyDepthClass = totalTreasures === 0     ? 'palace-empty'
+                         : totalTreasures <= 3      ? 'palace-new'
+                         : totalTreasures <= 10     ? 'palace-growing'
+                         : totalTreasures <= 25     ? 'palace-established'
+                         : 'palace-legacy-deep';
+
+  const craftBreadthClass = vaultsUsed >= 6 ? 'palace-polymath'
+                          : vaultsUsed >= 3 ? 'palace-versatile'
+                          : 'palace-focused';
+
+  const completionClass  = completedWork > 0 && completedWork >= Math.ceil(totalTreasures * 0.40)
+                         ? 'palace-completer' : '';
+
+  const selectedAuraClass = selectedTreasure
+    && selectedTreasure.status === 'sealed'
+    && selectedTreasure.journey.length >= 4
+    ? 'palace-masterpiece-selected' : '';
+
+  // ── Collection — Article VII ──────────────────────────────────────────────
+  const relatedTreasures = selectedTreasure
+    ? findRelatedTreasures(selectedTreasure, allTreasures)
+    : [];
+  const collectionClass = relatedTreasures.length > 0 ? 'palace-story-active' : '';
+
+  // ── Director's Final Cut — Articles I–IX ──────────────────────────────────
+  const restingClass = phase === 'palace' && !activeVault ? 'palace-resting' : '';
+  const visitRhythm  = palaceMemory.visits % 4;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <main
-      className={`palace-viewport ${phase === 'sealing' ? 'palace-sealing' : ''}`}
+      className={`palace-viewport ${phase === 'sealing' ? 'palace-sealing' : ''} ${familiarityClass} ${legacyDepthClass} ${craftBreadthClass} ${completionClass} ${selectedAuraClass} ${collectionClass} ${returnClass} ${restingClass}`}
+      data-visit-rhythm={visitRhythm}
       dir="rtl"
     >
       {/* Atmospheric background */}
@@ -294,6 +491,8 @@ export default function SovereignVaultPalace() {
         <div className="palace-grid" />
         <div className="palace-depth-glow" />
         <div className="palace-secondary-glow" />
+        <div className="palace-legacy-layer" />
+        <div className="palace-history-vein" />
       </div>
 
       {/* ═══════════════════════════════════════ */}
@@ -303,7 +502,7 @@ export default function SovereignVaultPalace() {
         <div className="palace-gate">
           <div className="gate-seal" aria-hidden="true">⬡</div>
           <h1 className="gate-title">القصر السيادي</h1>
-          <p className="gate-subtitle">أثبت ملكيتك للدخول إلى مكانك</p>
+          <p className="gate-subtitle">هذا مكانك</p>
 
           {/* Auth method selector */}
           <div className="gate-methods" role="group" aria-label="طريقة الدخول">
@@ -366,7 +565,7 @@ export default function SovereignVaultPalace() {
                 <div className="biometric-scan-line" />
                 <span className="bio-glyph" aria-hidden="true">◯</span>
               </div>
-              <p className="biometric-label">انقر للاتصال بمستشعر البصمة</p>
+              <p className="biometric-label">ضع إصبعك</p>
             </div>
           )}
         </div>
@@ -381,7 +580,6 @@ export default function SovereignVaultPalace() {
           <div className="opening-door door-right" aria-hidden="true" />
           <div className="opening-center">
             <div className="opening-seal" aria-hidden="true">⬡</div>
-            <p className="opening-label">البوابة تفتح…</p>
           </div>
         </div>
       )}
@@ -395,7 +593,6 @@ export default function SovereignVaultPalace() {
             <div className="ceremony-arrival">
               <span className="ceremony-glyph" aria-hidden="true">⚖</span>
               <h2 className="ceremony-origin">{incomingTreasure.origin}</h2>
-              <p className="ceremony-subtitle">كنز جديد يصل إلى القصر</p>
             </div>
             <div className="ceremony-treasure">
               <div className="ceremony-treasure-title">{incomingTreasure.titleAr}</div>
@@ -409,7 +606,7 @@ export default function SovereignVaultPalace() {
               </span>
             </div>
             <button className="ceremony-receive-btn" onClick={completeCeremony}>
-              استقبال الكنز
+              أودِعه في مكانه
             </button>
           </div>
         </div>
@@ -485,13 +682,8 @@ export default function SovereignVaultPalace() {
                     <div className="orb-ring" />
                   </div>
                   <div className="atrium-greeting">
-                    <h1 className="atrium-title">أهلاً بعودتك</h1>
-                    <p className="atrium-subtitle">
-                      {totalTreasures > 0
-                        ? `قصرك يضمّ ${totalTreasures} كنز سيادي`
-                        : 'قصرك ينتظر أول كنز يُودَع فيه'
-                      }
-                    </p>
+                    <h1 className="atrium-title">{atriumGreeting.title}</h1>
+                    <p className="atrium-subtitle">{atriumGreeting.subtitle}</p>
                   </div>
 
                   {/* Recent Arrivals */}
@@ -527,13 +719,14 @@ export default function SovereignVaultPalace() {
                     </div>
                   )}
 
-                  {/* Transfer destinations */}
+                  {/* Connected Chambers — the Empire is one world */}
                   <div className="atrium-dispatch">
                     <div className="atrium-section-label">المحاكم المتصلة</div>
                     <div className="atrium-dispatch-row">
-                      <button className="atrium-route-btn route-hujjah"   onClick={() => handleTransfer('/hujjah-al-damighah')}>حجة الدامغة</button>
-                      <button className="atrium-route-btn route-qiyamah"  onClick={() => handleTransfer('/qiyamah-chamber')}>القيامة</button>
-                      <button className="atrium-route-btn route-rasamr"   onClick={() => handleTransfer('/ras-amr')}>رأس الأمر</button>
+                      <button className="atrium-route-btn route-hujjah"  onClick={() => handleTransfer('/hujjah-al-damighah')}>حجة الدامغة</button>
+                      <button className="atrium-route-btn route-qiyamah" onClick={() => handleTransfer('/qiyamah-chamber')}>القيامة</button>
+                      <button className="atrium-route-btn route-rasamr"  onClick={() => handleTransfer('/ras-amr')}>رأس الأمر</button>
+                      <button className="atrium-route-btn route-makman"  onClick={() => handleTransfer('/makman-al-ghayah')}>مكمن الغاية</button>
                     </div>
                   </div>
                 </div>
@@ -569,7 +762,7 @@ export default function SovereignVaultPalace() {
                         activeVaultTreasures.map((t, idx) => (
                           <button
                             key={t.id}
-                            className={`treasury-record ${selectedTreasure?.id === t.id ? 'record-selected' : ''}`}
+                            className={`treasury-record ${selectedTreasure?.id === t.id ? 'record-selected' : ''} ${getTreasureClasses(t)}`}
                             style={{ animationDelay: `${idx * 60}ms` }}
                             onClick={() => selectTreasure(t)}
                           >
@@ -590,9 +783,8 @@ export default function SovereignVaultPalace() {
 
                     {/* Treasure Detail Panel */}
                     {selectedTreasure && (
-                      <div className="treasure-detail">
+                      <div className={`treasure-detail ${getTreasureClasses(selectedTreasure)}`}>
                         <div className="detail-header">
-                          <span className="detail-label">الكنز السيادي</span>
                           <button className="detail-close" onClick={() => setSelectedTreasure(null)}>✕</button>
                         </div>
 
@@ -604,27 +796,90 @@ export default function SovereignVaultPalace() {
                         {/* Journey Timeline */}
                         <div className="detail-section-label">رحلة الكنز</div>
                         <div className="detail-journey">
-                          {selectedTreasure.journey.map((step, i) => (
-                            <div key={i} className="journey-step">
-                              <span className="journey-dot" aria-hidden="true" />
-                              <div className="journey-step-body">
-                                <span className="journey-action">{step.actionAr}</span>
-                                <span className="journey-chamber">{step.chamberAr}</span>
+                          {selectedTreasure.journey.map((step, i) => {
+                            const isFirst = i === 0;
+                            const isLast  = i === selectedTreasure.journey.length - 1;
+                            return (
+                              <div key={i} className={`journey-step${isFirst ? ' step-origin' : ''}${isLast ? ' step-present' : ''}`}>
+                                <span className="journey-dot" aria-hidden="true" />
+                                <div className="journey-step-body">
+                                  <span className="journey-action">{step.actionAr}</span>
+                                  <span className="journey-chamber">{step.chamberAr}</span>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
 
-                        {/* Actions */}
-                        <div className="detail-section-label">إجراءات الكنز</div>
-                        <div className="detail-actions">
-                          <button className="detail-action action-continue"
-                            onClick={() => handleTransfer('/hujjah-al-damighah')}>
-                            متابعة التحقيق
+                        {/* Living Collection — related treasures surface quietly */}
+                        {relatedTreasures.length > 0 && (
+                          <div className="detail-echoes">
+                            {relatedTreasures.map(r => (
+                              <button
+                                key={r.id}
+                                className="detail-echo-item"
+                                onClick={() => navigateToRelated(r)}
+                              >
+                                <span className="echo-pulse" aria-hidden="true" />
+                                <span className="echo-title">{r.titleAr}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Journey Paths — corridors to other chambers */}
+                        <div className="detail-section-label">مسارات الرحلة</div>
+                        <div className="treasure-journeys">
+                          <button
+                            className="journey-path path-hujjah"
+                            onClick={() => handleTreasureTransfer(selectedTreasure, '/hujjah-al-damighah')}
+                          >
+                            <span className="path-icon" aria-hidden="true">⚖</span>
+                            <div className="path-meta">
+                              <span className="path-name">حجة الدامغة</span>
+                              <span className="path-desc">تحقيق معرفي</span>
+                            </div>
                           </button>
-                          <button className="detail-action action-creative"
-                            onClick={() => handleTransfer('/qiyamah-chamber')}>
-                            إرسال إلى القيامة
+                          <button
+                            className="journey-path path-qiyamah"
+                            onClick={() => handleTreasureTransfer(selectedTreasure, '/qiyamah-chamber')}
+                          >
+                            <span className="path-icon" aria-hidden="true">◈</span>
+                            <div className="path-meta">
+                              <span className="path-name">القيامة</span>
+                              <span className="path-desc">إنتاج إبداعي</span>
+                            </div>
+                          </button>
+                          <button
+                            className="journey-path path-rasamr"
+                            onClick={() => handleTreasureTransfer(selectedTreasure, '/ras-amr')}
+                          >
+                            <span className="path-icon" aria-hidden="true">◎</span>
+                            <div className="path-meta">
+                              <span className="path-name">رأس الأمر</span>
+                              <span className="path-desc">قيادة وقرار</span>
+                            </div>
+                          </button>
+                          <button
+                            className="journey-path path-makman"
+                            onClick={() => handleTreasureTransfer(selectedTreasure, '/makman-al-ghayah')}
+                          >
+                            <span className="path-icon" aria-hidden="true">⬡</span>
+                            <div className="path-meta">
+                              <span className="path-name">مكمن الغاية</span>
+                              <span className="path-desc">استراتيجية وتخطيط</span>
+                            </div>
+                          </button>
+                        </div>
+
+                        <div className="detail-actions">
+                          <button className="detail-action action-download"
+                            onClick={() => handleDownload(selectedTreasure)}>
+                            تحميل على الجهاز
+                          </button>
+                          <button className="detail-action action-duplicate"
+                            onClick={() => handleDuplicate(selectedTreasure)}>
+                            نسخ سيادي
                           </button>
                           <button className="detail-action action-seal"
                             onClick={() => sealTreasure(selectedTreasure.id)}>

@@ -1,0 +1,804 @@
+/**
+ * AZMA OS — Component Language Engine (ACLE) V1.0
+ * Constitutional CSS Layer — azma-elements
+ *
+ * This layer sits above azma-behaviors in specificity:
+ *   azma-constitution (V1.0 tokens)
+ *   azma-behaviors    (V1.1 material × state)
+ *   azma-elements     (ACLE V1.0) ← this file
+ *
+ * Import in app/layout.tsx after azma-behaviors.css.
+ * Never import directly in chambers.
+ * Constitutional law: no component names, no library references.
+ */
+
+@layer azma-elements {
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ACLE KEYFRAMES
+     Every architectural entrance, pause, and departure.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* Portal / Path — slides from the corridor edge */
+  @keyframes azmaElCorridorEnter {
+    from { opacity: 0; transform: translateX(10px); }
+    to   { opacity: 1; transform: translateX(0);    }
+  }
+
+  /* Record / Vessel — settles from above with weight */
+  @keyframes azmaElSettle {
+    from { opacity: 0; transform: translateY(-8px); filter: brightness(0.70); }
+    to   { opacity: 1; transform: translateY(0);    filter: brightness(1);    }
+  }
+
+  /* Guide / Indicator — rises from silence below */
+  @keyframes azmaElEmerge {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0);   }
+  }
+
+  /* Seal / Declaration — revealed from obscurity */
+  @keyframes azmaElReveal {
+    from { opacity: 0; filter: brightness(0.50); }
+    to   { opacity: 1; filter: brightness(1);    }
+  }
+
+  /* Universal dissolve */
+  @keyframes azmaElDissolve {
+    from { opacity: 1; transform: scale(1);    }
+    to   { opacity: 0; transform: scale(0.97); }
+  }
+
+  /* Verdict — descends with the weight of judgment */
+  @keyframes azmaElVerdictDescend {
+    from { opacity: 0; transform: translateY(-16px); filter: brightness(0.55); }
+    to   { opacity: 1; transform: translateY(0);     filter: brightness(1);    }
+  }
+
+  /* Record ambient breath — box-shadow only, never opacity */
+  @keyframes azmaElRecordBreathe {
+    0%,  100% { box-shadow: 0 0  6px rgba(212, 175, 55, 0.05); }
+    50%        { box-shadow: 0 0 12px rgba(212, 175, 55, 0.11); }
+  }
+
+  /* Guide ambient breath */
+  @keyframes azmaElGuideBreathe {
+    0%,  100% { opacity: 0.52; }
+    50%        { opacity: 0.70; }
+  }
+
+  /* Seal ambient breath — box-shadow glow */
+  @keyframes azmaElSealBreathe {
+    0%,  100% {
+      box-shadow: 0 0 24px rgba(212,175,55,0.15),
+                  inset 0 0 12px rgba(212,175,55,0.07);
+    }
+    50% {
+      box-shadow: 0 0 36px rgba(212,175,55,0.26),
+                  inset 0 0 20px rgba(212,175,55,0.13);
+    }
+  }
+
+  /* Indicator — slow ambient pulse */
+  @keyframes azmaElIndicatorPulse {
+    0%,  100% { opacity: 0.52; transform: scale(1);    }
+    50%        { opacity: 0.85; transform: scale(1.14); }
+  }
+
+  /* Indicator — fast active pulse */
+  @keyframes azmaElIndicatorActive {
+    0%,  100% { opacity: 0.70; transform: scale(1);    }
+    50%        { opacity: 1;    transform: scale(1.26); }
+  }
+
+  /* Indicator — irregular uncertain rhythm */
+  @keyframes azmaElIndicatorUncertain {
+    0%,  100% { opacity: 0.42; transform: scale(0.94); }
+    28%        { opacity: 0.80; transform: scale(1.20); }
+    58%        { opacity: 0.52; transform: scale(1.04); }
+    80%        { opacity: 0.70; transform: scale(1.16); }
+  }
+
+  /* Uncertain verdict — irregular border glow */
+  @keyframes azmaElVerdictUncertain {
+    0%,  100% { box-shadow: 0 0 12px rgba(122, 92, 26, 0.08); }
+    50%        { box-shadow: 0 0 22px rgba(122, 92, 26, 0.20); }
+  }
+
+  /* Conflicted verdict — asymmetric pulse */
+  @keyframes azmaElVerdictConflicted {
+    0%,  100% { box-shadow: 0 0 12px rgba(139, 37, 37, 0.08); }
+    33%        { box-shadow: 0 0 26px rgba(139, 37, 37, 0.24); }
+    66%        { box-shadow: 0 0  7px rgba(139, 37, 37, 0.04); }
+  }
+
+  /* Sovereign Action completion ceremony */
+  @keyframes azmaElSovereignComplete {
+    0%   { filter: brightness(1);    box-shadow: var(--azma-shadow-glow-soft);    }
+    40%  { filter: brightness(1.28); box-shadow: var(--azma-shadow-glow-bright);  }
+    100% { filter: brightness(1.10); box-shadow: var(--azma-shadow-glow-ambient); }
+  }
+
+  /* Seal opens — the doors part */
+  @keyframes azmaElSealOpen {
+    0%   { clip-path: circle(50% at center); opacity: 1; }
+    60%  { clip-path: circle(120% at center); opacity: 1; }
+    100% { clip-path: circle(120% at center); opacity: 0; }
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     I. THE PORTAL
+     A passage between architectural spaces.
+     Carries the character of its destination in its border accent.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  .azma-el-portal {
+    display:             flex;
+    align-items:         center;
+    gap:                 var(--azma-space-3);
+    padding:             var(--azma-space-3) var(--azma-space-4);
+    background:          var(--azma-surface);
+    border:              1px solid transparent;
+    /* The leading accent — RTL: inline-start = visual left = destination signal */
+    border-inline-start: 2px solid rgba(var(--azma-accent), 0.22);
+    border-radius:       var(--azma-radius-panel);
+    color:               var(--azma-text-primary);
+    font-size:           var(--azma-text-body);
+    cursor:              pointer;
+    transition:
+      border-color           var(--azma-t-deliberate) var(--azma-ease-deliberate),
+      border-inline-start    var(--azma-t-deliberate) var(--azma-ease-deliberate),
+      box-shadow             var(--azma-t-deliberate) var(--azma-ease-deliberate),
+      filter                 var(--azma-t-deliberate) var(--azma-ease-deliberate);
+  }
+
+  .azma-el-portal:hover {
+    border-inline-start-color: rgba(var(--azma-accent), 0.65);
+    box-shadow:                var(--azma-shadow-glow-soft);
+    filter:                    brightness(1.12);
+  }
+
+  .azma-el-portal.is-appearing {
+    animation: azmaElCorridorEnter var(--azma-t-architectural) var(--azma-ease-architectural) both;
+  }
+
+  .azma-el-portal.is-active {
+    border-inline-start-color: rgba(var(--azma-accent), 0.85);
+    box-shadow:                var(--azma-shadow-glow-medium);
+    filter:                    brightness(1.18);
+  }
+
+  .azma-el-portal.is-dissolving {
+    animation: azmaElDissolve var(--azma-t-imperial) var(--azma-ease-heavy) forwards;
+  }
+
+  /* Visited portal — the corridor is known */
+  .azma-el-portal[data-remembrance="visited"] {
+    border-inline-start-color: rgba(var(--azma-accent), 0.12);
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     II. THE RECORD
+     A living artifact with age, journey, and status.
+     Breathes through box-shadow — never opacity (avoids opacity conflicts).
+     ══════════════════════════════════════════════════════════════════════ */
+
+  .azma-el-record {
+    padding:       var(--azma-space-4);
+    background:    var(--azma-surface);
+    border:        1px solid var(--azma-gold-1);
+    border-radius: var(--azma-radius-panel);
+    cursor:        pointer;
+    color:         var(--azma-text-primary);
+    transition:
+      border-color var(--azma-t-deliberate) var(--azma-ease-deliberate),
+      box-shadow   var(--azma-t-deliberate) var(--azma-ease-deliberate),
+      filter       var(--azma-t-deliberate) var(--azma-ease-deliberate);
+    animation: azmaElRecordBreathe var(--azma-breath-echo) var(--azma-ease-breath) infinite;
+  }
+
+  .azma-el-record:hover {
+    border-color: var(--azma-gold-3);
+    filter:       brightness(1.10);
+  }
+
+  .azma-el-record.is-appearing {
+    animation: azmaElSettle var(--azma-t-deliberate) var(--azma-ease-deliberate) both;
+  }
+
+  /* Selected — elevated to primary authority. Breath suspended. */
+  .azma-el-record.is-active {
+    border-color: rgba(var(--azma-accent), 0.60);
+    box-shadow:   var(--azma-shadow-glow-soft);
+    filter:       brightness(1.12);
+    animation:    none;
+  }
+
+  .azma-el-record.is-completing {
+    border-inline-start: 2px solid rgba(212, 175, 55, 0.55);
+    animation: azmaElReveal var(--azma-t-ceremonial) var(--azma-ease-architectural) reverse forwards;
+  }
+
+  .azma-el-record.is-dissolving {
+    animation: azmaElDissolve var(--azma-t-architectural) var(--azma-ease-heavy) forwards;
+  }
+
+  /* Archived record — cool, still, historical */
+  .azma-el-record[data-remembrance="archived"] {
+    filter:              brightness(0.72);
+    border-inline-start: 2px solid rgba(212, 175, 55, 0.10);
+    animation:           none;
+    cursor:              default;
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     III. THE VERDICT
+     The settled conclusion of deliberation.
+     Descends with the weight of judgment. Changes everything around it.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  .azma-el-verdict {
+    padding:        var(--azma-space-5) var(--azma-space-6);
+    background:     var(--azma-surface-high);
+    border:         1px solid rgba(212, 175, 55, 0.35);
+    border-radius:  var(--azma-radius-panel);
+    color:          var(--azma-text-sacred);
+    font-size:      var(--azma-text-medium);
+    font-weight:    600;
+    letter-spacing: var(--azma-tracking-open);
+  }
+
+  .azma-el-verdict.is-appearing {
+    animation: azmaElVerdictDescend var(--azma-t-ceremonial) var(--azma-ease-heavy) both;
+  }
+
+  /* Verdicts do not dissolve — they leave a permanent mark */
+  .azma-el-verdict[data-remembrance="decided"] {
+    border-inline-start: 2px solid rgba(212, 175, 55, 0.30);
+    filter:              brightness(0.85);
+  }
+
+  /* Certain — the path is known */
+  .azma-el-verdict--certain {
+    border-color: rgba(74, 155, 106, 0.55);
+    box-shadow:   0 0 20px rgba(74, 155, 106, 0.12);
+  }
+
+  /* Uncertain — the question remains open */
+  .azma-el-verdict--uncertain {
+    border-color: rgba(122, 92, 26, 0.45);
+    animation:    azmaElVerdictUncertain 3.2s var(--azma-ease-breath) infinite;
+  }
+
+  /* Conflicted — tension inhabits the space */
+  .azma-el-verdict--conflicted {
+    border-color: rgba(139, 37, 37, 0.45);
+    animation:    azmaElVerdictConflicted 2.4s var(--azma-ease-breath) infinite;
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     IV. THE SOVEREIGN ACTION
+     The singular primary act. Constitutionally one per context.
+     Does not animate on hover — stillness is authority.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  .azma-el-sovereign-action {
+    display:         inline-flex;
+    align-items:     center;
+    justify-content: center;
+    padding:         var(--azma-space-4) var(--azma-space-8);
+    min-height:      var(--azma-touch-target);
+    background:      rgba(212, 175, 55, 0.06);
+    border:          1px solid rgba(212, 175, 55, 0.55);
+    border-radius:   var(--azma-radius-panel);
+    color:           var(--azma-gold-6);
+    font-size:       var(--azma-text-base);
+    font-weight:     600;
+    letter-spacing:  var(--azma-tracking-wide);
+    cursor:          pointer;
+    transition:
+      filter     var(--azma-t-instant) ease-out,
+      box-shadow var(--azma-t-swift)   var(--azma-ease-deliberate),
+      border-color var(--azma-t-deliberate) var(--azma-ease-deliberate);
+  }
+
+  /* Hover is intentionally absent — the sovereign action holds still */
+  .azma-el-sovereign-action:active {
+    filter: brightness(0.86);
+  }
+
+  .azma-el-sovereign-action.is-appearing {
+    animation: azmaElReveal var(--azma-t-ceremonial) var(--azma-ease-architectural) both;
+  }
+
+  .azma-el-sovereign-action.is-completing {
+    animation: azmaElSovereignComplete var(--azma-t-ceremonial) var(--azma-ease-architectural) forwards;
+  }
+
+  .azma-el-sovereign-action.is-dissolving {
+    animation: azmaElDissolve var(--azma-t-imperial) var(--azma-ease-heavy) forwards;
+  }
+
+  /* The act is done — gold border persists as history */
+  .azma-el-sovereign-action[data-remembrance="completed"] {
+    border-color: rgba(212, 175, 55, 0.35);
+    filter:       brightness(1.10);
+    box-shadow:   var(--azma-shadow-glow-ambient);
+    cursor:       default;
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     V. THE GUIDE
+     The living companion. Always peripheral. Never instrusive.
+     Does not respond to hover — it reads the room, not the citizen.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  .azma-el-guide {
+    color:          var(--azma-text-muted);
+    font-size:      var(--azma-text-small);
+    letter-spacing: var(--azma-tracking-open);
+    animation:      azmaElGuideBreathe var(--azma-breath-accent) var(--azma-ease-breath) infinite;
+    pointer-events: none;
+    user-select:    none;
+  }
+
+  .azma-el-guide.is-appearing {
+    animation: azmaElEmerge var(--azma-t-atmospheric) var(--azma-ease-breath) both;
+  }
+
+  .azma-el-guide.is-completing {
+    animation:  none;
+    opacity:    0.85;
+    transition: opacity var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+
+  /* The last message lingers as a whisper */
+  .azma-el-guide[data-remembrance="echoing"] {
+    opacity:   0.32;
+    filter:    brightness(0.70);
+    animation: none;
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     VI. THE INDICATOR
+     The smallest unit of meaning. Rhythm carries information.
+     6px max — the jewel does not grow.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  .azma-el-indicator {
+    display:       inline-block;
+    width:         6px;
+    height:        6px;
+    border-radius: var(--azma-radius-circle);
+    background:    var(--azma-gold-5);
+    flex-shrink:   0;
+    animation:     azmaElIndicatorPulse var(--azma-breath-fine) var(--azma-ease-breath) infinite;
+  }
+
+  /* Working — something is being processed */
+  .azma-el-indicator.is-active {
+    background: var(--azma-gold-6);
+    animation:  azmaElIndicatorActive 1.2s var(--azma-ease-breath) infinite;
+  }
+
+  /* Complete — the thing is done. No more pulse. */
+  .azma-el-indicator.is-completing {
+    background:  var(--azma-gold-7);
+    animation:   none;
+    transform:   scale(1.20);
+    transition:  transform var(--azma-t-swift) var(--azma-ease-architectural);
+  }
+
+  .azma-el-indicator.is-dissolving {
+    animation:  none;
+    opacity:    0;
+    transform:  scale(0);
+    transition:
+      opacity   var(--azma-t-swift) ease-out,
+      transform var(--azma-t-swift) ease-in;
+  }
+
+  /* Uncertain — the question wavers */
+  .azma-el-indicator--uncertain {
+    background: var(--azma-gold-3);
+    animation:  azmaElIndicatorUncertain 2.8s var(--azma-ease-breath) infinite;
+  }
+
+  /* Warning — an irregular pulse of a different color */
+  .azma-el-indicator--warning {
+    background: rgba(139, 37, 37, 0.85);
+    animation:  azmaElIndicatorUncertain 1.8s var(--azma-ease-breath) infinite;
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     VII. THE SEAL
+     Ceremonial barrier. The gate between states.
+     Does not describe its purpose — its form carries all authority.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  .azma-el-seal {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    width:           96px;
+    height:          96px;
+    border-radius:   var(--azma-radius-circle);
+    border:          1px solid rgba(212, 175, 55, 0.25);
+    background:      rgba(212, 175, 55, 0.04);
+    color:           var(--azma-gold-5);
+    font-size:       var(--azma-text-imperial);
+    cursor:          pointer;
+    animation:       azmaElSealBreathe var(--azma-breath-echo) var(--azma-ease-breath) infinite;
+    transition:
+      filter    var(--azma-t-deliberate) var(--azma-ease-deliberate),
+      transform var(--azma-t-deliberate) var(--azma-ease-deliberate);
+  }
+
+  .azma-el-seal.is-appearing {
+    animation:
+      azmaElReveal      var(--azma-t-ceremonial) var(--azma-ease-architectural) both,
+      azmaElSealBreathe var(--azma-breath-echo)  var(--azma-ease-breath) var(--azma-t-ceremonial) infinite;
+  }
+
+  .azma-el-seal.is-active {
+    filter:    brightness(1.28);
+    transform: scale(1.04);
+    box-shadow: var(--azma-shadow-glow-bright);
+  }
+
+  /* The doors part */
+  .azma-el-seal.is-completing {
+    animation: azmaElSealOpen var(--azma-t-imperial) var(--azma-ease-architectural) forwards;
+  }
+
+  .azma-el-seal.is-dissolving {
+    animation: azmaElDissolve var(--azma-t-imperial) var(--azma-ease-heavy) forwards;
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     VIII. THE VESSEL
+     Architectural container — a room with atmosphere and walls.
+     It enables. It does not perform.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  .azma-el-vessel {
+    background:    var(--azma-deep);
+    border:        1px solid var(--azma-gold-1);
+    border-radius: var(--azma-radius-panel);
+    position:      relative;
+    overflow:      hidden;
+    transition:
+      border-color var(--azma-t-atmospheric) var(--azma-ease-breath),
+      box-shadow   var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+
+  /* Vessel responds when a record is selected inside */
+  .azma-el-vessel:has(.azma-el-record.is-active) {
+    border-color: rgba(212, 175, 55, 0.18);
+    box-shadow:   inset 0 0 40px rgba(212, 175, 55, 0.04);
+  }
+
+  /* Vessel responds when a verdict arrives */
+  .azma-el-vessel:has(.azma-el-verdict) {
+    border-color: rgba(212, 175, 55, 0.22);
+  }
+
+  /* Vessel responds when sovereign action completes */
+  .azma-el-vessel:has(.azma-el-sovereign-action[data-remembrance="completed"]) {
+    border-color: rgba(212, 175, 55, 0.30);
+    box-shadow:   inset 0 0 60px rgba(212, 175, 55, 0.05);
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     IX. THE PATH
+     Directional corridor. Navigation with weight.
+     No box — corridor character only. Destination color traces the border.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  .azma-el-path {
+    display:             flex;
+    align-items:         center;
+    gap:                 var(--azma-space-3);
+    padding:             var(--azma-space-3) var(--azma-space-4);
+    background:          transparent;
+    border:              none;
+    border-inline-start: 2px solid rgba(var(--azma-accent), 0.15);
+    color:               var(--azma-text-muted);
+    font-size:           var(--azma-text-body);
+    cursor:              pointer;
+    transition:
+      border-color var(--azma-t-deliberate) var(--azma-ease-deliberate),
+      color        var(--azma-t-deliberate) var(--azma-ease-deliberate),
+      filter       var(--azma-t-deliberate) var(--azma-ease-deliberate);
+  }
+
+  .azma-el-path:hover {
+    border-inline-start-color: rgba(var(--azma-accent), 0.55);
+    color:                     var(--azma-text-primary);
+    filter:                    brightness(1.10);
+  }
+
+  .azma-el-path.is-appearing {
+    animation: azmaElCorridorEnter var(--azma-t-architectural) var(--azma-ease-architectural) both;
+  }
+
+  .azma-el-path.is-dissolving {
+    animation: azmaElDissolve var(--azma-t-architectural) var(--azma-ease-heavy) forwards;
+  }
+
+  /* The citizen has been through this corridor before */
+  .azma-el-path[data-remembrance="traveled"] {
+    border-inline-start-color: rgba(var(--azma-accent), 0.10);
+    color:                     var(--azma-text-dim);
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     X. THE DECLARATION
+     Supreme text. Title, verdict text, sovereign message.
+     Never animates — stillness is certainty.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  .azma-el-declaration {
+    color:          var(--azma-gold-6);
+    font-size:      var(--azma-text-grand);
+    font-weight:    700;
+    letter-spacing: var(--azma-tracking-wide);
+    line-height:    1.15;
+    margin:         0;
+    animation:      none;
+  }
+
+  /* Chamber title authority */
+  .azma-el-declaration--title {
+    font-size:      var(--azma-text-grand);
+    letter-spacing: var(--azma-tracking-wide);
+    color:          var(--azma-text-sacred);
+    font-weight:    700;
+  }
+
+  /* Verdict text authority */
+  .azma-el-declaration--verdict {
+    font-size:      var(--azma-text-large);
+    letter-spacing: var(--azma-tracking-open);
+    color:          var(--azma-gold-6);
+    font-weight:    600;
+  }
+
+  /* Supreme authority — the word of the empire */
+  .azma-el-declaration--sovereign {
+    font-size:      var(--azma-text-imperial);
+    font-weight:    900;
+    letter-spacing: var(--azma-tracking-sovereign);
+    color:          var(--azma-gold-6);
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     RELATIONSHIP SYSTEM
+     Elements understand each other through CSS :has() architecture.
+     No JavaScript mediates these relationships —
+     the constitution is self-enforcing in CSS.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* Certain verdict → Sovereign Action: the path forward opens */
+  .azma-el-vessel:has(.azma-el-verdict--certain) .azma-el-sovereign-action {
+    border-color: rgba(212, 175, 55, 0.75);
+    box-shadow:   var(--azma-shadow-glow-soft);
+  }
+
+  /* Uncertain verdict → Sovereign Action: the citizen must wait */
+  .azma-el-vessel:has(.azma-el-verdict--uncertain) .azma-el-sovereign-action {
+    border-color: rgba(212, 175, 55, 0.25);
+    filter:       brightness(0.80);
+  }
+
+  /* Certain verdict → Portal: portals open when the path is known */
+  .azma-el-vessel:has(.azma-el-verdict--certain) .azma-el-portal {
+    filter:                    brightness(1.10);
+    border-inline-start-color: rgba(var(--azma-accent), 0.45);
+  }
+
+  /* Any verdict → Guide: the guide has something to say */
+  .azma-el-vessel:has(.azma-el-verdict) .azma-el-guide {
+    opacity:   0.85;
+    animation: azmaElGuideBreathe var(--azma-breath-fine) var(--azma-ease-breath) infinite;
+  }
+
+  /* Record selected → Guide: guide interprets the selected artifact */
+  .azma-el-vessel:has(.azma-el-record.is-active) .azma-el-guide {
+    opacity:   0.90;
+    animation: none;
+  }
+
+  /* Active portal → Indicator: destination is live, indicator quickens */
+  .azma-el-portal.is-active ~ .azma-el-indicator,
+  .azma-el-portal.is-active + .azma-el-indicator {
+    animation: azmaElIndicatorActive 0.8s var(--azma-ease-breath) infinite;
+  }
+
+  /* Completed sovereign action → Guide: completion message delivered */
+  .azma-el-vessel:has(.azma-el-sovereign-action[data-remembrance="completed"]) .azma-el-guide {
+    opacity:   1;
+    color:     var(--azma-text-primary);
+    animation: none;
+  }
+
+  /* Completed sovereign action → Record: adjacent records acknowledge */
+  .azma-el-vessel:has(.azma-el-sovereign-action[data-remembrance="completed"]) .azma-el-record.is-active {
+    filter: brightness(1.08);
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ATMOSPHERE × ELEMENT INTERACTIONS
+     Every atmosphere changes how elements carry themselves.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* Investigating — every artifact is under examination */
+  [data-atmosphere="investigating"] .azma-el-portal {
+    filter:                    brightness(1.08);
+    border-inline-start-color: rgba(var(--azma-accent), 0.35);
+  }
+
+  [data-atmosphere="investigating"] .azma-el-record {
+    filter: brightness(1.05);
+  }
+
+  [data-atmosphere="investigating"] .azma-el-verdict {
+    box-shadow: 0 0 24px rgba(212, 175, 55, 0.10);
+  }
+
+  [data-atmosphere="investigating"] .azma-el-guide {
+    opacity: 0.78;
+  }
+
+  /* Victorious — the chamber celebrates */
+  [data-atmosphere="victorious"] .azma-el-guide {
+    color:   var(--azma-text-primary);
+    opacity: 1;
+    animation: none;
+  }
+
+  [data-atmosphere="victorious"] .azma-el-sovereign-action[data-remembrance="completed"] {
+    border-color: rgba(212, 175, 55, 0.65);
+    box-shadow:   var(--azma-shadow-glow-medium);
+  }
+
+  [data-atmosphere="victorious"] .azma-el-record {
+    filter: brightness(1.08);
+  }
+
+  /* Calm — no urgency, the chamber is at rest */
+  [data-atmosphere="calm"] .azma-el-portal {
+    filter: brightness(0.92);
+  }
+
+  [data-atmosphere="calm"] .azma-el-sovereign-action:not(.is-completing):not([data-remembrance="completed"]) {
+    border-color: rgba(212, 175, 55, 0.35);
+    filter:       brightness(0.90);
+  }
+
+  [data-atmosphere="calm"] .azma-el-guide {
+    opacity: 0.42;
+  }
+
+  /* Deliberating — the moment of decision */
+  [data-atmosphere="deliberating"] .azma-el-verdict {
+    filter:    brightness(1.15);
+    box-shadow: var(--azma-shadow-glow-soft);
+  }
+
+  [data-atmosphere="deliberating"] .azma-el-sovereign-action {
+    border-color: rgba(212, 175, 55, 0.65);
+    box-shadow:   var(--azma-shadow-glow-soft);
+  }
+
+  /* Reflective — the archive is open, all records are equally present */
+  [data-atmosphere="reflective"] .azma-el-record {
+    filter:    brightness(0.88);
+    animation: none;
+  }
+
+  [data-atmosphere="reflective"] .azma-el-guide {
+    opacity:   0.80;
+    color:     var(--azma-text-muted);
+    animation: none;
+  }
+
+  /* Working — something is being processed */
+  [data-atmosphere="working"] .azma-el-indicator {
+    animation: azmaElIndicatorActive 1.2s var(--azma-ease-breath) infinite;
+  }
+
+  [data-atmosphere="working"] .azma-el-guide {
+    opacity: 0.70;
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     CONSTITUTIONAL VIOLATION — ARCHITECTURAL SELF-ENFORCEMENT
+     When ACLE laws are broken, the architecture reveals the violation.
+     These rules need no JavaScript. The constitution enforces itself.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* TWO SOVEREIGN ACTIONS — constitutional violation */
+  /* Both demote: over-exposed (architecturally uncomfortable) */
+  .azma-el-vessel:has(.azma-el-sovereign-action ~ .azma-el-sovereign-action) .azma-el-sovereign-action {
+    border-color: rgba(212, 175, 55, 0.15);
+    box-shadow:   none;
+    filter:       brightness(1.32);
+  }
+
+  /* EXCESS DECLARATIONS — more than 3 per context */
+  /* The fourth onward fades — the constitution asserts itself */
+  .azma-el-vessel:has(.azma-el-declaration:nth-child(n+4)) .azma-el-declaration:nth-child(n+4) {
+    opacity: 0.32;
+    filter:  brightness(0.58);
+  }
+
+  /* TWO VERDICTS — constitutionally impossible */
+  /* Both conflict with each other — conflicted animation applies */
+  .azma-el-vessel:has(.azma-el-verdict ~ .azma-el-verdict) .azma-el-verdict {
+    border-color: rgba(139, 37, 37, 0.45);
+    animation:    azmaElVerdictConflicted 2.4s var(--azma-ease-breath) infinite;
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     IMPERIAL REDUCED MOTION — ACLE Compliance
+     The empire serves every citizen.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  @media (prefers-reduced-motion: reduce) {
+
+    .azma-el-portal,
+    .azma-el-record,
+    .azma-el-verdict,
+    .azma-el-sovereign-action,
+    .azma-el-guide,
+    .azma-el-indicator,
+    .azma-el-seal,
+    .azma-el-vessel,
+    .azma-el-path,
+    .azma-el-declaration {
+      animation: none !important;
+      transition-duration: 0.01ms !important;
+    }
+
+    /* Lifecycle classes reduce to instant presence */
+    .azma-el-portal.is-appearing,
+    .azma-el-record.is-appearing,
+    .azma-el-verdict.is-appearing,
+    .azma-el-sovereign-action.is-appearing,
+    .azma-el-guide.is-appearing,
+    .azma-el-indicator.is-appearing,
+    .azma-el-seal.is-appearing,
+    .azma-el-path.is-appearing {
+      animation:  none   !important;
+      opacity:    1      !important;
+      transform:  none   !important;
+      filter:     none   !important;
+    }
+
+    /* Dissolving becomes instant removal */
+    .azma-el-portal.is-dissolving,
+    .azma-el-record.is-dissolving,
+    .azma-el-sovereign-action.is-dissolving,
+    .azma-el-seal.is-dissolving,
+    .azma-el-path.is-dissolving {
+      animation: none    !important;
+      opacity:   0       !important;
+    }
+  }
+
+}   /* end @layer azma-elements */

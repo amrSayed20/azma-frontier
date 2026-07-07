@@ -1,0 +1,660 @@
+/**
+ * AZMA OS — Cinematic Direction Engine (ACDE) V1.0
+ * Constitutional CSS Layer — azma-direction
+ *
+ * Layer cascade order:
+ *   azma-constitution (V1.0)
+ *   azma-behaviors    (V1.1)
+ *   azma-elements     (ACLE V1.0)
+ *   azma-direction    (ACDE V1.0) ← this file
+ *
+ * The direction layer directs the citizen's experience.
+ * It reads --acde-var-* CSS custom properties for living variation.
+ * It responds to data-phase, data-mode, data-companion-state,
+ * data-director, data-journey-active, data-transition attributes.
+ *
+ * Article XI — Nothing Moves Without Purpose.
+ * Every animation here answers: Why now? Why this moment?
+ */
+
+@layer azma-direction {
+
+  /* ══════════════════════════════════════════════════════════════════════
+     VARIATION DEFAULTS
+     If applyVariation() has not been called yet, these defaults ensure
+     the CSS does not break — all multipliers default to 1 (neutral).
+     ══════════════════════════════════════════════════════════════════════ */
+
+  :root {
+    --acde-var-pause:     1;    /* pause scale: 0.82–1.18 */
+    --acde-var-light:     1;    /* light timing scale: 0.88–1.12 */
+    --acde-var-companion: 1;    /* companion timing scale: 0.75–1.25 */
+    --acde-var-breath:    1;    /* ambient breath scale: 0.92–1.08 */
+    --acde-journey-depth: 0;    /* journey depth: 0–4 */
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ACDE KEYFRAMES
+     Every keyframe answers: Why now? Why this moment?
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* The chamber opens — emergence from the void */
+  @keyframes acdeChamberOpen {
+    from { opacity: 0; filter: brightness(0.55); }
+    to   { opacity: 1; filter: brightness(1);    }
+  }
+
+  /* Scene dissolves — departure */
+  @keyframes acdeDissolve {
+    from { opacity: 1; filter: brightness(1);    }
+    to   { opacity: 0; filter: brightness(0.65); }
+  }
+
+  /* Scene descends — moving deeper into the empire */
+  @keyframes acdeDescend {
+    from { opacity: 1; filter: brightness(1);    transform: translateY(0);    }
+    to   { opacity: 0; filter: brightness(0.55); transform: translateY(8px);  }
+  }
+
+  /* Scene ascends — returning toward the surface */
+  @keyframes acdeAscend {
+    from { opacity: 0; filter: brightness(0.65); transform: translateY(8px);  }
+    to   { opacity: 1; filter: brightness(1);    transform: translateY(0);    }
+  }
+
+  /* Scene reveals — ceremony and anticipation */
+  @keyframes acdeReveal {
+    0%   { opacity: 0; filter: brightness(0.45); transform: scale(0.987); }
+    100% { opacity: 1; filter: brightness(1);    transform: scale(1);     }
+  }
+
+  /* The Invisible Director arrives — a subtle atmospheric shift */
+  @keyframes acdeDirectorPresence {
+    0%,  100% { filter: brightness(1);    }
+    50%        { filter: brightness(1.06); }
+  }
+
+  /* Journey deepening — the empire evolves, never waits */
+  @keyframes acdeJourneyBreath {
+    0%,  100% { filter: brightness(var(--acde-journey-brightness, 0.90)); }
+    50%        { filter: brightness(1); }
+  }
+
+  /* Resolution ceremony — completion acknowledged */
+  @keyframes acdeResolutionCeremony {
+    0%   { filter: brightness(1);    }
+    30%  { filter: brightness(1.12); }
+    100% { filter: brightness(1.04); }
+  }
+
+  /* Reflection still — the chamber holds */
+  @keyframes acdeReflectionHold {
+    0%,  100% { opacity: 0.92; filter: brightness(0.96); }
+    50%        { opacity: 1;   filter: brightness(1);    }
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ARTICLE I — CINEMATIC PHASES
+     Every Chamber is a film. data-phase applied to the chamber root.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* Opening — the Chamber emerges. Silence precedes engagement. */
+  [data-phase="opening"] {
+    animation: acdeChamberOpen
+               calc(var(--azma-t-ceremonial) * var(--acde-var-pause, 1))
+               var(--azma-ease-architectural)
+               both;
+  }
+
+  /* During opening, elements appear with staggered presence */
+  [data-phase="opening"] .azma-el-record,
+  [data-phase="opening"] .azma-el-portal,
+  [data-phase="opening"] .azma-el-path {
+    opacity: 0.88;  /* not yet fully present — the chamber is still opening */
+    transition: opacity calc(var(--azma-t-architectural) * var(--acde-var-light, 1))
+                        var(--azma-ease-breath);
+  }
+
+  /* During opening, the companion waits for its entrance cue */
+  [data-phase="opening"] .azma-el-guide {
+    opacity:    0;
+    transition: opacity calc(var(--azma-t-atmospheric) * var(--acde-var-companion, 1))
+                        var(--azma-ease-breath);
+  }
+
+  /* Development — citizen is engaged. Full presence. */
+  [data-phase="development"] .azma-el-record,
+  [data-phase="development"] .azma-el-portal,
+  [data-phase="development"] .azma-el-path {
+    opacity:    1;
+    transition: opacity var(--azma-t-deliberate) var(--azma-ease-deliberate);
+  }
+
+  /* Tension — stillness before judgment. Article XI: tension forbids unnecessary movement. */
+  [data-phase="tension"] .azma-el-record {
+    animation: none;   /* records are still during tension */
+  }
+
+  [data-phase="tension"] .azma-el-indicator {
+    animation-duration: calc(var(--azma-breath-fine) * 0.65);  /* quickened — tension is felt */
+  }
+
+  [data-phase="tension"] .azma-el-guide {
+    opacity:    0;     /* the companion holds silence during tension */
+    transition: opacity var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+
+  /* Resolution — the conclusion. Ceremony. */
+  [data-phase="resolution"] {
+    animation: acdeResolutionCeremony
+               calc(var(--azma-t-imperial) * var(--acde-var-pause, 1))
+               var(--azma-ease-architectural)
+               both;
+  }
+
+  [data-phase="resolution"] .azma-el-verdict {
+    filter:    brightness(1.12);
+    box-shadow: var(--azma-shadow-glow-medium);
+    transition: filter     calc(var(--azma-t-ceremonial) * var(--acde-var-light, 1)) var(--azma-ease-architectural),
+                box-shadow calc(var(--azma-t-ceremonial) * var(--acde-var-light, 1)) var(--azma-ease-architectural);
+  }
+
+  /* Reflection — aftermath. The chamber holds what happened. */
+  [data-phase="reflection"] {
+    animation: acdeReflectionHold
+               calc(var(--azma-t-geological) * var(--acde-var-breath, 1))
+               var(--azma-ease-breath)
+               infinite;
+  }
+
+  [data-phase="reflection"] .azma-el-record {
+    filter:    brightness(0.88);
+    animation: none;
+  }
+
+  [data-phase="reflection"] .azma-el-sovereign-action:not([data-remembrance="completed"]) {
+    opacity: 0.55;
+    filter:  brightness(0.80);
+  }
+
+  /* Departure — graceful recession. The space recedes with the citizen. */
+  [data-phase="departure"] .azma-el-portal,
+  [data-phase="departure"] .azma-el-path {
+    opacity:    0.72;
+    filter:     brightness(0.88);
+    transition: opacity var(--azma-t-atmospheric) var(--azma-ease-breath),
+                filter  var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+
+  [data-phase="departure"] .azma-el-guide {
+    opacity:    0.35;
+    animation:  none;
+    transition: opacity var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ARTICLE II — RHYTHM × PHASE INTERACTIONS
+     The engine defines: when silence exists, when movement begins,
+     when movement stops, when light breathes, when nothing should happen.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* Tension phase suppresses the record breath — stillness serves tension */
+  [data-phase="tension"] .azma-el-record {
+    animation-duration: calc(var(--azma-breath-echo) * 3);  /* dramatically slowed */
+  }
+
+  /* Resolution phase accelerates the seal breath — ceremony quickens */
+  [data-phase="resolution"] .azma-el-seal {
+    animation-duration: calc(var(--azma-breath-echo) * 0.6);
+  }
+
+  /* Reflection phase deepens all ambient breath — the chamber exhales */
+  [data-phase="reflection"] .azma-el-indicator:not(.is-completing) {
+    animation-duration: calc(var(--azma-breath-fine) * var(--acde-var-breath, 1) * 1.8);
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ARTICLE VIII — CITIZEN CONTROL MODES
+     data-mode applied to the chamber root.
+     Changing mode immediately changes pacing.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* Citizen Leads — immediate response, companion waits, atmosphere dialed back */
+  [data-mode="citizen-leads"] .azma-el-guide {
+    opacity:            0.38;
+    animation-duration: calc(var(--azma-breath-accent) * 0.65);
+  }
+
+  [data-mode="citizen-leads"] .azma-el-portal:hover,
+  [data-mode="citizen-leads"] .azma-el-record:hover {
+    transition-duration: var(--azma-t-instant);  /* immediate feedback */
+  }
+
+  [data-mode="citizen-leads"] .azma-el-sovereign-action {
+    transition-duration: var(--azma-t-instant);
+  }
+
+  [data-mode="citizen-leads"] [data-phase="opening"] {
+    animation-duration: calc(var(--azma-t-deliberate) * var(--acde-var-pause, 1));
+  }
+
+  /* Shared Direction — balanced (default — no override needed) */
+
+  /* Chamber Leads — longer silences, more dramatic pacing */
+  [data-mode="chamber-leads"] .azma-el-guide {
+    animation-duration: calc(var(--azma-breath-accent) * var(--acde-var-companion, 1) * 1.4);
+    opacity:            0.72;
+  }
+
+  [data-mode="chamber-leads"] .azma-el-portal:hover,
+  [data-mode="chamber-leads"] .azma-el-record:hover {
+    transition-duration: var(--azma-t-deliberate);  /* deliberate response */
+  }
+
+  [data-mode="chamber-leads"] [data-phase="opening"] {
+    animation-duration: calc(var(--azma-t-imperial) * var(--acde-var-pause, 1));
+  }
+
+  [data-mode="chamber-leads"] [data-phase="tension"] .azma-el-indicator {
+    animation-duration: calc(var(--azma-breath-fine) * 0.45);  /* heightened urgency */
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ARTICLE IV — COMPANION DIRECTION
+     data-companion-state applied to .azma-el-guide elements.
+     Every state belongs to a scene. The companion follows direction.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* Companion entering — from silence into presence */
+  .azma-el-guide[data-companion-state="entering"] {
+    opacity:    0;
+    animation:
+      acdeCompanionEnter
+      calc(var(--azma-t-atmospheric) * var(--acde-var-companion, 1))
+      var(--azma-ease-breath)
+      forwards;
+  }
+
+  @keyframes acdeCompanionEnter {
+    from { opacity: 0; }
+    to   { opacity: 0.60; }
+  }
+
+  /* Companion observing — present, watching, not speaking */
+  .azma-el-guide[data-companion-state="observing"] {
+    opacity:   0.55;
+    animation: acdeCompanionObserve
+               calc(var(--azma-breath-accent) * var(--acde-var-companion, 1))
+               var(--azma-ease-breath)
+               infinite;
+  }
+
+  @keyframes acdeCompanionObserve {
+    0%,  100% { opacity: 0.52; }
+    50%        { opacity: 0.68; }
+  }
+
+  /* Companion speaking — full cinematic presence for its sentence */
+  .azma-el-guide[data-companion-state="speaking"] {
+    opacity:   0.90;
+    animation: acdeCompanionSpeak
+               calc(var(--azma-t-atmospheric) * 0.75)
+               var(--azma-ease-breath)
+               both;
+    color:     var(--azma-text-primary);
+  }
+
+  @keyframes acdeCompanionSpeak {
+    from { opacity: 0.55; }
+    to   { opacity: 0.90; }
+  }
+
+  /* Companion silence — consciously withheld — the scene requires quiet */
+  .azma-el-guide[data-companion-state="silence"] {
+    opacity:    0.18;
+    animation:  none;
+    transition: opacity var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+
+  /* Companion farewell — beginning recession before departure */
+  .azma-el-guide[data-companion-state="farewell"] {
+    animation: acdeCompanionFarewell
+               calc(var(--azma-t-geological) * var(--acde-var-companion, 1))
+               var(--azma-ease-breath)
+               forwards;
+  }
+
+  @keyframes acdeCompanionFarewell {
+    from { opacity: 0.60; }
+    to   { opacity: 0.20; }
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ARTICLE V — THE INVISIBLE DIRECTOR
+     data-director applied to the chamber root.
+     Appears only when the emotional arc requires it.
+     Never announces itself. Never stays.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  [data-director="present"] {
+    animation: acdeDirectorPresence
+               calc(var(--azma-t-geological) * 0.65 * var(--acde-var-light, 1))
+               var(--azma-ease-breath)
+               1;   /* plays once — the Director does not repeat */
+  }
+
+  /* Director's presence subtly lifts the companion */
+  [data-director="present"] .azma-el-guide {
+    opacity:    0.78;
+    color:      var(--azma-text-primary);
+    transition: opacity var(--azma-t-architectural) var(--azma-ease-breath),
+                color   var(--azma-t-architectural) var(--azma-ease-breath);
+  }
+
+  /* Director's presence lifts records slightly */
+  [data-director="present"] .azma-el-record:not(.is-active) {
+    filter: brightness(1.06);
+    transition: filter var(--azma-t-architectural) var(--azma-ease-breath);
+  }
+
+  /* Director withdrawn — the arc is self-sustaining again */
+  [data-director="withdrawn"] {
+    /* No styling — withdrawn means the Director has stepped back completely */
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ARTICLE VI — SCENE TRANSITIONS
+     data-transition + data-transition-type on the transition container.
+     Navigation never exists. Only scene transitions.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* Dissolving — any transition type */
+  [data-transition="dissolving"][data-transition-type="dissolve"] {
+    animation: acdeDissolve
+               calc(var(--azma-t-imperial) * var(--acde-var-pause, 1))
+               var(--azma-ease-heavy)
+               forwards;
+    pointer-events: none;
+  }
+
+  [data-transition="dissolving"][data-transition-type="descend"] {
+    animation: acdeDescend
+               calc(var(--azma-t-imperial) * var(--acde-var-pause, 1))
+               var(--azma-ease-heavy)
+               forwards;
+    pointer-events: none;
+  }
+
+  [data-transition="dissolving"][data-transition-type="ascend"] {
+    animation: acdeDissolve
+               calc(var(--azma-t-imperial) * var(--acde-var-pause, 1))
+               var(--azma-ease-breath)
+               forwards;
+    pointer-events: none;
+  }
+
+  [data-transition="dissolving"][data-transition-type="reveal"] {
+    animation: acdeDissolve
+               calc(var(--azma-t-ceremonial) * var(--acde-var-pause, 1))
+               var(--azma-ease-architectural)
+               forwards;
+    pointer-events: none;
+  }
+
+  /* Arriving — the new scene emerges */
+  [data-transition="arriving"][data-transition-type="dissolve"] {
+    animation: acdeChamberOpen
+               calc(var(--azma-t-architectural) * var(--acde-var-pause, 1))
+               var(--azma-ease-architectural)
+               both;
+  }
+
+  [data-transition="arriving"][data-transition-type="descend"] {
+    animation: acdeChamberOpen
+               calc(var(--azma-t-ceremonial) * var(--acde-var-pause, 1))
+               var(--azma-ease-architectural)
+               both;
+    filter: brightness(0.85);  /* we descended — the new chamber is deeper */
+  }
+
+  [data-transition="arriving"][data-transition-type="ascend"] {
+    animation: acdeAscend
+               calc(var(--azma-t-ceremonial) * var(--acde-var-pause, 1))
+               var(--azma-ease-architectural)
+               both;
+  }
+
+  [data-transition="arriving"][data-transition-type="reveal"] {
+    animation: acdeReveal
+               calc(var(--azma-t-ceremonial) * var(--acde-var-pause, 1))
+               var(--azma-ease-architectural)
+               both;
+  }
+
+  /* Stable — no transition active */
+  [data-transition="stable"] {
+    /* No styling — stable is the default state */
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ARTICLE III — TIME IS INVISIBLE (JOURNEY MODE)
+     The Empire never waits. The Empire evolves.
+     data-journey-active + data-journey-depth on the chamber element.
+     --acde-journey-depth: 0–4 (set inline by advanceJourney())
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* Journey active — the chamber breathes with depth */
+  [data-journey-active="true"] {
+    --acde-journey-brightness: 0.92;
+    animation: acdeJourneyBreath
+               calc(var(--azma-breath-fine) * var(--acde-var-breath, 1))
+               var(--azma-ease-breath)
+               infinite;
+  }
+
+  /* Depth 0 — surface: gentle awakening, barely perceptible */
+  [data-journey-active="true"][data-journey-depth="0"] {
+    --acde-journey-brightness: 0.95;
+  }
+
+  /* Depth 1 — descending: light dims slightly */
+  [data-journey-active="true"][data-journey-depth="1"] {
+    --acde-journey-brightness: 0.90;
+  }
+
+  /* Depth 2 — deep: notable atmospheric shift */
+  [data-journey-active="true"][data-journey-depth="2"] {
+    --acde-journey-brightness: 0.84;
+  }
+
+  /* Depth 3 — very deep: ceremony of the unresolved */
+  [data-journey-active="true"][data-journey-depth="3"] {
+    --acde-journey-brightness: 0.78;
+    animation-duration: calc(var(--azma-breath-fine) * var(--acde-var-breath, 1) * 0.75);
+  }
+
+  /* Depth 4 — deepest: full cinematic journey. The citizen has descended. */
+  [data-journey-active="true"][data-journey-depth="4"] {
+    --acde-journey-brightness: 0.70;
+    animation-duration: calc(var(--azma-breath-fine) * var(--acde-var-breath, 1) * 0.55);
+  }
+
+  /* During journey — indicator quickens (something is happening) */
+  [data-journey-active="true"] .azma-el-indicator {
+    animation-duration: calc(var(--azma-breath-fine) * 0.6);
+    background:         var(--azma-gold-6);
+  }
+
+  /* During journey — guide is silent (the empire evolves in silence) */
+  [data-journey-active="true"] .azma-el-guide {
+    opacity:   0.20;
+    animation: none;
+    transition: opacity var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+
+  /* During journey — portal dims (the destination is not yet reachable) */
+  [data-journey-active="true"] .azma-el-portal {
+    opacity:        0.55;
+    pointer-events: none;
+    filter:         brightness(0.80);
+    transition:
+      opacity var(--azma-t-atmospheric) var(--azma-ease-breath),
+      filter  var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+
+  /* During journey — sovereign action dims (not yet time to act) */
+  [data-journey-active="true"] .azma-el-sovereign-action:not([data-remembrance="completed"]) {
+    opacity:        0.45;
+    pointer-events: none;
+    filter:         brightness(0.75);
+    transition:
+      opacity var(--azma-t-atmospheric) var(--azma-ease-breath),
+      filter  var(--azma-t-atmospheric) var(--azma-ease-breath);
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ARTICLE IX — LIVING VARIATION
+     --acde-var-* are set by applyVariation() per visit.
+     The CSS uses calc() to read them.
+     Same element. Different timing. Every visit is distinct.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* Record breath responds to variation — no two visits breathe identically */
+  .azma-el-record:not(.is-active) {
+    animation-duration: calc(var(--azma-breath-echo) * var(--acde-var-breath, 1));
+  }
+
+  /* Guide breath responds to companion variation */
+  .azma-el-guide[data-companion-state="observing"] {
+    animation-duration: calc(var(--azma-breath-accent) * var(--acde-var-companion, 1));
+  }
+
+  /* Seal breath responds to light variation */
+  .azma-el-seal {
+    animation-duration: calc(var(--azma-breath-echo) * var(--acde-var-light, 1));
+  }
+
+  /* Indicator pulse responds to breath variation */
+  .azma-el-indicator:not(.is-active):not(.is-completing) {
+    animation-duration: calc(var(--azma-breath-fine) * var(--acde-var-breath, 1));
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     PHASE × MODE — COMBINED CINEMATIC STATES
+     When phase and mode combine, the direction intensifies.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* Chamber leads + Tension = maximum stillness */
+  [data-mode="chamber-leads"][data-phase="tension"] .azma-el-record,
+  [data-mode="chamber-leads"][data-phase="tension"] .azma-el-portal {
+    animation: none;
+    filter:    brightness(0.88);
+  }
+
+  /* Chamber leads + Resolution = full ceremony */
+  [data-mode="chamber-leads"][data-phase="resolution"] .azma-el-verdict {
+    filter:    brightness(1.18);
+    box-shadow: var(--azma-shadow-glow-bright);
+    transition: filter     calc(var(--azma-t-imperial) * var(--acde-var-light, 1)) var(--azma-ease-architectural),
+                box-shadow calc(var(--azma-t-imperial) * var(--acde-var-light, 1)) var(--azma-ease-architectural);
+  }
+
+  /* Citizen leads + Opening = near-instant presence (citizen is already here) */
+  [data-mode="citizen-leads"][data-phase="opening"] {
+    animation-duration: calc(var(--azma-t-swift) * var(--acde-var-pause, 1));
+  }
+
+  /* Citizen leads + Reflection = shorter reflection (citizen moves on) */
+  [data-mode="citizen-leads"][data-phase="reflection"] {
+    animation-duration: calc(var(--azma-t-atmospheric) * 0.5 * var(--acde-var-breath, 1));
+  }
+
+  /* Shared direction + Resolution = balanced ceremony */
+  [data-mode="shared-direction"][data-phase="resolution"] .azma-el-sovereign-action[data-remembrance="completed"] {
+    filter:    brightness(1.14);
+    box-shadow: var(--azma-shadow-glow-medium);
+    transition: filter     calc(var(--azma-t-ceremonial) * var(--acde-var-light, 1)) var(--azma-ease-architectural),
+                box-shadow calc(var(--azma-t-ceremonial) * var(--acde-var-light, 1)) var(--azma-ease-architectural);
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ARTICLE XIII — FINAL IMPERIAL TEST
+     Remove: buttons, labels, colors, text.
+     Watch for 30 seconds. The observer understands:
+       arrival → anticipation → investigation → creation → judgment → completion → departure
+     through only: rhythm, light, silence, movement, pacing, atmosphere.
+     If not — the Direction Engine is incomplete.
+
+     These rules ensure that rhythm alone communicates:
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* The indicator communicates state through rhythm — not labels */
+  /* Arrival: slow pulse  → anticipation: quickened → investigation: irregular */
+  /* Creation: fast pulse → judgment: still         → completion: solid */
+  /* departure: fading    */
+
+  [data-phase="opening"]    .azma-el-indicator { animation-duration: calc(var(--azma-breath-fine) * 1.6); }
+  [data-phase="development"].azma-el-indicator { animation-duration: calc(var(--azma-breath-fine) * 1.2); }
+  [data-phase="tension"]    .azma-el-indicator { animation-duration: calc(var(--azma-breath-fine) * 0.7); }
+  [data-phase="resolution"] .azma-el-indicator.is-completing { animation: none; transform: scale(1.2); }
+  [data-phase="reflection"] .azma-el-indicator { animation-duration: calc(var(--azma-breath-fine) * 2.2); }
+  [data-phase="departure"]  .azma-el-indicator { opacity: 0.35; animation-duration: calc(var(--azma-breath-fine) * 3); }
+
+  /* Light breathes with the phase — rhythm communicates without labels */
+  [data-phase="opening"]    { transition: filter var(--azma-t-ceremonial) var(--azma-ease-architectural); }
+  [data-phase="tension"]    { filter: brightness(0.94); }
+  [data-phase="resolution"] { filter: brightness(1.04); }
+  [data-phase="departure"]  { filter: brightness(0.90); }
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     IMPERIAL REDUCED MOTION — ACDE Compliance
+     The empire serves every citizen.
+     Reduced motion: remove decorative animation, preserve meaning.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  @media (prefers-reduced-motion: reduce) {
+
+    /* Phase transitions become instant */
+    [data-phase],
+    [data-phase] * {
+      animation-duration:  0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+
+    /* Journey: no animation, but the dimming remains (communicates state) */
+    [data-journey-active="true"] {
+      animation: none !important;
+      filter:    brightness(var(--acde-journey-brightness, 0.92));
+    }
+
+    /* Companion states: instant opacity changes, no animation */
+    .azma-el-guide[data-companion-state="entering"]  { opacity: 0.60 !important; animation: none !important; }
+    .azma-el-guide[data-companion-state="observing"] { opacity: 0.55 !important; animation: none !important; }
+    .azma-el-guide[data-companion-state="speaking"]  { opacity: 0.90 !important; animation: none !important; }
+    .azma-el-guide[data-companion-state="silence"]   { opacity: 0.18 !important; animation: none !important; }
+    .azma-el-guide[data-companion-state="farewell"]  { opacity: 0.22 !important; animation: none !important; }
+
+    /* Scene transitions: instant */
+    [data-transition="dissolving"] { opacity: 0 !important; animation: none !important; }
+    [data-transition="arriving"]   { opacity: 1 !important; animation: none !important; }
+
+    /* Director: instant opacity shift instead of animation */
+    [data-director="present"] {
+      animation: none !important;
+      filter:    brightness(1.04) !important;
+    }
+  }
+
+}   /* end @layer azma-direction */

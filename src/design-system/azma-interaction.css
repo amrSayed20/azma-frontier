@@ -1,0 +1,310 @@
+/**
+ * AZMA OS — Imperial Interaction Engine (AIIE) V1.0
+ * The Constitutional Language of Interaction — CSS Layer
+ *
+ * @layer azma-interaction (fifth layer)
+ * Operates above: azma-constitution | azma-behaviors | azma-elements | azma-direction
+ *
+ * Every touch must feel like touching the Empire itself.
+ * This layer governs: physical weight, rhythm, handshake, failure dignity,
+ * Article XIII final test compliance, and Article XII ACDE integration.
+ */
+
+@layer azma-interaction {
+
+  /* ── Root: Constitutional Defaults ──────────────────────────────────────
+     Base timing values — multiplied by --aiie-speed-mult set by applyAdaptation()
+     Physical weight scales — the scale factor applied on press per weight class
+     Sovereign pause — set by applyAdaptation() based on citizen profile           */
+
+  :root {
+    /* Timing */
+    --aiie-t-recognition:  60ms;
+    --aiie-t-acceptance:   140ms;
+    --aiie-t-execution:    280ms;
+    --aiie-t-completion:   480ms;
+    --aiie-t-silence:      260ms;
+
+    /* Article X — speed multiplier (applyAdaptation sets 0.72–1.40) */
+    --aiie-speed-mult:     1;
+
+    /* Article IV — physical weight scales on press */
+    --aiie-scale-sovereign:   0.970;
+    --aiie-scale-decisive:    0.978;
+    --aiie-scale-standard:    0.985;
+    --aiie-scale-exploratory: 0.992;
+    --aiie-scale-ambient:     0.997;
+
+    /* Article IX — sovereign pause (applyAdaptation sets based on confirmation preference) */
+    --aiie-sovereign-pause:    0ms;
+
+    /* Article X — feedback intensity (applyAdaptation sets 0.7–1.3) */
+    --aiie-feedback-intensity: 1;
+  }
+
+  /* ── Article VI — The Handshake Law ─────────────────────────────────────
+     The Citizen never wonders: "Did the system receive my action?"
+     Recognition is never delayed. The Empire is always listening.
+     Transition is applied on all interactive elements via [data-intent].       */
+
+  [data-intent] {
+    transition:
+      transform  calc(var(--aiie-t-recognition) * var(--aiie-speed-mult)) ease-out,
+      box-shadow calc(var(--aiie-t-recognition) * var(--aiie-speed-mult)) ease-out,
+      opacity    calc(var(--aiie-t-recognition) * var(--aiie-speed-mult)) ease-out;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── Article IV — Physical Weight: :active pseudo-class (Article VI)
+     :active provides the immediate handshake without JavaScript.
+     [data-interaction-state="touched"] provides the programmatic equivalent.   */
+
+  /* Sovereign: authority grounds itself — presses DOWN into the Empire */
+  [data-weight="sovereign"]:active,
+  [data-weight="sovereign"][data-interaction-state="touched"] {
+    transform: scale(var(--aiie-scale-sovereign)) translateY(1px);
+    transition-duration: calc(var(--aiie-t-recognition) * var(--aiie-speed-mult) * 0.8);
+  }
+
+  /* Decisive: significant — slightly lifting, clearly weighty */
+  [data-weight="decisive"]:active,
+  [data-weight="decisive"][data-interaction-state="touched"] {
+    transform: scale(var(--aiie-scale-decisive)) translateY(-1px);
+  }
+
+  /* Standard: balanced — the constitutional default */
+  [data-weight="standard"]:active,
+  [data-weight="standard"][data-interaction-state="touched"] {
+    transform: scale(var(--aiie-scale-standard)) translateY(-1px);
+  }
+
+  /* Exploratory: light — nearly weightless, inviting */
+  [data-weight="exploratory"]:active,
+  [data-weight="exploratory"][data-interaction-state="touched"] {
+    transform: scale(var(--aiie-scale-exploratory)) translateY(-2px);
+  }
+
+  /* Ambient: barely perceptible — exists without demanding attention */
+  [data-weight="ambient"]:active,
+  [data-weight="ambient"][data-interaction-state="touched"] {
+    transform: scale(var(--aiie-scale-ambient)) translateY(-1px);
+  }
+
+  /* ── Article III — One Meaningful Response ───────────────────────────────
+     No multiple competing animations. No visual noise.
+     While executing, the element cannot receive another interaction.            */
+
+  [data-interaction-state="active"],
+  [data-interaction-state="completing"] {
+    pointer-events: none;
+  }
+
+  /* Active state: the action is in progress */
+  [data-interaction-state="active"] {
+    opacity: 0.88;
+    transition-duration: calc(var(--aiie-t-acceptance) * var(--aiie-speed-mult));
+  }
+
+  /* ── Article V — Rhythm: Completion Phase ────────────────────────────────
+     The action settles into place. A natural spring — not mechanical bounce.    */
+
+  [data-interaction-state="completing"] {
+    animation: aiieCompletion calc(var(--aiie-t-completion) * var(--aiie-speed-mult)) ease-out forwards;
+  }
+
+  [data-interaction-state="complete"] {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+    transition:
+      transform calc(var(--aiie-t-silence) * var(--aiie-speed-mult)) ease-out,
+      opacity   calc(var(--aiie-t-silence) * var(--aiie-speed-mult)) ease-out;
+  }
+
+  /* ── Article VIII — Failure Has Dignity ──────────────────────────────────
+     The Empire never panics. Never blames. Never exposes technical language.
+     A single quiet signal. Then guidance toward the next meaningful action.     */
+
+  [data-interaction-state="failed"] {
+    animation: aiieFailure calc(var(--aiie-t-execution) * var(--aiie-speed-mult)) ease-out forwards;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Restricted: available, but requires a different path */
+  [data-interaction-state="restricted"] {
+    animation: aiieRestricted calc(var(--aiie-t-acceptance) * var(--aiie-speed-mult)) ease-out forwards;
+    cursor: default;
+  }
+
+  /* ── Article XIII — Weight Without Labels ────────────────────────────────
+     The Final Imperial Test:
+     Without labels, icons, or tooltips — can the Citizen still understand
+     what is important, dangerous, final, reversible, alive, waiting?
+
+     Constitutional answer: weight is conveyed through visual density.
+     The Empire speaks through matter, not description.                          */
+
+  /* Sovereign weight: maximum visual density — the heaviest presence */
+  [data-weight="sovereign"] {
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+
+  /* Decisive weight: clearly weighted presence */
+  [data-weight="decisive"] {
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  /* Irreversible: a permanently heavier visual signature */
+  [data-interaction-reversible="false"] {
+    font-weight: 500;
+  }
+
+  /* Sovereign + irreversible: the heaviest constitutional presence */
+  [data-weight="sovereign"][data-interaction-reversible="false"] {
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Article X — Anticipation ────────────────────────────────────────────
+     Frequently used paths become smoother.
+     Infrequently used paths become quieter — not hidden, quieter.              */
+
+  [data-interaction-frequency="high"] {
+    transition-duration: calc(var(--aiie-t-recognition) * var(--aiie-speed-mult) * 0.75);
+  }
+
+  [data-interaction-frequency="low"] {
+    opacity: calc(0.72 * var(--aiie-feedback-intensity));
+  }
+
+  [data-interaction-frequency="low"]:hover,
+  [data-interaction-frequency="low"]:focus-visible {
+    opacity: 1;
+    transition: opacity calc(var(--aiie-t-acceptance) * var(--aiie-speed-mult)) ease-out;
+  }
+
+  /* ── Article XII — ACDE Phase Integration ───────────────────────────────
+     Scene rhythm is owned by ACDE. Interaction rhythm belongs to AIIE.
+     They operate at different temporal scales — scene vs. micro-interaction.
+     AIIE adapts its weights to honor the scene's emotional state.              */
+
+  /* Tension phase: even standard interactions feel heavier */
+  [data-phase="tension"] [data-weight="standard"]:active,
+  [data-phase="tension"] [data-weight="standard"][data-interaction-state="touched"] {
+    transform: scale(var(--aiie-scale-decisive)) translateY(-1px);
+  }
+
+  /* Opening phase: interactions are lighter — the citizen is just arriving */
+  [data-phase="opening"] [data-weight="decisive"]:active,
+  [data-phase="opening"] [data-weight="decisive"][data-interaction-state="touched"] {
+    transform: scale(var(--aiie-scale-exploratory)) translateY(-2px);
+  }
+
+  /* Resolution phase: interactions complete more gently — the work is done */
+  [data-phase="resolution"] [data-interaction-state="completing"] {
+    animation-duration: calc(var(--aiie-t-completion) * var(--aiie-speed-mult) * 1.25);
+  }
+
+  /* Reflection phase: slower recognition — contemplation before action */
+  [data-phase="reflection"] [data-intent] {
+    transition-duration: calc(var(--aiie-t-recognition) * var(--aiie-speed-mult) * 1.4);
+  }
+
+  /* Departure phase: interactions fade gently — the session is ending */
+  [data-phase="departure"] [data-intent] {
+    opacity: 0.85;
+    transition-duration: calc(var(--aiie-t-recognition) * var(--aiie-speed-mult) * 1.6);
+  }
+
+  /* ── Article XI — Tongue Alignment ──────────────────────────────────────
+     Interaction rhythm must never contradict the Tongue's communication mode.
+     When the Tongue is silent (mode="silent"), interactions are quieter.
+     When the Tongue is waiting (mode="waiting"), interactions are patient.     */
+
+  [data-mode="shared-direction"] [data-weight="sovereign"]:active {
+    /* In shared direction, even sovereign actions feel collaborative — slightly lighter */
+    transform: scale(calc(var(--aiie-scale-sovereign) + 0.005)) translateY(0px);
+  }
+
+  [data-mode="chamber-leads"] [data-intent] {
+    /* When the chamber leads, the citizen's interactions defer — slightly slower */
+    transition-duration: calc(var(--aiie-t-recognition) * var(--aiie-speed-mult) * 1.2);
+  }
+
+  /* ── Keyframes ───────────────────────────────────────────────────────────
+     Article VII: The Empire never shouts. No flashing. No bouncing.
+     Every animation has restraint.                                              */
+
+  /* Completion: a natural spring settle — not mechanical, not dramatic */
+  @keyframes aiieCompletion {
+    0%   { transform: scale(0.985) translateY(-1px); opacity: 0.92; }
+    55%  { transform: scale(1.006) translateY(-2px); opacity: 1;    }
+    78%  { transform: scale(0.999) translateY(-1px); opacity: 1;    }
+    100% { transform: scale(1.000) translateY(0px);  opacity: 1;    }
+  }
+
+  /* Sovereign completion: grounds into place — no uplift, only settling */
+  @keyframes aiieSovereignCompletion {
+    0%   { transform: scale(0.970) translateY(1px); opacity: 0.90; }
+    50%  { transform: scale(1.000) translateY(0px); opacity: 1;    }
+    75%  { transform: scale(0.998) translateY(0px); opacity: 1;    }
+    100% { transform: scale(1.000) translateY(0px); opacity: 1;    }
+  }
+
+  /* Failure: a single quiet signal — no panic, no chaos, no blame */
+  @keyframes aiieFailure {
+    0%   { opacity: 1;    }
+    30%  { opacity: 0.48; }
+    100% { opacity: 1;    }
+  }
+
+  /* Restricted: a brief, dignified indicator — "not this way, but there is a way" */
+  @keyframes aiieRestricted {
+    0%   { transform: translateX(0px);  }
+    25%  { transform: translateX(-2px); }
+    75%  { transform: translateX(2px);  }
+    100% { transform: translateX(0px);  }
+  }
+
+  /* ── Accessibility: Reduced Motion ──────────────────────────────────────
+     Article VII: The Empire never overwhelms.
+     Citizens who prefer reduced motion receive immediate responses,
+     never animation — but the handshake remains.                               */
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-intent] {
+      transition:
+        opacity calc(var(--aiie-t-recognition) * var(--aiie-speed-mult)) ease-out;
+    }
+
+    [data-weight="sovereign"]:active,
+    [data-weight="sovereign"][data-interaction-state="touched"],
+    [data-weight="decisive"]:active,
+    [data-weight="decisive"][data-interaction-state="touched"],
+    [data-weight="standard"]:active,
+    [data-weight="standard"][data-interaction-state="touched"],
+    [data-weight="exploratory"]:active,
+    [data-weight="exploratory"][data-interaction-state="touched"],
+    [data-weight="ambient"]:active,
+    [data-weight="ambient"][data-interaction-state="touched"] {
+      transform: none;
+      opacity: 0.80;
+    }
+
+    [data-interaction-state="completing"],
+    [data-interaction-state="failed"],
+    [data-interaction-state="restricted"] {
+      animation: none;
+    }
+
+    [data-interaction-state="active"] {
+      opacity: 0.70;
+    }
+  }
+
+}
