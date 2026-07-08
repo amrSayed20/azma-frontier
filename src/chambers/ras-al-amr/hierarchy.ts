@@ -28,10 +28,40 @@
  * position holding five more files as one constitutional unit. Then a
  * twenty-second layer, CERTIFICATION_PACKAGE, was inserted at position 18
  * (Construction ID RAS-II-08) — another single position holding four more
- * files as one constitutional unit. RUNTIME, IMPLEMENTATION, INTERFACE, and
- * USER were renumbered accordingly each time, now at positions 19-22. The
- * tree remains a single-parent chain terminating at CONSTITUTION; only its
- * length changed.
+ * files as one constitutional unit. Then a twenty-third layer,
+ * RUNTIME_FOUNDATION_PACKAGE, was inserted at position 19 (Construction ID
+ * RAS-II-09) — another single position holding five more files (three
+ * pointer-only, two new) as one constitutional unit. Then a twenty-fourth
+ * layer, IMPLEMENTATION_FOUNDATION_PACKAGE, was inserted at position 21
+ * (Construction ID RAS-II-10, certified as Stage 11 per Chief Architect
+ * ruling — the directive's own title read "Stage 10," already Runtime's
+ * number; the unbroken stage=position-10 rule holding without exception
+ * across Stages 3-9 was applied instead) — another single position holding
+ * five more files (three pointer-only, two new) as one constitutional unit,
+ * this time between RUNTIME and IMPLEMENTATION rather than before RUNTIME.
+ * Then a twenty-fifth layer, INTERFACE_ECOSYSTEM_PACKAGE, was inserted at
+ * position 23 (Construction ID RAS-II-12, certified as Stage 13 per the
+ * same numbering ruling — the directive's own title read "Stage 12,"
+ * already Implementation's number) — holding two files (INTERFACE_COORDINATION.ts,
+ * INTERFACE_LIFECYCLE.ts), the surviving two of twenty-five originally
+ * proposed under AZMA-CA-RULING-016 ("size determined by constitutional
+ * responsibility, not file count"); the other twenty-three were declined as
+ * duplicate, pointer-only, or ungrounded (see INTERFACE_COORDINATION.ts and
+ * INTERFACE_LIFECYCLE.ts headers, and the Stage 13 Engineering Report's
+ * Files Not Created section). Then a twenty-sixth layer,
+ * USER_FOUNDATION_ECOSYSTEM_PACKAGE, was inserted at position 25
+ * (Construction ID RAS-II-14, certified as Stage 15 per the same numbering
+ * ruling — the directive's own title read "Stage 14," already Interface's
+ * number; the new package takes the Stage number User itself held [15]
+ * before this insertion, and User is renumbered to Stage 16) — holding two
+ * files (USER_COORDINATION.ts,
+ * PACKAGE_II_COMPLETION_REVIEW.ts) under AZMA-CA-RULING-016's discipline;
+ * a third proposed responsibility, USER_LIFECYCLE.ts, was declined (No
+ * Constitutional Grounding — USER holds no authority and creates no
+ * mechanism, so no execution lifecycle can exist for it). RUNTIME,
+ * IMPLEMENTATION, INTERFACE, and USER were renumbered accordingly each
+ * time, now at positions 20, 22, 24, 26. The tree remains a single-parent
+ * chain terminating at CONSTITUTION; only its length changed.
  *
  * This artifact defines the immutable authority tree for every future
  * architectural decision in RAS AL AMR. It introduces no Architecture, no
@@ -47,18 +77,26 @@
  *   Chief Architect Constitutional Ruling RAS-CA-RULING-001 (RAS-BLOCKER-01,
  *   CLOSED).
  * - ARCHITECTURE, SPECIFICATION, INTERFACES, BEHAVIOR, DEPENDENCY_PACKAGE,
- *   VALIDATION_PACKAGE, CERTIFICATION_PACKAGE, RUNTIME, IMPLEMENTATION,
- *   INTERFACE, and USER are each constructed and submitted (Package II,
- *   Stages 2-12; see ARCHITECTURE.ts, SPECIFICATION.ts, INTERFACES.ts,
- *   BEHAVIOR.ts, DEPENDENCIES.ts/OWNERSHIP.ts/PERMISSIONS.ts/BOUNDARIES.ts/
+ *   VALIDATION_PACKAGE, CERTIFICATION_PACKAGE, RUNTIME_FOUNDATION_PACKAGE,
+ *   RUNTIME, IMPLEMENTATION_FOUNDATION_PACKAGE, IMPLEMENTATION,
+ *   INTERFACE_ECOSYSTEM_PACKAGE, INTERFACE, USER_FOUNDATION_ECOSYSTEM_PACKAGE,
+ *   and USER are each constructed and submitted (Package II, Stages 2-16;
+ *   see ARCHITECTURE.ts, SPECIFICATION.ts, INTERFACES.ts, BEHAVIOR.ts,
+ *   DEPENDENCIES.ts/OWNERSHIP.ts/PERMISSIONS.ts/BOUNDARIES.ts/
  *   TRACEABILITY.ts, VALIDATION_RULES.ts/CONSISTENCY.ts/INVARIANTS.ts/
  *   CERTIFICATION_CHECKLIST.ts/ARCHITECTURAL_AUDIT.ts,
  *   CERTIFICATION_RULES.ts/READINESS.ts/ARCHITECTURAL_GAPS.ts/
- *   ARCHITECTURAL_DEBT.ts, RUNTIME.ts, IMPLEMENTATION.ts, INTERFACE.ts,
- *   USER.ts). This hierarchy fixes only where each sits in the
- *   authority tree — deliberately not restating their content, to avoid
- *   holding a second, parallel definition of any of them (the same
- *   discipline applied to each as it was built).
+ *   ARCHITECTURAL_DEBT.ts, RUNTIME_CONTEXT.ts/RUNTIME_PIPELINE.ts/
+ *   RUNTIME_VALIDATION.ts/RUNTIME_COORDINATION.ts/RUNTIME_LIFECYCLE.ts,
+ *   RUNTIME.ts, IMPLEMENTATION_CONTEXT.ts/IMPLEMENTATION_PIPELINE.ts/
+ *   IMPLEMENTATION_VALIDATION.ts/IMPLEMENTATION_COORDINATION.ts/
+ *   IMPLEMENTATION_LIFECYCLE.ts, IMPLEMENTATION.ts,
+ *   INTERFACE_COORDINATION.ts/INTERFACE_LIFECYCLE.ts, INTERFACE.ts,
+ *   USER_COORDINATION.ts/PACKAGE_II_COMPLETION_REVIEW.ts, USER.ts). This
+ *   hierarchy fixes only where each sits in the authority tree —
+ *   deliberately not restating their content, to avoid holding a second,
+ *   parallel definition of any of them (the same discipline applied to each
+ *   as it was built).
  *
  * No layer may command a higher layer. Every layer has exactly one parent
  * (CONSTITUTION excepted, which has none) and at most one child.
@@ -87,9 +125,13 @@ export const RAS_AL_AMR_HIERARCHY_LAYER_NAMES = [
   'DEPENDENCY_PACKAGE',
   'VALIDATION_PACKAGE',
   'CERTIFICATION_PACKAGE',
+  'RUNTIME_FOUNDATION_PACKAGE',
   'RUNTIME',
+  'IMPLEMENTATION_FOUNDATION_PACKAGE',
   'IMPLEMENTATION',
+  'INTERFACE_ECOSYSTEM_PACKAGE',
   'INTERFACE',
+  'USER_FOUNDATION_ECOSYSTEM_PACKAGE',
   'USER',
 ] as const;
 
@@ -114,7 +156,7 @@ export interface RasAlAmrHierarchyLayer {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// THE TWENTY-TWO HIERARCHY LAYERS
+// THE TWENTY-SIX HIERARCHY LAYERS
 // (SPECIFICATION inserted at position 13 per RAS-CA-RULING-002 follow-on
 // directive; INTERFACES [plural, distinct from INTERFACE] inserted at
 // position 14 per RAS-II-04; BEHAVIOR inserted at position 15 per RAS-II-05;
@@ -128,8 +170,29 @@ export interface RasAlAmrHierarchyLayer {
 // unit; CERTIFICATION_PACKAGE inserted at position 18 per RAS-II-08 —
 // another single position holding four files [CERTIFICATION_RULES.ts,
 // READINESS.ts, ARCHITECTURAL_GAPS.ts, ARCHITECTURAL_DEBT.ts] as one
-// constitutional unit; RUNTIME, IMPLEMENTATION, INTERFACE, and USER
-// renumbered 19-22.)
+// constitutional unit; RUNTIME_FOUNDATION_PACKAGE inserted at position 19
+// per RAS-II-09 — another single position holding five files
+// [RUNTIME_CONTEXT.ts, RUNTIME_PIPELINE.ts, RUNTIME_VALIDATION.ts (all three
+// pointer-only, re-exporting RUNTIME.ts/INVARIANTS.ts), RUNTIME_COORDINATION.ts,
+// RUNTIME_LIFECYCLE.ts (both new content)] as one constitutional unit;
+// IMPLEMENTATION_FOUNDATION_PACKAGE inserted at position 21 per RAS-II-10 —
+// another single position holding five files [IMPLEMENTATION_CONTEXT.ts,
+// IMPLEMENTATION_PIPELINE.ts, IMPLEMENTATION_VALIDATION.ts (all three
+// pointer-only, re-exporting RUNTIME.ts/RUNTIME_PIPELINE.ts/INVARIANTS.ts),
+// IMPLEMENTATION_COORDINATION.ts, IMPLEMENTATION_LIFECYCLE.ts (both new
+// content)] as one constitutional unit, sitting between RUNTIME and
+// IMPLEMENTATION; INTERFACE_ECOSYSTEM_PACKAGE inserted at position 23 per
+// RAS-II-12 — another single position holding two files
+// [INTERFACE_COORDINATION.ts, INTERFACE_LIFECYCLE.ts — the surviving two of
+// twenty-five originally proposed, per AZMA-CA-RULING-016; the other
+// twenty-three declined as duplicate, pointer-only-renaming, or ungrounded]
+// as one constitutional unit, sitting between IMPLEMENTATION and INTERFACE;
+// USER_FOUNDATION_ECOSYSTEM_PACKAGE inserted at position 25 per RAS-II-14 —
+// another single position holding two files [USER_COORDINATION.ts,
+// PACKAGE_II_COMPLETION_REVIEW.ts], a third proposed file (USER_LIFECYCLE.ts)
+// declined (No Constitutional Grounding — User creates no mechanism, so no
+// execution lifecycle can exist for it), sitting between INTERFACE and USER;
+// RUNTIME, IMPLEMENTATION, INTERFACE, and USER renumbered 20, 22, 24, 26.)
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const RAS_AL_AMR_HIERARCHY_LAYERS: Readonly<
@@ -526,71 +589,127 @@ export const RAS_AL_AMR_HIERARCHY_LAYERS: Readonly<
     name: 'CERTIFICATION_PACKAGE',
     constitutionalPurpose: 'Not described here by design. See CERTIFICATION_RULES.ts, READINESS.ts, ARCHITECTURAL_GAPS.ts, and ARCHITECTURAL_DEBT.ts.',
     constitutionalAuthority:
-      'Defined exclusively across four files — CERTIFICATION_RULES.ts, READINESS.ts, ARCHITECTURAL_GAPS.ts, ARCHITECTURAL_DEBT.ts — constructed and reviewed as one constitutional unit per Construction ID RAS-II-08. This hierarchy fixes only this position\'s existence, its single parent (VALIDATION_PACKAGE), and its single child (RUNTIME) — it does not describe, summarize, or restate any of the four files\' content.',
+      'Defined exclusively across four files — CERTIFICATION_RULES.ts, READINESS.ts, ARCHITECTURAL_GAPS.ts, ARCHITECTURAL_DEBT.ts — constructed and reviewed as one constitutional unit per Construction ID RAS-II-08. This hierarchy fixes only this position\'s existence, its single parent (VALIDATION_PACKAGE), and its single child (RUNTIME_FOUNDATION_PACKAGE) — it does not describe, summarize, or restate any of the four files\' content.',
     parentLayer: 'VALIDATION_PACKAGE',
-    childLayers: ['RUNTIME'],
+    childLayers: ['RUNTIME_FOUNDATION_PACKAGE'],
     scope: 'Not described here by design. See the four Certification Package files, the sole authority for RAS AL AMR\'s certification rules, readiness model, architectural gaps, and architectural debt.',
     responsibilities: ['Not described here by design. See CERTIFICATION_RULES.ts, READINESS.ts, ARCHITECTURAL_GAPS.ts, ARCHITECTURAL_DEBT.ts.'],
     explicitConstitutionalLimits: ['Not described here by design. See the same four files.'],
     architecturalMeaning: 'Not described here by design. See the same four files.',
     immutablePosition: 18,
-    traceability: 'CERTIFICATION_RULES.ts, READINESS.ts, ARCHITECTURAL_GAPS.ts, ARCHITECTURAL_DEBT.ts (Package II, Stage 8); inserted between Validation Package and Runtime per Construction ID RAS-II-08.',
+    traceability: 'CERTIFICATION_RULES.ts, READINESS.ts, ARCHITECTURAL_GAPS.ts, ARCHITECTURAL_DEBT.ts (Package II, Stage 8); inserted between Validation Package and Runtime Foundation Package per Construction ID RAS-II-08.',
+  },
+  RUNTIME_FOUNDATION_PACKAGE: {
+    name: 'RUNTIME_FOUNDATION_PACKAGE',
+    constitutionalPurpose: 'Not described here by design. See RUNTIME_CONTEXT.ts, RUNTIME_PIPELINE.ts, RUNTIME_VALIDATION.ts, RUNTIME_COORDINATION.ts, and RUNTIME_LIFECYCLE.ts.',
+    constitutionalAuthority:
+      'Defined exclusively across five files — RUNTIME_CONTEXT.ts, RUNTIME_PIPELINE.ts, RUNTIME_VALIDATION.ts (each pointer-only, re-exporting RUNTIME.ts and INVARIANTS.ts content already certified in Stages 4 and 7 rather than restating it), RUNTIME_COORDINATION.ts, and RUNTIME_LIFECYCLE.ts (both genuinely new content) — constructed and reviewed as one constitutional unit per Construction ID RAS-II-09. This hierarchy fixes only this position\'s existence, its single parent (CERTIFICATION_PACKAGE), and its single child (RUNTIME) — it does not describe, summarize, or restate any of the five files\' content.',
+    parentLayer: 'CERTIFICATION_PACKAGE',
+    childLayers: ['RUNTIME'],
+    scope: 'Not described here by design. See the five Runtime Foundation Package files, the sole authority for RAS AL AMR\'s runtime context, pipeline, validation, coordination, and lifecycle framing.',
+    responsibilities: ['Not described here by design. See RUNTIME_CONTEXT.ts, RUNTIME_PIPELINE.ts, RUNTIME_VALIDATION.ts, RUNTIME_COORDINATION.ts, RUNTIME_LIFECYCLE.ts.'],
+    explicitConstitutionalLimits: ['Not described here by design. See the same five files.'],
+    architecturalMeaning: 'Not described here by design. See the same five files.',
+    immutablePosition: 19,
+    traceability: 'RUNTIME_CONTEXT.ts, RUNTIME_PIPELINE.ts, RUNTIME_VALIDATION.ts, RUNTIME_COORDINATION.ts, RUNTIME_LIFECYCLE.ts (Package II, Stage 9); inserted between Certification Package and Runtime per Construction ID RAS-II-09.',
   },
   RUNTIME: {
     name: 'RUNTIME',
     constitutionalPurpose: 'Not described here by design. See RUNTIME.ts.',
     constitutionalAuthority:
-      'Defined exclusively in RUNTIME.ts. This hierarchy fixes only this position\'s existence, its single parent (CERTIFICATION_PACKAGE), and its single child (IMPLEMENTATION) — it does not describe, summarize, or restate the Runtime\'s content, to avoid holding a second, parallel definition of it.',
-    parentLayer: 'CERTIFICATION_PACKAGE',
-    childLayers: ['IMPLEMENTATION'],
+      'Defined exclusively in RUNTIME.ts. This hierarchy fixes only this position\'s existence, its single parent (RUNTIME_FOUNDATION_PACKAGE), and its single child (IMPLEMENTATION_FOUNDATION_PACKAGE) — it does not describe, summarize, or restate the Runtime\'s content, to avoid holding a second, parallel definition of it.',
+    parentLayer: 'RUNTIME_FOUNDATION_PACKAGE',
+    childLayers: ['IMPLEMENTATION_FOUNDATION_PACKAGE'],
     scope: 'Not described here by design. See RUNTIME.ts, the sole runtime authority for RAS AL AMR.',
     responsibilities: ['Not described here by design. See RUNTIME.ts.'],
     explicitConstitutionalLimits: ['Not described here by design. See RUNTIME.ts.'],
     architecturalMeaning: 'Not described here by design. See RUNTIME.ts.',
-    immutablePosition: 19,
-    traceability: 'RUNTIME.ts (Package II, Stage 9, renumbered from Stage 4, then 5, 6, 7, 8 upon insertion of INTERFACES, BEHAVIOR, DEPENDENCY_PACKAGE, VALIDATION_PACKAGE, and CERTIFICATION_PACKAGE); authorized by Chief Architect Ruling AZMA-CA-RULING-005.',
+    immutablePosition: 20,
+    traceability: 'RUNTIME.ts (Package II, Stage 10, renumbered from Stage 4, then 5, 6, 7, 8, 9 upon insertion of INTERFACES, BEHAVIOR, DEPENDENCY_PACKAGE, VALIDATION_PACKAGE, CERTIFICATION_PACKAGE, and RUNTIME_FOUNDATION_PACKAGE); authorized by Chief Architect Ruling AZMA-CA-RULING-005.',
+  },
+  IMPLEMENTATION_FOUNDATION_PACKAGE: {
+    name: 'IMPLEMENTATION_FOUNDATION_PACKAGE',
+    constitutionalPurpose: 'Not described here by design. See IMPLEMENTATION_CONTEXT.ts, IMPLEMENTATION_PIPELINE.ts, IMPLEMENTATION_VALIDATION.ts, IMPLEMENTATION_COORDINATION.ts, and IMPLEMENTATION_LIFECYCLE.ts.',
+    constitutionalAuthority:
+      'Defined exclusively across five files — IMPLEMENTATION_CONTEXT.ts, IMPLEMENTATION_PIPELINE.ts, IMPLEMENTATION_VALIDATION.ts (each pointer-only, re-exporting RUNTIME.ts/RUNTIME_PIPELINE.ts/INVARIANTS.ts content already certified in Stages 4/7/9 rather than restating it), IMPLEMENTATION_COORDINATION.ts, and IMPLEMENTATION_LIFECYCLE.ts (both genuinely new content) — constructed and reviewed as one constitutional unit per Construction ID RAS-II-10. This hierarchy fixes only this position\'s existence, its single parent (RUNTIME), and its single child (IMPLEMENTATION) — it does not describe, summarize, or restate any of the five files\' content.',
+    parentLayer: 'RUNTIME',
+    childLayers: ['IMPLEMENTATION'],
+    scope: 'Not described here by design. See the five Implementation Foundation Package files, the sole authority for RAS AL AMR\'s implementation context, pipeline, validation, coordination, and lifecycle framing.',
+    responsibilities: ['Not described here by design. See IMPLEMENTATION_CONTEXT.ts, IMPLEMENTATION_PIPELINE.ts, IMPLEMENTATION_VALIDATION.ts, IMPLEMENTATION_COORDINATION.ts, IMPLEMENTATION_LIFECYCLE.ts.'],
+    explicitConstitutionalLimits: ['Not described here by design. See the same five files.'],
+    architecturalMeaning: 'Not described here by design. See the same five files.',
+    immutablePosition: 21,
+    traceability: 'IMPLEMENTATION_CONTEXT.ts, IMPLEMENTATION_PIPELINE.ts, IMPLEMENTATION_VALIDATION.ts, IMPLEMENTATION_COORDINATION.ts, IMPLEMENTATION_LIFECYCLE.ts (Package II, Stage 11 — certified as Stage 11, not Stage 10 as the RAS-II-10 directive\'s own title read, per Chief Architect ruling: Stage 10 is Runtime\'s own already-certified number, and the unbroken stage=position-10 rule holding without exception across Stages 3-9 makes this position, 21, Stage 11); inserted between Runtime and Implementation per Construction ID RAS-II-10.',
   },
   IMPLEMENTATION: {
     name: 'IMPLEMENTATION',
     constitutionalPurpose: 'Not described here by design. See IMPLEMENTATION.ts.',
     constitutionalAuthority:
-      'Defined exclusively in IMPLEMENTATION.ts. This hierarchy fixes only this position\'s existence, its single parent (RUNTIME), and its single child (INTERFACE) — it does not describe, summarize, or restate the Implementation\'s content, to avoid holding a second, parallel definition of it.',
-    parentLayer: 'RUNTIME',
-    childLayers: ['INTERFACE'],
+      'Defined exclusively in IMPLEMENTATION.ts. This hierarchy fixes only this position\'s existence, its single parent (IMPLEMENTATION_FOUNDATION_PACKAGE), and its single child (INTERFACE_ECOSYSTEM_PACKAGE) — it does not describe, summarize, or restate the Implementation\'s content, to avoid holding a second, parallel definition of it.',
+    parentLayer: 'IMPLEMENTATION_FOUNDATION_PACKAGE',
+    childLayers: ['INTERFACE_ECOSYSTEM_PACKAGE'],
     scope: 'Not described here by design. See IMPLEMENTATION.ts, the sole implementation authority for RAS AL AMR.',
     responsibilities: ['Not described here by design. See IMPLEMENTATION.ts.'],
     explicitConstitutionalLimits: ['Not described here by design. See IMPLEMENTATION.ts.'],
     architecturalMeaning: 'Not described here by design. See IMPLEMENTATION.ts.',
-    immutablePosition: 20,
-    traceability: 'IMPLEMENTATION.ts (Package II, Stage 10, renumbered from Stage 5, then 6, 7, 8, 9 upon insertion of INTERFACES, BEHAVIOR, DEPENDENCY_PACKAGE, VALIDATION_PACKAGE, and CERTIFICATION_PACKAGE); authorized by Chief Architect Ruling AZMA-CA-RULING-006; amended under AZMA-CA-RULING-011.',
+    immutablePosition: 22,
+    traceability: 'IMPLEMENTATION.ts (Package II, Stage 12, renumbered from Stage 5, then 6, 7, 8, 9, 10, 11 upon insertion of INTERFACES, BEHAVIOR, DEPENDENCY_PACKAGE, VALIDATION_PACKAGE, CERTIFICATION_PACKAGE, RUNTIME_FOUNDATION_PACKAGE, and IMPLEMENTATION_FOUNDATION_PACKAGE); authorized by Chief Architect Ruling AZMA-CA-RULING-006; amended under AZMA-CA-RULING-011.',
+  },
+  INTERFACE_ECOSYSTEM_PACKAGE: {
+    name: 'INTERFACE_ECOSYSTEM_PACKAGE',
+    constitutionalPurpose: 'Not described here by design. See INTERFACE_COORDINATION.ts and INTERFACE_LIFECYCLE.ts.',
+    constitutionalAuthority:
+      'Defined exclusively across two files — INTERFACE_COORDINATION.ts and INTERFACE_LIFECYCLE.ts — constructed and reviewed as one constitutional unit per Construction ID RAS-II-12. Per AZMA-CA-RULING-016, twenty-three of the twenty-five originally-proposed files were declined as duplicate, pointer-only-renaming, or ungrounded (see the two surviving files\' headers and the Stage 13 Engineering Report). This hierarchy fixes only this position\'s existence, its single parent (IMPLEMENTATION), and its single child (INTERFACE) — it does not describe, summarize, or restate either file\'s content.',
+    parentLayer: 'IMPLEMENTATION',
+    childLayers: ['INTERFACE'],
+    scope: 'Not described here by design. See INTERFACE_COORDINATION.ts and INTERFACE_LIFECYCLE.ts, the sole authority for RAS AL AMR\'s Interface-layer coordination and per-request lifecycle.',
+    responsibilities: ['Not described here by design. See INTERFACE_COORDINATION.ts and INTERFACE_LIFECYCLE.ts.'],
+    explicitConstitutionalLimits: ['Not described here by design. See the same two files.'],
+    architecturalMeaning: 'Not described here by design. See the same two files.',
+    immutablePosition: 23,
+    traceability: 'INTERFACE_COORDINATION.ts, INTERFACE_LIFECYCLE.ts (Package II, Stage 13); inserted between Implementation and Interface per Construction ID RAS-II-12.',
   },
   INTERFACE: {
     name: 'INTERFACE',
     constitutionalPurpose: 'Not described here by design. See INTERFACE.ts.',
     constitutionalAuthority:
-      'Defined exclusively in INTERFACE.ts. This hierarchy fixes only this position\'s existence, its single parent (IMPLEMENTATION), and its single child (USER) — it does not describe, summarize, or restate the Interface\'s content, to avoid holding a second, parallel definition of it.',
-    parentLayer: 'IMPLEMENTATION',
-    childLayers: ['USER'],
+      'Defined exclusively in INTERFACE.ts. This hierarchy fixes only this position\'s existence, its single parent (INTERFACE_ECOSYSTEM_PACKAGE), and its single child (USER_FOUNDATION_ECOSYSTEM_PACKAGE) — it does not describe, summarize, or restate the Interface\'s content, to avoid holding a second, parallel definition of it.',
+    parentLayer: 'INTERFACE_ECOSYSTEM_PACKAGE',
+    childLayers: ['USER_FOUNDATION_ECOSYSTEM_PACKAGE'],
     scope: 'Not described here by design. See INTERFACE.ts, the sole interface authority for RAS AL AMR.',
     responsibilities: ['Not described here by design. See INTERFACE.ts.'],
     explicitConstitutionalLimits: ['Not described here by design. See INTERFACE.ts.'],
     architecturalMeaning: 'Not described here by design. See INTERFACE.ts.',
-    immutablePosition: 21,
-    traceability: 'INTERFACE.ts (Package II, Stage 11, renumbered from Stage 6, then 7, 8, 9, 10 upon insertion of INTERFACES, BEHAVIOR, DEPENDENCY_PACKAGE, VALIDATION_PACKAGE, and CERTIFICATION_PACKAGE); authorized by Chief Architect Ruling AZMA-CA-RULING-009; amended under AZMA-CA-RULING-013.',
+    immutablePosition: 24,
+    traceability: 'INTERFACE.ts (Package II, Stage 14, renumbered from Stage 6, then 7, 8, 9, 10, 11, 12, 13 upon insertion of INTERFACES, BEHAVIOR, DEPENDENCY_PACKAGE, VALIDATION_PACKAGE, CERTIFICATION_PACKAGE, RUNTIME_FOUNDATION_PACKAGE, IMPLEMENTATION_FOUNDATION_PACKAGE, and INTERFACE_ECOSYSTEM_PACKAGE); authorized by Chief Architect Ruling AZMA-CA-RULING-009; amended under AZMA-CA-RULING-013.',
+  },
+  USER_FOUNDATION_ECOSYSTEM_PACKAGE: {
+    name: 'USER_FOUNDATION_ECOSYSTEM_PACKAGE',
+    constitutionalPurpose: 'Not described here by design. See USER_COORDINATION.ts and PACKAGE_II_COMPLETION_REVIEW.ts.',
+    constitutionalAuthority:
+      'Defined exclusively across two files — USER_COORDINATION.ts and PACKAGE_II_COMPLETION_REVIEW.ts — constructed and reviewed as one constitutional unit per Construction ID RAS-II-14. Per AZMA-CA-RULING-016, a third proposed file (USER_LIFECYCLE.ts) was declined as No Constitutional Grounding (see the Stage 15 Engineering Report). This hierarchy fixes only this position\'s existence, its single parent (INTERFACE), and its single child (USER) — it does not describe, summarize, or restate either file\'s content.',
+    parentLayer: 'INTERFACE',
+    childLayers: ['USER'],
+    scope: 'Not described here by design. See USER_COORDINATION.ts and PACKAGE_II_COMPLETION_REVIEW.ts, the sole authority for RAS AL AMR\'s User-layer coordination and the whole-Package-II completion review.',
+    responsibilities: ['Not described here by design. See USER_COORDINATION.ts and PACKAGE_II_COMPLETION_REVIEW.ts.'],
+    explicitConstitutionalLimits: ['Not described here by design. See the same two files.'],
+    architecturalMeaning: 'Not described here by design. See the same two files.',
+    immutablePosition: 25,
+    traceability: 'USER_COORDINATION.ts, PACKAGE_II_COMPLETION_REVIEW.ts (Package II, Stage 15); inserted between Interface and User per Construction ID RAS-II-14.',
   },
   USER: {
     name: 'USER',
     constitutionalPurpose: 'Not described here by design. See USER.ts.',
     constitutionalAuthority:
-      'The Citizen. Holds no constitutional authority of its own — it is the terminal beneficiary the entire hierarchy exists to serve. Its verification content is defined exclusively in USER.ts; this hierarchy fixes only this position\'s existence and its single parent (INTERFACE) — it has no child, being the terminus of the chain.',
-    parentLayer: 'INTERFACE',
+      'The Citizen. Holds no constitutional authority of its own — it is the terminal beneficiary the entire hierarchy exists to serve. Its verification content is defined exclusively in USER.ts; this hierarchy fixes only this position\'s existence and its single parent (USER_FOUNDATION_ECOSYSTEM_PACKAGE) — it has no child, being the terminus of the chain.',
+    parentLayer: 'USER_FOUNDATION_ECOSYSTEM_PACKAGE',
     childLayers: [],
     scope: 'Not described here by design. See USER.ts, the sole verification authority for RAS AL AMR.',
     responsibilities: ['Not described here by design. See USER.ts.'],
     explicitConstitutionalLimits: ['Not described here by design. See USER.ts.'],
     architecturalMeaning: 'Not described here by design. See USER.ts.',
-    immutablePosition: 22,
-    traceability: 'USER.ts (Package II, Stage 12, renumbered from Stage 7, then 8, 9, 10, 11 upon insertion of INTERFACES, BEHAVIOR, DEPENDENCY_PACKAGE, VALIDATION_PACKAGE, and CERTIFICATION_PACKAGE); authorized by Chief Architect Ruling AZMA-CA-RULING-012. Underlying guarantee text remains SOUL.ts\'s Mission and Promise (Package I, Stage 1).',
+    immutablePosition: 26,
+    traceability: 'USER.ts (Package II, Stage 16, renumbered from Stage 7, then 8, 9, 10, 11, 12, 13, 14, 15 upon insertion of INTERFACES, BEHAVIOR, DEPENDENCY_PACKAGE, VALIDATION_PACKAGE, CERTIFICATION_PACKAGE, RUNTIME_FOUNDATION_PACKAGE, IMPLEMENTATION_FOUNDATION_PACKAGE, INTERFACE_ECOSYSTEM_PACKAGE, and USER_FOUNDATION_ECOSYSTEM_PACKAGE); authorized by Chief Architect Ruling AZMA-CA-RULING-012. Underlying guarantee text remains SOUL.ts\'s Mission and Promise (Package I, Stage 1).',
   },
 } as const;
 
@@ -620,5 +739,9 @@ export const RAS_AL_AMR_CONSTITUTIONAL_HIERARCHY = {
     dependencyPackageInsertion: 'Construction ID RAS-II-06 — DEPENDENCY_PACKAGE inserted as position 16 between Behavior and Runtime, holding five files (DEPENDENCIES.ts, OWNERSHIP.ts, PERMISSIONS.ts, BOUNDARIES.ts, TRACEABILITY.ts) as one constitutional unit. Package II became Stages 1-10; Runtime/Implementation/Interface/User renumbered 7-10 (was 6-9), positions 17-20 (was 16-19).',
     validationPackageInsertion: 'Construction ID RAS-II-07 — VALIDATION_PACKAGE inserted as position 17 between Dependency Package and Runtime, holding five files (VALIDATION_RULES.ts, CONSISTENCY.ts, INVARIANTS.ts, CERTIFICATION_CHECKLIST.ts, ARCHITECTURAL_AUDIT.ts) as one constitutional unit. Package II became Stages 1-11; Runtime/Implementation/Interface/User renumbered 8-11 (was 7-10), positions 18-21 (was 17-20). CERTIFICATION_CHECKLIST.ts reported Package II as not yet ready for Package III.',
     certificationPackageInsertion: 'Construction ID RAS-II-08 — CERTIFICATION_PACKAGE inserted as position 18 between Validation Package and Runtime, holding four files (CERTIFICATION_RULES.ts, READINESS.ts, ARCHITECTURAL_GAPS.ts, ARCHITECTURAL_DEBT.ts) as one constitutional unit. Package II is now Stages 1-12; Runtime/Implementation/Interface/User renumbered 9-12 (was 8-11), positions 19-22 (was 18-21). ARCHITECTURAL_GAPS.ts found two new gaps (missing ownership of the Dependency/Validation Package artifacts themselves; TRACEABILITY.ts\'s chain excluding the Validation Package) in addition to the items already open from Stage 7. Package II remains not certified ready for Package III.',
+    runtimeFoundationPackageInsertion: 'Construction ID RAS-II-09 — RUNTIME_FOUNDATION_PACKAGE inserted as position 19 between Certification Package and Runtime, holding five files (RUNTIME_CONTEXT.ts, RUNTIME_PIPELINE.ts, RUNTIME_VALIDATION.ts — all three pointer-only, re-exporting RUNTIME.ts/INVARIANTS.ts content already certified rather than restating it, per Chief Architect direction and CERTIFICATION_RULES.ts\'s rule5_pointerNotDuplicate; RUNTIME_COORDINATION.ts and RUNTIME_LIFECYCLE.ts — both genuinely new content, extending DEPENDENCIES.ts\'s chain to Runtime and defining the system-level init/activate/suspend/recover/shutdown lifecycle respectively) as one constitutional unit. Package II is now Stages 1-13; Runtime/Implementation/Interface/User renumbered 10-13 (was 9-12), positions 20-23 (was 19-22). RUNTIME_COORDINATION_CHECK found no Runtime construct without a named upstream owner (PASS). Package II remains not certified ready for Package III (gaps from Stages 7-8 remain open).',
+    implementationFoundationPackageInsertion: 'Construction ID RAS-II-10 — IMPLEMENTATION_FOUNDATION_PACKAGE inserted as position 21 between Runtime and Implementation, holding five files (IMPLEMENTATION_CONTEXT.ts, IMPLEMENTATION_PIPELINE.ts, IMPLEMENTATION_VALIDATION.ts — all three pointer-only, re-exporting RUNTIME.ts/RUNTIME_PIPELINE.ts/INVARIANTS.ts content already certified rather than restating it; IMPLEMENTATION_COORDINATION.ts and IMPLEMENTATION_LIFECYCLE.ts — both genuinely new content, extending RUNTIME_COORDINATION.ts\'s artifact set to Implementation and defining Implementation\'s per-invocation lifecycle respectively) as one constitutional unit. NUMBERING RULING: the RAS-II-10 directive\'s own title read "Stage 10," but Stage 10 was already Runtime\'s certified number (assigned when RUNTIME_FOUNDATION_PACKAGE was inserted, Stage 9); the unbroken stage=position-10 rule holding without exception across Stages 3-9 was applied instead, making this position (21) Stage 11 — confirmed by Chief Architect ruling. Package II is now Stages 1-14; Implementation/Interface/User renumbered 12-14 (was 11-13), positions 22-24 (was 21-23); Runtime unchanged at Stage 10, position 20. IMPLEMENTATION_COORDINATION_CHECK found no Implementation construct without a named upstream owner (PASS). Package II remains not certified ready for Package III (gaps from Stages 7-8 remain open).',
+    interfaceEcosystemPackageInsertion: 'Construction ID RAS-II-12 (Construction Revision R2, superseding RAS-II-11 R1) — AZMA-CA-RULING-016 established that Stage 12/13\'s size is determined by constitutional responsibility, not file count, and set eight mandatory construction rules (never duplicate certified authority; never create pointer-only-renaming files; never build ungrounded files; extend/merge/omit as constitutionally required; document every omission; do not stop the Stage for one ungrounded filename). Applying those rules to the 25 originally-proposed files: 23 were declined (13 as Duplicate Rejected — Registry/Directory/Types/Metadata/Contracts overlap INTERFACES.ts; Validation/Guards/Rules/Invariants overlap INVARIANTS.ts\'s INTERFACE_COMPLIANCE_CHECK and VALIDATION_RULES.ts/CERTIFICATION_RULES.ts; Traceability overlaps INTERFACE.ts\'s own INTERFACE_TRACEABILITY_MATRIX; Audit and Certification overlap the whole-chamber Validation/Certification Packages; 2 as Pointer Rejected — Context would point only to RUNTIME.ts\'s RuntimeContext, Pipeline would point only to RUNTIME_PIPELINE.ts\'s flows, both already pointed to twice; 4 as No Constitutional Grounding — Routing, Bridge, Handshake, Documentation trace to no constitutional article or certified artifact; and 4 merged into the 2 surviving files\' responsibility — Dependencies into Coordination, States/Transitions/Recovery into Lifecycle). INTERFACE_ECOSYSTEM_PACKAGE inserted as position 23 between Implementation and Interface, holding the 2 surviving files (INTERFACE_COORDINATION.ts, INTERFACE_LIFECYCLE.ts) as one constitutional unit. NUMBERING RULING (same principle as RAS-II-10): the directive\'s own title read "Stage 12," already Implementation\'s certified number; applying the unbroken stage=position-10 rule makes this position (23) Stage 13. Package II is now Stages 1-15; Interface/User renumbered 14-15 (was 13-14), positions 24-25 (was 23-24); Runtime and Implementation unchanged at Stage 10/12, positions 20/22. INTERFACE_COORDINATION_CHECK found no Interface construct without a named upstream owner (PASS); it also found no direct INTERFACE.ts citation to Specification, Behavior, or Interfaces(plural) — declined to fabricate those three edges. Package II remains not certified ready for Package III (gaps from Stages 7-8 remain open).',
+    userFoundationEcosystemPackageInsertion: 'Construction ID RAS-II-14 — applying AZMA-CA-RULING-016 to the 3 proposed responsibilities (User Coordination, User Lifecycle, and the Package-II Completion Review folded into Work Package F): User Coordination was built (USER_COORDINATION.ts, extending INTERFACE_COORDINATION.ts\'s artifact set to User; found no direct USER.ts citation to Specification, Behavior, Dependencies, or Runtime — declined to fabricate those edges); the Package-II Completion Review was built (PACKAGE_II_COMPLETION_REVIEW.ts, verifying all 14 Package II hierarchy positions form one unbroken single-parent chain — confirmed intact by direct re-inspection of every parentLayer/childLayers pair, positions 12-24, plus this Stage\'s own positions 25-26); User Lifecycle was declined (No Constitutional Grounding — USER_STAGE_DECLARATION.createsAnyMechanism is false, so no execution lifecycle can exist for a Stage that creates no mechanism). Also confirmed, per Work Package B: no new authority-holding User artifact exists to build, because USER holds no constitutional authority by design (introducesConstitutionalAuthority/introducesArchitecturalAuthority/introducesRuntimeAuthority/introducesImplementationAuthority/introducesInterfaceAuthority all false) — building one would contradict USER.ts\'s own foundational declaration. USER_FOUNDATION_ECOSYSTEM_PACKAGE inserted as position 25 between Interface and User, holding the 2 surviving files as one constitutional unit. NUMBERING RULING (same principle as RAS-II-10/RAS-II-12): the directive\'s own title read "Stage 14," already Interface\'s certified number; applying the unbroken stage=position-10 rule, this package takes the Stage number (15) User itself held before this insertion, and User is renumbered to Stage 16, position 26. Package II is now Stages 1-16 and is hereby structurally complete (14 Package II positions, single unbroken chain, zero forks) — but per PACKAGE_II_COMPLETION_REVIEW.ts, still NOT certified ready for Package III: the 5 gaps ARCHITECTURAL_GAPS.ts recorded at Stage 8 remain open and were not resolved by this Stage, since resolving them was outside this Stage\'s directive.',
   },
 } as const;

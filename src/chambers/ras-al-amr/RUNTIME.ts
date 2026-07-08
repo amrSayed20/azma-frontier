@@ -1,14 +1,15 @@
 /**
  * AZMA OS — RAS AL AMR
  * PACKAGE II — CONSTITUTIONAL ARCHITECTURE
- * STAGE 9 — RUNTIME
- * (renumbered from Stage 3, then 4, 5, 6, 7, 8, upon insertion of
+ * STAGE 10 — RUNTIME
+ * (renumbered from Stage 3, then 4, 5, 6, 7, 8, 9, upon insertion of
  * SPECIFICATION, INTERFACES, BEHAVIOR, DEPENDENCY_PACKAGE,
- * VALIDATION_PACKAGE, and CERTIFICATION_PACKAGE, per Chief Architect
- * follow-on directives; no content in this file changed as a result of any
- * renumbering — see hierarchy.ts's specificationInsertion, interfacesInsertion,
- * behaviorInsertion, dependencyPackageInsertion, validationPackageInsertion,
- * and certificationPackageInsertion ruling records. Compliance with every
+ * VALIDATION_PACKAGE, CERTIFICATION_PACKAGE, and RUNTIME_FOUNDATION_PACKAGE,
+ * per Chief Architect follow-on directives; no content in this file changed
+ * as a result of any renumbering — see hierarchy.ts's specificationInsertion,
+ * interfacesInsertion, behaviorInsertion, dependencyPackageInsertion,
+ * validationPackageInsertion, certificationPackageInsertion, and
+ * runtimeFoundationPackageInsertion ruling records. Compliance with every
  * binding invariant re-verified in INVARIANTS.ts — 0 violations.)
  *
  * RUNTIME CONSTITUTIONAL LAW (this stage's directive):
@@ -359,8 +360,8 @@ export const RAS_AL_AMR_LIVING_RUNTIME_FOUNDATION = {
     producesUi: false,
     producesBusinessLogic: false,
     exclusiveBoundaryBetweenArchitectureAndImplementation: true,
-    discharges: ['AZMA-CA-RULING-005 Engineering Directive (Package II, Stage 9, renumbered from Stage 3, then 4, 5, 6, 7, 8)'],
-    status: 'PACKAGE II — STAGE 9 — RUNTIME, previously certified; citations re-verified against ARCHITECTURE.ts\'s domain replacement (RAS-CA-RULING-002), SPECIFICATION.ts (Stage 3), INTERFACES.ts (Stage 4), BEHAVIOR.ts (Stage 5), the Dependency Package (Stage 6), the Validation Package (Stage 7, INVARIANTS.ts compliance check — 0 violations), and the Certification Package (Stage 8).',
+    discharges: ['AZMA-CA-RULING-005 Engineering Directive (Package II, Stage 10, renumbered from Stage 3, then 4, 5, 6, 7, 8, 9)'],
+    status: 'PACKAGE II — STAGE 10 — RUNTIME, previously certified; citations re-verified against ARCHITECTURE.ts\'s domain replacement (RAS-CA-RULING-002), SPECIFICATION.ts (Stage 3), INTERFACES.ts (Stage 4), BEHAVIOR.ts (Stage 5), the Dependency Package (Stage 6), the Validation Package (Stage 7, INVARIANTS.ts compliance check — 0 violations), the Certification Package (Stage 8), and the Runtime Foundation Package (Stage 9, RUNTIME_COORDINATION_CHECK — no construct found without a named upstream owner).',
   },
 
   specification_re_verification: {

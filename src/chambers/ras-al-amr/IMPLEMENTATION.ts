@@ -1,12 +1,13 @@
 /**
  * AZMA OS — RAS AL AMR
  * PACKAGE II — CONSTITUTIONAL ARCHITECTURE
- * STAGE 10 — IMPLEMENTATION
- * (renumbered from Stage 4, then 5, 6, 7, 8, 9, upon insertion of
+ * STAGE 12 — IMPLEMENTATION
+ * (renumbered from Stage 4, then 5, 6, 7, 8, 9, 10, 11, upon insertion of
  * SPECIFICATION, INTERFACES, BEHAVIOR, DEPENDENCY_PACKAGE,
- * VALIDATION_PACKAGE, and CERTIFICATION_PACKAGE; no content in this file
- * changed as a result of any renumbering. Compliance with every binding
- * invariant re-verified in INVARIANTS.ts — 0 violations.)
+ * VALIDATION_PACKAGE, CERTIFICATION_PACKAGE, RUNTIME_FOUNDATION_PACKAGE, and
+ * IMPLEMENTATION_FOUNDATION_PACKAGE; no content in this file changed as a
+ * result of any renumbering. Compliance with every binding invariant
+ * re-verified in INVARIANTS.ts — 0 violations.)
  *
  * IMPLEMENTATION CONSTITUTIONAL LAW (this stage's directive):
  * Implementation gives executable shape to what RUNTIME.ts already declared.
@@ -291,8 +292,16 @@ export const IMPLEMENTATION_TRACEABILITY_MATRIX = {
     'Constitution (Soul → Transformation)',
     'Constitutional Hierarchy (hierarchy.ts, Package II Stage 1)',
     'Constitutional Architecture (ARCHITECTURE.ts, Package II Stage 2)',
-    'Living Runtime Foundation (RUNTIME.ts, Package II Stage 3)',
-    'Implementation (this file, Package II Stage 4)',
+    'Architectural Specification (SPECIFICATION.ts, Package II Stage 3)',
+    'Architectural Interfaces (INTERFACES.ts, Package II Stage 4)',
+    'Architectural Behavior Model (BEHAVIOR.ts, Package II Stage 5)',
+    'Architectural Dependency Package (DEPENDENCIES/OWNERSHIP/PERMISSIONS/BOUNDARIES/TRACEABILITY.ts, Package II Stage 6)',
+    'Architectural Validation Package (VALIDATION_RULES/CONSISTENCY/INVARIANTS/CERTIFICATION_CHECKLIST/ARCHITECTURAL_AUDIT.ts, Package II Stage 7)',
+    'Architectural Certification Package (CERTIFICATION_RULES/READINESS/ARCHITECTURAL_GAPS/ARCHITECTURAL_DEBT.ts, Package II Stage 8)',
+    'Runtime Foundation Package (RUNTIME_CONTEXT/RUNTIME_PIPELINE/RUNTIME_VALIDATION/RUNTIME_COORDINATION/RUNTIME_LIFECYCLE.ts, Package II Stage 9)',
+    'Living Runtime Foundation (RUNTIME.ts, Package II Stage 10)',
+    'Implementation Foundation Package (IMPLEMENTATION_CONTEXT/IMPLEMENTATION_PIPELINE/IMPLEMENTATION_VALIDATION/IMPLEMENTATION_COORDINATION/IMPLEMENTATION_LIFECYCLE.ts, Package II Stage 11)',
+    'Implementation (this file, Package II Stage 12)',
   ],
 } as const;
 
@@ -313,8 +322,8 @@ export const RAS_AL_AMR_IMPLEMENTATION_DECLARATION = {
   sideEffectFree: true,
   traceability: IMPLEMENTATION_TRACEABILITY_MATRIX,
   discharges: [
-    'AZMA-CA-RULING-006 Engineering Directive (Package II, Stage 10, renumbered from Stage 4, then 5, 6, 7, 8, 9)',
+    'AZMA-CA-RULING-006 Engineering Directive (Package II, Stage 12, renumbered from Stage 4, then 5, 6, 7, 8, 9, 10, 11)',
     'AZMA-CA-RULING-011 Certified Amendment — Export Confirmation Enforcement',
   ],
-  status: 'PACKAGE II — STAGE 10 — IMPLEMENTATION, previously certified; renumbered upon SPECIFICATION, INTERFACES, BEHAVIOR, DEPENDENCY_PACKAGE, VALIDATION_PACKAGE, and CERTIFICATION_PACKAGE insertion, no content changed.',
+  status: 'PACKAGE II — STAGE 12 — IMPLEMENTATION, previously certified; renumbered upon SPECIFICATION, INTERFACES, BEHAVIOR, DEPENDENCY_PACKAGE, VALIDATION_PACKAGE, CERTIFICATION_PACKAGE, RUNTIME_FOUNDATION_PACKAGE, and IMPLEMENTATION_FOUNDATION_PACKAGE insertion, no content changed. (TRACEABILITY_MATRIX.chain corrected this Stage: it had not been updated since original certification and was still naming Stages 2-4 while every other field/header already reflected Stage 11 — a pre-existing staleness found and fixed as part of this renumbering pass, not new content.)',
 } as const;

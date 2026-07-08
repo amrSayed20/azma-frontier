@@ -1,17 +1,20 @@
 /**
  * AZMA OS — RAS AL AMR
  * PACKAGE II — CONSTITUTIONAL ARCHITECTURE
- * STAGE 12 — USER
- * (renumbered from Stage 6, then 7, 8, 9, 10, 11, upon insertion of
- * SPECIFICATION, INTERFACES, BEHAVIOR, DEPENDENCY_PACKAGE,
- * VALIDATION_PACKAGE, and CERTIFICATION_PACKAGE; no content in this file
- * changed as a result of any renumbering.)
+ * STAGE 16 — USER
+ * (renumbered from Stage 6, then 7, 8, 9, 10, 11, 12, 13, 14, 15, upon
+ * insertion of SPECIFICATION, INTERFACES, BEHAVIOR, DEPENDENCY_PACKAGE,
+ * VALIDATION_PACKAGE, CERTIFICATION_PACKAGE, RUNTIME_FOUNDATION_PACKAGE,
+ * IMPLEMENTATION_FOUNDATION_PACKAGE, INTERFACE_ECOSYSTEM_PACKAGE, and
+ * USER_FOUNDATION_ECOSYSTEM_PACKAGE; no content in this file changed as a
+ * result of any renumbering.)
  *
  * USER is unlike every prior Stage. Per hierarchy.ts (Package II, Stage 1):
  * "The Citizen. Holds no constitutional authority of its own — it is the
- * terminal beneficiary the entire hierarchy exists to serve." Position 22
- * (renumbered from 16, then 17, 18, 19, 20, 21). Parent: INTERFACE. No
- * children — this is the end of the chain.
+ * terminal beneficiary the entire hierarchy exists to serve." Position 26
+ * (renumbered from 16, then 17, 18, 19, 20, 21, 22, 23, 24, 25). Parent:
+ * USER_FOUNDATION_ECOSYSTEM_PACKAGE. No children — this is the end of the
+ * chain.
  *
  * Because USER holds no authority, this Stage defines none. It is not a
  * mechanism-producing Stage like Architecture, Runtime, Implementation, or
@@ -135,10 +138,10 @@ export const USER_STAGE_DECLARATION = {
   discoveredGaps: [],
   resolvedGaps: [DISCOVERED_GAP_EXPORT_CONFIRMATION_NOT_WIRED],
   discharges: [
-    'AZMA-CA-RULING-012 (Package II, Stage 12, renumbered from Stage 6, then 7, 8, 9, 10, 11)',
+    'AZMA-CA-RULING-012 (Package II, Stage 16, renumbered from Stage 6, then 7, 8, 9, 10, 11, 12, 13, 14, 15)',
     'AZMA-CA-RULING-014 Engineering Directive — Creator Guarantee Ledger documentation synchronization',
   ],
-  status: 'PACKAGE II — STAGE 12 — USER, previously certified; renumbered upon SPECIFICATION, INTERFACES, BEHAVIOR, DEPENDENCY_PACKAGE, VALIDATION_PACKAGE, and CERTIFICATION_PACKAGE insertion, no content changed.',
+  status: 'PACKAGE II — STAGE 16 — USER, previously certified; renumbered upon SPECIFICATION, INTERFACES, BEHAVIOR, DEPENDENCY_PACKAGE, VALIDATION_PACKAGE, CERTIFICATION_PACKAGE, RUNTIME_FOUNDATION_PACKAGE, IMPLEMENTATION_FOUNDATION_PACKAGE, INTERFACE_ECOSYSTEM_PACKAGE, and USER_FOUNDATION_ECOSYSTEM_PACKAGE insertion, no content changed.',
 } as const;
 
 // ═══════════════════════════════════════════════════════════════════════════
