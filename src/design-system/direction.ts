@@ -263,6 +263,20 @@ export const SCENE_TRANSITIONS: Record<string, SceneTransition> = {
     from: 'signup', to: 'qiyamah-chamber', transitionType: 'ascend', durationMs: 900,
     description: 'A Creator is born — the newest citizen ascends from the Gates into the Chambers.',
   },
+  // QIYAMAH CHAMBER RECONSTRUCTION (2026-07-23): closes the one gap left
+  // in an otherwise-complete Gate<->Qiyamah pairing set — a known,
+  // already-authenticated Creator can enter directly from the landing
+  // Gate (gate.enterChamberButton), and the Chamber's own real exit
+  // button returns to the landing Gate. Neither direction previously had
+  // a defined pairing and silently fell back to 'default-arrival'.
+  'landing-to-qiyamah-chamber': {
+    from: 'landing', to: 'qiyamah-chamber', transitionType: 'ascend', durationMs: 800,
+    description: 'A known Creator ascends directly from the Gate into the Chamber of Creation.',
+  },
+  'qiyamah-chamber-to-landing': {
+    from: 'qiyamah-chamber', to: 'landing', transitionType: 'descend', durationMs: 700,
+    description: 'The Creator descends from the Chamber back to the Gate — a return, not a departure.',
+  },
 } as const;
 
 // ── ARTICLE VII — Emotional Curves ────────────────────────────────────────
