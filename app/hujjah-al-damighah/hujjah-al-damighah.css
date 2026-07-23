@@ -17,27 +17,33 @@
   --court-bg:      #030302;
   --panel-bg:      rgba(8, 7, 2, 0.94);
 
-  /* Six forged tones — the Imperial Gold System */
-  --ig-1:   #3A2400;   /* iron — the forge base */
-  --ig-2:   #5C3A06;   /* deep cast gold */
-  --ig-3:   #8B6508;   /* standard metallic */
-  --ig-4:   #B8903A;   /* refined intermediate */
-  --ig-5:   #C9A84C;   /* primary metallic */
-  --ig-6:   #D4AF37;   /* bright metallic */
-  --ig-7:   #E8C547;   /* reflection */
-  --ig-8:   #F5D978;   /* specular highlight */
+  /* Six forged tones — the Imperial Gold System.
+     Values are the Sovereign Color System's own (src/design-system/tokens.ts
+     PALETTE.gold, exposed globally as --azma-gold-* in azma-identity.css).
+     This chamber consumes them under its own local names rather than
+     redeclaring the empire's gold from scratch — Zero Duplication
+     (Constitutional Dossier, Chapter V, Article III). */
+  --ig-1:   var(--azma-gold-1);   /* iron — the forge base */
+  --ig-2:   var(--azma-gold-2);   /* deep cast gold */
+  --ig-3:   var(--azma-gold-3);   /* standard metallic */
+  --ig-4:   var(--azma-gold-4);   /* refined intermediate */
+  --ig-5:   var(--azma-gold-5);   /* primary metallic */
+  --ig-6:   var(--azma-gold-6);   /* bright metallic */
+  --ig-7:   var(--azma-gold-7);   /* reflection */
+  --ig-8:   var(--azma-gold-8);   /* specular highlight */
 
   /* Glows */
   --ig-glow-deep:   rgba(139, 101, 8, 0.12);
   --ig-glow-mid:    rgba(212, 175, 55, 0.18);
   --ig-glow-bright: rgba(212, 175, 55, 0.30);
 
-  /* Text */
-  --text-main:   #E8D595;
-  --text-muted:  #A8955B;
-  --text-sacred: #FFF2A8;
-  --text-dim:    #6B5A30;
-  --text-ghost:  #3D2E12;
+  /* Text — the Sovereign Color System's own text hierarchy
+     (PALETTE.text / --azma-text-*). Same consumption principle as above. */
+  --text-main:   var(--azma-text-primary);
+  --text-muted:  var(--azma-text-muted);
+  --text-sacred: var(--azma-text-sacred);
+  --text-dim:    var(--azma-text-dim);
+  --text-ghost:  var(--azma-text-ghost);
 
   /* Legacy aliases */
   --neon-gold-primary: var(--ig-6);
@@ -217,7 +223,10 @@ body, html {
   position: fixed;
   inset: 0;
   color: var(--text-main);
-  font-family: system-ui, 'Segoe UI', sans-serif;
+  /* Sovereign Typography System's own font authority (tokens.ts
+     TYPOGRAPHY.family / --azma-font-family) — restored from a partial
+     subset of the certified stack (SIO-007). */
+  font-family: var(--azma-font-family);
   direction: rtl;
   display: flex;
   flex-direction: column;

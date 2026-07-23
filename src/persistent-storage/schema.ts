@@ -1,0 +1,89 @@
+/**
+ * AZMA OS — PERSISTENT STORAGE FOUNDATION
+ * Schema
+ *
+ * Migration of Launch-Critical data only, per the Engineering Order:
+ * Creator records, sessions, Qiyamah generation records, and Vault
+ * asset metadata. Every other in-memory runtime state (Signal Log,
+ * State Registry, Heart continuity, Core advisory cache, Consciousness
+ * awareness state, Memory's Knowledge Repository, Evolution's
+ * Improvement Registry, every Constitutional Engine's own sequence
+ * counters) is deliberately NOT migrated — none of it was named
+ * Launch-Critical, and migrating it is explicitly out of this
+ * Package's Boundaries ("do not migrate non-essential runtime state").
+ */
+
+export const SCHEMA_STATEMENTS: readonly string[] = [
+  // email/password_hash/role added for the Authentication Foundation
+  // (Execution Package III). CREATE TABLE IF NOT EXISTS alone does NOT
+  // alter an already-existing table — a real dev database created by
+  // the Persistent Storage Foundation before these columns existed hit
+  // exactly this ("no such column: email"). db.ts's createDatabase()
+  // runs a real ALTER-based migration (ensureColumnsExist) after these
+  // statements to add any missing columns to a pre-existing table. No
+  // inline UNIQUE here — SQLite cannot ADD COLUMN with UNIQUE; see
+  // INDEX_STATEMENTS below for the equivalent uniqueness guarantee.
+  `CREATE TABLE IF NOT EXISTS creators (
+    creator_id TEXT PRIMARY KEY,
+    email TEXT,
+    password_hash TEXT,
+    role TEXT NOT NULL DEFAULT 'creator',
+    display_name TEXT,
+    preferred_locale TEXT,
+    created_at INTEGER NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS sessions (
+    session_id TEXT PRIMARY KEY,
+    creator_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS generation_records (
+    record_id TEXT PRIMARY KEY,
+    creator_id TEXT,
+    prompt TEXT NOT NULL,
+    style TEXT,
+    asset_url TEXT NOT NULL,
+    generated_at INTEGER NOT NULL
+  )`,
+  // Billing Foundation (Execution Package IV) — a new table, added
+  // without touching creators/sessions/generation_records/vault_assets.
+  `CREATE TABLE IF NOT EXISTS subscriptions (
+    subscription_id TEXT PRIMARY KEY,
+    creator_id TEXT NOT NULL,
+    stripe_customer_id TEXT,
+    stripe_subscription_id TEXT UNIQUE,
+    status TEXT NOT NULL,
+    plan TEXT NOT NULL,
+    current_period_end INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS vault_assets (
+    asset_id TEXT PRIMARY KEY,
+    subscriber_tenant_id TEXT NOT NULL,
+    originating_operation_id TEXT NOT NULL,
+    capability_target TEXT NOT NULL,
+    asset_family TEXT NOT NULL,
+    secure_storage_uri TEXT NOT NULL,
+    metadata TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
+];
+
+/** Columns added to `creators` after its original creation — applied via ALTER TABLE for pre-existing databases. */
+export const CREATORS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
+  { name: 'email', ddl: 'email TEXT' },
+  { name: 'password_hash', ddl: 'password_hash TEXT' },
+  { name: 'role', ddl: "role TEXT NOT NULL DEFAULT 'creator'" },
+  // Creator Language Experience: added after display_name — a pre-existing
+  // database (this project's own dev database included) needs the same
+  // real ALTER TABLE path, not just the CREATE TABLE IF NOT EXISTS above.
+  { name: 'preferred_locale', ddl: 'preferred_locale TEXT' },
+];
+
+/** Run only after CREATORS_MIGRATION_COLUMNS has ensured the columns exist — SQLite cannot index a column that isn't there yet. */
+export const INDEX_STATEMENTS: readonly string[] = [
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_creators_email ON creators(email)',
+];

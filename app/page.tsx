@@ -1,48 +1,43 @@
- import "./sovereign-gate/gate.css";
+import { cookies } from "next/headers";
+import { verifySession } from "@/src/authentication";
+import { getDb, getCreator } from "@/src/persistent-storage";
+import { resolveRequestLocale } from "@/src/creator-language/resolve-request-locale";
+import { getDictionary, t } from "@/src/creator-language";
+import { resolveAvailableActions } from "@/src/button-engine";
+import { ArrivalExperience } from "@/src/imperial-experience-engine";
 
-export default function SovereignGate() {
-  return (
-    <main className="gate-page">
+const SESSION_COOKIE = "azma_session";
 
-      <div className="gold-frame">
+/**
+ * THE FIRST CONSTITUTIONAL PACKAGE (2026-07-20): this Server Component
+ * does only what it must — resolve session, locale, and available
+ * actions — and hands the actual ceremony to the Arrival Experience
+ * Pipeline (src/imperial-experience-engine/experiences/arrival/), built
+ * directly from the Council's eight-package constitutional foundation.
+ * See that component's own header for the beat-by-beat translation.
+ */
+export default async function SovereignGate() {
+  const sessionId = (await cookies()).get(SESSION_COOKIE)?.value;
+  const session = sessionId ? verifySession(sessionId) : null;
+  const creator = session ? getCreator(getDb(), session.creatorId) : null;
+  const knownName = creator?.displayName;
 
-        <div className="gold-corner top-left"></div>
-        <div className="gold-corner top-right"></div>
-        <div className="gold-corner bottom-left"></div>
-        <div className="gold-corner bottom-right"></div>
+  const locale = await resolveRequestLocale();
+  const dict = getDictionary(locale);
 
-        <section className="gate-container">
+  const actions = resolveAvailableActions({
+    threshold: 'gate',
+    authenticated: !!session,
+    role: session?.role ?? null,
+  });
 
-          <div className="gate-badge">
-            بوابة العبور السيادي
-          </div>
+  // Recognition (Storyboard Beat 5) is felt through presence, never
+  // demanded through a form — a stranger is given no imperative line
+  // asking them to declare anything; only a returning, already-known
+  // Creator sees a session-aware greeting.
+  const title = session
+    ? (knownName ? `${t(dict, 'gate.titleKnownDefault')}، ${knownName}` : t(dict, 'gate.titleKnownDefault'))
+    : '';
 
-          <h1 className="gate-title">
-            حدد هويتك السيادية
-          </h1>
-
-          <div className="gate-buttons">
-
-            <button className="identity-btn">
-              <span className="icon">👑</span>
-              <span>عضو سيادي</span>
-            </button>
-
-            <button className="guest-btn">
-              <span className="icon">🏛️</span>
-              <span> المستكشف السيادى</span>
-            </button>
-
-          </div>
-
-        </section>
-
-      </div>
-
-      <button className="voice-bubble">
-        🎙️
-      </button>
-
-    </main>
-  );
+  return <ArrivalExperience title={title} actions={actions} dict={dict} locale={locale} />;
 }

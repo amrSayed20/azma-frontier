@@ -4,15 +4,25 @@
  */
 
 :root {
-  --chamber-bg: #020202; 
-  --panel-bg: rgba(10, 8, 5, 0.6); 
-  --neon-gold-primary: #D4AF37;
+  --chamber-bg: #020202;
+  --panel-bg: rgba(10, 8, 5, 0.6);
+  /* Sovereign Color System's own PALETTE.gold / --azma-gold-* */
+  --neon-gold-primary: var(--azma-gold-6);
+  --neon-gold-dim: var(--azma-gold-3);
+  /* This chamber's own bright highlight (#FFD700) is not an imperial-gold
+     value (--azma-gold-8 is #F5D978) — a genuinely distinct, more
+     saturated accent. Kept unchanged (zero visual change) and registered
+     through the constitutionally permitted per-chamber override slot
+     (EXTENSION.overridable, tokens.ts) rather than left as an anonymous
+     local variable. */
   --neon-gold-bright: #FFD700;
-  --neon-gold-dim: #8B6508;
   --neon-gold-shadow: rgba(255, 215, 0, 0.15);
-  
-  --text-main: #E8D595; 
-  --text-muted: #A8955B; 
+  --azma-accent: 255, 215, 0;
+  --azma-accent-color: #FFD700;
+
+  /* Sovereign Color System's own PALETTE.text / --azma-text-* */
+  --text-main: var(--azma-text-primary);
+  --text-muted: var(--azma-text-muted);
 }
 
 body, html { 
@@ -31,9 +41,10 @@ body, html {
   width: 100vw !important; 
   height: 100vh !important; 
   background-color: var(--chamber-bg); 
-  color: var(--text-main); 
-  font-family: system-ui, sans-serif; 
-  direction: rtl; 
+  color: var(--text-main);
+  /* Sovereign Typography System's own font authority (SIO-007) */
+  font-family: var(--azma-font-family);
+  direction: rtl;
   
   /* الاجبار المطلق على كسر التجميد وإضافة التمرير */
   overflow-x: hidden !important;

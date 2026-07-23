@@ -5,13 +5,13 @@
  * The Flattened Rendering Bridge.
  * Evaluates whether a publication's assembly graph can be served dynamically 
  * or requires a hard render (flattening). Delegates rendering operations 
- * to Al-Watin Al-Siyadi and tracks the output.
+ * to the Fleet Materialization Runtime and tracks the output.
  */
 
 import { SovereignPublication } from './publication-contracts';
 import { CompiledAssemblyGraph } from '../ras-al-amr/pre-publishing-boundary';
 import { CanvasType } from '../ras-al-amr/assembly-contracts';
-import { FleetDispatcher } from '../../orchestrator/al-watin/fleet/fleet-dispatcher';
+import { FleetDispatcher } from '../../orchestrator/fleet-materialization/fleet/fleet-dispatcher';
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 
 // ==========================================

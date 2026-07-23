@@ -1,3 +1,18 @@
+/*
+ * REGISTRATION GATEWAY, PACKAGE I (2026-07-23): a safe global fallback,
+ * not a redesign — without this, any page whose own content doesn't
+ * cover a full 100vh (or whose viewport wrapper turns transparent, see
+ * creator-access.css) would show the browser's default white below/
+ * behind it, since <body> itself never set a background. Matches the
+ * void every constitutional page already renders on top of, so pages
+ * that already paint their own opaque background are visually
+ * unaffected; it only matters where something is now allowed to show
+ * through.
+ */
+body {
+  background: var(--azma-void);
+}
+
   .sovereign-shell{
   min-height:100vh;
   position:relative;

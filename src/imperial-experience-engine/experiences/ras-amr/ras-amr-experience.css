@@ -1,0 +1,61 @@
+/**
+ * AZMA OS — THE IMPERIAL EXPERIENCE ENGINE (IXE)
+ * The Ras Al Amr Experience — Presentation
+ *
+ * Same discipline as Qiyamah Chamber's: no atmosphere gradient layer
+ * (the Chamber's own opaque, full-screen viewport would hide it) — only
+ * the reveal fade and the companion are real visual additions.
+ */
+
+.ras-amr-experience {
+  position: relative;
+}
+
+.ras-amr-reveal {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ras-amr-reveal {
+    animation: ras-amr-reveal-in 500ms var(--azma-ease-architectural) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ras-amr-reveal { opacity: 1; }
+}
+
+@keyframes ras-amr-reveal-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.ras-amr-companion {
+  position: fixed;
+  left: 30px;
+  bottom: 30px;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(2, 2, 2, 0.9);
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.35);
+  box-shadow: var(--azma-shadow-glow-soft);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ras-amr-companion {
+    animation: ras-amr-reveal-in 500ms 200ms var(--azma-ease-architectural) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ras-amr-companion { opacity: 1; }
+}
+
+.ras-amr-experience[data-presence='away'] .ras-amr-companion {
+  animation-play-state: paused;
+}

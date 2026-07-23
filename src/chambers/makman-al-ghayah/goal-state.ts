@@ -3,11 +3,36 @@
  * File: goal-state.ts
  *
  * Goal State Manager.
+ *
+ * CONSTITUTIONAL INTEGRITY CORRECTION (MAG-CIC-001): update/remove/clear
+ * previously performed unconditional mutation with no Creator-authorization
+ * gate, directly at odds with Article VII ("never rewrite/cancel a Goal
+ * without authorization") and Article VIII (approval mandatory before
+ * deleting a Goal). CreatorAuthorizationDecision reuses the isAuthorized/
+ * reason shape already established by access-policy-engine.ts's
+ * AuthorizationResult — not a new authorization concept, the same decision
+ * shape applied to the mutation boundary instead of the consumption boundary.
  */
 
 import {
   GoalContract
 } from './goal-contracts';
+
+/**
+ * A Creator's authorization decision for a Goal mutation.
+ * Mirrors access-policy-engine.ts's AuthorizationResult shape.
+ */
+export interface CreatorAuthorizationDecision {
+  readonly isAuthorized: boolean;
+  readonly rejectionReason?: string;
+}
+
+export class GoalStateAuthorizationError extends Error {
+  constructor(operation: 'update' | 'remove' | 'clear', goalId: string, reason?: string) {
+    super(`Creator Authorization required to ${operation} Goal [${goalId}]${reason ? `: ${reason}` : '.'}`);
+    this.name = 'GoalStateAuthorizationError';
+  }
+}
 
 export class GoalState {
   private readonly goals =
@@ -28,10 +53,16 @@ export class GoalState {
 
   /**
    * Updates a goal.
+   * ARTICLE VII / ARTICLE VIII: rejected without Creator Authorization.
    */
   public update(
-    goal: GoalContract
+    goal: GoalContract,
+    authorization: CreatorAuthorizationDecision
   ): void {
+
+    if (!authorization.isAuthorized) {
+      throw new GoalStateAuthorizationError('update', goal.goalId, authorization.rejectionReason);
+    }
 
     this.goals.set(
       goal.goalId,
@@ -63,10 +94,16 @@ export class GoalState {
 
   /**
    * Removes a goal.
+   * ARTICLE VII / ARTICLE VIII: rejected without Creator Authorization.
    */
   public remove(
-    goalId: string
+    goalId: string,
+    authorization: CreatorAuthorizationDecision
   ): void {
+
+    if (!authorization.isAuthorized) {
+      throw new GoalStateAuthorizationError('remove', goalId, authorization.rejectionReason);
+    }
 
     this.goals.delete(
       goalId
@@ -75,8 +112,17 @@ export class GoalState {
 
   /**
    * Clears all goals.
+   * ARTICLE VII / ARTICLE VIII: clear() removes every Goal at once — the
+   * same constitutional act as remove(), applied in bulk — and is gated
+   * identically. Rejected without Creator Authorization.
    */
-  public clear(): void {
+  public clear(
+    authorization: CreatorAuthorizationDecision
+  ): void {
+
+    if (!authorization.isAuthorized) {
+      throw new GoalStateAuthorizationError('clear', '*', authorization.rejectionReason);
+    }
 
     this.goals.clear();
   }

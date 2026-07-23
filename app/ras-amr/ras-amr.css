@@ -6,13 +6,25 @@
 :root {
   --chamber-bg: #020202;
   --panel-bg: rgba(10, 10, 10, 0.85);
-  --neon-gold-primary: #D4AF37;
+  /* Sovereign Color System's own PALETTE.gold / --azma-gold-* */
+  --neon-gold-primary: var(--azma-gold-6);
+  --neon-gold-dim: var(--azma-gold-3);
+  /* Distinct, more saturated bright highlight (not an imperial-gold value —
+     --azma-gold-8 is #F5D978). Kept unchanged; registered through the
+     constitutionally permitted per-chamber override slot instead of left
+     anonymous (EXTENSION.overridable, tokens.ts). */
   --neon-gold-bright: #FFD700;
-  --neon-gold-dim: #8B6508;
   --neon-gold-shadow: rgba(255, 215, 0, 0.25);
   --neon-gold-heavy-shadow: rgba(255, 215, 0, 0.6);
-  --text-main: #FFFFFF;
-  --text-muted: #8E8E93;
+  --azma-accent: 255, 215, 0;
+  --azma-accent-color: #FFD700;
+
+  /* Restored from pure white / iOS system gray to the Sovereign Color
+     System's gold-register text hierarchy — "Text is never white"
+     (tokens.ts PALETTE.text). This is the one visible change in this
+     chamber's color reconnection; see Engineering Report. */
+  --text-main: var(--azma-text-primary);
+  --text-muted: var(--azma-text-muted);
   --os-surface-elevated: #0d0d0d;
   --os-surface-highlight: #151515;
 }
@@ -34,7 +46,8 @@ body, html {
   inset: 0;
   background-color: var(--chamber-bg);
   color: var(--text-main);
-  font-family: system-ui, -apple-system, sans-serif;
+  /* Sovereign Typography System's own font authority (SIO-007) */
+  font-family: var(--azma-font-family);
   direction: rtl;
   overflow: hidden;
   display: flex;

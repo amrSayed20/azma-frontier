@@ -43,13 +43,16 @@ export interface VoiceModeControls {
   isSupported:    boolean;
   hasPermission:  boolean | null;
   startListening: () => void;
-  speak:          (text: string) => void;
+  /** rate/pitch are optional — omitting them preserves the original 0.88/0.95 defaults exactly. */
+  speak:          (text: string, rate?: number, pitch?: number) => void;
   stopSpeaking:   () => void;
 }
 
 export function useVoiceMode(
   enabled: boolean,
   onTranscript: (text: string) => void,
+  /** BCP-47 tag for both recognition and synthesis. Omitting it preserves the original 'ar-SA' default exactly. */
+  lang = 'ar-SA',
 ): VoiceModeControls {
   // Lazy initializer avoids setState-in-effect
   const [isSupported]   = useState(() => getSpeechRecognitionCtor() !== null);
@@ -78,7 +81,7 @@ export function useVoiceMode(
       const rec = new Ctor();
       rec.continuous     = false;
       rec.interimResults = false;
-      rec.lang           = 'ar-SA';
+      rec.lang           = lang;
 
       rec.onresult = (e: SpeechRecognitionEvent) => {
         const result = e.results[0];
@@ -97,17 +100,38 @@ export function useVoiceMode(
     navigator.mediaDevices.getUserMedia({ audio: true })
       .then(() => { setHasPermission(true); initRec(); })
       .catch(() => { setHasPermission(false); });
-  }, [hasPermission, onTranscript]);
+  }, [hasPermission, onTranscript, lang]);
 
-  const speak = useCallback((text: string) => {
+  const speak = useCallback((text: string, rate = 0.88, pitch = 0.95) => {
     if (typeof window === 'undefined') return;
-    window.speechSynthesis.cancel();
-    const utt  = new SpeechSynthesisUtterance(text);
-    utt.lang   = 'ar-SA';
-    utt.rate   = 0.88;
-    utt.pitch  = 0.95;
-    window.speechSynthesis.speak(utt);
-  }, []);
+    const synth = window.speechSynthesis;
+
+    const utter = () => {
+      synth.cancel();
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.lang  = lang;
+      utt.rate  = rate;
+      utt.pitch = pitch;
+      const voice = synth.getVoices().find((v) => v.lang === lang) ?? synth.getVoices().find((v) => v.lang.startsWith(lang.split('-')[0]));
+      if (voice) utt.voice = voice;
+      synth.speak(utt);
+    };
+
+    // Chrome loads its voice list asynchronously — calling speak() before it
+    // has loaded can silently produce no audible output at all, with no
+    // error thrown. If the list is still empty, wait for it once rather
+    // than speaking into a voice-less void.
+    if (synth.getVoices().length === 0) {
+      const onVoicesChanged = () => {
+        synth.removeEventListener('voiceschanged', onVoicesChanged);
+        utter();
+      };
+      synth.addEventListener('voiceschanged', onVoicesChanged);
+      return;
+    }
+
+    utter();
+  }, [lang]);
 
   const stopSpeaking = useCallback(() => {
     if (typeof window !== 'undefined') window.speechSynthesis.cancel();

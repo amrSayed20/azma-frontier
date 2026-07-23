@@ -92,6 +92,13 @@
     --azma-z-ceremony:     500;
     --azma-z-sovereign:    1000;
 
+    /* ── Font Authority ───────────────────────────────────────────── */
+    /* TYPOGRAPHY.family — the one constitutional font stack. Named here
+       so chambers can consume var(--azma-font-family) instead of
+       independently copying or approximating this string (SIO-007,
+       Restoration Package II — Constitutional Inheritance, Typography). */
+    --azma-font-family: system-ui, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+
     /* ── Typography Scale ─────────────────────────────────────────── */
     /* TYPOGRAPHY.scale.[nano..throne]                                */
     --azma-text-nano:      0.625rem;
@@ -188,7 +195,7 @@
   .azma-chamber {
     color:        var(--azma-text-primary);
     background:   var(--azma-obsidian);
-    font-family:  system-ui, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-family:  var(--azma-font-family);
     direction:    rtl;
     position:     fixed;
     inset:        0;
@@ -217,6 +224,26 @@
   }
 
   .azma-chamber :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* ── Universal Focus Law (SIO-008) ────────────────────────────────── */
+  /* The Focus Law above only reaches elements inside .azma-chamber, and
+     no chamber currently carries that class (confirmed via repository
+     audit) — meaning no interactive element on any chamber page has ANY
+     visible focus-visible treatment today. This rule restores the SAME
+     already-certified focus ring universally, without requiring any
+     chamber to adopt .azma-chamber first. It is purely additive: zero
+     :focus-visible rules exist anywhere in any chamber CSS to conflict
+     with (verified before writing this rule), so this fills a total gap
+     rather than overriding a chamber's own choice. */
+  button:focus-visible {
+    outline:        var(--azma-focus-ring);
+    outline-offset: var(--azma-focus-ring-offset);
+    border-radius:  var(--azma-radius-slight);
+  }
+
+  button:focus:not(:focus-visible) {
     outline: none;
   }
 

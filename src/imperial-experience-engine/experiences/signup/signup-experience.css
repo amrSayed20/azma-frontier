@@ -1,0 +1,246 @@
+/**
+ * AZMA OS — THE IMPERIAL EXPERIENCE ENGINE (IXE)
+ * The Registration Gateway — Presentation
+ *
+ * PACKAGE I: ATMOSPHERE & PRESENCE CONTINUITY (2026-07-23). Every token
+ * here is one Arrival already established (--azma-breath-*, the same
+ * ease curves, the same void/gold palette) — nothing invented. The
+ * form itself (creator-access.css, SignupForm.tsx) is untouched by this
+ * file; this only supplies what wraps around it.
+ *
+ * PACKAGE II: CREATOR BIRTH TRANSITION. The [data-phase='exiting']
+ * rules below fire once, on successful registration — see
+ * SignupExperience.tsx for how that moment is reached.
+ */
+
+.signup-experience {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: var(--azma-void);
+}
+
+/* ── The same living presence, continued ──────────────────────────────
+   A quieter atmosphere than Arrival's — this is a room the Creator is
+   working in, not a threshold to stand at — but the same breathing
+   quality, the same tokens, so it never reads as a different place. */
+.signup-atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 38%, rgba(var(--azma-gold-rgb), 0.04), transparent 62%),
+    linear-gradient(180deg, var(--azma-obsidian) 0%, var(--azma-void) 55%, var(--azma-obsidian) 100%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .signup-atmosphere {
+    animation: signup-atmosphere-breathe var(--azma-breath) ease-in-out infinite;
+  }
+}
+
+@keyframes signup-atmosphere-breathe {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.04); }
+}
+
+/* The Empire does not perform for someone who isn't there — same real
+   Presence Engine signal Arrival already uses, same response. */
+.signup-experience[data-presence='away'] .signup-atmosphere {
+  animation-play-state: paused;
+}
+
+/*
+ * PACKAGE II — CREATOR BIRTH TRANSITION: a single, restrained warming —
+ * "the Empire briefly acknowledges" — not a light-burst. Overrides the
+ * breathing animation entirely (a new `animation` on a more specific
+ * selector, not a static `filter`, which the breathing keyframe already
+ * owns and would silently win over a plain rule — the same class of
+ * conflict already found and fixed three times this project).
+ */
+.signup-experience[data-phase='exiting'] .signup-atmosphere {
+  animation: signup-atmosphere-exit 700ms ease-out both;
+}
+
+@keyframes signup-atmosphere-exit {
+  from { filter: brightness(1); }
+  to   { filter: brightness(1.1); }
+}
+
+/* ── A brief entrance, not a ceremony ─────────────────────────────────
+   The form must be usable almost immediately — this is a courtesy fade,
+   not a Storyboard beat. Same easing curve as Arrival's own reveals,
+   deliberately short duration. */
+.signup-reveal {
+  position: relative;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .signup-reveal {
+    animation: signup-reveal-in 550ms var(--azma-ease-architectural) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signup-reveal { opacity: 1; }
+}
+
+@keyframes signup-reveal-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/*
+ * PACKAGE II — the form recedes rather than vanishing on the successful
+ * step, the same "quiet confirmation" register Arrival's own exit
+ * used, not a redesign of the card itself. A new `animation` on a more
+ * specific selector correctly replaces signup-reveal-in's held opacity
+ * state (fill-mode 'both'), which a static rule alone could not do.
+ */
+.signup-experience[data-phase='exiting'] .signup-reveal {
+  animation: signup-reveal-out 700ms var(--azma-ease-architectural) both;
+}
+
+@keyframes signup-reveal-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(-6px) scale(0.99); }
+}
+
+/* ── Imperial Voice, present for the first time on this route ────────
+   Same component, same classes every other page using LivingCompanion
+   already defines locally (Arrival, Hujjah, the Vault Palace) — not a
+   shared stylesheet by this codebase's own established convention. */
+.signup-companion {
+  position: fixed;
+  left: 30px;
+  bottom: 30px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: var(--azma-surface);
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.35);
+  box-shadow: var(--azma-shadow-glow-soft);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .signup-companion { animation: signup-reveal-in 550ms 200ms var(--azma-ease-architectural) both; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signup-companion { opacity: 1; }
+}
+
+.companion-mode-cluster {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.companion-mode-btn {
+  background: transparent;
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.30);
+  color: var(--azma-text-muted);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.25s, color 0.25s, background 0.25s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.companion-mode-btn:hover { border-color: var(--azma-gold-6); color: var(--azma-gold-6); }
+.companion-mode-btn.mode-active {
+  border-color: var(--azma-gold-6);
+  color: var(--azma-text-sacred);
+  background: var(--azma-glow-ambient);
+}
+
+.companion-voice-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-left: 1px solid rgba(var(--azma-gold-rgb), 0.20);
+  padding-left: 10px;
+}
+
+.voice-listen-btn {
+  background: transparent;
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.30);
+  color: var(--azma-gold-6);
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: var(--azma-tracking-open);
+}
+
+.voice-listen-btn:hover:not(:disabled) { background: var(--azma-glow-dim); }
+.voice-listen-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.voice-listening-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--azma-gold-6);
+  font-style: italic;
+}
+
+@keyframes voicePulse {
+  0%, 100% { transform: scale(1); opacity: 0.80; }
+  50%      { transform: scale(1.35); opacity: 1.00; }
+}
+
+.voice-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--azma-conflict);
+  animation: voicePulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.voice-permission-denied {
+  font-size: 10px;
+  color: var(--azma-conflict);
+  font-style: italic;
+}
+
+@keyframes companionAppear {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes companionDisappear {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.companion-message-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.companion-message-zone.companion-visible { animation: companionAppear 400ms ease forwards; opacity: 1; }
+.companion-message-zone.companion-hidden { animation: companionDisappear 400ms ease forwards; opacity: 0; pointer-events: none; }
+
+.companion-sigil { color: var(--azma-gold-6); font-size: 11px; flex-shrink: 0; opacity: 0.75; }
+
+.companion-text {
+  color: var(--azma-text-primary);
+  font-size: 12px;
+  line-height: 1.4;
+  font-style: italic;
+  letter-spacing: var(--azma-tracking-normal);
+  white-space: nowrap;
+}

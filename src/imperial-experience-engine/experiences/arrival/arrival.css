@@ -1,0 +1,703 @@
+/**
+ * AZMA OS — THE IMPERIAL EXPERIENCE ENGINE (IXE)
+ * The Arrival Experience — Presentation
+ *
+ * PRODUCTION CONSTRUCTION (2026-07-20). Every rule below exists because
+ * a beat in the Storyboard requires it — see ArrivalExperience.tsx's
+ * own header for the beat-by-beat map. Nothing here is decorative for
+ * its own sake ("nothing decorative shall exist," Constitution Article
+ * IV): the atmosphere is the Empire's own living presence, not scenery;
+ * the timing is unhurried on purpose ("the pace belongs to
+ * understanding, not to animation," Article VII).
+ *
+ * No photograph, no letterbox frame — those solved problems (image
+ * aspect ratio, baked-in content) that a code-only atmosphere never
+ * creates in the first place.
+ *
+ * PACKAGE III — ARRIVAL MANIFESTATION LAYER (2026-07-21): Package II
+ * made real runtime state (data-presence, data-journey-depth) present
+ * on the root element but undriven by any CSS. This package is that
+ * missing CSS — see the rules just above .arrival-awareness's keyframes
+ * for exactly what responds to what, and why opacity vs. filter was
+ * chosen per element to avoid the animation/static-rule conflict
+ * already found and fixed once this session (a CSS Animation on a
+ * property silently overrides a plain rule on that same property).
+ *
+ * PACKAGE VI — ENCOUNTER CONTINUITY LAYER (2026-07-23): Package III's
+ * idle/journey response only ever reached the atmosphere and awareness
+ * glow, leaving the Seal and the threshold breathing outside it — two
+ * of four living elements settling together, two carrying on as if
+ * nothing had happened. No new runtime, no new signals, no new
+ * messages: the same --arrival-idle-mult / --arrival-journey-mult /
+ * away-pause mechanisms Package III already established now reach
+ * every element that has its own ambient loop, so idle presence,
+ * settled journey depth, and tab visibility each produce one shared
+ * gesture across the whole scene instead of a partial one. Pure CSS —
+ * every property collision was checked against each element's existing
+ * animations before being added, the same discipline as Package III.
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+.arrival {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--azma-void);
+  color: var(--azma-text-primary);
+  font-family: var(--azma-font-family);
+  text-align: center;
+}
+
+/* ── The Empire, already existing ─────────────────────────────────────
+   No entrance animation of its own — the Constitution is explicit that
+   the Empire does not "wake up." This layer is simply present from the
+   first frame, the way a room is dark before anyone opens the door. A
+   very slow, barely-perceptible living quality (not a spectacle) keeps
+   it from reading as a flat, inert backdrop. */
+.arrival-atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 42%, rgba(var(--azma-gold-rgb), 0.05), transparent 60%),
+    linear-gradient(180deg, var(--azma-obsidian) 0%, var(--azma-void) 55%, var(--azma-obsidian) 100%);
+  /*
+   * Manifestation of real Presence state (Package III): settles to a
+   * lower opacity while the visitor has gone idle (tab visible, no
+   * recent interaction — a real PresenceMachine state, not a fixed
+   * animation). opacity is deliberately the channel used here — the
+   * breathing keyframe below already owns `filter`, and a CSS
+   * Animation on one property silently overrides a plain rule on that
+   * SAME property (the exact bug already found and fixed in Package
+   * II's exit sequence); opacity stays free for this to compose safely
+   * alongside it.
+   */
+  opacity: var(--arrival-idle-opacity, 1);
+  transition: opacity 1.6s ease-out;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .arrival-atmosphere {
+    /*
+     * The Living Motion System's own primary ambient period
+     * (--azma-breath, 80s — "the palace breathes as one organism") —
+     * not a locally-invented number. Scaled by --arrival-breath-scale,
+     * a real ±8% living variation from getVariation(arrivalCount)
+     * (ArrivalExperience.tsx), the first real consumer of a function
+     * that has existed, unused, since it was written. A timing-only
+     * change to an already-subtle 6% brightness pulse, not a
+     * compositional redesign.
+     */
+    animation: arrival-atmosphere-breathe calc(var(--azma-breath) * var(--arrival-breath-scale, 1)) ease-in-out infinite;
+  }
+}
+
+/* The Empire does not perform for someone who isn't there — ambient
+   breathing pauses while the tab is actually hidden (real Presence
+   Engine state, see useVisitorPresence in ArrivalExperience.tsx). By
+   definition invisible during normal viewing: it only ever applies
+   while nobody is looking at the screen.
+   PACKAGE VI — ENCOUNTER CONTINUITY: originally only the atmosphere and
+   awareness glow were covered here. The Seal and the threshold's own
+   breathing kept running independently — a real, checkable gap against
+   "the Empire must appear consistently present, whether speaking or
+   not": presence that pauses for two of four living elements and
+   ignores the other two isn't one presence, it's two unrelated timers
+   that happen to share a page. Every element with its own idle/ambient
+   loop now pauses together. */
+.arrival[data-presence='away'] .arrival-atmosphere,
+.arrival[data-presence='away'] .arrival-awareness,
+.arrival[data-presence='away'] .arrival-seal,
+.arrival[data-presence='away'] .arrival-threshold-glow,
+.arrival[data-presence='away'] .arrival-threshold-caption {
+  animation-play-state: paused;
+}
+
+/*
+ * PACKAGE III — ARRIVAL MANIFESTATION LAYER: declarative bindings from
+ * already-real runtime state (Package I/II) to subtle environmental
+ * response. No new runtime is introduced here — data-presence and
+ * data-journey-depth already existed and were already correct; this
+ * package is only the CSS that finally lets them be perceived. Runtime
+ * decides, environment responds — nothing here computes or tracks
+ * state of its own.
+ *
+ * Two independent influences compose multiplicatively via their own
+ * custom properties (--arrival-idle-mult, --arrival-journey-mult)
+ * rather than each setting `filter` directly — if both conditions are
+ * true at once (settled AND idle, a real, ordinary combination), a
+ * plain cascade would let only the later rule win and silently drop
+ * the other; multiplying keeps both genuinely present.
+ *
+ * Not manifested this package, disclosed rather than forced: Emotional
+ * Timeline progression (markInterruption/markEffectivePause) has no
+ * live, moment-to-moment visual signal — it is a cross-session
+ * learning signal persisted into ACDE's DirectionMemory for a FUTURE
+ * arrival's getVariation() call, not something observable within one
+ * live session.
+ */
+.arrival[data-presence='idle'] .arrival-atmosphere {
+  --arrival-idle-opacity: 0.72;
+}
+
+/*
+ * PACKAGE VI — ENCOUNTER CONTINUITY: the same idle settling that
+ * already reached the awareness glow now reaches the Seal and the
+ * threshold too — the same custom-property names, deliberately, so
+ * that the exact same "the Empire is holding stillness with you"
+ * gesture plays across every living element at once, not a subset of
+ * them settling while the rest carry on as if nothing changed (which
+ * would read as multiple independent timers, not one presence).
+ */
+.arrival[data-presence='idle'] .arrival-awareness,
+.arrival[data-presence='idle'] .arrival-seal,
+.arrival[data-presence='idle'] .arrival-threshold-glow,
+.arrival[data-presence='idle'] .arrival-threshold-caption {
+  --arrival-idle-mult: 0.72;
+}
+
+.arrival[data-journey-depth='1'] .arrival-awareness,
+.arrival[data-journey-depth='1'] .arrival-seal {
+  /* The space becoming present: once the reveal has actually settled
+     (journey advanced past its opening depth — see ArrivalExperience.
+     tsx's phase→journey effect), the Empire's attention glow — and now
+     the Seal alongside it — rests very slightly brighter, not brand-new
+     motion, just a settled quality shared by both instead of one. */
+  --arrival-journey-mult: 1.08;
+}
+
+@keyframes arrival-atmosphere-breathe {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.06); }
+}
+
+/* ── BEAT 2 — Awareness ────────────────────────────────────────────────
+   The Empire's attention turning toward the visitor, before any
+   identity is shown. Appears first, alone, so there is a felt shift in
+   the room before anything else exists. */
+.arrival-awareness {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  width: min(46vw, 620px);
+  height: min(46vw, 620px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(var(--azma-gold-rgb), 0.10), transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+  /*
+   * Presence + journey manifestation (Package III) — filter is free
+   * for this: the reveal/breathe animations below own `opacity` only.
+   * Two independent multipliers, not two separate `filter` rules, so
+   * settled-and-idle (a real, ordinary combination) reflects both
+   * instead of one silently overriding the other.
+   */
+  filter: brightness(calc(var(--arrival-idle-mult, 1) * var(--arrival-journey-mult, 1)));
+  transition: filter 1.6s ease-out;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .arrival-awareness {
+    /* --azma-breath-accent (8s) — the Living Motion System's own
+       "interactive details" period; numerically identical to this
+       rule's prior hardcoded value, now genuinely sourced from it. */
+    animation:
+      arrival-awareness-in 1.6s 250ms var(--azma-ease-architectural) both,
+      arrival-awareness-breathe var(--azma-breath-accent) 1900ms ease-in-out infinite;
+  }
+}
+
+@keyframes arrival-awareness-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes arrival-awareness-breathe {
+  0%, 100% { opacity: 0.75; }
+  50%      { opacity: 1; }
+}
+
+/* ── BEATS 4 & 5 — Revelation & Recognition ──────────────────────────── */
+.arrival-presence {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--azma-space-4);
+  padding-inline: var(--azma-space-6);
+  max-width: 640px;
+}
+
+.arrival-seal-mark {
+  width: 42px;
+  height: 42px;
+}
+
+/*
+ * PACKAGE VI — the Seal now shares the same idle/journey response
+ * already proven on the awareness glow (Package III). `filter` is free
+ * here: azmaElSealBreathe (the Design System's own shared keyframe,
+ * reused below, not redefined) animates box-shadow only, and this
+ * component's own is-appearing/is-completing overrides animate opacity
+ * and transform — none of the Seal's existing motion touches filter,
+ * so this composes without conflict (the same class of animation/
+ * static-property collision found and fixed twice earlier this project
+ * was checked for deliberately before adding this).
+ */
+.arrival-seal {
+  filter: brightness(calc(var(--arrival-idle-mult, 1) * var(--arrival-journey-mult, 1)));
+  transition: filter 1.6s ease-out;
+}
+
+/*
+ * Overrides the Design System's own default .is-appearing timing (which
+ * would otherwise start the instant the Experience mounts) so the Seal
+ * appears specifically as BEAT 4, after Awareness and the held silence
+ * of BEAT 3 — not before them. Reuses the Design System's own breathe
+ * keyframe (azmaElSealBreathe, defined globally in azma-elements.css)
+ * rather than inventing a second one. The extra selector weight
+ * (.arrival .arrival-presence ...) guarantees this wins over the base
+ * rule regardless of stylesheet load order.
+ */
+.arrival .arrival-presence .arrival-seal.is-appearing {
+  animation:
+    arrival-fade-rise 1.1s 2200ms var(--azma-ease-architectural) both,
+    azmaElSealBreathe var(--azma-breath-echo) var(--azma-ease-breath) 2200ms infinite;
+}
+
+/*
+ * The Design System's own .is-completing (azmaElSealOpen) expands the
+ * element's clip-path outward from its own bounds — built for a larger
+ * vessel with content to reveal past its edges. On this 42px glyph
+ * inside a 96px circle, there is nothing beyond the circle's own
+ * boundary to reveal, so it produces no visible motion at all (found
+ * only by screenshotting the actual exit, not by reading the CSS).
+ * Overridden here with a motion that actually reads: a slow, gentle
+ * release — scaling and fading outward rather than snapping away —
+ * calm rather than explosive, per "nothing exists to impress."
+ */
+.arrival .arrival-presence .arrival-seal.is-completing {
+  animation: arrival-seal-recede 900ms var(--azma-ease-architectural) both;
+}
+
+@keyframes arrival-seal-recede {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(1.18); }
+}
+
+.arrival-wordmark {
+  margin: 0;
+  font-size: clamp(30px, 4.5vw, 46px);
+  font-weight: 900;
+  letter-spacing: var(--azma-tracking-wide);
+  color: var(--azma-text-primary);
+  text-shadow: 0 0 30px var(--azma-glow-medium);
+  opacity: 0;
+}
+
+.arrival-recognition {
+  margin: 0;
+  font-size: var(--azma-text-small);
+  color: var(--azma-text-muted);
+  max-width: 46ch;
+  opacity: 0;
+}
+
+/* The session-aware line — a returning, already-known Creator only.
+   A stranger sees nothing here; recognition is felt, never demanded. */
+.arrival-session-line {
+  margin: var(--azma-space-1) 0 0;
+  font-size: var(--azma-text-body);
+  font-weight: 500;
+  color: var(--azma-text-primary);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .arrival-wordmark      { animation: arrival-fade-rise 1s 3300ms var(--azma-ease-architectural) both; }
+  .arrival-recognition   { animation: arrival-fade-rise 1s 3550ms var(--azma-ease-architectural) both; }
+  .arrival-session-line  { animation: arrival-fade-rise 1s 3800ms var(--azma-ease-architectural) both; }
+}
+
+@keyframes arrival-fade-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrival-atmosphere, .arrival-awareness,
+  .arrival-wordmark, .arrival-recognition, .arrival-session-line,
+  .arrival .arrival-presence .arrival-seal.is-appearing {
+    opacity: 1;
+    animation: none;
+  }
+}
+
+/* ── BEAT 6 — Invitation ──────────────────────────────────────────────
+   Sensed, not chromed: no border, no fill, no box. An offer that
+   remains entirely refusable — the visitor is never pulled or pushed,
+   only invited, per the Constitution. */
+.arrival-threshold {
+  position: relative;
+  z-index: 2;
+  margin-top: var(--azma-space-8);
+  width: min(18vw, 210px);
+  height: 120px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .arrival-threshold { animation: arrival-fade-rise 1s 4400ms var(--azma-ease-architectural) both; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrival-threshold { opacity: 1; }
+}
+
+.arrival-threshold:focus-visible {
+  outline: 1px solid rgba(var(--azma-gold-rgb), 0.7);
+  outline-offset: 6px;
+  border-radius: 4px;
+}
+
+.arrival-threshold-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(ellipse 60% 70% at 50% 40%, var(--azma-glow-soft), transparent 76%);
+  transition: opacity 0.6s ease, transform 0.6s ease, filter 1.6s ease-out;
+  /* PACKAGE VI — same idle response as the awareness glow and the Seal;
+     the threshold's own breathe keyframe (below) owns opacity only. */
+  filter: brightness(var(--arrival-idle-mult, 1));
+}
+
+.arrival-threshold:hover .arrival-threshold-glow,
+.arrival-threshold:focus-visible .arrival-threshold-glow {
+  background: radial-gradient(ellipse 65% 76% at 50% 40%, var(--azma-glow-medium), transparent 80%);
+  transform: scale(1.08);
+}
+
+.arrival-threshold-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 8%;
+  transform: translateX(-50%);
+  font-size: var(--azma-text-small);
+  letter-spacing: var(--azma-tracking-sacred);
+  color: rgba(var(--azma-gold-rgb), 0.85);
+  white-space: nowrap;
+  /* PACKAGE VI — same idle response as the awareness glow, the Seal,
+     and the threshold's own glow; its breathe keyframe owns opacity only. */
+  filter: brightness(var(--arrival-idle-mult, 1));
+  transition: filter 1.6s ease-out;
+}
+
+.arrival-threshold:hover .arrival-threshold-caption,
+.arrival-threshold:focus-visible .arrival-threshold-caption {
+  color: var(--azma-text-sacred);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .arrival-threshold-glow, .arrival-threshold-caption {
+    /* --azma-breath-echo (4.5s) — already used by the Seal's own
+       breathing (azma-elements.css); numerically identical to this
+       rule's prior hardcoded value, now genuinely sourced from it. */
+    animation: arrival-threshold-breathe var(--azma-breath-echo) 5300ms ease-in-out infinite;
+  }
+}
+
+@keyframes arrival-threshold-breathe {
+  0%, 100% { opacity: 0.65; }
+  50%      { opacity: 1; }
+}
+
+/* ── Standing capabilities (not Storyboard beats) ────────────────────── */
+.arrival-language {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: 6%;
+  transform: translateX(-50%);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .arrival-language { animation: arrival-fade-rise 1s 4700ms var(--azma-ease-architectural) both; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrival-language { opacity: 1; }
+}
+
+.language-control {
+  position: relative;
+}
+
+.language-trigger {
+  background: transparent;
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.25);
+  color: var(--azma-text-muted);
+  font-size: var(--azma-text-tiny);
+  padding: 5px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.25s, color 0.25s, background 0.25s;
+}
+
+.language-trigger:hover,
+.language-trigger[aria-expanded='true'] {
+  border-color: var(--azma-gold-6);
+  color: var(--azma-gold-6);
+  background: var(--azma-glow-dim);
+}
+
+.language-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 120px;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--azma-surface-high);
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.25);
+  box-shadow: var(--azma-shadow-heavy), var(--azma-shadow-glow-soft);
+}
+
+.language-menu-item {
+  background: transparent;
+  border: none;
+  color: var(--azma-text-muted);
+  font-size: var(--azma-text-small);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+  transition: background 0.2s, color 0.2s;
+}
+
+.language-menu-item:hover { background: var(--azma-glow-ambient); color: var(--azma-gold-6); }
+.language-menu-item.language-menu-item-active { color: var(--azma-text-sacred); background: var(--azma-glow-soft); }
+.language-menu-item:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Presence: companionship "from this moment onward" — appears early
+   (with Revelation, Beat 4) rather than only at the end, since the
+   Constitution asks that the visitor never feel alone from the point
+   the Empire becomes aware of them onward. */
+.arrival-companion {
+  position: fixed;
+  z-index: 3;
+  left: 30px;
+  bottom: 30px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: var(--azma-surface);
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.30);
+  box-shadow: var(--azma-shadow-glow-soft);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .arrival-companion { animation: arrival-fade-rise 1s 2500ms var(--azma-ease-architectural) both; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrival-companion { opacity: 1; }
+}
+
+.companion-mode-cluster {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.companion-mode-btn {
+  background: transparent;
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.30);
+  color: var(--azma-text-muted);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.25s, color 0.25s, background 0.25s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.companion-mode-btn:hover { border-color: var(--azma-gold-6); color: var(--azma-gold-6); }
+.companion-mode-btn.mode-active {
+  border-color: var(--azma-gold-6);
+  color: var(--azma-text-sacred);
+  background: var(--azma-glow-ambient);
+}
+
+.companion-voice-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-left: 1px solid rgba(var(--azma-gold-rgb), 0.20);
+  padding-left: 10px;
+}
+
+.voice-listen-btn {
+  background: transparent;
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.30);
+  color: var(--azma-gold-6);
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: var(--azma-tracking-open);
+}
+
+.voice-listen-btn:hover:not(:disabled) { background: var(--azma-glow-dim); }
+.voice-listen-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.voice-listening-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--azma-gold-6);
+  font-style: italic;
+}
+
+@keyframes voicePulse {
+  0%, 100% { transform: scale(1); opacity: 0.80; }
+  50%      { transform: scale(1.35); opacity: 1.00; }
+}
+
+.voice-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--azma-conflict);
+  animation: voicePulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.voice-permission-denied {
+  font-size: 10px;
+  color: var(--azma-conflict);
+  font-style: italic;
+}
+
+@keyframes companionAppear {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes companionDisappear {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.companion-message-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.companion-message-zone.companion-visible { animation: companionAppear 400ms ease forwards; opacity: 1; }
+.companion-message-zone.companion-hidden { animation: companionDisappear 400ms ease forwards; opacity: 0; pointer-events: none; }
+
+.companion-sigil { color: var(--azma-gold-6); font-size: 11px; flex-shrink: 0; opacity: 0.75; }
+
+.companion-text {
+  color: var(--azma-text-primary);
+  font-size: 12px;
+  line-height: 1.4;
+  font-style: italic;
+  letter-spacing: var(--azma-tracking-normal);
+  white-space: nowrap;
+  /*
+   * PACKAGE V — companionship continuity: a genuinely new acknowledgment
+   * (idle, exiting, returning) crossfades rather than snapping —
+   * LivingCompanion.tsx itself detects the content change and toggles
+   * this class for ~300ms. Scoped to Arrival only, deliberately: Hujjah
+   * and the Vault Palace already change this same text today without
+   * this transition and are unaffected — the class exists in the DOM
+   * everywhere now, but only styled here.
+   */
+  transition: opacity 0.3s ease;
+}
+
+.companion-text.is-swapping {
+  opacity: 0;
+}
+
+.arrival-install-affordance {
+  background: transparent;
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.25);
+  color: var(--azma-text-muted);
+  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.arrival-install-affordance:hover { border-color: var(--azma-gold-6); color: var(--azma-gold-6); }
+
+/* ── BEAT 8 — Quiet Confirmation ──────────────────────────────────────
+   No crimson, no particles, no light-burst — "nothing exists to
+   impress." The Seal's own is-completing lifecycle (clip-path circle
+   expanding, then fading — "the architecture makes way") carries the
+   exit; everything else simply, calmly recedes with it. */
+/*
+ * The Seal is deliberately excluded here — its own is-completing
+ * lifecycle (clip-path circle expanding to 120% then fading, ~950ms)
+ * is the dedicated visual for this beat and needs to run at full
+ * opacity to read clearly, not be cut short by a faster parent fade.
+ *
+ * `animation: none` is load-bearing: each of these elements still has
+ * its BEAT-4/5/6 entering keyframe filling (holding) opacity via
+ * `fill-mode: both`, and a CSS Animation's held value overrides a
+ * same-property Transition on the same element — without clearing it
+ * here, the opacity:0 below would be computed but never visibly
+ * animate (caught only by screenshotting the actual exit, not by
+ * reading the CSS).
+ */
+.arrival[data-phase='exiting'] .arrival-wordmark,
+.arrival[data-phase='exiting'] .arrival-recognition,
+.arrival[data-phase='exiting'] .arrival-session-line,
+.arrival[data-phase='exiting'] .arrival-threshold,
+.arrival[data-phase='exiting'] .arrival-language {
+  animation: none;
+  transition: opacity 0.6s ease-out;
+  opacity: 0;
+}
+
+.arrival[data-phase='exiting'] .arrival-atmosphere {
+  transition: filter 0.9s ease-out;
+  filter: brightness(1.15);
+}
+
+@media (max-width: 900px) {
+  .arrival-wordmark { font-size: 32px; }
+}

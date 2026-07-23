@@ -75,7 +75,7 @@ export const IMPERIAL_CONSCIOUSNESS = {
 export type ChamberContext =
   | 'sovereign-vault-palace'   // it protects
   | 'hujjah-al-damighah'       // it reasons
-  | 'qiyamah-chamber'          // it directs
+  | 'qiyamah-chamber'          // it creates
   | 'ras-amr'                  // it governs
   | 'makman-al-ghayah'         // it strategizes
   | 'universal';               // no specific chamber — universal consciousness
@@ -83,7 +83,7 @@ export type ChamberContext =
 export const CONTEXT_ROLES: Record<ChamberContext, string> = {
   'sovereign-vault-palace': 'It protects. The Palace consciousness guards what endures.',
   'hujjah-al-damighah':     'It reasons. The Hujjah consciousness builds the argument methodically.',
-  'qiyamah-chamber':        'It directs. The Qiyamah consciousness carries the weight of judgment.',
+  'qiyamah-chamber':        'It creates. The Qiyamah consciousness gives form to what the citizen imagines.',
   'ras-amr':                'It governs. The Ras Al-Amr consciousness speaks with sovereign authority.',
   'makman-al-ghayah':       'It strategizes. The Makman consciousness reads patterns and possibilities.',
   'universal':              'It is present. One consciousness speaking across all of the Empire.',

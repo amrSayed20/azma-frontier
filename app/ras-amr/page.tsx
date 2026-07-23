@@ -1,12 +1,21 @@
 /**
  * AZMA OS – Ras Al-Amr Chamber (Hollywood Master Director Console)
  * File: app/ras-amr/page.tsx
+ *
+ * IMPERIAL CHAMBER UNIFICATION, PACKAGE I (2026-07-23): wrapped in
+ * RasAmrExperience (src/imperial-experience-engine/experiences/ras-amr/)
+ * — additive only, no logic below changed. One real, pre-existing bug
+ * fixed as a side effect of this wrap: the root <main>'s className was
+ * 'ras-amr-chamber-viewport', which matched no rule in ras-amr.css (the
+ * real selector is '.ras-amr-viewport') — the intended fixed/flex-column
+ * layout was silently never applying. Corrected to the real class name.
  */
 
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { RasAmrExperience } from '@/src/imperial-experience-engine';
 import './ras-amr.css';
 
 // --- Vault Repositories available for Summoning ---
@@ -90,7 +99,8 @@ export default function RasAmrChamber() {
   };
 
   return (
-    <main className={`ras-amr-chamber-viewport ${injectionFlash ? 'neon-flash-active' : ''}`}>
+    <RasAmrExperience>
+    <main className={`ras-amr-viewport ${injectionFlash ? 'neon-flash-active' : ''}`}>
       {/* Universal Sovereign Back Button */}
       <button className="sovereign-exit-btn" onClick={() => router.back()}>
         ⮜ نحو حجره مكمن الغايه 
@@ -327,5 +337,6 @@ export default function RasAmrChamber() {
         </div>
       )}
     </main>
+    </RasAmrExperience>
   );
 }

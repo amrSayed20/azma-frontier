@@ -1,0 +1,118 @@
+/**
+ * AZMA OS — Director Stage (Construction ID SIO-005B)
+ * Isolated Constitutional CSS Layer
+ *
+ * Deliberately NOT part of the azma-direction cascade layer and does not
+ * import azma-direction.css's rules or reuse its data-attribute names.
+ * azma-direction.css keys its rules to bare, unscoped attribute selectors
+ * (e.g. `[data-phase="opening"]`) with no owning class — any element
+ * bearing that exact attribute inherits that rule, regardless of what
+ * else the element is. The Stage's own attributes below
+ * (data-director-stage-phase / data-director-stage-type) do not appear
+ * anywhere in azma-direction.css, azma-identity.css, azma-behaviors.css,
+ * or azma-elements.css (verified before writing this file) — collision
+ * is prevented by construction, not by convention.
+ *
+ * Shared design tokens (--azma-t-*, --azma-ease-*, --azma-obsidian) ARE
+ * reused deliberately — they are token values, not attribute-keyed rules,
+ * and reusing them keeps the Stage visually of a piece with the rest of
+ * the empire rather than inventing a second palette/timing system.
+ *
+ * Reduced motion policy mirrors the certified MOTION.reducedMotion
+ * constitution (src/design-system/tokens.ts): keepOpacityFades = true,
+ * keepStructuralTiming = false — opacity fades remain, structural
+ * movement (translateY, scale, brightness sweep) becomes instant.
+ */
+
+.azma-director-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 1000; /* ELEVATION.zIndex.sovereign — src/design-system/tokens.ts */
+  pointer-events: none;
+  opacity: 0;
+  background: var(--azma-obsidian, #020101);
+  will-change: opacity, transform, filter;
+}
+
+/* Dissolving — the veil appears instantly, fully covering the scene that
+   has already swapped underneath it (Next.js has no pre-swap interception
+   point; the Stage covers the moment immediately after, not before). */
+.azma-director-stage[data-director-stage-phase="dissolving"] {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  transition: none;
+}
+
+/* Arriving — the veil clears over the Director-resolved transition
+   duration, using the transition-specific treatment below. */
+.azma-director-stage[data-director-stage-phase="arriving"] {
+  opacity: 0;
+  transition: opacity var(--stage-duration, 600ms) var(--azma-ease-architectural, ease-in-out);
+}
+
+.azma-director-stage[data-director-stage-phase="arriving"][data-director-stage-type="descend"] {
+  transform: translateY(0);
+  filter: brightness(1);
+  transition:
+    opacity  var(--stage-duration, 600ms) var(--azma-ease-architectural, ease-in-out),
+    transform var(--stage-duration, 600ms) var(--azma-ease-architectural, ease-in-out),
+    filter    var(--stage-duration, 600ms) var(--azma-ease-architectural, ease-in-out);
+}
+
+.azma-director-stage[data-director-stage-phase="dissolving"][data-director-stage-type="descend"] {
+  transform: translateY(-6px);
+  filter: brightness(0.55);
+}
+
+.azma-director-stage[data-director-stage-phase="arriving"][data-director-stage-type="ascend"] {
+  transform: translateY(0);
+  filter: brightness(1);
+  transition:
+    opacity  var(--stage-duration, 600ms) var(--azma-ease-architectural, ease-in-out),
+    transform var(--stage-duration, 600ms) var(--azma-ease-architectural, ease-in-out),
+    filter    var(--stage-duration, 600ms) var(--azma-ease-architectural, ease-in-out);
+}
+
+.azma-director-stage[data-director-stage-phase="dissolving"][data-director-stage-type="ascend"] {
+  transform: translateY(6px);
+  filter: brightness(0.65);
+}
+
+.azma-director-stage[data-director-stage-phase="arriving"][data-director-stage-type="reveal"] {
+  transform: scale(1);
+  transition:
+    opacity  var(--stage-duration, 600ms) var(--azma-ease-architectural, ease-in-out),
+    transform var(--stage-duration, 600ms) var(--azma-ease-architectural, ease-in-out);
+}
+
+.azma-director-stage[data-director-stage-phase="dissolving"][data-director-stage-type="reveal"] {
+  transform: scale(1.012);
+}
+
+/* Immediate — constitutional override, no animation possible (ACDE's own
+   description of this transition type). */
+.azma-director-stage[data-director-stage-type="immediate"] {
+  transition: none !important;
+}
+
+.azma-director-stage[data-director-stage-phase="stable"] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .azma-director-stage {
+    transition-duration: 1ms !important;
+  }
+  .azma-director-stage[data-director-stage-phase="arriving"] {
+    /* keepOpacityFades: the fade itself remains, just very fast */
+    transition-duration: 1ms !important;
+  }
+  .azma-director-stage[data-director-stage-phase="dissolving"],
+  .azma-director-stage[data-director-stage-phase="arriving"] {
+    /* keepStructuralTiming: false — no translateY/scale/brightness sweep */
+    transform: none !important;
+    filter: none !important;
+  }
+}

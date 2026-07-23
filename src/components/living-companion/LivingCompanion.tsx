@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { useVoiceMode } from './useVoiceMode';
+import { getSovereignIdentity, type ChamberContext, type SentenceRhythm } from '@/src/sovereign-identity';
 
 export type CompanionMode = 'silent' | 'text' | 'voice';
 
@@ -15,22 +16,68 @@ function getInitialMode(): CompanionMode {
     : 'text';
 }
 
+/**
+ * Derives speech rate/pitch from the Tongue's sentenceRhythm — a
+ * mechanical mapping of an already-constitutional value onto an
+ * already-existing technical parameter, not a new creative decision.
+ * 'medium-deliberate' intentionally reproduces the original 0.88/0.95
+ * hardcoded defaults exactly, so chambers using that rhythm sound
+ * unchanged from before this Orchestrator existed.
+ */
+function rateAndPitchForRhythm(rhythm: SentenceRhythm): { rate: number; pitch: number } {
+  switch (rhythm) {
+    case 'short-decisive':    return { rate: 0.95, pitch: 0.92 };
+    case 'long-measured':     return { rate: 0.82, pitch: 0.98 };
+    case 'medium-deliberate':
+    default:                  return { rate: 0.88, pitch: 0.95 };
+  }
+}
+
 interface Props {
   message:            string;
   visible:            boolean;
   textToSpeak?:       string;
   onVoiceTranscript?: (text: string) => void;
+  /** Optional. When supplied, spoken output is voiced through that chamber's Sovereign Tongue rhythm instead of the fixed default. Omitting it preserves prior behavior exactly. */
+  context?:           ChamberContext;
+  /** Optional. BCP-47-mapped to the voice's recognition/synthesis language ('en' -> 'en-US'). Omitting it preserves the original 'ar-SA' default exactly — only pages already carrying a resolved Creator locale should pass this. */
+  locale?:            'ar' | 'en';
 }
 
-export function LivingCompanion({ message, visible, textToSpeak, onVoiceTranscript }: Props) {
+export function LivingCompanion({ message, visible, textToSpeak, onVoiceTranscript, context, locale }: Props) {
   const [mode, setMode] = useState<CompanionMode>(getInitialMode);
+
+  // Genuinely new companion text (Vault Palace and Hujjah already change
+  // `message` over time as their own state advances, not just Arrival)
+  // crossfades instead of snapping — "must never feel reactive or
+  // mechanical" applies to a mid-conversation content swap as much as
+  // to the first appearance. Detected during render (React's own
+  // documented "adjusting state when a prop changes" pattern) rather
+  // than in an effect, so there's no extra client-only render pass;
+  // the actual timed swap still runs from an effect below, but only
+  // inside a setTimeout callback, not synchronously in the effect body.
+  const [displayedMessage, setDisplayedMessage] = useState(message);
+  const [isSwapping, setIsSwapping] = useState(false);
+  if (message !== displayedMessage && !isSwapping) {
+    setIsSwapping(true);
+  }
+
+  useEffect(() => {
+    if (!isSwapping) return;
+    const timeout = setTimeout(() => {
+      setDisplayedMessage(message);
+      setIsSwapping(false);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [isSwapping, message]);
 
   const handleTranscript = useCallback((text: string) => {
     onVoiceTranscript?.(text);
   }, [onVoiceTranscript]);
 
+  const voiceLang = locale === 'en' ? 'en-US' : 'ar-SA';
   const { isListening, isSupported, hasPermission, startListening, speak, stopSpeaking } =
-    useVoiceMode(mode === 'voice', handleTranscript);
+    useVoiceMode(mode === 'voice', handleTranscript, voiceLang);
 
   const changeMode = useCallback((m: CompanionMode) => {
     setMode(m);
@@ -39,8 +86,12 @@ export function LivingCompanion({ message, visible, textToSpeak, onVoiceTranscri
   }, [stopSpeaking]);
 
   useEffect(() => {
-    if (mode === 'voice' && textToSpeak) speak(textToSpeak);
-  }, [textToSpeak, mode, speak]);
+    if (mode !== 'voice' || !textToSpeak) return;
+    if (!context) { speak(textToSpeak); return; }
+    const { tone } = getSovereignIdentity(context);
+    const { rate, pitch } = rateAndPitchForRhythm(tone.sentenceRhythm);
+    speak(textToSpeak, rate, pitch);
+  }, [textToSpeak, mode, speak, context]);
 
   const showMessage = mode !== 'silent';
 
@@ -90,10 +141,10 @@ export function LivingCompanion({ message, visible, textToSpeak, onVoiceTranscri
         aria-live="polite"
         aria-atomic="true"
       >
-        {showMessage && message && (
+        {showMessage && displayedMessage && (
           <>
             <span className="companion-sigil" aria-hidden="true">✦</span>
-            <span className="companion-text">{message}</span>
+            <span className={`companion-text ${isSwapping ? 'is-swapping' : ''}`}>{displayedMessage}</span>
           </>
         )}
       </div>

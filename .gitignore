@@ -20,6 +20,12 @@
 # production
 /build
 
+# Qiyamah First Generation Path — runtime-generated assets, never committed
+/public/generated-assets/
+
+# Persistent Storage Foundation — the local SQLite database file
+/data/
+
 # misc
 .DS_Store
 *.pem
@@ -35,6 +41,9 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# Claude Code project-local tooling config — permissions/settings, not application code
+/.claude/
 
 # typescript
 *.tsbuildinfo

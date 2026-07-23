@@ -6,17 +6,29 @@
 :root {
   --chamber-bg: #050505;
   --panel-bg: rgba(12, 12, 12, 0.85);
-  --neon-gold-primary: #D4AF37;
+  /* Sovereign Color System's own PALETTE.gold / --azma-gold-* */
+  --neon-gold-primary: var(--azma-gold-6);
+  --neon-gold-dim: var(--azma-gold-3);
+  /* Distinct, more saturated bright highlight (not an imperial-gold value —
+     --azma-gold-8 is #F5D978). Kept unchanged; registered through the
+     constitutionally permitted per-chamber override slot instead of left
+     anonymous (EXTENSION.overridable, tokens.ts). */
   --neon-gold-bright: #FFD700;
-  --neon-gold-dim: #8B6508;
   --neon-gold-shadow: rgba(255, 215, 0, 0.15);
-  --text-main: #FFFFFF;
-  --text-muted: #8E8E93;
+  --azma-accent: 255, 215, 0;
+  --azma-accent-color: #FFD700;
+
+  /* Restored from pure white / iOS system gray to the Sovereign Color
+     System's gold-register text hierarchy — "Text is never white"
+     (tokens.ts PALETTE.text). This is the one visible change in this
+     chamber's color reconnection; see Engineering Report. */
+  --text-main: var(--azma-text-primary);
+  --text-muted: var(--azma-text-muted);
 }
 
 body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--chamber-bg); overflow: hidden; }
 
-.makman-viewport { position: fixed; inset: 0; color: var(--text-main); font-family: system-ui, sans-serif; direction: rtl; display: flex; flex-direction: column; }
+.makman-viewport { position: fixed; inset: 0; color: var(--text-main); font-family: var(--azma-font-family); direction: rtl; display: flex; flex-direction: column; }
 
 .neon-layer { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
 .cyber-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(255, 215, 0, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 215, 0, 0.02) 1px, transparent 1px); background-size: 50px 50px; }

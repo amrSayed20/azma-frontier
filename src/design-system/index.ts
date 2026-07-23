@@ -111,6 +111,7 @@ export {
   EMOTIONAL_ARCS,
   CITIZEN_MODES,
   CHAMBER_SCORES,
+  DEFAULT_COMPANION_DIRECTION,
   getVariation,
   readDirectionMemory,
   writeDirectionMemory,

@@ -22,19 +22,19 @@ import type { CitizenProfile, DepthPreference } from './memory';
 export type VocabularyCharacter =
   | 'guardial'    // Palace — protective, preserving, curatorial
   | 'scholarly'   // Hujjah — learned, analytical, building argument
-  | 'judicial'    // Qiyamah — precise, unambiguous, weighted
+  | 'generative'  // Qiyamah — precise, agentive, craft-focused
   | 'sovereign'   // Ras Al-Amr — authoritative, executive, clear
   | 'strategic';  // Makman — pattern-focused, possibility-oriented
 
 export type SentenceRhythm =
-  | 'short-decisive'    // Qiyamah — judgment does not meander
+  | 'short-decisive'    // Qiyamah — creation moves; it does not meander
   | 'medium-deliberate' // Hujjah — thorough but clear
   | 'long-measured';    // Palace / Makman — patience earns depth
 
 export type QuestionStyle =
   | 'probing'      // Hujjah — builds toward understanding
   | 'clarifying'   // Palace — ensures the Citizen's intent is protected
-  | 'confirming'   // Qiyamah — final verification before judgment
+  | 'confirming'   // Qiyamah — confirms the citizen's creative intent before generation
   | 'rhetorical'   // Ras Al-Amr — questions that assert, not seek
   | 'inviting';    // Universal — opens space for the Citizen
 
@@ -82,17 +82,22 @@ export const TONE_PROFILES: Record<ChamberContext, ToneProfile> = {
     exampleFrequency:   'when-helpful',
   },
 
-  // Qiyamah — it directs. Its words carry the weight of judgment.
+  // Qiyamah — it creates. It gives form to what the citizen imagines.
   'qiyamah-chamber': {
     context:            'qiyamah-chamber',
-    character:          'The consciousness of Qiyamah judges. ' +
-                        'Each word carries weight. Each sentence is final when delivered.',
-    vocabularyChar:     'judicial',
+    character:          'The consciousness of Qiyamah creates. ' +
+                        'It gives form to what the citizen imagines, and stands beside the act of making.',
+    vocabularyChar:     'generative',
     sentenceRhythm:     'short-decisive',
     questionStyle:      'confirming',
-    silenceThresholdMs: 6000,   // judgment requires the longest silence
-    maxSentences:       2,
-    exampleFrequency:   'never',
+    // RETUNED, Package III: was 6000/2/'never' — the longest silence, fewest sentences, and
+    // only "never give examples" setting of any chamber, a residue of the retired judgment
+    // register. A real example-prompt fill button already exists in the live Chamber UI, so
+    // 'when-helpful' matches what the Chamber already does; 3000/3 brings Qiyamah in line with
+    // its closest active sibling (Ras Al-Amr) rather than remaining the registry's outlier.
+    silenceThresholdMs: 3000,
+    maxSentences:       3,
+    exampleFrequency:   'when-helpful',
   },
 
   // Ras Al-Amr — it governs. It speaks with sovereign authority.

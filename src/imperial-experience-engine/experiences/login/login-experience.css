@@ -1,0 +1,219 @@
+/**
+ * AZMA OS — THE IMPERIAL EXPERIENCE ENGINE (IXE)
+ * The Recognition Gateway — Presentation
+ *
+ * Structurally identical to signup-experience.css on purpose — the
+ * same proven mechanism, not a new one — every difference that carries
+ * meaning lives in the words (see LoginExperience.tsx's own header),
+ * not in a second animation vocabulary invented for its own sake.
+ */
+
+.login-experience {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: var(--azma-void);
+}
+
+.login-atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 38%, rgba(var(--azma-gold-rgb), 0.04), transparent 62%),
+    linear-gradient(180deg, var(--azma-obsidian) 0%, var(--azma-void) 55%, var(--azma-obsidian) 100%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .login-atmosphere {
+    animation: login-atmosphere-breathe var(--azma-breath) ease-in-out infinite;
+  }
+}
+
+@keyframes login-atmosphere-breathe {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.04); }
+}
+
+.login-experience[data-presence='away'] .login-atmosphere {
+  animation-play-state: paused;
+}
+
+/* A single, restrained warming on recognition — overrides the breathing
+   animation entirely, the same discipline as Signup's own exit rule. */
+.login-experience[data-phase='exiting'] .login-atmosphere {
+  animation: login-atmosphere-exit 700ms ease-out both;
+}
+
+@keyframes login-atmosphere-exit {
+  from { filter: brightness(1); }
+  to   { filter: brightness(1.1); }
+}
+
+.login-reveal {
+  position: relative;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .login-reveal {
+    animation: login-reveal-in 550ms var(--azma-ease-architectural) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-reveal { opacity: 1; }
+}
+
+@keyframes login-reveal-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.login-experience[data-phase='exiting'] .login-reveal {
+  animation: login-reveal-out 700ms var(--azma-ease-architectural) both;
+}
+
+@keyframes login-reveal-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(-6px) scale(0.99); }
+}
+
+.login-companion {
+  position: fixed;
+  left: 30px;
+  bottom: 30px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: var(--azma-surface);
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.35);
+  box-shadow: var(--azma-shadow-glow-soft);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .login-companion { animation: login-reveal-in 550ms 200ms var(--azma-ease-architectural) both; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-companion { opacity: 1; }
+}
+
+.companion-mode-cluster {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.companion-mode-btn {
+  background: transparent;
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.30);
+  color: var(--azma-text-muted);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.25s, color 0.25s, background 0.25s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.companion-mode-btn:hover { border-color: var(--azma-gold-6); color: var(--azma-gold-6); }
+.companion-mode-btn.mode-active {
+  border-color: var(--azma-gold-6);
+  color: var(--azma-text-sacred);
+  background: var(--azma-glow-ambient);
+}
+
+.companion-voice-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-left: 1px solid rgba(var(--azma-gold-rgb), 0.20);
+  padding-left: 10px;
+}
+
+.voice-listen-btn {
+  background: transparent;
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.30);
+  color: var(--azma-gold-6);
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: var(--azma-tracking-open);
+}
+
+.voice-listen-btn:hover:not(:disabled) { background: var(--azma-glow-dim); }
+.voice-listen-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.voice-listening-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--azma-gold-6);
+  font-style: italic;
+}
+
+@keyframes voicePulse {
+  0%, 100% { transform: scale(1); opacity: 0.80; }
+  50%      { transform: scale(1.35); opacity: 1.00; }
+}
+
+.voice-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--azma-conflict);
+  animation: voicePulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.voice-permission-denied {
+  font-size: 10px;
+  color: var(--azma-conflict);
+  font-style: italic;
+}
+
+@keyframes companionAppear {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes companionDisappear {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.companion-message-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.companion-message-zone.companion-visible { animation: companionAppear 400ms ease forwards; opacity: 1; }
+.companion-message-zone.companion-hidden { animation: companionDisappear 400ms ease forwards; opacity: 0; pointer-events: none; }
+
+.companion-sigil { color: var(--azma-gold-6); font-size: 11px; flex-shrink: 0; opacity: 0.75; }
+
+.companion-text {
+  color: var(--azma-text-primary);
+  font-size: 12px;
+  line-height: 1.4;
+  font-style: italic;
+  letter-spacing: var(--azma-tracking-normal);
+  white-space: nowrap;
+  transition: opacity 0.3s ease;
+}
+
+.companion-text.is-swapping {
+  opacity: 0;
+}

@@ -1,0 +1,179 @@
+/* AZMA OS — Creator Access Experience (Final Launch Package)
+   Shared styling for Signup / Login / Subscribe — the Creator-facing
+   surface reaching the certified Authentication and Billing Foundations.
+   IMPERIAL IDENTITY CONTINUITY (Article IX / Constitutional Mandate 2):
+   this was previously its own disconnected dark-blue palette, invented
+   independently of the Sovereign Color System every other room in the
+   Empire already uses. Rebuilt on the same constitutional tokens the
+   Imperial Gate and Qiyamah Chamber already consume
+   (src/design-system/azma-identity.css) — no new palette invented, the
+   Empire's one existing visual identity carried forward instead. */
+
+.creator-access-viewport {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /*
+   * REGISTRATION GATEWAY, PACKAGE I (2026-07-23): transparent, not
+   * var(--azma-void) — Signup now renders a real atmosphere layer
+   * behind this viewport (SignupExperience), which an opaque
+   * background here would fully hide. Safe for Login and Subscribe,
+   * which don't render that layer: <body> now carries the same
+   * --azma-void as a global fallback (see globals.css), so they render
+   * pixel-identically to before — verified live, not assumed.
+   */
+  background: transparent;
+  color: var(--azma-text-primary);
+  padding: 2rem 1rem;
+  font-family: var(--azma-font-family);
+  position: relative;
+  z-index: 1;
+}
+
+.creator-access-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--azma-surface);
+  border: 1px solid var(--azma-gold-3);
+  border-radius: var(--azma-radius-panel);
+  padding: 2.25rem 2rem;
+  box-shadow: var(--azma-shadow-sovereign), var(--azma-shadow-glow-whisper);
+}
+
+.creator-access-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--azma-text-sacred);
+  margin: 0 0 0.4rem;
+  text-shadow: 0 0 18px var(--azma-glow-soft);
+}
+
+.creator-access-subtitle {
+  font-size: 0.92rem;
+  color: var(--azma-text-muted);
+  margin: 0 0 1.75rem;
+}
+
+.creator-access-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.creator-access-field label {
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+  color: var(--azma-text-muted);
+}
+
+.creator-access-field input {
+  background: var(--azma-obsidian);
+  border: 1px solid var(--azma-gold-2);
+  border-radius: var(--azma-radius-slight);
+  padding: 0.65rem 0.8rem;
+  color: var(--azma-text-primary);
+  font-size: 0.95rem;
+  font-family: var(--azma-font-family);
+}
+
+.creator-access-field input:focus {
+  outline: none;
+  border-color: var(--azma-gold-6);
+  box-shadow: var(--azma-shadow-glow-soft);
+}
+
+.creator-access-submit {
+  width: 100%;
+  background: linear-gradient(180deg, var(--azma-gold-7) 0%, var(--azma-gold-6) 45%, var(--azma-gold-3) 100%);
+  color: var(--azma-obsidian);
+  font-weight: 700;
+  border: 1px solid var(--azma-gold-6);
+  border-radius: var(--azma-radius-slight);
+  padding: 0.75rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.creator-access-submit:hover:not(:disabled) {
+  box-shadow: var(--azma-shadow-glow-bright, var(--azma-glow-bright));
+  transform: translateY(-1px);
+}
+
+.creator-access-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.creator-access-error {
+  background: rgba(139, 37, 37, 0.14);
+  border: 1px solid var(--azma-conflict);
+  color: #e8a99a;
+  border-radius: var(--azma-radius-slight);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.creator-access-footer {
+  margin-top: 1.4rem;
+  font-size: 0.85rem;
+  color: var(--azma-text-muted);
+  text-align: center;
+}
+
+.creator-access-footer a {
+  color: var(--azma-gold-6);
+  text-decoration: none;
+}
+
+.creator-access-footer a:hover {
+  text-decoration: underline;
+}
+
+.creator-access-plan {
+  border: 1px solid var(--azma-gold-3);
+  border-radius: var(--azma-radius-panel);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  background: var(--azma-surface-high);
+}
+
+.creator-access-plan-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--azma-text-sacred);
+  margin: 0 0 0.35rem;
+}
+
+.creator-access-plan-desc {
+  font-size: 0.85rem;
+  color: var(--azma-text-muted);
+  margin: 0;
+}
+
+.creator-access-status {
+  font-size: 0.85rem;
+  color: var(--azma-text-muted);
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.creator-access-kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.7rem;
+  color: var(--azma-gold-6);
+  font-weight: 700;
+  margin: 0 0 0.6rem;
+}
+
+.creator-access-welcome {
+  font-size: 0.95rem;
+  color: var(--azma-text-sacred);
+  text-align: center;
+  margin: 0 0 1rem;
+}

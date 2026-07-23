@@ -1330,6 +1330,7 @@ export default function HujjahAlDamighah() {
               visible={companionVisible}
               textToSpeak={textToSpeak}
               onVoiceTranscript={handleVoiceTranscript}
+              context="hujjah-al-damighah"
             />
             {/* Tongue Switcher */}
             <div className="tongue-switcher" role="group" aria-label="أسلوب التواصل">

@@ -5,10 +5,20 @@
 
 :root {
   --chamber-bg: #050202; /* Deepest Obsidian with a hint of red */
+  /* Qiyamah's crimson is a genuinely distinct hue, not imperial gold and
+     not PALETTE.semantic.conflict (#8B2525, a much deeper crimson used for
+     a different, narrower semantic purpose). Kept unchanged (zero visual
+     change) and registered through the constitutionally permitted
+     per-chamber override slot (EXTENSION.overridable, tokens.ts) as this
+     chamber's own character, per Constitutional Dossier Chapter III
+     Article V ("chamber personality vs platform identity"). */
   --crimson-neon: #ff2a2a;
   --crimson-dim: #8b0000;
-  --gold-neon: #D4AF37;
-  --gold-dim: #8B6508;
+  --azma-accent: 255, 42, 42;
+  --azma-accent-color: #ff2a2a;
+  /* Sovereign Color System's own PALETTE.gold / --azma-gold-* */
+  --gold-neon: var(--azma-gold-6);
+  --gold-dim: var(--azma-gold-3);
   --panel-glass: rgba(15, 5, 5, 0.7);
   --text-main: #f0e6d2;
   --text-muted: #a89f91;
@@ -16,7 +26,7 @@
 
 body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--chamber-bg); overflow: hidden; }
 
-.qiyamah-viewport { position: fixed; inset: 0; color: var(--text-main); font-family: system-ui, sans-serif; direction: rtl; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.qiyamah-viewport { position: fixed; inset: 0; color: var(--text-main); font-family: var(--azma-font-family); direction: rtl; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
 /* The Forge Background */
 .forge-background { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
@@ -32,9 +42,13 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color:
 .neon-border-gold { border: 1px solid var(--gold-neon); box-shadow: 0 0 15px rgba(212, 175, 55, 0.2), inset 0 0 10px rgba(0,0,0,0.8); }
 
 /* Live Accounting HUD */
-.accounting-hud { position: absolute; top: 20px; left: 20px; z-index: 100; background: rgba(10, 0, 0, 0.9); padding: 10px 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; backdrop-filter: blur(10px); }
-.hud-label { font-size: 11px; color: var(--text-muted); font-weight: bold; }
-.hud-value { font-family: monospace; font-size: 20px; font-weight: 900; color: var(--crimson-neon); text-shadow: 0 0 10px rgba(255, 42, 42, 0.6); }
+/* IMPERIAL FIRST CREATOR IMPLEMENTATION: replaces the fictional "AZMA
+   Credits" accounting HUD (Article IX, Mandate 4 — no invented ledger
+   may be shown to a Creator) with a real acknowledgment of who is
+   standing in the Chamber. */
+.greeting-badge { position: absolute; top: 20px; left: 20px; z-index: 100; background: rgba(10, 0, 0, 0.9); padding: 10px 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; backdrop-filter: blur(10px); }
+.greeting-label { font-size: 11px; color: var(--text-muted); font-weight: bold; }
+.greeting-value { font-family: inherit; font-size: 16px; font-weight: 900; color: var(--gold-neon); text-shadow: 0 0 10px rgba(212, 175, 55, 0.4); }
 
 /* Layout Structure */
 .qiyamah-layout { display: flex; width: 100%; max-width: 1400px; height: calc(100vh - 100px); z-index: 10; gap: 40px; padding: 20px; align-items: center; justify-content: center; }
@@ -45,7 +59,16 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color:
 .active-canvas { border-style: solid; border-color: var(--crimson-dim); box-shadow: inset 0 0 50px rgba(139, 0, 0, 0.2); }
 .generating-state { border-color: var(--crimson-neon); box-shadow: 0 0 40px rgba(255, 42, 42, 0.2), inset 0 0 100px rgba(139, 0, 0, 0.4); animation: pulse-border 2s infinite; }
 
-.empty-prompt { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.empty-prompt { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; max-width: 480px; padding: 0 24px; }
+
+/* IMPERIAL FIRST CREATOR IMPLEMENTATION (Article IX, Mandate 5): a
+   direct prompt input replaces the drag-drop asset system, whose
+   video/audio/image targets only ever fed the simulated, non-real
+   generation path. Only the text prompt and style reach the real
+   Launch Provider — so only they are offered. */
+.prompt-textarea { width: 100%; min-height: 90px; background: rgba(0,0,0,0.6); border: 1px solid var(--gold-dim); color: var(--text-main); padding: 12px 14px; border-radius: 8px; font-family: inherit; font-size: 14px; resize: vertical; outline: none; }
+.prompt-textarea:focus { border-color: var(--gold-neon); box-shadow: 0 0 10px rgba(212, 175, 55, 0.2); }
+.prompt-style-row { width: 100%; }
 .pulse-core { width: 40px; height: 40px; background: var(--gold-dim); border-radius: 50%; box-shadow: 0 0 30px var(--gold-neon); animation: pulse-core 3s infinite; }
 .empty-prompt h2 { color: var(--gold-neon); margin: 0; font-size: 24px; letter-spacing: 2px; }
 .empty-prompt p { color: var(--text-muted); font-size: 14px; }
@@ -78,16 +101,16 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color:
 .trigger-genesis-btn { background: linear-gradient(135deg, var(--crimson-dim), var(--crimson-neon)); border: 1px solid #ff4d4d; color: #fff; font-weight: 900; font-size: 16px; padding: 20px; border-radius: 12px; cursor: pointer; transition: 0.3s; font-family: inherit; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 10px 20px rgba(139, 0, 0, 0.4); margin-top: 10px; }
 .trigger-genesis-btn:hover { background: linear-gradient(135deg, var(--crimson-neon), #ff6666); box-shadow: 0 0 30px rgba(255, 42, 42, 0.6); transform: scale(1.02); }
 
-/* The Execution Bill Modal */
+/* IMPERIAL FIRST CREATOR IMPLEMENTATION (Article IX, Mandate 4): the
+   itemized cost/currency breakdown and fictional balance are gone —
+   this is now a plain, honest confirmation of what will actually be
+   generated, nothing invented displayed alongside it. */
 .bill-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
 .execution-bill { background: #0a0505; padding: 40px; border-radius: 16px; width: 450px; box-shadow: 0 20px 50px rgba(0,0,0,1); }
 .bill-title { color: var(--gold-neon); text-align: center; border-bottom: 1px dashed var(--crimson-dim); padding-bottom: 15px; margin-top: 0; }
 .bill-details { display: flex; flex-direction: column; gap: 15px; margin: 25px 0; }
-.bill-row { display: flex; justify-content: space-between; color: var(--text-main); font-size: 14px; }
-.bill-divider { border-color: rgba(255, 255, 255, 0.1); margin: 10px 0; }
-.total-row { font-weight: bold; font-size: 16px; }
-.total-cost { color: var(--crimson-neon); font-family: monospace; font-size: 20px; }
-.balance-row { color: var(--text-muted); font-size: 12px; }
+.bill-row { display: flex; flex-direction: column; gap: 6px; color: var(--text-main); font-size: 14px; }
+.bill-row span:first-child { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
 .bill-actions { display: flex; gap: 15px; margin-top: 30px; }
 .cancel-btn { flex: 1; background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); padding: 12px; border-radius: 8px; cursor: pointer; font-family: inherit; transition: 0.3s; }
 .cancel-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
@@ -116,6 +139,28 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color:
 .orbit-makman:hover { border-color: #ff9f43; transform: scale(1.1); box-shadow: 0 0 20px rgba(255, 159, 67, 0.4); }
 .orbit-makman:hover::before { opacity: 1; }
 
+
+/* IMPERIAL FIRST CREATOR IMPLEMENTATION — Storage (Article III/IX, B6
+   minimum form): an honest record of what a Creator has generated, in
+   the Chamber's own visual register rather than a bare file listing. */
+.your-generations { width: 100%; max-width: 900px; margin-top: 30px; padding: 0 20px; }
+.your-generations h3 { color: var(--gold-neon); font-size: 14px; letter-spacing: 1px; margin: 0 0 14px; text-align: center; }
+.generations-grid { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 6px; }
+.generation-card { flex: none; width: 120px; background: rgba(0,0,0,0.6); border: 1px solid rgba(212, 175, 55, 0.18); border-radius: 10px; overflow: hidden; text-align: left; }
+.generation-thumb { width: 100%; height: 90px; object-fit: cover; display: block; }
+.generation-meta { padding: 8px 10px; }
+.generation-prompt { font-size: 11px; color: var(--text-main); line-height: 1.3; margin: 0 0 4px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.generation-date { font-size: 9px; color: var(--text-muted); }
+
+/* Closing beat (Article IX, Mandate 7) — the ritual gets an authored
+   ending proportionate to its opening, and acknowledges the Creator. */
+.closing-beat { color: var(--text-main); font-size: 15px; line-height: 1.6; max-width: 340px; }
+.closing-beat strong { color: var(--gold-neon); }
+
+/* Honest ritual state (Article IX, Mandate 4/5) — no fabricated
+   percentage; an indeterminate spinner truthfully represents "working,
+   unknown duration" rather than invented precision. */
+.ritual-glyph { font-size: 32px; color: var(--gold-neon); }
 
 /* Animations */
 @keyframes gridMove { 0% { background-position: 0 0; } 100% { background-position: 0 40px; } }

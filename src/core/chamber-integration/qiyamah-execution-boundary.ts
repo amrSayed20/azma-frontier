@@ -4,7 +4,7 @@
  * 
  * The Qiyamah Execution Boundary.
  * The strict API gateway connecting the UI production domains (Script, Cinematic, 
- * Visual, Motion, Audio) to Al-Watin Al-Siyadi's Fleet Dispatcher.
+ * Visual, Motion, Audio) to the Fleet Materialization Runtime's Fleet Dispatcher.
  */
 
 import { 
@@ -18,8 +18,8 @@ import {
   AudioIntent
 } from '../sovereign-orchestrator/qiyamah-intent-types';
 
-import { FleetDispatcher } from '../../orchestrator/al-watin/fleet/fleet-dispatcher';
-import { OperationLedgerEntry } from '../../orchestrator/al-watin/ledger/operation-ledger-types';
+import { FleetDispatcher } from '../../orchestrator/fleet-materialization/fleet/fleet-dispatcher';
+import { OperationLedgerEntry } from '../../orchestrator/fleet-materialization/ledger/operation-ledger-types';
 
 /**
  * The untrusted payload received from the frontend Qiyamah UI.

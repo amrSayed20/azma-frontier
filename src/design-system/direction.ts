@@ -199,14 +199,14 @@ export const SCENE_TRANSITIONS: Record<string, SceneTransition> = {
     to:             'qiyamah-chamber',
     transitionType: 'descend',
     durationMs:     1200,
-    description:    'Deliberation becomes judgment — the deepest descent.',
+    description:    'Investigation becomes creation — the deepest descent.',
   },
   'qiyamah-to-hujjah': {
     from:           'qiyamah-chamber',
     to:             'hujjah-al-damighah',
     transitionType: 'ascend',
     durationMs:     1000,
-    description:    'Judgment rendered — return to examination.',
+    description:    'Creation complete — return to examination.',
   },
   'default-arrival': {
     from:           '*',
@@ -214,6 +214,54 @@ export const SCENE_TRANSITIONS: Record<string, SceneTransition> = {
     transitionType: 'reveal',
     durationMs:     600,
     description:    'Fresh arrival — emergence from the void.',
+  },
+
+  // ── The Imperial Gates — additive, per "The Law of Cinematic
+  // Continuity": the constitutional entrances of the Living Empire,
+  // distinct from Chambers. Reuses this same registry and
+  // resolveTransition() lookup unmodified — Gates are just another
+  // string identifier `beginTransition()` already accepts generically.
+  'landing-to-login': {
+    from: 'landing', to: 'login', transitionType: 'reveal', durationMs: 700,
+    description: 'The gate opens — the Creator steps toward a familiar return.',
+  },
+  'landing-to-signup': {
+    from: 'landing', to: 'signup', transitionType: 'reveal', durationMs: 700,
+    description: 'The gate opens — the Creator steps toward a first founding.',
+  },
+  'login-to-signup': {
+    from: 'login', to: 'signup', transitionType: 'dissolve', durationMs: 600,
+    description: 'Same threshold, different door — the Creator has not yet arrived.',
+  },
+  'signup-to-login': {
+    from: 'signup', to: 'login', transitionType: 'dissolve', durationMs: 600,
+    description: 'Same threshold, different door — the Creator already belongs.',
+  },
+  'login-to-subscription': {
+    from: 'login', to: 'subscription', transitionType: 'reveal', durationMs: 800,
+    description: 'Recognition earns invitation — the curtain parts on commitment.',
+  },
+  'signup-to-subscription': {
+    from: 'signup', to: 'subscription', transitionType: 'reveal', durationMs: 800,
+    description: 'A new name is given a place — the curtain parts on commitment.',
+  },
+  'subscription-to-qiyamah-chamber': {
+    from: 'subscription', to: 'qiyamah-chamber', transitionType: 'ascend', durationMs: 900,
+    description: 'Commitment made — the Creator ascends from the Gates into the Chambers.',
+  },
+  'login-to-qiyamah-chamber': {
+    from: 'login', to: 'qiyamah-chamber', transitionType: 'ascend', durationMs: 800,
+    description: 'A returning Creator ascends from the Gates into the Chambers once more.',
+  },
+  // REGISTRATION GATEWAY, PACKAGE II (2026-07-23): the one pairing
+  // missing from an otherwise-complete set — subscription and login
+  // both already ascend into Qiyamah, signup (the Creator's actual
+  // first founding) did not. Same transitionType as its siblings, same
+  // register as subscription's own weight (a first arrival, not a
+  // return) rather than login's lighter one.
+  'signup-to-qiyamah-chamber': {
+    from: 'signup', to: 'qiyamah-chamber', transitionType: 'ascend', durationMs: 900,
+    description: 'A Creator is born — the newest citizen ascends from the Gates into the Chambers.',
   },
 } as const;
 
@@ -589,7 +637,7 @@ export interface ChamberScore {
   transitionOut:       SceneTransitionType;
 }
 
-const DEFAULT_COMPANION_DIRECTION: CompanionDirection = {
+export const DEFAULT_COMPANION_DIRECTION: CompanionDirection = {
   entranceDelayMs:         1200,
   interruptionThresholdMs: 400,
   observationWindowMs:     3000,
@@ -654,16 +702,77 @@ export const CHAMBER_SCORES: Record<string, ChamberScore> = {
 
   'qiyamah-chamber': createChamberScore(
     'qiyamah-chamber',
+    // RETUNED, QIYAMAH CHAMBER PACKAGE III (2026-07-23): was EMOTIONAL_ARCS['ceremonial'],
+    // an arc shared only with the pre-auth landing/subscription Gates — no `curiosity` beat,
+    // the heaviest floors in the registry. A creative-generation loop (describe, choose a
+    // style, confirm, repeat) is closer to open-ended exploration than to a Gate's one-shot
+    // ceremony; 'standard' is the only arc that keeps `curiosity` and carries no oversized floor.
+    EMOTIONAL_ARCS['standard'],
+    {
+      companionDirection: {
+        // Was 2400/800/5000/4000/1600 with defaultMode 'chamber-leads' — the most
+        // theatrical, slowest-pacing register that existed (ChamberScore comparison:
+        // every number was the highest of any chamber). That pacing was a residue of
+        // the retired "judgment chamber" identity. Realigned to Hujjah's profile — the
+        // sibling chamber closest to Qiyamah's real character: active and participatory,
+        // not restful (Palace) or ceremonial (the Gates).
+        entranceDelayMs:         800,
+        interruptionThresholdMs: 300,
+        observationWindowMs:     2000,
+        silenceMinDurationMs:    1600,
+        farewellLeadMs:          1000,
+      },
+      defaultMode:  'shared-direction', // was 'chamber-leads' — the citizen is the author here, per the 'creating' Atmosphere; the Chamber does not dictate the pace
+      transitionIn: 'descend',
+      transitionOut:'ascend',
+    },
+  ),
+
+  // CHAMBER IDENTITY V2 (2026-07-23): Ras Al Amr and Makman Al Ghayah previously had no
+  // ChamberScore entry at all — "Constitutionally Undefined" per src/sovereign-identity's own
+  // prior ruling that refused to author estimated values without real grounding. Added now with
+  // the same sibling-comparison discipline used to retune Qiyamah's (see above): reuse an
+  // existing register, don't invent a new one; ground the choice in the chamber's own real
+  // constitutional character, not an arbitrary number.
+  'ras-amr': createChamberScore(
+    'ras-amr',
+    // 'ceremonial' — the arc Qiyamah was moved OFF of (heaviest floors, no `curiosity`). Ras Al
+    // Amr's real act — compiling a draft into a LOCKED, ready-to-publish assembly — is genuinely
+    // a weighty, consequential, infrequent moment, unlike Qiyamah's fast iterative loop; sharing
+    // this arc with the pre-auth Gates is an accepted overlap here, not a mismatch.
     EMOTIONAL_ARCS['ceremonial'],
     {
       companionDirection: {
-        entranceDelayMs:         2400,  // judgment chamber — long silence before companion
-        interruptionThresholdMs: 800,
-        observationWindowMs:     5000,
-        silenceMinDurationMs:    4000,
-        farewellLeadMs:          1600,
+        // Between Hujjah (active) and Palace (restful) — direction/orchestration is deliberate
+        // but not restful, and not the theatrical extreme Qiyamah's old numbers wrongly were.
+        entranceDelayMs:         1200,
+        interruptionThresholdMs: 500,
+        observationWindowMs:     3000,
+        silenceMinDurationMs:    2400,
+        farewellLeadMs:          800,
       },
-      defaultMode:  'chamber-leads',   // judgment is not citizen-led
+      defaultMode:  'shared-direction',
+      transitionIn: 'descend',
+      transitionOut:'ascend',
+    },
+  ),
+
+  'makman-al-ghayah': createChamberScore(
+    'makman-al-ghayah',
+    // 'standard' — the only arc keeping `curiosity`, fitting a chamber whose own character is
+    // "reads patterns and possibilities" (CONTEXT_ROLES): open-ended, exploratory, not weighty.
+    EMOTIONAL_ARCS['standard'],
+    {
+      companionDirection: {
+        // Close to Hujjah's active profile — strategizing is engaged, not restful — slightly
+        // softer since Makman's real character is exploratory rather than investigative-precise.
+        entranceDelayMs:         800,
+        interruptionThresholdMs: 400,
+        observationWindowMs:     2400,
+        silenceMinDurationMs:    1800,
+        farewellLeadMs:          900,
+      },
+      defaultMode:  'shared-direction',
       transitionIn: 'descend',
       transitionOut:'ascend',
     },

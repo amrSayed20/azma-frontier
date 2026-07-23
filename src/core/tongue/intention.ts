@@ -52,7 +52,7 @@ export interface TongueIntention {
 const CHAMBER_OUTCOME_AFFINITY: Record<ChamberContext, CitizenOutcomeType> = {
   'sovereign-vault-palace': 'validation',   // citizen is reviewing their creative work
   'hujjah-al-damighah':     'decision',     // citizen is investigating toward a verdict
-  'qiyamah-chamber':        'decision',     // citizen is reaching judgment
+  'qiyamah-chamber':        'creation',     // citizen is producing a generated asset
   'ras-amr':                'creation',     // citizen is producing governance artifacts
   'makman-al-ghayah':       'exploration',  // citizen is strategizing possibilities
   'universal':              'clarity',      // no context — default to understanding

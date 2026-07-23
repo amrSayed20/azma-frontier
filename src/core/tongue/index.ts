@@ -1,8 +1,28 @@
 /**
- * AZMA OS — Tongue Constitution (ATC) V2.0
- * The Final Constitutional Completion of the Imperial Consciousness
+ * AZMA OS — THE IMPERIAL TONGUE (formerly "Tongue Constitution ATC V2.0")
+ * Constitutional Package I — The Imperial Tongue Constitutional Refoundation
  *
  * Public barrel export — import from here, never directly.
+ *
+ * REFOUNDATION DISCLOSURE: this organ's constitutional identity is now
+ * the Imperial Tongue, per the completed Constitutional Deliberation
+ * (Engineering Review, Constitutional Clarification Report — both
+ * certified). See constitutional-classification.ts for the full,
+ * cited Permanent/Transitional classification of every file below.
+ * Nothing was removed, relocated, renamed, or rewritten by this
+ * Refoundation — every export that existed before still exists,
+ * unchanged, at this same path. voice.ts, this file's own
+ * ChamberContext/CONTEXT_ROLES/IMPERIAL_CONSCIOUSNESS vocabulary, and
+ * (per a post-Certification Council correction) memory.ts's Citizen
+ * Memory are classified Permanent — the Imperial Tongue's own faithful
+ * expression capability, memory.ts having been found to represent
+ * Citizen Memory rather than the Charter's own Constitutional Memory.
+ * Every other file remains Transitional — preserved exactly in place
+ * until its own rightful Constitutional Home is born.
+ * The organ's registered id (`sovereign-tongue`) is deliberately
+ * unchanged: no Constitutional Decision has yet certified renaming it,
+ * and DirectorStage.tsx's own circulation calls still report under that
+ * exact origin id.
  *
  * The Tongue gives the Empire its voice.
  * The Core operates the Empire.
@@ -183,3 +203,17 @@ export type {
   TongueCompanionState,
   TongueResponseShape,
 } from './voice';
+
+// ── Constitutional Classification (Package I — The Imperial Tongue
+// Constitutional Refoundation) — declarative only, added by this
+// Refoundation; removes, renames, and rewrites nothing above. ─────────────
+export {
+  IMPERIAL_TONGUE_RESPONSIBILITIES,
+  listPermanentResponsibilities,
+  listTransitionalResponsibilities,
+} from './constitutional-classification';
+
+export type {
+  ImperialTongueResponsibilityClass,
+  ImperialTongueResponsibilityRecord,
+} from './constitutional-classification';

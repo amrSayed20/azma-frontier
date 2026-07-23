@@ -1,11 +1,18 @@
  
 :root{
+  /* --gold-light is this chamber's own warm highlight, close to but not
+     identical to --azma-gold-8 (#F5D978) — kept unchanged. */
   --gold-light:#FFE680;
-  --gold-main:#D4AF37;
-  --gold-dark:#8B6508;
+  /* Sovereign Color System's own PALETTE.gold / --azma-gold-* */
+  --gold-main:var(--azma-gold-6);
+  --gold-dark:var(--azma-gold-3);
   --bg-dark:#0A0A0A;
-  --bg-black:#000000;
-  --text-main:#E5E7EB;
+  --bg-black:var(--azma-void);
+  /* Restored from a cool blue-gray to the Sovereign Color System's
+     gold-register text hierarchy — "Text is never white" (tokens.ts
+     PALETTE.text). This is the one visible change here; see Engineering
+     Report. */
+  --text-main:var(--azma-text-primary);
   --glass-bg:rgba(255,255,255,.04);
   --glass-border:rgba(255,230,128,.12);
   --radius-xl:32px;

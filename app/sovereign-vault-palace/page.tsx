@@ -620,7 +620,7 @@ export default function SovereignVaultPalace() {
 
           {/* Crown Bar */}
           <div className="palace-crown">
-            <LivingCompanion message={companionMsg} visible={companionVisible} />
+            <LivingCompanion message={companionMsg} visible={companionVisible} textToSpeak={companionMsg} context="sovereign-vault-palace" />
             <div className="palace-crown-identity">
               <span className="palace-crown-seal" aria-hidden="true">⬡</span>
               <span className="palace-crown-name">القصر السيادي</span>
