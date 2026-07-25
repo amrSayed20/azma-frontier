@@ -3,17 +3,21 @@ jest.mock('../asset-storage');
 jest.mock('../../persistent-storage', () => ({
   getDb: jest.fn(() => 'fake-db-handle'),
   recordGeneration: jest.fn(),
+  insertVaultAsset: jest.fn(),
 }));
 
 import { generateImageViaProvider } from '../image-provider';
 import { persistGeneratedImage } from '../asset-storage';
 import { resetRateLimiterForTests, recordGeneration } from '../rate-limiter';
-import { recordGeneration as persistGenerationRecord } from '../../persistent-storage';
+import { recordGeneration as persistGenerationRecord, insertVaultAsset } from '../../persistent-storage';
 import { generateImage } from '../generation-service';
+import { AssetFamily } from '../../vault/sovereign-vault-types';
+import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 
 const mockGenerateImageViaProvider = generateImageViaProvider as jest.Mock;
 const mockPersistGeneratedImage = persistGeneratedImage as jest.Mock;
 const mockPersistGenerationRecord = persistGenerationRecord as jest.Mock;
+const mockInsertVaultAsset = insertVaultAsset as jest.Mock;
 
 describe('Qiyamah First Generation Path — Generation Service', () => {
   beforeEach(() => {
@@ -21,6 +25,7 @@ describe('Qiyamah First Generation Path — Generation Service', () => {
     mockGenerateImageViaProvider.mockReset();
     mockPersistGeneratedImage.mockReset();
     mockPersistGenerationRecord.mockReset();
+    mockInsertVaultAsset.mockReset();
   });
 
   it('rejects an empty prompt honestly, without calling the provider', async () => {
@@ -68,6 +73,41 @@ describe('Qiyamah First Generation Path — Generation Service', () => {
     await generateImage({ prompt: 'a sovereign vista', creatorId: 'creator-42' });
 
     expect(mockPersistGenerationRecord).toHaveBeenCalledWith('fake-db-handle', expect.objectContaining({ creatorId: 'creator-42' }));
+  });
+
+  it('INTEGRATION PACKAGE I: deposits the generated asset into the real Sovereign Vault when a creatorId is present', async () => {
+    mockGenerateImageViaProvider.mockResolvedValue({ bytes: Buffer.from('img'), mimeType: 'image/png' });
+    mockPersistGeneratedImage.mockResolvedValue({ assetId: 'abc-125', assetUrl: '/generated-assets/abc-125.png' });
+
+    await generateImage({ prompt: 'a sovereign citadel', style: 'cinematic', creatorId: 'creator-42' });
+
+    expect(mockInsertVaultAsset).toHaveBeenCalledWith('fake-db-handle', expect.objectContaining({
+      subscriberTenantId: 'creator-42',
+      originatingOperationId: 'abc-125',
+      capabilityTarget: CapabilityTarget.VISUAL,
+      assetFamily: AssetFamily.MEDIA,
+      secureStorageUri: '/generated-assets/abc-125.png',
+      metadata: expect.objectContaining({ generationPrompt: 'a sovereign citadel', generationStyle: 'cinematic' }),
+    }));
+  });
+
+  it('does not deposit into the Vault when no creatorId is present — never a Vault asset with no real owner', async () => {
+    mockGenerateImageViaProvider.mockResolvedValue({ bytes: Buffer.from('img'), mimeType: 'image/png' });
+    mockPersistGeneratedImage.mockResolvedValue({ assetId: 'abc-126', assetUrl: '/generated-assets/abc-126.png' });
+
+    await generateImage({ prompt: 'a sovereign vista' });
+
+    expect(mockInsertVaultAsset).not.toHaveBeenCalled();
+  });
+
+  it('a Vault deposit failure never turns an already-successful generation into a reported failure', async () => {
+    mockGenerateImageViaProvider.mockResolvedValue({ bytes: Buffer.from('img'), mimeType: 'image/png' });
+    mockPersistGeneratedImage.mockResolvedValue({ assetId: 'abc-127', assetUrl: '/generated-assets/abc-127.png' });
+    mockInsertVaultAsset.mockImplementation(() => { throw new Error('vault is unreachable'); });
+
+    const result = await generateImage({ prompt: 'a sovereign vista', creatorId: 'creator-42' });
+
+    expect(result.status).toBe('succeeded');
   });
 
   it('reports an honest failure when the Launch Provider errors — never a fake success', async () => {
