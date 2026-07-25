@@ -696,6 +696,21 @@ body, html {
   overflow: hidden;
 }
 
+/* INTEGRATION PACKAGE III: honest empty state when the Creator's real
+   Sovereign Vault has no assets yet — no fake categories, no fake items. */
+.hud-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
 /* Sidebar Vault Selector within HUD */
 .hud-vaults-picker {
   background: rgba(0, 0, 0, 0.3);

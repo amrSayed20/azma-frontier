@@ -9,24 +9,45 @@
  * 'ras-amr-chamber-viewport', which matched no rule in ras-amr.css (the
  * real selector is '.ras-amr-viewport') — the intended fixed/flex-column
  * layout was silently never applying. Corrected to the real class name.
+ *
+ * INTEGRATION PACKAGE III — THE FIRST CHAMBER-TO-CHAMBER OPERATIONAL
+ * FLOW (2026-07-25): the Sovereign Summoning Bridge now enumerates and
+ * consumes real assets from the real Sovereign Vault, via the same
+ * GET /api/vault/assets route Integration Package II built for Vault
+ * Palace — no new backend, no new orchestration layer, the smallest
+ * real connection available. The fake vaultRepositories catalogue
+ * (6 hardcoded categories, 18 fabricated item names) is removed
+ * entirely, not hidden, per this platform's own remove-not-cover rule
+ * — real categories are derived from whatever capabilityTarget values
+ * actually exist in the Creator's real Vault. initialSmartQueue's 3
+ * pre-seeded demo items are untouched — a separate, already-disclosed
+ * gap this Package's own directive did not ask to close.
  */
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { RasAmrExperience } from '@/src/imperial-experience-engine';
+import type { VaultAsset } from '@/src/vault/sovereign-vault-types';
 import './ras-amr.css';
 
-// --- Vault Repositories available for Summoning ---
-const vaultRepositories = [
-  { id: 'v-projects', name: 'خزنة المشاريع', icon: '📁', items: ['مشروع فيلم وثائقي', 'حملة العبور الإمبراطورية', 'سيناريو الإطلاق السيادي'] },
-  { id: 'v-characters', name: 'خزنة الشخصيات', icon: '👤', items: ['شخصية الراوي الحكيم', 'صوت القائد المهيب', 'الممثل الافتراضي ألفا'] },
-  { id: 'v-brands', name: 'خزنة العلامات التجارية', icon: '🛡️', items: ['الختم الذهبي لعظمة', 'شعار المنصة المتحرك', 'هوية نيون البصرية'] },
-  { id: 'v-voices', name: 'خزنة الأصوات', icon: '🎙', items: ['بصمة لسان سيادي رئيسي', 'التعليق الصوتي الملحمي', 'نبرة الإقناع الهادئة'] },
-  { id: 'v-images', name: 'خزنة الصور', icon: '🖼️', items: ['خلفية استوديو هوليوود', 'لوحة قصر العظمة الهولوغرامية', 'تأثير ليزر سينمائي'] },
-  { id: 'v-videos', name: 'خزنة الفيديوهات', icon: '🎬', items: ['لقطة تفكيك البكسل الحية', 'وميض النيون الذهبي', 'دوران رادار الإمبراطورية'] },
-];
+const CAPABILITY_LABELS: Record<string, { name: string; icon: string }> = {
+  VISUAL:      { name: 'الصور المولَّدة',    icon: '🖼️' },
+  MOTION:      { name: 'الفيديوهات المولَّدة', icon: '🎬' },
+  AUDIO:       { name: 'الأصوات المولَّدة',   icon: '🎙' },
+  WRITING:     { name: 'النصوص المولَّدة',    icon: '📄' },
+  DIRECTORIAL: { name: 'مخططات الإخراج',      icon: '🎯' },
+};
+
+function typeLabelForCapability(target: string): string {
+  switch (target) {
+    case 'VISUAL': return 'صورة';
+    case 'MOTION':  return 'فيديو';
+    case 'AUDIO':   return 'صوت';
+    default:        return 'وثيقة';
+  }
+}
 
 const initialSmartQueue = [
   { id: 'q-1', title: 'المشهد السريالي الأول', type: 'فيديو', source: 'حجرة القيامة', duration: '00:12', status: 'جاهز للصهر' },
@@ -68,8 +89,43 @@ export default function RasAmrChamber() {
   
   // --- Summoning Bridge States ---
   const [isSummonOpen, setIsSummonOpen] = useState<boolean>(false);
-  const [selectedVault, setSelectedVault] = useState<string>(vaultRepositories[0].id);
+  const [selectedVault, setSelectedVault] = useState<string>('');
   const [injectionFlash, setInjectionFlash] = useState<boolean>(false);
+
+  // --- Real Sovereign Vault assets — the Summoning Bridge's real source ---
+  const [vaultAssets, setVaultAssets] = useState<VaultAsset[]>([]);
+  const [vaultAssetsLoaded, setVaultAssetsLoaded] = useState<boolean>(false);
+
+  useEffect(() => {
+    fetch('/api/vault/assets')
+      .then((response) => response.json())
+      .then((result) => {
+        if (result.status === 'succeeded') setVaultAssets(result.assets);
+      })
+      .catch(() => {
+        // Honest degrade: an unreachable Vault means an empty Summoning
+        // Bridge, not a crash — the same silent-catch pattern already
+        // used throughout this platform's real API consumers.
+      })
+      .finally(() => setVaultAssetsLoaded(true));
+  }, []);
+
+  const realVaultCategories = useMemo(() => {
+    const byTarget = new Map<string, VaultAsset[]>();
+    for (const asset of vaultAssets) {
+      const list = byTarget.get(asset.capabilityTarget) ?? [];
+      list.push(asset);
+      byTarget.set(asset.capabilityTarget, list);
+    }
+    return Array.from(byTarget.entries()).map(([target, assets]) => ({
+      id: target,
+      name: CAPABILITY_LABELS[target]?.name ?? target,
+      icon: CAPABILITY_LABELS[target]?.icon ?? '◆',
+      assets,
+    }));
+  }, [vaultAssets]);
+
+  const activeVaultCategory = realVaultCategories.find((c) => c.id === selectedVault) ?? realVaultCategories[0];
 
   // --- Real-time Timeline Playhead Pulse ---
   useEffect(() => {
@@ -88,22 +144,22 @@ export default function RasAmrChamber() {
     }, 3000);
   };
 
-  // --- Summoning Pull Action (Injecting asset from Vault directly into active console) ---
-  const handleInjectAsset = (itemName: string, vaultName: string) => {
-    const newAssetId = `summoned-${Date.now()}`;
+  // --- Summoning Pull Action: injects a REAL Vault asset into the console ---
+  const handleInjectAsset = (asset: VaultAsset) => {
+    const prompt = typeof asset.metadata.generationPrompt === 'string' ? asset.metadata.generationPrompt : null;
     const newAsset = {
-      id: newAssetId,
-      title: itemName,
-      type: vaultName.includes('الأصوات') ? 'صوت' : vaultName.includes('الفيديوهات') ? 'فيديو' : 'أصل',
-      source: vaultName,
-      duration: '00:30',
-      status: 'تم استدعاؤه وحقنه حياً'
+      id: asset.assetId,
+      title: prompt ? prompt.slice(0, 60) : 'أصل من الخزانة السيادية',
+      type: typeLabelForCapability(asset.capabilityTarget),
+      source: 'الخزانة السيادية',
+      duration: '--:--',
+      status: 'أصل حقيقي — تم استدعاؤه من الخزانة السيادية',
     };
 
-    setQueue(prevQueue => [newAsset, ...prevQueue]);
+    setQueue(prevQueue => [newAsset, ...prevQueue.filter((a) => a.id !== newAsset.id)]);
     setActiveAsset(newAsset);
     setIsSummonOpen(false);
-    
+
     // Trigger neon golden flash animation sequence
     setInjectionFlash(true);
     setTimeout(() => setInjectionFlash(false), 800);
@@ -308,42 +364,52 @@ export default function RasAmrChamber() {
               <button className="hud-close-btn" onClick={() => setIsSummonOpen(false)}>✖ إلغاء الاستدعاء</button>
             </header>
 
-            <div className="hud-body-layout">
-              {/* Mini Vault Tabs Side */}
-              <aside className="hud-vaults-picker custom-scroll">
-                {vaultRepositories.map(v => (
-                  <button 
-                    key={v.id}
-                    className={`hud-vault-tab ${selectedVault === v.id ? 'active-hud-tab' : ''}`}
-                    onClick={() => setSelectedVault(v.id)}
-                  >
-                    <span className="hud-tab-icon">{v.icon}</span>
-                    <span className="hud-tab-name">{v.name}</span>
-                  </button>
-                ))}
-              </aside>
-
-              {/* Vault Internal Content View */}
-              <main className="hud-items-viewer custom-scroll">
-                <h3 className="viewer-title-context">
-                  محتويات {vaultRepositories.find(v => v.id === selectedVault)?.name} المتاحة للاستدعاء الفوري:
-                </h3>
-                <div className="hud-items-grid">
-                  {vaultRepositories.find(v => v.id === selectedVault)?.items.map((item, index) => (
-                    <div key={index} className="hud-asset-item-chip glassmorphism">
-                      <div className="hud-item-graphic">✧</div>
-                      <span className="hud-item-name">{item}</span>
-                      <button 
-                        className="hud-inject-btn"
-                        onClick={() => handleInjectAsset(item, vaultRepositories.find(v => v.id === selectedVault)?.name || '')}
-                      >
-                        ⚡ حقن في العمليات الجارية
-                      </button>
-                    </div>
+            {vaultAssetsLoaded && realVaultCategories.length === 0 ? (
+              <div className="hud-empty-state">
+                <p>لا توجد أصول محفوظة بعد في الخزانة السيادية.</p>
+                <p>أنشئ عملاً في حجرة القيامة أولاً، ثم عد لاستدعائه هنا.</p>
+              </div>
+            ) : (
+              <div className="hud-body-layout">
+                {/* Mini Vault Tabs Side — real categories, derived from the Creator's real assets */}
+                <aside className="hud-vaults-picker custom-scroll">
+                  {realVaultCategories.map(v => (
+                    <button
+                      key={v.id}
+                      className={`hud-vault-tab ${activeVaultCategory?.id === v.id ? 'active-hud-tab' : ''}`}
+                      onClick={() => setSelectedVault(v.id)}
+                    >
+                      <span className="hud-tab-icon">{v.icon}</span>
+                      <span className="hud-tab-name">{v.name}</span>
+                    </button>
                   ))}
-                </div>
-              </main>
-            </div>
+                </aside>
+
+                {/* Vault Internal Content View — real assets */}
+                <main className="hud-items-viewer custom-scroll">
+                  <h3 className="viewer-title-context">
+                    محتويات {activeVaultCategory?.name} المتاحة للاستدعاء الفوري:
+                  </h3>
+                  <div className="hud-items-grid">
+                    {activeVaultCategory?.assets.map((asset) => {
+                      const prompt = typeof asset.metadata.generationPrompt === 'string' ? asset.metadata.generationPrompt : null;
+                      return (
+                        <div key={asset.assetId} className="hud-asset-item-chip glassmorphism">
+                          <div className="hud-item-graphic">✧</div>
+                          <span className="hud-item-name">{prompt ? prompt.slice(0, 60) : asset.assetId}</span>
+                          <button
+                            className="hud-inject-btn"
+                            onClick={() => handleInjectAsset(asset)}
+                          >
+                            ⚡ حقن في العمليات الجارية
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </main>
+              </div>
+            )}
           </div>
         </div>
       )}
