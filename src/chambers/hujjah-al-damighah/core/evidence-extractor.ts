@@ -8,6 +8,7 @@
 
 import * as crypto from 'crypto';
 import { Evidence, SovereignClaim, ConfidenceLevel } from '../domain/evidence.types';
+import { EvidenceScoringEngine } from './evidence-scoring';
 
 // ==========================================
 // 1. DOCUMENT CONTRACT
@@ -42,29 +43,49 @@ export class EvidenceExtractor {
 
     // ---------------------------------------------------------
     // FUTURE INTEGRATION POINT: AI / LLM SEMANTIC EXTRACTION
-    // Here, an AI model will evaluate `document.content` against 
+    // Here, an AI model will evaluate `document.content` against
     // `claim.normalizedStatement` to perform deep semantic extraction.
     // ---------------------------------------------------------
 
-    // CURRENT STRUCTURAL BASELINE:
-    // We return a baseline structural implementation to satisfy the compiler,
-    // establish the exact data flow, and allow the IntelligenceEngine to run.
-    
     // Extract a brief context window safely
     const snippetLength = Math.min(document.content.length, 250);
     const safeContext = document.content.substring(0, snippetLength) + '...';
 
-    const baselineEvidence: Evidence = {
+    // REAL SCORING (replaces the previous hardcoded 0.85/HIGH baseline):
+    // EvidenceScoringEngine.score() already existed, fully built, with zero
+    // callers anywhere in the codebase — a genuine keyword-overlap heuristic
+    // sitting unused right next to the stub it was meant to replace. Scored
+    // against safeContext (the document's own real content), not
+    // extractedText below (which echoes the claim itself and would always
+    // match its own keywords trivially). Still a pre-LLM heuristic, and the
+    // underlying document content remains provider-supplied (simulated for
+    // GutenbergProvider today) — this makes the SCORING mechanism real and
+    // query-dependent, not the underlying source content.
+    const { confidenceScore } = EvidenceScoringEngine.score(safeContext, claim);
+    const confidenceLevel = EvidenceExtractor.classifyConfidence(confidenceScore);
+
+    const scoredEvidence: Evidence = {
       id: crypto.randomUUID(),
       claimId: claim.id,
       sourceId: document.id,
       sourceProvider: document.provider,
       extractedText: `[Extracted context matching claim]: ${claim.normalizedStatement}`,
       contextWindow: safeContext,
-      confidenceScore: 0.85, // Default baseline score
-      confidenceLevel: ConfidenceLevel.HIGH
+      confidenceScore,
+      confidenceLevel
     };
 
-    return [baselineEvidence];
+    return [scoredEvidence];
+  }
+
+  /**
+   * First-cut thresholds over EvidenceScoringEngine's 0-1 confidenceScore.
+   * Disclosed heuristic, not a calibrated statistical boundary.
+   */
+  private static classifyConfidence(confidenceScore: number): ConfidenceLevel {
+    if (confidenceScore >= 0.75) return ConfidenceLevel.HIGH;
+    if (confidenceScore >= 0.45) return ConfidenceLevel.MODERATE;
+    if (confidenceScore >= 0.15) return ConfidenceLevel.LOW;
+    return ConfidenceLevel.UNVERIFIED;
   }
 }
