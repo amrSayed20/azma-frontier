@@ -55,14 +55,22 @@ export const IMPERIAL_VISION_DOCUMENTS: Record<ChamberId, ImperialVisionDocument
     constitutionalResponsibility: 'To direct is to take responsibility for the whole, not just the parts — Ras Al Amr answers for how the pieces fit together, never for where any individual piece came from.',
     personality: 'Deliberate and unambiguous. A Chamber built for consequential, infrequent decisions rather than fast iteration — closer to the Palace\'s weight than to Qiyamah\'s speed.',
     creatorExperience: 'Today: the feeling of sitting at a real director\'s console — arranging, previewing, choosing tools — without yet the feeling of finishing. The console is real; the delivery is not, yet.',
+    // RETUNED, RAS AL AMR CHAMBER RECONSTRUCTION (2026-07-25): reflects the
+    // Council's final constitutional formulation, ratified after this text
+    // was first authored — Automatic Director is delegated directing
+    // AUTHORITY, never automation/a workflow engine/a scripted pipeline;
+    // it may decide HOW to direct, never redefine WHAT the Creator intends;
+    // the Creator delegates, never transfers ownership, and may revoke at
+    // any time. See project memory's project_imperial_chamber_unification_program
+    // for the full ruling this description now embodies.
     productionModes: [
       {
         name: 'Automatic Director (الإخراج الذكي الآلي)',
-        description: 'The Chamber offers directing tools that suggest and apply direction on the Creator\'s behalf — neural sync, AI directing, optical flow — the Creator supervises rather than operates each control by hand.',
+        description: 'A delegated directing authority, not an automation shortcut. When the Creator explicitly enables it, the Empire temporarily assumes the constitutional role of Director and makes genuine editorial decisions — which tools apply, how a scene is graded, how footage is synced — always within the Creator\'s declared vision, goals, and constraints. It may decide how to direct; it may never redefine what the Creator intends to create. The work, the vision, and the authorship remain the Creator\'s; the delegation may be limited or revoked at any time.',
       },
       {
         name: 'Manual Director (الإخراج اليدوي المحكم)',
-        description: 'The Creator operates precision tools directly — pixel grading, chroma forging, the final cinematic render — the Chamber provides the instrument, the Creator provides the judgment.',
+        description: 'The Creator operates precision tools directly — pixel grading, chroma forging, the final cinematic render — the Chamber provides the instrument, the Creator provides every judgment, delegating nothing.',
       },
     ],
     entryExitTransformation: 'Today: a Creator enters with gathered material and leaves having rehearsed a direction for it — not yet having delivered one. The transformation this Chamber is meant to complete (material in, locked production out) is real in its constitution but not yet in its runtime.',

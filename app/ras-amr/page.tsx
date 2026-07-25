@@ -49,6 +49,17 @@ export default function RasAmrChamber() {
   // --- Core States ---
   const [queue, setQueue] = useState(initialSmartQueue);
   const [activeAsset, setActiveAsset] = useState<typeof initialSmartQueue[0] | null>(initialSmartQueue[0]);
+  // CONSTITUTIONAL NOTE (Ras Al Amr Chamber Reconstruction, 2026-07-25):
+  // 'smart' is the Automatic Director — a delegated directing AUTHORITY,
+  // never an automation shortcut, workflow engine, or scripted pipeline.
+  // Any future real implementation behind this mode must make genuine
+  // editorial decisions on the Creator's behalf, always within the
+  // Creator's own declared vision/goals/constraints (it may decide HOW to
+  // direct, never redefine WHAT the Creator intends), and the delegation
+  // it represents must remain limitable/revocable by the Creator at any
+  // time. See src/chamber-vision/'s ras-amr Vision Document for the full
+  // ruling. Today this state only drives which tools are shown/dimmed —
+  // no real differentiated logic exists yet behind either mode.
   const [directingMode, setDirectingMode] = useState<'smart' | 'manual'>('smart');
   const [activeTool, setActiveTool] = useState<string>('ai-director');
   const [timelineProgress, setTimelineProgress] = useState<number>(45);

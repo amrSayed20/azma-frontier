@@ -208,6 +208,25 @@ export const SCENE_TRANSITIONS: Record<string, SceneTransition> = {
     durationMs:     1000,
     description:    'Creation complete — return to examination.',
   },
+  // RAS AL AMR CHAMBER RECONSTRUCTION (2026-07-25): the only two real,
+  // live-reachable edges touching Ras Al Amr — app/ras-amr/page.tsx's own
+  // "forward to Makman" button, and Makman's own exit button back to Ras
+  // Al Amr (app/makman-al-ghayah/page.tsx) — had no SCENE_TRANSITIONS
+  // entry and silently fell back to 'default-arrival'.
+  'ras-amr-to-makman': {
+    from:           'ras-amr',
+    to:             'makman-al-ghayah',
+    transitionType: 'descend',
+    durationMs:     1000,
+    description:    'A directed production moves onward — from authorship toward its audience.',
+  },
+  'makman-to-ras-amr': {
+    from:           'makman-al-ghayah',
+    to:             'ras-amr',
+    transitionType: 'ascend',
+    durationMs:     900,
+    description:    'The Creator returns from strategy to direction — the production is not yet finished.',
+  },
   'default-arrival': {
     from:           '*',
     to:             '*',
