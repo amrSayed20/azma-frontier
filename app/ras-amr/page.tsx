@@ -22,6 +22,16 @@
  * actually exist in the Creator's real Vault. initialSmartQueue's 3
  * pre-seeded demo items are untouched — a separate, already-disclosed
  * gap this Package's own directive did not ask to close.
+ *
+ * INTEGRATION PACKAGE IV — FROM DIRECTION TO FULFILLMENT (2026-07-25):
+ * the "forward to Makman" button now carries a real handoff payload
+ * (sessionStorage, the exact same one-shot convention Vault Palace's
+ * own cross-chamber transfers already use) whenever the active queue
+ * item is a real, Vault-sourced asset — no fabricated title, no
+ * fabricated preview reaches Makman. When the active item is one of
+ * initialSmartQueue's pre-seeded demo entries (not real), navigation
+ * behaves exactly as before this Package — no payload, Makman falls
+ * back to its own existing display, nothing regresses.
  */
 
 'use client';
@@ -49,7 +59,21 @@ function typeLabelForCapability(target: string): string {
   }
 }
 
-const initialSmartQueue = [
+interface QueueItem {
+  id: string;
+  title: string;
+  type: string;
+  source: string;
+  duration: string;
+  status: string;
+  /** INTEGRATION PACKAGE III/IV: true only for an item genuinely summoned
+      from the real Sovereign Vault — never set on the demo seed items
+      below. Governs whether a handoff to Makman carries real data. */
+  isRealAsset?: boolean;
+  secureStorageUri?: string;
+}
+
+const initialSmartQueue: QueueItem[] = [
   { id: 'q-1', title: 'المشهد السريالي الأول', type: 'فيديو', source: 'حجرة القيامة', duration: '00:12', status: 'جاهز للصهر' },
   { id: 'q-2', title: 'البصمة الصوتية السيادية', type: 'صوت', source: 'خزنة الأصوات', duration: '01:05', status: 'مزامنة عصبية معلقة' },
   { id: 'q-3', title: 'مخطط الهوية البصرية الحية', type: 'علامة', source: 'خزنة العلامات', duration: '--:--', status: 'معالجة البكسل' },
@@ -68,8 +92,8 @@ export default function RasAmrChamber() {
   const router = useRouter();
   
   // --- Core States ---
-  const [queue, setQueue] = useState(initialSmartQueue);
-  const [activeAsset, setActiveAsset] = useState<typeof initialSmartQueue[0] | null>(initialSmartQueue[0]);
+  const [queue, setQueue] = useState<QueueItem[]>(initialSmartQueue);
+  const [activeAsset, setActiveAsset] = useState<QueueItem | null>(initialSmartQueue[0]);
   // CONSTITUTIONAL NOTE (Ras Al Amr Chamber Reconstruction, 2026-07-25):
   // 'smart' is the Automatic Director — a delegated directing AUTHORITY,
   // never an automation shortcut, workflow engine, or scripted pipeline.
@@ -147,13 +171,15 @@ export default function RasAmrChamber() {
   // --- Summoning Pull Action: injects a REAL Vault asset into the console ---
   const handleInjectAsset = (asset: VaultAsset) => {
     const prompt = typeof asset.metadata.generationPrompt === 'string' ? asset.metadata.generationPrompt : null;
-    const newAsset = {
+    const newAsset: QueueItem = {
       id: asset.assetId,
       title: prompt ? prompt.slice(0, 60) : 'أصل من الخزانة السيادية',
       type: typeLabelForCapability(asset.capabilityTarget),
       source: 'الخزانة السيادية',
       duration: '--:--',
       status: 'أصل حقيقي — تم استدعاؤه من الخزانة السيادية',
+      isRealAsset: true,
+      secureStorageUri: asset.secureStorageUri,
     };
 
     setQueue(prevQueue => [newAsset, ...prevQueue.filter((a) => a.id !== newAsset.id)]);
@@ -163,6 +189,23 @@ export default function RasAmrChamber() {
     // Trigger neon golden flash animation sequence
     setInjectionFlash(true);
     setTimeout(() => setInjectionFlash(false), 800);
+  };
+
+  // --- Forward to Makman: carries a real handoff payload only for a
+  // real, Vault-sourced active asset — the demo seed items forward with
+  // no payload, exactly as before this Package.
+  const handleForwardToMakman = () => {
+    if (activeAsset?.isRealAsset && activeAsset.secureStorageUri) {
+      try {
+        sessionStorage.setItem('azma.transfer.rasAmrProduction', JSON.stringify({
+          id: activeAsset.id,
+          title: activeAsset.title,
+          secureStorageUri: activeAsset.secureStorageUri,
+        }));
+        sessionStorage.setItem('azma.transfer.origin', 'ras-amr');
+      } catch { /* ignore — navigation still proceeds */ }
+    }
+    router.push('/makman-al-ghayah');
   };
 
   return (
@@ -338,9 +381,9 @@ export default function RasAmrChamber() {
               🎬 صهر الإخراج النهائي (Master Render)
             </button>
             
-            <button 
+            <button
               className="action-trigger-btn forward-btn"
-              onClick={() => router.push('/makman-al-ghayah')}
+              onClick={handleForwardToMakman}
             >
               👑 ترحيل العمل المكتمل لـ &quot;مكمن الغاية&quot;
             </button>

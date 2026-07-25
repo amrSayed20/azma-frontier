@@ -10,14 +10,60 @@
  * below) has no onClick handler at all — a real, pre-existing dead
  * button, disclosed not fixed (this Package: identify gaps, don't
  * implement new production behavior).
+ *
+ * INTEGRATION PACKAGE IV — FROM DIRECTION TO FULFILLMENT (2026-07-25):
+ * the Master Display now shows a real incoming production when Ras Al
+ * Amr's "forward to Makman" button carried one — the exact same
+ * one-shot sessionStorage handoff convention Vault Palace's own
+ * cross-chamber transfers already established. Read via
+ * useSyncExternalStore, not an effect + setState — the same pattern and
+ * the same reasoning already proven correct in this exact codebase
+ * (ArrivalExperience.tsx's isReturning): the value differs between
+ * server (always null) and client (may genuinely carry a handoff), must
+ * be correct at first client paint with no hydration mismatch, and — as
+ * that earlier fix's own comment discloses from hard-won experience —
+ * getSnapshot must freeze its answer on first read, since this
+ * component's own effects/re-renders would otherwise see the
+ * already-cleared sessionStorage key on a later read and silently
+ * flip back to null. Falls back to this page's existing hardcoded
+ * display when no real handoff exists — nothing regresses for a direct
+ * visit.
  */
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { MakmanExperience } from '@/src/imperial-experience-engine';
 import './makman-al-ghayah.css';
+
+interface RealProduction {
+  id: string;
+  title: string;
+  secureStorageUri: string;
+}
+
+function subscribeToNothing(): () => void {
+  return () => {};
+}
+
+let cachedRealProduction: RealProduction | null | undefined = undefined;
+function getRealProductionSnapshot(): RealProduction | null {
+  if (cachedRealProduction === undefined) {
+    cachedRealProduction = null;
+    try {
+      const raw = sessionStorage.getItem('azma.transfer.rasAmrProduction');
+      if (raw) {
+        sessionStorage.removeItem('azma.transfer.rasAmrProduction');
+        cachedRealProduction = JSON.parse(raw) as RealProduction;
+      }
+    } catch { /* ignore — falls back to the existing display */ }
+  }
+  return cachedRealProduction;
+}
+function getRealProductionServerSnapshot(): RealProduction | null {
+  return null;
+}
 
 const socialPlatforms = [
   { id: 'youtube', name: 'YouTube (4K)', icon: '▶️' },
@@ -42,6 +88,7 @@ export default function MakmanAlGhayah() {
   const [isDeploying, setIsDeploying] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
+  const realProduction = useSyncExternalStore(subscribeToNothing, getRealProductionSnapshot, getRealProductionServerSnapshot);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -148,12 +195,21 @@ export default function MakmanAlGhayah() {
               <span className="badge master-badge">8K UHD (7680x4320)</span>
               <span className="badge">MASTER RENDER</span>
             </div>
-            
-            <div className="video-player-mock">
-              <div className="play-btn">▶</div>
-              <h1 className="project-title">المشهد السريالي الأول - الإصدار النهائي</h1>
-              <p className="project-status">جاهز للعرض الأول والتوزيع</p>
-            </div>
+
+            {realProduction ? (
+              <div className="video-player-mock real-production">
+                {/* eslint-disable-next-line @next/next/no-img-element -- a real, directly-served asset URL, not an optimizable remote image */}
+                <img src={realProduction.secureStorageUri} alt={realProduction.title} className="real-production-image" />
+                <h1 className="project-title">{realProduction.title}</h1>
+                <p className="project-status">وصل من حجرة رأس الأمر — جاهز للتغليف والإطلاق</p>
+              </div>
+            ) : (
+              <div className="video-player-mock">
+                <div className="play-btn">▶</div>
+                <h1 className="project-title">المشهد السريالي الأول - الإصدار النهائي</h1>
+                <p className="project-status">جاهز للعرض الأول والتوزيع</p>
+              </div>
+            )}
 
             <div className="file-telemetry">
               <span>HASH: 0x9A4F...B2C1</span>
@@ -189,7 +245,13 @@ export default function MakmanAlGhayah() {
           <div className="packaging-forms-container custom-scroll">
             <div className="form-group">
               <label>العنوان السيادي (Title)</label>
-              <input type="text" className="cyber-input" defaultValue="المشهد السريالي الأول - الإصدار النهائي [4K]" />
+              {/* key forces a remount when realProduction arrives after mount (see effect above), since this is an intentionally uncontrolled field */}
+              <input
+                key={realProduction ? realProduction.id : 'default'}
+                type="text"
+                className="cyber-input"
+                defaultValue={realProduction ? realProduction.title : 'المشهد السريالي الأول - الإصدار النهائي [4K]'}
+              />
             </div>
 
             <div className="form-group">
