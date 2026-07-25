@@ -32,6 +32,20 @@
  * initialSmartQueue's pre-seeded demo entries (not real), navigation
  * behaves exactly as before this Package — no payload, Makman falls
  * back to its own existing display, nothing regresses.
+ *
+ * RAS AL AMR COMPLETION PACKAGE I — REAL DIRECTOR COMPILATION
+ * (2026-07-25): Master Render no longer simulates — it calls the real,
+ * already-certified POST /api/sovereign/entry/ras-al-amr/compile
+ * (PrePublishingBoundary + VaultRehydrationBridge, untouched), building
+ * a minimal, honest single-track, single-node SovereignCanvas from the
+ * currently active REAL asset. Only enabled when the active item is
+ * real — there is nothing genuine to compile from a demo seed item, and
+ * per this Package's own success criteria the primary workflow no
+ * longer relies on simulated compilation at all; the button is disabled
+ * with a visible explanation rather than falling back to the old fake
+ * timer. No Automatic Director logic, no new Hollywood tools, no
+ * publishing/release, no changes to Makman — compilation ends at a real
+ * CompiledAssemblyGraph shown in this Chamber's own console.
  */
 
 'use client';
@@ -39,7 +53,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { RasAmrExperience } from '@/src/imperial-experience-engine';
-import type { VaultAsset } from '@/src/vault/sovereign-vault-types';
+import type { VaultAsset, AssetFamily } from '@/src/vault/sovereign-vault-types';
+import type { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
+import { CanvasType } from '@/src/chambers/ras-al-amr/assembly-contracts';
+import type { SovereignCanvas } from '@/src/chambers/ras-al-amr/assembly-contracts';
+import type { CompiledAssemblyGraph } from '@/src/chambers/ras-al-amr/pre-publishing-boundary';
 import './ras-amr.css';
 
 const CAPABILITY_LABELS: Record<string, { name: string; icon: string }> = {
@@ -71,6 +89,12 @@ interface QueueItem {
       below. Governs whether a handoff to Makman carries real data. */
   isRealAsset?: boolean;
   secureStorageUri?: string;
+  /** RAS AL AMR COMPLETION PACKAGE I: the real Vault asset's own family/
+      capability (id doubles as the real Vault assetId for real items),
+      carried through so a real compile can build a node without a
+      second Vault lookup. */
+  assetFamily?: AssetFamily;
+  capabilityOrigin?: CapabilityTarget;
 }
 
 const initialSmartQueue: QueueItem[] = [
@@ -159,13 +183,67 @@ export default function RasAmrChamber() {
     return () => clearInterval(interval);
   }, []);
 
-  const triggerMasterRender = () => {
+  // --- Real Director Compilation: builds a minimal, honest single-node
+  // SovereignCanvas from the currently active REAL asset and calls the
+  // real, already-certified compile endpoint. Never simulated.
+  const canCompile = Boolean(activeAsset?.isRealAsset && activeAsset.secureStorageUri && activeAsset.assetFamily && activeAsset.capabilityOrigin);
+
+  const triggerMasterRender = async () => {
+    if (!activeAsset?.isRealAsset || !activeAsset.assetFamily || !activeAsset.capabilityOrigin) return;
+
     setIsRendering(true);
-    setRenderStatus('جاري صهر الإخراج السينمائي النهائي الفائق دقة البكسل...');
-    setTimeout(() => {
+    setRenderStatus('جاري الصهر الحقيقي عبر بوابة الدخول السيادية...');
+
+    const now = Date.now();
+    const canvas: SovereignCanvas = {
+      canvasId: `canvas_${now}`,
+      // Overwritten server-side with the real, session-verified tenant id
+      // regardless of what's sent here — see the compile route's own note.
+      subscriberTenantId: 'pending-server-verification',
+      canvasType: CanvasType.CINEMATIC,
+      title: activeAsset.title,
+      tracks: [
+        {
+          trackId: 'track-1',
+          trackName: 'المسار الرئيسي',
+          isMuted: false,
+          isHidden: false,
+          nodes: [
+            {
+              nodeId: 'node-1',
+              assetId: activeAsset.id,
+              assetFamily: activeAsset.assetFamily,
+              capabilityOrigin: activeAsset.capabilityOrigin,
+            },
+          ],
+        },
+      ],
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    try {
+      const response = await fetch('/api/sovereign/entry/ras-al-amr/compile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ canvas }),
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        setRenderStatus(`فشل الصهر الحقيقي — ${result.message ?? result.error ?? 'خطأ غير معروف'}`);
+        return;
+      }
+
+      const compiled = result as CompiledAssemblyGraph;
+      setRenderStatus(
+        `تم الصهر الحقيقي بنجاح — ${compiled.compilationId} — ${compiled.metadata.totalNodes} عنصر مضمَّن`,
+      );
+    } catch {
+      setRenderStatus('تعذّر الوصول إلى بوابة الدخول السيادية للصهر.');
+    } finally {
       setIsRendering(false);
-      setRenderStatus('تم اكتمال الصهر النهائي بنجاح – جاهز للإحالة إلى مكمن الغاية');
-    }, 3000);
+    }
   };
 
   // --- Summoning Pull Action: injects a REAL Vault asset into the console ---
@@ -180,6 +258,8 @@ export default function RasAmrChamber() {
       status: 'أصل حقيقي — تم استدعاؤه من الخزانة السيادية',
       isRealAsset: true,
       secureStorageUri: asset.secureStorageUri,
+      assetFamily: asset.assetFamily,
+      capabilityOrigin: asset.capabilityTarget,
     };
 
     setQueue(prevQueue => [newAsset, ...prevQueue.filter((a) => a.id !== newAsset.id)]);
@@ -373,10 +453,11 @@ export default function RasAmrChamber() {
           </div>
 
           <div className="executive-actions-panel">
-            <button 
+            <button
               className={`action-trigger-btn render-btn ${isRendering ? 'rendering' : ''}`}
               onClick={triggerMasterRender}
-              disabled={isRendering}
+              disabled={isRendering || !canCompile}
+              title={!canCompile ? 'استدعِ أصلاً حقيقياً من الخزانة السيادية أولاً — لا يوجد صهر تجريبي بعد الآن' : undefined}
             >
               🎬 صهر الإخراج النهائي (Master Render)
             </button>
