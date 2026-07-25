@@ -63,4 +63,14 @@ export const EXPERIENCE_REGISTRY: readonly ExperienceDefinition[] = [
       'production capability is deferred to a later, separate package per Council directive. Exclusive to the ' +
       'Ras Al Amr route.',
   },
+  {
+    id: 'makman-al-ghayah',
+    name: 'The Makman Al Ghayah Experience',
+    mountedAt: ['/makman-al-ghayah'],
+    description:
+      'The third Chamber to join IXE, built the same additive way as Qiyamah and Ras Al Amr — the Chamber\'s own ' +
+      'local-state "release terminal" console and CSS are untouched; this Pipeline adds only lifecycle reveal, ' +
+      'Presence Engine, and Imperial Voice, with the \'victorious\' Atmosphere expressing "the Chamber where ' +
+      'purpose is fulfilled." Exclusive to the Makman Al Ghayah route.',
+  },
 ];

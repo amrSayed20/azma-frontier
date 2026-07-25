@@ -2,12 +2,21 @@
  * AZMA OS – Makman Al-Ghayah (The Sovereign Release Terminal)
  * Native Name: مكمن الغاية
  * Status: Final Integrated Build (Fixed UI Overflow & Workflow Logic)
+ *
+ * IMPERIAL CHAMBER UNIFICATION, PHASE II PACKAGE III (2026-07-25):
+ * wrapped in MakmanExperience (src/imperial-experience-engine/
+ * experiences/makman-al-ghayah/) — additive only, no logic below
+ * changed. Note: the "Generate packaging with AI" button (line ~197
+ * below) has no onClick handler at all — a real, pre-existing dead
+ * button, disclosed not fixed (this Package: identify gaps, don't
+ * implement new production behavior).
  */
 
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { MakmanExperience } from '@/src/imperial-experience-engine';
 import './makman-al-ghayah.css';
 
 const socialPlatforms = [
@@ -67,6 +76,7 @@ export default function MakmanAlGhayah() {
   };
 
   return (
+    <MakmanExperience>
     <main className="makman-viewport">
       <button className="sovereign-exit-btn" onClick={() => router.push('/ras-amr')}>
         ⮜ التراجع لحجرة رأس الأمر
@@ -201,5 +211,6 @@ export default function MakmanAlGhayah() {
 
       </div>
     </main>
+    </MakmanExperience>
   );
 }

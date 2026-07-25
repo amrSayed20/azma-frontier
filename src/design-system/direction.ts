@@ -227,6 +227,16 @@ export const SCENE_TRANSITIONS: Record<string, SceneTransition> = {
     durationMs:     900,
     description:    'The Creator returns from strategy to direction — the production is not yet finished.',
   },
+  // MAKMAN AL GHAYAH CHAMBER RECONSTRUCTION (2026-07-25): the one other
+  // real edge found in app/makman-al-ghayah/page.tsx's own code —
+  // handleImportFromVault genuinely navigates to the Vault Palace.
+  'makman-to-vault-palace': {
+    from:           'makman-al-ghayah',
+    to:             'sovereign-vault-palace',
+    transitionType: 'ascend',
+    durationMs:     900,
+    description:    'Reaching back to the treasury — an asset is fetched to complete the release.',
+  },
   'default-arrival': {
     from:           '*',
     to:             '*',

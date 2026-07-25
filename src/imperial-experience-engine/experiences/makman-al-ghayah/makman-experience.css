@@ -1,0 +1,61 @@
+/**
+ * AZMA OS — THE IMPERIAL EXPERIENCE ENGINE (IXE)
+ * The Makman Al Ghayah Experience — Presentation
+ *
+ * Same discipline as Qiyamah/Ras Al Amr's: no atmosphere gradient layer
+ * (the Chamber's own opaque, full-screen viewport would hide it) — only
+ * the reveal fade and the companion are real visual additions.
+ */
+
+.makman-experience {
+  position: relative;
+}
+
+.makman-reveal {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .makman-reveal {
+    animation: makman-reveal-in 500ms var(--azma-ease-architectural) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .makman-reveal { opacity: 1; }
+}
+
+@keyframes makman-reveal-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.makman-companion {
+  position: fixed;
+  left: 30px;
+  bottom: 30px;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(2, 2, 2, 0.9);
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.35);
+  box-shadow: var(--azma-shadow-glow-soft);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .makman-companion {
+    animation: makman-reveal-in 500ms 200ms var(--azma-ease-architectural) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .makman-companion { opacity: 1; }
+}
+
+.makman-experience[data-presence='away'] .makman-companion {
+  animation-play-state: paused;
+}

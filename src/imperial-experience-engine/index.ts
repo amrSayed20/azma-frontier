@@ -56,6 +56,7 @@ export { SignupExperience } from './experiences/signup';
 export { LoginExperience } from './experiences/login';
 export { QiyamahChamberExperience } from './experiences/qiyamah-chamber';
 export { RasAmrExperience } from './experiences/ras-amr';
+export { MakmanExperience } from './experiences/makman-al-ghayah';
 
 export type { ArrivalRuntimeMapping } from './ARRIVAL_RUNTIME_FOUNDATION_CONTRACT';
 export { ARRIVAL_RUNTIME_FOUNDATION } from './ARRIVAL_RUNTIME_FOUNDATION_CONTRACT';

@@ -69,8 +69,8 @@ export const IXE_INTEGRATION_BOUNDARIES = {
   consumedBy: [
     'app/page.tsx (the Imperial Gate / Arrival route).',
     'app/signup/page.tsx, app/login/page.tsx (Registration and Recognition Gateways, 2026-07-23).',
-    'app/qiyamah-chamber/page.tsx, app/ras-amr/page.tsx (Chambers, not Gates, joining IXE via the Imperial ' +
-      'Chamber Unification Program, 2026-07-23).',
+    'app/qiyamah-chamber/page.tsx, app/ras-amr/page.tsx, app/makman-al-ghayah/page.tsx (Chambers, not Gates, ' +
+      'joining IXE via the Imperial Chamber Unification Program, 2026-07-23/25).',
   ],
   explicitlyNotIntegrated: [
     'src/sovereign-identity\'s getSovereignIdentity() tone orchestrator — scoped to named ChamberContexts only; the Gate is not one, and extending that scope is not authorized by this contract.',

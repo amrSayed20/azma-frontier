@@ -11,7 +11,7 @@
 export type ExperiencePhase = 'entering' | 'stable' | 'exiting';
 
 /** Identifies a registered Experience Pipeline. Extend this union when a new Experience is authorized — see engine/experience-registry.ts. */
-export type ExperienceId = 'arrival' | 'signup' | 'login' | 'qiyamah-chamber' | 'ras-amr';
+export type ExperienceId = 'arrival' | 'signup' | 'login' | 'qiyamah-chamber' | 'ras-amr' | 'makman-al-ghayah';
 
 export interface ExperienceDefinition {
   readonly id: ExperienceId;
