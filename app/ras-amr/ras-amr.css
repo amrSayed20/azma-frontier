@@ -602,6 +602,62 @@ body, html {
 
 .forward-btn { background: #000; border: 1px solid var(--neon-gold-dim); color: var(--neon-gold-bright); }
 
+/* REAL SPATIAL ADJUSTMENT PANEL */
+.spatial-adjust-panel {
+  padding: 15px;
+  border-top: 1px solid rgba(255, 215, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(0,0,0,0.35);
+}
+
+.spatial-input-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.spatial-input-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: bold;
+}
+
+.spatial-input-grid input {
+  background: var(--os-surface-elevated);
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  border-radius: 6px;
+  color: var(--text-main);
+  padding: 8px;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.spatial-input-grid input:focus {
+  outline: none;
+  border-color: var(--neon-gold-bright);
+  box-shadow: 0 0 8px var(--neon-gold-shadow);
+}
+
+.spatial-apply-btn {
+  background: transparent;
+  border: 1px solid var(--neon-gold-dim);
+  color: var(--neon-gold-bright);
+}
+
+.spatial-apply-btn:hover { background: rgba(255, 215, 0, 0.08); }
+
+.spatial-current-state {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin: 0;
+  font-family: monospace;
+}
+
 .forward-btn:hover {
   background: rgba(255, 215, 0, 0.05);
   border-color: var(--neon-gold-bright);

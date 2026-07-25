@@ -46,6 +46,39 @@
  * timer. No Automatic Director logic, no new Hollywood tools, no
  * publishing/release, no changes to Makman — compilation ends at a real
  * CompiledAssemblyGraph shown in this Chamber's own console.
+ *
+ * THE CORRIDOR PACKAGE — RAS AL AMR TO MAKMAN (2026-07-25): the real
+ * CompiledAssemblyGraph a successful Master Render produces is now kept
+ * in state, and "forward to Makman" carries it onward — via the exact
+ * same one-shot sessionStorage handoff convention already used for the
+ * raw production payload — under its own key, separate from that raw
+ * payload, so Makman can tell "a title/preview arrived" apart from "a
+ * real sealed assembly arrived, ready to submit to real distribution."
+ * Only ever set from a graph this Chamber itself really compiled — never
+ * fabricated for a demo item.
+ *
+ * REAL SPATIAL ADJUSTMENT PACKAGE (2026-07-26): RasAlAmrStateManager
+ * (src/chambers/ras-al-amr/ras-al-amr-state-manager.ts) was real, working,
+ * pure/stateless logic with zero live callers — its only caller was an
+ * orphaned chamber-integration adapter no app/ page ever imports. Council
+ * authorized wiring it into the live Hollywood tools; investigation found
+ * the six named tools (pixel-grade, neural-sync, chroma-forge, ai-director,
+ * optical-flow) don't correspond to any real computation anywhere in this
+ * platform — there is no LUT engine, no audio DSP, no optical-flow
+ * interpolation to back them, and inventing plausible-looking values for
+ * them would repeat the exact "fake precision" mistake just declined for
+ * Hujjah Al-Damighah's orphaned confidence/verdict engines. Those five
+ * buttons are therefore left exactly as they were — still cosmetic,
+ * still disclosed as such — and this Package instead wires the ONE
+ * directive kind with a real, simple, meaningful, Creator-authored shape
+ * that needs no unbuilt rendering backend to mean something: Spatial
+ * (position/scale/rotation — see SpatialDirective, assembly-contracts.ts).
+ * A real per-session SovereignCanvas is now seeded when a real asset
+ * becomes active; a real spatial-adjustment control lets the Creator set
+ * genuine values, applied via RasAlAmrStateManager.applyMutation(); Master
+ * Render now compiles that real, possibly-edited canvas instead of always
+ * building a bare single-node one from scratch — so a real spatial edit
+ * genuinely reaches the compiled output for the first time.
  */
 
 'use client';
@@ -56,9 +89,25 @@ import { RasAmrExperience } from '@/src/imperial-experience-engine';
 import type { VaultAsset, AssetFamily } from '@/src/vault/sovereign-vault-types';
 import type { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
 import { CanvasType } from '@/src/chambers/ras-al-amr/assembly-contracts';
-import type { SovereignCanvas } from '@/src/chambers/ras-al-amr/assembly-contracts';
+import type { SovereignCanvas, SpatialDirective } from '@/src/chambers/ras-al-amr/assembly-contracts';
 import type { CompiledAssemblyGraph } from '@/src/chambers/ras-al-amr/pre-publishing-boundary';
+import { RasAlAmrStateManager } from '@/src/chambers/ras-al-amr/ras-al-amr-state-manager';
+import { CanvasActionType } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
+import type { UpdateNodeSpatialPayload } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
 import './ras-amr.css';
+
+// Pure, stateless transformer (see its own header comment) — one shared
+// instance is sufficient, no per-render instantiation needed.
+const rasAlAmrStateManager = new RasAlAmrStateManager();
+
+const DEFAULT_SPATIAL: SpatialDirective = {
+  zIndex: 0,
+  scaleX: 1,
+  scaleY: 1,
+  positionX: 0,
+  positionY: 0,
+  rotationDegrees: 0,
+};
 
 const CAPABILITY_LABELS: Record<string, { name: string; icon: string }> = {
   VISUAL:      { name: 'الصور المولَّدة',    icon: '🖼️' },
@@ -134,7 +183,84 @@ export default function RasAmrChamber() {
   const [timelineProgress, setTimelineProgress] = useState<number>(45);
   const [isRendering, setIsRendering] = useState<boolean>(false);
   const [renderStatus, setRenderStatus] = useState<string>('في وضع الاستعداد الإخراجي');
-  
+  // THE CORRIDOR PACKAGE: the real compiled graph from the most recent
+  // successful Master Render — the only thing "forward to Makman" is
+  // allowed to carry as a real, submittable assembly. compiledForAssetId
+  // pins it to the exact active asset it was compiled from, so switching
+  // the active asset after rendering can never forward a stale graph.
+  const [compiledGraph, setCompiledGraph] = useState<CompiledAssemblyGraph | null>(null);
+  const [compiledForAssetId, setCompiledForAssetId] = useState<string | null>(null);
+
+  // REAL SPATIAL ADJUSTMENT PACKAGE: a real, single-node SovereignCanvas,
+  // seeded whenever a real asset becomes active and mutated only through
+  // RasAlAmrStateManager.applyMutation() — never hand-edited. Master
+  // Render compiles exactly this object. Seeded during render (React's
+  // documented "adjust state when a prop changes" pattern, tracked via
+  // seededForAssetId) rather than in an effect, so a real spatial edit
+  // survives ordinary re-renders instead of being wiped every time.
+  const [sessionCanvas, setSessionCanvas] = useState<SovereignCanvas | null>(null);
+  const [seededForAssetId, setSeededForAssetId] = useState<string | null>(null);
+  const [spatialForm, setSpatialForm] = useState<SpatialDirective>(DEFAULT_SPATIAL);
+
+  const wantsRealCanvas = Boolean(activeAsset?.isRealAsset && activeAsset.assetFamily && activeAsset.capabilityOrigin);
+
+  if (wantsRealCanvas && activeAsset!.id !== seededForAssetId) {
+    // Pure/deterministic seed (no Date.now() — render must stay pure per
+    // React's rules); real wall-clock timestamps are set where they
+    // belong, inside event handlers: handleApplySpatialAdjustment's
+    // mutation and triggerMasterRender's compile-time updatedAt.
+    setSessionCanvas({
+      canvasId: `canvas_${activeAsset!.id}`,
+      // Overwritten server-side with the real, session-verified tenant id
+      // at compile time regardless of what's carried here — see the
+      // compile route's own note.
+      subscriberTenantId: 'pending-server-verification',
+      canvasType: CanvasType.CINEMATIC,
+      title: activeAsset!.title,
+      tracks: [
+        {
+          trackId: 'track-1',
+          trackName: 'المسار الرئيسي',
+          isMuted: false,
+          isHidden: false,
+          nodes: [
+            {
+              nodeId: 'node-1',
+              assetId: activeAsset!.id,
+              assetFamily: activeAsset!.assetFamily!,
+              capabilityOrigin: activeAsset!.capabilityOrigin!,
+            },
+          ],
+        },
+      ],
+      createdAt: 0,
+      updatedAt: 0,
+    });
+    setSpatialForm(DEFAULT_SPATIAL);
+    setSeededForAssetId(activeAsset!.id);
+  } else if (!wantsRealCanvas && seededForAssetId !== null) {
+    setSessionCanvas(null);
+    setSeededForAssetId(null);
+  }
+
+  const activeSpatialDirective = sessionCanvas?.tracks[0]?.nodes[0]?.spatial;
+
+  const handleApplySpatialAdjustment = () => {
+    if (!sessionCanvas) return;
+
+    const mutation: UpdateNodeSpatialPayload = {
+      actionType: CanvasActionType.UPDATE_SPATIAL,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: 'track-1',
+      targetNodeId: 'node-1',
+      spatialUpdates: spatialForm,
+    };
+
+    const updatedCanvas = rasAlAmrStateManager.applyMutation(sessionCanvas, mutation);
+    setSessionCanvas(updatedCanvas);
+  };
+
   // --- Summoning Bridge States ---
   const [isSummonOpen, setIsSummonOpen] = useState<boolean>(false);
   const [selectedVault, setSelectedVault] = useState<string>('');
@@ -183,44 +309,19 @@ export default function RasAmrChamber() {
     return () => clearInterval(interval);
   }, []);
 
-  // --- Real Director Compilation: builds a minimal, honest single-node
-  // SovereignCanvas from the currently active REAL asset and calls the
-  // real, already-certified compile endpoint. Never simulated.
-  const canCompile = Boolean(activeAsset?.isRealAsset && activeAsset.secureStorageUri && activeAsset.assetFamily && activeAsset.capabilityOrigin);
+  // --- Real Director Compilation: compiles the real, per-session
+  // SovereignCanvas (sessionCanvas) — including any real spatial edits
+  // the Creator applied — via the real, already-certified compile
+  // endpoint. Never simulated.
+  const canCompile = Boolean(activeAsset?.isRealAsset && activeAsset.secureStorageUri && sessionCanvas);
 
   const triggerMasterRender = async () => {
-    if (!activeAsset?.isRealAsset || !activeAsset.assetFamily || !activeAsset.capabilityOrigin) return;
+    if (!activeAsset?.isRealAsset || !sessionCanvas) return;
 
     setIsRendering(true);
     setRenderStatus('جاري الصهر الحقيقي عبر بوابة الدخول السيادية...');
 
-    const now = Date.now();
-    const canvas: SovereignCanvas = {
-      canvasId: `canvas_${now}`,
-      // Overwritten server-side with the real, session-verified tenant id
-      // regardless of what's sent here — see the compile route's own note.
-      subscriberTenantId: 'pending-server-verification',
-      canvasType: CanvasType.CINEMATIC,
-      title: activeAsset.title,
-      tracks: [
-        {
-          trackId: 'track-1',
-          trackName: 'المسار الرئيسي',
-          isMuted: false,
-          isHidden: false,
-          nodes: [
-            {
-              nodeId: 'node-1',
-              assetId: activeAsset.id,
-              assetFamily: activeAsset.assetFamily,
-              capabilityOrigin: activeAsset.capabilityOrigin,
-            },
-          ],
-        },
-      ],
-      createdAt: now,
-      updatedAt: now,
-    };
+    const canvas: SovereignCanvas = { ...sessionCanvas, updatedAt: Date.now() };
 
     try {
       const response = await fetch('/api/sovereign/entry/ras-al-amr/compile', {
@@ -236,6 +337,8 @@ export default function RasAmrChamber() {
       }
 
       const compiled = result as CompiledAssemblyGraph;
+      setCompiledGraph(compiled);
+      setCompiledForAssetId(activeAsset.id);
       setRenderStatus(
         `تم الصهر الحقيقي بنجاح — ${compiled.compilationId} — ${compiled.metadata.totalNodes} عنصر مضمَّن`,
       );
@@ -273,7 +376,10 @@ export default function RasAmrChamber() {
 
   // --- Forward to Makman: carries a real handoff payload only for a
   // real, Vault-sourced active asset — the demo seed items forward with
-  // no payload, exactly as before this Package.
+  // no payload, exactly as before this Package. THE CORRIDOR PACKAGE:
+  // also carries the real compiled graph, but ONLY when it was compiled
+  // from the asset currently being forwarded — a stale compile from a
+  // since-replaced active asset must never ride along as if it matched.
   const handleForwardToMakman = () => {
     if (activeAsset?.isRealAsset && activeAsset.secureStorageUri) {
       try {
@@ -283,6 +389,12 @@ export default function RasAmrChamber() {
           secureStorageUri: activeAsset.secureStorageUri,
         }));
         sessionStorage.setItem('azma.transfer.origin', 'ras-amr');
+
+        if (compiledGraph && compiledForAssetId === activeAsset.id) {
+          sessionStorage.setItem('azma.transfer.rasAmrCompiledGraph', JSON.stringify(compiledGraph));
+        } else {
+          sessionStorage.removeItem('azma.transfer.rasAmrCompiledGraph');
+        }
       } catch { /* ignore — navigation still proceeds */ }
     }
     router.push('/makman-al-ghayah');
@@ -452,6 +564,68 @@ export default function RasAmrChamber() {
             ))}
           </div>
 
+          {sessionCanvas && (
+            <div className="spatial-adjust-panel">
+              <header className="panel-header">
+                <div className="neon-tag">REAL — SPATIAL</div>
+                <h2>تعديل مكاني حقيقي</h2>
+                <p>يُطبَّق فعلياً على القماش السيادي ويصل إلى الصهر النهائي — الأدوات أعلاه تبقى تجريبية بانتظار محرك عرض حقيقي</p>
+              </header>
+              <div className="spatial-input-grid">
+                <label>
+                  X
+                  <input
+                    type="number"
+                    value={spatialForm.positionX}
+                    onChange={(e) => setSpatialForm((prev) => ({ ...prev, positionX: Number(e.target.value) }))}
+                  />
+                </label>
+                <label>
+                  Y
+                  <input
+                    type="number"
+                    value={spatialForm.positionY}
+                    onChange={(e) => setSpatialForm((prev) => ({ ...prev, positionY: Number(e.target.value) }))}
+                  />
+                </label>
+                <label>
+                  Scale X
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={spatialForm.scaleX}
+                    onChange={(e) => setSpatialForm((prev) => ({ ...prev, scaleX: Number(e.target.value) }))}
+                  />
+                </label>
+                <label>
+                  Scale Y
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={spatialForm.scaleY}
+                    onChange={(e) => setSpatialForm((prev) => ({ ...prev, scaleY: Number(e.target.value) }))}
+                  />
+                </label>
+                <label>
+                  Rotation°
+                  <input
+                    type="number"
+                    value={spatialForm.rotationDegrees}
+                    onChange={(e) => setSpatialForm((prev) => ({ ...prev, rotationDegrees: Number(e.target.value) }))}
+                  />
+                </label>
+              </div>
+              <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplySpatialAdjustment}>
+                ⇲ تطبيق التعديل المكاني الحقيقي
+              </button>
+              {activeSpatialDirective && (
+                <p className="spatial-current-state">
+                  الحالي: X={activeSpatialDirective.positionX}, Y={activeSpatialDirective.positionY}, Scale=({activeSpatialDirective.scaleX}, {activeSpatialDirective.scaleY}), Rotation={activeSpatialDirective.rotationDegrees}°
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="executive-actions-panel">
             <button
               className={`action-trigger-btn render-btn ${isRendering ? 'rendering' : ''}`}
@@ -465,6 +639,11 @@ export default function RasAmrChamber() {
             <button
               className="action-trigger-btn forward-btn"
               onClick={handleForwardToMakman}
+              title={
+                compiledGraph && compiledForAssetId === activeAsset?.id
+                  ? 'سيصل تجميع حقيقي مختوم إلى مكمن الغاية — جاهز للتوزيع السيادي الحقيقي'
+                  : 'لا يوجد تجميع حقيقي مصهور بعد لهذا الأصل — سيصل عرض أولي فقط'
+              }
             >
               👑 ترحيل العمل المكتمل لـ &quot;مكمن الغاية&quot;
             </button>
