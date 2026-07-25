@@ -18,7 +18,7 @@
 
 import { SovereignVaultDeposit, VaultAsset } from './sovereign-vault-types';
 import { IVaultManager } from '../orchestrator/fleet-materialization/fleet/fleet-dispatcher';
-import { getDb, insertVaultAsset, getVaultAsset } from '../persistent-storage';
+import { getDb, insertVaultAsset, getVaultAsset, listVaultAssetsForTenant } from '../persistent-storage';
 
 export class SovereignVaultManager implements IVaultManager {
   /**
@@ -67,5 +67,14 @@ export class SovereignVaultManager implements IVaultManager {
     }
 
     return asset;
+  }
+
+  /**
+   * INTEGRATION PACKAGE II (2026-07-25): every asset the given tenant
+   * has ever deposited, most recent first — the read path Vault
+   * Palace's real Creator-visible listing depends on.
+   */
+  public async listAssetsForTenant(tenantId: string): Promise<readonly VaultAsset[]> {
+    return listVaultAssetsForTenant(getDb(), tenantId);
   }
 }

@@ -2,6 +2,20 @@
  * AZMA OS – Sovereign Vault Palace
  * The Imperial Residence of Every Citizen.
  * Constitutional Architecture V1.0 — 21 Laws.
+ *
+ * INTEGRATION PACKAGE II — THE FIRST CREATOR-VISIBLE INTEGRATION
+ * (2026-07-25): the treasure catalogue is no longer localStorage-only.
+ * Every real asset Integration Package I deposits into the real
+ * Sovereign Vault (via app/api/vault/assets, session-gated, scoped to
+ * the authenticated Creator) now genuinely appears here — Qiyamah ->
+ * Real Vault -> Vault Palace is, for the first time, one observable
+ * production flow. The PIN/Face/Biometric "gate" and the localStorage
+ * path for the separate Hujjah incoming-transfer ceremony are untouched
+ * — this Package replaced the treasure catalogue's data source, not the
+ * interface. Real treasures carry isRealAsset: true and cannot yet be
+ * sealed, archived, disposed, or duplicated — those actions have no
+ * real backend for real assets, so they're disabled with a visible
+ * explanation rather than silently doing nothing.
  */
 
 'use client';
@@ -10,6 +24,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import './sovereign-vault.css';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
+import { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
+import type { VaultAsset } from '@/src/vault/sovereign-vault-types';
 
 // ── Constitutional Vault Catalogue ────────────────────────────────────────
 
@@ -48,6 +64,12 @@ interface SovereignTreasure {
   status:  'living' | 'sealed' | 'archived';
   addedAt: number;
   journey: JourneyStep[];
+  /** INTEGRATION PACKAGE II: true for a treasure sourced from the real
+      Sovereign Vault (src/vault/sovereign-vault-manager.ts) rather than
+      this page's own localStorage. Real treasures have no real seal/
+      archive/dispose/duplicate backing yet — those actions are disabled,
+      not silently non-functional, for exactly this reason. */
+  isRealAsset?: boolean;
 }
 
 // ── Palace Storage ────────────────────────────────────────────────────────
@@ -70,6 +92,76 @@ function depositToVault(treasure: SovereignTreasure) {
   const existing = data[treasure.vaultId] ?? [];
   data[treasure.vaultId] = [treasure, ...existing.filter((t) => t.id !== treasure.id)];
   writePalace(data);
+}
+
+// ── INTEGRATION PACKAGE II — The Real Sovereign Vault ────────────────────
+// Every treasure below this point is genuinely read from the platform's
+// real, tenant-isolated Vault (src/vault/sovereign-vault-manager.ts),
+// deposited automatically by Integration Package I on every successful
+// Qiyamah generation. localStorage above remains, unmodified, for the
+// separate Hujjah incoming-transfer ceremony this Package does not touch.
+
+/** capabilityTarget has no real 1:1 SOVEREIGN_VAULTS category — this is
+    a principled, disclosed mapping from the real taxonomy onto the
+    nearest fitting existing vault, not an invented one. */
+function capabilityTargetToVaultId(target: CapabilityTarget): string {
+  switch (target) {
+    case CapabilityTarget.VISUAL:
+    case CapabilityTarget.MOTION:
+    case CapabilityTarget.AUDIO:
+      return 'audiovisual';
+    case CapabilityTarget.WRITING:
+    case CapabilityTarget.DIRECTORIAL:
+      return 'documents';
+    default:
+      return 'creative';
+  }
+}
+
+function vaultAssetToTreasure(asset: VaultAsset): SovereignTreasure {
+  const prompt = typeof asset.metadata.generationPrompt === 'string' ? asset.metadata.generationPrompt : null;
+  const style = typeof asset.metadata.generationStyle === 'string' ? asset.metadata.generationStyle : null;
+  return {
+    id:      asset.assetId,
+    titleAr: prompt ? prompt.slice(0, 80) : 'أصل مُولَّد',
+    vaultId: capabilityTargetToVaultId(asset.capabilityTarget),
+    origin:  'حجرة القيامة',
+    preview: style ?? 'أصل حقيقي من القيامة',
+    status:  'living',
+    addedAt: asset.createdAt,
+    journey: [
+      { actionAr: 'تولَّد في حجرة القيامة', chamberAr: 'القيامة', at: asset.createdAt },
+    ],
+    isRealAsset: true,
+  };
+}
+
+async function fetchRealVaultTreasures(): Promise<SovereignTreasure[]> {
+  try {
+    const response = await fetch('/api/vault/assets');
+    if (!response.ok) return [];
+    const result = await response.json();
+    if (result.status !== 'succeeded') return [];
+    return (result.assets as VaultAsset[]).map(vaultAssetToTreasure);
+  } catch {
+    return [];
+  }
+}
+
+/** Merges the real Vault's treasures with whatever localStorage still
+    holds (the Hujjah transfer ceremony), bucketed by vaultId exactly as
+    the existing rendering already expects. */
+function mergeIntoVaultBuckets(
+  local: Record<string, SovereignTreasure[]>,
+  real:  SovereignTreasure[],
+): Record<string, SovereignTreasure[]> {
+  const merged: Record<string, SovereignTreasure[]> = {};
+  for (const [vaultId, list] of Object.entries(local)) merged[vaultId] = [...list];
+  for (const treasure of real) {
+    const existing = merged[treasure.vaultId] ?? [];
+    merged[treasure.vaultId] = [treasure, ...existing.filter((t) => t.id !== treasure.id)];
+  }
+  return merged;
 }
 
 // ── Incoming Transfer Check ───────────────────────────────────────────────
@@ -260,6 +352,12 @@ export default function SovereignVaultPalace() {
     setPhase('opening');
     setCompanionMsg(PALACE_COMPANION.opening);
 
+    // Real Vault fetch begins immediately, in parallel with the 900ms
+    // opening ceremony, so it's ready (or close to it) by the time the
+    // doors finish — same ceremonial timing as before Integration
+    // Package II, now backed by real data.
+    const realTreasuresPromise = fetchRealVaultTreasures();
+
     setTimeout(() => {
       const stored   = readPalace();
       const incoming = popIncomingTransfer();
@@ -276,6 +374,11 @@ export default function SovereignVaultPalace() {
           setCompanionMsg(PALACE_COMPANION.ceremony);
         }, 600);
       }
+
+      realTreasuresPromise.then((real) => {
+        if (real.length === 0) return;
+        setTreasures((prev) => mergeIntoVaultBuckets(prev, real));
+      });
     }, 900);
   }, []);
 
@@ -302,8 +405,7 @@ export default function SovereignVaultPalace() {
   function completeCeremony() {
     if (!incomingTreasure) { setPhase('palace'); return; }
     depositToVault(incomingTreasure);
-    const fresh = readPalace();
-    setTreasures(fresh);
+    refreshTreasuresAfterLocalMutation();
     setIncomingTreasure(null);
     setPhase('palace');
     setCompanionMsg(PALACE_COMPANION.atrium);
@@ -361,6 +463,18 @@ export default function SovereignVaultPalace() {
   }
 
   // ── Actions on Treasure ───────────────────────────────────────────────────
+  // seal/archive/dispose/duplicate mutate the *local* store only — real
+  // Vault-sourced treasures (isRealAsset) never reach these functions,
+  // since their buttons are disabled (see the render below). Each
+  // function re-reads localStorage, then re-merges the real treasures
+  // already in view so a local-only mutation never visually drops the
+  // real portion of the Palace until the next real fetch.
+  function refreshTreasuresAfterLocalMutation() {
+    setTreasures((prev) => {
+      const realStillInView = Object.values(prev).flat().filter((t) => t.isRealAsset);
+      return mergeIntoVaultBuckets(readPalace(), realStillInView);
+    });
+  }
 
   function sealTreasure(id: string) {
     const data = readPalace();
@@ -370,7 +484,7 @@ export default function SovereignVaultPalace() {
       );
     }
     writePalace(data);
-    setTreasures(readPalace());
+    refreshTreasuresAfterLocalMutation();
     setSelectedTreasure(null);
   }
 
@@ -382,7 +496,7 @@ export default function SovereignVaultPalace() {
       );
     }
     writePalace(data);
-    setTreasures(readPalace());
+    refreshTreasuresAfterLocalMutation();
     setSelectedTreasure(null);
   }
 
@@ -392,7 +506,7 @@ export default function SovereignVaultPalace() {
       data[vaultId] = (data[vaultId] ?? []).filter((t) => t.id !== id);
     }
     writePalace(data);
-    setTreasures(readPalace());
+    refreshTreasuresAfterLocalMutation();
     setSelectedTreasure(null);
   }
 
@@ -431,7 +545,7 @@ export default function SovereignVaultPalace() {
       ],
     };
     depositToVault(copy);
-    setTreasures(readPalace());
+    refreshTreasuresAfterLocalMutation();
     setCompanionMsg('نسخة من الكنز وجدت مكانها.');
   }
 
@@ -878,19 +992,27 @@ export default function SovereignVaultPalace() {
                             تحميل على الجهاز
                           </button>
                           <button className="detail-action action-duplicate"
-                            onClick={() => handleDuplicate(selectedTreasure)}>
+                            onClick={() => handleDuplicate(selectedTreasure)}
+                            disabled={selectedTreasure.isRealAsset}
+                            title={selectedTreasure.isRealAsset ? 'قريباً — لا يوجد بعد مسار حقيقي للنسخ داخل الخزانة السيادية' : undefined}>
                             نسخ سيادي
                           </button>
                           <button className="detail-action action-seal"
-                            onClick={() => sealTreasure(selectedTreasure.id)}>
+                            onClick={() => sealTreasure(selectedTreasure.id)}
+                            disabled={selectedTreasure.isRealAsset}
+                            title={selectedTreasure.isRealAsset ? 'قريباً — لا يوجد بعد مسار حقيقي للإحكام داخل الخزانة السيادية' : undefined}>
                             إحكام الكنز
                           </button>
                           <button className="detail-action action-archive"
-                            onClick={() => archiveTreasure(selectedTreasure.id)}>
+                            onClick={() => archiveTreasure(selectedTreasure.id)}
+                            disabled={selectedTreasure.isRealAsset}
+                            title={selectedTreasure.isRealAsset ? 'قريباً — لا يوجد بعد مسار حقيقي للأرشفة داخل الخزانة السيادية' : undefined}>
                             أرشفة ملكية
                           </button>
                           <button className="detail-action action-dispose"
-                            onClick={() => disposeTreasure(selectedTreasure.id)}>
+                            onClick={() => disposeTreasure(selectedTreasure.id)}
+                            disabled={selectedTreasure.isRealAsset}
+                            title={selectedTreasure.isRealAsset ? 'قريباً — لا يوجد بعد مسار حقيقي للإتلاف داخل الخزانة السيادية' : undefined}>
                             إتلاف دائم
                           </button>
                         </div>

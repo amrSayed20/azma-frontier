@@ -2,9 +2,10 @@ jest.mock('../../persistent-storage', () => ({
   getDb: jest.fn(() => 'fake-db-handle'),
   insertVaultAsset: jest.fn(),
   getVaultAsset: jest.fn(),
+  listVaultAssetsForTenant: jest.fn(),
 }));
 
-import { getDb, insertVaultAsset, getVaultAsset } from '../../persistent-storage';
+import { getDb, insertVaultAsset, getVaultAsset, listVaultAssetsForTenant } from '../../persistent-storage';
 import { SovereignVaultManager } from '../sovereign-vault-manager';
 import { AssetFamily } from '../sovereign-vault-types';
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
@@ -12,11 +13,13 @@ import type { SovereignVaultDeposit, VaultAsset } from '../sovereign-vault-types
 
 const mockInsertVaultAsset = insertVaultAsset as jest.Mock;
 const mockGetVaultAsset = getVaultAsset as jest.Mock;
+const mockListVaultAssetsForTenant = listVaultAssetsForTenant as jest.Mock;
 
 describe('SovereignVaultManager — migrated to Persistent Storage Foundation', () => {
   beforeEach(() => {
     mockInsertVaultAsset.mockReset();
     mockGetVaultAsset.mockReset();
+    mockListVaultAssetsForTenant.mockReset();
   });
 
   it('deposits an asset by persisting it through the shared database, preserving its own public contract', async () => {
@@ -68,5 +71,22 @@ describe('SovereignVaultManager — migrated to Persistent Storage Foundation', 
     await expect(manager.getAsset('asset-1', 'tenant-2')).rejects.toThrow(
       'Vault Security Breach: Tenant [tenant-2] attempted to access Asset [asset-1] belonging to another sovereign owner.',
     );
+  });
+
+  it('INTEGRATION PACKAGE II: lists a tenant\'s real assets via the same shared database', async () => {
+    const stored: VaultAsset[] = [
+      {
+        assetId: 'asset-1', subscriberTenantId: 'tenant-1', originatingOperationId: 'op-1',
+        capabilityTarget: CapabilityTarget.VISUAL, assetFamily: AssetFamily.MEDIA,
+        secureStorageUri: 's3://bucket/x.png', metadata: {}, createdAt: 2, updatedAt: 2,
+      },
+    ];
+    mockListVaultAssetsForTenant.mockReturnValue(stored);
+
+    const manager = new SovereignVaultManager();
+    const results = await manager.listAssetsForTenant('tenant-1');
+
+    expect(results).toEqual(stored);
+    expect(mockListVaultAssetsForTenant).toHaveBeenCalledWith('fake-db-handle', 'tenant-1');
   });
 });

@@ -1192,6 +1192,12 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
   letter-spacing: 0.02em;
 }
 
+/* INTEGRATION PACKAGE II: seal/archive/dispose/duplicate have no real
+   backend for Vault-sourced treasures yet — disabled with a visible cue
+   and a title tooltip, never silently non-functional. */
+.detail-action:disabled { opacity: 0.35; cursor: not-allowed; }
+.detail-action:disabled:hover { background: transparent; border-color: rgba(139,101,8,.25); color: var(--text-dim); }
+
 .action-continue:hover { background: rgba(180,40,40,.06); border-color: rgba(180,40,40,.40); color: rgba(220,100,100,.80); }
 .action-creative:hover { background: rgba(120,40,200,.06); border-color: rgba(120,40,200,.40); color: rgba(160,100,220,.80); }
 .action-seal:hover     { background: rgba(212,175,55,.06); border-color: var(--ig-4); color: var(--ig-6); }

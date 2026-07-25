@@ -22,7 +22,7 @@ export { createSession, getActiveSession, deleteSession } from './session-reposi
 export type { GenerationRecord, NewGenerationRecord } from './generation-record-repository';
 export { recordGeneration, listGenerationsForCreator } from './generation-record-repository';
 
-export { insertVaultAsset, getVaultAsset } from './vault-asset-repository';
+export { insertVaultAsset, getVaultAsset, listVaultAssetsForTenant } from './vault-asset-repository';
 
 export type { SubscriptionRecord, NewSubscription, SubscriptionPatch, SubscriptionStatus } from './subscription-repository';
 export {
