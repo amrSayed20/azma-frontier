@@ -79,6 +79,24 @@
  * Render now compiles that real, possibly-edited canvas instead of always
  * building a bare single-node one from scratch — so a real spatial edit
  * genuinely reaches the compiled output for the first time.
+ *
+ * REAL VISUAL + TEMPORAL ADJUSTMENT (2026-07-26, per the Chief Architect's
+ * Minimum Construction directive — extend, don't duplicate): the same
+ * honest pattern as Spatial, extended to the two other directive kinds
+ * the assembly contracts already define with real, well-formed shapes.
+ * pixel-grade and chroma-forge both drive ONE real Visual directive
+ * (opacity/blendMode/optional colorGradeReferenceId — the chamber has
+ * exactly one real 'visual' slot per node, so two buttons sharing one
+ * real editor is honest, not a compromise). neural-sync drives a real
+ * Temporal directive (start time/duration/trim) — "sync" has no real
+ * audio-mixing field to back it, but timing on the master timeline is
+ * the truthful reading of what synchronization means here. ai-director
+ * and optical-flow remain untouched pending their own separately-scoped
+ * packages (the former now has a real constitutional definition — the
+ * Cinematic Direction Decision — but building it is a new package, not
+ * this one; the latter needs a genuinely new contract field, which this
+ * directive's own "don't invent speculative architecture" rule reserves
+ * for an explicit future decision).
  */
 
 'use client';
@@ -89,11 +107,16 @@ import { RasAmrExperience } from '@/src/imperial-experience-engine';
 import type { VaultAsset, AssetFamily } from '@/src/vault/sovereign-vault-types';
 import type { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
 import { CanvasType } from '@/src/chambers/ras-al-amr/assembly-contracts';
-import type { SovereignCanvas, SpatialDirective } from '@/src/chambers/ras-al-amr/assembly-contracts';
+import type { SovereignCanvas, SpatialDirective, TemporalDirective } from '@/src/chambers/ras-al-amr/assembly-contracts';
 import type { CompiledAssemblyGraph } from '@/src/chambers/ras-al-amr/pre-publishing-boundary';
 import { RasAlAmrStateManager } from '@/src/chambers/ras-al-amr/ras-al-amr-state-manager';
 import { CanvasActionType } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
-import type { UpdateNodeSpatialPayload } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
+import type {
+  UpdateNodeSpatialPayload,
+  UpdateNodeTemporalPayload,
+  UpdateNodeAdvancedPayload,
+  VisualFilterDirective,
+} from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
 import './ras-amr.css';
 
 // Pure, stateless transformer (see its own header comment) — one shared
@@ -108,6 +131,21 @@ const DEFAULT_SPATIAL: SpatialDirective = {
   positionY: 0,
   rotationDegrees: 0,
 };
+
+const DEFAULT_VISUAL: VisualFilterDirective = {
+  opacity: 1,
+  blendMode: 'NORMAL',
+  colorGradeReferenceId: undefined,
+};
+
+const DEFAULT_TEMPORAL: TemporalDirective = {
+  globalStartTimeSeconds: 0,
+  playDurationSeconds: 5,
+  trimStartSeconds: undefined,
+  trimEndSeconds: undefined,
+};
+
+const BLEND_MODES: VisualFilterDirective['blendMode'][] = ['NORMAL', 'MULTIPLY', 'SCREEN', 'OVERLAY'];
 
 const CAPABILITY_LABELS: Record<string, { name: string; icon: string }> = {
   VISUAL:      { name: 'الصور المولَّدة',    icon: '🖼️' },
@@ -201,6 +239,11 @@ export default function RasAmrChamber() {
   const [sessionCanvas, setSessionCanvas] = useState<SovereignCanvas | null>(null);
   const [seededForAssetId, setSeededForAssetId] = useState<string | null>(null);
   const [spatialForm, setSpatialForm] = useState<SpatialDirective>(DEFAULT_SPATIAL);
+  // REAL VISUAL + TEMPORAL ADJUSTMENT: same non-destructive pattern as
+  // Spatial, one form each, reset alongside it whenever the session
+  // canvas is reseeded for a newly-active real asset.
+  const [visualForm, setVisualForm] = useState<VisualFilterDirective>(DEFAULT_VISUAL);
+  const [temporalForm, setTemporalForm] = useState<TemporalDirective>(DEFAULT_TEMPORAL);
 
   const wantsRealCanvas = Boolean(activeAsset?.isRealAsset && activeAsset.assetFamily && activeAsset.capabilityOrigin);
 
@@ -237,6 +280,8 @@ export default function RasAmrChamber() {
       updatedAt: 0,
     });
     setSpatialForm(DEFAULT_SPATIAL);
+    setVisualForm(DEFAULT_VISUAL);
+    setTemporalForm(DEFAULT_TEMPORAL);
     setSeededForAssetId(activeAsset!.id);
   } else if (!wantsRealCanvas && seededForAssetId !== null) {
     setSessionCanvas(null);
@@ -255,6 +300,48 @@ export default function RasAmrChamber() {
       targetTrackId: 'track-1',
       targetNodeId: 'node-1',
       spatialUpdates: spatialForm,
+    };
+
+    const updatedCanvas = rasAlAmrStateManager.applyMutation(sessionCanvas, mutation);
+    setSessionCanvas(updatedCanvas);
+  };
+
+  // pixel-grade + chroma-forge share this one real 'visual' directive slot.
+  const activeVisualDirective = sessionCanvas?.tracks[0]?.nodes[0]?.customDirectives?.visual as
+    | VisualFilterDirective
+    | undefined;
+
+  const handleApplyVisualAdjustment = () => {
+    if (!sessionCanvas) return;
+
+    const mutation: UpdateNodeAdvancedPayload = {
+      actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: 'track-1',
+      targetNodeId: 'node-1',
+      directiveKey: 'visual',
+      directivePayload: visualForm,
+    };
+
+    const updatedCanvas = rasAlAmrStateManager.applyMutation(sessionCanvas, mutation);
+    setSessionCanvas(updatedCanvas);
+  };
+
+  // neural-sync drives real timeline timing — the truthful reading of
+  // "synchronization" available in the real assembly contracts today.
+  const activeTemporalDirective = sessionCanvas?.tracks[0]?.nodes[0]?.temporal;
+
+  const handleApplyTemporalAdjustment = () => {
+    if (!sessionCanvas) return;
+
+    const mutation: UpdateNodeTemporalPayload = {
+      actionType: CanvasActionType.UPDATE_TEMPORAL,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: 'track-1',
+      targetNodeId: 'node-1',
+      temporalUpdates: temporalForm,
     };
 
     const updatedCanvas = rasAlAmrStateManager.applyMutation(sessionCanvas, mutation);
@@ -569,7 +656,7 @@ export default function RasAmrChamber() {
               <header className="panel-header">
                 <div className="neon-tag">REAL — SPATIAL</div>
                 <h2>تعديل مكاني حقيقي</h2>
-                <p>يُطبَّق فعلياً على القماش السيادي ويصل إلى الصهر النهائي — الأدوات أعلاه تبقى تجريبية بانتظار محرك عرض حقيقي</p>
+                <p>يُطبَّق فعلياً على القماش السيادي ويصل إلى الصهر النهائي</p>
               </header>
               <div className="spatial-input-grid">
                 <label>
@@ -621,6 +708,106 @@ export default function RasAmrChamber() {
               {activeSpatialDirective && (
                 <p className="spatial-current-state">
                   الحالي: X={activeSpatialDirective.positionX}, Y={activeSpatialDirective.positionY}, Scale=({activeSpatialDirective.scaleX}, {activeSpatialDirective.scaleY}), Rotation={activeSpatialDirective.rotationDegrees}°
+                </p>
+              )}
+            </div>
+          )}
+
+          {sessionCanvas && (
+            <div className="spatial-adjust-panel">
+              <header className="panel-header">
+                <div className="neon-tag">REAL — VISUAL</div>
+                <h2>تعديل بصري حقيقي</h2>
+                <p>يدعم: معالج البكسل + صهر اللون — خانة بصرية حقيقية واحدة يشتركان فيها</p>
+              </header>
+              <div className="spatial-input-grid">
+                <label>
+                  Opacity
+                  <input
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={visualForm.opacity}
+                    onChange={(e) => setVisualForm((prev) => ({ ...prev, opacity: Number(e.target.value) }))}
+                  />
+                </label>
+                <label>
+                  Blend Mode
+                  <select
+                    value={visualForm.blendMode}
+                    onChange={(e) => setVisualForm((prev) => ({ ...prev, blendMode: e.target.value as VisualFilterDirective['blendMode'] }))}
+                  >
+                    {BLEND_MODES.map((mode) => (
+                      <option key={mode} value={mode}>{mode}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplyVisualAdjustment}>
+                🎨 تطبيق التعديل البصري الحقيقي
+              </button>
+              {activeVisualDirective && (
+                <p className="spatial-current-state">
+                  الحالي: Opacity={activeVisualDirective.opacity}, Blend={activeVisualDirective.blendMode}
+                </p>
+              )}
+            </div>
+          )}
+
+          {sessionCanvas && (
+            <div className="spatial-adjust-panel">
+              <header className="panel-header">
+                <div className="neon-tag">REAL — TEMPORAL</div>
+                <h2>تعديل زمني حقيقي</h2>
+                <p>يدعم: المزامنة العصبية للصوت — توقيت حقيقي على الخط الزمني الرئيسي</p>
+              </header>
+              <div className="spatial-input-grid">
+                <label>
+                  بداية (ث)
+                  <input
+                    type="number"
+                    min="0"
+                    value={temporalForm.globalStartTimeSeconds}
+                    onChange={(e) => setTemporalForm((prev) => ({ ...prev, globalStartTimeSeconds: Number(e.target.value) }))}
+                  />
+                </label>
+                <label>
+                  مدة (ث)
+                  <input
+                    type="number"
+                    min="0"
+                    value={temporalForm.playDurationSeconds}
+                    onChange={(e) => setTemporalForm((prev) => ({ ...prev, playDurationSeconds: Number(e.target.value) }))}
+                  />
+                </label>
+                <label>
+                  قص-من (ث)
+                  <input
+                    type="number"
+                    min="0"
+                    value={temporalForm.trimStartSeconds ?? ''}
+                    onChange={(e) => setTemporalForm((prev) => ({ ...prev, trimStartSeconds: e.target.value === '' ? undefined : Number(e.target.value) }))}
+                  />
+                </label>
+                <label>
+                  قص-إلى (ث)
+                  <input
+                    type="number"
+                    min="0"
+                    value={temporalForm.trimEndSeconds ?? ''}
+                    onChange={(e) => setTemporalForm((prev) => ({ ...prev, trimEndSeconds: e.target.value === '' ? undefined : Number(e.target.value) }))}
+                  />
+                </label>
+              </div>
+              <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplyTemporalAdjustment}>
+                🎙 تطبيق التعديل الزمني الحقيقي
+              </button>
+              {activeTemporalDirective && (
+                <p className="spatial-current-state">
+                  الحالي: بداية={activeTemporalDirective.globalStartTimeSeconds}ث، مدة={activeTemporalDirective.playDurationSeconds}ث
+                  {activeTemporalDirective.trimStartSeconds !== undefined ? `، قص-من=${activeTemporalDirective.trimStartSeconds}ث` : ''}
+                  {activeTemporalDirective.trimEndSeconds !== undefined ? `، قص-إلى=${activeTemporalDirective.trimEndSeconds}ث` : ''}
                 </p>
               )}
             </div>

@@ -627,7 +627,8 @@ body, html {
   font-weight: bold;
 }
 
-.spatial-input-grid input {
+.spatial-input-grid input,
+.spatial-input-grid select {
   background: var(--os-surface-elevated);
   border: 1px solid rgba(255, 215, 0, 0.15);
   border-radius: 6px;
@@ -637,7 +638,8 @@ body, html {
   font-family: inherit;
 }
 
-.spatial-input-grid input:focus {
+.spatial-input-grid input:focus,
+.spatial-input-grid select:focus {
   outline: none;
   border-color: var(--neon-gold-bright);
   box-shadow: 0 0 8px var(--neon-gold-shadow);
