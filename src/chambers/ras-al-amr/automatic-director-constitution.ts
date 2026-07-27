@@ -147,6 +147,38 @@
  * justified decisions. Present only when `source === 'formal-goal-
  * contract'` AND the fetched Goal genuinely carries a commercialIntent —
  * never inferred, never defaulted, honestly `undefined` otherwise.
+ *
+ * PACKAGE XII — FULL MAKMAN COMMERCIAL INTENT READ DECISION (2026-07-27):
+ * durability (Package XI) was re-examined as a SEPARATE question from
+ * entitlement — "a durable record is not the same as a public record."
+ * A real, repo-wide search for any consumer that reads
+ * `MakmanCommercialIntent.publisherTenantId` or `.compiledAssemblyGraph`
+ * back OFF a stored/fetched `GoalContract` (as opposed to receiving a
+ * fresh `MakmanCommercialIntent` directly as a same-call parameter, a
+ * different and already-satisfied path) found NONE:
+ * - `MakmanGoalDistributionBridge.bridgeToDestination()` already receives
+ *   the full intent as its own direct parameter, never re-reads it off a
+ *   Goal.
+ * - `PublicConsumptionBoundary`/`SovereignAccessPolicyEngine` read
+ *   `accessPolicy`/`publisherTenantId` off `SovereignPublication` (a
+ *   different object the Bridge already builds), never off `GoalContract`.
+ * - The one real Goal-reading caller, `SOEL.getCreatorGoal()`, has exactly
+ *   one caller in turn — this Chamber's own GET route — and this Chamber
+ *   only ever wanted the scoped view already built in Package XI.
+ *
+ * SUCCESS CRITERION B: no further consumer is constitutionally entitled to
+ * the full `MakmanCommercialIntent`. Recorded as real, tested data — see
+ * `FULL_COMMERCIAL_INTENT_READ_DECISION` below — not prose alone.
+ *
+ * The one real gap this investigation exposed: the GET route itself was
+ * ALREADY serializing the full `commercialIntent` (including
+ * `publisherTenantId`/`compiledAssemblyGraph`) over the network to the
+ * browser, even though nothing ever read those two fields after receipt —
+ * durability had quietly become default network exposure. Fixed at the
+ * route itself (see its own header) by narrowing the response to the same
+ * scoped view Package XI already uses, making the scoped view the actual
+ * SOLE access path end-to-end, not merely the sole path this file's own
+ * functions chose to read from.
  */
 
 // Package X: the real GoalPriority, imported via the same SOEL boundary
@@ -254,6 +286,31 @@ export const FORMAL_GOAL_CONTRACT_READ_PATH: { readonly available: true; readonl
 };
 
 /**
+ * Package XII — recorded as real, tested data (Success Criterion B): no
+ * further consumer beyond this Chamber's own scoped view is
+ * constitutionally entitled to the full MakmanCommercialIntent. `entitled:
+ * false` means "no broader read path is justified today" — flip only if a
+ * real, named consumer is later found and given its own minimum honest
+ * read path, never speculatively.
+ */
+export const FULL_COMMERCIAL_INTENT_READ_DECISION: {
+  readonly entitled: false;
+  readonly soleAccessPath: 'scoped-creator-goal-input-view';
+  readonly reason: string;
+} = {
+  entitled: false,
+  soleAccessPath: 'scoped-creator-goal-input-view',
+  reason:
+    'A repo-wide search found no consumer that reads publisherTenantId or compiledAssemblyGraph back off a ' +
+    'stored/fetched GoalContract: MakmanGoalDistributionBridge and the Consumption Boundary/Access Policy Engine ' +
+    'already receive MakmanCommercialIntent (or the SovereignPublication built from it) as a direct, same-call ' +
+    'parameter, never re-read from a Goal; and the one real Goal-reading path (SOEL.getCreatorGoal(), called only ' +
+    'by this Chamber\'s own GET route) never needed more than accessPolicy/coverArtUri. The GET route\'s own ' +
+    'response is now narrowed to match, so this scoped view is the sole access path end-to-end, not just the ' +
+    'sole path this file chooses to read from.',
+};
+
+/**
  * Derives the real Creator Goal signal from a Vault asset's own
  * metadata.generationPrompt — echoes it verbatim, never interprets,
  * scores, or summarizes it. Pure, deterministic. This remains the
@@ -270,6 +327,30 @@ export function deriveCreatorGoalFromPrompt(generationPrompt: unknown): CreatorG
 }
 
 /**
+ * Package XII — FULL MAKMAN COMMERCIAL INTENT READ DECISION: the exact
+ * shape a caller needs to have genuinely fetched before calling
+ * `deriveCreatorGoalFromFormalContract`/`decideCinematicDirection` with a
+ * formal Goal. Named and exported (rather than left as two duplicate
+ * inline object types) so both this file and automatic-director.ts, and
+ * the API route that actually produces this shape, share one real
+ * definition of "what Ras Al Amr is honestly entitled to read" — not the
+ * full internal `GoalContract`/`MakmanCommercialIntent`. Deliberately
+ * excludes `publisherTenantId` and `compiledAssemblyGraph`: investigation
+ * (Package XII) found no real consumer anywhere in the platform that
+ * reads either field back off a stored Goal — see this function's own
+ * header below for the full account.
+ */
+export interface FormalGoalContractView {
+  readonly description: string;
+  readonly title: string;
+  readonly priority: GoalPriority;
+  readonly commercialIntent?: {
+    readonly accessPolicy: AccessPolicy;
+    readonly coverArtUri?: string;
+  };
+}
+
+/**
  * Derives the Creator Goal signal from a genuinely fetched, tenant-
  * verified GoalContract (Package IX/X/XI). Echoes `description`, `title`,
  * `priority`, and (Package XI) a scoped view of `commercialIntent`
@@ -279,16 +360,17 @@ export function deriveCreatorGoalFromPrompt(generationPrompt: unknown): CreatorG
  * honestly leaves it `undefined`, never defaulted. Pure — takes the
  * contract as a plain value; fetching it is the caller's responsibility,
  * not this function's.
+ *
+ * PACKAGE XII: the parameter type is now the named, exported
+ * `FormalGoalContractView` — the same scoped shape the GET /api/
+ * sovereign/entry/creator-goal/[goalId] route itself now serializes
+ * (see that route's own header), not the full internal `GoalContract`.
+ * A full `GoalContract` still structurally satisfies this type (it has
+ * every field this function reads, and more), so no existing in-process
+ * caller breaks — only the type now honestly states what this function
+ * actually uses, and what the network boundary actually sends.
  */
-export function deriveCreatorGoalFromFormalContract(goal: {
-  readonly description: string;
-  readonly title: string;
-  readonly priority: GoalPriority;
-  readonly commercialIntent?: {
-    readonly accessPolicy: AccessPolicy;
-    readonly coverArtUri?: string;
-  };
-}): CreatorGoalInput {
+export function deriveCreatorGoalFromFormalContract(goal: FormalGoalContractView): CreatorGoalInput {
   return {
     stated: true,
     statedIntent: goal.description,

@@ -6,6 +6,7 @@ import {
   deriveCreatorGoalFromFormalContract,
   determinePrimaryConsideration,
   FORMAL_GOAL_CONTRACT_READ_PATH,
+  FULL_COMMERCIAL_INTENT_READ_DECISION,
 } from '../automatic-director-constitution';
 import { GoalPriority } from '../../makman-al-ghayah/goal-contracts';
 import { DistributionTier } from '../../makman-al-ghayah/publication-contracts';
@@ -182,5 +183,26 @@ describe('Package XI — Commercial Intent Durable Storage', () => {
   it('never invents commercialIntent for prompt-echo — stays undefined, never guessed', () => {
     const goal = deriveCreatorGoalFromPrompt('a raw prompt');
     expect(goal.commercialIntent).toBeUndefined();
+  });
+});
+
+describe('Package XII — Full Makman Commercial Intent Read Decision', () => {
+  it('records, as real tested data, that no consumer is entitled to the full MakmanCommercialIntent — the scoped view remains the sole access path', () => {
+    expect(FULL_COMMERCIAL_INTENT_READ_DECISION.entitled).toBe(false);
+    expect(FULL_COMMERCIAL_INTENT_READ_DECISION.soleAccessPath).toBe('scoped-creator-goal-input-view');
+    expect(FULL_COMMERCIAL_INTENT_READ_DECISION.reason.length).toBeGreaterThan(0);
+  });
+
+  it('still accepts a full GoalContract-shaped object for deriveCreatorGoalFromFormalContract — the narrower FormalGoalContractView type is a subset, not a replacement', () => {
+    const goal = deriveCreatorGoalFromFormalContract({
+      description: 'x',
+      title: 'A Compiled Work',
+      priority: GoalPriority.MEDIUM,
+      commercialIntent: { accessPolicy: { distributionTier: DistributionTier.PUBLIC_FREE, requiresAgeVerification: false } },
+    });
+    expect(goal.commercialIntent).toEqual({
+      accessPolicy: { distributionTier: DistributionTier.PUBLIC_FREE, requiresAgeVerification: false },
+      coverArtUri: undefined,
+    });
   });
 });

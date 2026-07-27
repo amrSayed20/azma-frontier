@@ -210,6 +210,16 @@
  * view of it — distributionTier and whether cover art exists — only when
  * the fetched formal GoalContract genuinely carries one. Never shown for
  * prompt-echo or an older Goal created before this package's own wiring.
+ *
+ * PACKAGE XII — FULL MAKMAN COMMERCIAL INTENT READ DECISION (2026-07-27):
+ * investigated whether any consumer needs the full MakmanCommercialIntent
+ * and found none (see automatic-director-constitution.ts's own
+ * FULL_COMMERCIAL_INTENT_READ_DECISION) — this page never did either. The
+ * `formalGoal` state is now typed `FormalGoalContractView`, not the full
+ * `GoalContract`, matching what the GET route itself now actually sends;
+ * this is a type-honesty correction, not a behavior change — the panel
+ * already only ever read description/title/priority/commercialIntent's
+ * scoped fields.
  */
 
 'use client';
@@ -236,7 +246,7 @@ import type {
 } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
 import { decideCinematicDirection } from '@/src/chambers/ras-al-amr/automatic-director';
 import { validateNarrativeIntegrity } from '@/src/chambers/ras-al-amr/automatic-director-constitution';
-import type { GoalContract } from '@/src/sovereign-entry';
+import type { FormalGoalContractView } from '@/src/chambers/ras-al-amr/automatic-director-constitution';
 import './ras-amr.css';
 
 // Pure, stateless transformer (see its own header comment) — one shared
@@ -564,7 +574,7 @@ export default function RasAmrChamber() {
   // automatic-director-constitution.ts's own Package IX account). Never
   // guesses a goalId; when absent, formalGoal simply stays null and
   // decideCinematicDirection falls back to the honest prompt-echo source.
-  const [formalGoal, setFormalGoal] = useState<GoalContract | null>(null);
+  const [formalGoal, setFormalGoal] = useState<FormalGoalContractView | null>(null);
   const [formalGoalTrackedForId, setFormalGoalTrackedForId] = useState<string | null>(null);
   const activeGoalId = activeVaultAsset?.metadata?.goalId ?? null;
 

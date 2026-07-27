@@ -62,15 +62,24 @@
  * this function's own signature needed no change, since
  * `deriveCreatorGoalFromFormalContract` already accepts the full
  * `GoalContract` and now echoes a scoped view of it when present.
+ *
+ * UPDATE — PACKAGE XII, FULL MAKMAN COMMERCIAL INTENT READ DECISION:
+ * `formalGoal`'s type is now `FormalGoalContractView` (automatic-director-
+ * constitution.ts) instead of the full `GoalContract` — this function
+ * never read anything beyond description/title/priority/commercialIntent
+ * from it, so the parameter type now honestly states what it uses, and
+ * matches what the GET /api/sovereign/entry/creator-goal/[goalId] route
+ * itself now actually sends over the wire (see that route's own header).
+ * A full `GoalContract` still structurally satisfies this narrower type,
+ * so no in-process caller (e.g. tests passing a complete fixture) breaks.
  */
 
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 import type { VaultAsset } from '../../vault/sovereign-vault-types';
 import type { TemporalDirective } from './assembly-contracts';
 import type { StructuralLogicDirective, AudioMixingDirective } from './assembly-directive-payloads';
-import type { EvidenceBasis, CreatorGoalInput, PriorityConsideration } from './automatic-director-constitution';
+import type { EvidenceBasis, CreatorGoalInput, PriorityConsideration, FormalGoalContractView } from './automatic-director-constitution';
 import { deriveCreatorGoalFromPrompt, deriveCreatorGoalFromFormalContract, determinePrimaryConsideration } from './automatic-director-constitution';
-import type { GoalContract } from '../../sovereign-entry';
 
 const FALLBACK_DURATION_SECONDS = 5;
 
@@ -119,7 +128,7 @@ export interface CinematicDirectionDecision {
  * RasAlAmrStateManager.applyMutation() — and, per Package IX, for
  * genuinely fetching `formalGoal` beforehand if one is to be used.
  */
-export function decideCinematicDirection(asset: VaultAsset, formalGoal?: GoalContract): CinematicDirectionDecision {
+export function decideCinematicDirection(asset: VaultAsset, formalGoal?: FormalGoalContractView): CinematicDirectionDecision {
   const creatorGoal = formalGoal
     ? deriveCreatorGoalFromFormalContract(formalGoal)
     : deriveCreatorGoalFromPrompt(asset.metadata?.generationPrompt);
