@@ -212,6 +212,16 @@ describe('The Automatic Director — decideCinematicDirection', () => {
       const decision = decideCinematicDirection(makeAsset(), undefined, 3);
       expect(decision.structural?.executionOrderIndex).toBe(3);
     });
+
+    it('defaults globalStartTimeSeconds to 0 when no start time is supplied — the honest single-node position', () => {
+      const decision = decideCinematicDirection(makeAsset());
+      expect(decision.temporal?.globalStartTimeSeconds).toBe(0);
+    });
+
+    it('reports the real, caller-supplied startTimeSeconds instead of always 0', () => {
+      const decision = decideCinematicDirection(makeAsset(), undefined, 1, 17);
+      expect(decision.temporal?.globalStartTimeSeconds).toBe(17);
+    });
   });
 });
 
@@ -269,5 +279,49 @@ describe('decideMultiNodeCinematicDirection', () => {
     expect(result.nodeDecisions).toEqual([]);
     expect(result.primaryNodeId).toBeNull();
     expect(result.narrativeIntegrity.valid).toBe(true);
+  });
+
+  describe('Package XIV — Timing Signal Foundation', () => {
+    it('starts the first node at 0 and accumulates each real duration into the next node\'s real start time', () => {
+      const result = decideMultiNodeCinematicDirection([
+        { nodeId: 'n1', asset: makeAsset({ assetId: 'a1', metadata: { durationSeconds: 12 } }) },
+        { nodeId: 'n2', asset: makeAsset({ assetId: 'a2', metadata: { durationSeconds: 8 } }) },
+        { nodeId: 'n3', asset: makeAsset({ assetId: 'a3', metadata: { durationSeconds: 5 } }) },
+      ]);
+
+      expect(result.nodeDecisions.map((nd) => nd.decision.temporal?.globalStartTimeSeconds)).toEqual([0, 12, 20]);
+    });
+
+    it('accumulates the honest fallback duration when an asset has no real duration metadata, never skipping it', () => {
+      const result = decideMultiNodeCinematicDirection([
+        { nodeId: 'n1', asset: makeAsset({ assetId: 'a1', metadata: {} }) },
+        { nodeId: 'n2', asset: makeAsset({ assetId: 'a2', metadata: { durationSeconds: 3 } }) },
+      ]);
+
+      expect(result.nodeDecisions[0].decision.temporal?.playDurationSeconds).toBe(5);
+      expect(result.nodeDecisions[1].decision.temporal?.globalStartTimeSeconds).toBe(5);
+    });
+
+    it('does not advance the running start time for a rejected node — it occupies no real time', () => {
+      const result = decideMultiNodeCinematicDirection([
+        { nodeId: 'n1', asset: makeAsset({ assetId: '', metadata: { durationSeconds: 99 } }) },
+        { nodeId: 'n2', asset: makeAsset({ assetId: 'a2', metadata: { durationSeconds: 4 } }) },
+      ]);
+
+      expect(result.nodeDecisions[0].decision.included).toBe(false);
+      expect(result.nodeDecisions[1].decision.temporal?.globalStartTimeSeconds).toBe(0);
+    });
+
+    it('never fabricates rhythm or transitionStrategy across a multi-node set — both stay honestly null', () => {
+      const result = decideMultiNodeCinematicDirection([
+        { nodeId: 'n1', asset: makeAsset({ assetId: 'a1' }) },
+        { nodeId: 'n2', asset: makeAsset({ assetId: 'a2' }) },
+      ]);
+
+      for (const nd of result.nodeDecisions) {
+        expect(nd.decision.rhythm).toBeNull();
+        expect(nd.decision.transitionStrategy).toBeNull();
+      }
+    });
   });
 });

@@ -19,10 +19,16 @@
  * XIII), which composes per-asset decisions rather than replacing them.
  * Real rhythm across a timeline and genuine shot-to-shot transition
  * strategy still have no real destination to apply to yet — both stay
- * honestly `null` on every decision. Fabricating either would repeat the
- * exact "fake precision" mistake this platform has already declined
- * twice (Hujjah's orphaned confidence/verdict engines; Ras Al-Amr's own
- * pixel-grade/chroma-forge/optical-flow).
+ * honestly `null` on every decision, even after Package XIV gave the
+ * Director a real sequential timing basis (see below) — knowing WHEN
+ * each shot starts and ends is not the same as knowing what PACE or
+ * TRANSITION TYPE should govern the cut between them, and no real signal
+ * for either exists anywhere in the platform yet (see
+ * RHYTHM_TRANSITION_TIMING_BASIS, automatic-director-constitution.ts).
+ * Fabricating either would repeat the exact "fake precision" mistake this
+ * platform has already declined twice (Hujjah's orphaned
+ * confidence/verdict engines; Ras Al-Amr's own pixel-grade/chroma-
+ * forge/optical-flow).
  *
  * UPDATE — NARRATIVE CANVAS FOUNDATION: the canvas itself can now hold
  * multiple nodes (see ras-al-amr-state-manager.ts). `decideCinematicDirection`
@@ -82,6 +88,24 @@
  * capable) and the new `determinePrimaryNode` (automatic-director-
  * constitution.ts) — no new rendering, rhythm, or transition logic; no
  * duplicate canvas or orchestration layer. Both functions stay pure.
+ *
+ * UPDATE — PACKAGE XIV, TIMING SIGNAL FOUNDATION: Package XIII fixed
+ * `executionOrderIndex` but left `temporal.globalStartTimeSeconds`
+ * hardcoded to `0` for every node — meaning a real multi-node composition
+ * would have every node claiming to start at the same instant. The one
+ * genuinely real timing signal available anywhere in the platform (see
+ * this file's own investigation, recorded in
+ * `RHYTHM_TRANSITION_TIMING_BASIS`) is each node's own real (or honestly
+ * defaulted) `playDurationSeconds` — from this, `startTimeSeconds`
+ * (new, optional, defaults to `0`) lets a caller supply the real
+ * cumulative sum of every preceding node's own decided duration, so
+ * sequential nodes genuinely no longer overlap. This is arithmetic over
+ * already-real data — the same kind of end-time math
+ * pre-publishing-boundary.ts already performs on applied canvas state —
+ * not a new timing signal invented from nothing. `rhythm` and
+ * `transitionStrategy` remain honestly `null`: a real clock is not the
+ * same as a real cinematic pace or cut-type judgment, and no signal for
+ * either exists yet.
  */
 
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
@@ -132,9 +156,12 @@ export interface CinematicDirectionDecision {
   readonly audio?: AudioMixingDirective;
 
   /**
-   * Rhythm and transition strategy require more than one node to mean
-   * anything real. Honestly undecided rather than fabricated — see this
-   * module's own header.
+   * Rhythm and transition strategy require a real pacing/cut-type signal
+   * this platform does not have — a real sequential timing basis (Package
+   * XIV) tells the Director WHEN a shot starts and ends, not what PACE or
+   * TRANSITION TYPE should govern it. Honestly undecided rather than
+   * fabricated — see this module's own header and
+   * RHYTHM_TRANSITION_TIMING_BASIS (automatic-director-constitution.ts).
    */
   readonly rhythm: null;
   readonly transitionStrategy: null;
@@ -161,11 +188,19 @@ export interface CinematicDirectionDecision {
  * `decideMultiNodeCinematicDirection` below) when reasoning across more
  * than one node; omit it for a genuinely single-node canvas, where `0`
  * remains the honest, real position.
+ *
+ * Package XIV: `startTimeSeconds` is optional and defaults to `0` —
+ * supply the real cumulative sum of every preceding node's own decided
+ * `playDurationSeconds` (e.g. from `decideMultiNodeCinematicDirection`
+ * below) so sequential nodes on one timeline genuinely do not overlap;
+ * omit it for a genuinely single-node canvas, where `0` remains the
+ * honest, real start time.
  */
 export function decideCinematicDirection(
   asset: VaultAsset,
   formalGoal?: FormalGoalContractView,
   orderIndex: number = 0,
+  startTimeSeconds: number = 0,
 ): CinematicDirectionDecision {
   const creatorGoal = formalGoal
     ? deriveCreatorGoalFromFormalContract(formalGoal)
@@ -187,7 +222,7 @@ export function decideCinematicDirection(
 
   const durationSeconds = asset.metadata?.durationSeconds;
   const temporal: TemporalDirective = {
-    globalStartTimeSeconds: 0,
+    globalStartTimeSeconds: startTimeSeconds,
     playDurationSeconds: durationSeconds ?? FALLBACK_DURATION_SECONDS,
   };
 
@@ -238,6 +273,13 @@ export interface NodeCinematicDirection {
  * where genuinely available, an already-fetched `formalGoal`) — this
  * function makes no network call and does not reorder its input; the
  * array's own order IS the real evidence used for `orderIndex`.
+ *
+ * Package XIV: also threads a real, running `startTimeSeconds` through
+ * the set — node 0 starts at `0`; every later node starts at the sum of
+ * every earlier node's own decided `playDurationSeconds`. A rejected node
+ * (no `temporal`) contributes no duration, since it occupies no real time
+ * on the timeline. This is the smallest honest way to make sequential
+ * nodes stop all claiming to start at the same instant.
  */
 export interface MultiNodeCinematicDirectionResult {
   readonly nodeDecisions: readonly NodeCinematicDirection[];
@@ -249,11 +291,18 @@ export interface MultiNodeCinematicDirectionResult {
 export function decideMultiNodeCinematicDirection(
   nodes: readonly { readonly nodeId: string; readonly asset: VaultAsset; readonly formalGoal?: FormalGoalContractView }[],
 ): MultiNodeCinematicDirectionResult {
-  const nodeDecisions: readonly NodeCinematicDirection[] = nodes.map((node, index) => ({
-    nodeId: node.nodeId,
-    assetId: node.asset.assetId,
-    decision: decideCinematicDirection(node.asset, node.formalGoal, index),
-  }));
+  let cumulativeStartTimeSeconds = 0;
+  const nodeDecisions: readonly NodeCinematicDirection[] = nodes.map((node, index) => {
+    const decision = decideCinematicDirection(node.asset, node.formalGoal, index, cumulativeStartTimeSeconds);
+    if (decision.temporal) {
+      cumulativeStartTimeSeconds += decision.temporal.playDurationSeconds;
+    }
+    return {
+      nodeId: node.nodeId,
+      assetId: node.asset.assetId,
+      decision,
+    };
+  });
 
   const narrativeIntegrity = validateNarrativeIntegrity(
     nodeDecisions.map((nodeDecision) => ({

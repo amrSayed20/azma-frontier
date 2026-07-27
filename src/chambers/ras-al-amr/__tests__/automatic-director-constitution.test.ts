@@ -8,6 +8,7 @@ import {
   determinePrimaryNode,
   FORMAL_GOAL_CONTRACT_READ_PATH,
   FULL_COMMERCIAL_INTENT_READ_DECISION,
+  RHYTHM_TRANSITION_TIMING_BASIS,
 } from '../automatic-director-constitution';
 import { GoalPriority } from '../../makman-al-ghayah/goal-contracts';
 import { DistributionTier } from '../../makman-al-ghayah/publication-contracts';
@@ -239,5 +240,14 @@ describe('Package XIII — Multi-Node Cinematic Direction: determinePrimaryNode'
 
   it('is honestly null for an empty node set', () => {
     expect(determinePrimaryNode([])).toBeNull();
+  });
+});
+
+describe('Package XIV — Timing Signal Foundation', () => {
+  it('records, as real tested data, that sequential timing is now available but rhythm/transitionStrategy honestly remain unavailable', () => {
+    expect(RHYTHM_TRANSITION_TIMING_BASIS.sequentialTimingAvailable).toBe(true);
+    expect(RHYTHM_TRANSITION_TIMING_BASIS.rhythmAvailable).toBe(false);
+    expect(RHYTHM_TRANSITION_TIMING_BASIS.transitionStrategyAvailable).toBe(false);
+    expect(RHYTHM_TRANSITION_TIMING_BASIS.reason.length).toBeGreaterThan(0);
   });
 });

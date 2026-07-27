@@ -227,13 +227,22 @@
  * `decideMultiNodeCinematicDirection` (automatic-director.ts). It marks
  * the real primary node (★) when the evidence honestly singles one out,
  * and states plainly when it does not (no stated Goal anywhere, or more
- * than one competing). The selected node's own single-node detail
- * decision (`directorDecision`) now also passes its real array position
- * as `orderIndex`, so its own "narrative order" line reports the genuine
- * position instead of an always-zero placeholder. A formal Goal is still
- * only genuinely fetched for the selected node; every other node's own
- * decision honestly falls back to prompt-echo, exactly as the single-node
- * case already did when no formalGoal was available.
+ * than one competing). A formal Goal is still only genuinely fetched for
+ * the selected node; every other node's own decision honestly falls back
+ * to prompt-echo, exactly as the single-node case already did when no
+ * formalGoal was available.
+ *
+ * PACKAGE XIV — TIMING SIGNAL FOUNDATION (2026-07-27): `directorDecision`
+ * (the selected node's own detail decision) is now derived directly from
+ * `multiNodeDirection` instead of a second, separate
+ * `decideCinematicDirection` call — one source of truth for both its
+ * real `executionOrderIndex` and its real, cumulative
+ * `globalStartTimeSeconds`, rather than two computations that could
+ * honestly drift apart. The Narrative Canvas node list now also shows
+ * each node's real PROPOSED sequential start/end time (from
+ * `multiNodeDirection`) alongside its already-APPLIED one (from the
+ * canvas's own persisted `node.temporal`) — judgment and execution stay
+ * visibly distinct, never conflated.
  */
 
 'use client';
@@ -258,7 +267,7 @@ import type {
   StructuralLogicDirective,
   AudioMixingDirective,
 } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
-import { decideCinematicDirection, decideMultiNodeCinematicDirection } from '@/src/chambers/ras-al-amr/automatic-director';
+import { decideMultiNodeCinematicDirection } from '@/src/chambers/ras-al-amr/automatic-director';
 import { validateNarrativeIntegrity } from '@/src/chambers/ras-al-amr/automatic-director-constitution';
 import type { FormalGoalContractView } from '@/src/chambers/ras-al-amr/automatic-director-constitution';
 import './ras-amr.css';
@@ -618,23 +627,6 @@ export default function RasAmrChamber() {
     };
   }, [activeGoalId]);
 
-  // PACKAGE XIII — MULTI-NODE CINEMATIC DIRECTION: the selected node's own
-  // real position within its track — already-evidenced by the array order
-  // RasAlAmrStateManager itself maintains, never guessed — so this single-
-  // node detail decision reports the SAME real executionOrderIndex the
-  // multi-node judgment below computes for the identical node.
-  const selectedNodeIndex = sessionCanvas?.tracks[0]?.nodes.findIndex((n) => n.nodeId === selectedNodeId) ?? -1;
-
-  const directorDecision = useMemo(
-    () =>
-      activeVaultAsset
-        ? decideCinematicDirection(activeVaultAsset, formalGoal ?? undefined, selectedNodeIndex >= 0 ? selectedNodeIndex : undefined)
-        : null,
-    [activeVaultAsset, formalGoal, selectedNodeIndex],
-  );
-  const activeStructuralDirective = selectedNode?.customDirectives?.structural as StructuralLogicDirective | undefined;
-  const activeAudioDirective = selectedNode?.customDirectives?.audio as AudioMixingDirective | undefined;
-
   // PACKAGE XIII — MULTI-NODE CINEMATIC DIRECTION: reasons across every
   // real node currently on the canvas, not just the selected one. A
   // formal Goal is only genuinely fetched today for the selected node
@@ -658,6 +650,20 @@ export default function RasAmrChamber() {
       .filter((n): n is { nodeId: string; asset: VaultAsset; formalGoal: FormalGoalContractView | undefined } => n !== null);
     return nodesWithAssets.length > 0 ? decideMultiNodeCinematicDirection(nodesWithAssets) : null;
   }, [sessionCanvas, vaultAssets, selectedNodeId, formalGoal]);
+
+  // PACKAGE XIV: derived directly from multiNodeDirection rather than a
+  // second, separate decideCinematicDirection call — the selected node is
+  // always itself a member of the same real node set multiNodeDirection
+  // already reasons across (selectedNodeId can only be set by clicking an
+  // existing canvas node), so this is the single source of truth for its
+  // executionOrderIndex AND its real cumulative globalStartTimeSeconds,
+  // rather than two parallel computations that could honestly drift.
+  const directorDecision = useMemo(
+    () => multiNodeDirection?.nodeDecisions.find((nd) => nd.nodeId === selectedNodeId)?.decision ?? null,
+    [multiNodeDirection, selectedNodeId],
+  );
+  const activeStructuralDirective = selectedNode?.customDirectives?.structural as StructuralLogicDirective | undefined;
+  const activeAudioDirective = selectedNode?.customDirectives?.audio as AudioMixingDirective | undefined;
 
   const handleApplyDirectorDecision = () => {
     if (!sessionCanvas || !selectedNodeId || !directorDecision?.included || !directorDecision.temporal || !directorDecision.structural) return;
@@ -1003,7 +1009,11 @@ export default function RasAmrChamber() {
                     >
                       <button className="narrative-node-select" onClick={() => setSelectedNodeId(node.nodeId)}>
                         #{index + 1} — {node.assetFamily} / {node.capabilityOrigin}
-                        {node.temporal ? ` — ${node.temporal.globalStartTimeSeconds}s→${node.temporal.globalStartTimeSeconds + node.temporal.playDurationSeconds}s` : ''}
+                        {node.temporal ? ` — مُطبَّق ${node.temporal.globalStartTimeSeconds}s→${node.temporal.globalStartTimeSeconds + node.temporal.playDurationSeconds}s` : ''}
+                        {(() => {
+                          const proposed = multiNodeDirection?.nodeDecisions.find((nd) => nd.nodeId === node.nodeId)?.decision.temporal;
+                          return proposed ? ` — مُقترَح ${proposed.globalStartTimeSeconds}s→${proposed.globalStartTimeSeconds + proposed.playDurationSeconds}s` : '';
+                        })()}
                         {multiNodeDirection?.primaryNodeId === node.nodeId ? ' — ★ الاتجاه الأساسي' : ''}
                       </button>
                       <button
@@ -1206,7 +1216,7 @@ export default function RasAmrChamber() {
               ) : (
                 <>
                   <p className="spatial-current-state">
-                    التوقيت: بداية={directorDecision.temporal?.globalStartTimeSeconds}ث، مدة={directorDecision.temporal?.playDurationSeconds}ث
+                    التوقيت: بداية تسلسلية حقيقية={directorDecision.temporal?.globalStartTimeSeconds}ث، مدة={directorDecision.temporal?.playDurationSeconds}ث
                     {' '}({directorDecision.temporalBasis === 'real-evidence' ? 'من بيانات الأصل الحقيقية' : 'قيمة افتراضية — لا بيانات مدة حقيقية'})
                   </p>
                   <p className="spatial-current-state">
@@ -1237,7 +1247,7 @@ export default function RasAmrChamber() {
                     الاعتبار الأساسي (المادة التاسعة): {directorDecision.primaryConsideration}
                   </p>
                   <p className="spatial-current-state">
-                    الإيقاع والانتقال السينمائي: غير محدد بصدق — يتطلبان أكثر من عقدة واحدة ليكون لهما معنى حقيقي، لم يُختلَق بديل
+                    الإيقاع والانتقال السينمائي: غير محدد بصدق — يوجد الآن أساس زمني تسلسلي حقيقي، لكن لا توجد إشارة حقيقية للإيقاع أو نوع الانتقال، فلم يُختلَق بديل
                   </p>
                   <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplyDirectorDecision}>
                     🤖 تطبيق قرار الإخراج الحقيقي

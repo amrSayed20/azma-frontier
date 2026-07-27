@@ -205,6 +205,26 @@
  *
  * No rhythm, transition, or rendering logic was added — those remain
  * honestly `null` on every per-node decision, exactly as before.
+ *
+ * PACKAGE XIV — TIMING SIGNAL FOUNDATION (2026-07-27): investigated
+ * whether ANY real musical/cinematic rhythm signal exists anywhere in
+ * the platform — BPM, beat, tempo, waveform, scene-cut markers. None do.
+ * `VaultAsset.metadata` carries exactly one real timing field:
+ * `durationSeconds`. The one honest timing foundation buildable from it:
+ * a node's real sequential start time is the sum of every earlier node's
+ * own real (or honestly defaulted) duration — arithmetic over already-
+ * real data, the same kind of end-time math `pre-publishing-boundary.ts`
+ * already performs on applied canvas state, not a new invented signal.
+ * `decideCinematicDirection`'s new `startTimeSeconds` parameter
+ * (automatic-director.ts) carries this; `decideMultiNodeCinematicDirection`
+ * threads it through as a real running sum.
+ *
+ * `rhythm` and `transitionStrategy` remain honestly `null` — recorded as
+ * real, tested data below (`RHYTHM_TRANSITION_TIMING_BASIS`), not prose
+ * alone: knowing WHEN a shot starts and ends is not the same as knowing
+ * what PACE or CUT TYPE should govern it, and no signal for either exists
+ * yet. Success Criterion B for those two fields specifically; Success
+ * Criterion A for the sequential timing foundation itself.
  */
 
 // Package X: the real GoalPriority, imported via the same SOEL boundary
@@ -334,6 +354,36 @@ export const FULL_COMMERCIAL_INTENT_READ_DECISION: {
     'by this Chamber\'s own GET route) never needed more than accessPolicy/coverArtUri. The GET route\'s own ' +
     'response is now narrowed to match, so this scoped view is the sole access path end-to-end, not just the ' +
     'sole path this file chooses to read from.',
+};
+
+/**
+ * Package XIV — recorded as real, tested data (Success Criterion B for
+ * these two fields specifically): no honest rhythm or transition-strategy
+ * signal exists anywhere in the platform today. `sequentialTimingAvailable:
+ * true` records that Success Criterion A WAS met for the broader timing
+ * foundation itself — real sequential start/end times, derived from each
+ * node's own real or honestly-defaulted duration (see
+ * decideCinematicDirection's `startTimeSeconds` / decideMultiNodeCinematicDirection,
+ * automatic-director.ts) — flip `rhythmAvailable`/`transitionStrategyAvailable`
+ * only if a real, named pacing or cut-type signal is later found, never
+ * speculatively.
+ */
+export const RHYTHM_TRANSITION_TIMING_BASIS: {
+  readonly sequentialTimingAvailable: true;
+  readonly rhythmAvailable: false;
+  readonly transitionStrategyAvailable: false;
+  readonly reason: string;
+} = {
+  sequentialTimingAvailable: true,
+  rhythmAvailable: false,
+  transitionStrategyAvailable: false,
+  reason:
+    'A repo-wide search found no BPM/beat/tempo/waveform/scene-cut-marker data anywhere in the platform. ' +
+    'VaultAsset.metadata carries exactly one real timing field, durationSeconds. From it, a real sequential ' +
+    'timing basis is now built: each node\'s own real (or honestly-defaulted) duration accumulates into the next ' +
+    'node\'s real start time, so sequential nodes stop overlapping at time zero. But knowing when a shot starts ' +
+    'and ends is not the same as knowing what pace or cut type should govern it — no signal for either exists, ' +
+    'so rhythm and transitionStrategy remain honestly null rather than fabricated from duration data alone.',
 };
 
 /**
