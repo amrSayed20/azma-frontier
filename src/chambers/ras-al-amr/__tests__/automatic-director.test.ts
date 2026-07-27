@@ -1,4 +1,4 @@
-import { decideCinematicDirection } from '../automatic-director';
+import { decideCinematicDirection, decideMultiNodeCinematicDirection } from '../automatic-director';
 import { CapabilityTarget } from '../../../core/sovereign-orchestrator/qiyamah-intent-types';
 import { AssetFamily } from '../../../vault/sovereign-vault-types';
 import type { VaultAsset } from '../../../vault/sovereign-vault-types';
@@ -200,5 +200,74 @@ describe('The Automatic Director — decideCinematicDirection', () => {
       const decision = decideCinematicDirection(makeAsset({ metadata: { generationPrompt: 'a raw prompt' } }));
       expect(decision.creatorGoal.commercialIntent).toBeUndefined();
     });
+  });
+
+  describe('Package XIII — Multi-Node Cinematic Direction', () => {
+    it('defaults executionOrderIndex to 0 when no order is supplied — the honest single-node position', () => {
+      const decision = decideCinematicDirection(makeAsset());
+      expect(decision.structural?.executionOrderIndex).toBe(0);
+    });
+
+    it('reports the real, caller-supplied orderIndex instead of always 0', () => {
+      const decision = decideCinematicDirection(makeAsset(), undefined, 3);
+      expect(decision.structural?.executionOrderIndex).toBe(3);
+    });
+  });
+});
+
+describe('decideMultiNodeCinematicDirection', () => {
+  it('decides each node in its own real array order, reporting that order as executionOrderIndex', () => {
+    const result = decideMultiNodeCinematicDirection([
+      { nodeId: 'n1', asset: makeAsset({ assetId: 'a1' }) },
+      { nodeId: 'n2', asset: makeAsset({ assetId: 'a2' }) },
+      { nodeId: 'n3', asset: makeAsset({ assetId: 'a3' }) },
+    ]);
+
+    expect(result.nodeDecisions.map((nd) => nd.decision.structural?.executionOrderIndex)).toEqual([0, 1, 2]);
+    expect(result.nodeDecisions.map((nd) => nd.nodeId)).toEqual(['n1', 'n2', 'n3']);
+  });
+
+  it('identifies the primary node from a genuinely stated Creator Goal on exactly one node', () => {
+    const result = decideMultiNodeCinematicDirection([
+      { nodeId: 'n1', asset: makeAsset({ assetId: 'a1', metadata: {} }) },
+      { nodeId: 'n2', asset: makeAsset({ assetId: 'a2', metadata: { generationPrompt: 'the empire at dawn' } }) },
+    ]);
+
+    expect(result.primaryNodeId).toBe('n2');
+  });
+
+  it('is honestly null for primaryNodeId when no node has a stated Goal', () => {
+    const result = decideMultiNodeCinematicDirection([
+      { nodeId: 'n1', asset: makeAsset({ assetId: 'a1', metadata: {} }) },
+      { nodeId: 'n2', asset: makeAsset({ assetId: 'a2', metadata: {} }) },
+    ]);
+
+    expect(result.primaryNodeId).toBeNull();
+  });
+
+  it('reuses validateNarrativeIntegrity to flag the same asset appearing in more than one node', () => {
+    const result = decideMultiNodeCinematicDirection([
+      { nodeId: 'n1', asset: makeAsset({ assetId: 'shared-asset' }) },
+      { nodeId: 'n2', asset: makeAsset({ assetId: 'shared-asset' }) },
+    ]);
+
+    expect(result.narrativeIntegrity.valid).toBe(false);
+    expect(result.narrativeIntegrity.violations[0]).toMatch(/more than one node/);
+  });
+
+  it('reports valid narrative integrity for a genuinely well-formed multi-node set', () => {
+    const result = decideMultiNodeCinematicDirection([
+      { nodeId: 'n1', asset: makeAsset({ assetId: 'a1' }) },
+      { nodeId: 'n2', asset: makeAsset({ assetId: 'a2' }) },
+    ]);
+
+    expect(result.narrativeIntegrity.valid).toBe(true);
+  });
+
+  it('is honest and empty for an empty node set — never fabricates a decision', () => {
+    const result = decideMultiNodeCinematicDirection([]);
+    expect(result.nodeDecisions).toEqual([]);
+    expect(result.primaryNodeId).toBeNull();
+    expect(result.narrativeIntegrity.valid).toBe(true);
   });
 });

@@ -11,25 +11,23 @@
  * module only decides. It never mutates a canvas and never generates
  * media itself.
  *
- * SCOPE, DISCLOSED: the real, live Ras Al-Amr canvas is deliberately
- * single-node today (one active Vault asset per session — see the Real
- * Spatial/Visual/Temporal Adjustment Packages). Narrative sequencing
- * across MULTIPLE assets, real rhythm across a timeline, and genuine
- * shot-to-shot transition strategy therefore have no real destination to
- * apply to yet. Fabricating a multi-asset decision the platform cannot
- * execute would repeat the exact "fake precision" mistake this platform
- * has already declined twice (Hujjah's orphaned confidence/verdict
- * engines; Ras Al-Amr's own pixel-grade/chroma-forge/optical-flow). This
- * first implementation makes real, grounded decisions for the one node
- * the architecture can actually apply today, and is explicit about which
- * facets of the full constitutional spec do not yet have a real
- * destination (`rhythm`/`transitionStrategy` are `null`, not fabricated).
+ * SCOPE, DISCLOSED: `decideCinematicDirection` itself still judges one
+ * Vault asset at a time — that per-asset judgment is a real, complete
+ * unit of work on its own (see the Real Spatial/Visual/Temporal
+ * Adjustment Packages). Narrative sequencing ACROSS multiple assets is
+ * now handled by `decideMultiNodeCinematicDirection` below (Package
+ * XIII), which composes per-asset decisions rather than replacing them.
+ * Real rhythm across a timeline and genuine shot-to-shot transition
+ * strategy still have no real destination to apply to yet — both stay
+ * honestly `null` on every decision. Fabricating either would repeat the
+ * exact "fake precision" mistake this platform has already declined
+ * twice (Hujjah's orphaned confidence/verdict engines; Ras Al-Amr's own
+ * pixel-grade/chroma-forge/optical-flow).
  *
  * UPDATE — NARRATIVE CANVAS FOUNDATION: the canvas itself can now hold
- * multiple nodes (see ras-al-amr-state-manager.ts), but this function's
- * own reasoning is still deliberately per-asset — it has not been
- * extended to reason across multiple nodes at once, since that would be
- * real new sequencing intelligence, out of scope for that package.
+ * multiple nodes (see ras-al-amr-state-manager.ts). `decideCinematicDirection`
+ * itself remains deliberately per-asset (see Package XIII below for how
+ * multiple nodes are actually reasoned across).
  *
  * UPDATE — PACKAGE VI, THE CINEMATIC JUDGMENT CONSTITUTION
  * (automatic-director-constitution.ts): `temporalBasis` now shares its
@@ -72,14 +70,38 @@
  * itself now actually sends over the wire (see that route's own header).
  * A full `GoalContract` still structurally satisfies this narrower type,
  * so no in-process caller (e.g. tests passing a complete fixture) breaks.
+ *
+ * UPDATE — PACKAGE XIII, MULTI-NODE CINEMATIC DIRECTION:
+ * `decideCinematicDirection` now accepts an optional `orderIndex`
+ * (defaulting to `0`, preserving every existing call site's behavior
+ * unchanged) so a caller reasoning across a real, ordered set of nodes
+ * can supply each node's genuine array position — real, already-evidenced
+ * data, never fabricated. The new `decideMultiNodeCinematicDirection`
+ * composes this function across a whole node set, reusing
+ * `validateNarrativeIntegrity` (Article III/IV, already cross-node-
+ * capable) and the new `determinePrimaryNode` (automatic-director-
+ * constitution.ts) — no new rendering, rhythm, or transition logic; no
+ * duplicate canvas or orchestration layer. Both functions stay pure.
  */
 
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 import type { VaultAsset } from '../../vault/sovereign-vault-types';
 import type { TemporalDirective } from './assembly-contracts';
 import type { StructuralLogicDirective, AudioMixingDirective } from './assembly-directive-payloads';
-import type { EvidenceBasis, CreatorGoalInput, PriorityConsideration, FormalGoalContractView } from './automatic-director-constitution';
-import { deriveCreatorGoalFromPrompt, deriveCreatorGoalFromFormalContract, determinePrimaryConsideration } from './automatic-director-constitution';
+import type {
+  EvidenceBasis,
+  CreatorGoalInput,
+  PriorityConsideration,
+  FormalGoalContractView,
+  NarrativeIntegrityResult,
+} from './automatic-director-constitution';
+import {
+  deriveCreatorGoalFromPrompt,
+  deriveCreatorGoalFromFormalContract,
+  determinePrimaryConsideration,
+  validateNarrativeIntegrity,
+  determinePrimaryNode,
+} from './automatic-director-constitution';
 
 const FALLBACK_DURATION_SECONDS = 5;
 
@@ -97,7 +119,13 @@ export interface CinematicDirectionDecision {
   readonly temporal?: TemporalDirective;
   readonly temporalBasis: EvidenceBasis;
 
-  /** Narrative sequencing — real within today's single-node scope (always the first position). */
+  /**
+   * Narrative sequencing — the asset's real position when a caller
+   * genuinely knows one (Package XIII's `orderIndex`, e.g. a node's real
+   * array position within its track); defaults to the first position (0)
+   * when no order is supplied, which remains accurate for a genuinely
+   * single-node canvas.
+   */
   readonly structural?: StructuralLogicDirective;
 
   /** Audio/music placement — decided only for an asset that actually originated from the AUDIO capability. */
@@ -127,8 +155,18 @@ export interface CinematicDirectionDecision {
  * function itself) is responsible for feeding the result into
  * RasAlAmrStateManager.applyMutation() — and, per Package IX, for
  * genuinely fetching `formalGoal` beforehand if one is to be used.
+ *
+ * Package XIII: `orderIndex` is optional and defaults to `0` — supply the
+ * asset's real position within its track (e.g. from
+ * `decideMultiNodeCinematicDirection` below) when reasoning across more
+ * than one node; omit it for a genuinely single-node canvas, where `0`
+ * remains the honest, real position.
  */
-export function decideCinematicDirection(asset: VaultAsset, formalGoal?: FormalGoalContractView): CinematicDirectionDecision {
+export function decideCinematicDirection(
+  asset: VaultAsset,
+  formalGoal?: FormalGoalContractView,
+  orderIndex: number = 0,
+): CinematicDirectionDecision {
   const creatorGoal = formalGoal
     ? deriveCreatorGoalFromFormalContract(formalGoal)
     : deriveCreatorGoalFromPrompt(asset.metadata?.generationPrompt);
@@ -154,7 +192,7 @@ export function decideCinematicDirection(asset: VaultAsset, formalGoal?: FormalG
   };
 
   const structural: StructuralLogicDirective = {
-    executionOrderIndex: 0,
+    executionOrderIndex: orderIndex,
   };
 
   const audio: AudioMixingDirective | undefined =
@@ -175,4 +213,59 @@ export function decideCinematicDirection(asset: VaultAsset, formalGoal?: FormalG
     creatorGoal,
     primaryConsideration: determinePrimaryConsideration(creatorGoal),
   };
+}
+
+/** One real node's own Cinematic Direction Decision, identified by the real ids that produced it. */
+export interface NodeCinematicDirection {
+  readonly nodeId: string;
+  readonly assetId: string;
+  readonly decision: CinematicDirectionDecision;
+}
+
+/**
+ * Package XIII — the real composition judgment across a whole node set.
+ * Pure and deterministic: composes `decideCinematicDirection` once per
+ * node (passing each node's own real array position as `orderIndex`),
+ * then reuses `validateNarrativeIntegrity` (Article III/IV) and
+ * `determinePrimaryNode` (Article IX extended) to judge the SET, not just
+ * its individual members. No new rendering, rhythm, transition, or
+ * sequencing logic — every fact here already existed somewhere in the
+ * platform; this function is the smallest honest way to compose them for
+ * more than one node at once.
+ *
+ * `nodes` is supplied in the caller's own real order (e.g. a track's
+ * `AssemblyNode[]`, each paired with its already-fetched `VaultAsset` and,
+ * where genuinely available, an already-fetched `formalGoal`) — this
+ * function makes no network call and does not reorder its input; the
+ * array's own order IS the real evidence used for `orderIndex`.
+ */
+export interface MultiNodeCinematicDirectionResult {
+  readonly nodeDecisions: readonly NodeCinematicDirection[];
+  readonly narrativeIntegrity: NarrativeIntegrityResult;
+  /** The one node genuinely representing the Creator's primary stated direction, or `null` when the evidence does not honestly single one out — see determinePrimaryNode. */
+  readonly primaryNodeId: string | null;
+}
+
+export function decideMultiNodeCinematicDirection(
+  nodes: readonly { readonly nodeId: string; readonly asset: VaultAsset; readonly formalGoal?: FormalGoalContractView }[],
+): MultiNodeCinematicDirectionResult {
+  const nodeDecisions: readonly NodeCinematicDirection[] = nodes.map((node, index) => ({
+    nodeId: node.nodeId,
+    assetId: node.asset.assetId,
+    decision: decideCinematicDirection(node.asset, node.formalGoal, index),
+  }));
+
+  const narrativeIntegrity = validateNarrativeIntegrity(
+    nodeDecisions.map((nodeDecision) => ({
+      nodeId: nodeDecision.nodeId,
+      assetId: nodeDecision.assetId,
+      temporal: nodeDecision.decision.temporal,
+    })),
+  );
+
+  const primaryNodeId = determinePrimaryNode(
+    nodeDecisions.map((nodeDecision) => ({ nodeId: nodeDecision.nodeId, creatorGoal: nodeDecision.decision.creatorGoal })),
+  );
+
+  return { nodeDecisions, narrativeIntegrity, primaryNodeId };
 }

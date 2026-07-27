@@ -179,6 +179,32 @@
  * scoped view Package XI already uses, making the scoped view the actual
  * SOLE access path end-to-end, not merely the sole path this file's own
  * functions chose to read from.
+ *
+ * PACKAGE XIII — MULTI-NODE CINEMATIC DIRECTION (2026-07-27): the
+ * Narrative Canvas has been able to hold multiple real nodes since the
+ * Narrative Canvas Foundation package; this file's own judgment layer had
+ * not been extended to reason across them. `determinePrimaryNode` below
+ * is the one new judgment rule this package adds — it identifies which
+ * node, among several, represents the Creator's primary stated direction,
+ * reusing the exact same per-node `creatorGoal.stated` evidence Package
+ * VII already established, never a new score. Honestly returns `null`
+ * when zero or more than one node has a stated Goal — a real,
+ * undismissed ambiguity, not resolved by guessing from array position.
+ *
+ * Sequencing itself required no new invented signal either: a node's
+ * position within its track's own array IS real, already-evidenced order
+ * (RasAlAmrStateManager.handleAddNode appends to the end of the array;
+ * nothing about that position is fabricated) — `decideCinematicDirection`
+ * (automatic-director.ts) now accepts this real index instead of always
+ * hardcoding it to 0. Cross-node narrative integrity required no new rule
+ * at all: `validateNarrativeIntegrity` (Article III/IV, Package VI) was
+ * already cross-node-capable from the day it was built — the new
+ * `decideMultiNodeCinematicDirection` (automatic-director.ts) simply
+ * reuses it directly on the assembled per-node decisions, rather than
+ * requiring every caller to remember to invoke it separately.
+ *
+ * No rhythm, transition, or rendering logic was added — those remain
+ * honestly `null` on every per-node decision, exactly as before.
  */
 
 // Package X: the real GoalPriority, imported via the same SOEL boundary
@@ -399,6 +425,37 @@ export function deriveCreatorGoalFromFormalContract(goal: FormalGoalContractView
  */
 export function determinePrimaryConsideration(goal: CreatorGoalInput): PriorityConsideration {
   return goal.stated ? resolvePriorityConflict('creator-goal', 'constitutional-identity') : 'constitutional-identity';
+}
+
+// ── Package XIII — Article IX extended to multiple nodes ────────────────
+// determinePrimaryConsideration (above) answers "which hierarchy tier
+// drives ONE node's decision." determinePrimaryNode answers the sibling
+// question a real multi-node canvas now raises: "which NODE, among
+// several, represents the platform's primary cinematic direction." It
+// reuses the exact same real evidence — whether a node's own decision
+// carries a genuinely stated Creator Goal — rather than inventing a new
+// scoring signal. Array position alone is never used to break a tie: a
+// position is where a node sits, not evidence of what the Creator wants.
+
+export interface NodeGoalEvidence {
+  readonly nodeId: string;
+  readonly creatorGoal: CreatorGoalInput;
+}
+
+/**
+ * Identifies the one node, among several, that genuinely represents the
+ * Creator's stated direction — per Article IX, a stated Creator Goal
+ * outranks every other consideration, so a node that has one is the only
+ * honest candidate for "primary." Returns the sole such node's id when
+ * exactly one node qualifies. Returns `null` — never a guess — when zero
+ * nodes carry a stated Goal (nothing real to prefer) or more than one
+ * does (a real, unresolved conflict between competing stated Goals; this
+ * package declines to break that tie by array position or any other
+ * fabricated tiebreaker). Pure, deterministic, no side effects.
+ */
+export function determinePrimaryNode(nodes: readonly NodeGoalEvidence[]): string | null {
+  const withStatedGoal = nodes.filter((node) => node.creatorGoal.stated);
+  return withStatedGoal.length === 1 ? withStatedGoal[0].nodeId : null;
 }
 
 // ── Article X — Constitutional Humility ──────────────────────────────────

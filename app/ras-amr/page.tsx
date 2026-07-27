@@ -220,6 +220,20 @@
  * this is a type-honesty correction, not a behavior change — the panel
  * already only ever read description/title/priority/commercialIntent's
  * scoped fields.
+ *
+ * PACKAGE XIII — MULTI-NODE CINEMATIC DIRECTION (2026-07-27): the
+ * Narrative Canvas panel now also computes `multiNodeDirection` — a real
+ * judgment across every node currently on the canvas, via the new
+ * `decideMultiNodeCinematicDirection` (automatic-director.ts). It marks
+ * the real primary node (★) when the evidence honestly singles one out,
+ * and states plainly when it does not (no stated Goal anywhere, or more
+ * than one competing). The selected node's own single-node detail
+ * decision (`directorDecision`) now also passes its real array position
+ * as `orderIndex`, so its own "narrative order" line reports the genuine
+ * position instead of an always-zero placeholder. A formal Goal is still
+ * only genuinely fetched for the selected node; every other node's own
+ * decision honestly falls back to prompt-echo, exactly as the single-node
+ * case already did when no formalGoal was available.
  */
 
 'use client';
@@ -244,7 +258,7 @@ import type {
   StructuralLogicDirective,
   AudioMixingDirective,
 } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
-import { decideCinematicDirection } from '@/src/chambers/ras-al-amr/automatic-director';
+import { decideCinematicDirection, decideMultiNodeCinematicDirection } from '@/src/chambers/ras-al-amr/automatic-director';
 import { validateNarrativeIntegrity } from '@/src/chambers/ras-al-amr/automatic-director-constitution';
 import type { FormalGoalContractView } from '@/src/chambers/ras-al-amr/automatic-director-constitution';
 import './ras-amr.css';
@@ -604,12 +618,46 @@ export default function RasAmrChamber() {
     };
   }, [activeGoalId]);
 
+  // PACKAGE XIII — MULTI-NODE CINEMATIC DIRECTION: the selected node's own
+  // real position within its track — already-evidenced by the array order
+  // RasAlAmrStateManager itself maintains, never guessed — so this single-
+  // node detail decision reports the SAME real executionOrderIndex the
+  // multi-node judgment below computes for the identical node.
+  const selectedNodeIndex = sessionCanvas?.tracks[0]?.nodes.findIndex((n) => n.nodeId === selectedNodeId) ?? -1;
+
   const directorDecision = useMemo(
-    () => (activeVaultAsset ? decideCinematicDirection(activeVaultAsset, formalGoal ?? undefined) : null),
-    [activeVaultAsset, formalGoal],
+    () =>
+      activeVaultAsset
+        ? decideCinematicDirection(activeVaultAsset, formalGoal ?? undefined, selectedNodeIndex >= 0 ? selectedNodeIndex : undefined)
+        : null,
+    [activeVaultAsset, formalGoal, selectedNodeIndex],
   );
   const activeStructuralDirective = selectedNode?.customDirectives?.structural as StructuralLogicDirective | undefined;
   const activeAudioDirective = selectedNode?.customDirectives?.audio as AudioMixingDirective | undefined;
+
+  // PACKAGE XIII — MULTI-NODE CINEMATIC DIRECTION: reasons across every
+  // real node currently on the canvas, not just the selected one. A
+  // formal Goal is only genuinely fetched today for the selected node
+  // (see the effect above) — every other node honestly falls back to its
+  // own prompt-echo inside decideCinematicDirection, exactly like the
+  // single-node case already does when no formalGoal is available. Nodes
+  // whose own Vault asset can no longer be resolved are excluded, the
+  // same tolerance activeVaultAsset's own lookup already accepts.
+  const multiNodeDirection = useMemo(() => {
+    if (!sessionCanvas) return null;
+    const nodesWithAssets = sessionCanvas.tracks[0].nodes
+      .map((node) => {
+        const asset = vaultAssets.find((a) => a.assetId === node.assetId);
+        if (!asset) return null;
+        return {
+          nodeId: node.nodeId,
+          asset,
+          formalGoal: node.nodeId === selectedNodeId ? (formalGoal ?? undefined) : undefined,
+        };
+      })
+      .filter((n): n is { nodeId: string; asset: VaultAsset; formalGoal: FormalGoalContractView | undefined } => n !== null);
+    return nodesWithAssets.length > 0 ? decideMultiNodeCinematicDirection(nodesWithAssets) : null;
+  }, [sessionCanvas, vaultAssets, selectedNodeId, formalGoal]);
 
   const handleApplyDirectorDecision = () => {
     if (!sessionCanvas || !selectedNodeId || !directorDecision?.included || !directorDecision.temporal || !directorDecision.structural) return;
@@ -933,7 +981,7 @@ export default function RasAmrChamber() {
               <header className="panel-header">
                 <div className="neon-tag">REAL — NARRATIVE CANVAS</div>
                 <h2>القماش السردي</h2>
-                <p>مساحة عمل سينمائية واحدة تتّسع لعدة أصول إنتاجية حقيقية — بنية فقط، بلا تنفيذ وبلا ذكاء تسلسلي</p>
+                <p>مساحة عمل سينمائية واحدة تتّسع لعدة أصول إنتاجية حقيقية — الترتيب الحقيقي والاتجاه الأساسي يُحكَمان الآن عبر العقد، بلا تنفيذ وبلا إيقاع أو انتقال مُختلَق</p>
               </header>
 
               <button
@@ -956,6 +1004,7 @@ export default function RasAmrChamber() {
                       <button className="narrative-node-select" onClick={() => setSelectedNodeId(node.nodeId)}>
                         #{index + 1} — {node.assetFamily} / {node.capabilityOrigin}
                         {node.temporal ? ` — ${node.temporal.globalStartTimeSeconds}s→${node.temporal.globalStartTimeSeconds + node.temporal.playDurationSeconds}s` : ''}
+                        {multiNodeDirection?.primaryNodeId === node.nodeId ? ' — ★ الاتجاه الأساسي' : ''}
                       </button>
                       <button
                         className="narrative-node-remove"
@@ -971,6 +1020,13 @@ export default function RasAmrChamber() {
               {narrativeIntegrity && !narrativeIntegrity.valid && (
                 <p className="spatial-current-state narrative-integrity-violation">
                   انتهاك للسلامة السردية: {narrativeIntegrity.violations.join(' — ')}
+                </p>
+              )}
+              {multiNodeDirection && multiNodeDirection.nodeDecisions.length > 1 && (
+                <p className="spatial-current-state">
+                  {multiNodeDirection.primaryNodeId
+                    ? 'تم تحديد اتجاه أساسي حقيقي واحد من بين العقد بناءً على هدف خالق مصرَّح به فعلياً.'
+                    : 'لا يوجد اتجاه أساسي محدَّد بثقة بين هذه العقد — إمّا لا يوجد هدف خالق مصرَّح به لأي عقدة، أو أكثر من عقدة تحمل هدفاً متنافساً؛ لم يُفتَرض ترتيب اعتباطي.'}
                 </p>
               )}
             </div>
@@ -1154,7 +1210,7 @@ export default function RasAmrChamber() {
                     {' '}({directorDecision.temporalBasis === 'real-evidence' ? 'من بيانات الأصل الحقيقية' : 'قيمة افتراضية — لا بيانات مدة حقيقية'})
                   </p>
                   <p className="spatial-current-state">
-                    الترتيب السردي: الموضع {directorDecision.structural?.executionOrderIndex} (نطاق عقدة واحدة اليوم)
+                    الترتيب السردي: الموضع {directorDecision.structural?.executionOrderIndex} (الموضع الحقيقي ضمن القماش)
                   </p>
                   {directorDecision.audio && (
                     <p className="spatial-current-state">الصوت: مستوى={directorDecision.audio.volumeDb}dB، توازن={directorDecision.audio.panCenter}</p>

@@ -5,6 +5,7 @@ import {
   deriveCreatorGoalFromPrompt,
   deriveCreatorGoalFromFormalContract,
   determinePrimaryConsideration,
+  determinePrimaryNode,
   FORMAL_GOAL_CONTRACT_READ_PATH,
   FULL_COMMERCIAL_INTENT_READ_DECISION,
 } from '../automatic-director-constitution';
@@ -204,5 +205,39 @@ describe('Package XII — Full Makman Commercial Intent Read Decision', () => {
       accessPolicy: { distributionTier: DistributionTier.PUBLIC_FREE, requiresAgeVerification: false },
       coverArtUri: undefined,
     });
+  });
+});
+
+describe('Package XIII — Multi-Node Cinematic Direction: determinePrimaryNode', () => {
+  it('identifies the sole node genuinely carrying a stated Creator Goal as the primary node', () => {
+    expect(
+      determinePrimaryNode([
+        { nodeId: 'n1', creatorGoal: { stated: false, source: 'asset-prompt-echo' } },
+        { nodeId: 'n2', creatorGoal: { stated: true, statedIntent: 'the empire at dawn', source: 'asset-prompt-echo' } },
+        { nodeId: 'n3', creatorGoal: { stated: false, source: 'asset-prompt-echo' } },
+      ]),
+    ).toBe('n2');
+  });
+
+  it('is honestly null when no node carries a stated Goal — never guesses from array position', () => {
+    expect(
+      determinePrimaryNode([
+        { nodeId: 'n1', creatorGoal: { stated: false, source: 'asset-prompt-echo' } },
+        { nodeId: 'n2', creatorGoal: { stated: false, source: 'asset-prompt-echo' } },
+      ]),
+    ).toBeNull();
+  });
+
+  it('is honestly null when more than one node carries a stated Goal — declines to break a real conflict by guessing', () => {
+    expect(
+      determinePrimaryNode([
+        { nodeId: 'n1', creatorGoal: { stated: true, statedIntent: 'a', source: 'asset-prompt-echo' } },
+        { nodeId: 'n2', creatorGoal: { stated: true, statedIntent: 'b', source: 'asset-prompt-echo' } },
+      ]),
+    ).toBeNull();
+  });
+
+  it('is honestly null for an empty node set', () => {
+    expect(determinePrimaryNode([])).toBeNull();
   });
 });
