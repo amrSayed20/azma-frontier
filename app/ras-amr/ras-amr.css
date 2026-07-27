@@ -660,6 +660,64 @@ body, html {
   font-family: monospace;
 }
 
+.narrative-integrity-violation {
+  margin-top: 6px;
+  color: var(--neon-gold-bright);
+  font-weight: 700;
+}
+
+.narrative-canvas-node-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.narrative-canvas-node {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--neon-gold-dim);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.narrative-canvas-node.node-selected {
+  border-color: var(--neon-gold-bright);
+  background: rgba(255, 215, 0, 0.08);
+}
+
+.narrative-node-select {
+  flex: 1;
+  text-align: right;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: monospace;
+  font-size: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.node-selected .narrative-node-select {
+  color: var(--neon-gold-bright);
+}
+
+.narrative-node-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 8px 10px;
+}
+
+.narrative-node-remove:hover {
+  color: var(--neon-gold-bright);
+}
+
 .forward-btn:hover {
   background: rgba(255, 215, 0, 0.05);
   border-color: var(--neon-gold-bright);

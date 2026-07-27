@@ -93,6 +93,21 @@ export class GoalState {
   }
 
   /**
+   * PACKAGE IX — FORMAL GOAL CONTRACT TRIAD CLOSURE: returns only the
+   * Goals belonging to one sovereign owner. getGoals() alone is unsafe
+   * to expose across a tenant boundary — this is the tenant-respecting
+   * read SOEL's own forward actually uses.
+   */
+  public getGoalsForTenant(
+    subscriberTenantId: string
+  ): readonly GoalContract[] {
+
+    return Array.from(
+      this.goals.values()
+    ).filter((goal) => goal.subscriberTenantId === subscriberTenantId);
+  }
+
+  /**
    * Removes a goal.
    * ARTICLE VII / ARTICLE VIII: rejected without Creator Authorization.
    */

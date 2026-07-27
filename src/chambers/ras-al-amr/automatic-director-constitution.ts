@@ -1,0 +1,380 @@
+/**
+ * AZMA OS — Ras Al-Amr: The Automatic Director's Cinematic Judgment
+ * Constitution
+ *
+ * Per "RAS AL AMR CONSTITUTION — THE AUTOMATIC DIRECTOR — Constitutional
+ * Charter, Version I" (2026-07-27, ratified) and Package VI's
+ * authorization to build "the smallest possible constitutional layer
+ * that defines how the Automatic Director judges, prioritizes, and
+ * resolves cinematic decisions." This file is that layer: judgment
+ * rules, not execution behavior. It follows the same declarative
+ * CONSTITUTIONAL_CONTRACT pattern already established for IXE/IAE/IME
+ * (purpose/responsibilities/non-responsibilities as real, typed,
+ * exported data) rather than inventing a new documentation convention.
+ *
+ * WHAT IS AND ISN'T A LIVE RUNTIME CALLER HERE, DISCLOSED HONESTLY:
+ * PRIORITY_HIERARCHY and AUTOMATIC_DIRECTOR_SUBORDINATION are reference
+ * data — real, typed — exactly like IAE/IME's own certified contracts.
+ * AUTOMATIC_DIRECTOR_SUBORDINATION remains uncalled by design (it is a
+ * boundary statement, not logic). PRIORITY_HIERARCHY now has a genuine
+ * first caller (see determinePrimaryConsideration below, Package VII).
+ *
+ * PACKAGE VII — CREATOR GOAL INTEGRATION (2026-07-27): "Where does the
+ * real Creator Goal come from?" Investigated, not assumed. The
+ * platform's one FORMAL, ratified Goal contract is Makman Al-Ghayah's
+ * `GoalContract` (goal-contracts.ts) — created via
+ * `createGoalFromCompiledAssembly(compiledGraph, description, priority)`
+ * inside `runFirstCustomerJourney`, reached only through the real
+ * `POST /api/sovereign/entry/creator-goal` route. That Goal is
+ * structurally DOWNSTREAM of compilation (it is created FROM an
+ * already-compiled graph, for distribution) and its backing
+ * `MakmanGoalRuntime` is documented as single-use ("a Core instance
+ * serves exactly one Goal's full lifecycle") — there is no honest,
+ * already-existing way to query it back into Ras Al-Amr's own directing
+ * process without building new read infrastructure, which this
+ * package's own prohibitions decline to do.
+ *
+ * The real, smallest, already-flowing signal instead used here is
+ * `VaultAssetMetadata.generationPrompt` — the Creator's own recorded
+ * instruction for a specific asset, already fetched by `app/ras-amr/
+ * page.tsx` and already passed into `decideCinematicDirection(asset)`
+ * today. No new fetch, no new contract, no new registry — the same
+ * `VaultAsset` the Director already receives. This is disclosed as a
+ * narrower, honest proxy for "Creator Goal" (one asset's stated intent,
+ * not a project-wide GoalContract's title/priority/commercialIntent),
+ * not a claim that the formal Makman Goal system has been wired in.
+ *
+ * PACKAGE VIII — HONEST CREATOR GOAL SOURCE INTEGRATION (2026-07-27):
+ * re-investigated, more deeply, whether a real GoalContract read path
+ * exists — not just whether SOEL happens to expose one today, but
+ * whether it honestly *could*, per this package's own instruction to
+ * "determine whether a real read path exists" rather than assume the
+ * prior package's conclusion. Findings:
+ *
+ * 1. `GoalState` (goal-state.ts) DOES have real, working read methods —
+ *    `getGoal(goalId)` and `getGoals()` — genuinely implemented, not
+ *    stubs. So a read *capability* exists inside Makman's own chamber.
+ * 2. But `SovereignOperationalEntryLayer` (soel.ts) — the one
+ *    constitutionally sanctioned boundary anything outside Makman may
+ *    call ("SOEL is the ONLY module outside Makman Al-Ghayah's own
+ *    chamber that imports its Runtime/Bridge/Consumption constructs
+ *    directly") — forwards exactly three capabilities
+ *    (submitCreatorGoal/requestConsumption/compileCanvasForPublishing)
+ *    and none of them read a Goal back. Importing `GoalState` directly
+ *    from Ras Al-Amr would violate that already-ratified boundary.
+ * 3. Even setting the boundary aside: `GoalContract` (goal-contracts.ts)
+ *    carries NO tenant/subscriber identity field at all — `getGoals()`
+ *    would return every Creator's Goals indistinguishably. Exposing it
+ *    as-is would be a real cross-tenant data leak, not a safe read path.
+ * 4. Even setting THAT aside: `goalId` is generated fresh and random by
+ *    `createGoalFromCompiledAssembly()` (`generateGoalId()`) — nothing
+ *    is ever written back onto the originating `VaultAsset` or
+ *    `SovereignCanvas`, so the Director has no honest way to know
+ *    *which* goalId, if any, belongs to whatever it is currently
+ *    directing, even if a safe, boundary-respecting read method existed.
+ *
+ * CONCLUSION (Success Criterion B, at the time): no honest read path
+ * existed — not for lack of a `getGoal` method, but for lack of (a) a
+ * boundary-respecting forward of it, (b) tenant isolation on the
+ * contract itself, and (c) any linkage from a directing session back to
+ * a goalId.
+ *
+ * PACKAGE IX — FORMAL GOAL CONTRACT TRIAD CLOSURE (2026-07-27): all
+ * three gaps closed together, as one indivisible unit, per the Chief
+ * Architect's own ruling that "no single gap may be solved in
+ * isolation":
+ * 1. `GoalContract` (goal-contracts.ts) now carries a real
+ *    `subscriberTenantId`, sourced from the already-verified compiled
+ *    graph it was created from — no bulk read can mix tenants anymore.
+ * 2. `SovereignOperationalEntryLayer.getCreatorGoal(goalId, tenantId)`
+ *    (soel.ts) is the real, sanctioned, tenant-checked forward — the
+ *    boundary gap is closed. A new `GET /api/sovereign/entry/
+ *    creator-goal/[goalId]` route is the Public API Surface for it.
+ * 3. `SovereignVaultManager.linkGoalToAsset()` writes the new Goal's id
+ *    back onto every real Vault asset the compiled graph referenced,
+ *    at Goal-creation time (`app/api/sovereign/entry/creator-goal/
+ *    route.ts`'s own POST handler) — the linkage gap is closed. A Goal
+ *    created without a fully successful linkage is reported as a failed
+ *    request, never a silent partial success.
+ *
+ * `FORMAL_GOAL_CONTRACT_READ_PATH.available` is now `true` — recorded as
+ * real, tested data, not prose alone, exactly as Package VIII's own
+ * record predicted it would be the day all three closed together.
+ *
+ * PACKAGE X — CREATOR GOAL INPUT EXPANSION (2026-07-27): "Which fields
+ * are genuinely available from the formal GoalContract?" Investigated
+ * before extending anything. `GoalContract` (goal-contracts.ts) really
+ * does carry `title` and `priority` — both now added to `CreatorGoalInput`
+ * honestly, populated only when `source === 'formal-goal-contract'`.
+ *
+ * `commercialIntent` was NOT genuinely available at Package X's own time
+ * of writing, for the reason recorded there: `MakmanCommercialIntent`
+ * was a one-time argument to `submitCreatorGoal()`'s request, never
+ * stored onto `GoalContract`, never held in `GoalState`. See Package XI
+ * below for the resolution.
+ *
+ * PACKAGE XI — COMMERCIAL INTENT DURABLE STORAGE (2026-07-27): the prior
+ * package's own finding was a storage question, not a field-naming
+ * question — re-investigated on that basis, per this package's own
+ * framing ("not a field expansion question. It is a constitutional
+ * storage question"). Finding: `GoalState` (goal-state.ts) is an
+ * in-memory `Map<string, GoalContract>`, and `MakmanGoalRuntime.
+ * handoverGoal()`/`commitGoal()` (the only two writers) store/replace
+ * the whole `GoalContract` object by reference — meaning ANY field
+ * present on the object at creation time survives for exactly as long as
+ * the Goal itself does, with zero additional wiring. This is the same
+ * durability standard every other `GoalContract` field already relies on
+ * (none of them are SQL-backed either) — no new or different storage
+ * mechanism was invented for this one field alone.
+ *
+ * `GoalContract.commercialIntent` (goal-contracts.ts) now carries the
+ * real `MakmanCommercialIntent`, populated at creation time by
+ * `createGoalFromCompiledAssembly()` from its own already-required
+ * caller-supplied parameter (`MAKMAN_FIRST_CUSTOMER_JOURNEY_PIPELINE.ts`'s
+ * own `request.commercialIntent`, previously discarded after the
+ * distribution bridge call — nothing new is fetched or invented, an
+ * already-flowing value is simply also kept). It now survives the same
+ * `GoalState` round-trip Package IX already proved for every other field.
+ *
+ * `CreatorGoalInput.commercialIntent` below exposes a NARROWER, scoped
+ * view (`{ accessPolicy, coverArtUri? }`) rather than echoing the full
+ * `MakmanCommercialIntent` — the full object also carries a redundant
+ * second copy of `compiledAssemblyGraph`, which the Director has no use
+ * for and which `GoalContract` itself already stores durably for anyone
+ * who genuinely needs it. Storing the full intent (honesty/completeness
+ * of the durable record) and exposing a scoped view to the Director
+ * (relevance, no duplicate data) are two separate, independently
+ * justified decisions. Present only when `source === 'formal-goal-
+ * contract'` AND the fetched Goal genuinely carries a commercialIntent —
+ * never inferred, never defaulted, honestly `undefined` otherwise.
+ */
+
+// Package X: the real GoalPriority, imported via the same SOEL boundary
+// automatic-director.ts already uses for GoalContract itself — not a
+// duplicate enum. Package XI adds AccessPolicy through the same boundary.
+import type { GoalPriority, AccessPolicy } from '../../sovereign-entry';
+
+// ── Constitutional Identity ──────────────────────────────────────────────
+
+export const AUTOMATIC_DIRECTOR_PURPOSE =
+  'The Automatic Director exists to transform complexity into clarity by producing the Cinematic ' +
+  'Direction Decision — it decides, it never creates, and it never becomes the source of command.';
+
+// ── Subordination — Article VII/II: judgment, never authority ───────────
+
+export const AUTOMATIC_DIRECTOR_SUBORDINATION = [
+  'AZMA OS gives the orders; the Automatic Director carries out judgment inside that hierarchy — it never becomes an independent authority.',
+  'It owns no generators, no rendering engines, no production engines, and no orchestration layer.',
+  'It never executes its own decision — RasAlAmrStateManager (an execution engine) consumes, executes, and renders; the Director only decides.',
+  'It never rewrites the Creator\'s intention, invents facts, destroys constitutional history, or replaces the Creator\'s final authority.',
+] as const;
+
+// ── Article IX — Constitutional Hierarchy ────────────────────────────────
+// Priority order when responsibilities conflict.
+
+export type PriorityConsideration =
+  | 'creator-goal'
+  | 'constitutional-identity'
+  | 'narrative-integrity'
+  | 'emotional-continuity'
+  | 'cinematic-beauty';
+
+export const PRIORITY_HIERARCHY: readonly PriorityConsideration[] = [
+  'creator-goal',
+  'constitutional-identity',
+  'narrative-integrity',
+  'emotional-continuity',
+  'cinematic-beauty',
+] as const;
+
+/** Resolves which of two competing considerations must prevail, per Article IX's fixed order. Pure, deterministic. */
+export function resolvePriorityConflict(a: PriorityConsideration, b: PriorityConsideration): PriorityConsideration {
+  return PRIORITY_HIERARCHY.indexOf(a) <= PRIORITY_HIERARCHY.indexOf(b) ? a : b;
+}
+
+// ── Package VII — Creator Goal Input ─────────────────────────────────────
+// The smallest honest representation of "Creator Goal" available today —
+// see the header disclosure for exactly why this, and not the formal
+// Makman GoalContract, is what's wired in.
+
+/**
+ * Package IX: the formal source is now real. 'formal-goal-contract' is
+ * used only via deriveCreatorGoalFromFormalContract below, and only by
+ * a caller that has itself genuinely fetched a GoalContract through the
+ * sanctioned SOEL/API path — never fabricated by this file.
+ */
+export type CreatorGoalSource = 'asset-prompt-echo' | 'formal-goal-contract';
+
+export interface CreatorGoalInput {
+  /** True only when a real, non-empty Creator-authored instruction was found. Never inferred or guessed. */
+  readonly stated: boolean;
+  readonly statedIntent?: string;
+  /** Package VIII/IX — which source produced this input, so nothing pretends to know more than it does. */
+  readonly source: CreatorGoalSource;
+  /**
+   * Package X — real GoalContract.title, present only when source is
+   * 'formal-goal-contract'. Prompt-echo has no equivalent field and
+   * leaves this undefined, never a guessed value.
+   */
+  readonly title?: string;
+  /**
+   * Package X — real GoalContract.priority, present only when source is
+   * 'formal-goal-contract'. Never scored or inferred — echoed exactly as
+   * the Creator's own formal Goal declared it.
+   */
+  readonly priority?: GoalPriority;
+  /**
+   * Package XI — a scoped view of the real, now-durably-stored
+   * GoalContract.commercialIntent (accessPolicy + optional coverArtUri
+   * only, never the redundant full compiledAssemblyGraph copy). Present
+   * only when source is 'formal-goal-contract' AND the fetched Goal
+   * genuinely carries a commercialIntent — never inferred, never
+   * defaulted.
+   */
+  readonly commercialIntent?: {
+    readonly accessPolicy: AccessPolicy;
+    readonly coverArtUri?: string;
+  };
+}
+
+/**
+ * Package IX closed all three prerequisites together — see this file's
+ * header for the full account. Recorded as real, tested data rather
+ * than prose alone, exactly as Package VIII's own record predicted.
+ * Flip back to `false` only if one of the three closures is ever
+ * genuinely reverted — never speculatively.
+ */
+export const FORMAL_GOAL_CONTRACT_READ_PATH: { readonly available: true; readonly reason: string } = {
+  available: true,
+  reason:
+    'GoalContract now carries subscriberTenantId; SovereignOperationalEntryLayer.getCreatorGoal() is the real, ' +
+    'tenant-checked SOEL forward (GET /api/sovereign/entry/creator-goal/[goalId]); and SovereignVaultManager.' +
+    'linkGoalToAsset() writes the goalId back onto every real asset a Goal was created from, at creation time. ' +
+    'All three closed together, per the Chief Architect\'s own ruling that no single gap may be solved in isolation.',
+};
+
+/**
+ * Derives the real Creator Goal signal from a Vault asset's own
+ * metadata.generationPrompt — echoes it verbatim, never interprets,
+ * scores, or summarizes it. Pure, deterministic. This remains the
+ * truthful fallback whenever no formal GoalContract has been fetched
+ * for the asset (no goalId linked yet, or the caller chose not to
+ * fetch) — per Requirement 4, prompt-echo stays the active source until
+ * a formal Goal is genuinely available for this specific asset.
+ */
+export function deriveCreatorGoalFromPrompt(generationPrompt: unknown): CreatorGoalInput {
+  if (typeof generationPrompt === 'string' && generationPrompt.trim().length > 0) {
+    return { stated: true, statedIntent: generationPrompt, source: 'asset-prompt-echo' };
+  }
+  return { stated: false, source: 'asset-prompt-echo' };
+}
+
+/**
+ * Derives the Creator Goal signal from a genuinely fetched, tenant-
+ * verified GoalContract (Package IX/X/XI). Echoes `description`, `title`,
+ * `priority`, and (Package XI) a scoped view of `commercialIntent`
+ * verbatim — real GoalContract fields, never interpreted, scored, or
+ * merged. `commercialIntent` is only echoed when the fetched Goal
+ * genuinely carries one; a Goal created before Package XI's own wiring
+ * honestly leaves it `undefined`, never defaulted. Pure — takes the
+ * contract as a plain value; fetching it is the caller's responsibility,
+ * not this function's.
+ */
+export function deriveCreatorGoalFromFormalContract(goal: {
+  readonly description: string;
+  readonly title: string;
+  readonly priority: GoalPriority;
+  readonly commercialIntent?: {
+    readonly accessPolicy: AccessPolicy;
+    readonly coverArtUri?: string;
+  };
+}): CreatorGoalInput {
+  return {
+    stated: true,
+    statedIntent: goal.description,
+    source: 'formal-goal-contract',
+    title: goal.title,
+    priority: goal.priority,
+    commercialIntent: goal.commercialIntent
+      ? { accessPolicy: goal.commercialIntent.accessPolicy, coverArtUri: goal.commercialIntent.coverArtUri }
+      : undefined,
+  };
+}
+
+/**
+ * The real first caller for PRIORITY_HIERARCHY: determines which
+ * hierarchy tier is actually driving a given decision. When a real
+ * stated Goal exists, 'creator-goal' is resolved against
+ * 'constitutional-identity' per Article IX's own fixed order (the
+ * result is always 'creator-goal', since it ranks first — the call is
+ * kept explicit rather than hardcoded so the hierarchy, not this
+ * function, remains the single source of truth for the order). Absent a
+ * stated Goal, there is nothing real to weigh it against, so the
+ * decision honestly reports 'constitutional-identity' — the structural
+ * check that already gates every decision — as its primary
+ * consideration, rather than fabricating Goal-driven reasoning that
+ * never happened.
+ */
+export function determinePrimaryConsideration(goal: CreatorGoalInput): PriorityConsideration {
+  return goal.stated ? resolvePriorityConflict('creator-goal', 'constitutional-identity') : 'constitutional-identity';
+}
+
+// ── Article X — Constitutional Humility ──────────────────────────────────
+// The shared vocabulary for "is this a real, evidenced value, or an
+// honest fallback." Extracted from automatic-director.ts's own
+// temporalBasis field (built before this Charter existed) rather than
+// inventing a parallel mechanism — every future decision facet that
+// always produces *some* value, but must disclose whether it's grounded
+// in real evidence, uses this same type. A facet with genuinely no real
+// signal at all (Package V1's rhythm/transitionStrategy) stays `null`
+// instead — EvidenceBasis is for "a value exists, here is its grounding,"
+// not for "no value could honestly be produced."
+
+export type EvidenceBasis = 'real-evidence' | 'fallback-default';
+
+// ── Article III/IV — Narrative Integrity (canvas-level judgment) ────────
+// The one real, callable rule this package adds: a structural check over
+// the Narrative Canvas's own real data (see the Narrative Canvas
+// Foundation package) — no creative judgment, no fabricated signal.
+
+export interface NarrativeIntegrityNode {
+  readonly nodeId: string;
+  readonly assetId: string;
+  readonly temporal?: {
+    readonly globalStartTimeSeconds: number;
+    readonly playDurationSeconds: number;
+  };
+}
+
+export interface NarrativeIntegrityResult {
+  readonly valid: boolean;
+  readonly violations: readonly string[];
+}
+
+/**
+ * Validates the Narrative Canvas's own structural integrity — the real
+ * "how does it protect narrative integrity" answer this package must
+ * give. Pure, deterministic, no side effects.
+ */
+export function validateNarrativeIntegrity(nodes: readonly NarrativeIntegrityNode[]): NarrativeIntegrityResult {
+  const violations: string[] = [];
+
+  const seenAssetIds = new Set<string>();
+  for (const node of nodes) {
+    if (seenAssetIds.has(node.assetId)) {
+      violations.push(`Asset '${node.assetId}' appears in more than one node — the same production asset may not occupy two places in one narrative.`);
+    }
+    seenAssetIds.add(node.assetId);
+
+    if (node.temporal) {
+      if (node.temporal.globalStartTimeSeconds < 0) {
+        violations.push(`Node '${node.nodeId}' has a negative start time — a scene cannot begin before the timeline does.`);
+      }
+      if (node.temporal.playDurationSeconds <= 0) {
+        violations.push(`Node '${node.nodeId}' has a non-positive duration — a scene must occupy real time to exist in the narrative.`);
+      }
+    }
+  }
+
+  return { valid: violations.length === 0, violations };
+}

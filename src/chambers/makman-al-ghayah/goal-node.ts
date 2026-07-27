@@ -10,9 +10,12 @@ import {
   GoalPriority,
   GoalStatus
 } from './goal-contracts';
+import type { MakmanCommercialIntent } from './MAKMAN_COMMERCIAL_DISTRIBUTION_CONTRACTS';
 
 export class GoalNode implements GoalContract {
   public readonly goalId: string;
+
+  public readonly subscriberTenantId: string;
 
   public readonly title: string;
 
@@ -30,10 +33,14 @@ export class GoalNode implements GoalContract {
 
   public readonly updatedAtMs: number;
 
+  public readonly commercialIntent?: MakmanCommercialIntent;
+
   constructor(
     goal: GoalContract
   ) {
     this.goalId = goal.goalId;
+
+    this.subscriberTenantId = goal.subscriberTenantId;
 
     this.title = goal.title;
 
@@ -50,6 +57,8 @@ export class GoalNode implements GoalContract {
     this.createdAtMs = goal.createdAtMs;
 
     this.updatedAtMs = goal.updatedAtMs;
+
+    this.commercialIntent = goal.commercialIntent;
   }
 
   public isCompleted(): boolean {

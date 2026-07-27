@@ -74,6 +74,15 @@ export interface AddNodePayload extends BaseCanvasMutation {
   actionType: CanvasActionType.ADD_NODE;
   targetTrackId: string;
   vaultAssetId: string;       // The strict pointer to the Sovereign Vault
+  /**
+   * NARRATIVE CANVAS FOUNDATION: the real asset's own family/capability,
+   * carried through so the node this creates reflects genuine
+   * constitutional identity rather than a placeholder. Optional so any
+   * existing untyped caller keeps compiling unchanged; RasAlAmrStateManager
+   * falls back to its prior hardcoded defaults only when omitted.
+   */
+  assetFamily?: import('../../vault/sovereign-vault-types').AssetFamily;
+  capabilityOrigin?: import('../../core/sovereign-orchestrator/qiyamah-intent-types').CapabilityTarget;
   initialTemporal?: TemporalDirective;
   initialSpatial?: SpatialDirective;
 }

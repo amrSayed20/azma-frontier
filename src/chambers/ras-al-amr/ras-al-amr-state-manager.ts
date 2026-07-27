@@ -74,8 +74,12 @@ export class RasAlAmrStateManager {
     const newNode: AssemblyNode = {
       nodeId: `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       assetId: payload.vaultAssetId,
-      assetFamily: AssetFamily.MEDIA, 
-      capabilityOrigin: CapabilityTarget.VISUAL, 
+      // NARRATIVE CANVAS FOUNDATION: real family/capability when the
+      // caller provides them (every real caller now does); falls back to
+      // the prior hardcoded defaults only for an older, untyped caller
+      // that never supplied them, so nothing that already compiled breaks.
+      assetFamily: payload.assetFamily ?? AssetFamily.MEDIA,
+      capabilityOrigin: payload.capabilityOrigin ?? CapabilityTarget.VISUAL,
       temporal: payload.initialTemporal,
       spatial: payload.initialSpatial,
       customDirectives: {} // تمهيد الكائن لحمايته من أخطاء القراءة المستقبلية

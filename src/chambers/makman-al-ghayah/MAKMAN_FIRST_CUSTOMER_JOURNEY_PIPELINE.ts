@@ -45,7 +45,12 @@ export async function runFirstCustomerJourney(
   bridge: MakmanGoalDistributionBridge,
   request: MakmanFirstCustomerJourneyRequest
 ): Promise<MakmanFirstCustomerJourneyResult> {
-  const goal = createGoalFromCompiledAssembly(request.compiledGraph, request.description, request.priority);
+  const goal = createGoalFromCompiledAssembly(
+    request.compiledGraph,
+    request.description,
+    request.priority,
+    request.commercialIntent
+  );
 
   runtime.handoverGoal(goal);
 

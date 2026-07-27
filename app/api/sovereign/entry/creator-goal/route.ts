@@ -3,6 +3,12 @@ import { soel } from '@/src/sovereign-entry';
 import type { MakmanFirstCustomerJourneyRequest } from '@/src/chambers/makman-al-ghayah/MAKMAN_FIRST_CUSTOMER_JOURNEY_PIPELINE';
 import { createPerceptionEndpointForOrgan } from '@/src/sovereign-nervous-system';
 import { verifySession } from '@/src/authentication';
+import { SovereignVaultManager } from '@/src/vault/sovereign-vault-manager';
+
+// PACKAGE IX: Vault is its own already-directly-imported system elsewhere
+// (e.g. app/api/vault/assets/route.ts) — not part of the Makman Runtime
+// Boundary this route otherwise respects for src/chambers/makman-al-ghayah.
+const vaultManager = new SovereignVaultManager();
 
 export const dynamic = 'force-dynamic';
 
@@ -43,6 +49,15 @@ const REQUIRED_TOP_LEVEL_FIELDS = ['compiledGraph', 'description', 'priority', '
  * is force-overwritten with it; and a request whose own compiledGraph
  * carries a different subscriberTenantId (a graph belonging to another
  * Creator) is rejected outright rather than silently reassigned.
+ *
+ * PACKAGE IX — FORMAL GOAL CONTRACT TRIAD CLOSURE, third prerequisite:
+ * after a Goal is created, its goalId is written back onto every real
+ * Vault asset the compiled graph referenced (via SovereignVaultManager.
+ * linkGoalToAsset, imported directly — Vault sits outside the Makman
+ * Runtime Boundary this route otherwise respects, same as app/api/vault/
+ * assets/route.ts already does). If any linkage fails, the whole
+ * request reports failure (500) rather than a false success — "no
+ * partial success may be represented as constitutional completion."
  */
 export async function POST(request: NextRequest) {
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
@@ -82,6 +97,34 @@ export async function POST(request: NextRequest) {
     };
 
     const result = await soel.submitCreatorGoal(authoritativeRequest);
+
+    // PACKAGE IX — FORMAL GOAL CONTRACT TRIAD CLOSURE, third prerequisite:
+    // write the new Goal's id back onto every real asset it was compiled
+    // from. "Do not write goal identity without writing the origin
+    // linkage" — if any linkage fails, the whole request is reported as
+    // incomplete rather than silently returning a success that hides a
+    // Goal with no honest way back to it.
+    const assetIds = compiledGraph.hydratedCanvas.tracks.flatMap((track) => track.nodes.map((node) => node.assetId));
+    const linkageFailures: string[] = [];
+    for (const assetId of assetIds) {
+      try {
+        await vaultManager.linkGoalToAsset(assetId, session.creatorId, result.goal.goalId);
+      } catch {
+        linkageFailures.push(assetId);
+      }
+    }
+
+    if (linkageFailures.length > 0) {
+      return NextResponse.json(
+        {
+          error:
+            `Goal [${result.goal.goalId}] was created, but its origin linkage failed for asset(s): ${linkageFailures.join(', ')}. ` +
+            'Per Package IX, a Goal without a complete origin linkage is not a constitutionally valid closure — treat this submission as incomplete.',
+          goal: result.goal,
+        },
+        { status: 500 },
+      );
+    }
 
     makmanPerception.report({
       signalType: 'State',

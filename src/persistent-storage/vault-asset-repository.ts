@@ -41,6 +41,29 @@ export function getVaultAsset(db: DatabaseSync, assetId: string): VaultAsset | n
 }
 
 /**
+ * PACKAGE IX — FORMAL GOAL CONTRACT TRIAD CLOSURE: writes the goalId
+ * linkage back onto an already-deposited asset's own metadata, at Goal-
+ * creation time. Reads the current metadata, merges in goalId, and
+ * writes the whole object back — the same read-merge-write shape
+ * already established for updateSubscription()'s patch semantics, not a
+ * new persistence pattern. Returns false (never throws) if the asset
+ * does not exist, so a caller can report a partial failure honestly
+ * rather than crash the whole Goal-submission request.
+ */
+export function linkGoalToVaultAsset(db: DatabaseSync, assetId: string, goalId: string): boolean {
+  const existing = getVaultAsset(db, assetId);
+  if (!existing) return false;
+
+  const updatedMetadata = { ...existing.metadata, goalId };
+  db.prepare(`UPDATE vault_assets SET metadata = ?, updated_at = ? WHERE asset_id = ?`).run(
+    JSON.stringify(updatedMetadata),
+    Date.now(),
+    assetId,
+  );
+  return true;
+}
+
+/**
  * INTEGRATION PACKAGE II — THE FIRST CREATOR-VISIBLE INTEGRATION
  * (2026-07-25): every asset a tenant has ever deposited, most recent
  * first. Package I made depositAsset() a genuinely reachable write path

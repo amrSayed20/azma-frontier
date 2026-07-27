@@ -51,6 +51,13 @@ export enum AssetFamily {
   // Structural-Specific Metadata (Writing, Directorial)
   documentFormat?: string;           // e.g., 'SCREENPLAY_JSON', 'CAMERA_PLAN_XML'
   wordCount?: number;
+
+  // PACKAGE IX — FORMAL GOAL CONTRACT TRIAD CLOSURE: the id of the formal
+  // GoalContract created FROM a compiled assembly this asset was part of,
+  // written back at Goal-creation time (see the creator-goal POST route
+  // and SovereignVaultManager.linkGoalToAsset). Absent until a Goal has
+  // actually been created for this asset — never guessed or backfilled.
+  goalId?: string;
 }
 
 /**

@@ -18,7 +18,7 @@
 
 import { SovereignVaultDeposit, VaultAsset } from './sovereign-vault-types';
 import { IVaultManager } from '../orchestrator/fleet-materialization/fleet/fleet-dispatcher';
-import { getDb, insertVaultAsset, getVaultAsset, listVaultAssetsForTenant } from '../persistent-storage';
+import { getDb, insertVaultAsset, getVaultAsset, listVaultAssetsForTenant, linkGoalToVaultAsset } from '../persistent-storage';
 
 export class SovereignVaultManager implements IVaultManager {
   /**
@@ -76,5 +76,26 @@ export class SovereignVaultManager implements IVaultManager {
    */
   public async listAssetsForTenant(tenantId: string): Promise<readonly VaultAsset[]> {
     return listVaultAssetsForTenant(getDb(), tenantId);
+  }
+
+  /**
+   * PACKAGE IX — FORMAL GOAL CONTRACT TRIAD CLOSURE: writes a Goal's id
+   * back onto the asset it was created from, at Goal-creation time — the
+   * third of the three prerequisites the Chief Architect ruled must
+   * close together. Enforces the same tenant-isolation check as
+   * getAsset() before writing anything.
+   */
+  public async linkGoalToAsset(assetId: string, tenantId: string, goalId: string): Promise<void> {
+    const asset = getVaultAsset(getDb(), assetId);
+
+    if (!asset) {
+      throw new Error(`Vault Error: Asset [${assetId}] not found.`);
+    }
+
+    if (asset.subscriberTenantId !== tenantId) {
+      throw new Error(`Vault Security Breach: Tenant [${tenantId}] attempted to link a Goal onto Asset [${assetId}] belonging to another sovereign owner.`);
+    }
+
+    linkGoalToVaultAsset(getDb(), assetId, goalId);
   }
 }

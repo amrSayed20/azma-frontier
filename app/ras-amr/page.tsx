@@ -97,6 +97,119 @@
  * this one; the latter needs a genuinely new contract field, which this
  * directive's own "don't invent speculative architecture" rule reserves
  * for an explicit future decision).
+ *
+ * THE AUTOMATIC DIRECTOR — CINEMATIC DIRECTION DECISION (separately
+ * scoped package, per the approved constitutional specification): a new
+ * pure function, decideCinematicDirection() (src/chambers/ras-al-amr/
+ * automatic-director.ts), decides — never generates or mutates — a real
+ * Cinematic Direction Decision for the active real Vault asset: asset
+ * inclusion/rejection (structural validity, not creative judgment),
+ * scene timing (the asset's own real duration metadata when present,
+ * the platform's existing fallback default otherwise, never a fabricated
+ * value), narrative sequencing position, and audio placement for an
+ * AUDIO-capability asset — reusing the exact same TemporalDirective/
+ * StructuralLogicDirective/AudioMixingDirective contracts and the same
+ * RasAlAmrStateManager execution engine the Spatial/Visual/Temporal
+ * panels already use; no new runtime, no new execution layer. Rhythm and
+ * transition strategy are honestly left null: both require more than the
+ * one node this Chamber's canvas can compile today, and optical-flow's
+ * own precedent already ruled that fabricating a value the platform
+ * cannot execute repeats the exact mistake this directive exists to
+ * prevent. A new "REAL — DIRECTOR" panel shows the decision and applies
+ * it via the same non-destructive mutation path as its siblings.
+ *
+ * THE NARRATIVE CANVAS FOUNDATION (2026-07-27, per Chief Architect
+ * authorization — structure only, no execution behavior): sessionCanvas
+ * was a single-node scratch pad, rebuilt from scratch every time the
+ * active queue item changed. It is now a persistent, multi-asset
+ * workspace: created once (still lazily, on the first real asset), never
+ * torn down afterward. A real "أضف الأصل النشط" action adds the
+ * currently active real asset as its own AssemblyNode via
+ * RasAlAmrStateManager's own ADD_NODE handler — already fully built,
+ * previously zero real callers anywhere in the platform (see
+ * project_idle_treasures_investigation's own finding) — reused here, not
+ * duplicated. One real, disclosed bug fixed in the same handler:
+ * AddNodePayload never carried the asset's real family/capability, so
+ * every added node silently claimed AssetFamily.MEDIA/CapabilityTarget.
+ * VISUAL regardless of what it actually was — harmless while nothing
+ * called it, but a real constitutional-identity violation the instant it
+ * became Creator-visible. assetFamily/capabilityOrigin are now optional
+ * additive fields on the existing payload (backward compatible with any
+ * other untyped caller), and this page always supplies the real values.
+ * A node is selected (selectedNodeId) rather than always assumed to be
+ * 'node-1'; the existing Spatial/Visual/Temporal/Director panels now
+ * target whichever node is selected — a mechanical generalization, not
+ * new logic. Ordered placement is the node's own position in the
+ * track's nodes[] array (no second, parallel ordering field invented).
+ * Temporal relationship per node defaults to the platform's existing
+ * neutral values and is otherwise only ever Creator- or Director-set —
+ * no cascading/auto-sequenced timing is computed anywhere here. Master
+ * Render, the compile route, and the Corridor Package's forward-to-
+ * Makman staleness guard are untouched — compiling a multi-node canvas
+ * already worked (PrePublishingBoundary/VaultRehydrationBridge iterate
+ * every track's every node generically; verified by direct inspection),
+ * so no execution-layer change was needed or made.
+ *
+ * PACKAGE VI — THE CINEMATIC JUDGMENT CONSTITUTION (2026-07-27): a new
+ * declarative file, src/chambers/ras-al-amr/automatic-director-
+ * constitution.ts, records the Automatic Director's judgment rules —
+ * the priority hierarchy (Creator Goal > Constitutional Identity >
+ * Narrative Integrity > Emotional Continuity > Cinematic Beauty, real
+ * data today, honestly not yet fed any real Goal signal to resolve), the
+ * shared EvidenceBasis vocabulary (now also used by automatic-
+ * director.ts's own temporalBasis, replacing its private union), and one
+ * real, called rule: validateNarrativeIntegrity(), which audits the
+ * Narrative Canvas for duplicate assets or malformed temporal values and
+ * surfaces any violation directly in the Narrative Canvas panel below.
+ * No new orchestration, no new execution engine — judgment data and one
+ * pure validation function only.
+ *
+ * PACKAGE VII — CREATOR GOAL INTEGRATION (2026-07-27): the Director now
+ * derives a real, honest Creator Goal signal from the active node's own
+ * VaultAsset.metadata.generationPrompt (already fetched, no new plumbing)
+ * and reports which Article IX hierarchy tier actually drove each
+ * decision (creatorGoal/primaryConsideration, surfaced in the Director
+ * panel below). The formal Makman GoalContract was investigated and
+ * deliberately not wired in — see automatic-director-constitution.ts's
+ * own header for exactly why (it is created FROM an already-compiled
+ * graph, for distribution, and not honestly queryable back into
+ * directing without new infrastructure this package declines to build).
+ *
+ * PACKAGE VIII — HONEST CREATOR GOAL SOURCE INTEGRATION (2026-07-27):
+ * re-investigated whether a real, boundary-respecting, tenant-safe
+ * GoalContract read path exists — it does not (see automatic-director-
+ * constitution.ts's own four-point finding: GoalState.getGoal() works
+ * but SOEL forwards no read method; GoalContract carries no tenant
+ * field; no goalId ever links back to the originating asset/canvas).
+ * Recorded as real, tested data (FORMAL_GOAL_CONTRACT_READ_PATH), not
+ * just prose. creatorGoal now also carries `source: 'asset-prompt-echo'`
+ * so nothing in this Chamber's output ever implies a richer source than
+ * genuinely exists.
+ *
+ * PACKAGE IX — FORMAL GOAL CONTRACT TRIAD CLOSURE (2026-07-27): all
+ * three prerequisites Package VIII found missing are now real (tenant
+ * field, SOEL forward, goalId linkage — see automatic-director-
+ * constitution.ts's own account). This page fetches the formal Goal
+ * only when the selected asset's own metadata.goalId is present (never
+ * guessed), via the new sanctioned GET /api/sovereign/entry/
+ * creator-goal/[goalId] route, and passes it into
+ * decideCinematicDirection() as an optional argument — the function
+ * itself stays pure and network-free. Prompt-echo remains the honest
+ * fallback whenever no goalId is linked yet.
+ *
+ * PACKAGE X — CREATOR GOAL INPUT EXPANSION (2026-07-27): the Director
+ * panel now also shows the formal Goal's own title/priority when the
+ * formal source is active — real GoalContract fields, never invented.
+ * commercialIntent was deliberately not shown at this time: it was
+ * investigated and found genuinely unavailable from this read path (see
+ * Package XI below for the resolution).
+ *
+ * PACKAGE XI — COMMERCIAL INTENT DURABLE STORAGE (2026-07-27):
+ * commercialIntent is now genuinely durable (see automatic-director-
+ * constitution.ts's own Package XI account) and the panel shows a scoped
+ * view of it — distributionTier and whether cover art exists — only when
+ * the fetched formal GoalContract genuinely carries one. Never shown for
+ * prompt-echo or an older Goal created before this package's own wiring.
  */
 
 'use client';
@@ -112,11 +225,18 @@ import type { CompiledAssemblyGraph } from '@/src/chambers/ras-al-amr/pre-publis
 import { RasAlAmrStateManager } from '@/src/chambers/ras-al-amr/ras-al-amr-state-manager';
 import { CanvasActionType } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
 import type {
+  AddNodePayload,
+  RemoveNodePayload,
   UpdateNodeSpatialPayload,
   UpdateNodeTemporalPayload,
   UpdateNodeAdvancedPayload,
   VisualFilterDirective,
+  StructuralLogicDirective,
+  AudioMixingDirective,
 } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
+import { decideCinematicDirection } from '@/src/chambers/ras-al-amr/automatic-director';
+import { validateNarrativeIntegrity } from '@/src/chambers/ras-al-amr/automatic-director-constitution';
+import type { GoalContract } from '@/src/sovereign-entry';
 import './ras-amr.css';
 
 // Pure, stateless transformer (see its own header comment) — one shared
@@ -237,68 +357,123 @@ export default function RasAmrChamber() {
   // seededForAssetId) rather than in an effect, so a real spatial edit
   // survives ordinary re-renders instead of being wiped every time.
   const [sessionCanvas, setSessionCanvas] = useState<SovereignCanvas | null>(null);
-  const [seededForAssetId, setSeededForAssetId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [spatialForm, setSpatialForm] = useState<SpatialDirective>(DEFAULT_SPATIAL);
   // REAL VISUAL + TEMPORAL ADJUSTMENT: same non-destructive pattern as
-  // Spatial, one form each, reset alongside it whenever the session
-  // canvas is reseeded for a newly-active real asset.
+  // Spatial, one form each, reset alongside it whenever the Creator
+  // selects a different node to edit.
   const [visualForm, setVisualForm] = useState<VisualFilterDirective>(DEFAULT_VISUAL);
   const [temporalForm, setTemporalForm] = useState<TemporalDirective>(DEFAULT_TEMPORAL);
 
   const wantsRealCanvas = Boolean(activeAsset?.isRealAsset && activeAsset.assetFamily && activeAsset.capabilityOrigin);
 
-  if (wantsRealCanvas && activeAsset!.id !== seededForAssetId) {
+  // THE NARRATIVE CANVAS FOUNDATION: created once, lazily, the first time
+  // any real asset becomes active — and never reset or rebuilt after
+  // that, unlike the single-node scratch pad it replaces. Starts empty;
+  // nodes are only ever added through the Creator's own explicit action
+  // (handleAddActiveAssetToCanvas below), never automatically.
+  if (wantsRealCanvas && sessionCanvas === null) {
     // Pure/deterministic seed (no Date.now() — render must stay pure per
     // React's rules); real wall-clock timestamps are set where they
-    // belong, inside event handlers: handleApplySpatialAdjustment's
-    // mutation and triggerMasterRender's compile-time updatedAt.
+    // belong, inside event handlers.
     setSessionCanvas({
-      canvasId: `canvas_${activeAsset!.id}`,
+      canvasId: 'canvas_narrative_session',
       // Overwritten server-side with the real, session-verified tenant id
       // at compile time regardless of what's carried here — see the
       // compile route's own note.
       subscriberTenantId: 'pending-server-verification',
       canvasType: CanvasType.CINEMATIC,
-      title: activeAsset!.title,
+      title: 'القماش السردي',
       tracks: [
         {
           trackId: 'track-1',
           trackName: 'المسار الرئيسي',
           isMuted: false,
           isHidden: false,
-          nodes: [
-            {
-              nodeId: 'node-1',
-              assetId: activeAsset!.id,
-              assetFamily: activeAsset!.assetFamily!,
-              capabilityOrigin: activeAsset!.capabilityOrigin!,
-            },
-          ],
+          nodes: [],
         },
       ],
       createdAt: 0,
       updatedAt: 0,
     });
+  }
+
+  const selectedNode = sessionCanvas?.tracks[0]?.nodes.find((n) => n.nodeId === selectedNodeId);
+
+  // PACKAGE VI — THE CINEMATIC JUDGMENT CONSTITUTION: a real, honest
+  // structural audit of the Narrative Canvas's own current state —
+  // "how does it protect narrative integrity," answered concretely.
+  // Complements (does not replace) handleAddActiveAssetToCanvas's own
+  // pre-add duplicate guard below by also catching issues a manual
+  // Spatial/Visual/Temporal edit could introduce.
+  const narrativeIntegrity = useMemo(
+    () => (sessionCanvas ? validateNarrativeIntegrity(sessionCanvas.tracks[0].nodes) : null),
+    [sessionCanvas],
+  );
+
+  // Adds the currently active real asset to the Narrative Canvas as its
+  // own real AssemblyNode — an explicit Creator action, never automatic.
+  // Reuses RasAlAmrStateManager's own ADD_NODE handler (already built,
+  // previously zero real callers anywhere in the platform).
+  const handleAddActiveAssetToCanvas = () => {
+    if (!sessionCanvas || !activeAsset?.isRealAsset || !activeAsset.assetFamily || !activeAsset.capabilityOrigin) return;
+    if (sessionCanvas.tracks[0].nodes.some((n) => n.assetId === activeAsset.id)) return; // already present — no duplicate node for the same asset
+
+    const mutation: AddNodePayload = {
+      actionType: CanvasActionType.ADD_NODE,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: 'track-1',
+      vaultAssetId: activeAsset.id,
+      assetFamily: activeAsset.assetFamily,
+      capabilityOrigin: activeAsset.capabilityOrigin,
+      initialTemporal: DEFAULT_TEMPORAL,
+      initialSpatial: DEFAULT_SPATIAL,
+    };
+
+    const updatedCanvas = rasAlAmrStateManager.applyMutation(sessionCanvas, mutation);
+    setSessionCanvas(updatedCanvas);
+
+    const newNode = updatedCanvas.tracks[0].nodes[updatedCanvas.tracks[0].nodes.length - 1];
+    setSelectedNodeId(newNode.nodeId);
     setSpatialForm(DEFAULT_SPATIAL);
     setVisualForm(DEFAULT_VISUAL);
     setTemporalForm(DEFAULT_TEMPORAL);
-    setSeededForAssetId(activeAsset!.id);
-  } else if (!wantsRealCanvas && seededForAssetId !== null) {
-    setSessionCanvas(null);
-    setSeededForAssetId(null);
-  }
+  };
 
-  const activeSpatialDirective = sessionCanvas?.tracks[0]?.nodes[0]?.spatial;
+  // Removes one node from the Narrative Canvas — reuses
+  // RasAlAmrStateManager's own REMOVE_NODE handler, same as above.
+  const handleRemoveNodeFromCanvas = (nodeId: string) => {
+    if (!sessionCanvas) return;
+
+    const mutation: RemoveNodePayload = {
+      actionType: CanvasActionType.REMOVE_NODE,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+    };
+
+    const updatedCanvas = rasAlAmrStateManager.applyMutation(sessionCanvas, mutation);
+    setSessionCanvas(updatedCanvas);
+
+    if (selectedNodeId === nodeId) {
+      const remaining = updatedCanvas.tracks[0].nodes;
+      setSelectedNodeId(remaining.length > 0 ? remaining[0].nodeId : null);
+    }
+  };
+
+  const activeSpatialDirective = selectedNode?.spatial;
 
   const handleApplySpatialAdjustment = () => {
-    if (!sessionCanvas) return;
+    if (!sessionCanvas || !selectedNodeId) return;
 
     const mutation: UpdateNodeSpatialPayload = {
       actionType: CanvasActionType.UPDATE_SPATIAL,
       canvasId: sessionCanvas.canvasId,
       subscriberTenantId: sessionCanvas.subscriberTenantId,
       targetTrackId: 'track-1',
-      targetNodeId: 'node-1',
+      targetNodeId: selectedNodeId,
       spatialUpdates: spatialForm,
     };
 
@@ -307,19 +482,17 @@ export default function RasAmrChamber() {
   };
 
   // pixel-grade + chroma-forge share this one real 'visual' directive slot.
-  const activeVisualDirective = sessionCanvas?.tracks[0]?.nodes[0]?.customDirectives?.visual as
-    | VisualFilterDirective
-    | undefined;
+  const activeVisualDirective = selectedNode?.customDirectives?.visual as VisualFilterDirective | undefined;
 
   const handleApplyVisualAdjustment = () => {
-    if (!sessionCanvas) return;
+    if (!sessionCanvas || !selectedNodeId) return;
 
     const mutation: UpdateNodeAdvancedPayload = {
       actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE,
       canvasId: sessionCanvas.canvasId,
       subscriberTenantId: sessionCanvas.subscriberTenantId,
       targetTrackId: 'track-1',
-      targetNodeId: 'node-1',
+      targetNodeId: selectedNodeId,
       directiveKey: 'visual',
       directivePayload: visualForm,
     };
@@ -330,17 +503,17 @@ export default function RasAmrChamber() {
 
   // neural-sync drives real timeline timing — the truthful reading of
   // "synchronization" available in the real assembly contracts today.
-  const activeTemporalDirective = sessionCanvas?.tracks[0]?.nodes[0]?.temporal;
+  const activeTemporalDirective = selectedNode?.temporal;
 
   const handleApplyTemporalAdjustment = () => {
-    if (!sessionCanvas) return;
+    if (!sessionCanvas || !selectedNodeId) return;
 
     const mutation: UpdateNodeTemporalPayload = {
       actionType: CanvasActionType.UPDATE_TEMPORAL,
       canvasId: sessionCanvas.canvasId,
       subscriberTenantId: sessionCanvas.subscriberTenantId,
       targetTrackId: 'track-1',
-      targetNodeId: 'node-1',
+      targetNodeId: selectedNodeId,
       temporalUpdates: temporalForm,
     };
 
@@ -370,6 +543,100 @@ export default function RasAmrChamber() {
       })
       .finally(() => setVaultAssetsLoaded(true));
   }, []);
+
+  // ai-director — THE AUTOMATIC DIRECTOR: decides the real Cinematic
+  // Direction Decision for whichever node is selected on the Narrative
+  // Canvas (see src/chambers/ras-al-amr/automatic-director.ts for the
+  // full constitutional scope and its disclosed single-node-per-decision
+  // limits — the Decision itself still reasons about one asset at a
+  // time; the Canvas now simply lets more than one such decision have a
+  // real place to land). Looked up from the already-fetched real
+  // vaultAssets list — no new fetch, no new contract field.
+  const activeVaultAsset = useMemo(
+    () => (selectedNode ? vaultAssets.find((a) => a.assetId === selectedNode.assetId) : undefined),
+    [selectedNode, vaultAssets],
+  );
+
+  // PACKAGE IX — FORMAL GOAL CONTRACT TRIAD CLOSURE: fetches the real,
+  // tenant-verified GoalContract through the sanctioned SOEL-backed GET
+  // route, but only when the selected asset actually carries a linked
+  // goalId (written back at Goal-creation time — see
+  // automatic-director-constitution.ts's own Package IX account). Never
+  // guesses a goalId; when absent, formalGoal simply stays null and
+  // decideCinematicDirection falls back to the honest prompt-echo source.
+  const [formalGoal, setFormalGoal] = useState<GoalContract | null>(null);
+  const [formalGoalTrackedForId, setFormalGoalTrackedForId] = useState<string | null>(null);
+  const activeGoalId = activeVaultAsset?.metadata?.goalId ?? null;
+
+  // Adjust state during render — the same established pattern
+  // sessionCanvas seeding already uses above — rather than an
+  // unconditional setState at the top of an effect: clears the
+  // previously-fetched formal Goal the instant the selected asset's own
+  // goalId changes to anything else, including null.
+  if (activeGoalId !== formalGoalTrackedForId) {
+    setFormalGoal(null);
+    setFormalGoalTrackedForId(activeGoalId);
+  }
+
+  useEffect(() => {
+    if (!activeGoalId) return;
+    let cancelled = false;
+    fetch(`/api/sovereign/entry/creator-goal/${activeGoalId}`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((result) => {
+        if (!cancelled) setFormalGoal(result?.goal ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setFormalGoal(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeGoalId]);
+
+  const directorDecision = useMemo(
+    () => (activeVaultAsset ? decideCinematicDirection(activeVaultAsset, formalGoal ?? undefined) : null),
+    [activeVaultAsset, formalGoal],
+  );
+  const activeStructuralDirective = selectedNode?.customDirectives?.structural as StructuralLogicDirective | undefined;
+  const activeAudioDirective = selectedNode?.customDirectives?.audio as AudioMixingDirective | undefined;
+
+  const handleApplyDirectorDecision = () => {
+    if (!sessionCanvas || !selectedNodeId || !directorDecision?.included || !directorDecision.temporal || !directorDecision.structural) return;
+
+    let canvas = rasAlAmrStateManager.applyMutation(sessionCanvas, {
+      actionType: CanvasActionType.UPDATE_TEMPORAL,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: 'track-1',
+      targetNodeId: selectedNodeId,
+      temporalUpdates: directorDecision.temporal,
+    });
+
+    canvas = rasAlAmrStateManager.applyMutation(canvas, {
+      actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE,
+      canvasId: canvas.canvasId,
+      subscriberTenantId: canvas.subscriberTenantId,
+      targetTrackId: 'track-1',
+      targetNodeId: selectedNodeId,
+      directiveKey: 'structural',
+      directivePayload: directorDecision.structural,
+    });
+
+    if (directorDecision.audio) {
+      canvas = rasAlAmrStateManager.applyMutation(canvas, {
+        actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE,
+        canvasId: canvas.canvasId,
+        subscriberTenantId: canvas.subscriberTenantId,
+        targetTrackId: 'track-1',
+        targetNodeId: selectedNodeId,
+        directiveKey: 'audio',
+        directivePayload: directorDecision.audio,
+      });
+    }
+
+    setSessionCanvas(canvas);
+  };
 
   const realVaultCategories = useMemo(() => {
     const byTarget = new Map<string, VaultAsset[]>();
@@ -654,6 +921,54 @@ export default function RasAmrChamber() {
           {sessionCanvas && (
             <div className="spatial-adjust-panel">
               <header className="panel-header">
+                <div className="neon-tag">REAL — NARRATIVE CANVAS</div>
+                <h2>القماش السردي</h2>
+                <p>مساحة عمل سينمائية واحدة تتّسع لعدة أصول إنتاجية حقيقية — بنية فقط، بلا تنفيذ وبلا ذكاء تسلسلي</p>
+              </header>
+
+              <button
+                className="action-trigger-btn spatial-apply-btn"
+                onClick={handleAddActiveAssetToCanvas}
+                disabled={!wantsRealCanvas || sessionCanvas.tracks[0].nodes.some((n) => n.assetId === activeAsset?.id)}
+              >
+                ➕ أضف الأصل النشط إلى القماش
+              </button>
+
+              {sessionCanvas.tracks[0].nodes.length === 0 ? (
+                <p className="spatial-current-state">القماش فارغ — أضف أصلاً حقيقياً ليبدأ التكوين السردي</p>
+              ) : (
+                <ul className="narrative-canvas-node-list">
+                  {sessionCanvas.tracks[0].nodes.map((node, index) => (
+                    <li
+                      key={node.nodeId}
+                      className={`narrative-canvas-node ${node.nodeId === selectedNodeId ? 'node-selected' : ''}`}
+                    >
+                      <button className="narrative-node-select" onClick={() => setSelectedNodeId(node.nodeId)}>
+                        #{index + 1} — {node.assetFamily} / {node.capabilityOrigin}
+                        {node.temporal ? ` — ${node.temporal.globalStartTimeSeconds}s→${node.temporal.globalStartTimeSeconds + node.temporal.playDurationSeconds}s` : ''}
+                      </button>
+                      <button
+                        className="narrative-node-remove"
+                        onClick={() => handleRemoveNodeFromCanvas(node.nodeId)}
+                        aria-label="إزالة من القماش"
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {narrativeIntegrity && !narrativeIntegrity.valid && (
+                <p className="spatial-current-state narrative-integrity-violation">
+                  انتهاك للسلامة السردية: {narrativeIntegrity.violations.join(' — ')}
+                </p>
+              )}
+            </div>
+          )}
+
+          {sessionCanvas && selectedNodeId && (
+            <div className="spatial-adjust-panel">
+              <header className="panel-header">
                 <div className="neon-tag">REAL — SPATIAL</div>
                 <h2>تعديل مكاني حقيقي</h2>
                 <p>يُطبَّق فعلياً على القماش السيادي ويصل إلى الصهر النهائي</p>
@@ -713,7 +1028,7 @@ export default function RasAmrChamber() {
             </div>
           )}
 
-          {sessionCanvas && (
+          {sessionCanvas && selectedNodeId && (
             <div className="spatial-adjust-panel">
               <header className="panel-header">
                 <div className="neon-tag">REAL — VISUAL</div>
@@ -755,7 +1070,7 @@ export default function RasAmrChamber() {
             </div>
           )}
 
-          {sessionCanvas && (
+          {sessionCanvas && selectedNodeId && (
             <div className="spatial-adjust-panel">
               <header className="panel-header">
                 <div className="neon-tag">REAL — TEMPORAL</div>
@@ -809,6 +1124,66 @@ export default function RasAmrChamber() {
                   {activeTemporalDirective.trimStartSeconds !== undefined ? `، قص-من=${activeTemporalDirective.trimStartSeconds}ث` : ''}
                   {activeTemporalDirective.trimEndSeconds !== undefined ? `، قص-إلى=${activeTemporalDirective.trimEndSeconds}ث` : ''}
                 </p>
+              )}
+            </div>
+          )}
+
+          {sessionCanvas && directorDecision && (
+            <div className="spatial-adjust-panel">
+              <header className="panel-header">
+                <div className="neon-tag">REAL — DIRECTOR</div>
+                <h2>قرار الإخراج السينمائي الحقيقي</h2>
+                <p>المخرج الذكي الآلي يقرر؛ لا يولّد محتوى — التنفيذ يبقى دائماً عبر محرك الحالة الحقيقي</p>
+              </header>
+              {!directorDecision.included ? (
+                <p className="spatial-current-state">مرفوض: {directorDecision.rejectionReason}</p>
+              ) : (
+                <>
+                  <p className="spatial-current-state">
+                    التوقيت: بداية={directorDecision.temporal?.globalStartTimeSeconds}ث، مدة={directorDecision.temporal?.playDurationSeconds}ث
+                    {' '}({directorDecision.temporalBasis === 'real-evidence' ? 'من بيانات الأصل الحقيقية' : 'قيمة افتراضية — لا بيانات مدة حقيقية'})
+                  </p>
+                  <p className="spatial-current-state">
+                    الترتيب السردي: الموضع {directorDecision.structural?.executionOrderIndex} (نطاق عقدة واحدة اليوم)
+                  </p>
+                  {directorDecision.audio && (
+                    <p className="spatial-current-state">الصوت: مستوى={directorDecision.audio.volumeDb}dB، توازن={directorDecision.audio.panCenter}</p>
+                  )}
+                  <p className="spatial-current-state">
+                    {directorDecision.creatorGoal.stated
+                      ? `هدف الخالق المصرَّح به: "${directorDecision.creatorGoal.statedIntent}"`
+                      : 'لا يوجد هدف خالق مصرَّح به لهذا الأصل — لم يُختلَق نية غير موجودة'}
+                    {' '}({directorDecision.creatorGoal.source === 'formal-goal-contract' ? 'مصدر رسمي حقيقي' : 'صدى الطلب الأصلي'})
+                  </p>
+                  {directorDecision.creatorGoal.title && (
+                    <p className="spatial-current-state">عنوان الهدف الرسمي: {directorDecision.creatorGoal.title}</p>
+                  )}
+                  {directorDecision.creatorGoal.priority && (
+                    <p className="spatial-current-state">أولوية الهدف الرسمي: {directorDecision.creatorGoal.priority}</p>
+                  )}
+                  {directorDecision.creatorGoal.commercialIntent && (
+                    <p className="spatial-current-state">
+                      النية التجارية المخزَّنة بشكل دائم: {directorDecision.creatorGoal.commercialIntent.accessPolicy.distributionTier}
+                      {directorDecision.creatorGoal.commercialIntent.coverArtUri ? ` — صورة الغلاف متوفرة` : ''}
+                    </p>
+                  )}
+                  <p className="spatial-current-state">
+                    الاعتبار الأساسي (المادة التاسعة): {directorDecision.primaryConsideration}
+                  </p>
+                  <p className="spatial-current-state">
+                    الإيقاع والانتقال السينمائي: غير محدد بصدق — يتطلبان أكثر من عقدة واحدة ليكون لهما معنى حقيقي، لم يُختلَق بديل
+                  </p>
+                  <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplyDirectorDecision}>
+                    🤖 تطبيق قرار الإخراج الحقيقي
+                  </button>
+                  {(activeStructuralDirective || activeAudioDirective) && (
+                    <p className="spatial-current-state">
+                      المُطبَّق فعلياً:
+                      {activeStructuralDirective ? ` ترتيب=${activeStructuralDirective.executionOrderIndex}` : ''}
+                      {activeAudioDirective ? `، صوت مطبَّق` : ''}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           )}

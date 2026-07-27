@@ -32,9 +32,19 @@
  * gap MAG-LB-001 disclosed ("a real caller today still needs a
  * CompiledAssemblyGraph... itself dependent on RAS AL AMR's own
  * unbuilt compilation endpoint").
+ *
+ * EXTENDED (PACKAGE IX — FORMAL GOAL CONTRACT TRIAD CLOSURE): getCreatorGoal()
+ * is the sanctioned read forward for a Goal previously created via
+ * submitCreatorGoal() — one of the three prerequisites the Chief
+ * Architect ruled must close together (the other two: GoalContract's
+ * new subscriberTenantId field, and the goalId link written back onto
+ * the originating VaultAsset — see app/api/sovereign/entry/creator-goal/
+ * route.ts and src/vault/sovereign-vault-manager.ts). SOEL now forwards
+ * four already-certified capabilities, not two.
  */
 
 import { GoalState } from '../chambers/makman-al-ghayah/goal-state';
+import type { GoalContract } from '../chambers/makman-al-ghayah/goal-contracts';
 import { MakmanGoalRuntime } from '../chambers/makman-al-ghayah/MAKMAN_RUNTIME_CORE_ORCHESTRATION';
 import type { MakmanGoalDistributionBridge } from '../chambers/makman-al-ghayah/MAKMAN_GOAL_DISTRIBUTION_BRIDGE';
 import type { PublicConsumptionBoundary, ConsumptionResponse } from '../chambers/makman-al-ghayah/consumption-boundary';
@@ -61,6 +71,19 @@ export class SovereignOperationalEntryLayer {
   ): Promise<MakmanFirstCustomerJourneyResult> {
     const runtime = new MakmanGoalRuntime(this.goalState);
     return runFirstCustomerJourney(runtime, this.bridge, request);
+  }
+
+  /**
+   * PACKAGE IX — FORMAL GOAL CONTRACT TRIAD CLOSURE: the sanctioned read
+   * forward Package VIII found missing. Returns undefined for both "no
+   * such Goal" and "this Goal belongs to another tenant" — deliberately
+   * indistinguishable, so a caller learns nothing about another
+   * Creator's Goals even by probing ids.
+   */
+  public getCreatorGoal(goalId: string, requesterTenantId: string): GoalContract | undefined {
+    const goal = this.goalState.getGoal(goalId);
+    if (!goal || goal.subscriberTenantId !== requesterTenantId) return undefined;
+    return goal;
   }
 
   /** Forwards to Makman's already-certified PublicConsumptionBoundary.requestConsumption(). */

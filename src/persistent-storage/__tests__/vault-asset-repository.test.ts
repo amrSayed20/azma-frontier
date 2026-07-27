@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { createDatabase } from '../db';
-import { insertVaultAsset, getVaultAsset, listVaultAssetsForTenant } from '../vault-asset-repository';
+import { insertVaultAsset, getVaultAsset, listVaultAssetsForTenant, linkGoalToVaultAsset } from '../vault-asset-repository';
 import { AssetFamily } from '../../vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 import type { VaultAsset } from '../../vault/sovereign-vault-types';
@@ -65,6 +65,33 @@ describe('Persistent Storage Foundation — Vault asset metadata', () => {
 
     it('returns an empty list for a tenant with no assets', () => {
       expect(listVaultAssetsForTenant(db, 'nobody')).toEqual([]);
+    });
+  });
+
+  describe('PACKAGE IX — Formal Goal Contract Triad Closure: linkGoalToVaultAsset', () => {
+    it('writes the goalId onto the asset\'s own metadata, preserving every other field', () => {
+      const asset: VaultAsset = {
+        assetId: 'asset-1',
+        subscriberTenantId: 'tenant-1',
+        originatingOperationId: 'op-1',
+        capabilityTarget: CapabilityTarget.VISUAL,
+        assetFamily: AssetFamily.MEDIA,
+        secureStorageUri: 's3://bucket/asset-1.png',
+        metadata: { generationPrompt: 'a lone gate at dusk' },
+        createdAt: 1_000,
+        updatedAt: 1_000,
+      };
+      insertVaultAsset(db, asset);
+
+      const linked = linkGoalToVaultAsset(db, 'asset-1', 'goal-123');
+
+      expect(linked).toBe(true);
+      const fetched = getVaultAsset(db, 'asset-1');
+      expect(fetched?.metadata).toEqual({ generationPrompt: 'a lone gate at dusk', goalId: 'goal-123' });
+    });
+
+    it('returns false, never throws, for an asset that does not exist', () => {
+      expect(linkGoalToVaultAsset(db, 'no-such-asset', 'goal-123')).toBe(false);
     });
   });
 });
