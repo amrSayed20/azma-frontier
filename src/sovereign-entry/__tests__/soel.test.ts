@@ -1,6 +1,6 @@
 import { SovereignOperationalEntryLayer } from '../soel';
 import { GoalState } from '../../chambers/makman-al-ghayah/goal-state';
-import { GoalStatus, GoalPriority, PacingPreference } from '../../chambers/makman-al-ghayah/goal-contracts';
+import { GoalStatus, GoalPriority, PacingPreference, TransitionPreference } from '../../chambers/makman-al-ghayah/goal-contracts';
 import type { GoalContract } from '../../chambers/makman-al-ghayah/goal-contracts';
 import { DistributionTier } from '../../chambers/makman-al-ghayah/publication-contracts';
 import type { MakmanCommercialIntent } from '../../chambers/makman-al-ghayah/MAKMAN_COMMERCIAL_DISTRIBUTION_CONTRACTS';
@@ -145,5 +145,41 @@ describe('PACKAGE XV — Creator Pacing Preference Foundation: round-trip throug
     );
 
     expect(soel.getCreatorGoal('goal-1', 'tenant-1')?.pacingPreference).toBeUndefined();
+  });
+});
+
+describe('PACKAGE XVI — Creator Transition Preference Foundation: round-trip through GoalState', () => {
+  it('survives register() -> update() -> getGoal(), reachable via SOEL.getCreatorGoal like any other field', () => {
+    const goalState = new GoalState();
+    goalState.register(makeGoal({ transitionPreference: TransitionPreference.DIRECT }));
+    goalState.update(
+      { ...makeGoal({ transitionPreference: TransitionPreference.DIRECT }), status: GoalStatus.COMPLETED, updatedAtMs: 1 },
+      { isAuthorized: true },
+    );
+
+    const soel = new SovereignOperationalEntryLayer(
+      goalState,
+      {} as MakmanGoalDistributionBridge,
+      {} as PublicConsumptionBoundary,
+      {} as PrePublishingBoundary,
+    );
+
+    expect(soel.getCreatorGoal('goal-1', 'tenant-1')?.transitionPreference).toBe(TransitionPreference.DIRECT);
+  });
+
+  it('is honestly undefined when the Creator never stated a transition preference — never defaulted, independent of pacingPreference', () => {
+    const goalState = new GoalState();
+    goalState.register(makeGoal({ pacingPreference: PacingPreference.BALANCED }));
+
+    const soel = new SovereignOperationalEntryLayer(
+      goalState,
+      {} as MakmanGoalDistributionBridge,
+      {} as PublicConsumptionBoundary,
+      {} as PrePublishingBoundary,
+    );
+
+    const fetchedGoal = soel.getCreatorGoal('goal-1', 'tenant-1');
+    expect(fetchedGoal?.transitionPreference).toBeUndefined();
+    expect(fetchedGoal?.pacingPreference).toBe(PacingPreference.BALANCED);
   });
 });

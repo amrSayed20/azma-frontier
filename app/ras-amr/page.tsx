@@ -252,6 +252,12 @@
  * was needed to fetch it: `formalGoal` was already being fetched for the
  * selected node since Package IX; this package only added the field to
  * what that fetch honestly returns.
+ *
+ * PACKAGE XVI — CREATOR TRANSITION PREFERENCE FOUNDATION (2026-07-27): the
+ * same panel line now also shows the real `transitionStrategy` value (the
+ * Creator's own stated `transitionPreference`, echoed verbatim) the same
+ * way — a genuinely distinct, independent field from rhythm/pacing, never
+ * derived from it.
  */
 
 'use client';
@@ -1259,7 +1265,10 @@ export default function RasAmrChamber() {
                     {directorDecision.rhythm
                       ? `الإيقاع: ${directorDecision.rhythm} (تفضيل حقيقي صرَّح به الخالق للهدف الرسمي)`
                       : 'الإيقاع: لا يوجد تفضيل إيقاع مصرَّح به لهذا الهدف — لم يُختلَق بديل'}
-                    {' — '}الانتقال السينمائي: غير محدد بصدق دائماً — لا توجد إشارة حقيقية لنوع الانتقال
+                    {' — '}
+                    {directorDecision.transitionStrategy
+                      ? `الانتقال السينمائي: ${directorDecision.transitionStrategy} (تفضيل حقيقي صرَّح به الخالق للهدف الرسمي)`
+                      : 'الانتقال السينمائي: لا يوجد تفضيل انتقال مصرَّح به لهذا الهدف — لم يُختلَق بديل'}
                   </p>
                   <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplyDirectorDecision}>
                     🤖 تطبيق قرار الإخراج الحقيقي

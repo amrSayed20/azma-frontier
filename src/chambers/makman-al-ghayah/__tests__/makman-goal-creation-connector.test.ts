@@ -1,5 +1,5 @@
 import { createGoalFromCompiledAssembly } from '../MAKMAN_GOAL_CREATION_CONNECTOR';
-import { GoalPriority, GoalStatus, PacingPreference } from '../goal-contracts';
+import { GoalPriority, GoalStatus, PacingPreference, TransitionPreference } from '../goal-contracts';
 import { CanvasType } from '../../ras-al-amr/assembly-contracts';
 import type { CompiledAssemblyGraph } from '../../ras-al-amr/pre-publishing-boundary';
 import { DistributionTier } from '../publication-contracts';
@@ -103,5 +103,33 @@ describe('PACKAGE XV — Creator Pacing Preference Foundation: createGoalFromCom
     const goal = createGoalFromCompiledAssembly(makeCompiledGraph(), 'a description', GoalPriority.HIGH, makeCommercialIntent());
 
     expect(goal.pacingPreference).toBeUndefined();
+  });
+});
+
+describe('PACKAGE XVI — Creator Transition Preference Foundation: createGoalFromCompiledAssembly', () => {
+  it('carries the real, caller-supplied transitionPreference onto the new GoalContract, independent of pacingPreference', () => {
+    const goal = createGoalFromCompiledAssembly(
+      makeCompiledGraph(),
+      'a description',
+      GoalPriority.HIGH,
+      makeCommercialIntent(),
+      PacingPreference.ENERGETIC,
+      TransitionPreference.SOFT,
+    );
+
+    expect(goal.transitionPreference).toBe(TransitionPreference.SOFT);
+    expect(goal.pacingPreference).toBe(PacingPreference.ENERGETIC);
+  });
+
+  it('leaves transitionPreference honestly undefined when the Creator did not state one, even when pacingPreference was stated', () => {
+    const goal = createGoalFromCompiledAssembly(
+      makeCompiledGraph(),
+      'a description',
+      GoalPriority.HIGH,
+      makeCommercialIntent(),
+      PacingPreference.ENERGETIC,
+    );
+
+    expect(goal.transitionPreference).toBeUndefined();
   });
 });

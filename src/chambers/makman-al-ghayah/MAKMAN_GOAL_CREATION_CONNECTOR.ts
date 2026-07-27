@@ -17,7 +17,7 @@
  */
 
 import { GoalContract, GoalPriority, GoalStatus } from './goal-contracts';
-import type { PacingPreference } from './goal-contracts';
+import type { PacingPreference, TransitionPreference } from './goal-contracts';
 import type { CompiledAssemblyGraph } from '../ras-al-amr/pre-publishing-boundary';
 import type { MakmanCommercialIntent } from './MAKMAN_COMMERCIAL_DISTRIBUTION_CONTRACTS';
 
@@ -53,13 +53,18 @@ function generateGoalId(): string {
  * choose not to state a pacing preference, and that is not an error or a
  * missing-data condition, just an honest absence. Never defaulted to a
  * guessed tier when omitted.
+ *
+ * PACKAGE XVI — CREATOR TRANSITION PREFERENCE FOUNDATION: transitionPreference
+ * is genuinely optional, the same treatment as pacingPreference — a
+ * distinct, independent Creator choice, never derived from pacing.
  */
 export function createGoalFromCompiledAssembly(
   compiledGraph: CompiledAssemblyGraph,
   description: string,
   priority: GoalPriority,
   commercialIntent: MakmanCommercialIntent,
-  pacingPreference?: PacingPreference
+  pacingPreference?: PacingPreference,
+  transitionPreference?: TransitionPreference
 ): GoalContract {
   const now = Date.now();
 
@@ -76,6 +81,7 @@ export function createGoalFromCompiledAssembly(
     updatedAtMs: now,
     commercialIntent,
     pacingPreference,
+    transitionPreference,
   };
 }
 

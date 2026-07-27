@@ -38,6 +38,22 @@ export enum PacingPreference {
   ENERGETIC = 'ENERGETIC'
 }
 
+/**
+ * PACKAGE XVI — CREATOR TRANSITION PREFERENCE FOUNDATION: a real, explicit
+ * Creator choice of how one cinematic state should yield to the next —
+ * distinct from PacingPreference (overall composition energy). Never a
+ * cut-type implementation (no "dissolve"/"wipe"/"crossfade" executable
+ * behavior exists anywhere in the platform to honestly name), never
+ * derived from pacing alone. Named directly after the Chief Architect's
+ * own four descriptors, not an invented vocabulary.
+ */
+export enum TransitionPreference {
+  SOFT = 'SOFT',
+  GRADUAL = 'GRADUAL',
+  DECISIVE = 'DECISIVE',
+  DIRECT = 'DIRECT'
+}
+
 export interface GoalMetric {
   readonly key: string;
   readonly value: number;
@@ -100,4 +116,14 @@ export interface GoalContract {
    * stated," never defaulted to a guessed tier.
    */
   readonly pacingPreference?: PacingPreference;
+
+  /**
+   * PACKAGE XVI — CREATOR TRANSITION PREFERENCE FOUNDATION: the Creator's
+   * own, explicitly-chosen cut/transition character, carried onto the
+   * Goal at creation time (see MAKMAN_GOAL_CREATION_CONNECTOR.ts) so it
+   * survives the same GoalState lifecycle every other field here already
+   * relies on. Genuinely optional, same treatment as pacingPreference —
+   * absent means "not stated," never defaulted to a guessed value.
+   */
+  readonly transitionPreference?: TransitionPreference;
 }

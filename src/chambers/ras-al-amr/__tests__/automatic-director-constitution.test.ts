@@ -10,7 +10,7 @@ import {
   FULL_COMMERCIAL_INTENT_READ_DECISION,
   RHYTHM_TRANSITION_TIMING_BASIS,
 } from '../automatic-director-constitution';
-import { GoalPriority, PacingPreference } from '../../makman-al-ghayah/goal-contracts';
+import { GoalPriority, PacingPreference, TransitionPreference } from '../../makman-al-ghayah/goal-contracts';
 import { DistributionTier } from '../../makman-al-ghayah/publication-contracts';
 
 describe('The Cinematic Judgment Constitution — Article IX, Priority Hierarchy', () => {
@@ -249,10 +249,9 @@ describe('Package XIV — Timing Signal Foundation (superseded finding, kept as 
   });
 });
 
-describe('Package XV — Creator Pacing Preference Foundation', () => {
-  it('records, as real tested data, that rhythm is now available (a real Creator-stated preference can inform it) while transitionStrategy honestly remains unavailable', () => {
+describe('Package XV — Creator Pacing Preference Foundation (rhythmAvailable finding superseded by Package XVI, kept as history)', () => {
+  it('records, as real tested data, that rhythm is now available (a real Creator-stated preference can inform it)', () => {
     expect(RHYTHM_TRANSITION_TIMING_BASIS.rhythmAvailable).toBe(true);
-    expect(RHYTHM_TRANSITION_TIMING_BASIS.transitionStrategyAvailable).toBe(false);
     expect(RHYTHM_TRANSITION_TIMING_BASIS.reason.length).toBeGreaterThan(0);
   });
 
@@ -278,5 +277,40 @@ describe('Package XV — Creator Pacing Preference Foundation', () => {
   it('never invents pacingPreference for prompt-echo — stays undefined, never guessed', () => {
     const goal = deriveCreatorGoalFromPrompt('a raw prompt');
     expect(goal.pacingPreference).toBeUndefined();
+  });
+});
+
+describe('Package XVI — Creator Transition Preference Foundation', () => {
+  it('records, as real tested data, that transitionStrategy is now also available, independent of rhythm', () => {
+    expect(RHYTHM_TRANSITION_TIMING_BASIS.transitionStrategyAvailable).toBe(true);
+    expect(RHYTHM_TRANSITION_TIMING_BASIS.rhythmAvailable).toBe(true);
+    expect(RHYTHM_TRANSITION_TIMING_BASIS.reason.length).toBeGreaterThan(0);
+  });
+
+  it('echoes a genuinely stated transitionPreference verbatim into CreatorGoalInput, independent of pacingPreference', () => {
+    const goal = deriveCreatorGoalFromFormalContract({
+      description: 'x',
+      title: 'A Compiled Work',
+      priority: GoalPriority.MEDIUM,
+      pacingPreference: PacingPreference.ENERGETIC,
+      transitionPreference: TransitionPreference.DECISIVE,
+    });
+    expect(goal.transitionPreference).toBe(TransitionPreference.DECISIVE);
+    expect(goal.pacingPreference).toBe(PacingPreference.ENERGETIC);
+  });
+
+  it('never invents transitionPreference when the fetched GoalContract genuinely has none, even when pacingPreference was stated', () => {
+    const goal = deriveCreatorGoalFromFormalContract({
+      description: 'x',
+      title: 'A Compiled Work',
+      priority: GoalPriority.MEDIUM,
+      pacingPreference: PacingPreference.ENERGETIC,
+    });
+    expect(goal.transitionPreference).toBeUndefined();
+  });
+
+  it('never invents transitionPreference for prompt-echo — stays undefined, never guessed', () => {
+    const goal = deriveCreatorGoalFromPrompt('a raw prompt');
+    expect(goal.transitionPreference).toBeUndefined();
   });
 });

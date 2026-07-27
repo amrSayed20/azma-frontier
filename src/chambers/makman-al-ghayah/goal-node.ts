@@ -10,7 +10,7 @@ import {
   GoalPriority,
   GoalStatus
 } from './goal-contracts';
-import type { PacingPreference } from './goal-contracts';
+import type { PacingPreference, TransitionPreference } from './goal-contracts';
 import type { MakmanCommercialIntent } from './MAKMAN_COMMERCIAL_DISTRIBUTION_CONTRACTS';
 
 export class GoalNode implements GoalContract {
@@ -38,6 +38,8 @@ export class GoalNode implements GoalContract {
 
   public readonly pacingPreference?: PacingPreference;
 
+  public readonly transitionPreference?: TransitionPreference;
+
   constructor(
     goal: GoalContract
   ) {
@@ -64,6 +66,8 @@ export class GoalNode implements GoalContract {
     this.commercialIntent = goal.commercialIntent;
 
     this.pacingPreference = goal.pacingPreference;
+
+    this.transitionPreference = goal.transitionPreference;
   }
 
   public isCompleted(): boolean {

@@ -13,6 +13,8 @@ export type { GoalContract, GoalPriority } from '../chambers/makman-al-ghayah/go
 // a consumer can type GoalContract.pacingPreference without a direct
 // import into Makman's chamber.
 export type { PacingPreference } from '../chambers/makman-al-ghayah/goal-contracts';
+// PACKAGE XVI: TransitionPreference re-exported through the same boundary.
+export type { TransitionPreference } from '../chambers/makman-al-ghayah/goal-contracts';
 // PACKAGE XI: AccessPolicy re-exported through the same boundary so a
 // consumer can type GoalContract.commercialIntent's own accessPolicy
 // field without a direct import into Makman's chamber.

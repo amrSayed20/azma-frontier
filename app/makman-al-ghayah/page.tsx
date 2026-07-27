@@ -55,6 +55,12 @@
  * request only when genuinely selected, never defaulted to a guessed
  * tier. Durably carried onto the Goal itself (see goal-contracts.ts's own
  * account) and later readable by Ras Al Amr's Automatic Director.
+ *
+ * PACKAGE XVI — CREATOR TRANSITION PREFERENCE FOUNDATION (2026-07-27): a
+ * second, independent, real select (SOFT/GRADUAL/DECISIVE/DIRECT, plus a
+ * genuine "not stated" default) — a distinct Creator choice from pacing,
+ * never derived from it. Same optional-inclusion treatment: present in
+ * the request only when genuinely selected.
  */
 
 'use client';
@@ -62,7 +68,7 @@
 import React, { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { MakmanExperience } from '@/src/imperial-experience-engine';
-import { GoalPriority, PacingPreference } from '@/src/chambers/makman-al-ghayah/goal-contracts';
+import { GoalPriority, PacingPreference, TransitionPreference } from '@/src/chambers/makman-al-ghayah/goal-contracts';
 import { DistributionTier } from '@/src/chambers/makman-al-ghayah/publication-contracts';
 import type { CompiledAssemblyGraph } from '@/src/chambers/ras-al-amr/pre-publishing-boundary';
 import type { GoalDistributionBridgeResult } from '@/src/chambers/makman-al-ghayah/MAKMAN_COMMERCIAL_DISTRIBUTION_CONTRACTS';
@@ -146,6 +152,7 @@ export default function MakmanAlGhayah() {
   const compiledGraph = useSyncExternalStore(subscribeToNothing, getCompiledGraphSnapshot, getCompiledGraphServerSnapshot);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const pacingPreferenceRef = useRef<HTMLSelectElement>(null);
+  const transitionPreferenceRef = useRef<HTMLSelectElement>(null);
   const [isSubmittingReal, setIsSubmittingReal] = useState(false);
   const [realDistributionResult, setRealDistributionResult] = useState<GoalDistributionBridgeResult | null>(null);
   const [realDistributionError, setRealDistributionError] = useState<string | null>(null);
@@ -220,6 +227,11 @@ export default function MakmanAlGhayah() {
           // Creator actually picked a real option, never defaulted.
           ...(pacingPreferenceRef.current?.value
             ? { pacingPreference: pacingPreferenceRef.current.value as PacingPreference }
+            : {}),
+          // PACKAGE XVI: same treatment — genuinely optional, independent
+          // of pacingPreference, never defaulted.
+          ...(transitionPreferenceRef.current?.value
+            ? { transitionPreference: transitionPreferenceRef.current.value as TransitionPreference }
             : {}),
         }),
       });
@@ -456,6 +468,17 @@ export default function MakmanAlGhayah() {
                 <option value={PacingPreference.CONTEMPLATIVE}>تأملي (Contemplative)</option>
                 <option value={PacingPreference.BALANCED}>متوازن (Balanced)</option>
                 <option value={PacingPreference.ENERGETIC}>حيوي (Energetic)</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>تفضيل الانتقال (Transition Preference) — اختياري</label>
+              <select ref={transitionPreferenceRef} className="cyber-input" defaultValue="">
+                <option value="">لم يُحدَّد — لا تفضيل مُصرَّح به</option>
+                <option value={TransitionPreference.SOFT}>ناعم (Soft)</option>
+                <option value={TransitionPreference.GRADUAL}>تدريجي (Gradual)</option>
+                <option value={TransitionPreference.DECISIVE}>حاسم (Decisive)</option>
+                <option value={TransitionPreference.DIRECT}>مباشر (Direct)</option>
               </select>
             </div>
 

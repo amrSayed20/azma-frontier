@@ -239,19 +239,35 @@
  * `rhythm` (automatic-director.ts) now honestly reflects this: it equals
  * the Creator's own stated `pacingPreference` when one was genuinely
  * declared, and stays `null` otherwise — never inferred, never defaulted.
- * `transitionStrategy` remains `null` even when pacing is known: a
- * pacing preference expresses cinematic ENERGY, not a specific cut TYPE
- * or transition duration — no signal for that exists, so inventing one
- * from pacing alone would be exactly the fabrication this package
- * declines to commit. `RHYTHM_TRANSITION_TIMING_BASIS` below is updated
- * to record this precisely, not just "both stay null."
+ * `transitionStrategy` remained `null` even with pacing known: a pacing
+ * preference expresses cinematic ENERGY, not a specific cut TYPE — see
+ * Package XVI below for its own, later, independent resolution.
+ *
+ * PACKAGE XVI — CREATOR TRANSITION PREFERENCE FOUNDATION (2026-07-27): the
+ * distinct transition/cut-type source Package XV explicitly declined to
+ * derive from pacing now exists — a genuinely optional, Creator-chosen
+ * `TransitionPreference` (SOFT/GRADUAL/DECISIVE/DIRECT — the Chief
+ * Architect's own four descriptors, never an invented vocabulary, never
+ * a "dissolve"/"wipe" executable behavior this platform cannot honestly
+ * produce) durably carried on `GoalContract`, same GoalState mechanism as
+ * every prior optional field. `FormalGoalContractView` and
+ * `CreatorGoalInput` both gained a `transitionPreference` field, echoed
+ * verbatim by `deriveCreatorGoalFromFormalContract` — completely
+ * independent of `pacingPreference`, never derived from it.
+ *
+ * `transitionStrategy` (automatic-director.ts) now equals the Creator's
+ * own stated `transitionPreference` when genuinely declared, honestly
+ * `null` otherwise — the same echo-verbatim treatment `rhythm` already
+ * received in Package XV, applied to a genuinely distinct field.
+ * `RHYTHM_TRANSITION_TIMING_BASIS` below is updated again to record both
+ * fields as available, not just rhythm.
  */
 
 // Package X: the real GoalPriority, imported via the same SOEL boundary
 // automatic-director.ts already uses for GoalContract itself — not a
 // duplicate enum. Package XI adds AccessPolicy through the same boundary.
-// Package XV adds PacingPreference through the same boundary.
-import type { GoalPriority, AccessPolicy, PacingPreference } from '../../sovereign-entry';
+// Package XV adds PacingPreference; Package XVI adds TransitionPreference.
+import type { GoalPriority, AccessPolicy, PacingPreference, TransitionPreference } from '../../sovereign-entry';
 
 // ── Constitutional Identity ──────────────────────────────────────────────
 
@@ -342,6 +358,13 @@ export interface CreatorGoalInput {
    * an honest absence, never defaulted to a guessed tier.
    */
   readonly pacingPreference?: PacingPreference;
+  /**
+   * Package XVI — the real, now-durably-stored GoalContract.transitionPreference,
+   * echoed verbatim. Independent of pacingPreference — never derived from
+   * it. Present only when source is 'formal-goal-contract' AND the
+   * fetched Goal genuinely carries one; an honest absence otherwise.
+   */
+  readonly transitionPreference?: TransitionPreference;
 }
 
 /**
@@ -387,37 +410,38 @@ export const FULL_COMMERCIAL_INTENT_READ_DECISION: {
 
 /**
  * Package XIV recorded that neither rhythm nor transitionStrategy had a
- * real signal. Package XV closed exactly one of those two gaps: a real,
- * durable, Creator-chosen `PacingPreference` now exists (goal-contracts.ts)
- * and `rhythm` (automatic-director.ts) echoes it verbatim when a Creator
- * genuinely stated one — `rhythmAvailable: true` records that this
- * mechanism is now real, NOT that every Goal has a stated preference (a
- * Goal with none still honestly produces `rhythm: null`, same as before).
- * `transitionStrategyAvailable` stays `false`: a pacing preference
- * expresses cinematic ENERGY, not a specific cut TYPE or transition
- * duration — no signal for that exists, so flip it only if a real,
- * named cut-type signal is later found, never speculatively.
+ * real signal. Package XV closed the rhythm gap: a real, durable,
+ * Creator-chosen `PacingPreference` now exists (goal-contracts.ts) and
+ * `rhythm` (automatic-director.ts) echoes it verbatim when genuinely
+ * stated. Package XVI closes the transitionStrategy gap the same way,
+ * with a genuinely DISTINCT source: `TransitionPreference` (SOFT/
+ * GRADUAL/DECISIVE/DIRECT) — never derived from pacing, a Creator may
+ * state one, both, neither, or either independently. `rhythmAvailable`/
+ * `transitionStrategyAvailable: true` record that both mechanisms are
+ * now real, NOT that every Goal has both preferences stated (a Goal with
+ * neither still honestly produces `rhythm: null, transitionStrategy:
+ * null`, exactly as before either package existed).
  */
 export const RHYTHM_TRANSITION_TIMING_BASIS: {
   readonly sequentialTimingAvailable: true;
   readonly rhythmAvailable: true;
-  readonly transitionStrategyAvailable: false;
+  readonly transitionStrategyAvailable: true;
   readonly reason: string;
 } = {
   sequentialTimingAvailable: true,
   rhythmAvailable: true,
-  transitionStrategyAvailable: false,
+  transitionStrategyAvailable: true,
   reason:
     'A repo-wide search found no BPM/beat/tempo/waveform/scene-cut-marker data anywhere in the platform. ' +
     'VaultAsset.metadata carries exactly one real timing field, durationSeconds. From it, a real sequential ' +
     'timing basis is now built: each node\'s own real (or honestly-defaulted) duration accumulates into the next ' +
     'node\'s real start time, so sequential nodes stop overlapping at time zero. Package XV added a real, ' +
     'durable, Creator-chosen PacingPreference (CONTEMPLATIVE/BALANCED/ENERGETIC) that rhythm now echoes verbatim ' +
-    'when genuinely stated, honestly null otherwise. But knowing when a shot starts and ends, or the Creator\'s ' +
-    'stated energy preference, is still not the same as knowing what specific cut type should govern a ' +
-    'transition — no signal for that exists, so transitionStrategy remains honestly null, and rhythm remains ' +
-    'null too whenever no Creator pacing preference was genuinely stated, rather than fabricating either from ' +
-    'duration data alone.',
+    'when genuinely stated. Package XVI added a second, independent, real, durable, Creator-chosen ' +
+    'TransitionPreference (SOFT/GRADUAL/DECISIVE/DIRECT) that transitionStrategy now echoes verbatim when ' +
+    'genuinely stated — never derived from pacing, never a fabricated dissolve/wipe/crossfade execution detail ' +
+    'this platform cannot honestly produce. Both stay honestly null whenever the Creator did not state the ' +
+    'corresponding preference, rather than fabricating either from duration data or from each other.',
 };
 
 /**
@@ -460,6 +484,8 @@ export interface FormalGoalContractView {
   };
   /** Package XV — the Creator's own, genuinely optional pacing preference. */
   readonly pacingPreference?: PacingPreference;
+  /** Package XVI — the Creator's own, genuinely optional transition preference. */
+  readonly transitionPreference?: TransitionPreference;
 }
 
 /**
@@ -493,6 +519,7 @@ export function deriveCreatorGoalFromFormalContract(goal: FormalGoalContractView
       ? { accessPolicy: goal.commercialIntent.accessPolicy, coverArtUri: goal.commercialIntent.coverArtUri }
       : undefined,
     pacingPreference: goal.pacingPreference,
+    transitionPreference: goal.transitionPreference,
   };
 }
 

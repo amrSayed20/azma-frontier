@@ -2,7 +2,7 @@ import { decideCinematicDirection, decideMultiNodeCinematicDirection } from '../
 import { CapabilityTarget } from '../../../core/sovereign-orchestrator/qiyamah-intent-types';
 import { AssetFamily } from '../../../vault/sovereign-vault-types';
 import type { VaultAsset } from '../../../vault/sovereign-vault-types';
-import { GoalStatus, GoalPriority, PacingPreference } from '../../makman-al-ghayah/goal-contracts';
+import { GoalStatus, GoalPriority, PacingPreference, TransitionPreference } from '../../makman-al-ghayah/goal-contracts';
 import { DistributionTier } from '../../makman-al-ghayah/publication-contracts';
 import type { GoalContract } from '../../../sovereign-entry';
 import type { CompiledAssemblyGraph } from '../pre-publishing-boundary';
@@ -218,7 +218,7 @@ describe('The Automatic Director — decideCinematicDirection', () => {
       expect(decision.rhythm).toBeNull();
     });
 
-    it('never fabricates transitionStrategy even when a real pacingPreference is stated', () => {
+    it('never fabricates transitionStrategy from pacingPreference alone — stays null unless a distinct transitionPreference is itself stated', () => {
       const decision = decideCinematicDirection(makeAsset(), makeGoal({ pacingPreference: PacingPreference.BALANCED }));
       expect(decision.transitionStrategy).toBeNull();
     });
@@ -230,6 +230,48 @@ describe('The Automatic Director — decideCinematicDirection', () => {
       );
       expect(decision.included).toBe(false);
       expect(decision.rhythm).toBe(PacingPreference.CONTEMPLATIVE);
+    });
+  });
+
+  describe('Package XVI — Creator Transition Preference Foundation', () => {
+    it('echoes the Creator\'s own stated transitionPreference verbatim as transitionStrategy', () => {
+      const decision = decideCinematicDirection(makeAsset(), makeGoal({ transitionPreference: TransitionPreference.DIRECT }));
+      expect(decision.transitionStrategy).toBe(TransitionPreference.DIRECT);
+    });
+
+    it('is honestly null for transitionStrategy when the formal Goal has no stated transitionPreference', () => {
+      const decision = decideCinematicDirection(makeAsset(), makeGoal());
+      expect(decision.transitionStrategy).toBeNull();
+    });
+
+    it('never invents transitionStrategy from prompt-echo alone', () => {
+      const decision = decideCinematicDirection(makeAsset({ metadata: { generationPrompt: 'a raw prompt' } }));
+      expect(decision.transitionStrategy).toBeNull();
+    });
+
+    it('carries rhythm and transitionStrategy independently — a Creator may state either, both, or neither', () => {
+      const bothStated = decideCinematicDirection(
+        makeAsset(),
+        makeGoal({ pacingPreference: PacingPreference.ENERGETIC, transitionPreference: TransitionPreference.SOFT }),
+      );
+      expect(bothStated.rhythm).toBe(PacingPreference.ENERGETIC);
+      expect(bothStated.transitionStrategy).toBe(TransitionPreference.SOFT);
+
+      const onlyTransitionStated = decideCinematicDirection(
+        makeAsset(),
+        makeGoal({ transitionPreference: TransitionPreference.GRADUAL }),
+      );
+      expect(onlyTransitionStated.rhythm).toBeNull();
+      expect(onlyTransitionStated.transitionStrategy).toBe(TransitionPreference.GRADUAL);
+    });
+
+    it('still reports honest transitionStrategy for a rejected asset — a rejection does not suppress a real stated preference', () => {
+      const decision = decideCinematicDirection(
+        makeAsset({ assetId: '' }),
+        makeGoal({ transitionPreference: TransitionPreference.DECISIVE }),
+      );
+      expect(decision.included).toBe(false);
+      expect(decision.transitionStrategy).toBe(TransitionPreference.DECISIVE);
     });
   });
 

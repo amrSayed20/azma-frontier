@@ -17,14 +17,14 @@
  * Adjustment Packages). Narrative sequencing ACROSS multiple assets is
  * now handled by `decideMultiNodeCinematicDirection` below (Package
  * XIII), which composes per-asset decisions rather than replacing them.
- * `rhythm` now honestly echoes the Creator's own stated `pacingPreference`
+ * `rhythm` honestly echoes the Creator's own stated `pacingPreference`
  * (Package XV) when one genuinely exists, and stays `null` otherwise.
- * `transitionStrategy` still has no real destination to apply to — a
- * pacing preference expresses cinematic ENERGY, not a specific cut TYPE,
- * and no real signal for cut-type exists anywhere in the platform yet
- * (see RHYTHM_TRANSITION_TIMING_BASIS, automatic-director-constitution.ts).
- * Fabricating one would repeat the exact "fake precision" mistake this
- * platform has already declined twice (Hujjah's orphaned
+ * `transitionStrategy` (Package XVI) echoes the Creator's own stated
+ * `transitionPreference` the same way — a genuinely distinct source, never
+ * derived from pacing (see RHYTHM_TRANSITION_TIMING_BASIS,
+ * automatic-director-constitution.ts). Fabricating either from the other,
+ * or from duration data alone, would repeat the exact "fake precision"
+ * mistake this platform has already declined twice (Hujjah's orphaned
  * confidence/verdict engines; Ras Al-Amr's own pixel-grade/chroma-
  * forge/optical-flow).
  *
@@ -111,11 +111,17 @@
  * now equals `creatorGoal.pacingPreference` verbatim (a real, durably-
  * stored, Creator-chosen value — see goal-contracts.ts) when the fetched
  * formal Goal genuinely carries one, and stays `null` otherwise, exactly
- * as before. `transitionStrategy` remains `null` unconditionally: a
- * pacing preference states cinematic ENERGY, not a specific cut TYPE, and
- * no real signal for cut-type exists — flipping it too would be the
- * "fake pacing calculator" this package was explicitly authorized NOT to
- * build.
+ * as before. `transitionStrategy` remained `null` unconditionally at the
+ * time — see Package XVI below for its own, later, independent
+ * resolution.
+ *
+ * UPDATE — PACKAGE XVI, CREATOR TRANSITION PREFERENCE FOUNDATION:
+ * `transitionStrategy`'s type widened from the literal `null` to
+ * `TransitionPreference | null` — the same echo-verbatim treatment
+ * `rhythm` received in Package XV, applied to a genuinely distinct,
+ * independent Creator-chosen field (`creatorGoal.transitionPreference`).
+ * Never derived from `pacingPreference` — a Creator may state either,
+ * both, or neither.
  */
 
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
@@ -129,7 +135,7 @@ import type {
   FormalGoalContractView,
   NarrativeIntegrityResult,
 } from './automatic-director-constitution';
-import type { PacingPreference } from '../../sovereign-entry';
+import type { PacingPreference, TransitionPreference } from '../../sovereign-entry';
 import {
   deriveCreatorGoalFromPrompt,
   deriveCreatorGoalFromFormalContract,
@@ -169,14 +175,15 @@ export interface CinematicDirectionDecision {
   /**
    * Rhythm (Package XV) is the Creator's own stated `pacingPreference`,
    * echoed verbatim — real, never scored or inferred — when one was
-   * genuinely declared; honestly `null` otherwise. Transition strategy
-   * still has no real cut-type signal to draw from — a pacing preference
-   * expresses cinematic ENERGY, not a specific TRANSITION TYPE. See this
+   * genuinely declared; honestly `null` otherwise. transitionStrategy
+   * (Package XVI) is the Creator's own stated `transitionPreference`, the
+   * same echo-verbatim treatment applied to a genuinely distinct,
+   * independent field — never derived from rhythm/pacing. See this
    * module's own header and RHYTHM_TRANSITION_TIMING_BASIS
    * (automatic-director-constitution.ts).
    */
   readonly rhythm: PacingPreference | null;
-  readonly transitionStrategy: null;
+  readonly transitionStrategy: TransitionPreference | null;
   readonly narrativeContinuity: 'not-applicable-single-node';
 
   readonly singleNodeScope: true;
@@ -224,7 +231,7 @@ export function decideCinematicDirection(
       rejectionReason: 'Asset is missing the identity or family required to place it on a canvas.',
       temporalBasis: 'fallback-default',
       rhythm: creatorGoal.pacingPreference ?? null,
-      transitionStrategy: null,
+      transitionStrategy: creatorGoal.transitionPreference ?? null,
       narrativeContinuity: 'not-applicable-single-node',
       singleNodeScope: true,
       creatorGoal,
@@ -254,7 +261,7 @@ export function decideCinematicDirection(
     structural,
     audio,
     rhythm: creatorGoal.pacingPreference ?? null,
-    transitionStrategy: null,
+    transitionStrategy: creatorGoal.transitionPreference ?? null,
     narrativeContinuity: 'not-applicable-single-node',
     singleNodeScope: true,
     creatorGoal,

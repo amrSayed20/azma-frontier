@@ -66,6 +66,10 @@ const REQUIRED_TOP_LEVEL_FIELDS = ['compiledGraph', 'description', 'priority', '
  * own existing (lack of) runtime validation for `priority` — neither
  * field's enum membership is checked here; both are trusted the same way,
  * since the real UI only ever offers a real caller the valid options.
+ *
+ * PACKAGE XVI — CREATOR TRANSITION PREFERENCE FOUNDATION: `transitionPreference`
+ * is genuinely optional too, same treatment — forwarded as part of the
+ * whole body, no new validation added.
  */
 export async function POST(request: NextRequest) {
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
