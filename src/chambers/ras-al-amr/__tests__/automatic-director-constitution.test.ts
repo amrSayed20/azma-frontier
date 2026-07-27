@@ -9,6 +9,7 @@ import {
   FORMAL_GOAL_CONTRACT_READ_PATH,
   FULL_COMMERCIAL_INTENT_READ_DECISION,
   RHYTHM_TRANSITION_TIMING_BASIS,
+  AUDIO_BEAT_ANALYSIS_BASIS,
 } from '../automatic-director-constitution';
 import { GoalPriority, PacingPreference, TransitionPreference } from '../../makman-al-ghayah/goal-contracts';
 import { DistributionTier } from '../../makman-al-ghayah/publication-contracts';
@@ -312,5 +313,19 @@ describe('Package XVI — Creator Transition Preference Foundation', () => {
   it('never invents transitionPreference for prompt-echo — stays undefined, never guessed', () => {
     const goal = deriveCreatorGoalFromPrompt('a raw prompt');
     expect(goal.transitionPreference).toBeUndefined();
+  });
+});
+
+describe('Package XVII — Real Audio / Beat Analysis Signal Foundation', () => {
+  it('records, as real tested data, that no honest audio-content-derived signal exists anywhere in the platform', () => {
+    expect(AUDIO_BEAT_ANALYSIS_BASIS.available).toBe(false);
+    expect(AUDIO_BEAT_ANALYSIS_BASIS.reason.length).toBeGreaterThan(0);
+  });
+
+  it('is recorded as a separate constant from RHYTHM_TRANSITION_TIMING_BASIS — Creator preference and audio evidence are distinct truths', () => {
+    expect(AUDIO_BEAT_ANALYSIS_BASIS).not.toBe(RHYTHM_TRANSITION_TIMING_BASIS);
+    // Creator preference availability (Packages XV/XVI) is unaffected by the absence of audio evidence.
+    expect(RHYTHM_TRANSITION_TIMING_BASIS.rhythmAvailable).toBe(true);
+    expect(RHYTHM_TRANSITION_TIMING_BASIS.transitionStrategyAvailable).toBe(true);
   });
 });

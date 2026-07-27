@@ -261,6 +261,34 @@
  * received in Package XV, applied to a genuinely distinct field.
  * `RHYTHM_TRANSITION_TIMING_BASIS` below is updated again to record both
  * fields as available, not just rhythm.
+ *
+ * PACKAGE XVII — REAL AUDIO / BEAT ANALYSIS SIGNAL FOUNDATION (2026-07-27):
+ * a genuinely different question from Packages XV/XVI — not "what does the
+ * Creator prefer," but "what is the work itself doing." Investigated
+ * definitively whether ANY real audio-content analysis capability exists
+ * anywhere in the platform: `package.json` carries zero audio/DSP
+ * dependencies (no waveform, beat-detection, or frequency-analysis
+ * library of any kind — `openai` is a text/LLM SDK, not an audio
+ * analyzer); a repo-wide search for `AudioContext`/`AnalyserNode`/
+ * `decodeAudioData`/waveform/spectral/FFT code found none; Vault assets
+ * (`sovereign-vault-types.ts`) store only a `secureStorageUri` (a cloud
+ * URL) and `durationSeconds` — never the actual audio bytes, and nothing
+ * anywhere ever fetches/decodes them. `AudioMixingDirective`
+ * (automatic-director.ts) already honestly hardcodes `{volumeDb: 0,
+ * panCenter: 0, isMuted: false}` for any AUDIO-capability asset — not
+ * derived from analysis, and this package changes nothing about that.
+ *
+ * CONCLUSION: Success Criterion B. No honest audio/beat signal exists to
+ * expose. Recorded as real, tested data — `AUDIO_BEAT_ANALYSIS_BASIS`
+ * below — deliberately kept a SEPARATE record from
+ * `RHYTHM_TRANSITION_TIMING_BASIS`, since that constant answers a
+ * different question (does a real CREATOR PREFERENCE exist) than this
+ * one (does real AUDIO EVIDENCE exist) — the Architect's own distinction,
+ * not merged into one constant that would blur two different truths.
+ * `rhythm`/`transitionStrategy` are UNCHANGED by this package: they still
+ * echo Creator preference exactly as Packages XV/XVI left them: this
+ * package adds no new consumable signal, only an honest, tested record
+ * that none was found.
  */
 
 // Package X: the real GoalPriority, imported via the same SOEL boundary
@@ -442,6 +470,35 @@ export const RHYTHM_TRANSITION_TIMING_BASIS: {
     'genuinely stated — never derived from pacing, never a fabricated dissolve/wipe/crossfade execution detail ' +
     'this platform cannot honestly produce. Both stay honestly null whenever the Creator did not state the ' +
     'corresponding preference, rather than fabricating either from duration data or from each other.',
+};
+
+/**
+ * Package XVII — recorded as real, tested data (Success Criterion B): no
+ * honest audio-content-derived signal (beat, tempo, waveform, spectral
+ * data) exists anywhere in the platform to inform rhythm/transitionStrategy
+ * independently of Creator preference. Deliberately a SEPARATE constant
+ * from `RHYTHM_TRANSITION_TIMING_BASIS` — that one answers "does a real
+ * CREATOR PREFERENCE exist" (yes, since Packages XV/XVI); this one answers
+ * a genuinely different question, "does real AUDIO EVIDENCE exist"
+ * (no) — merging them would blur two distinct truths the Chief Architect
+ * himself distinguished. Flip `available` to `true` only if a real
+ * audio-processing capability (a real dependency, a real decode/analyze
+ * code path) is later actually built and verified, never speculatively.
+ */
+export const AUDIO_BEAT_ANALYSIS_BASIS: {
+  readonly available: false;
+  readonly reason: string;
+} = {
+  available: false,
+  reason:
+    'package.json carries zero audio/DSP dependencies (no waveform, beat-detection, or frequency-analysis ' +
+    'library of any kind; openai is a text/LLM SDK, not an audio analyzer). A repo-wide search for ' +
+    'AudioContext/AnalyserNode/decodeAudioData/waveform/spectral/FFT code found none. Vault assets store only a ' +
+    'secureStorageUri (a cloud URL) and durationSeconds — never the actual audio bytes, and nothing anywhere ' +
+    'ever fetches or decodes them. AudioMixingDirective already honestly hardcodes ' +
+    '{volumeDb: 0, panCenter: 0, isMuted: false} for any AUDIO-capability asset, not derived from analysis. ' +
+    'rhythm and transitionStrategy therefore continue to be informed only by real Creator preference ' +
+    '(PacingPreference/TransitionPreference, Packages XV/XVI) — never by a fabricated audio-derived value.',
 };
 
 /**

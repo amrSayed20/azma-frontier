@@ -122,6 +122,17 @@
  * independent Creator-chosen field (`creatorGoal.transitionPreference`).
  * Never derived from `pacingPreference` — a Creator may state either,
  * both, or neither.
+ *
+ * UPDATE — PACKAGE XVII, REAL AUDIO / BEAT ANALYSIS SIGNAL FOUNDATION:
+ * investigated whether a genuinely different signal source — real
+ * audio-content analysis (beat/tempo/waveform), independent of Creator
+ * preference — exists anywhere in the platform. It does not (see
+ * `AUDIO_BEAT_ANALYSIS_BASIS`, automatic-director-constitution.ts): no
+ * audio/DSP dependency, no decode/analyze code path, Vault assets store
+ * only a URI and a duration, never audio bytes. This function's own
+ * `rhythm`/`transitionStrategy` computation is UNCHANGED by this
+ * package — they still, and only, echo real Creator preference exactly
+ * as Packages XV/XVI left them.
  */
 
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
