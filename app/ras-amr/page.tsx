@@ -243,6 +243,15 @@
  * `multiNodeDirection`) alongside its already-APPLIED one (from the
  * canvas's own persisted `node.temporal`) — judgment and execution stay
  * visibly distinct, never conflated.
+ *
+ * PACKAGE XV — CREATOR PACING PREFERENCE FOUNDATION (2026-07-27): the
+ * Director panel now shows the real `rhythm` value (the Creator's own
+ * stated `pacingPreference`, echoed verbatim) when the fetched formal
+ * Goal genuinely carries one — see automatic-director-constitution.ts's
+ * own account for where that preference is set and stored. No UI change
+ * was needed to fetch it: `formalGoal` was already being fetched for the
+ * selected node since Package IX; this package only added the field to
+ * what that fetch honestly returns.
  */
 
 'use client';
@@ -1247,7 +1256,10 @@ export default function RasAmrChamber() {
                     الاعتبار الأساسي (المادة التاسعة): {directorDecision.primaryConsideration}
                   </p>
                   <p className="spatial-current-state">
-                    الإيقاع والانتقال السينمائي: غير محدد بصدق — يوجد الآن أساس زمني تسلسلي حقيقي، لكن لا توجد إشارة حقيقية للإيقاع أو نوع الانتقال، فلم يُختلَق بديل
+                    {directorDecision.rhythm
+                      ? `الإيقاع: ${directorDecision.rhythm} (تفضيل حقيقي صرَّح به الخالق للهدف الرسمي)`
+                      : 'الإيقاع: لا يوجد تفضيل إيقاع مصرَّح به لهذا الهدف — لم يُختلَق بديل'}
+                    {' — '}الانتقال السينمائي: غير محدد بصدق دائماً — لا توجد إشارة حقيقية لنوع الانتقال
                   </p>
                   <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplyDirectorDecision}>
                     🤖 تطبيق قرار الإخراج الحقيقي

@@ -14,6 +14,7 @@
  */
 
 import { GoalContract, GoalPriority, GoalStatus } from './goal-contracts';
+import type { PacingPreference } from './goal-contracts';
 import type { CompiledAssemblyGraph } from '../ras-al-amr/pre-publishing-boundary';
 import { createGoalFromCompiledAssembly } from './MAKMAN_GOAL_CREATION_CONNECTOR';
 import { MakmanGoalRuntime } from './MAKMAN_RUNTIME_CORE_ORCHESTRATION';
@@ -28,6 +29,8 @@ export interface MakmanFirstCustomerJourneyRequest {
   readonly priority: GoalPriority;
   readonly authorization: CreatorAuthorizationDecision;
   readonly commercialIntent: MakmanCommercialIntent;
+  /** PACKAGE XV — genuinely optional: the Creator's own explicit pacing choice, or honestly absent. */
+  readonly pacingPreference?: PacingPreference;
 }
 
 export interface MakmanFirstCustomerJourneyResult {
@@ -49,7 +52,8 @@ export async function runFirstCustomerJourney(
     request.compiledGraph,
     request.description,
     request.priority,
-    request.commercialIntent
+    request.commercialIntent,
+    request.pacingPreference
   );
 
   runtime.handoverGoal(goal);

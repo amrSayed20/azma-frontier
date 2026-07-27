@@ -47,6 +47,14 @@
  * DistributionTier.PRIVATE (Creator preview) because no real tier/
  * pricing UI exists yet — a disclosed limitation, not a fabricated
  * commercial claim.
+ *
+ * PACKAGE XV — CREATOR PACING PREFERENCE FOUNDATION (2026-07-27): a real
+ * pacing-preference select (CONTEMPLATIVE/BALANCED/ENERGETIC, plus a
+ * genuine "not stated" default) is now part of the same real submission
+ * form — the Creator's own explicit, optional choice, included in the
+ * request only when genuinely selected, never defaulted to a guessed
+ * tier. Durably carried onto the Goal itself (see goal-contracts.ts's own
+ * account) and later readable by Ras Al Amr's Automatic Director.
  */
 
 'use client';
@@ -54,7 +62,7 @@
 import React, { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { MakmanExperience } from '@/src/imperial-experience-engine';
-import { GoalPriority } from '@/src/chambers/makman-al-ghayah/goal-contracts';
+import { GoalPriority, PacingPreference } from '@/src/chambers/makman-al-ghayah/goal-contracts';
 import { DistributionTier } from '@/src/chambers/makman-al-ghayah/publication-contracts';
 import type { CompiledAssemblyGraph } from '@/src/chambers/ras-al-amr/pre-publishing-boundary';
 import type { GoalDistributionBridgeResult } from '@/src/chambers/makman-al-ghayah/MAKMAN_COMMERCIAL_DISTRIBUTION_CONTRACTS';
@@ -137,6 +145,7 @@ export default function MakmanAlGhayah() {
   const realProduction = useSyncExternalStore(subscribeToNothing, getRealProductionSnapshot, getRealProductionServerSnapshot);
   const compiledGraph = useSyncExternalStore(subscribeToNothing, getCompiledGraphSnapshot, getCompiledGraphServerSnapshot);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const pacingPreferenceRef = useRef<HTMLSelectElement>(null);
   const [isSubmittingReal, setIsSubmittingReal] = useState(false);
   const [realDistributionResult, setRealDistributionResult] = useState<GoalDistributionBridgeResult | null>(null);
   const [realDistributionError, setRealDistributionError] = useState<string | null>(null);
@@ -207,6 +216,11 @@ export default function MakmanAlGhayah() {
             // rather than a fabricated public/commercial claim.
             accessPolicy: { distributionTier: DistributionTier.PRIVATE, requiresAgeVerification: false },
           },
+          // PACKAGE XV: genuinely optional — included only when the
+          // Creator actually picked a real option, never defaulted.
+          ...(pacingPreferenceRef.current?.value
+            ? { pacingPreference: pacingPreferenceRef.current.value as PacingPreference }
+            : {}),
         }),
       });
 
@@ -433,6 +447,16 @@ export default function MakmanAlGhayah() {
             <div className="form-group">
               <label>الوصف (Description)</label>
               <textarea ref={descriptionRef} className="cyber-input textarea" rows={4} defaultValue="الوصف الافتراضي للعمل الفني..." />
+            </div>
+
+            <div className="form-group">
+              <label>تفضيل الإيقاع (Pacing Preference) — اختياري</label>
+              <select ref={pacingPreferenceRef} className="cyber-input" defaultValue="">
+                <option value="">لم يُحدَّد — لا تفضيل مُصرَّح به</option>
+                <option value={PacingPreference.CONTEMPLATIVE}>تأملي (Contemplative)</option>
+                <option value={PacingPreference.BALANCED}>متوازن (Balanced)</option>
+                <option value={PacingPreference.ENERGETIC}>حيوي (Energetic)</option>
+              </select>
             </div>
 
             <div className="form-group">

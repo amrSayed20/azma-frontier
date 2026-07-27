@@ -225,12 +225,33 @@
  * what PACE or CUT TYPE should govern it, and no signal for either exists
  * yet. Success Criterion B for those two fields specifically; Success
  * Criterion A for the sequential timing foundation itself.
+ *
+ * PACKAGE XV — CREATOR PACING PREFERENCE FOUNDATION (2026-07-27): the
+ * real pacing source Package XIV found absent now exists — a genuinely
+ * optional, Creator-chosen `PacingPreference` (CONTEMPLATIVE/BALANCED/
+ * ENERGETIC — never a BPM/beat value) durably carried on `GoalContract`
+ * (see goal-contracts.ts's own account) via the exact same GoalState
+ * object-identity mechanism Package XI already proved for
+ * commercialIntent. `FormalGoalContractView` and `CreatorGoalInput` below
+ * both gained a `pacingPreference` field, echoed verbatim — never scored,
+ * never interpreted — by `deriveCreatorGoalFromFormalContract`.
+ *
+ * `rhythm` (automatic-director.ts) now honestly reflects this: it equals
+ * the Creator's own stated `pacingPreference` when one was genuinely
+ * declared, and stays `null` otherwise — never inferred, never defaulted.
+ * `transitionStrategy` remains `null` even when pacing is known: a
+ * pacing preference expresses cinematic ENERGY, not a specific cut TYPE
+ * or transition duration — no signal for that exists, so inventing one
+ * from pacing alone would be exactly the fabrication this package
+ * declines to commit. `RHYTHM_TRANSITION_TIMING_BASIS` below is updated
+ * to record this precisely, not just "both stay null."
  */
 
 // Package X: the real GoalPriority, imported via the same SOEL boundary
 // automatic-director.ts already uses for GoalContract itself — not a
 // duplicate enum. Package XI adds AccessPolicy through the same boundary.
-import type { GoalPriority, AccessPolicy } from '../../sovereign-entry';
+// Package XV adds PacingPreference through the same boundary.
+import type { GoalPriority, AccessPolicy, PacingPreference } from '../../sovereign-entry';
 
 // ── Constitutional Identity ──────────────────────────────────────────────
 
@@ -313,6 +334,14 @@ export interface CreatorGoalInput {
     readonly accessPolicy: AccessPolicy;
     readonly coverArtUri?: string;
   };
+  /**
+   * Package XV — the real, now-durably-stored GoalContract.pacingPreference,
+   * echoed verbatim. Present only when source is 'formal-goal-contract'
+   * AND the fetched Goal genuinely carries one — the Creator may
+   * legitimately choose not to state a pacing preference at all, which is
+   * an honest absence, never defaulted to a guessed tier.
+   */
+  readonly pacingPreference?: PacingPreference;
 }
 
 /**
@@ -357,33 +386,38 @@ export const FULL_COMMERCIAL_INTENT_READ_DECISION: {
 };
 
 /**
- * Package XIV — recorded as real, tested data (Success Criterion B for
- * these two fields specifically): no honest rhythm or transition-strategy
- * signal exists anywhere in the platform today. `sequentialTimingAvailable:
- * true` records that Success Criterion A WAS met for the broader timing
- * foundation itself — real sequential start/end times, derived from each
- * node's own real or honestly-defaulted duration (see
- * decideCinematicDirection's `startTimeSeconds` / decideMultiNodeCinematicDirection,
- * automatic-director.ts) — flip `rhythmAvailable`/`transitionStrategyAvailable`
- * only if a real, named pacing or cut-type signal is later found, never
- * speculatively.
+ * Package XIV recorded that neither rhythm nor transitionStrategy had a
+ * real signal. Package XV closed exactly one of those two gaps: a real,
+ * durable, Creator-chosen `PacingPreference` now exists (goal-contracts.ts)
+ * and `rhythm` (automatic-director.ts) echoes it verbatim when a Creator
+ * genuinely stated one — `rhythmAvailable: true` records that this
+ * mechanism is now real, NOT that every Goal has a stated preference (a
+ * Goal with none still honestly produces `rhythm: null`, same as before).
+ * `transitionStrategyAvailable` stays `false`: a pacing preference
+ * expresses cinematic ENERGY, not a specific cut TYPE or transition
+ * duration — no signal for that exists, so flip it only if a real,
+ * named cut-type signal is later found, never speculatively.
  */
 export const RHYTHM_TRANSITION_TIMING_BASIS: {
   readonly sequentialTimingAvailable: true;
-  readonly rhythmAvailable: false;
+  readonly rhythmAvailable: true;
   readonly transitionStrategyAvailable: false;
   readonly reason: string;
 } = {
   sequentialTimingAvailable: true,
-  rhythmAvailable: false,
+  rhythmAvailable: true,
   transitionStrategyAvailable: false,
   reason:
     'A repo-wide search found no BPM/beat/tempo/waveform/scene-cut-marker data anywhere in the platform. ' +
     'VaultAsset.metadata carries exactly one real timing field, durationSeconds. From it, a real sequential ' +
     'timing basis is now built: each node\'s own real (or honestly-defaulted) duration accumulates into the next ' +
-    'node\'s real start time, so sequential nodes stop overlapping at time zero. But knowing when a shot starts ' +
-    'and ends is not the same as knowing what pace or cut type should govern it — no signal for either exists, ' +
-    'so rhythm and transitionStrategy remain honestly null rather than fabricated from duration data alone.',
+    'node\'s real start time, so sequential nodes stop overlapping at time zero. Package XV added a real, ' +
+    'durable, Creator-chosen PacingPreference (CONTEMPLATIVE/BALANCED/ENERGETIC) that rhythm now echoes verbatim ' +
+    'when genuinely stated, honestly null otherwise. But knowing when a shot starts and ends, or the Creator\'s ' +
+    'stated energy preference, is still not the same as knowing what specific cut type should govern a ' +
+    'transition — no signal for that exists, so transitionStrategy remains honestly null, and rhythm remains ' +
+    'null too whenever no Creator pacing preference was genuinely stated, rather than fabricating either from ' +
+    'duration data alone.',
 };
 
 /**
@@ -424,6 +458,8 @@ export interface FormalGoalContractView {
     readonly accessPolicy: AccessPolicy;
     readonly coverArtUri?: string;
   };
+  /** Package XV — the Creator's own, genuinely optional pacing preference. */
+  readonly pacingPreference?: PacingPreference;
 }
 
 /**
@@ -456,6 +492,7 @@ export function deriveCreatorGoalFromFormalContract(goal: FormalGoalContractView
     commercialIntent: goal.commercialIntent
       ? { accessPolicy: goal.commercialIntent.accessPolicy, coverArtUri: goal.commercialIntent.coverArtUri }
       : undefined,
+    pacingPreference: goal.pacingPreference,
   };
 }
 

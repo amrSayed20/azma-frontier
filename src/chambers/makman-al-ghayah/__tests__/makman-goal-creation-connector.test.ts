@@ -1,5 +1,5 @@
 import { createGoalFromCompiledAssembly } from '../MAKMAN_GOAL_CREATION_CONNECTOR';
-import { GoalPriority, GoalStatus } from '../goal-contracts';
+import { GoalPriority, GoalStatus, PacingPreference } from '../goal-contracts';
 import { CanvasType } from '../../ras-al-amr/assembly-contracts';
 import type { CompiledAssemblyGraph } from '../../ras-al-amr/pre-publishing-boundary';
 import { DistributionTier } from '../publication-contracts';
@@ -83,5 +83,25 @@ describe('PACKAGE XI — Commercial Intent Durable Storage: createGoalFromCompil
     expect(goal.commercialIntent).toBe(intent);
     expect(goal.commercialIntent?.accessPolicy.distributionTier).toBe(DistributionTier.COMMERCIAL_PURCHASE);
     expect(goal.commercialIntent?.coverArtUri).toBe('https://vault.example/cover.png');
+  });
+});
+
+describe('PACKAGE XV — Creator Pacing Preference Foundation: createGoalFromCompiledAssembly', () => {
+  it('carries the real, caller-supplied pacingPreference onto the new GoalContract', () => {
+    const goal = createGoalFromCompiledAssembly(
+      makeCompiledGraph(),
+      'a description',
+      GoalPriority.HIGH,
+      makeCommercialIntent(),
+      PacingPreference.ENERGETIC,
+    );
+
+    expect(goal.pacingPreference).toBe(PacingPreference.ENERGETIC);
+  });
+
+  it('leaves pacingPreference honestly undefined when the Creator did not state one — never defaulted to a guessed tier', () => {
+    const goal = createGoalFromCompiledAssembly(makeCompiledGraph(), 'a description', GoalPriority.HIGH, makeCommercialIntent());
+
+    expect(goal.pacingPreference).toBeUndefined();
   });
 });

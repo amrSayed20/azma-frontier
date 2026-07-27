@@ -58,6 +58,14 @@ const REQUIRED_TOP_LEVEL_FIELDS = ['compiledGraph', 'description', 'priority', '
  * assets/route.ts already does). If any linkage fails, the whole
  * request reports failure (500) rather than a false success — "no
  * partial success may be represented as constitutional completion."
+ *
+ * PACKAGE XV — CREATOR PACING PREFERENCE FOUNDATION: `pacingPreference`
+ * is genuinely optional on the request body — this route needs no new
+ * validation for it, since the body is already forwarded to SOEL as a
+ * whole (`authoritativeRequest` below spreads it), matching this route's
+ * own existing (lack of) runtime validation for `priority` — neither
+ * field's enum membership is checked here; both are trusted the same way,
+ * since the real UI only ever offers a real caller the valid options.
  */
 export async function POST(request: NextRequest) {
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;

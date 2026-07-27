@@ -9,6 +9,10 @@ export { soel } from './composition';
 // Director) can type a genuinely-fetched Goal without importing from
 // src/chambers/makman-al-ghayah directly — SOEL remains the one boundary.
 export type { GoalContract, GoalPriority } from '../chambers/makman-al-ghayah/goal-contracts';
+// PACKAGE XV: PacingPreference re-exported through the same boundary so
+// a consumer can type GoalContract.pacingPreference without a direct
+// import into Makman's chamber.
+export type { PacingPreference } from '../chambers/makman-al-ghayah/goal-contracts';
 // PACKAGE XI: AccessPolicy re-exported through the same boundary so a
 // consumer can type GoalContract.commercialIntent's own accessPolicy
 // field without a direct import into Makman's chamber.

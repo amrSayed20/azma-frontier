@@ -10,7 +10,7 @@ import {
   FULL_COMMERCIAL_INTENT_READ_DECISION,
   RHYTHM_TRANSITION_TIMING_BASIS,
 } from '../automatic-director-constitution';
-import { GoalPriority } from '../../makman-al-ghayah/goal-contracts';
+import { GoalPriority, PacingPreference } from '../../makman-al-ghayah/goal-contracts';
 import { DistributionTier } from '../../makman-al-ghayah/publication-contracts';
 
 describe('The Cinematic Judgment Constitution — Article IX, Priority Hierarchy', () => {
@@ -243,11 +243,40 @@ describe('Package XIII — Multi-Node Cinematic Direction: determinePrimaryNode'
   });
 });
 
-describe('Package XIV — Timing Signal Foundation', () => {
-  it('records, as real tested data, that sequential timing is now available but rhythm/transitionStrategy honestly remain unavailable', () => {
+describe('Package XIV — Timing Signal Foundation (superseded finding, kept as history)', () => {
+  it('records, as real tested data, that a real sequential timing basis exists', () => {
     expect(RHYTHM_TRANSITION_TIMING_BASIS.sequentialTimingAvailable).toBe(true);
-    expect(RHYTHM_TRANSITION_TIMING_BASIS.rhythmAvailable).toBe(false);
+  });
+});
+
+describe('Package XV — Creator Pacing Preference Foundation', () => {
+  it('records, as real tested data, that rhythm is now available (a real Creator-stated preference can inform it) while transitionStrategy honestly remains unavailable', () => {
+    expect(RHYTHM_TRANSITION_TIMING_BASIS.rhythmAvailable).toBe(true);
     expect(RHYTHM_TRANSITION_TIMING_BASIS.transitionStrategyAvailable).toBe(false);
     expect(RHYTHM_TRANSITION_TIMING_BASIS.reason.length).toBeGreaterThan(0);
+  });
+
+  it('echoes a genuinely stated pacingPreference verbatim into CreatorGoalInput', () => {
+    const goal = deriveCreatorGoalFromFormalContract({
+      description: 'x',
+      title: 'A Compiled Work',
+      priority: GoalPriority.MEDIUM,
+      pacingPreference: PacingPreference.CONTEMPLATIVE,
+    });
+    expect(goal.pacingPreference).toBe(PacingPreference.CONTEMPLATIVE);
+  });
+
+  it('never invents pacingPreference when the fetched GoalContract genuinely has none', () => {
+    const goal = deriveCreatorGoalFromFormalContract({
+      description: 'x',
+      title: 'A Compiled Work',
+      priority: GoalPriority.MEDIUM,
+    });
+    expect(goal.pacingPreference).toBeUndefined();
+  });
+
+  it('never invents pacingPreference for prompt-echo — stays undefined, never guessed', () => {
+    const goal = deriveCreatorGoalFromPrompt('a raw prompt');
+    expect(goal.pacingPreference).toBeUndefined();
   });
 });

@@ -1,6 +1,6 @@
 import { SovereignOperationalEntryLayer } from '../soel';
 import { GoalState } from '../../chambers/makman-al-ghayah/goal-state';
-import { GoalStatus, GoalPriority } from '../../chambers/makman-al-ghayah/goal-contracts';
+import { GoalStatus, GoalPriority, PacingPreference } from '../../chambers/makman-al-ghayah/goal-contracts';
 import type { GoalContract } from '../../chambers/makman-al-ghayah/goal-contracts';
 import { DistributionTier } from '../../chambers/makman-al-ghayah/publication-contracts';
 import type { MakmanCommercialIntent } from '../../chambers/makman-al-ghayah/MAKMAN_COMMERCIAL_DISTRIBUTION_CONTRACTS';
@@ -111,5 +111,39 @@ describe('PACKAGE XI — Commercial Intent Durable Storage: round-trip through G
     );
 
     expect(soel.getCreatorGoal('goal-1', 'tenant-1')?.commercialIntent).toEqual(commercialIntent);
+  });
+});
+
+describe('PACKAGE XV — Creator Pacing Preference Foundation: round-trip through GoalState', () => {
+  it('survives register() -> update() -> getGoal(), reachable via SOEL.getCreatorGoal like any other field', () => {
+    const goalState = new GoalState();
+    goalState.register(makeGoal({ pacingPreference: PacingPreference.ENERGETIC }));
+    goalState.update(
+      { ...makeGoal({ pacingPreference: PacingPreference.ENERGETIC }), status: GoalStatus.COMPLETED, updatedAtMs: 1 },
+      { isAuthorized: true },
+    );
+
+    const soel = new SovereignOperationalEntryLayer(
+      goalState,
+      {} as MakmanGoalDistributionBridge,
+      {} as PublicConsumptionBoundary,
+      {} as PrePublishingBoundary,
+    );
+
+    expect(soel.getCreatorGoal('goal-1', 'tenant-1')?.pacingPreference).toBe(PacingPreference.ENERGETIC);
+  });
+
+  it('is honestly undefined when the Creator never stated a pacing preference — never defaulted', () => {
+    const goalState = new GoalState();
+    goalState.register(makeGoal());
+
+    const soel = new SovereignOperationalEntryLayer(
+      goalState,
+      {} as MakmanGoalDistributionBridge,
+      {} as PublicConsumptionBoundary,
+      {} as PrePublishingBoundary,
+    );
+
+    expect(soel.getCreatorGoal('goal-1', 'tenant-1')?.pacingPreference).toBeUndefined();
   });
 });

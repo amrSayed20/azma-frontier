@@ -10,6 +10,7 @@ import {
   GoalPriority,
   GoalStatus
 } from './goal-contracts';
+import type { PacingPreference } from './goal-contracts';
 import type { MakmanCommercialIntent } from './MAKMAN_COMMERCIAL_DISTRIBUTION_CONTRACTS';
 
 export class GoalNode implements GoalContract {
@@ -35,6 +36,8 @@ export class GoalNode implements GoalContract {
 
   public readonly commercialIntent?: MakmanCommercialIntent;
 
+  public readonly pacingPreference?: PacingPreference;
+
   constructor(
     goal: GoalContract
   ) {
@@ -59,6 +62,8 @@ export class GoalNode implements GoalContract {
     this.updatedAtMs = goal.updatedAtMs;
 
     this.commercialIntent = goal.commercialIntent;
+
+    this.pacingPreference = goal.pacingPreference;
   }
 
   public isCompleted(): boolean {

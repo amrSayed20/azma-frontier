@@ -2,7 +2,7 @@ import { decideCinematicDirection, decideMultiNodeCinematicDirection } from '../
 import { CapabilityTarget } from '../../../core/sovereign-orchestrator/qiyamah-intent-types';
 import { AssetFamily } from '../../../vault/sovereign-vault-types';
 import type { VaultAsset } from '../../../vault/sovereign-vault-types';
-import { GoalStatus, GoalPriority } from '../../makman-al-ghayah/goal-contracts';
+import { GoalStatus, GoalPriority, PacingPreference } from '../../makman-al-ghayah/goal-contracts';
 import { DistributionTier } from '../../makman-al-ghayah/publication-contracts';
 import type { GoalContract } from '../../../sovereign-entry';
 import type { CompiledAssemblyGraph } from '../pre-publishing-boundary';
@@ -199,6 +199,37 @@ describe('The Automatic Director — decideCinematicDirection', () => {
     it('never invents commercialIntent from prompt-echo alone', () => {
       const decision = decideCinematicDirection(makeAsset({ metadata: { generationPrompt: 'a raw prompt' } }));
       expect(decision.creatorGoal.commercialIntent).toBeUndefined();
+    });
+  });
+
+  describe('Package XV — Creator Pacing Preference Foundation', () => {
+    it('echoes the Creator\'s own stated pacingPreference verbatim as rhythm', () => {
+      const decision = decideCinematicDirection(makeAsset(), makeGoal({ pacingPreference: PacingPreference.ENERGETIC }));
+      expect(decision.rhythm).toBe(PacingPreference.ENERGETIC);
+    });
+
+    it('is honestly null for rhythm when the formal Goal has no stated pacingPreference', () => {
+      const decision = decideCinematicDirection(makeAsset(), makeGoal());
+      expect(decision.rhythm).toBeNull();
+    });
+
+    it('never invents rhythm from prompt-echo alone', () => {
+      const decision = decideCinematicDirection(makeAsset({ metadata: { generationPrompt: 'a raw prompt' } }));
+      expect(decision.rhythm).toBeNull();
+    });
+
+    it('never fabricates transitionStrategy even when a real pacingPreference is stated', () => {
+      const decision = decideCinematicDirection(makeAsset(), makeGoal({ pacingPreference: PacingPreference.BALANCED }));
+      expect(decision.transitionStrategy).toBeNull();
+    });
+
+    it('still reports honest rhythm for a rejected asset — a rejection does not suppress a real stated preference', () => {
+      const decision = decideCinematicDirection(
+        makeAsset({ assetId: '' }),
+        makeGoal({ pacingPreference: PacingPreference.CONTEMPLATIVE }),
+      );
+      expect(decision.included).toBe(false);
+      expect(decision.rhythm).toBe(PacingPreference.CONTEMPLATIVE);
     });
   });
 

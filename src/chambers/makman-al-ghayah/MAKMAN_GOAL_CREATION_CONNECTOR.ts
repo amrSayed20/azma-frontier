@@ -17,6 +17,7 @@
  */
 
 import { GoalContract, GoalPriority, GoalStatus } from './goal-contracts';
+import type { PacingPreference } from './goal-contracts';
 import type { CompiledAssemblyGraph } from '../ras-al-amr/pre-publishing-boundary';
 import type { MakmanCommercialIntent } from './MAKMAN_COMMERCIAL_DISTRIBUTION_CONTRACTS';
 
@@ -46,12 +47,19 @@ function generateGoalId(): string {
  * ts's own request.commercialIntent) — nothing new is fetched or
  * invented; it previously flowed only into the distribution bridge and
  * was discarded afterward, never onto the Goal itself.
+ *
+ * PACKAGE XV — CREATOR PACING PREFERENCE FOUNDATION: pacingPreference is
+ * genuinely optional (unlike commercialIntent) — a Creator may simply
+ * choose not to state a pacing preference, and that is not an error or a
+ * missing-data condition, just an honest absence. Never defaulted to a
+ * guessed tier when omitted.
  */
 export function createGoalFromCompiledAssembly(
   compiledGraph: CompiledAssemblyGraph,
   description: string,
   priority: GoalPriority,
-  commercialIntent: MakmanCommercialIntent
+  commercialIntent: MakmanCommercialIntent,
+  pacingPreference?: PacingPreference
 ): GoalContract {
   const now = Date.now();
 
@@ -67,6 +75,7 @@ export function createGoalFromCompiledAssembly(
     createdAtMs: now,
     updatedAtMs: now,
     commercialIntent,
+    pacingPreference,
   };
 }
 

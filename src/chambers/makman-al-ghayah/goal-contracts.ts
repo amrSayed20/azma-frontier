@@ -23,6 +23,21 @@ export enum GoalPriority {
   CRITICAL = 'CRITICAL'
 }
 
+/**
+ * PACKAGE XV — CREATOR PACING PREFERENCE FOUNDATION: a real, explicit
+ * Creator choice of cinematic energy — never a BPM, beat, or waveform
+ * value (no such signal exists anywhere in the platform), never inferred
+ * from visual style. Three named tiers, the same "small closed enum" shape
+ * already established by GoalPriority, so pacing carries genuine meaning
+ * a Creator can deliberately pick without implying false numeric
+ * precision this platform cannot honestly produce.
+ */
+export enum PacingPreference {
+  CONTEMPLATIVE = 'CONTEMPLATIVE',
+  BALANCED = 'BALANCED',
+  ENERGETIC = 'ENERGETIC'
+}
+
 export interface GoalMetric {
   readonly key: string;
   readonly value: number;
@@ -73,4 +88,16 @@ export interface GoalContract {
    * going forward, but old callers/tests may still omit it honestly).
    */
   readonly commercialIntent?: MakmanCommercialIntent;
+
+  /**
+   * PACKAGE XV — CREATOR PACING PREFERENCE FOUNDATION: the Creator's own,
+   * explicitly-chosen cinematic energy preference, carried onto the Goal
+   * at creation time (see MAKMAN_GOAL_CREATION_CONNECTOR.ts) so it
+   * survives the same GoalState lifecycle every other field here already
+   * relies on. Genuinely optional — unlike commercialIntent, a real Goal
+   * can honestly exist with no pacing preference at all, since the
+   * Creator may simply choose not to state one; absent means "not
+   * stated," never defaulted to a guessed tier.
+   */
+  readonly pacingPreference?: PacingPreference;
 }
