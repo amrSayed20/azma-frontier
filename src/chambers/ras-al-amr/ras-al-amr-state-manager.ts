@@ -2,20 +2,36 @@
  * AZMA OS - Phase 5: Ras Al-Amr Assembly Architecture
  * File: src/chambers/ras-al-amr/ras-al-amr-state-manager.ts
  * * The Ras Al-Amr State Manager.
- * The executable engine that processes non-destructive mutation payloads 
+ * The executable engine that processes non-destructive mutation payloads
  * and applies them to the Sovereign Canvas using immutable state transitions.
  * * Update Notice: Full integration of Spatial and Advanced Semantic Directives.
+ *
+ * PACKAGE XX — DIRECTION ASSEMBLY LAYER (2026-07-28): three new mutations
+ * — REORDER_NODE, ADD_TRACK, MOVE_NODE_TO_TRACK — give the Direction
+ * Workspace real non-destructive reordering and real grouping (multiple
+ * AssemblyTracks, finally used as the "logical grouping" the type's own
+ * doc comment always described). Enabling grouping meant a node's own
+ * track could change at runtime, so REMOVE_NODE/UPDATE_TEMPORAL/
+ * UPDATE_SPATIAL/UPDATE_ADVANCED_DIRECTIVE were also fixed to locate a
+ * node by its own globally-unique id across every track (`locateNode`)
+ * instead of trusting a caller-supplied `targetTrackId` that could go
+ * stale the moment a node moves group — a correctness fix required by
+ * this package, not scope creep. No new orchestration, no duplicate
+ * canvas state, no execution/rendering logic.
  */
 
 import { SovereignCanvas, AssemblyNode, AssemblyTrack } from './assembly-contracts';
-import { 
-  CanvasMutationPayload, 
-  CanvasActionType, 
-  AddNodePayload, 
+import {
+  CanvasMutationPayload,
+  CanvasActionType,
+  AddNodePayload,
   RemoveNodePayload,
   UpdateNodeTemporalPayload,
   UpdateNodeSpatialPayload,
-  UpdateNodeAdvancedPayload
+  UpdateNodeAdvancedPayload,
+  ReorderNodePayload,
+  AddTrackPayload,
+  MoveNodeToTrackPayload
 } from './assembly-directive-payloads';
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 import { AssetFamily } from '../../vault/sovereign-vault-types';
@@ -56,9 +72,34 @@ export class RasAlAmrStateManager {
         return this.handleUpdateSpatial(updatedCanvas, mutation);
       case CanvasActionType.UPDATE_ADVANCED_DIRECTIVE:
         return this.handleUpdateAdvanced(updatedCanvas, mutation);
+      case CanvasActionType.REORDER_NODE:
+        return this.handleReorderNode(updatedCanvas, mutation);
+      case CanvasActionType.ADD_TRACK:
+        return this.handleAddTrack(updatedCanvas, mutation);
+      case CanvasActionType.MOVE_NODE_TO_TRACK:
+        return this.handleMoveNodeToTrack(updatedCanvas, mutation);
       default:
-        return updatedCanvas; 
+        return updatedCanvas;
     }
+  }
+
+  /**
+   * PACKAGE XX — DIRECTION ASSEMBLY LAYER: locates a node by its own
+   * globally-unique id across every track, rather than trusting a
+   * caller-supplied `targetTrackId` — which can go stale the instant a
+   * node moves to a different group (MOVE_NODE_TO_TRACK). The single,
+   * centralized fix that makes every existing handler correct once
+   * grouping is real, instead of requiring every caller to track which
+   * group a node currently lives in.
+   */
+  private locateNode(canvas: SovereignCanvas, nodeId: string): { trackIndex: number; nodeIndex: number } | null {
+    for (let trackIndex = 0; trackIndex < canvas.tracks.length; trackIndex++) {
+      const nodeIndex = canvas.tracks[trackIndex].nodes.findIndex((n) => n.nodeId === nodeId);
+      if (nodeIndex !== -1) {
+        return { trackIndex, nodeIndex };
+      }
+    }
+    return null;
   }
 
   // ==========================================
@@ -95,25 +136,25 @@ export class RasAlAmrStateManager {
   }
 
   private handleRemoveNode(canvas: SovereignCanvas, payload: RemoveNodePayload): SovereignCanvas {
-    const trackIndex = canvas.tracks.findIndex(t => t.trackId === payload.targetTrackId);
-    if (trackIndex === -1) return canvas;
+    const location = this.locateNode(canvas, payload.targetNodeId);
+    if (!location) return canvas;
 
+    const track = canvas.tracks[location.trackIndex];
     const updatedTrack: AssemblyTrack = {
-      ...canvas.tracks[trackIndex],
-      nodes: canvas.tracks[trackIndex].nodes.filter(n => n.nodeId !== payload.targetNodeId)
+      ...track,
+      nodes: track.nodes.filter(n => n.nodeId !== payload.targetNodeId)
     };
 
-    canvas.tracks[trackIndex] = updatedTrack;
+    canvas.tracks[location.trackIndex] = updatedTrack;
     return canvas;
   }
 
   private handleUpdateTemporal(canvas: SovereignCanvas, payload: UpdateNodeTemporalPayload): SovereignCanvas {
-    const trackIndex = canvas.tracks.findIndex(t => t.trackId === payload.targetTrackId);
-    if (trackIndex === -1) return canvas;
+    const location = this.locateNode(canvas, payload.targetNodeId);
+    if (!location) return canvas;
 
+    const { trackIndex, nodeIndex } = location;
     const track = canvas.tracks[trackIndex];
-    const nodeIndex = track.nodes.findIndex(n => n.nodeId === payload.targetNodeId);
-    if (nodeIndex === -1) return canvas;
 
     const updatedNode: AssemblyNode = {
       ...track.nodes[nodeIndex],
@@ -140,12 +181,11 @@ export class RasAlAmrStateManager {
    * Handles non-destructive updates to spatial positioning layers (Scale, Position, Rotation).
    */
   private handleUpdateSpatial(canvas: SovereignCanvas, payload: UpdateNodeSpatialPayload): SovereignCanvas {
-    const trackIndex = canvas.tracks.findIndex(t => t.trackId === payload.targetTrackId);
-    if (trackIndex === -1) return canvas;
+    const location = this.locateNode(canvas, payload.targetNodeId);
+    if (!location) return canvas;
 
+    const { trackIndex, nodeIndex } = location;
     const track = canvas.tracks[trackIndex];
-    const nodeIndex = track.nodes.findIndex(n => n.nodeId === payload.targetNodeId);
-    if (nodeIndex === -1) return canvas;
 
     const updatedNode: AssemblyNode = {
       ...track.nodes[nodeIndex],
@@ -173,12 +213,11 @@ export class RasAlAmrStateManager {
    * Persists data immutably inside customDirectives to remain clean and extensible.
    */
   private handleUpdateAdvanced(canvas: SovereignCanvas, payload: UpdateNodeAdvancedPayload): SovereignCanvas {
-    const trackIndex = canvas.tracks.findIndex(t => t.trackId === payload.targetTrackId);
-    if (trackIndex === -1) return canvas;
+    const location = this.locateNode(canvas, payload.targetNodeId);
+    if (!location) return canvas;
 
+    const { trackIndex, nodeIndex } = location;
     const track = canvas.tracks[trackIndex];
-    const nodeIndex = track.nodes.findIndex(n => n.nodeId === payload.targetNodeId);
-    if (nodeIndex === -1) return canvas;
 
     // حقن التوجيه المتقدم داخل حقل customDirectives لحماية العقود الأصلية من التمزيق
     const updatedNode: AssemblyNode = {
@@ -199,6 +238,90 @@ export class RasAlAmrStateManager {
     };
 
     canvas.tracks[trackIndex] = updatedTrack;
+    return canvas;
+  }
+
+  /**
+   * PACKAGE XX — DIRECTION ASSEMBLY LAYER: non-destructive reordering.
+   * Swaps a node with its immediate neighbor in the same track's array —
+   * the same node objects, no data loss, no removal/recreation. A no-op
+   * (not an error) at either boundary: moving the first node up, or the
+   * last node down, leaves the canvas unchanged.
+   */
+  private handleReorderNode(canvas: SovereignCanvas, payload: ReorderNodePayload): SovereignCanvas {
+    const location = this.locateNode(canvas, payload.targetNodeId);
+    if (!location) return canvas;
+
+    const { trackIndex, nodeIndex } = location;
+    const track = canvas.tracks[trackIndex];
+    const swapWithIndex = payload.direction === 'up' ? nodeIndex - 1 : nodeIndex + 1;
+
+    if (swapWithIndex < 0 || swapWithIndex >= track.nodes.length) {
+      return canvas;
+    }
+
+    const reorderedNodes = [...track.nodes];
+    [reorderedNodes[nodeIndex], reorderedNodes[swapWithIndex]] = [reorderedNodes[swapWithIndex], reorderedNodes[nodeIndex]];
+
+    canvas.tracks[trackIndex] = { ...track, nodes: reorderedNodes };
+    return canvas;
+  }
+
+  /**
+   * PACKAGE XX — DIRECTION ASSEMBLY LAYER: creates a new, empty group.
+   * AssemblyTrack was already, by its own doc comment, "a logical
+   * grouping of Assembly Nodes" — this is the first real caller that
+   * creates more than the one track every canvas started with.
+   */
+  private handleAddTrack(canvas: SovereignCanvas, payload: AddTrackPayload): SovereignCanvas {
+    const newTrack: AssemblyTrack = {
+      trackId: `track_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      trackName: payload.trackName,
+      isMuted: false,
+      isHidden: false,
+      nodes: []
+    };
+
+    canvas.tracks = [...canvas.tracks, newTrack];
+    return canvas;
+  }
+
+  /**
+   * PACKAGE XX — DIRECTION ASSEMBLY LAYER: moves an existing node from
+   * one group to another — the write-side of "asset grouping can be
+   * changed." Non-destructive: the node's own identity, temporal/
+   * spatial/customDirectives all survive unchanged; only which track's
+   * array contains it changes. Throws if either the source or
+   * destination track genuinely does not exist — the same failure mode
+   * ADD_NODE already uses for an unknown target track, since a move
+   * across two named containers deserves the same integrity guarantee
+   * as creating a node in one.
+   */
+  private handleMoveNodeToTrack(canvas: SovereignCanvas, payload: MoveNodeToTrackPayload): SovereignCanvas {
+    const sourceIndex = canvas.tracks.findIndex(t => t.trackId === payload.sourceTrackId);
+    const destinationIndex = canvas.tracks.findIndex(t => t.trackId === payload.destinationTrackId);
+
+    if (sourceIndex === -1 || destinationIndex === -1) {
+      throw new Error(`State Error: Source [${payload.sourceTrackId}] or destination [${payload.destinationTrackId}] track not found for node move.`);
+    }
+
+    if (sourceIndex === destinationIndex) return canvas;
+
+    const sourceTrack = canvas.tracks[sourceIndex];
+    const node = sourceTrack.nodes.find(n => n.nodeId === payload.targetNodeId);
+    if (!node) return canvas;
+
+    canvas.tracks[sourceIndex] = {
+      ...sourceTrack,
+      nodes: sourceTrack.nodes.filter(n => n.nodeId !== payload.targetNodeId)
+    };
+
+    const destinationTrack = canvas.tracks[destinationIndex];
+    canvas.tracks[destinationIndex] = {
+      ...destinationTrack,
+      nodes: [...destinationTrack.nodes, node]
+    };
+
     return canvas;
   }
 }

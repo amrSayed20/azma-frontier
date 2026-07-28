@@ -58,7 +58,13 @@ export enum CanvasActionType {
   REMOVE_NODE = 'REMOVE_NODE',
   UPDATE_TEMPORAL = 'UPDATE_TEMPORAL',
   UPDATE_SPATIAL = 'UPDATE_SPATIAL',
-  UPDATE_ADVANCED_DIRECTIVE = 'UPDATE_ADVANCED_DIRECTIVE'
+  UPDATE_ADVANCED_DIRECTIVE = 'UPDATE_ADVANCED_DIRECTIVE',
+  /** PACKAGE XX — DIRECTION ASSEMBLY LAYER: non-destructive reordering — swaps a node with its adjacent neighbor within the same track. */
+  REORDER_NODE = 'REORDER_NODE',
+  /** PACKAGE XX — DIRECTION ASSEMBLY LAYER: creates a new, real, empty group (AssemblyTrack was already "a logical grouping of Assembly Nodes" by its own doc comment — this is that concept, finally used). */
+  ADD_TRACK = 'ADD_TRACK',
+  /** PACKAGE XX — DIRECTION ASSEMBLY LAYER: moves an existing node from one group to another — the write-side of "asset grouping can be changed." */
+  MOVE_NODE_TO_TRACK = 'MOVE_NODE_TO_TRACK'
 }
 
 /**
@@ -86,6 +92,14 @@ export interface AddNodePayload extends BaseCanvasMutation {
   initialTemporal?: TemporalDirective;
   initialSpatial?: SpatialDirective;
 }
+
+// PACKAGE XX — DIRECTION ASSEMBLY LAYER: now that a node can move between
+// groups (MOVE_NODE_TO_TRACK), `targetTrackId` below is no longer
+// consulted for locating the node — nodeId is already globally unique,
+// so RasAlAmrStateManager now scans every track by nodeId instead of
+// trusting a caller-supplied track hint that could go stale the instant
+// a node moves group. The field is kept (not removed) so no existing
+// caller's payload shape needs to change; it is simply harmless now.
 
 export interface RemoveNodePayload extends BaseCanvasMutation {
   actionType: CanvasActionType.REMOVE_NODE;
@@ -120,11 +134,50 @@ export interface UpdateNodeAdvancedPayload extends BaseCanvasMutation {
 }
 
 /**
+ * PACKAGE XX — DIRECTION ASSEMBLY LAYER: moves a node one position up or
+ * down within its own track's array — non-destructive (the same node
+ * object, no removal/recreation), reusing the already-real array-order
+ * signal Packages XIII/XIV already derive `executionOrderIndex`/
+ * `globalStartTimeSeconds` from.
+ */
+export interface ReorderNodePayload extends BaseCanvasMutation {
+  actionType: CanvasActionType.REORDER_NODE;
+  targetTrackId: string;
+  targetNodeId: string;
+  direction: 'up' | 'down';
+}
+
+/**
+ * PACKAGE XX — DIRECTION ASSEMBLY LAYER: creates a new, empty group
+ * (AssemblyTrack). No canvas-level identity beyond a name — grouping
+ * itself is the pre-existing AssemblyTrack concept, not a new one.
+ */
+export interface AddTrackPayload extends BaseCanvasMutation {
+  actionType: CanvasActionType.ADD_TRACK;
+  trackName: string;
+}
+
+/**
+ * PACKAGE XX — DIRECTION ASSEMBLY LAYER: moves an existing node from one
+ * group to another, non-destructively (the node's own identity, temporal/
+ * spatial/customDirectives all survive the move unchanged).
+ */
+export interface MoveNodeToTrackPayload extends BaseCanvasMutation {
+  actionType: CanvasActionType.MOVE_NODE_TO_TRACK;
+  sourceTrackId: string;
+  targetNodeId: string;
+  destinationTrackId: string;
+}
+
+/**
  * The definitive union type consumed by the Ras Al-Amr State Manager.
  */
-export type CanvasMutationPayload = 
-  | AddNodePayload 
+export type CanvasMutationPayload =
+  | AddNodePayload
   | RemoveNodePayload
-  | UpdateNodeTemporalPayload 
-  | UpdateNodeSpatialPayload 
-  | UpdateNodeAdvancedPayload;
+  | UpdateNodeTemporalPayload
+  | UpdateNodeSpatialPayload
+  | UpdateNodeAdvancedPayload
+  | ReorderNodePayload
+  | AddTrackPayload
+  | MoveNodeToTrackPayload;

@@ -83,3 +83,19 @@ describe('Package XIX — Media Ingestion Layer', () => {
     expect(entry?.reason).toMatch(/not built by this package/);
   });
 });
+
+describe('Package XX — Direction Assembly Layer', () => {
+  it('marks Asset grouping as a new, genuinely implemented capability reusing AssemblyTrack', () => {
+    const entry = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) => e.capability === 'Asset grouping');
+    expect(entry?.implemented).toBe(true);
+    expect(entry?.constitutionalLocation).toMatch(/AssemblyTrack/);
+    expect(entry?.constitutionalLocation).toMatch(/ADD_TRACK/);
+    expect(entry?.constitutionalLocation).toMatch(/MOVE_NODE_TO_TRACK/);
+  });
+
+  it('updates Scene arrangement / visual sequencing to also cite the new real, write-side reorder mutation', () => {
+    const entry = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) => e.capability === 'Scene arrangement / visual sequencing');
+    expect(entry?.implemented).toBe(true);
+    expect(entry?.constitutionalLocation).toMatch(/REORDER_NODE/);
+  });
+});

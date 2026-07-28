@@ -40,6 +40,30 @@
  * canvas-state persistence (a real, separate, much larger
  * responsibility) — see `MEDIA_INGESTION_SOURCES` below for exactly how
  * "previously saved project assets" is honestly satisfied without it.
+ *
+ * PACKAGE XX — DIRECTION ASSEMBLY LAYER (2026-07-28): the first real
+ * Manual Direction capability — organizing assets already inside the
+ * Workspace, not editing video. Investigated before writing code: Asset
+ * placement and removal were already fully real (ADD_NODE/REMOVE_NODE);
+ * ordering was append-only (no way to move an existing node); grouping
+ * did not exist at all beyond the type-level allowance of multiple
+ * AssemblyTracks, which nothing ever used beyond the single default
+ * track. Closed both real gaps with three new mutations
+ * (ras-al-amr-state-manager.ts): REORDER_NODE (non-destructive up/down
+ * reorder within a group), ADD_TRACK (creates a new group — reusing
+ * AssemblyTrack, not inventing a parallel "groupId" concept), and
+ * MOVE_NODE_TO_TRACK (moves an existing node between groups). Enabling
+ * real grouping meant a node's track could change at runtime, so
+ * REMOVE_NODE/UPDATE_TEMPORAL/UPDATE_SPATIAL/UPDATE_ADVANCED_DIRECTIVE
+ * were also corrected to locate a node by its own globally-unique id
+ * across every track, rather than trusting a caller-supplied
+ * `targetTrackId` that could go stale the instant a node moves group —
+ * a necessary correctness fix, not scope creep. The Automatic Director's
+ * own composition reasoning (`decideMultiNodeCinematicDirection`,
+ * automatic-director.ts) deliberately still only reasons over the first
+ * group's nodes — extending it across groups is real "Automatic Director
+ * decisions," explicitly out of this package's scope; a disclosed
+ * limitation for a future package, not a silent omission.
  */
 
 // ── The Two Operators — Article II: one state, never two systems ────────
@@ -86,7 +110,18 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
   {
     capability: 'Scene arrangement / visual sequencing',
     constitutionalLocation:
-      "AssemblyTrack.nodes array order + AssemblyNode.temporal.globalStartTimeSeconds (Packages XIII/XIV)",
+      'AssemblyTrack.nodes array order + AssemblyNode.temporal.globalStartTimeSeconds (Packages XIII/XIV, read ' +
+      'side) + CanvasActionType.REORDER_NODE (RasAlAmrStateManager, Package XX, write side — a real, ' +
+      'non-destructive Creator-triggered reorder, not just a derived value)',
+    implemented: true,
+  },
+  {
+    capability: 'Asset grouping',
+    constitutionalLocation:
+      'AssemblyTrack (assembly-contracts.ts) — already described by its own doc comment as "a logical ' +
+      'grouping of Assembly Nodes" since Phase 5, but never used beyond the one default track until Package ' +
+      'XX: CanvasActionType.ADD_TRACK creates a new group; CanvasActionType.MOVE_NODE_TO_TRACK moves an ' +
+      'existing node between groups, non-destructively',
     implemented: true,
   },
   {

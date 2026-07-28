@@ -287,6 +287,18 @@
  * "previously saved project assets" is satisfied by Vault durability
  * across sessions rather than by a full canvas-resume feature, which
  * does not exist and is not built by this package).
+ *
+ * PACKAGE XX — DIRECTION ASSEMBLY LAYER (2026-07-28): the Narrative
+ * Canvas panel now renders every real group (`sessionCanvas.tracks`), not
+ * just the first — each with its own node list, real up/down reorder
+ * buttons (`handleReorderNode`), and a real "move to group" control
+ * (`handleMoveNodeToGroup`), plus a real "add group" control
+ * (`handleAddGroup`). `selectedNode`/`narrativeIntegrity` now scan every
+ * group instead of assuming `tracks[0]`. The Automatic Director's own
+ * `multiNodeDirection` deliberately still reasons only over the first
+ * group's nodes — extending its composition judgment across groups is
+ * real Automatic Director decision-making, explicitly out of this
+ * package's scope; a disclosed limitation, not a silent gap.
  */
 
 'use client';
@@ -307,6 +319,9 @@ import type {
   UpdateNodeSpatialPayload,
   UpdateNodeTemporalPayload,
   UpdateNodeAdvancedPayload,
+  ReorderNodePayload,
+  AddTrackPayload,
+  MoveNodeToTrackPayload,
   VisualFilterDirective,
   StructuralLogicDirective,
   AudioMixingDirective,
@@ -450,6 +465,11 @@ export default function RasAmrChamber() {
   // selects a different node to edit.
   const [visualForm, setVisualForm] = useState<VisualFilterDirective>(DEFAULT_VISUAL);
   const [temporalForm, setTemporalForm] = useState<TemporalDirective>(DEFAULT_TEMPORAL);
+  // PACKAGE XX — DIRECTION ASSEMBLY LAYER: which group a newly-added
+  // asset lands in, and the Creator's own in-progress name for a new
+  // group not yet created.
+  const [activeTrackId, setActiveTrackId] = useState<string>('track-1');
+  const [newGroupName, setNewGroupName] = useState<string>('');
 
   const wantsRealCanvas = Boolean(activeAsset?.isRealAsset && activeAsset.assetFamily && activeAsset.capabilityOrigin);
 
@@ -484,32 +504,40 @@ export default function RasAmrChamber() {
     });
   }
 
-  const selectedNode = sessionCanvas?.tracks[0]?.nodes.find((n) => n.nodeId === selectedNodeId);
+  // PACKAGE XX — DIRECTION ASSEMBLY LAYER: a node can now live in any
+  // group, not just the first track, so finding it means scanning every
+  // real track rather than assuming tracks[0] — the same correctness fix
+  // RasAlAmrStateManager's own locateNode() now applies internally.
+  const selectedNode = sessionCanvas?.tracks.flatMap((t) => t.nodes).find((n) => n.nodeId === selectedNodeId);
 
   // PACKAGE VI — THE CINEMATIC JUDGMENT CONSTITUTION: a real, honest
   // structural audit of the Narrative Canvas's own current state —
   // "how does it protect narrative integrity," answered concretely.
   // Complements (does not replace) handleAddActiveAssetToCanvas's own
   // pre-add duplicate guard below by also catching issues a manual
-  // Spatial/Visual/Temporal edit could introduce.
+  // Spatial/Visual/Temporal edit could introduce. PACKAGE XX: now spans
+  // every group — the same asset must not occupy two nodes anywhere in
+  // the canvas, not just within one group.
   const narrativeIntegrity = useMemo(
-    () => (sessionCanvas ? validateNarrativeIntegrity(sessionCanvas.tracks[0].nodes) : null),
+    () => (sessionCanvas ? validateNarrativeIntegrity(sessionCanvas.tracks.flatMap((t) => t.nodes)) : null),
     [sessionCanvas],
   );
 
   // Adds the currently active real asset to the Narrative Canvas as its
   // own real AssemblyNode — an explicit Creator action, never automatic.
   // Reuses RasAlAmrStateManager's own ADD_NODE handler (already built,
-  // previously zero real callers anywhere in the platform).
+  // previously zero real callers anywhere in the platform). PACKAGE XX:
+  // lands in whichever group (`activeTrackId`) the Creator currently has
+  // selected, and the duplicate guard now spans every group.
   const handleAddActiveAssetToCanvas = () => {
     if (!sessionCanvas || !activeAsset?.isRealAsset || !activeAsset.assetFamily || !activeAsset.capabilityOrigin) return;
-    if (sessionCanvas.tracks[0].nodes.some((n) => n.assetId === activeAsset.id)) return; // already present — no duplicate node for the same asset
+    if (sessionCanvas.tracks.flatMap((t) => t.nodes).some((n) => n.assetId === activeAsset.id)) return; // already present — no duplicate node for the same asset anywhere in the canvas
 
     const mutation: AddNodePayload = {
       actionType: CanvasActionType.ADD_NODE,
       canvasId: sessionCanvas.canvasId,
       subscriberTenantId: sessionCanvas.subscriberTenantId,
-      targetTrackId: 'track-1',
+      targetTrackId: activeTrackId,
       vaultAssetId: activeAsset.id,
       assetFamily: activeAsset.assetFamily,
       capabilityOrigin: activeAsset.capabilityOrigin,
@@ -520,8 +548,9 @@ export default function RasAmrChamber() {
     const updatedCanvas = rasAlAmrStateManager.applyMutation(sessionCanvas, mutation);
     setSessionCanvas(updatedCanvas);
 
-    const newNode = updatedCanvas.tracks[0].nodes[updatedCanvas.tracks[0].nodes.length - 1];
-    setSelectedNodeId(newNode.nodeId);
+    const targetTrack = updatedCanvas.tracks.find((t) => t.trackId === activeTrackId);
+    const newNode = targetTrack?.nodes[targetTrack.nodes.length - 1];
+    if (newNode) setSelectedNodeId(newNode.nodeId);
     setSpatialForm(DEFAULT_SPATIAL);
     setVisualForm(DEFAULT_VISUAL);
     setTemporalForm(DEFAULT_TEMPORAL);
@@ -529,6 +558,10 @@ export default function RasAmrChamber() {
 
   // Removes one node from the Narrative Canvas — reuses
   // RasAlAmrStateManager's own REMOVE_NODE handler, same as above.
+  // PACKAGE XX: the node can be in any group; RasAlAmrStateManager's own
+  // locateNode() finds it regardless of which targetTrackId is supplied
+  // here, so 'track-1' below is a harmless formality, not a real
+  // constraint (see assembly-directive-payloads.ts's own note).
   const handleRemoveNodeFromCanvas = (nodeId: string) => {
     if (!sessionCanvas) return;
 
@@ -544,9 +577,64 @@ export default function RasAmrChamber() {
     setSessionCanvas(updatedCanvas);
 
     if (selectedNodeId === nodeId) {
-      const remaining = updatedCanvas.tracks[0].nodes;
+      const remaining = updatedCanvas.tracks.flatMap((t) => t.nodes);
       setSelectedNodeId(remaining.length > 0 ? remaining[0].nodeId : null);
     }
+  };
+
+  // PACKAGE XX — DIRECTION ASSEMBLY LAYER: non-destructive reordering —
+  // moves a node one position up or down within its own group.
+  const handleReorderNode = (nodeId: string, direction: 'up' | 'down') => {
+    if (!sessionCanvas) return;
+    const track = sessionCanvas.tracks.find((t) => t.nodes.some((n) => n.nodeId === nodeId));
+    if (!track) return;
+
+    const mutation: ReorderNodePayload = {
+      actionType: CanvasActionType.REORDER_NODE,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: track.trackId,
+      targetNodeId: nodeId,
+      direction,
+    };
+
+    setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
+  };
+
+  // PACKAGE XX — DIRECTION ASSEMBLY LAYER: creates a new, real, empty
+  // group — reusing AssemblyTrack, never a parallel "groupId" concept.
+  const handleAddGroup = () => {
+    if (!sessionCanvas || !newGroupName.trim()) return;
+
+    const mutation: AddTrackPayload = {
+      actionType: CanvasActionType.ADD_TRACK,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      trackName: newGroupName.trim(),
+    };
+
+    const updatedCanvas = rasAlAmrStateManager.applyMutation(sessionCanvas, mutation);
+    setSessionCanvas(updatedCanvas);
+    setNewGroupName('');
+  };
+
+  // PACKAGE XX — DIRECTION ASSEMBLY LAYER: moves an existing node to a
+  // different group — the write-side of "asset grouping can be changed."
+  const handleMoveNodeToGroup = (nodeId: string, destinationTrackId: string) => {
+    if (!sessionCanvas) return;
+    const sourceTrack = sessionCanvas.tracks.find((t) => t.nodes.some((n) => n.nodeId === nodeId));
+    if (!sourceTrack || sourceTrack.trackId === destinationTrackId) return;
+
+    const mutation: MoveNodeToTrackPayload = {
+      actionType: CanvasActionType.MOVE_NODE_TO_TRACK,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      sourceTrackId: sourceTrack.trackId,
+      targetNodeId: nodeId,
+      destinationTrackId,
+    };
+
+    setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
   };
 
   const activeSpatialDirective = selectedNode?.spatial;
@@ -721,6 +809,15 @@ export default function RasAmrChamber() {
   // single-node case already does when no formalGoal is available. Nodes
   // whose own Vault asset can no longer be resolved are excluded, the
   // same tolerance activeVaultAsset's own lookup already accepts.
+  //
+  // PACKAGE XX — DIRECTION ASSEMBLY LAYER: real grouping now exists
+  // (multiple tracks), but this deliberately still only reasons over
+  // `tracks[0]` — the first group. Extending the Automatic Director's
+  // own composition judgment across every group is real Automatic
+  // Director decision-making, explicitly out of this package's scope
+  // ("Do not implement... Automatic Director decisions"). A node in any
+  // other group therefore honestly has no `directorDecision` — the REAL
+  // — DIRECTOR panel simply shows nothing for it, never a fabricated one.
   const multiNodeDirection = useMemo(() => {
     if (!sessionCanvas) return null;
     const nodesWithAssets = sessionCanvas.tracks[0].nodes
@@ -1076,42 +1173,103 @@ export default function RasAmrChamber() {
                 <p>مساحة عمل سينمائية واحدة تتّسع لعدة أصول إنتاجية حقيقية — الترتيب الحقيقي والاتجاه الأساسي يُحكَمان الآن عبر العقد، بلا تنفيذ وبلا إيقاع أو انتقال مُختلَق</p>
               </header>
 
+              {/* PACKAGE XX — DIRECTION ASSEMBLY LAYER: real group creation + selection for where a newly-added asset lands. */}
+              <div className="group-controls-row">
+                <select
+                  className="group-select"
+                  value={activeTrackId}
+                  onChange={(e) => setActiveTrackId(e.target.value)}
+                  aria-label="المجموعة المستهدفة عند الإضافة"
+                >
+                  {sessionCanvas.tracks.map((track) => (
+                    <option key={track.trackId} value={track.trackId}>{track.trackName}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  className="group-name-input"
+                  placeholder="اسم مجموعة جديدة"
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                />
+                <button className="action-trigger-btn" onClick={handleAddGroup} disabled={!newGroupName.trim()}>
+                  ＋ مجموعة
+                </button>
+              </div>
+
               <button
                 className="action-trigger-btn spatial-apply-btn"
                 onClick={handleAddActiveAssetToCanvas}
-                disabled={!wantsRealCanvas || sessionCanvas.tracks[0].nodes.some((n) => n.assetId === activeAsset?.id)}
+                disabled={!wantsRealCanvas || sessionCanvas.tracks.flatMap((t) => t.nodes).some((n) => n.assetId === activeAsset?.id)}
               >
-                ➕ أضف الأصل النشط إلى القماش
+                ➕ أضف الأصل النشط إلى المجموعة المحددة
               </button>
 
-              {sessionCanvas.tracks[0].nodes.length === 0 ? (
+              {sessionCanvas.tracks.every((t) => t.nodes.length === 0) ? (
                 <p className="spatial-current-state">القماش فارغ — أضف أصلاً حقيقياً ليبدأ التكوين السردي</p>
               ) : (
-                <ul className="narrative-canvas-node-list">
-                  {sessionCanvas.tracks[0].nodes.map((node, index) => (
-                    <li
-                      key={node.nodeId}
-                      className={`narrative-canvas-node ${node.nodeId === selectedNodeId ? 'node-selected' : ''}`}
-                    >
-                      <button className="narrative-node-select" onClick={() => setSelectedNodeId(node.nodeId)}>
-                        #{index + 1} — {node.assetFamily} / {node.capabilityOrigin}
-                        {node.temporal ? ` — مُطبَّق ${node.temporal.globalStartTimeSeconds}s→${node.temporal.globalStartTimeSeconds + node.temporal.playDurationSeconds}s` : ''}
-                        {(() => {
-                          const proposed = multiNodeDirection?.nodeDecisions.find((nd) => nd.nodeId === node.nodeId)?.decision.temporal;
-                          return proposed ? ` — مُقترَح ${proposed.globalStartTimeSeconds}s→${proposed.globalStartTimeSeconds + proposed.playDurationSeconds}s` : '';
-                        })()}
-                        {multiNodeDirection?.primaryNodeId === node.nodeId ? ' — ★ الاتجاه الأساسي' : ''}
-                      </button>
-                      <button
-                        className="narrative-node-remove"
-                        onClick={() => handleRemoveNodeFromCanvas(node.nodeId)}
-                        aria-label="إزالة من القماش"
-                      >
-                        ✕
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                sessionCanvas.tracks.map((track) => (
+                  <div key={track.trackId} className="narrative-canvas-group">
+                    <h3 className="narrative-canvas-group-name">{track.trackName}</h3>
+                    {track.nodes.length === 0 ? (
+                      <p className="spatial-current-state">هذه المجموعة فارغة</p>
+                    ) : (
+                      <ul className="narrative-canvas-node-list">
+                        {track.nodes.map((node, index) => (
+                          <li
+                            key={node.nodeId}
+                            className={`narrative-canvas-node ${node.nodeId === selectedNodeId ? 'node-selected' : ''}`}
+                          >
+                            <button className="narrative-node-select" onClick={() => setSelectedNodeId(node.nodeId)}>
+                              #{index + 1} — {node.assetFamily} / {node.capabilityOrigin}
+                              {node.temporal ? ` — مُطبَّق ${node.temporal.globalStartTimeSeconds}s→${node.temporal.globalStartTimeSeconds + node.temporal.playDurationSeconds}s` : ''}
+                              {(() => {
+                                const proposed = multiNodeDirection?.nodeDecisions.find((nd) => nd.nodeId === node.nodeId)?.decision.temporal;
+                                return proposed ? ` — مُقترَح ${proposed.globalStartTimeSeconds}s→${proposed.globalStartTimeSeconds + proposed.playDurationSeconds}s` : '';
+                              })()}
+                              {multiNodeDirection?.primaryNodeId === node.nodeId ? ' — ★ الاتجاه الأساسي' : ''}
+                            </button>
+                            <button
+                              className="narrative-node-reorder"
+                              onClick={() => handleReorderNode(node.nodeId, 'up')}
+                              disabled={index === 0}
+                              aria-label="نقل للأعلى"
+                            >
+                              ↑
+                            </button>
+                            <button
+                              className="narrative-node-reorder"
+                              onClick={() => handleReorderNode(node.nodeId, 'down')}
+                              disabled={index === track.nodes.length - 1}
+                              aria-label="نقل للأسفل"
+                            >
+                              ↓
+                            </button>
+                            {sessionCanvas.tracks.length > 1 && (
+                              <select
+                                className="narrative-node-move-group"
+                                value={track.trackId}
+                                onChange={(e) => handleMoveNodeToGroup(node.nodeId, e.target.value)}
+                                aria-label="نقل إلى مجموعة أخرى"
+                              >
+                                {sessionCanvas.tracks.map((destination) => (
+                                  <option key={destination.trackId} value={destination.trackId}>{destination.trackName}</option>
+                                ))}
+                              </select>
+                            )}
+                            <button
+                              className="narrative-node-remove"
+                              onClick={() => handleRemoveNodeFromCanvas(node.nodeId)}
+                              aria-label="إزالة من القماش"
+                            >
+                              ✕
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))
               )}
               {narrativeIntegrity && !narrativeIntegrity.valid && (
                 <p className="spatial-current-state narrative-integrity-violation">

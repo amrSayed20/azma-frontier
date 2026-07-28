@@ -718,6 +718,69 @@ body, html {
   color: var(--neon-gold-bright);
 }
 
+/* PACKAGE XX — DIRECTION ASSEMBLY LAYER: groups + reordering. */
+.group-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+  flex-wrap: wrap;
+}
+
+.group-select,
+.group-name-input,
+.narrative-node-move-group {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--neon-gold-dim);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-family: monospace;
+  padding: 6px 8px;
+  font-size: 10px;
+}
+
+.group-select,
+.group-name-input {
+  flex: 1;
+  min-width: 100px;
+}
+
+.narrative-canvas-group {
+  margin-top: 14px;
+}
+
+.narrative-canvas-group-name {
+  margin: 0 0 6px 0;
+  font-size: 11px;
+  color: var(--neon-gold-bright);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.narrative-node-reorder {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 8px 6px;
+}
+
+.narrative-node-reorder:hover:not(:disabled) {
+  color: var(--neon-gold-bright);
+}
+
+.narrative-node-reorder:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.narrative-node-move-group {
+  font-size: 9px;
+  padding: 4px 6px;
+  max-width: 100px;
+}
+
 .forward-btn:hover {
   background: rgba(255, 215, 0, 0.05);
   border-color: var(--neon-gold-bright);
