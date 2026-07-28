@@ -1,11 +1,20 @@
 /**
  * AZMA OS - Phase 5: Ras Al-Amr Assembly Architecture
  * File: src/chambers/ras-al-amr/pre-publishing-boundary.ts
- * 
+ *
  * The Pre-Publishing Compilation Boundary.
- * The final execution gateway of Ras Al-Amr. Validates, seals, and compiles 
- * a Sovereign Canvas into a definitive graph ready for Makman Al-Ghayah 
+ * The final execution gateway of Ras Al-Amr. Validates, seals, and compiles
+ * a Sovereign Canvas into a definitive graph ready for Makman Al-Ghayah
  * (Distribution & Monetization).
+ *
+ * PACKAGE XXVI — SOVEREIGN RENDERING ENGINE (2026-07-28, constitutional
+ * naming only, zero logic changed): `PrePublishingBoundary` IS the
+ * Sovereign Rendering Engine, and `CompiledAssemblyGraph` IS the Render
+ * Graph — see direction-workspace-constitution.ts's own Package XXVI
+ * disclosure for the full investigation. It faithfully materializes
+ * whatever the Sovereign Direction State currently is; it never decides,
+ * creates, or modifies Direction Decisions — `compileForPublishing` only
+ * ever reads the canvas it is given.
  */
 
 import { SovereignCanvas, CanvasType } from './assembly-contracts';

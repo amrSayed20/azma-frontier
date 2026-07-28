@@ -254,3 +254,14 @@ describe('Package XXV — Automatic Director Integration', () => {
     expect(entry?.constitutionalLocation).toMatch(/handleApplyDirectorDecision/);
   });
 });
+
+describe('Package XXVI — Sovereign Rendering Engine', () => {
+  it('marks the Rendering Engine capability as genuinely implemented, citing the real pre-existing compilation path', () => {
+    const entry = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) =>
+      e.capability.startsWith('Sovereign Rendering Engine'),
+    );
+    expect(entry?.implemented).toBe(true);
+    expect(entry?.constitutionalLocation).toMatch(/PrePublishingBoundary\.compileForPublishing/);
+    expect(entry?.constitutionalLocation).toMatch(/AssemblyRuntime/);
+  });
+});

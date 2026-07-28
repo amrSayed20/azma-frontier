@@ -3,8 +3,16 @@
  * File: src/chambers/ras-al-amr/vault-rehydration-bridge.ts
  * * The Vault Rehydration Bridge.
  * Securely converts pure-reference AssemblyNodes into hydrated runtime structures.
- * Provides Ras Al-Amr with the asset metadata required to render timelines and 
+ * Provides Ras Al-Amr with the asset metadata required to render timelines and
  * logic graphs without duplicating media or mutating the Sovereign Vault.
+ *
+ * PACKAGE XXVI — SOVEREIGN RENDERING ENGINE (2026-07-28, constitutional
+ * naming only, zero logic changed): this bridge is how the Rendering
+ * Engine (PrePublishingBoundary) consumes every real Direction Node — each
+ * `HydratedAssemblyNode` spreads the full, unmodified `AssemblyNode`
+ * (`directionRole`/`isActive`/`directionEmphasis`/`isLocked` all included),
+ * so no Direction Node's real state is dropped on the way into the
+ * Render Graph.
  */
 
 import { SovereignCanvas, AssemblyNode, AssemblyTrack } from './assembly-contracts';

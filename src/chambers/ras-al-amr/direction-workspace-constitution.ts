@@ -174,6 +174,54 @@
  * this package's authorized scope (Package XXIII's own disclosed
  * boundary: pre-ruling editing controls, not named Direction Decisions),
  * flagged for the Chief Architect rather than silently resolved.
+ *
+ * PACKAGE XXVI — SOVEREIGN RENDERING ENGINE (2026-07-28): investigated
+ * before writing any code, per this package's own "search before
+ * extending, extend before creating" rule. Found that
+ * `PrePublishingBoundary.compileForPublishing()` (pre-publishing-boundary.ts,
+ * pre-existing) ALREADY IS the Rendering Engine this package was
+ * authorized to construct, and its `CompiledAssemblyGraph` output ALREADY
+ * IS the Render Graph — no new class, no new pipeline, no rename of a
+ * working type. Its own doc comment already called the graph "the exact
+ * payload handed to the rendering and distribution engines," and Makman's
+ * `FlattenedRenderingBridge` (rendering-bridge.ts) already consumes it as
+ * "the pure structural assembly graph from Ras Al-Amr." This package adds
+ * zero production code — only constitutional naming plus the first-ever
+ * test proving the full chain real:
+ *
+ * - "Consumes the Direction Workspace / Direction Nodes / Assembly Tracks":
+ *   `compileForPublishing` takes the live `SovereignCanvas` directly;
+ *   `VaultRehydrationBridge.hydrateCanvas()` spreads every real
+ *   `AssemblyNode` field (`directionRole`, `isActive`, `directionEmphasis`,
+ *   `isLocked` included) onto each `HydratedAssemblyNode` — no field is
+ *   dropped, so every Direction Node's full identity participates.
+ * - "Consumes Direction Decisions": provably true by construction, not by
+ *   assertion — `AssemblyRuntime.execute()` (Package XXIV) is the sole
+ *   execution consumer of every `DirectionDecision` from BOTH operators
+ *   (Package XXV), so the canvas `compileForPublishing` receives is always
+ *   exactly the accumulated effect of every decision ever executed. A
+ *   dedicated new test (`__tests__/pre-publishing-boundary.test.ts`, the
+ *   first test this file has ever had) issues real DirectionDecisions from
+ *   both operators — add, group, reorder, classify, disable, lock —
+ *   through the real AssemblyRuntime, then compiles the result and asserts
+ *   every one of those effects is visible in the graph.
+ * - "Manual and Automatic Directors require no rendering-specific logic":
+ *   already true without any change — neither operator's handlers
+ *   (app/ras-amr/page.tsx) reference `PrePublishingBoundary` at all; the
+ *   pre-existing "Master Render" button (`triggerMasterRender`) only POSTs
+ *   to the already-certified compile route and displays the result.
+ * - "The Rendering Engine becomes the single constitutional rendering
+ *   consumer": already true — `PrePublishingBoundary` is reached through
+ *   exactly one path (POST /api/sovereign/entry/ras-al-amr/compile → SOEL
+ *   → `PrePublishingBoundary.compileForPublishing`, per that route's own
+ *   header comment); Makman's `FlattenedRenderingBridge` consumes the
+ *   already-produced graph downstream, it does not independently recompile.
+ *
+ * NOT built, per this package's own prohibition: video export, file
+ * encoding, FFmpeg/Fleet dispatch — Makman's `FlattenedRenderingBridge`
+ * already performs real dispatch to a Fleet materialization runtime for
+ * cinematic flattening, which is Export Engine territory, not Rendering
+ * Engine territory; untouched by this package.
  */
 
 import type { CanvasMutationPayload } from './assembly-directive-payloads';
@@ -351,6 +399,17 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
       'via toDirectionDecision(\'automatic-director\', ...) and submits them to AssemblyRuntime.execute() — ' +
       'the same execution path Manual Director uses; the Automatic Director itself never mutates state or ' +
       'executes anything directly',
+    implemented: true,
+  },
+  {
+    capability: 'Sovereign Rendering Engine (Render Graph production)',
+    constitutionalLocation:
+      'PrePublishingBoundary.compileForPublishing() (pre-publishing-boundary.ts, Package XXVI) IS the ' +
+      'Rendering Engine — its CompiledAssemblyGraph output IS the Render Graph, faithfully materializing ' +
+      'the current Direction Workspace (via VaultRehydrationBridge, every AssemblyNode field preserved) and ' +
+      'reflecting every Direction Decision ever executed through AssemblyRuntime, proven end-to-end by ' +
+      '__tests__/pre-publishing-boundary.test.ts. Reached through exactly one live path (SOEL); video ' +
+      'export/encoding/Fleet dispatch remain future Export Engine work',
     implemented: true,
   },
 ] as const;
