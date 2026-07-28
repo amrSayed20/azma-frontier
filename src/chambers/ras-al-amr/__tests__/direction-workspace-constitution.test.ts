@@ -234,3 +234,23 @@ describe('Package XXIV — Sovereign Assembly Runtime', () => {
     expect(entry?.constitutionalLocation).toMatch(/RasAlAmrStateManager\.applyMutation/);
   });
 });
+
+describe('Package XXV — Automatic Director Integration', () => {
+  it('marks Automatic Director Direction Decision emission as genuinely implemented', () => {
+    const entry = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) =>
+      e.capability === 'Automatic Director Direction Decision emission',
+    );
+    expect(entry?.implemented).toBe(true);
+    expect(entry?.constitutionalLocation).toMatch(/handleApplyDirectorDecision/);
+    expect(entry?.constitutionalLocation).toMatch(/'automatic-director'/);
+    expect(entry?.constitutionalLocation).toMatch(/AssemblyRuntime\.execute/);
+  });
+
+  it('updates the shared Direction Decision language entry to reflect both operators actually producing it', () => {
+    const entry = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) =>
+      e.capability.startsWith('Shared Direction Decision language'),
+    );
+    expect(entry?.implemented).toBe(true);
+    expect(entry?.constitutionalLocation).toMatch(/handleApplyDirectorDecision/);
+  });
+});

@@ -158,6 +158,22 @@
  * Director's own `handleApplyDirectorDecision` remains untouched by this
  * package — it is deliberately NOT yet authorized to emit
  * `DirectionDecision` objects, per the same ruling.
+ *
+ * PACKAGE XXV — AUTOMATIC DIRECTOR INTEGRATION (2026-07-28): now that the
+ * Assembly Runtime exists, `handleApplyDirectorDecision`
+ * (app/ras-amr/page.tsx) produces real `DirectionDecision` objects tagged
+ * `'automatic-director'` and submits them to the same `AssemblyRuntime`
+ * Manual Director already executes through — one constitutional execution
+ * path, not two. The Automatic Director still performs zero state
+ * mutation or execution itself; its sole responsibility is producing
+ * `DirectionDecision` objects from an already-computed judgment
+ * (`decideMultiNodeCinematicDirection`, automatic-director.ts — untouched
+ * by this package). `handleApplySpatialAdjustment`/
+ * `handleApplyVisualAdjustment`/`handleApplyTemporalAdjustment` still call
+ * `RasAlAmrStateManager.applyMutation()` directly — deliberately outside
+ * this package's authorized scope (Package XXIII's own disclosed
+ * boundary: pre-ruling editing controls, not named Direction Decisions),
+ * flagged for the Chief Architect rather than silently resolved.
  */
 
 import type { CanvasMutationPayload } from './assembly-directive-payloads';
@@ -310,11 +326,12 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
     implemented: true,
   },
   {
-    capability: 'Shared Direction Decision language (Manual + future Automatic)',
+    capability: 'Shared Direction Decision language (Manual + Automatic)',
     constitutionalLocation:
       'DirectionDecision + toDirectionDecision() (this file, Package XXIII) — a thin operator/timestamp wrapper ' +
-      'around the already-real CanvasMutationPayload union; Manual Director\'s real handlers produce it today, ' +
-      'and it is already structurally capable of wrapping an Automatic-Director-issued mutation without redesign',
+      'around the already-real CanvasMutationPayload union; both Manual Director\'s nine handlers and the ' +
+      'Automatic Director\'s handleApplyDirectorDecision (Package XXV) produce it today, tagged with their own ' +
+      'real operator, through the exact same builder function',
     implemented: true,
   },
   {
@@ -325,6 +342,15 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
       'RasAlAmrStateManager.applyMutation(); all nine Manual Director handlers execute through it. The ' +
       'Automatic Director does not yet emit DirectionDecision objects — that integration awaits separate ' +
       'authorization per the Chief Architect\'s "no producers without consumers" ruling',
+    implemented: true,
+  },
+  {
+    capability: 'Automatic Director Direction Decision emission',
+    constitutionalLocation:
+      'handleApplyDirectorDecision (app/ras-amr/page.tsx, Package XXV) builds real DirectionDecision objects ' +
+      'via toDirectionDecision(\'automatic-director\', ...) and submits them to AssemblyRuntime.execute() — ' +
+      'the same execution path Manual Director uses; the Automatic Director itself never mutates state or ' +
+      'executes anything directly',
     implemented: true,
   },
 ] as const;

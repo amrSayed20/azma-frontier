@@ -344,12 +344,35 @@
  * Package XXIV) — the Empire's first real execution consumer of a
  * `DirectionDecision`. `AssemblyRuntime` performs no reasoning; it is pure
  * delegation to the already-real `RasAlAmrStateManager.applyMutation()`.
- * The Automatic Director's own `handleApplyDirectorDecision` is
- * deliberately left calling `RasAlAmrStateManager.applyMutation()`
- * directly, untouched by either package — per the Chief Architect's own
- * ruling, "the Empire does not permit producers without consumers," so
- * the Automatic Director may not begin emitting `DirectionDecision`
- * objects until a further, separately-authorized package.
+ * The Automatic Director's own `handleApplyDirectorDecision` was
+ * deliberately left untouched by this package — per the Chief Architect's
+ * own ruling, "the Empire does not permit producers without consumers,"
+ * it could not begin emitting `DirectionDecision` objects until the
+ * Runtime existed to consume them.
+ *
+ * PACKAGE XXV — AUTOMATIC DIRECTOR INTEGRATION (2026-07-28): now that the
+ * Runtime exists, `handleApplyDirectorDecision` no longer calls
+ * `RasAlAmrStateManager.applyMutation()` directly either. Its three real
+ * mutations (temporal, structural, optional audio) each become their own
+ * real `DirectionDecision`, tagged `'automatic-director'`, executed through
+ * the same `AssemblyRuntime.execute()` Manual Director already uses —
+ * `executeDirectionDecision()` gained an `operator` parameter
+ * (`DirectionOperator`, default `'manual-director'`) for exactly this. The
+ * Automatic Director still performs zero reasoning here — the reasoning
+ * (`directorDecision`, from `multiNodeDirection`) was already computed
+ * upstream by `automatic-director.ts`; this handler only ever produces
+ * `DirectionDecision` objects from an already-decided judgment, never
+ * mutates state itself, and never executes anything outside the Runtime.
+ * `handleApplySpatialAdjustment`/`handleApplyVisualAdjustment`/
+ * `handleApplyTemporalAdjustment` still call
+ * `RasAlAmrStateManager.applyMutation()` directly — deliberately left
+ * outside this package's scope, unchanged since Package XXIII's own
+ * disclosed boundary: they are pre-ruling fine-grained editing controls,
+ * not one of the ruling's named Direction Decisions, and Package XXV's own
+ * "THIS PACKAGE SHALL IMPLEMENT" section named only
+ * `handleApplyDirectorDecision`. Flagged for the Chief Architect in case
+ * "RasAlAmrStateManager is no longer called directly by either Director"
+ * was intended to reach these three as well.
  */
 
 'use client';
@@ -385,7 +408,7 @@ import { decideMultiNodeCinematicDirection } from '@/src/chambers/ras-al-amr/aut
 import { validateNarrativeIntegrity } from '@/src/chambers/ras-al-amr/automatic-director-constitution';
 import type { FormalGoalContractView } from '@/src/chambers/ras-al-amr/automatic-director-constitution';
 import { toDirectionDecision } from '@/src/chambers/ras-al-amr/direction-workspace-constitution';
-import type { DirectionDecision } from '@/src/chambers/ras-al-amr/direction-workspace-constitution';
+import type { DirectionDecision, DirectionOperator } from '@/src/chambers/ras-al-amr/direction-workspace-constitution';
 import { AssemblyRuntime } from '@/src/chambers/ras-al-amr/assembly-runtime';
 import type { CanvasMutationPayload } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
 import './ras-amr.css';
@@ -550,12 +573,21 @@ export default function RasAmrChamber() {
   // DirectionDecision built by toDirectionDecision() — capped so the UI
   // stays a recent log, not an unbounded history.
   const [directionDecisionLog, setDirectionDecisionLog] = useState<DirectionDecision[]>([]);
-  // PACKAGE XXIV — SOVEREIGN ASSEMBLY RUNTIME: the single call site through
-  // which every Manual Director mutation now executes — builds the real
-  // DirectionDecision, logs it, and applies it via AssemblyRuntime.execute()
-  // rather than calling RasAlAmrStateManager.applyMutation() directly.
-  const executeDirectionDecision = (canvas: SovereignCanvas, mutation: CanvasMutationPayload): SovereignCanvas => {
-    const decision = toDirectionDecision('manual-director', mutation);
+  // PACKAGE XXIV — SOVEREIGN ASSEMBLY RUNTIME / PACKAGE XXV — AUTOMATIC
+  // DIRECTOR INTEGRATION: the single call site through which every Manual
+  // AND Automatic Director mutation now executes — builds the real
+  // DirectionDecision (tagged with whichever operator is acting), logs it,
+  // and applies it via AssemblyRuntime.execute() rather than calling
+  // RasAlAmrStateManager.applyMutation() directly. `operator` defaults to
+  // 'manual-director' since the nine Manual Direction handlers below are
+  // its original, unchanged callers; handleApplyDirectorDecision (Package
+  // XXV) is the only caller that passes 'automatic-director' explicitly.
+  const executeDirectionDecision = (
+    canvas: SovereignCanvas,
+    mutation: CanvasMutationPayload,
+    operator: DirectionOperator = 'manual-director',
+  ): SovereignCanvas => {
+    const decision = toDirectionDecision(operator, mutation);
     setDirectionDecisionLog((prev) => [decision, ...prev].slice(0, 10));
     return assemblyRuntime.execute(canvas, decision);
   };
@@ -1010,38 +1042,56 @@ export default function RasAmrChamber() {
   const activeStructuralDirective = selectedNode?.customDirectives?.structural as StructuralLogicDirective | undefined;
   const activeAudioDirective = selectedNode?.customDirectives?.audio as AudioMixingDirective | undefined;
 
+  // PACKAGE XXV — AUTOMATIC DIRECTOR INTEGRATION: the Automatic Director's
+  // sole constitutional responsibility is producing DirectionDecision
+  // objects — it never mutates state or executes anything itself. Each of
+  // its three real mutations now becomes its own real DirectionDecision,
+  // tagged 'automatic-director', submitted to the same Assembly Runtime
+  // Manual Director already executes through — no second execution path.
   const handleApplyDirectorDecision = () => {
     if (!sessionCanvas || !selectedNodeId || !directorDecision?.included || !directorDecision.temporal || !directorDecision.structural) return;
 
-    let canvas = rasAlAmrStateManager.applyMutation(sessionCanvas, {
-      actionType: CanvasActionType.UPDATE_TEMPORAL,
-      canvasId: sessionCanvas.canvasId,
-      subscriberTenantId: sessionCanvas.subscriberTenantId,
-      targetTrackId: 'track-1',
-      targetNodeId: selectedNodeId,
-      temporalUpdates: directorDecision.temporal,
-    });
+    let canvas = executeDirectionDecision(
+      sessionCanvas,
+      {
+        actionType: CanvasActionType.UPDATE_TEMPORAL,
+        canvasId: sessionCanvas.canvasId,
+        subscriberTenantId: sessionCanvas.subscriberTenantId,
+        targetTrackId: 'track-1',
+        targetNodeId: selectedNodeId,
+        temporalUpdates: directorDecision.temporal,
+      },
+      'automatic-director',
+    );
 
-    canvas = rasAlAmrStateManager.applyMutation(canvas, {
-      actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE,
-      canvasId: canvas.canvasId,
-      subscriberTenantId: canvas.subscriberTenantId,
-      targetTrackId: 'track-1',
-      targetNodeId: selectedNodeId,
-      directiveKey: 'structural',
-      directivePayload: directorDecision.structural,
-    });
-
-    if (directorDecision.audio) {
-      canvas = rasAlAmrStateManager.applyMutation(canvas, {
+    canvas = executeDirectionDecision(
+      canvas,
+      {
         actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE,
         canvasId: canvas.canvasId,
         subscriberTenantId: canvas.subscriberTenantId,
         targetTrackId: 'track-1',
         targetNodeId: selectedNodeId,
-        directiveKey: 'audio',
-        directivePayload: directorDecision.audio,
-      });
+        directiveKey: 'structural',
+        directivePayload: directorDecision.structural,
+      },
+      'automatic-director',
+    );
+
+    if (directorDecision.audio) {
+      canvas = executeDirectionDecision(
+        canvas,
+        {
+          actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE,
+          canvasId: canvas.canvasId,
+          subscriberTenantId: canvas.subscriberTenantId,
+          targetTrackId: 'track-1',
+          targetNodeId: selectedNodeId,
+          directiveKey: 'audio',
+          directivePayload: directorDecision.audio,
+        },
+        'automatic-director',
+      );
     }
 
     setSessionCanvas(canvas);
