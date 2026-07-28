@@ -19,6 +19,27 @@
  * it does not rebuild it. Declaring a second "workspace" object around
  * the existing canvas/state-manager pair would be exactly the duplicate
  * Direction infrastructure this ruling prohibits.
+ *
+ * PACKAGE XIX — MEDIA INGESTION LAYER (2026-07-28): investigated all four
+ * approved input sources named by the ruling before writing any code.
+ * Two were already real: Qiyamah-generated assets already deposit into
+ * the Sovereign Vault (src/qiyamah-generation/generation-service.ts,
+ * Integration Package I), and Sovereign Vault assets are already fetched
+ * and injectable in this Chamber's UI (GET /api/vault/assets, the
+ * Summoning Bridge HUD). Two were real gaps: Creator file upload did not
+ * exist anywhere in the platform (no upload input, no multipart route,
+ * no cloud-storage dependency), and SovereignCanvas itself has zero
+ * durable storage (pure client React state, lost on every page refresh).
+ *
+ * This package closes the upload gap the same way
+ * src/qiyamah-generation/asset-storage.ts already proved out for
+ * Qiyamah's own generated images (write real bytes to public/, serve via
+ * Next's own static handling, zero new dependency) — see
+ * src/vault/vault-asset-upload-storage.ts and
+ * POST /api/vault/assets/upload. It deliberately does NOT build full
+ * canvas-state persistence (a real, separate, much larger
+ * responsibility) — see `MEDIA_INGESTION_SOURCES` below for exactly how
+ * "previously saved project assets" is honestly satisfied without it.
  */
 
 // ── The Two Operators — Article II: one state, never two systems ────────
@@ -78,8 +99,10 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
   {
     capability: 'Imported media handling',
     constitutionalLocation:
-      'AssemblyNode.assetId (a Vault reference) — extending intake to non-Vault imports is future work',
-    implemented: false,
+      'AssemblyNode.assetId (a Vault reference) — a Creator-uploaded file becomes a real VaultAsset via ' +
+      'POST /api/vault/assets/upload (Package XIX), reusing the exact same SovereignVaultManager.depositAsset() ' +
+      'boundary Qiyamah generation already deposits through',
+    implemented: true,
   },
   {
     capability: 'Voice generation / cloning / text-to-speech',
@@ -113,5 +136,59 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
       'PrePublishingBoundary.compileForPublishing() (pre-publishing-boundary.ts) compiles a real ' +
       'CompiledAssemblyGraph today; final render/delivery export is future work',
     implemented: false,
+  },
+] as const;
+
+// ── Media Ingestion Sources — Package XIX ────────────────────────────────
+// The ruling's own four approved input sources, recorded as real, tested
+// data rather than prose alone — matching every prior honest-status
+// constant in this codebase (FORMAL_GOAL_CONTRACT_READ_PATH,
+// RHYTHM_TRANSITION_TIMING_BASIS, AUDIO_BEAT_ANALYSIS_BASIS). Every
+// `available: true` entry names the exact real, already-existing code
+// path — never asserted without one.
+
+export interface MediaIngestionSource {
+  readonly source: string;
+  readonly available: boolean;
+  readonly reason: string;
+}
+
+export const MEDIA_INGESTION_SOURCES: readonly MediaIngestionSource[] = [
+  {
+    source: 'Qiyamah-generated assets',
+    available: true,
+    reason:
+      'src/qiyamah-generation/generation-service.ts deposits every successful generation into the Sovereign ' +
+      'Vault via SovereignVaultManager.depositAsset() (Integration Package I) — no separate Qiyamah-only asset ' +
+      'store exists.',
+  },
+  {
+    source: 'Sovereign Vault assets',
+    available: true,
+    reason:
+      'GET /api/vault/assets already fetches every real, durable VaultAsset for the signed-in Creator; the ' +
+      'Summoning Bridge HUD (app/ras-amr/page.tsx) already injects/adds any of them to the canvas, unrestricted ' +
+      'by asset family or capability target.',
+  },
+  {
+    source: 'Creator-uploaded files',
+    available: true,
+    reason:
+      'POST /api/vault/assets/upload (Package XIX, new) accepts a real uploaded file, writes its real bytes to ' +
+      'public/uploads/ (the same disk-write pattern already proven by Qiyamah\'s own asset-storage.ts), and ' +
+      'deposits it as a real VaultAsset through the identical depositAsset() boundary — no parallel pipeline.',
+  },
+  {
+    source: 'Previously saved project assets',
+    available: true,
+    reason:
+      'Honestly interpreted as: assets (not the full canvas arrangement) genuinely persisted from any earlier ' +
+      'session and still available now. VaultAsset rows are already durable (SQLite) and GET /api/vault/assets ' +
+      'already returns a Creator\'s complete historical asset list on every load, so an asset saved in a prior ' +
+      'session is already retrievable and addable to a NEW canvas today. This is explicitly NOT the same claim ' +
+      'as "the Creator\'s prior canvas/timeline arrangement resumes automatically" — SovereignCanvas itself has ' +
+      'zero durable storage (pure client React state, confirmed by direct investigation), so a full canvas-resume ' +
+      'capability does not exist and is not built by this package. If the ruling is later clarified to require ' +
+      'that stronger meaning, this entry must be revisited honestly, not silently reinterpreted.',
   },
 ] as const;

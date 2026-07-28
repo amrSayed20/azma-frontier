@@ -270,11 +270,28 @@
  * the UI and in `direction-workspace-constitution.ts` (new file, the
  * declarative registry of where future Direction capabilities — voice,
  * imported media, export, etc. — will constitutionally attach).
+ *
+ * PACKAGE XIX — MEDIA INGESTION LAYER (2026-07-28): the Sovereign
+ * Summoning Bridge HUD drawer now also carries a real file-upload control
+ * (`handleUploadAsset`). A Creator-uploaded file becomes a genuine
+ * VaultAsset through `POST /api/vault/assets/upload` — the same
+ * `SovereignVaultManager.depositAsset()` boundary Qiyamah generation
+ * already deposits through — and is appended to the same `vaultAssets`
+ * list this drawer already reads, so it is immediately injectable and
+ * addable to the canvas through the exact same, already-existing paths.
+ * No new asset registry, no parallel ingestion pipeline. Of the ruling's
+ * four approved input sources, this closes the one genuine gap (Creator
+ * uploads); Qiyamah-generated and Sovereign Vault assets were already
+ * real (see direction-workspace-constitution.ts's own
+ * MEDIA_INGESTION_SOURCES for the full, honest account, including why
+ * "previously saved project assets" is satisfied by Vault durability
+ * across sessions rather than by a full canvas-resume feature, which
+ * does not exist and is not built by this package).
  */
 
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { RasAmrExperience } from '@/src/imperial-experience-engine';
 import type { VaultAsset, AssetFamily } from '@/src/vault/sovereign-vault-types';
@@ -612,6 +629,39 @@ export default function RasAmrChamber() {
       })
       .finally(() => setVaultAssetsLoaded(true));
   }, []);
+
+  // PACKAGE XIX — MEDIA INGESTION LAYER: a Creator-uploaded file becomes
+  // a real VaultAsset via POST /api/vault/assets/upload (which reuses
+  // SovereignVaultManager.depositAsset(), the same boundary Qiyamah
+  // generation already deposits through) — appended to the same
+  // vaultAssets list the Summoning Bridge already reads, so it's
+  // immediately available to both Manual and Automatic Director through
+  // the exact same, already-existing injection/canvas-add path. No
+  // parallel ingestion pipeline.
+  const uploadFileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingAsset, setIsUploadingAsset] = useState<boolean>(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleUploadAsset = async (file: File) => {
+    setIsUploadingAsset(true);
+    setUploadError(null);
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const response = await fetch('/api/vault/assets/upload', { method: 'POST', body });
+      const result = await response.json();
+      if (!response.ok || result.status !== 'succeeded') {
+        setUploadError(result.message ?? 'تعذّر رفع الملف.');
+        return;
+      }
+      setVaultAssets((prev) => [...prev, result.asset]);
+    } catch {
+      setUploadError('تعذّر الوصول إلى بوابة الرفع السيادية.');
+    } finally {
+      setIsUploadingAsset(false);
+      if (uploadFileInputRef.current) uploadFileInputRef.current.value = '';
+    }
+  };
 
   // ai-director — THE AUTOMATIC DIRECTOR: decides the real Cinematic
   // Direction Decision for whichever node is selected on the Narrative
@@ -1346,6 +1396,25 @@ export default function RasAmrChamber() {
               </div>
               <button className="hud-close-btn" onClick={() => setIsSummonOpen(false)}>✖ إلغاء الاستدعاء</button>
             </header>
+
+            {/* PACKAGE XIX — MEDIA INGESTION LAYER: real Creator file upload — becomes a real VaultAsset, appears below like any other. */}
+            <div className="hud-upload-row">
+              <input
+                ref={uploadFileInputRef}
+                type="file"
+                id="ras-amr-media-upload"
+                className="hud-upload-input"
+                disabled={isUploadingAsset}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleUploadAsset(file);
+                }}
+              />
+              <label htmlFor="ras-amr-media-upload" className="action-trigger-btn hud-upload-label">
+                {isUploadingAsset ? '⏳ جارٍ الرفع إلى الخزانة السيادية...' : '⬆ رفع ملف حقيقي من الجهاز إلى الخزانة'}
+              </label>
+              {uploadError && <p className="spatial-current-state narrative-integrity-violation">{uploadError}</p>}
+            </div>
 
             {vaultAssetsLoaded && realVaultCategories.length === 0 ? (
               <div className="hud-empty-state">

@@ -805,6 +805,28 @@ body, html {
   box-shadow: 0 0 15px rgba(255, 68, 68, 0.2);
 }
 
+/* PACKAGE XIX — MEDIA INGESTION LAYER: real Creator file upload row. */
+.hud-upload-row {
+  padding: 14px 30px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hud-upload-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.hud-upload-label {
+  cursor: pointer;
+  display: inline-block;
+}
+
 .hud-body-layout {
   flex: 1;
   display: grid;
