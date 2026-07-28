@@ -223,3 +223,14 @@ describe('Package XXIII — Direction Decision Model', () => {
     expect(decision.issuedAtMs).toBe(2000);
   });
 });
+
+describe('Package XXIV — Sovereign Assembly Runtime', () => {
+  it('marks the Assembly Runtime capability as genuinely implemented, citing the real execution consumer', () => {
+    const entry = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) =>
+      e.capability.startsWith('Assembly Runtime'),
+    );
+    expect(entry?.implemented).toBe(true);
+    expect(entry?.constitutionalLocation).toMatch(/AssemblyRuntime\.execute/);
+    expect(entry?.constitutionalLocation).toMatch(/RasAlAmrStateManager\.applyMutation/);
+  });
+});

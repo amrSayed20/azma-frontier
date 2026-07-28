@@ -143,6 +143,21 @@
  * handlers call it. Future Export/Assembly/Rendering packages, and a
  * future Automatic Director integration, can depend on this exact model
  * without any redesign.
+ *
+ * PACKAGE XXIV — SOVEREIGN ASSEMBLY RUNTIME (2026-07-28): the first real
+ * execution consumer of a `DirectionDecision`. Per the Chief Architect's
+ * own ruling — "the Empire does not permit producers without consumers" —
+ * construction proceeded in a deliberate order: Assembly Runtime first,
+ * Automatic Director integration only afterward. `AssemblyRuntime`
+ * (assembly-runtime.ts, new file) consumes a `DirectionDecision` and
+ * executes its real mutation via the already-real
+ * `RasAlAmrStateManager.applyMutation()` — pure delegation, no new
+ * mutation logic, no reasoning of any kind. All nine of Manual Director's
+ * real handlers (app/ras-amr/page.tsx) now execute through it rather than
+ * calling `RasAlAmrStateManager.applyMutation()` directly. The Automatic
+ * Director's own `handleApplyDirectorDecision` remains untouched by this
+ * package — it is deliberately NOT yet authorized to emit
+ * `DirectionDecision` objects, per the same ruling.
  */
 
 import type { CanvasMutationPayload } from './assembly-directive-payloads';
@@ -300,6 +315,16 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
       'DirectionDecision + toDirectionDecision() (this file, Package XXIII) — a thin operator/timestamp wrapper ' +
       'around the already-real CanvasMutationPayload union; Manual Director\'s real handlers produce it today, ' +
       'and it is already structurally capable of wrapping an Automatic-Director-issued mutation without redesign',
+    implemented: true,
+  },
+  {
+    capability: 'Assembly Runtime (DirectionDecision execution)',
+    constitutionalLocation:
+      'AssemblyRuntime.execute() (assembly-runtime.ts, Package XXIV) — the single constitutional execution ' +
+      'consumer of a DirectionDecision, delegating purely to the already-real ' +
+      'RasAlAmrStateManager.applyMutation(); all nine Manual Director handlers execute through it. The ' +
+      'Automatic Director does not yet emit DirectionDecision objects — that integration awaits separate ' +
+      'authorization per the Chief Architect\'s "no producers without consumers" ruling',
     implemented: true,
   },
 ] as const;

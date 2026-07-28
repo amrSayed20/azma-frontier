@@ -323,22 +323,33 @@
  *
  * PACKAGE XXIII — DIRECTION DECISION MODEL (2026-07-28): every one of the
  * nine real Manual Direction handlers above (`handleAddActiveAssetToCanvas`
- * through `handleSetNodeLock`) now also calls `recordDirectionDecision()`,
- * which wraps the exact same real `CanvasMutationPayload` it already
- * builds into a real `DirectionDecision` (`toDirectionDecision()`,
- * direction-workspace-constitution.ts) — tagging it `'manual-director'`
- * plus a real timestamp — and appends it to a real, visible, capped
- * `directionDecisionLog`. The Narrative Canvas panel now shows the most
- * recent one live, so "Manual decisions produce it" is a provable,
- * live-verifiable fact, not just a callable function. `handleApplySpatial
- * Adjustment`/`handleApplyVisualAdjustment`/`handleApplyTemporalAdjustment`
- * deliberately do NOT feed this log — those are fine-grained editing
- * adjustments that predate the Sovereign Direction State ruling, not one
- * of the ruling's own named Direction Decisions. The Automatic Director's
- * own `handleApplyDirectorDecision` is also deliberately left unwired —
- * doing so would touch the Automatic Director's own code path, and this
- * package's own instruction was to establish the shared language, not to
- * implement Automatic reasoning.
+ * through `handleSetNodeLock`) wraps the exact same real
+ * `CanvasMutationPayload` it already builds into a real `DirectionDecision`
+ * (`toDirectionDecision()`, direction-workspace-constitution.ts) — tagging
+ * it `'manual-director'` plus a real timestamp — and appends it to a real,
+ * visible, capped `directionDecisionLog`. The Narrative Canvas panel shows
+ * the most recent one live, so "Manual decisions produce it" is a
+ * provable, live-verifiable fact, not just a callable function.
+ * `handleApplySpatialAdjustment`/`handleApplyVisualAdjustment`/
+ * `handleApplyTemporalAdjustment` deliberately do NOT feed this log —
+ * those are fine-grained editing adjustments that predate the Sovereign
+ * Direction State ruling, not one of the ruling's own named Direction
+ * Decisions.
+ *
+ * PACKAGE XXIV — SOVEREIGN ASSEMBLY RUNTIME (2026-07-28): those same nine
+ * handlers no longer call `RasAlAmrStateManager.applyMutation()` directly.
+ * A new single helper, `executeDirectionDecision()`, builds the
+ * `DirectionDecision`, appends it to the visible log, and then executes it
+ * through `AssemblyRuntime.execute()` (assembly-runtime.ts, new file,
+ * Package XXIV) — the Empire's first real execution consumer of a
+ * `DirectionDecision`. `AssemblyRuntime` performs no reasoning; it is pure
+ * delegation to the already-real `RasAlAmrStateManager.applyMutation()`.
+ * The Automatic Director's own `handleApplyDirectorDecision` is
+ * deliberately left calling `RasAlAmrStateManager.applyMutation()`
+ * directly, untouched by either package — per the Chief Architect's own
+ * ruling, "the Empire does not permit producers without consumers," so
+ * the Automatic Director may not begin emitting `DirectionDecision`
+ * objects until a further, separately-authorized package.
  */
 
 'use client';
@@ -375,11 +386,16 @@ import { validateNarrativeIntegrity } from '@/src/chambers/ras-al-amr/automatic-
 import type { FormalGoalContractView } from '@/src/chambers/ras-al-amr/automatic-director-constitution';
 import { toDirectionDecision } from '@/src/chambers/ras-al-amr/direction-workspace-constitution';
 import type { DirectionDecision } from '@/src/chambers/ras-al-amr/direction-workspace-constitution';
+import { AssemblyRuntime } from '@/src/chambers/ras-al-amr/assembly-runtime';
+import type { CanvasMutationPayload } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
 import './ras-amr.css';
 
 // Pure, stateless transformer (see its own header comment) — one shared
 // instance is sufficient, no per-render instantiation needed.
 const rasAlAmrStateManager = new RasAlAmrStateManager();
+// PACKAGE XXIV — SOVEREIGN ASSEMBLY RUNTIME: the single constitutional
+// execution consumer of a DirectionDecision — see assembly-runtime.ts.
+const assemblyRuntime = new AssemblyRuntime(rasAlAmrStateManager);
 
 const DEFAULT_SPATIAL: SpatialDirective = {
   zIndex: 0,
@@ -534,8 +550,14 @@ export default function RasAmrChamber() {
   // DirectionDecision built by toDirectionDecision() — capped so the UI
   // stays a recent log, not an unbounded history.
   const [directionDecisionLog, setDirectionDecisionLog] = useState<DirectionDecision[]>([]);
-  const recordDirectionDecision = (mutation: DirectionDecision['mutation']) => {
-    setDirectionDecisionLog((prev) => [toDirectionDecision('manual-director', mutation), ...prev].slice(0, 10));
+  // PACKAGE XXIV — SOVEREIGN ASSEMBLY RUNTIME: the single call site through
+  // which every Manual Director mutation now executes — builds the real
+  // DirectionDecision, logs it, and applies it via AssemblyRuntime.execute()
+  // rather than calling RasAlAmrStateManager.applyMutation() directly.
+  const executeDirectionDecision = (canvas: SovereignCanvas, mutation: CanvasMutationPayload): SovereignCanvas => {
+    const decision = toDirectionDecision('manual-director', mutation);
+    setDirectionDecisionLog((prev) => [decision, ...prev].slice(0, 10));
+    return assemblyRuntime.execute(canvas, decision);
   };
 
   const wantsRealCanvas = Boolean(activeAsset?.isRealAsset && activeAsset.assetFamily && activeAsset.capabilityOrigin);
@@ -612,8 +634,7 @@ export default function RasAmrChamber() {
       initialSpatial: DEFAULT_SPATIAL,
     };
 
-    recordDirectionDecision(mutation);
-    const updatedCanvas = rasAlAmrStateManager.applyMutation(sessionCanvas, mutation);
+    const updatedCanvas = executeDirectionDecision(sessionCanvas, mutation);
     setSessionCanvas(updatedCanvas);
 
     const targetTrack = updatedCanvas.tracks.find((t) => t.trackId === activeTrackId);
@@ -641,8 +662,7 @@ export default function RasAmrChamber() {
       targetNodeId: nodeId,
     };
 
-    recordDirectionDecision(mutation);
-    const updatedCanvas = rasAlAmrStateManager.applyMutation(sessionCanvas, mutation);
+    const updatedCanvas = executeDirectionDecision(sessionCanvas, mutation);
     setSessionCanvas(updatedCanvas);
 
     if (selectedNodeId === nodeId) {
@@ -667,8 +687,7 @@ export default function RasAmrChamber() {
       direction,
     };
 
-    recordDirectionDecision(mutation);
-    setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
   };
 
   // PACKAGE XX — DIRECTION ASSEMBLY LAYER: creates a new, real, empty
@@ -683,8 +702,7 @@ export default function RasAmrChamber() {
       trackName: newGroupName.trim(),
     };
 
-    recordDirectionDecision(mutation);
-    const updatedCanvas = rasAlAmrStateManager.applyMutation(sessionCanvas, mutation);
+    const updatedCanvas = executeDirectionDecision(sessionCanvas, mutation);
     setSessionCanvas(updatedCanvas);
     setNewGroupName('');
   };
@@ -705,8 +723,7 @@ export default function RasAmrChamber() {
       destinationTrackId,
     };
 
-    recordDirectionDecision(mutation);
-    setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
   };
 
   // PACKAGE XXI — DIRECTION NODE LAYER: assigns or changes a node's real
@@ -725,8 +742,7 @@ export default function RasAmrChamber() {
       directionRole: role,
     };
 
-    recordDirectionDecision(mutation);
-    setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
   };
 
   // PACKAGE XXII — MANUAL DIRECTION ENGINE: Activate Node / Disable Node.
@@ -742,8 +758,7 @@ export default function RasAmrChamber() {
       active,
     };
 
-    recordDirectionDecision(mutation);
-    setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
   };
 
   // PACKAGE XXII — MANUAL DIRECTION ENGINE: Mark as Primary / Mark as
@@ -762,8 +777,7 @@ export default function RasAmrChamber() {
       emphasis,
     };
 
-    recordDirectionDecision(mutation);
-    setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
   };
 
   // PACKAGE XXII — MANUAL DIRECTION ENGINE: Lock Direction / Unlock
@@ -782,8 +796,7 @@ export default function RasAmrChamber() {
       locked,
     };
 
-    recordDirectionDecision(mutation);
-    setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
   };
 
   const activeSpatialDirective = selectedNode?.spatial;
