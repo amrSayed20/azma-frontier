@@ -265,3 +265,16 @@ describe('Package XXVI — Sovereign Rendering Engine', () => {
     expect(entry?.constitutionalLocation).toMatch(/AssemblyRuntime/);
   });
 });
+
+describe('Package XXVII — Sovereign Export Engine', () => {
+  it('marks the Export Engine capability as genuinely implemented, citing all three real pre-existing components and the disclosed Fleet gap', () => {
+    const entry = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) =>
+      e.capability.startsWith('Sovereign Export Engine'),
+    );
+    expect(entry?.implemented).toBe(true);
+    expect(entry?.constitutionalLocation).toMatch(/MakmanGoalDistributionBridge\.bridgeToDestination/);
+    expect(entry?.constitutionalLocation).toMatch(/FlattenedRenderingBridge\.evaluateAndDispatchRender/);
+    expect(entry?.constitutionalLocation).toMatch(/PublicConsumptionBoundary\.requestConsumption/);
+    expect(entry?.constitutionalLocation).toMatch(/FAILED/);
+  });
+});

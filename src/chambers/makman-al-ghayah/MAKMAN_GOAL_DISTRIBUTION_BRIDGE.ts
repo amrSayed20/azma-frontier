@@ -14,6 +14,14 @@
  * dependency for the first time (consumption-boundary.ts declared this
  * interface but nothing in the repository ever implemented it — supplying
  * an implementation is integration, not redesign).
+ *
+ * PACKAGE XXVII — SOVEREIGN EXPORT ENGINE (2026-07-28, constitutional
+ * naming only, zero logic changed): `bridgeToDestination()` is the entry
+ * point of the Sovereign Export Engine — it receives the Render Graph
+ * (`intent.compiledAssemblyGraph`, produced by Ras Al Amr's
+ * PrePublishingBoundary, Package XXVI) and forwards it unmodified to
+ * FlattenedRenderingBridge; see direction-workspace-constitution.ts's own
+ * Package XXVII disclosure for the full chain and its one disclosed gap.
  */
 
 import { GoalContract, GoalStatus } from './goal-contracts';

@@ -1,11 +1,19 @@
 /**
  * AZMA OS - Phase 6: Makman Al-Ghayah Distribution Architecture
  * File: src/chambers/makman-al-ghayah/consumption-boundary.ts
- * 
+ *
  * The Public Consumption Boundary.
- * The secure, consumer-facing storefront API gateway. Orchestrates entitlement 
+ * The secure, consumer-facing storefront API gateway. Orchestrates entitlement
  * hydration, policy evaluation, and physical asset delivery. It strictly enforces
  * the sovereign creator's commercial rules before releasing any intellectual property.
+ *
+ * PACKAGE XXVII — SOVEREIGN EXPORT ENGINE (2026-07-28, constitutional
+ * naming only, zero logic changed): `requestConsumption()` is the
+ * Sovereign Export Engine's own delivery step — "to deliver the
+ * already-rendered constitutional output" (this package's own
+ * constitutional responsibility). It never renders or modifies anything
+ * itself; it only authorizes and returns a reference to output already
+ * produced by FlattenedRenderingBridge.
  */
 
 import { SovereignPublication } from './publication-contracts';

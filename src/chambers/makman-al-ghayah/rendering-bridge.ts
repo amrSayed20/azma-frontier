@@ -1,11 +1,22 @@
 /**
  * AZMA OS - Phase 6: Makman Al-Ghayah Distribution Architecture
  * File: src/chambers/makman-al-ghayah/rendering-bridge.ts
- * 
+ *
  * The Flattened Rendering Bridge.
- * Evaluates whether a publication's assembly graph can be served dynamically 
- * or requires a hard render (flattening). Delegates rendering operations 
+ * Evaluates whether a publication's assembly graph can be served dynamically
+ * or requires a hard render (flattening). Delegates rendering operations
  * to the Fleet Materialization Runtime and tracks the output.
+ *
+ * PACKAGE XXVII — SOVEREIGN EXPORT ENGINE (2026-07-28, constitutional
+ * naming only, zero logic changed): this class, together with
+ * MakmanGoalDistributionBridge and PublicConsumptionBoundary, together
+ * constitute the Sovereign Export Engine — see
+ * direction-workspace-constitution.ts's own Package XXVII disclosure.
+ * Its CINEMATIC branch genuinely fails today via a disclosed, pre-existing
+ * Fleet/Ledger placeholder gap (MAG-LF-001,
+ * src/sovereign-entry/unbuilt-al-watin-placeholder.ts) — caught here and
+ * honestly resolved to RenderStatus.FAILED, never fabricated as
+ * COMPLETED.
  */
 
 import { SovereignPublication } from './publication-contracts';

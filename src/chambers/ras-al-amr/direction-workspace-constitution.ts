@@ -222,6 +222,59 @@
  * already performs real dispatch to a Fleet materialization runtime for
  * cinematic flattening, which is Export Engine territory, not Rendering
  * Engine territory; untouched by this package.
+ *
+ * PACKAGE XXVII — SOVEREIGN EXPORT ENGINE (2026-07-28): the final
+ * constitutional package for the Sovereign Direction State. Investigated
+ * first, per this package's own "search first, reuse first" rule, and
+ * found the Export Engine already exists as three already-wired
+ * components in `src/chambers/makman-al-ghayah/`, none created or
+ * redesigned by this package:
+ *
+ * - `MakmanGoalDistributionBridge.bridgeToDestination()`
+ *   (MAKMAN_GOAL_DISTRIBUTION_BRIDGE.ts) — takes the Render Graph (as
+ *   `MakmanCommercialIntent.compiledAssemblyGraph`), creates and registers
+ *   a `SovereignPublication`, and forwards the SAME graph unmodified to
+ *   the Rendering Bridge below.
+ * - `FlattenedRenderingBridge.evaluateAndDispatchRender()`
+ *   (rendering-bridge.ts) — decides DYNAMIC (structural/logic graphs
+ *   served as-is) vs. flattening-required (CINEMATIC), and dispatches
+ *   real Fleet materialization intents for the latter.
+ * - `PublicConsumptionBoundary.requestConsumption()`
+ *   (consumption-boundary.ts) — "to deliver the already-rendered
+ *   constitutional output": enforces entitlements/access policy, then
+ *   returns the real delivery payload (a dynamic JSON reference or a
+ *   flattened Vault asset reference).
+ *
+ * Reached through exactly two live paths, confirmed by grep of every
+ * external reference to these three classes: `POST /api/sovereign/entry/
+ * creator-goal` → SOEL.submitCreatorGoal() → ... → bridgeToDestination()
+ * (publish/export), and `GET /api/sovereign/entry/consumption` → SOEL.
+ * requestConsumption() → PublicConsumptionBoundary.requestConsumption()
+ * (delivery) — composed exactly once in src/sovereign-entry/composition.ts.
+ * No duplicate export pipeline exists anywhere in the platform.
+ *
+ * AN HONESTLY DISCLOSED, PRE-EXISTING GAP, NOT CLOSED BY THIS PACKAGE:
+ * `FlattenedRenderingBridge`'s Fleet dispatch for CINEMATIC flattening
+ * depends on a real `FleetDispatcher`, but composition.ts wires it with
+ * `createUnbuiltAlWatinPlaceholder()` (src/sovereign-entry/
+ * unbuilt-al-watin-placeholder.ts) — a disclosed placeholder (since
+ * MAG-LF-001) whose `ILedgerManager`/`IFleetRegistry` methods throw
+ * loudly rather than fabricate success. This means real video/audio file
+ * export genuinely fails today for CINEMATIC canvases — caught, and
+ * honestly resolved to `RenderStatus.FAILED`, never a false COMPLETED —
+ * proven by this package's own new test
+ * (`makman-al-ghayah/__tests__/sovereign-export-engine.test.ts`, the
+ * first test any of these three files has ever had). Building a real
+ * `IFleetRegistry`/`ILedgerManager` would be "new orchestration"/"new
+ * media processing," explicitly forbidden by this package's own scope;
+ * closing that platform-level gap remains a separate, not-yet-authorized
+ * effort. NARRATIVE/DIRECTORIAL (structural/logic graphs) export and
+ * deliver successfully today without needing Fleet at all.
+ *
+ * Confirmed without requiring any change: Manual and Automatic Director
+ * (app/ras-amr/page.tsx) reference none of these three classes — export
+ * logic lives exclusively in Makman, never in Ras Al Amr's own Direction
+ * handlers.
  */
 
 import type { CanvasMutationPayload } from './assembly-directive-payloads';
@@ -410,6 +463,18 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
       'reflecting every Direction Decision ever executed through AssemblyRuntime, proven end-to-end by ' +
       '__tests__/pre-publishing-boundary.test.ts. Reached through exactly one live path (SOEL); video ' +
       'export/encoding/Fleet dispatch remain future Export Engine work',
+    implemented: true,
+  },
+  {
+    capability: 'Sovereign Export Engine (Render Graph delivery)',
+    constitutionalLocation:
+      'MakmanGoalDistributionBridge.bridgeToDestination() + FlattenedRenderingBridge.evaluateAndDispatchRender() ' +
+      '+ PublicConsumptionBoundary.requestConsumption() (src/chambers/makman-al-ghayah/, Package XXVII) ARE the ' +
+      'Export Engine — publish, render-dispatch, and deliver the already-produced Render Graph, reached ' +
+      'through exactly two live SOEL paths, proven end-to-end by __tests__/sovereign-export-engine.test.ts. ' +
+      'CINEMATIC file flattening honestly fails today (resolves to FAILED, never a false COMPLETED) — a ' +
+      'disclosed, pre-existing Fleet/Ledger placeholder gap (MAG-LF-001), not closed by this package; ' +
+      'structural/logic graphs (NARRATIVE/DIRECTORIAL) already export and deliver in full',
     implemented: true,
   },
 ] as const;
