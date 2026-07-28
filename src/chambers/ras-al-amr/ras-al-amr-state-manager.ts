@@ -18,6 +18,13 @@
  * stale the moment a node moves group — a correctness fix required by
  * this package, not scope creep. No new orchestration, no duplicate
  * canvas state, no execution/rendering logic.
+ *
+ * PACKAGE XXI — DIRECTION NODE LAYER (2026-07-28): one new mutation,
+ * UPDATE_NODE_CLASSIFICATION, lets the Creator assign or change a
+ * Direction Node's real cinematic role (assembly-contracts.ts's new
+ * `DirectionNodeRole`) — reusing `locateNode()` for lookup, same as
+ * every per-node handler since Package XX. No new node type, no new
+ * runtime: `AssemblyNode` already was the Direction Node.
  */
 
 import { SovereignCanvas, AssemblyNode, AssemblyTrack } from './assembly-contracts';
@@ -31,7 +38,8 @@ import {
   UpdateNodeAdvancedPayload,
   ReorderNodePayload,
   AddTrackPayload,
-  MoveNodeToTrackPayload
+  MoveNodeToTrackPayload,
+  UpdateNodeClassificationPayload
 } from './assembly-directive-payloads';
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 import { AssetFamily } from '../../vault/sovereign-vault-types';
@@ -78,6 +86,8 @@ export class RasAlAmrStateManager {
         return this.handleAddTrack(updatedCanvas, mutation);
       case CanvasActionType.MOVE_NODE_TO_TRACK:
         return this.handleMoveNodeToTrack(updatedCanvas, mutation);
+      case CanvasActionType.UPDATE_NODE_CLASSIFICATION:
+        return this.handleUpdateNodeClassification(updatedCanvas, mutation);
       default:
         return updatedCanvas;
     }
@@ -320,6 +330,39 @@ export class RasAlAmrStateManager {
     canvas.tracks[destinationIndex] = {
       ...destinationTrack,
       nodes: [...destinationTrack.nodes, node]
+    };
+
+    return canvas;
+  }
+
+  /**
+   * PACKAGE XXI — DIRECTION NODE LAYER: assigns or changes a Direction
+   * Node's real cinematic classification. Non-destructive — every other
+   * real field on the node (temporal, spatial, customDirectives,
+   * assetFamily, capabilityOrigin) survives unchanged; only
+   * `directionRole` is overwritten with whatever the Creator's own
+   * request specifies, including `undefined` to honestly return a node
+   * to "not yet classified" rather than requiring a fabricated default.
+   */
+  private handleUpdateNodeClassification(canvas: SovereignCanvas, payload: UpdateNodeClassificationPayload): SovereignCanvas {
+    const location = this.locateNode(canvas, payload.targetNodeId);
+    if (!location) return canvas;
+
+    const { trackIndex, nodeIndex } = location;
+    const track = canvas.tracks[trackIndex];
+
+    const updatedNode: AssemblyNode = {
+      ...track.nodes[nodeIndex],
+      directionRole: payload.directionRole
+    };
+
+    canvas.tracks[trackIndex] = {
+      ...track,
+      nodes: [
+        ...track.nodes.slice(0, nodeIndex),
+        updatedNode,
+        ...track.nodes.slice(nodeIndex + 1)
+      ]
     };
 
     return canvas;

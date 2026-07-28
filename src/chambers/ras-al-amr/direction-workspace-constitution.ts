@@ -64,6 +64,27 @@
  * group's nodes — extending it across groups is real "Automatic Director
  * decisions," explicitly out of this package's scope; a disclosed
  * limitation for a future package, not a silent omission.
+ *
+ * PACKAGE XXI — DIRECTION NODE LAYER (2026-07-28): "Ras Al Amr must begin
+ * thinking in terms of Direction rather than files." No new node type, no
+ * new runtime: `AssemblyNode` (assembly-contracts.ts) already IS the
+ * Direction Node the ruling describes — this package gives it real
+ * cinematic identity rather than inventing a parallel structure.
+ * `nodeId` (already real, globally unique since the Narrative Canvas
+ * Foundation package) is its Direction Node identity. `temporal`/
+ * `spatial`/`customDirectives` (already real) are its Direction Node
+ * metadata — reframed, not duplicated. The one genuinely new field,
+ * `directionRole` (`DirectionNodeRole`), is its cinematic classification
+ * — the Chief Architect's own seven examples (Opening Shot/Dialogue
+ * Scene/Narration/Music Layer/Ambient Layer/Transition/Closing Shot),
+ * never an invented vocabulary, genuinely optional (an unclassified node
+ * is an honest state, never defaulted or inferred from its technical
+ * assetFamily/capabilityOrigin). "Mapping assets into Direction Nodes" is
+ * `CanvasActionType.ADD_NODE` — already real since the Narrative Canvas
+ * Foundation package; every placed asset already became this exact
+ * structure. `UPDATE_NODE_CLASSIFICATION` (new) lets the Creator assign
+ * or change a node's role after placement, reusing `locateNode()`
+ * (Package XX) for lookup — zero new lookup logic.
  */
 
 // ── The Two Operators — Article II: one state, never two systems ────────
@@ -122,6 +143,15 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
       'grouping of Assembly Nodes" since Phase 5, but never used beyond the one default track until Package ' +
       'XX: CanvasActionType.ADD_TRACK creates a new group; CanvasActionType.MOVE_NODE_TO_TRACK moves an ' +
       'existing node between groups, non-destructively',
+    implemented: true,
+  },
+  {
+    capability: 'Direction Node identity / metadata / classification',
+    constitutionalLocation:
+      'AssemblyNode (assembly-contracts.ts) IS the Direction Node — no new type. nodeId is its identity ' +
+      '(already real); temporal/spatial/customDirectives are its metadata (already real); DirectionNodeRole ' +
+      '(Package XXI, new) — Opening Shot/Dialogue Scene/Narration/Music Layer/Ambient Layer/Transition/Closing ' +
+      'Shot — is its cinematic classification, assignable via CanvasActionType.UPDATE_NODE_CLASSIFICATION',
     implemented: true,
   },
   {

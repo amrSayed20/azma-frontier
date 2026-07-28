@@ -99,3 +99,15 @@ describe('Package XX — Direction Assembly Layer', () => {
     expect(entry?.constitutionalLocation).toMatch(/REORDER_NODE/);
   });
 });
+
+describe('Package XXI — Direction Node Layer', () => {
+  it('marks Direction Node identity/metadata/classification as genuinely implemented, reusing AssemblyNode', () => {
+    const entry = DIRECTION_WORKSPACE_CAPABILITY_MAP.find(
+      (e) => e.capability === 'Direction Node identity / metadata / classification',
+    );
+    expect(entry?.implemented).toBe(true);
+    expect(entry?.constitutionalLocation).toMatch(/AssemblyNode/);
+    expect(entry?.constitutionalLocation).toMatch(/DirectionNodeRole/);
+    expect(entry?.constitutionalLocation).toMatch(/UPDATE_NODE_CLASSIFICATION/);
+  });
+});

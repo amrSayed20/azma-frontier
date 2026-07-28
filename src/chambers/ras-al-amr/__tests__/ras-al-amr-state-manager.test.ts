@@ -1,5 +1,5 @@
 import { RasAlAmrStateManager } from '../ras-al-amr-state-manager';
-import { CanvasType } from '../assembly-contracts';
+import { CanvasType, DirectionNodeRole } from '../assembly-contracts';
 import type { SovereignCanvas } from '../assembly-contracts';
 import { CanvasActionType } from '../assembly-directive-payloads';
 import type { AddNodePayload } from '../assembly-directive-payloads';
@@ -372,5 +372,135 @@ describe('PACKAGE XX — Direction Assembly Layer: node lookup remains correct a
 
     expect(result.tracks[1].nodes[0].temporal?.globalStartTimeSeconds).toBe(5);
     expect(result.tracks[1].nodes[0].temporal?.playDurationSeconds).toBe(10);
+  });
+});
+
+describe('PACKAGE XXI — Direction Node Layer: UPDATE_NODE_CLASSIFICATION', () => {
+  const manager = new RasAlAmrStateManager();
+
+  function canvasWithOneNode(): SovereignCanvas {
+    return manager.applyMutation(makeEmptyCanvas(), {
+      actionType: CanvasActionType.ADD_NODE,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      vaultAssetId: 'asset-a',
+      assetFamily: AssetFamily.MEDIA,
+      capabilityOrigin: CapabilityTarget.VISUAL,
+    });
+  }
+
+  it('assigns a real cinematic classification to a node that had none', () => {
+    const canvas = canvasWithOneNode();
+    const nodeId = canvas.tracks[0].nodes[0].nodeId;
+    expect(canvas.tracks[0].nodes[0].directionRole).toBeUndefined();
+
+    const result = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.UPDATE_NODE_CLASSIFICATION,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      directionRole: DirectionNodeRole.OPENING_SHOT,
+    });
+
+    expect(result.tracks[0].nodes[0].directionRole).toBe(DirectionNodeRole.OPENING_SHOT);
+  });
+
+  it('changes an already-classified node to a different real role', () => {
+    let canvas = canvasWithOneNode();
+    const nodeId = canvas.tracks[0].nodes[0].nodeId;
+    canvas = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.UPDATE_NODE_CLASSIFICATION,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      directionRole: DirectionNodeRole.MUSIC_LAYER,
+    });
+
+    const result = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.UPDATE_NODE_CLASSIFICATION,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      directionRole: DirectionNodeRole.CLOSING_SHOT,
+    });
+
+    expect(result.tracks[0].nodes[0].directionRole).toBe(DirectionNodeRole.CLOSING_SHOT);
+  });
+
+  it('honestly returns a node to unclassified when the Creator supplies no role — never keeps a stale value', () => {
+    let canvas = canvasWithOneNode();
+    const nodeId = canvas.tracks[0].nodes[0].nodeId;
+    canvas = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.UPDATE_NODE_CLASSIFICATION,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      directionRole: DirectionNodeRole.NARRATION,
+    });
+
+    const result = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.UPDATE_NODE_CLASSIFICATION,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      directionRole: undefined,
+    });
+
+    expect(result.tracks[0].nodes[0].directionRole).toBeUndefined();
+  });
+
+  it('never touches any other real field on the node — non-destructive', () => {
+    const canvas = canvasWithOneNode();
+    const nodeId = canvas.tracks[0].nodes[0].nodeId;
+
+    const result = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.UPDATE_NODE_CLASSIFICATION,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      directionRole: DirectionNodeRole.TRANSITION,
+    });
+
+    expect(result.tracks[0].nodes[0].assetId).toBe('asset-a');
+    expect(result.tracks[0].nodes[0].assetFamily).toBe(AssetFamily.MEDIA);
+    expect(result.tracks[0].nodes[0].capabilityOrigin).toBe(CapabilityTarget.VISUAL);
+  });
+
+  it('locates the node by id even when a stale targetTrackId is supplied, after a real cross-group move', () => {
+    let canvas = manager.applyMutation(canvasWithOneNode(), {
+      actionType: CanvasActionType.ADD_TRACK,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      trackName: 'Group B',
+    });
+    const nodeId = canvas.tracks[0].nodes[0].nodeId;
+    const destinationTrackId = canvas.tracks[1].trackId;
+
+    canvas = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.MOVE_NODE_TO_TRACK,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      sourceTrackId: 'track-1',
+      targetNodeId: nodeId,
+      destinationTrackId,
+    });
+
+    const result = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.UPDATE_NODE_CLASSIFICATION,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      directionRole: DirectionNodeRole.AMBIENT_LAYER,
+    });
+
+    expect(result.tracks[1].nodes[0].directionRole).toBe(DirectionNodeRole.AMBIENT_LAYER);
   });
 });

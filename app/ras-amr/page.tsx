@@ -299,6 +299,15 @@
  * group's nodes — extending its composition judgment across groups is
  * real Automatic Director decision-making, explicitly out of this
  * package's scope; a disclosed limitation, not a silent gap.
+ *
+ * PACKAGE XXI — DIRECTION NODE LAYER (2026-07-28): each node's own row
+ * now carries a real cinematic classification select (`DirectionNodeRole`
+ * — Opening Shot/Dialogue Scene/Narration/Music Layer/Ambient Layer/
+ * Transition/Closing Shot, plus an honest "not classified" default),
+ * wired to `handleUpdateNodeClassification`. The node's own display line
+ * echoes its real assigned role when one exists. No new node type, no
+ * new runtime — `AssemblyNode` already was the Direction Node; this only
+ * gives the Creator a real way to assign it cinematic identity.
  */
 
 'use client';
@@ -308,7 +317,7 @@ import { useRouter } from 'next/navigation';
 import { RasAmrExperience } from '@/src/imperial-experience-engine';
 import type { VaultAsset, AssetFamily } from '@/src/vault/sovereign-vault-types';
 import type { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
-import { CanvasType } from '@/src/chambers/ras-al-amr/assembly-contracts';
+import { CanvasType, DirectionNodeRole } from '@/src/chambers/ras-al-amr/assembly-contracts';
 import type { SovereignCanvas, SpatialDirective, TemporalDirective } from '@/src/chambers/ras-al-amr/assembly-contracts';
 import type { CompiledAssemblyGraph } from '@/src/chambers/ras-al-amr/pre-publishing-boundary';
 import { RasAlAmrStateManager } from '@/src/chambers/ras-al-amr/ras-al-amr-state-manager';
@@ -322,6 +331,7 @@ import type {
   ReorderNodePayload,
   AddTrackPayload,
   MoveNodeToTrackPayload,
+  UpdateNodeClassificationPayload,
   VisualFilterDirective,
   StructuralLogicDirective,
   AudioMixingDirective,
@@ -401,6 +411,19 @@ const initialSmartQueue: QueueItem[] = [
   { id: 'q-2', title: 'البصمة الصوتية السيادية', type: 'صوت', source: 'خزنة الأصوات', duration: '01:05', status: 'مزامنة عصبية معلقة' },
   { id: 'q-3', title: 'مخطط الهوية البصرية الحية', type: 'علامة', source: 'خزنة العلامات', duration: '--:--', status: 'معالجة البكسل' },
 ];
+
+// PACKAGE XXI — DIRECTION NODE LAYER: real Arabic labels for the Chief
+// Architect's own seven DirectionNodeRole examples — display only, the
+// enum values themselves remain the real, stored classification.
+const DIRECTION_NODE_ROLE_LABELS: Record<DirectionNodeRole, string> = {
+  [DirectionNodeRole.OPENING_SHOT]: 'لقطة افتتاحية',
+  [DirectionNodeRole.DIALOGUE_SCENE]: 'مشهد حواري',
+  [DirectionNodeRole.NARRATION]: 'سرد صوتي',
+  [DirectionNodeRole.MUSIC_LAYER]: 'طبقة موسيقية',
+  [DirectionNodeRole.AMBIENT_LAYER]: 'طبقة صوتية محيطة',
+  [DirectionNodeRole.TRANSITION]: 'انتقال',
+  [DirectionNodeRole.CLOSING_SHOT]: 'لقطة ختامية',
+};
 
 const hollywoodTools = [
   { id: 'pixel-grade', label: 'المعالج النقطي للبكسل', icon: '🎯', category: 'manual' },
@@ -632,6 +655,25 @@ export default function RasAmrChamber() {
       sourceTrackId: sourceTrack.trackId,
       targetNodeId: nodeId,
       destinationTrackId,
+    };
+
+    setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
+  };
+
+  // PACKAGE XXI — DIRECTION NODE LAYER: assigns or changes a node's real
+  // cinematic classification. `role` may genuinely be `undefined` (the
+  // Creator choosing the "not classified" option), which honestly returns
+  // the node to its unclassified state rather than forcing a default.
+  const handleUpdateNodeClassification = (nodeId: string, role: DirectionNodeRole | undefined) => {
+    if (!sessionCanvas) return;
+
+    const mutation: UpdateNodeClassificationPayload = {
+      actionType: CanvasActionType.UPDATE_NODE_CLASSIFICATION,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      directionRole: role,
     };
 
     setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
@@ -1222,6 +1264,7 @@ export default function RasAmrChamber() {
                           >
                             <button className="narrative-node-select" onClick={() => setSelectedNodeId(node.nodeId)}>
                               #{index + 1} — {node.assetFamily} / {node.capabilityOrigin}
+                              {node.directionRole ? ` — ${DIRECTION_NODE_ROLE_LABELS[node.directionRole]}` : ''}
                               {node.temporal ? ` — مُطبَّق ${node.temporal.globalStartTimeSeconds}s→${node.temporal.globalStartTimeSeconds + node.temporal.playDurationSeconds}s` : ''}
                               {(() => {
                                 const proposed = multiNodeDirection?.nodeDecisions.find((nd) => nd.nodeId === node.nodeId)?.decision.temporal;
@@ -1229,6 +1272,18 @@ export default function RasAmrChamber() {
                               })()}
                               {multiNodeDirection?.primaryNodeId === node.nodeId ? ' — ★ الاتجاه الأساسي' : ''}
                             </button>
+                            {/* PACKAGE XXI — DIRECTION NODE LAYER: real cinematic classification, genuinely optional. */}
+                            <select
+                              className="narrative-node-classification"
+                              value={node.directionRole ?? ''}
+                              onChange={(e) => handleUpdateNodeClassification(node.nodeId, (e.target.value || undefined) as DirectionNodeRole | undefined)}
+                              aria-label="التصنيف السينمائي للعقدة"
+                            >
+                              <option value="">غير مصنَّف</option>
+                              {Object.values(DirectionNodeRole).map((role) => (
+                                <option key={role} value={role}>{DIRECTION_NODE_ROLE_LABELS[role]}</option>
+                              ))}
+                            </select>
                             <button
                               className="narrative-node-reorder"
                               onClick={() => handleReorderNode(node.nodeId, 'up')}

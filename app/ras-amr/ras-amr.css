@@ -729,7 +729,8 @@ body, html {
 
 .group-select,
 .group-name-input,
-.narrative-node-move-group {
+.narrative-node-move-group,
+.narrative-node-classification {
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid var(--neon-gold-dim);
   border-radius: 6px;
@@ -775,7 +776,8 @@ body, html {
   cursor: default;
 }
 
-.narrative-node-move-group {
+.narrative-node-move-group,
+.narrative-node-classification {
   font-size: 9px;
   padding: 4px 6px;
   max-width: 100px;

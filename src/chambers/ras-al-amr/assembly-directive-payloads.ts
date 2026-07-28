@@ -7,7 +7,7 @@
  * * Update Notice: Clean integration of the Semantic Hybrid Core (No Patching Rule).
  */
 
-import { TemporalDirective, SpatialDirective } from './assembly-contracts';
+import { TemporalDirective, SpatialDirective, DirectionNodeRole } from './assembly-contracts';
 
 // ==========================================
 // 1. ADVANCED MULTI-MODAL DIRECTIVES 
@@ -64,7 +64,9 @@ export enum CanvasActionType {
   /** PACKAGE XX — DIRECTION ASSEMBLY LAYER: creates a new, real, empty group (AssemblyTrack was already "a logical grouping of Assembly Nodes" by its own doc comment — this is that concept, finally used). */
   ADD_TRACK = 'ADD_TRACK',
   /** PACKAGE XX — DIRECTION ASSEMBLY LAYER: moves an existing node from one group to another — the write-side of "asset grouping can be changed." */
-  MOVE_NODE_TO_TRACK = 'MOVE_NODE_TO_TRACK'
+  MOVE_NODE_TO_TRACK = 'MOVE_NODE_TO_TRACK',
+  /** PACKAGE XXI — DIRECTION NODE LAYER: assigns or changes a node's real cinematic classification (DirectionNodeRole). */
+  UPDATE_NODE_CLASSIFICATION = 'UPDATE_NODE_CLASSIFICATION'
 }
 
 /**
@@ -170,6 +172,22 @@ export interface MoveNodeToTrackPayload extends BaseCanvasMutation {
 }
 
 /**
+ * PACKAGE XXI — DIRECTION NODE LAYER: assigns or changes a Direction
+ * Node's real cinematic classification, non-destructively. `targetTrackId`
+ * is kept only for shape consistency with every other per-node mutation —
+ * exactly like REMOVE_NODE/UPDATE_TEMPORAL/UPDATE_SPATIAL/
+ * UPDATE_ADVANCED_DIRECTIVE, it is not consulted for lookup;
+ * RasAlAmrStateManager locates the node by its own globally-unique id via
+ * locateNode() (Package XX).
+ */
+export interface UpdateNodeClassificationPayload extends BaseCanvasMutation {
+  actionType: CanvasActionType.UPDATE_NODE_CLASSIFICATION;
+  targetTrackId: string;
+  targetNodeId: string;
+  directionRole?: DirectionNodeRole;
+}
+
+/**
  * The definitive union type consumed by the Ras Al-Amr State Manager.
  */
 export type CanvasMutationPayload =
@@ -180,4 +198,5 @@ export type CanvasMutationPayload =
   | UpdateNodeAdvancedPayload
   | ReorderNodePayload
   | AddTrackPayload
-  | MoveNodeToTrackPayload;
+  | MoveNodeToTrackPayload
+  | UpdateNodeClassificationPayload;
