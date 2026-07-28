@@ -258,6 +258,18 @@
  * Creator's own stated `transitionPreference`, echoed verbatim) the same
  * way — a genuinely distinct, independent field from rhythm/pacing, never
  * derived from it.
+ *
+ * PACKAGE XVIII — DIRECTION WORKSPACE FOUNDATION (2026-07-28): per the
+ * Chief Architect's Constitutional Ruling naming Ras Al Amr "The Sovereign
+ * State of Direction," the `tools-sidebar` aside below — already the one
+ * real, shared container for both the `directingMode` toggle and every
+ * "REAL —" panel (Narrative Canvas, Spatial, Visual, Temporal, Director)
+ * — is now explicitly labeled as the visible Direction Workspace. No
+ * restructuring: this was already the single sovereign state both
+ * operators shared; only its constitutional identity is now named, in
+ * the UI and in `direction-workspace-constitution.ts` (new file, the
+ * declarative registry of where future Direction capabilities — voice,
+ * imported media, export, etc. — will constitutionally attach).
  */
 
 'use client';
@@ -373,17 +385,26 @@ export default function RasAmrChamber() {
   // --- Core States ---
   const [queue, setQueue] = useState<QueueItem[]>(initialSmartQueue);
   const [activeAsset, setActiveAsset] = useState<QueueItem | null>(initialSmartQueue[0]);
-  // CONSTITUTIONAL NOTE (Ras Al Amr Chamber Reconstruction, 2026-07-25):
-  // 'smart' is the Automatic Director — a delegated directing AUTHORITY,
-  // never an automation shortcut, workflow engine, or scripted pipeline.
-  // Any future real implementation behind this mode must make genuine
-  // editorial decisions on the Creator's behalf, always within the
-  // Creator's own declared vision/goals/constraints (it may decide HOW to
-  // direct, never redefine WHAT the Creator intends), and the delegation
-  // it represents must remain limitable/revocable by the Creator at any
-  // time. See src/chamber-vision/'s ras-amr Vision Document for the full
-  // ruling. Today this state only drives which tools are shown/dimmed —
-  // no real differentiated logic exists yet behind either mode.
+  // CONSTITUTIONAL NOTE (Ras Al Amr Chamber Reconstruction, 2026-07-25;
+  // superseded/expanded by the Sovereign Direction State Ruling,
+  // 2026-07-28, and Package XVIII, direction-workspace-constitution.ts):
+  // 'smart' is the Automatic Director, 'manual' is the Manual Director —
+  // the two DirectionOperator values that same file now names
+  // constitutionally ('automatic-director'/'manual-director'). Both
+  // operate inside the ONE Direction Workspace (the same SovereignCanvas +
+  // RasAlAmrStateManager every panel below already shares) — never two
+  // systems, never a separate editing chamber. 'smart' remains a
+  // delegated directing AUTHORITY, never an automation shortcut,
+  // workflow engine, or scripted pipeline: any future real implementation
+  // behind it must make genuine editorial decisions on the Creator's
+  // behalf, within the Creator's own declared vision/goals/constraints
+  // (it may decide HOW to direct, never redefine WHAT the Creator
+  // intends), and the delegation it represents must remain
+  // limitable/revocable by the Creator at any time. This state still only
+  // drives which decorative tools are shown/dimmed — no real
+  // differentiated logic exists yet behind either mode beyond the real
+  // Spatial/Visual/Temporal panels (manual) and the REAL — DIRECTOR panel
+  // (automatic) already below, both always visible regardless of mode.
   const [directingMode, setDirectingMode] = useState<'smart' | 'manual'>('smart');
   const [activeTool, setActiveTool] = useState<string>('ai-director');
   const [timelineProgress, setTimelineProgress] = useState<number>(45);
@@ -963,9 +984,9 @@ export default function RasAmrChamber() {
         {/* ========================================= */}
         <aside className="control-panel tools-sidebar neon-border">
           <header className="panel-header">
-            <div className="neon-tag">HOLLYWOOD MATRIX</div>
-            <h2>لوحة الإخراج الشاملة</h2>
-            <p>أدوات التوجيه الدقيق وتحكم البكسل</p>
+            <div className="neon-tag">REAL — DIRECTION WORKSPACE</div>
+            <h2>مساحة التوجيه السيادية</h2>
+            <p>حالة توجيه سيادية واحدة — المخرج اليدوي والمخرج الآلي يعملان معاً هنا، بلا غرفة مونتاج منفصلة وبلا ازدواج في البنية</p>
           </header>
 
           <div className="mode-switcher-rack">
