@@ -728,6 +728,22 @@ body, html {
   color: var(--neon-gold-bright);
 }
 
+/* PACKAGE XXIII — DIRECTION DECISION MODEL: real, visible decision log. */
+.direction-decision-log {
+  margin: 8px 0;
+  padding: 6px 10px;
+  border: 1px solid var(--neon-gold-dim);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.direction-decision-latest {
+  margin: 4px 0 0;
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 /* PACKAGE XX — DIRECTION ASSEMBLY LAYER: groups + reordering. */
 .group-controls-row {
   display: flex;

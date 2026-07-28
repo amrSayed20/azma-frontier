@@ -4,7 +4,9 @@ import {
   DIRECTION_WORKSPACE_CAPABILITY_MAP,
   MEDIA_INGESTION_SOURCES,
   MANUAL_DIRECTION_DECISIONS,
+  toDirectionDecision,
 } from '../direction-workspace-constitution';
+import { CanvasActionType, type ReorderNodePayload, type UpdateNodeTemporalPayload } from '../assembly-directive-payloads';
 
 describe('Package XVIII — Direction Workspace Foundation', () => {
   it('declares exactly the two constitutional operators — never a third, never a duplicate', () => {
@@ -153,5 +155,71 @@ describe('Package XXII — Manual Direction Engine', () => {
     expect(promote?.realMechanism).toMatch(/REORDER_NODE/);
     expect(demote?.realMechanism).toMatch(/REORDER_NODE/);
     expect(promote?.realMechanism).toMatch(/Package XX/);
+  });
+});
+
+describe('Package XXIII — Direction Decision Model', () => {
+  const baseMutation = {
+    canvasId: 'canvas-1',
+    subscriberTenantId: 'tenant-1',
+  };
+
+  it('marks the shared Direction Decision language as genuinely implemented', () => {
+    const entry = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) =>
+      e.capability.startsWith('Shared Direction Decision language'),
+    );
+    expect(entry?.implemented).toBe(true);
+    expect(entry?.constitutionalLocation).toMatch(/toDirectionDecision/);
+  });
+
+  it('wraps a real Manual Director mutation into a DirectionDecision, tagging operator and issuedAtMs', () => {
+    const mutation: ReorderNodePayload = {
+      ...baseMutation,
+      actionType: CanvasActionType.REORDER_NODE,
+      targetTrackId: 'track-1',
+      targetNodeId: 'node-1',
+      direction: 'up',
+    };
+
+    const decision = toDirectionDecision('manual-director', mutation, 1000);
+
+    expect(decision).toEqual({
+      operator: 'manual-director',
+      mutation,
+      issuedAtMs: 1000,
+    });
+  });
+
+  it('defaults issuedAtMs to the current time when omitted', () => {
+    const mutation: ReorderNodePayload = {
+      ...baseMutation,
+      actionType: CanvasActionType.REORDER_NODE,
+      targetTrackId: 'track-1',
+      targetNodeId: 'node-1',
+      direction: 'down',
+    };
+
+    const before = Date.now();
+    const decision = toDirectionDecision('manual-director', mutation);
+    const after = Date.now();
+
+    expect(decision.issuedAtMs).toBeGreaterThanOrEqual(before);
+    expect(decision.issuedAtMs).toBeLessThanOrEqual(after);
+  });
+
+  it('is already structurally capable of wrapping an Automatic-Director-shaped mutation, proving shared readiness without wiring it in', () => {
+    const mutation: UpdateNodeTemporalPayload = {
+      ...baseMutation,
+      actionType: CanvasActionType.UPDATE_TEMPORAL,
+      targetNodeId: 'node-2',
+      targetTrackId: 'track-1',
+      temporalUpdates: { globalStartTimeSeconds: 4.2 },
+    };
+
+    const decision = toDirectionDecision('automatic-director', mutation, 2000);
+
+    expect(decision.operator).toBe('automatic-director');
+    expect(decision.mutation).toBe(mutation);
+    expect(decision.issuedAtMs).toBe(2000);
   });
 });

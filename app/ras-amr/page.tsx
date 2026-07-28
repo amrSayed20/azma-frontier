@@ -320,6 +320,25 @@
  * except the lock toggle itself and removal; a disabled node visibly
  * dims. Both states are real, stored, and enforced by
  * RasAlAmrStateManager, not decorative.
+ *
+ * PACKAGE XXIII — DIRECTION DECISION MODEL (2026-07-28): every one of the
+ * nine real Manual Direction handlers above (`handleAddActiveAssetToCanvas`
+ * through `handleSetNodeLock`) now also calls `recordDirectionDecision()`,
+ * which wraps the exact same real `CanvasMutationPayload` it already
+ * builds into a real `DirectionDecision` (`toDirectionDecision()`,
+ * direction-workspace-constitution.ts) — tagging it `'manual-director'`
+ * plus a real timestamp — and appends it to a real, visible, capped
+ * `directionDecisionLog`. The Narrative Canvas panel now shows the most
+ * recent one live, so "Manual decisions produce it" is a provable,
+ * live-verifiable fact, not just a callable function. `handleApplySpatial
+ * Adjustment`/`handleApplyVisualAdjustment`/`handleApplyTemporalAdjustment`
+ * deliberately do NOT feed this log — those are fine-grained editing
+ * adjustments that predate the Sovereign Direction State ruling, not one
+ * of the ruling's own named Direction Decisions. The Automatic Director's
+ * own `handleApplyDirectorDecision` is also deliberately left unwired —
+ * doing so would touch the Automatic Director's own code path, and this
+ * package's own instruction was to establish the shared language, not to
+ * implement Automatic reasoning.
  */
 
 'use client';
@@ -354,6 +373,8 @@ import type {
 import { decideMultiNodeCinematicDirection } from '@/src/chambers/ras-al-amr/automatic-director';
 import { validateNarrativeIntegrity } from '@/src/chambers/ras-al-amr/automatic-director-constitution';
 import type { FormalGoalContractView } from '@/src/chambers/ras-al-amr/automatic-director-constitution';
+import { toDirectionDecision } from '@/src/chambers/ras-al-amr/direction-workspace-constitution';
+import type { DirectionDecision } from '@/src/chambers/ras-al-amr/direction-workspace-constitution';
 import './ras-amr.css';
 
 // Pure, stateless transformer (see its own header comment) — one shared
@@ -508,6 +529,14 @@ export default function RasAmrChamber() {
   // group not yet created.
   const [activeTrackId, setActiveTrackId] = useState<string>('track-1');
   const [newGroupName, setNewGroupName] = useState<string>('');
+  // PACKAGE XXIII — DIRECTION DECISION MODEL: a real, visible log of the
+  // Manual Director's own Direction Decisions, each a genuine
+  // DirectionDecision built by toDirectionDecision() — capped so the UI
+  // stays a recent log, not an unbounded history.
+  const [directionDecisionLog, setDirectionDecisionLog] = useState<DirectionDecision[]>([]);
+  const recordDirectionDecision = (mutation: DirectionDecision['mutation']) => {
+    setDirectionDecisionLog((prev) => [toDirectionDecision('manual-director', mutation), ...prev].slice(0, 10));
+  };
 
   const wantsRealCanvas = Boolean(activeAsset?.isRealAsset && activeAsset.assetFamily && activeAsset.capabilityOrigin);
 
@@ -583,6 +612,7 @@ export default function RasAmrChamber() {
       initialSpatial: DEFAULT_SPATIAL,
     };
 
+    recordDirectionDecision(mutation);
     const updatedCanvas = rasAlAmrStateManager.applyMutation(sessionCanvas, mutation);
     setSessionCanvas(updatedCanvas);
 
@@ -611,6 +641,7 @@ export default function RasAmrChamber() {
       targetNodeId: nodeId,
     };
 
+    recordDirectionDecision(mutation);
     const updatedCanvas = rasAlAmrStateManager.applyMutation(sessionCanvas, mutation);
     setSessionCanvas(updatedCanvas);
 
@@ -636,6 +667,7 @@ export default function RasAmrChamber() {
       direction,
     };
 
+    recordDirectionDecision(mutation);
     setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
   };
 
@@ -651,6 +683,7 @@ export default function RasAmrChamber() {
       trackName: newGroupName.trim(),
     };
 
+    recordDirectionDecision(mutation);
     const updatedCanvas = rasAlAmrStateManager.applyMutation(sessionCanvas, mutation);
     setSessionCanvas(updatedCanvas);
     setNewGroupName('');
@@ -672,6 +705,7 @@ export default function RasAmrChamber() {
       destinationTrackId,
     };
 
+    recordDirectionDecision(mutation);
     setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
   };
 
@@ -691,6 +725,7 @@ export default function RasAmrChamber() {
       directionRole: role,
     };
 
+    recordDirectionDecision(mutation);
     setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
   };
 
@@ -707,6 +742,7 @@ export default function RasAmrChamber() {
       active,
     };
 
+    recordDirectionDecision(mutation);
     setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
   };
 
@@ -726,6 +762,7 @@ export default function RasAmrChamber() {
       emphasis,
     };
 
+    recordDirectionDecision(mutation);
     setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
   };
 
@@ -745,6 +782,7 @@ export default function RasAmrChamber() {
       locked,
     };
 
+    recordDirectionDecision(mutation);
     setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
   };
 
@@ -1283,6 +1321,16 @@ export default function RasAmrChamber() {
                 <h2>القماش السردي</h2>
                 <p>مساحة عمل سينمائية واحدة تتّسع لعدة أصول إنتاجية حقيقية — الترتيب الحقيقي والاتجاه الأساسي يُحكَمان الآن عبر العقد، بلا تنفيذ وبلا إيقاع أو انتقال مُختلَق</p>
               </header>
+
+              {/* PACKAGE XXIII — DIRECTION DECISION MODEL: real, visible proof that every Manual Direction Decision above now produces a shared DirectionDecision, not just a raw mutation. */}
+              {directionDecisionLog.length > 0 && (
+                <div className="direction-decision-log" data-testid="direction-decision-log">
+                  <span className="neon-tag">REAL — DIRECTION DECISION LOG</span>
+                  <p className="direction-decision-latest">
+                    آخر قرار توجيهي: {directionDecisionLog[0].mutation.actionType} — {directionDecisionLog[0].operator} — {new Date(directionDecisionLog[0].issuedAtMs).toLocaleTimeString('ar-EG')}
+                  </p>
+                </div>
+              )}
 
               {/* PACKAGE XX — DIRECTION ASSEMBLY LAYER: real group creation + selection for where a newly-added asset lands. */}
               <div className="group-controls-row">

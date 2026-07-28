@@ -115,7 +115,37 @@
  * Automatic Director reasoning, explicitly out of this package's scope;
  * a disclosed distinction, not a duplicate concept accidentally left
  * unmerged.
+ *
+ * PACKAGE XXIII — DIRECTION DECISION MODEL (2026-07-28): Manual Director
+ * (Packages XX-XXII) and Automatic Director (automatic-director.ts) never
+ * spoke the same decision language — Manual actions went straight from a
+ * UI click to a `CanvasMutationPayload`, with no shared representation of
+ * "a Direction Decision occurred" at all. `DirectionDecision` below is
+ * that shared model — the SMALLEST possible one, per this package's own
+ * "no duplicate contracts" rule: it does not re-describe a mutation's own
+ * fields in a new shape (that would be a duplicate contract); it simply
+ * tags an already-real `CanvasMutationPayload` with WHO issued it
+ * (`DirectionOperator`, already real since Package XVIII) and WHEN.
+ *
+ * WHY THIS IS ALREADY PROVABLY SHARED, NOT JUST "WILL BE LATER": the
+ * Automatic Director's own decision-APPLICATION path
+ * (`handleApplyDirectorDecision`, app/ras-amr/page.tsx) already dispatches
+ * `UPDATE_TEMPORAL`/`UPDATE_ADVANCED_DIRECTIVE` — the exact same
+ * `CanvasMutationPayload` variants Manual Director also uses. Because
+ * `toDirectionDecision()` is written generically over the whole
+ * `CanvasMutationPayload` union, not over Package XX-XXII's own types
+ * specifically, it is ALREADY structurally capable of wrapping an
+ * Automatic-Director-issued mutation today — proven by this file's own
+ * tests, not merely asserted. This package deliberately does NOT wire
+ * that call into `handleApplyDirectorDecision` itself (that would touch
+ * the Automatic Director's own code path, and "Automatic reasoning" is
+ * explicitly out of this package's scope) — only Manual Director's real
+ * handlers call it. Future Export/Assembly/Rendering packages, and a
+ * future Automatic Director integration, can depend on this exact model
+ * without any redesign.
  */
+
+import type { CanvasMutationPayload } from './assembly-directive-payloads';
 
 // ── The Two Operators — Article II: one state, never two systems ────────
 // app/ras-amr/page.tsx's own pre-existing `directingMode` state ('smart' |
@@ -137,6 +167,30 @@ export const DIRECTION_WORKSPACE_PURPOSE =
   'The Direction Workspace is the one sovereign environment in which the Creator (Manual Director) and the ' +
   'Empire (Automatic Director) each direct the same real work — never two systems, never two states, and never ' +
   'a separate editing or montage chamber.';
+
+// ── Direction Decision Model — Package XXIII ─────────────────────────────
+// The single shared constitutional contract every Direction Decision — no
+// matter which operator issued it — is represented as. Deliberately NOT a
+// new description of a mutation's own fields (that would be a "duplicate
+// contract" per this package's own rule): it is a thin, generic wrapper
+// tagging an already-real CanvasMutationPayload with WHO issued it and
+// WHEN. Manual Director's real handlers (app/ras-amr/page.tsx) already
+// build these; Export/Assembly/Rendering and a future Automatic Director
+// integration can all depend on this exact shape without redesign.
+
+export interface DirectionDecision {
+  readonly operator: DirectionOperator;
+  readonly mutation: CanvasMutationPayload;
+  readonly issuedAtMs: number;
+}
+
+export function toDirectionDecision(
+  operator: DirectionOperator,
+  mutation: CanvasMutationPayload,
+  issuedAtMs: number = Date.now(),
+): DirectionDecision {
+  return { operator, mutation, issuedAtMs };
+}
 
 // ── Future Capability Locations — Article IV/VI ──────────────────────────
 // Named now so every future Direction package (voice, imported media,
@@ -238,6 +292,14 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
       'AssemblyNode.isActive/directionEmphasis/isLocked (assembly-contracts.ts) via ' +
       'CanvasActionType.REORDER_NODE (reused, Package XX)/SET_NODE_ACTIVE/SET_NODE_EMPHASIS/SET_NODE_LOCK ' +
       '(Package XXII) — see MANUAL_DIRECTION_DECISIONS below for the full, tested mapping',
+    implemented: true,
+  },
+  {
+    capability: 'Shared Direction Decision language (Manual + future Automatic)',
+    constitutionalLocation:
+      'DirectionDecision + toDirectionDecision() (this file, Package XXIII) — a thin operator/timestamp wrapper ' +
+      'around the already-real CanvasMutationPayload union; Manual Director\'s real handlers produce it today, ' +
+      'and it is already structurally capable of wrapping an Automatic-Director-issued mutation without redesign',
     implemented: true,
   },
 ] as const;
