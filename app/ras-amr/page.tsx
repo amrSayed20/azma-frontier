@@ -308,6 +308,18 @@
  * echoes its real assigned role when one exists. No new node type, no
  * new runtime — `AssemblyNode` already was the Direction Node; this only
  * gives the Creator a real way to assign it cinematic identity.
+ *
+ * PACKAGE XXII — MANUAL DIRECTION ENGINE (2026-07-28): each node's row now
+ * also carries an emphasis select (Mark as Primary/Supporting,
+ * `handleSetNodeEmphasis`), an active toggle (Activate/Disable,
+ * `handleSetNodeActive`), and a lock toggle (Lock/Unlock Direction,
+ * `handleSetNodeLock`) — real Direction Decisions, not editing. "Promote
+ * Node"/"Demote Node" reuse the existing up/down reorder buttons
+ * (`handleReorderNode`, Package XX) verbatim — no new control was needed.
+ * A locked node visibly dashes its border and disables every control
+ * except the lock toggle itself and removal; a disabled node visibly
+ * dims. Both states are real, stored, and enforced by
+ * RasAlAmrStateManager, not decorative.
  */
 
 'use client';
@@ -332,6 +344,9 @@ import type {
   AddTrackPayload,
   MoveNodeToTrackPayload,
   UpdateNodeClassificationPayload,
+  SetNodeActivePayload,
+  SetNodeEmphasisPayload,
+  SetNodeLockPayload,
   VisualFilterDirective,
   StructuralLogicDirective,
   AudioMixingDirective,
@@ -674,6 +689,60 @@ export default function RasAmrChamber() {
       targetTrackId: 'track-1',
       targetNodeId: nodeId,
       directionRole: role,
+    };
+
+    setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
+  };
+
+  // PACKAGE XXII — MANUAL DIRECTION ENGINE: Activate Node / Disable Node.
+  const handleSetNodeActive = (nodeId: string, active: boolean) => {
+    if (!sessionCanvas) return;
+
+    const mutation: SetNodeActivePayload = {
+      actionType: CanvasActionType.SET_NODE_ACTIVE,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      active,
+    };
+
+    setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
+  };
+
+  // PACKAGE XXII — MANUAL DIRECTION ENGINE: Mark as Primary / Mark as
+  // Supporting — a Creator-DECLARED emphasis, deliberately distinct from
+  // multiNodeDirection's own separately-computed primaryNodeId (see
+  // assembly-contracts.ts's own header for why these are not unified).
+  const handleSetNodeEmphasis = (nodeId: string, emphasis: 'primary' | 'supporting' | null) => {
+    if (!sessionCanvas) return;
+
+    const mutation: SetNodeEmphasisPayload = {
+      actionType: CanvasActionType.SET_NODE_EMPHASIS,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      emphasis,
+    };
+
+    setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
+  };
+
+  // PACKAGE XXII — MANUAL DIRECTION ENGINE: Lock Direction / Unlock
+  // Direction — genuinely protects the node's own direction decisions
+  // from further mutation (RasAlAmrStateManager's own lock-guard), never
+  // blocks removal.
+  const handleSetNodeLock = (nodeId: string, locked: boolean) => {
+    if (!sessionCanvas) return;
+
+    const mutation: SetNodeLockPayload = {
+      actionType: CanvasActionType.SET_NODE_LOCK,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      locked,
     };
 
     setSessionCanvas(rasAlAmrStateManager.applyMutation(sessionCanvas, mutation));
@@ -1260,11 +1329,15 @@ export default function RasAmrChamber() {
                         {track.nodes.map((node, index) => (
                           <li
                             key={node.nodeId}
-                            className={`narrative-canvas-node ${node.nodeId === selectedNodeId ? 'node-selected' : ''}`}
+                            className={`narrative-canvas-node ${node.nodeId === selectedNodeId ? 'node-selected' : ''} ${node.isActive === false ? 'node-inactive' : ''} ${node.isLocked ? 'node-locked' : ''}`}
                           >
                             <button className="narrative-node-select" onClick={() => setSelectedNodeId(node.nodeId)}>
                               #{index + 1} — {node.assetFamily} / {node.capabilityOrigin}
                               {node.directionRole ? ` — ${DIRECTION_NODE_ROLE_LABELS[node.directionRole]}` : ''}
+                              {node.directionEmphasis === 'primary' ? ' — ◆ أساسي (مُصرَّح به)' : ''}
+                              {node.directionEmphasis === 'supporting' ? ' — ◇ مساند' : ''}
+                              {node.isActive === false ? ' — (معطَّل)' : ''}
+                              {node.isLocked ? ' — 🔒' : ''}
                               {node.temporal ? ` — مُطبَّق ${node.temporal.globalStartTimeSeconds}s→${node.temporal.globalStartTimeSeconds + node.temporal.playDurationSeconds}s` : ''}
                               {(() => {
                                 const proposed = multiNodeDirection?.nodeDecisions.find((nd) => nd.nodeId === node.nodeId)?.decision.temporal;
@@ -1277,6 +1350,7 @@ export default function RasAmrChamber() {
                               className="narrative-node-classification"
                               value={node.directionRole ?? ''}
                               onChange={(e) => handleUpdateNodeClassification(node.nodeId, (e.target.value || undefined) as DirectionNodeRole | undefined)}
+                              disabled={node.isLocked}
                               aria-label="التصنيف السينمائي للعقدة"
                             >
                               <option value="">غير مصنَّف</option>
@@ -1284,19 +1358,32 @@ export default function RasAmrChamber() {
                                 <option key={role} value={role}>{DIRECTION_NODE_ROLE_LABELS[role]}</option>
                               ))}
                             </select>
+                            {/* PACKAGE XXII — MANUAL DIRECTION ENGINE: Mark as Primary / Mark as Supporting. */}
+                            <select
+                              className="narrative-node-emphasis"
+                              value={node.directionEmphasis ?? ''}
+                              onChange={(e) => handleSetNodeEmphasis(node.nodeId, (e.target.value || null) as 'primary' | 'supporting' | null)}
+                              disabled={node.isLocked}
+                              aria-label="الأهمية الإخراجية للعقدة"
+                            >
+                              <option value="">بلا تمييز</option>
+                              <option value="primary">أساسي</option>
+                              <option value="supporting">مساند</option>
+                            </select>
+                            {/* PACKAGE XXII — MANUAL DIRECTION ENGINE: Promote/Demote Node reuse the real REORDER_NODE mutation (Package XX). */}
                             <button
                               className="narrative-node-reorder"
                               onClick={() => handleReorderNode(node.nodeId, 'up')}
-                              disabled={index === 0}
-                              aria-label="نقل للأعلى"
+                              disabled={index === 0 || node.isLocked}
+                              aria-label="ترقية العقدة (نقل للأعلى)"
                             >
                               ↑
                             </button>
                             <button
                               className="narrative-node-reorder"
                               onClick={() => handleReorderNode(node.nodeId, 'down')}
-                              disabled={index === track.nodes.length - 1}
-                              aria-label="نقل للأسفل"
+                              disabled={index === track.nodes.length - 1 || node.isLocked}
+                              aria-label="خفض رتبة العقدة (نقل للأسفل)"
                             >
                               ↓
                             </button>
@@ -1305,6 +1392,7 @@ export default function RasAmrChamber() {
                                 className="narrative-node-move-group"
                                 value={track.trackId}
                                 onChange={(e) => handleMoveNodeToGroup(node.nodeId, e.target.value)}
+                                disabled={node.isLocked}
                                 aria-label="نقل إلى مجموعة أخرى"
                               >
                                 {sessionCanvas.tracks.map((destination) => (
@@ -1312,6 +1400,23 @@ export default function RasAmrChamber() {
                                 ))}
                               </select>
                             )}
+                            {/* PACKAGE XXII — MANUAL DIRECTION ENGINE: Activate Node / Disable Node. */}
+                            <button
+                              className="narrative-node-toggle"
+                              onClick={() => handleSetNodeActive(node.nodeId, node.isActive === false)}
+                              disabled={node.isLocked}
+                              aria-label={node.isActive === false ? 'تفعيل العقدة' : 'تعطيل العقدة'}
+                            >
+                              {node.isActive === false ? '✓' : '⏸'}
+                            </button>
+                            {/* PACKAGE XXII — MANUAL DIRECTION ENGINE: Lock Direction / Unlock Direction — never itself disabled by lock. */}
+                            <button
+                              className="narrative-node-toggle"
+                              onClick={() => handleSetNodeLock(node.nodeId, !node.isLocked)}
+                              aria-label={node.isLocked ? 'إلغاء قفل التوجيه' : 'قفل التوجيه'}
+                            >
+                              {node.isLocked ? '🔓' : '🔒'}
+                            </button>
                             <button
                               className="narrative-node-remove"
                               onClick={() => handleRemoveNodeFromCanvas(node.nodeId)}

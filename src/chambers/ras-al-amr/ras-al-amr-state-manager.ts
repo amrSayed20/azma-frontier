@@ -25,6 +25,20 @@
  * `DirectionNodeRole`) — reusing `locateNode()` for lookup, same as
  * every per-node handler since Package XX. No new node type, no new
  * runtime: `AssemblyNode` already was the Direction Node.
+ *
+ * PACKAGE XXII — MANUAL DIRECTION ENGINE (2026-07-28): three new
+ * mutations — SET_NODE_ACTIVE, SET_NODE_EMPHASIS, SET_NODE_LOCK — give
+ * the Creator real Activate/Disable, Mark as Primary/Supporting, and
+ * Lock/Unlock Direction Decisions. "Promote Node"/"Demote Node" needed no
+ * new mutation at all: searching existing architecture first found they
+ * are exactly `REORDER_NODE` (Package XX) under new vocabulary. Locking a
+ * node now genuinely protects its own direction decisions: every
+ * per-node handler below except SET_NODE_LOCK itself and REMOVE_NODE now
+ * checks `isNodeLocked()` first and no-ops if the node is locked —
+ * otherwise "Lock Direction" would be an inert flag, not a real Direction
+ * Decision. REMOVE_NODE is deliberately NOT lock-guarded: locking
+ * protects a node's direction, not the Creator's separate right to
+ * delete it outright.
  */
 
 import { SovereignCanvas, AssemblyNode, AssemblyTrack } from './assembly-contracts';
@@ -39,7 +53,10 @@ import {
   ReorderNodePayload,
   AddTrackPayload,
   MoveNodeToTrackPayload,
-  UpdateNodeClassificationPayload
+  UpdateNodeClassificationPayload,
+  SetNodeActivePayload,
+  SetNodeEmphasisPayload,
+  SetNodeLockPayload
 } from './assembly-directive-payloads';
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 import { AssetFamily } from '../../vault/sovereign-vault-types';
@@ -88,6 +105,12 @@ export class RasAlAmrStateManager {
         return this.handleMoveNodeToTrack(updatedCanvas, mutation);
       case CanvasActionType.UPDATE_NODE_CLASSIFICATION:
         return this.handleUpdateNodeClassification(updatedCanvas, mutation);
+      case CanvasActionType.SET_NODE_ACTIVE:
+        return this.handleSetNodeActive(updatedCanvas, mutation);
+      case CanvasActionType.SET_NODE_EMPHASIS:
+        return this.handleSetNodeEmphasis(updatedCanvas, mutation);
+      case CanvasActionType.SET_NODE_LOCK:
+        return this.handleSetNodeLock(updatedCanvas, mutation);
       default:
         return updatedCanvas;
     }
@@ -110,6 +133,20 @@ export class RasAlAmrStateManager {
       }
     }
     return null;
+  }
+
+  /**
+   * PACKAGE XXII — MANUAL DIRECTION ENGINE: real enforcement for Lock
+   * Direction — a node the Creator has locked cannot have its own
+   * direction decisions mutated by any handler that calls this guard
+   * (every per-node handler except SET_NODE_LOCK itself and
+   * REMOVE_NODE). A node that no longer exists is honestly reported as
+   * not locked — there is nothing left to protect.
+   */
+  private isNodeLocked(canvas: SovereignCanvas, nodeId: string): boolean {
+    const location = this.locateNode(canvas, nodeId);
+    if (!location) return false;
+    return canvas.tracks[location.trackIndex].nodes[location.nodeIndex].isLocked === true;
   }
 
   // ==========================================
@@ -162,6 +199,7 @@ export class RasAlAmrStateManager {
   private handleUpdateTemporal(canvas: SovereignCanvas, payload: UpdateNodeTemporalPayload): SovereignCanvas {
     const location = this.locateNode(canvas, payload.targetNodeId);
     if (!location) return canvas;
+    if (this.isNodeLocked(canvas, payload.targetNodeId)) return canvas;
 
     const { trackIndex, nodeIndex } = location;
     const track = canvas.tracks[trackIndex];
@@ -193,6 +231,7 @@ export class RasAlAmrStateManager {
   private handleUpdateSpatial(canvas: SovereignCanvas, payload: UpdateNodeSpatialPayload): SovereignCanvas {
     const location = this.locateNode(canvas, payload.targetNodeId);
     if (!location) return canvas;
+    if (this.isNodeLocked(canvas, payload.targetNodeId)) return canvas;
 
     const { trackIndex, nodeIndex } = location;
     const track = canvas.tracks[trackIndex];
@@ -225,6 +264,7 @@ export class RasAlAmrStateManager {
   private handleUpdateAdvanced(canvas: SovereignCanvas, payload: UpdateNodeAdvancedPayload): SovereignCanvas {
     const location = this.locateNode(canvas, payload.targetNodeId);
     if (!location) return canvas;
+    if (this.isNodeLocked(canvas, payload.targetNodeId)) return canvas;
 
     const { trackIndex, nodeIndex } = location;
     const track = canvas.tracks[trackIndex];
@@ -261,6 +301,7 @@ export class RasAlAmrStateManager {
   private handleReorderNode(canvas: SovereignCanvas, payload: ReorderNodePayload): SovereignCanvas {
     const location = this.locateNode(canvas, payload.targetNodeId);
     if (!location) return canvas;
+    if (this.isNodeLocked(canvas, payload.targetNodeId)) return canvas;
 
     const { trackIndex, nodeIndex } = location;
     const track = canvas.tracks[trackIndex];
@@ -316,6 +357,7 @@ export class RasAlAmrStateManager {
     }
 
     if (sourceIndex === destinationIndex) return canvas;
+    if (this.isNodeLocked(canvas, payload.targetNodeId)) return canvas;
 
     const sourceTrack = canvas.tracks[sourceIndex];
     const node = sourceTrack.nodes.find(n => n.nodeId === payload.targetNodeId);
@@ -347,6 +389,7 @@ export class RasAlAmrStateManager {
   private handleUpdateNodeClassification(canvas: SovereignCanvas, payload: UpdateNodeClassificationPayload): SovereignCanvas {
     const location = this.locateNode(canvas, payload.targetNodeId);
     if (!location) return canvas;
+    if (this.isNodeLocked(canvas, payload.targetNodeId)) return canvas;
 
     const { trackIndex, nodeIndex } = location;
     const track = canvas.tracks[trackIndex];
@@ -354,6 +397,94 @@ export class RasAlAmrStateManager {
     const updatedNode: AssemblyNode = {
       ...track.nodes[nodeIndex],
       directionRole: payload.directionRole
+    };
+
+    canvas.tracks[trackIndex] = {
+      ...track,
+      nodes: [
+        ...track.nodes.slice(0, nodeIndex),
+        updatedNode,
+        ...track.nodes.slice(nodeIndex + 1)
+      ]
+    };
+
+    return canvas;
+  }
+
+  /**
+   * PACKAGE XXII — MANUAL DIRECTION ENGINE: Activate Node / Disable Node.
+   * Non-destructive, subject to the node's own lock.
+   */
+  private handleSetNodeActive(canvas: SovereignCanvas, payload: SetNodeActivePayload): SovereignCanvas {
+    const location = this.locateNode(canvas, payload.targetNodeId);
+    if (!location) return canvas;
+    if (this.isNodeLocked(canvas, payload.targetNodeId)) return canvas;
+
+    const { trackIndex, nodeIndex } = location;
+    const track = canvas.tracks[trackIndex];
+
+    const updatedNode: AssemblyNode = {
+      ...track.nodes[nodeIndex],
+      isActive: payload.active
+    };
+
+    canvas.tracks[trackIndex] = {
+      ...track,
+      nodes: [
+        ...track.nodes.slice(0, nodeIndex),
+        updatedNode,
+        ...track.nodes.slice(nodeIndex + 1)
+      ]
+    };
+
+    return canvas;
+  }
+
+  /**
+   * PACKAGE XXII — MANUAL DIRECTION ENGINE: Mark as Primary / Mark as
+   * Supporting (or `null` to honestly clear the mark). Non-destructive,
+   * subject to the node's own lock.
+   */
+  private handleSetNodeEmphasis(canvas: SovereignCanvas, payload: SetNodeEmphasisPayload): SovereignCanvas {
+    const location = this.locateNode(canvas, payload.targetNodeId);
+    if (!location) return canvas;
+    if (this.isNodeLocked(canvas, payload.targetNodeId)) return canvas;
+
+    const { trackIndex, nodeIndex } = location;
+    const track = canvas.tracks[trackIndex];
+
+    const updatedNode: AssemblyNode = {
+      ...track.nodes[nodeIndex],
+      directionEmphasis: payload.emphasis ?? undefined
+    };
+
+    canvas.tracks[trackIndex] = {
+      ...track,
+      nodes: [
+        ...track.nodes.slice(0, nodeIndex),
+        updatedNode,
+        ...track.nodes.slice(nodeIndex + 1)
+      ]
+    };
+
+    return canvas;
+  }
+
+  /**
+   * PACKAGE XXII — MANUAL DIRECTION ENGINE: Lock Direction / Unlock
+   * Direction. Deliberately NOT subject to `isNodeLocked()` itself —
+   * otherwise a locked node could never be unlocked again.
+   */
+  private handleSetNodeLock(canvas: SovereignCanvas, payload: SetNodeLockPayload): SovereignCanvas {
+    const location = this.locateNode(canvas, payload.targetNodeId);
+    if (!location) return canvas;
+
+    const { trackIndex, nodeIndex } = location;
+    const track = canvas.tracks[trackIndex];
+
+    const updatedNode: AssemblyNode = {
+      ...track.nodes[nodeIndex],
+      isLocked: payload.locked
     };
 
     canvas.tracks[trackIndex] = {

@@ -3,6 +3,7 @@ import {
   DIRECTION_WORKSPACE_PURPOSE,
   DIRECTION_WORKSPACE_CAPABILITY_MAP,
   MEDIA_INGESTION_SOURCES,
+  MANUAL_DIRECTION_DECISIONS,
 } from '../direction-workspace-constitution';
 
 describe('Package XVIII — Direction Workspace Foundation', () => {
@@ -109,5 +110,48 @@ describe('Package XXI — Direction Node Layer', () => {
     expect(entry?.constitutionalLocation).toMatch(/AssemblyNode/);
     expect(entry?.constitutionalLocation).toMatch(/DirectionNodeRole/);
     expect(entry?.constitutionalLocation).toMatch(/UPDATE_NODE_CLASSIFICATION/);
+  });
+});
+
+describe('Package XXII — Manual Direction Engine', () => {
+  it('marks the Manual Direction Decisions capability as genuinely implemented', () => {
+    const entry = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) =>
+      e.capability.startsWith('Manual Direction Decisions'),
+    );
+    expect(entry?.implemented).toBe(true);
+    expect(entry?.constitutionalLocation).toMatch(/SET_NODE_ACTIVE/);
+    expect(entry?.constitutionalLocation).toMatch(/SET_NODE_EMPHASIS/);
+    expect(entry?.constitutionalLocation).toMatch(/SET_NODE_LOCK/);
+  });
+
+  it('records all eight named Direction Decisions, each with a real, non-empty mechanism', () => {
+    expect(MANUAL_DIRECTION_DECISIONS.length).toBe(8);
+    for (const entry of MANUAL_DIRECTION_DECISIONS) {
+      expect(entry.decision.length).toBeGreaterThan(0);
+      expect(entry.realMechanism.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('lists exactly the eight decisions the Chief Architect named, in order, none duplicated', () => {
+    const decisions = MANUAL_DIRECTION_DECISIONS.map((e) => e.decision);
+    expect(decisions).toEqual([
+      'Promote Node',
+      'Demote Node',
+      'Activate Node',
+      'Disable Node',
+      'Mark as Primary',
+      'Mark as Supporting',
+      'Lock Direction',
+      'Unlock Direction',
+    ]);
+    expect(new Set(decisions).size).toBe(decisions.length);
+  });
+
+  it('proves Promote/Demote reuse the real REORDER_NODE mutation rather than a new one', () => {
+    const promote = MANUAL_DIRECTION_DECISIONS.find((e) => e.decision === 'Promote Node');
+    const demote = MANUAL_DIRECTION_DECISIONS.find((e) => e.decision === 'Demote Node');
+    expect(promote?.realMechanism).toMatch(/REORDER_NODE/);
+    expect(demote?.realMechanism).toMatch(/REORDER_NODE/);
+    expect(promote?.realMechanism).toMatch(/Package XX/);
   });
 });

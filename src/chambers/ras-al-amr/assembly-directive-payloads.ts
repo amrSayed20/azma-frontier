@@ -66,7 +66,13 @@ export enum CanvasActionType {
   /** PACKAGE XX — DIRECTION ASSEMBLY LAYER: moves an existing node from one group to another — the write-side of "asset grouping can be changed." */
   MOVE_NODE_TO_TRACK = 'MOVE_NODE_TO_TRACK',
   /** PACKAGE XXI — DIRECTION NODE LAYER: assigns or changes a node's real cinematic classification (DirectionNodeRole). */
-  UPDATE_NODE_CLASSIFICATION = 'UPDATE_NODE_CLASSIFICATION'
+  UPDATE_NODE_CLASSIFICATION = 'UPDATE_NODE_CLASSIFICATION',
+  /** PACKAGE XXII — MANUAL DIRECTION ENGINE: Activate Node / Disable Node. */
+  SET_NODE_ACTIVE = 'SET_NODE_ACTIVE',
+  /** PACKAGE XXII — MANUAL DIRECTION ENGINE: Mark as Primary / Mark as Supporting (or clear the mark). */
+  SET_NODE_EMPHASIS = 'SET_NODE_EMPHASIS',
+  /** PACKAGE XXII — MANUAL DIRECTION ENGINE: Lock Direction / Unlock Direction. */
+  SET_NODE_LOCK = 'SET_NODE_LOCK'
 }
 
 /**
@@ -188,6 +194,44 @@ export interface UpdateNodeClassificationPayload extends BaseCanvasMutation {
 }
 
 /**
+ * PACKAGE XXII — MANUAL DIRECTION ENGINE: Activate Node / Disable Node.
+ * Non-destructive — every other real field survives unchanged. Subject
+ * to a node's own lock (RasAlAmrStateManager's own lock-guard account).
+ */
+export interface SetNodeActivePayload extends BaseCanvasMutation {
+  actionType: CanvasActionType.SET_NODE_ACTIVE;
+  targetTrackId: string;
+  targetNodeId: string;
+  active: boolean;
+}
+
+/**
+ * PACKAGE XXII — MANUAL DIRECTION ENGINE: Mark as Primary / Mark as
+ * Supporting — the Creator's own DECLARED emphasis, `null` to honestly
+ * clear a mark rather than forcing a permanent choice. Deliberately
+ * distinct from any Automatic-Director-derived "primary" judgment (see
+ * assembly-contracts.ts's own header). Subject to a node's own lock.
+ */
+export interface SetNodeEmphasisPayload extends BaseCanvasMutation {
+  actionType: CanvasActionType.SET_NODE_EMPHASIS;
+  targetTrackId: string;
+  targetNodeId: string;
+  emphasis: 'primary' | 'supporting' | null;
+}
+
+/**
+ * PACKAGE XXII — MANUAL DIRECTION ENGINE: Lock Direction / Unlock
+ * Direction. This mutation itself is NEVER subject to the lock-guard it
+ * creates — otherwise a locked node could never be unlocked.
+ */
+export interface SetNodeLockPayload extends BaseCanvasMutation {
+  actionType: CanvasActionType.SET_NODE_LOCK;
+  targetTrackId: string;
+  targetNodeId: string;
+  locked: boolean;
+}
+
+/**
  * The definitive union type consumed by the Ras Al-Amr State Manager.
  */
 export type CanvasMutationPayload =
@@ -199,4 +243,7 @@ export type CanvasMutationPayload =
   | ReorderNodePayload
   | AddTrackPayload
   | MoveNodeToTrackPayload
-  | UpdateNodeClassificationPayload;
+  | UpdateNodeClassificationPayload
+  | SetNodeActivePayload
+  | SetNodeEmphasisPayload
+  | SetNodeLockPayload;

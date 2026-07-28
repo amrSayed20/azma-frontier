@@ -27,6 +27,22 @@
  * structure. `UPDATE_NODE_CLASSIFICATION` (new, Package XXI) lets the
  * Creator assign or change a node's role after placement, non-
  * destructively, reusing `locateNode()` (Package XX) for lookup.
+ *
+ * PACKAGE XXII — MANUAL DIRECTION ENGINE (2026-07-28): three more real,
+ * genuinely optional fields let the Creator issue actual Direction
+ * Decisions about a node, distinct from its cinematic classification
+ * (Package XXI): `isActive` (Activate/Disable Node), `directionEmphasis`
+ * (Mark as Primary/Supporting — a Creator-DECLARED emphasis, distinct
+ * from `MultiNodeCinematicDirectionResult.primaryNodeId` in
+ * automatic-director.ts, which is a separately-computed, DERIVED
+ * judgment from stated Creator Goal data; the two are deliberately not
+ * unified here — reconciling a declared emphasis with a derived one is
+ * real Automatic Director reasoning, explicitly out of this package's
+ * scope), and `isLocked` (Lock/Unlock Direction). "Promote Node"/"Demote
+ * Node" needed no new field or mutation at all — they are
+ * `CanvasActionType.REORDER_NODE` (Package XX) under the Manual
+ * Direction Engine's own vocabulary; searching existing architecture
+ * found this already fully real.
  */
 
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
@@ -128,6 +144,15 @@ export interface AssemblyNode {
 
   /** PACKAGE XXI — the Creator's own, genuinely optional cinematic classification for this Direction Node. */
   directionRole?: DirectionNodeRole;
+
+  /** PACKAGE XXII — Activate/Disable Node. Absent or `true` = active (the honest default every pre-existing node already behaved as); `false` = explicitly disabled by the Creator. */
+  isActive?: boolean;
+
+  /** PACKAGE XXII — Mark as Primary/Supporting: the Creator's own DECLARED emphasis. Absent = unmarked — never inferred, and deliberately distinct from any Automatic-Director-derived "primary" judgment (see this file's own header). */
+  directionEmphasis?: 'primary' | 'supporting';
+
+  /** PACKAGE XXII — Lock/Unlock Direction. Absent or `false` = unlocked; `true` = the Creator has locked this node's own direction decisions against further mutation (see RasAlAmrStateManager's own lock-guard account). Never blocks REMOVE_NODE — locking protects direction, not the Creator's separate right to delete a node outright. */
+  isLocked?: boolean;
 }
 
 /**

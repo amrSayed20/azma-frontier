@@ -504,3 +504,278 @@ describe('PACKAGE XXI — Direction Node Layer: UPDATE_NODE_CLASSIFICATION', () 
     expect(result.tracks[1].nodes[0].directionRole).toBe(DirectionNodeRole.AMBIENT_LAYER);
   });
 });
+
+describe('PACKAGE XXII — Manual Direction Engine: SET_NODE_ACTIVE / SET_NODE_EMPHASIS / SET_NODE_LOCK', () => {
+  const manager = new RasAlAmrStateManager();
+
+  function canvasWithOneNode(): SovereignCanvas {
+    return manager.applyMutation(makeEmptyCanvas(), {
+      actionType: CanvasActionType.ADD_NODE,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      vaultAssetId: 'asset-a',
+      assetFamily: AssetFamily.MEDIA,
+      capabilityOrigin: CapabilityTarget.VISUAL,
+    });
+  }
+
+  it('Activate/Disable Node: real, stored, and toggle-able', () => {
+    const canvas = canvasWithOneNode();
+    const nodeId = canvas.tracks[0].nodes[0].nodeId;
+    expect(canvas.tracks[0].nodes[0].isActive).toBeUndefined();
+
+    const disabled = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.SET_NODE_ACTIVE,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      active: false,
+    });
+    expect(disabled.tracks[0].nodes[0].isActive).toBe(false);
+
+    const reactivated = manager.applyMutation(disabled, {
+      actionType: CanvasActionType.SET_NODE_ACTIVE,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      active: true,
+    });
+    expect(reactivated.tracks[0].nodes[0].isActive).toBe(true);
+  });
+
+  it('Mark as Primary / Mark as Supporting, and honestly clearing the mark', () => {
+    const canvas = canvasWithOneNode();
+    const nodeId = canvas.tracks[0].nodes[0].nodeId;
+    expect(canvas.tracks[0].nodes[0].directionEmphasis).toBeUndefined();
+
+    const primary = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.SET_NODE_EMPHASIS,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      emphasis: 'primary',
+    });
+    expect(primary.tracks[0].nodes[0].directionEmphasis).toBe('primary');
+
+    const supporting = manager.applyMutation(primary, {
+      actionType: CanvasActionType.SET_NODE_EMPHASIS,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      emphasis: 'supporting',
+    });
+    expect(supporting.tracks[0].nodes[0].directionEmphasis).toBe('supporting');
+
+    const cleared = manager.applyMutation(supporting, {
+      actionType: CanvasActionType.SET_NODE_EMPHASIS,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      emphasis: null,
+    });
+    expect(cleared.tracks[0].nodes[0].directionEmphasis).toBeUndefined();
+  });
+
+  it('Lock Direction / Unlock Direction: real, stored, and toggle-able', () => {
+    const canvas = canvasWithOneNode();
+    const nodeId = canvas.tracks[0].nodes[0].nodeId;
+
+    const locked = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.SET_NODE_LOCK,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      locked: true,
+    });
+    expect(locked.tracks[0].nodes[0].isLocked).toBe(true);
+
+    const unlocked = manager.applyMutation(locked, {
+      actionType: CanvasActionType.SET_NODE_LOCK,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      locked: false,
+    });
+    expect(unlocked.tracks[0].nodes[0].isLocked).toBe(false);
+  });
+
+  it('a locked node can always be unlocked — SET_NODE_LOCK is never blocked by the lock it creates', () => {
+    let canvas = canvasWithOneNode();
+    const nodeId = canvas.tracks[0].nodes[0].nodeId;
+    canvas = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.SET_NODE_LOCK,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      locked: true,
+    });
+
+    const result = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.SET_NODE_LOCK,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      locked: false,
+    });
+
+    expect(result.tracks[0].nodes[0].isLocked).toBe(false);
+  });
+});
+
+describe('PACKAGE XXII — Manual Direction Engine: Lock Direction genuinely protects a node', () => {
+  const manager = new RasAlAmrStateManager();
+
+  function lockedCanvasWithTwoNodes(): { canvas: SovereignCanvas; lockedNodeId: string } {
+    let canvas = manager.applyMutation(makeEmptyCanvas(), {
+      actionType: CanvasActionType.ADD_NODE,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      vaultAssetId: 'asset-a',
+      assetFamily: AssetFamily.MEDIA,
+      capabilityOrigin: CapabilityTarget.VISUAL,
+    });
+    canvas = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.ADD_NODE,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      vaultAssetId: 'asset-b',
+      assetFamily: AssetFamily.MEDIA,
+      capabilityOrigin: CapabilityTarget.VISUAL,
+    });
+    const lockedNodeId = canvas.tracks[0].nodes[0].nodeId;
+    canvas = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.SET_NODE_LOCK,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: lockedNodeId,
+      locked: true,
+    });
+    return { canvas, lockedNodeId };
+  }
+
+  it('blocks UPDATE_TEMPORAL on a locked node', () => {
+    const { canvas, lockedNodeId } = lockedCanvasWithTwoNodes();
+    const result = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.UPDATE_TEMPORAL,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: lockedNodeId,
+      temporalUpdates: { globalStartTimeSeconds: 99, playDurationSeconds: 5 },
+    });
+    expect(result.tracks[0].nodes[0].temporal).toBeUndefined();
+  });
+
+  it('blocks REORDER_NODE (Promote/Demote) on a locked node', () => {
+    const { canvas, lockedNodeId } = lockedCanvasWithTwoNodes();
+    const result = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.REORDER_NODE,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: lockedNodeId,
+      direction: 'down',
+    });
+    expect(result.tracks[0].nodes.map((n) => n.assetId)).toEqual(['asset-a', 'asset-b']);
+  });
+
+  it('blocks UPDATE_NODE_CLASSIFICATION on a locked node', () => {
+    const { canvas, lockedNodeId } = lockedCanvasWithTwoNodes();
+    const result = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.UPDATE_NODE_CLASSIFICATION,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: lockedNodeId,
+      directionRole: DirectionNodeRole.OPENING_SHOT,
+    });
+    expect(result.tracks[0].nodes[0].directionRole).toBeUndefined();
+  });
+
+  it('blocks SET_NODE_ACTIVE and SET_NODE_EMPHASIS on a locked node', () => {
+    const { canvas, lockedNodeId } = lockedCanvasWithTwoNodes();
+
+    const activeResult = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.SET_NODE_ACTIVE,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: lockedNodeId,
+      active: false,
+    });
+    expect(activeResult.tracks[0].nodes[0].isActive).toBeUndefined();
+
+    const emphasisResult = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.SET_NODE_EMPHASIS,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: lockedNodeId,
+      emphasis: 'primary',
+    });
+    expect(emphasisResult.tracks[0].nodes[0].directionEmphasis).toBeUndefined();
+  });
+
+  it('blocks MOVE_NODE_TO_TRACK on a locked node', () => {
+    const initial = lockedCanvasWithTwoNodes();
+    const lockedNodeId = initial.lockedNodeId;
+    const canvas = manager.applyMutation(initial.canvas, {
+      actionType: CanvasActionType.ADD_TRACK,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      trackName: 'Group B',
+    });
+    const destinationTrackId = canvas.tracks[1].trackId;
+
+    const result = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.MOVE_NODE_TO_TRACK,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      sourceTrackId: 'track-1',
+      targetNodeId: lockedNodeId,
+      destinationTrackId,
+    });
+    expect(result.tracks[0].nodes.some((n) => n.nodeId === lockedNodeId)).toBe(true);
+    expect(result.tracks[1].nodes.length).toBe(0);
+  });
+
+  it('does NOT block REMOVE_NODE on a locked node — locking protects direction, not the right to delete', () => {
+    const { canvas, lockedNodeId } = lockedCanvasWithTwoNodes();
+    const result = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.REMOVE_NODE,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: lockedNodeId,
+    });
+    expect(result.tracks[0].nodes.some((n) => n.nodeId === lockedNodeId)).toBe(false);
+  });
+
+  it('does not affect an unlocked node in the same canvas', () => {
+    const { canvas } = lockedCanvasWithTwoNodes();
+    const unlockedNodeId = canvas.tracks[0].nodes[1].nodeId;
+
+    const result = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.SET_NODE_ACTIVE,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: unlockedNodeId,
+      active: false,
+    });
+    expect(result.tracks[0].nodes[1].isActive).toBe(false);
+  });
+});

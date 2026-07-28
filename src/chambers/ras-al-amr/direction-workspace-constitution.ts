@@ -85,6 +85,36 @@
  * structure. `UPDATE_NODE_CLASSIFICATION` (new) lets the Creator assign
  * or change a node's role after placement, reusing `locateNode()`
  * (Package XX) for lookup — zero new lookup logic.
+ *
+ * PACKAGE XXII — MANUAL DIRECTION ENGINE (2026-07-28): the Creator's
+ * first real Direction Decisions, distinct from editing. Searched
+ * existing architecture first, per this package's own rule: "Promote
+ * Node"/"Demote Node" needed NOTHING new — they are
+ * `CanvasActionType.REORDER_NODE` (Package XX) under the Manual
+ * Direction Engine's own vocabulary. The remaining six decisions
+ * (Activate/Disable, Mark as Primary/Supporting, Lock/Unlock) closed
+ * with three new mutations, each covering a pair: `SET_NODE_ACTIVE`,
+ * `SET_NODE_EMPHASIS`, `SET_NODE_LOCK` — see `MANUAL_DIRECTION_DECISIONS`
+ * below for the full, real, tested mapping of all eight named decisions.
+ *
+ * Locking required one real, deliberate design decision: "Lock
+ * Direction" only means something if it genuinely PROTECTS a node's
+ * direction from further mutation — so every per-node handler except
+ * `SET_NODE_LOCK` itself now checks the node's own lock and no-ops if
+ * locked (ras-al-amr-state-manager.ts's own `isNodeLocked()`).
+ * `REMOVE_NODE` deliberately stays unguarded: locking protects a node's
+ * direction, not the Creator's separate, always-available right to
+ * delete it outright.
+ *
+ * `directionEmphasis` (Mark as Primary/Supporting) is a Creator-DECLARED
+ * value, deliberately NOT unified with
+ * `MultiNodeCinematicDirectionResult.primaryNodeId`
+ * (automatic-director.ts) — that field is a separately-computed,
+ * DERIVED judgment from stated Creator Goal data (Package XIII).
+ * Reconciling a manual declaration with an automatic inference is real
+ * Automatic Director reasoning, explicitly out of this package's scope;
+ * a disclosed distinction, not a duplicate concept accidentally left
+ * unmerged.
  */
 
 // ── The Two Operators — Article II: one state, never two systems ────────
@@ -202,6 +232,14 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
       'CompiledAssemblyGraph today; final render/delivery export is future work',
     implemented: false,
   },
+  {
+    capability: 'Manual Direction Decisions (Promote/Demote/Activate/Disable/Mark Primary/Mark Supporting/Lock/Unlock)',
+    constitutionalLocation:
+      'AssemblyNode.isActive/directionEmphasis/isLocked (assembly-contracts.ts) via ' +
+      'CanvasActionType.REORDER_NODE (reused, Package XX)/SET_NODE_ACTIVE/SET_NODE_EMPHASIS/SET_NODE_LOCK ' +
+      '(Package XXII) — see MANUAL_DIRECTION_DECISIONS below for the full, tested mapping',
+    implemented: true,
+  },
 ] as const;
 
 // ── Media Ingestion Sources — Package XIX ────────────────────────────────
@@ -255,5 +293,50 @@ export const MEDIA_INGESTION_SOURCES: readonly MediaIngestionSource[] = [
       'zero durable storage (pure client React state, confirmed by direct investigation), so a full canvas-resume ' +
       'capability does not exist and is not built by this package. If the ruling is later clarified to require ' +
       'that stronger meaning, this entry must be revisited honestly, not silently reinterpreted.',
+  },
+] as const;
+
+// ── Manual Direction Decisions — Package XXII ────────────────────────────
+// The eight named Direction Decisions, recorded as real, tested data —
+// each row cites the exact real mutation that implements it, so "did we
+// cover all eight" is a provable fact, not a claim.
+
+export interface ManualDirectionDecisionMapping {
+  readonly decision: string;
+  readonly realMechanism: string;
+}
+
+export const MANUAL_DIRECTION_DECISIONS: readonly ManualDirectionDecisionMapping[] = [
+  {
+    decision: 'Promote Node',
+    realMechanism: "CanvasActionType.REORDER_NODE with direction: 'up' (reused from Package XX, no new mutation)",
+  },
+  {
+    decision: 'Demote Node',
+    realMechanism: "CanvasActionType.REORDER_NODE with direction: 'down' (reused from Package XX, no new mutation)",
+  },
+  {
+    decision: 'Activate Node',
+    realMechanism: 'CanvasActionType.SET_NODE_ACTIVE with active: true',
+  },
+  {
+    decision: 'Disable Node',
+    realMechanism: 'CanvasActionType.SET_NODE_ACTIVE with active: false',
+  },
+  {
+    decision: 'Mark as Primary',
+    realMechanism: "CanvasActionType.SET_NODE_EMPHASIS with emphasis: 'primary'",
+  },
+  {
+    decision: 'Mark as Supporting',
+    realMechanism: "CanvasActionType.SET_NODE_EMPHASIS with emphasis: 'supporting'",
+  },
+  {
+    decision: 'Lock Direction',
+    realMechanism: 'CanvasActionType.SET_NODE_LOCK with locked: true',
+  },
+  {
+    decision: 'Unlock Direction',
+    realMechanism: 'CanvasActionType.SET_NODE_LOCK with locked: false',
   },
 ] as const;
