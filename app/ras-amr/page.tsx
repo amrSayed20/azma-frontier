@@ -389,6 +389,21 @@
  * and executes through `executeDirectionDecision()`/`AssemblyRuntime` —
  * the same Direction Decision → Assembly Runtime path every other real
  * Manual Direction Decision already uses; nothing bypasses it.
+ *
+ * MINISTRY II — TEXT TO SPEECH ENGINE (2026-07-29): the Creator writes
+ * text, picks one of the Empire's own closed set of preset voices
+ * (`TTS_VOICE_OPTIONS`, duplicated from `speech-provider.ts`'s own
+ * `TTS_PROVIDER_VOICES` — that file imports the server-only `openai`
+ * package, so its list cannot be imported client-side), and
+ * `handleGenerateSpeech` POSTs to the new real
+ * `POST /api/vault/assets/generate-speech` route. The result is a real
+ * `VaultAsset` already tagged `isVoiceAsset`/`voiceDisplayName` — it
+ * lands in `vaultAssets` exactly like an upload or a Qiyamah generation,
+ * so it is immediately visible in `voiceLibrary` (Ministry I) and
+ * assignable to any Direction Node through the exact same
+ * `handleAssignVoiceToNode` control, unmodified. This capability performs
+ * no cinematic direction, rendering, or export — it only ever produces a
+ * Voice Asset.
  */
 
 'use client';
@@ -461,6 +476,14 @@ const DEFAULT_TEMPORAL: TemporalDirective = {
 };
 
 const BLEND_MODES: VisualFilterDirective['blendMode'][] = ['NORMAL', 'MULTIPLY', 'SCREEN', 'OVERLAY'];
+
+// MINISTRY II — TEXT TO SPEECH ENGINE: this literal voice-id list is
+// duplicated (not imported) from speech-provider.ts's own
+// TTS_PROVIDER_VOICES — that file also imports the server-only `openai`
+// package, which must never reach client bundle code. Both lists must be
+// kept in sync by hand; the route itself is the real authority and
+// independently validates any value this UI sends.
+const TTS_VOICE_OPTIONS = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'] as const;
 
 const CAPABILITY_LABELS: Record<string, { name: string; icon: string }> = {
   VISUAL:      { name: 'الصور المولَّدة',    icon: '🖼️' },
@@ -979,6 +1002,41 @@ export default function RasAmrChamber() {
   // the Creator explicitly marked as a voice, reusing the already-fetched
   // vaultAssets list (no new fetch, no new storage).
   const voiceLibrary = useMemo(() => filterVoiceLibrary(vaultAssets), [vaultAssets]);
+
+  const [ttsText, setTtsText] = useState<string>('');
+  const [ttsVoice, setTtsVoice] = useState<string>(TTS_VOICE_OPTIONS[0]);
+  const [ttsDisplayNameInput, setTtsDisplayNameInput] = useState<string>('');
+  const [isGeneratingSpeech, setIsGeneratingSpeech] = useState<boolean>(false);
+  const [ttsError, setTtsError] = useState<string | null>(null);
+
+  const handleGenerateSpeech = async () => {
+    if (!ttsText.trim()) return;
+    setIsGeneratingSpeech(true);
+    setTtsError(null);
+    try {
+      const response = await fetch('/api/vault/assets/generate-speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: ttsText.trim(),
+          voice: ttsVoice,
+          ...(ttsDisplayNameInput.trim() ? { voiceDisplayName: ttsDisplayNameInput.trim() } : {}),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || result.status !== 'succeeded') {
+        setTtsError(result.message ?? 'تعذّر توليد الصوت.');
+        return;
+      }
+      setVaultAssets((prev) => [...prev, result.asset]);
+      setTtsText('');
+      setTtsDisplayNameInput('');
+    } catch {
+      setTtsError('تعذّر الوصول إلى محرك تحويل النص إلى كلام.');
+    } finally {
+      setIsGeneratingSpeech(false);
+    }
+  };
 
   // MINISTRY I — VOICE ECOSYSTEM: Voice Selection — a genuine Manual
   // Direction Decision, executed through the same Direction Decision /
@@ -1945,6 +2003,47 @@ export default function RasAmrChamber() {
                   disabled={isUploadingAsset}
                 />
               )}
+            </div>
+
+            {/* MINISTRY II — TEXT TO SPEECH ENGINE: real speech generation — the result becomes a real Voice Asset in the same Voice Library above. */}
+            <div className="hud-tts-row">
+              <textarea
+                className="hud-tts-text-input"
+                placeholder="اكتب نصًا لتحويله إلى كلام حقيقي..."
+                value={ttsText}
+                onChange={(e) => setTtsText(e.target.value)}
+                disabled={isGeneratingSpeech}
+                rows={2}
+              />
+              <div className="hud-tts-controls">
+                <select
+                  className="hud-tts-voice-select"
+                  value={ttsVoice}
+                  onChange={(e) => setTtsVoice(e.target.value)}
+                  disabled={isGeneratingSpeech}
+                  aria-label="الصوت الجاهز المُستخدَم في التوليد"
+                >
+                  {TTS_VOICE_OPTIONS.map((voice) => (
+                    <option key={voice} value={voice}>{voice}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  className="hud-voice-name-input"
+                  placeholder="اسم هوية الصوت الناتج (اختياري)"
+                  value={ttsDisplayNameInput}
+                  onChange={(e) => setTtsDisplayNameInput(e.target.value)}
+                  disabled={isGeneratingSpeech}
+                />
+                <button
+                  className="action-trigger-btn"
+                  onClick={handleGenerateSpeech}
+                  disabled={isGeneratingSpeech || !ttsText.trim()}
+                >
+                  {isGeneratingSpeech ? '⏳ جارٍ توليد الصوت...' : '🗣 توليد كلام حقيقي'}
+                </button>
+              </div>
+              {ttsError && <p className="spatial-current-state narrative-integrity-violation">{ttsError}</p>}
             </div>
 
             {vaultAssetsLoaded && realVaultCategories.length === 0 ? (

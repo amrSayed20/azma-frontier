@@ -982,6 +982,41 @@ body, html {
   padding: 4px 8px;
 }
 
+/* MINISTRY II — TEXT TO SPEECH ENGINE: generation controls. */
+.hud-tts-row {
+  padding: 14px 30px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hud-tts-text-input {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--neon-gold-dim);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-family: inherit;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.hud-tts-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hud-tts-voice-select {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--neon-gold-dim);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-family: inherit;
+  padding: 6px 10px;
+}
+
 .hud-body-layout {
   flex: 1;
   display: grid;

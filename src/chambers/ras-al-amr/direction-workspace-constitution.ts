@@ -302,6 +302,26 @@
  *   Direction Decision → Assembly Runtime path every other real Manual
  *   Direction Decision already uses; nothing bypasses it, per this
  *   phase's own constitutional requirement.
+ *
+ * RAS AL AMR — MINISTRY II: TEXT TO SPEECH ENGINE (2026-07-29): the
+ * Empire's first native voice generation capability. Investigated first:
+ * no audio-generation provider wrapper existed anywhere in Ras Al Amr;
+ * `speech-provider.ts` (new) mirrors `src/qiyamah-generation/
+ * image-provider.ts`'s own exact isolation shape (single point of
+ * contact with the Launch Provider, cached client, provider-neutral),
+ * living in Ras Al Amr rather than Qiyamah per the Sovereign Direction
+ * State ruling. Its sole output is a Voice Asset — it never directs,
+ * renders, or exports. `POST /api/vault/assets/generate-speech` (new)
+ * persists the generated audio through the SAME
+ * `persistUploadedAsset()`/`SovereignVaultManager.depositAsset()`
+ * boundary Ministry I's own upload path already uses, tagged with the
+ * SAME `isVoiceAsset`/`voiceDisplayName` metadata — imported and
+ * generated voices coexist in exactly one Voice Library, one Voice
+ * Selection path (`VoiceAssignmentDirective`, unchanged from Ministry I).
+ * No new AssetFamily/CapabilityTarget, no new mutation, no new
+ * state-manager code. Gated behind the same billing entitlement every
+ * other real AI generation capability already requires — TTS consumes
+ * the same paid Launch Provider as Qiyamah's own image generation.
  */
 
 import type { CanvasMutationPayload } from './assembly-directive-payloads';
@@ -413,12 +433,12 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
     implemented: true,
   },
   {
-    capability: 'Voice generation / cloning / text-to-speech',
+    capability: 'Voice cloning',
     constitutionalLocation:
-      'A future extension of AssemblyNode.customDirectives (assembly-contracts.ts) — generation (Ministry II) ' +
-      'and cloning (Ministry III) not yet built; belongs to Ras Al Amr, never Qiyamah, per the Sovereign ' +
-      'Direction State ruling. Imported/pre-recorded voice management is separately real — see "Imported ' +
-      'voice management" below (Ministry I)',
+      'A future extension of AssemblyNode.customDirectives (assembly-contracts.ts) — not yet built (Ministry ' +
+      'III); belongs to Ras Al Amr, never Qiyamah, per the Sovereign Direction State ruling. Distinct from ' +
+      'Text To Speech (below, Ministry II, real) — cloning reproduces a specific reference voice, TTS uses ' +
+      "the Launch Provider's own closed preset voice set",
     implemented: false,
   },
   {
@@ -429,7 +449,19 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
       'filterVoiceLibrary() is the real Voice Library query; VoiceAssignmentDirective under ' +
       "CanvasActionType.UPDATE_ADVANCED_DIRECTIVE ('voice' directiveKey, assembly-directive-payloads.ts) is " +
       'real Voice Selection, executed through the same Direction Decision / Assembly Runtime path as every ' +
-      'other Manual Direction Decision. Voice generation/cloning/TTS remain separately unbuilt (see above)',
+      'other Manual Direction Decision. Voice cloning remains separately unbuilt (see above)',
+    implemented: true,
+  },
+  {
+    capability: 'Text To Speech (Voice Asset generation)',
+    constitutionalLocation:
+      'speech-provider.ts (Ministry II, new) wraps the Launch Provider\'s real TTS API, mirroring ' +
+      'src/qiyamah-generation/image-provider.ts\'s own isolation pattern; POST /api/vault/assets/' +
+      'generate-speech (new) persists the real generated audio via the already-real ' +
+      'persistUploadedAsset()/SovereignVaultManager.depositAsset() boundary, tagged isVoiceAsset/' +
+      'voiceDisplayName exactly like an imported voice (Ministry I) — one Voice Library, one Voice ' +
+      'Selection path, no duplicate pipeline. Gated behind the same billing entitlement every other real ' +
+      'AI generation capability requires',
     implemented: true,
   },
   {

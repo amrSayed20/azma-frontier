@@ -39,9 +39,12 @@ describe('Package XVIII — Direction Workspace Foundation', () => {
     // Every capability this ruling explicitly named as belonging to Ras Al Amr but not yet built.
     // (superseded finding, kept as history): 'Export / delivery' was true at ruling time in 2026-07-28
     // (Package XVIII) but is now implemented (Package XXVII) — see its own entry's disclosure.
+    // (superseded finding, kept as history): 'Voice generation / cloning / text-to-speech' was one combined
+    // row at ruling time; Text To Speech is now real (Ministry II) and the row was split — only 'Voice
+    // cloning' (Ministry III) remains unimplemented.
     const unimplementedNames = unimplemented.map((entry) => entry.capability);
     expect(unimplementedNames).toEqual(
-      expect.arrayContaining(['Voice generation / cloning / text-to-speech']),
+      expect.arrayContaining(['Voice cloning']),
     );
   });
 
@@ -277,10 +280,20 @@ describe('Ministry I — Voice Ecosystem', () => {
     expect(importedVoice?.constitutionalLocation).toMatch(/filterVoiceLibrary/);
     expect(importedVoice?.constitutionalLocation).toMatch(/VoiceAssignmentDirective/);
 
-    const generation = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) =>
-      e.capability === 'Voice generation / cloning / text-to-speech',
-    );
-    expect(generation?.implemented).toBe(false);
+    const cloning = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) => e.capability === 'Voice cloning');
+    expect(cloning?.implemented).toBe(false);
+  });
+});
+
+describe('Ministry II — Text To Speech Engine', () => {
+  it('marks Text To Speech as genuinely implemented, distinct from still-unbuilt Voice Cloning', () => {
+    const tts = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) => e.capability.startsWith('Text To Speech'));
+    expect(tts?.implemented).toBe(true);
+    expect(tts?.constitutionalLocation).toMatch(/speech-provider\.ts/);
+    expect(tts?.constitutionalLocation).toMatch(/generate-speech/);
+
+    const cloning = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) => e.capability === 'Voice cloning');
+    expect(cloning?.implemented).toBe(false);
   });
 });
 
