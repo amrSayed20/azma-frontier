@@ -2,7 +2,7 @@ import { RasAlAmrStateManager } from '../ras-al-amr-state-manager';
 import { CanvasType, DirectionNodeRole } from '../assembly-contracts';
 import type { SovereignCanvas } from '../assembly-contracts';
 import { CanvasActionType } from '../assembly-directive-payloads';
-import type { AddNodePayload } from '../assembly-directive-payloads';
+import type { AddNodePayload, UpdateNodeAdvancedPayload, VoiceAssignmentDirective } from '../assembly-directive-payloads';
 import { CapabilityTarget } from '../../../core/sovereign-orchestrator/qiyamah-intent-types';
 import { AssetFamily } from '../../../vault/sovereign-vault-types';
 
@@ -777,5 +777,71 @@ describe('PACKAGE XXII — Manual Direction Engine: Lock Direction genuinely pro
       active: false,
     });
     expect(result.tracks[0].nodes[1].isActive).toBe(false);
+  });
+});
+
+describe('MINISTRY I — Voice Ecosystem: UPDATE_ADVANCED_DIRECTIVE with directiveKey "voice"', () => {
+  const manager = new RasAlAmrStateManager();
+
+  it('assigns a real VoiceAssignmentDirective to a node via the already-generic UPDATE_ADVANCED_DIRECTIVE handler — zero new mutation logic required', () => {
+    let canvas = makeEmptyCanvas();
+    canvas = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.ADD_NODE,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      vaultAssetId: 'asset-node-1',
+    } as AddNodePayload);
+    const nodeId = canvas.tracks[0].nodes[0].nodeId;
+
+    const voiceDirective: VoiceAssignmentDirective = { vaultAssetId: 'voice-asset-1' };
+    const mutation: UpdateNodeAdvancedPayload = {
+      actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      directiveKey: 'voice',
+      directivePayload: voiceDirective,
+    };
+
+    const result = manager.applyMutation(canvas, mutation);
+
+    expect(result.tracks[0].nodes[0].customDirectives?.voice).toEqual(voiceDirective);
+    // Every other real customDirective survives untouched alongside it.
+    expect(result.tracks[0].nodes[0].nodeId).toBe(nodeId);
+  });
+
+  it('respects Lock Direction — a locked node cannot receive a new voice assignment', () => {
+    let canvas = makeEmptyCanvas();
+    canvas = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.ADD_NODE,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      vaultAssetId: 'asset-node-2',
+    } as AddNodePayload);
+    const nodeId = canvas.tracks[0].nodes[0].nodeId;
+
+    canvas = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.SET_NODE_LOCK,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      locked: true,
+    });
+
+    const result = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      directiveKey: 'voice',
+      directivePayload: { vaultAssetId: 'voice-asset-2' } as VoiceAssignmentDirective,
+    });
+
+    expect(result.tracks[0].nodes[0].customDirectives?.voice).toBeUndefined();
   });
 });

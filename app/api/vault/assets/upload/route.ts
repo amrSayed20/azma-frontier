@@ -89,6 +89,17 @@ export async function POST(request: NextRequest) {
   const bytes = Buffer.from(await file.arrayBuffer());
   const persisted = await persistUploadedAsset(bytes, fileExtensionOf(file.name));
 
+  // MINISTRY I — VOICE ECOSYSTEM: a real, Creator-declared "this is a
+  // voice" flag, only ever meaningful for real audio uploads — never
+  // inferred, never applied to a non-audio file. `voiceDisplayName` is
+  // trimmed and only kept when the Creator actually provided one.
+  const isVoice = capability.capabilityTarget === CapabilityTarget.AUDIO && formData.get('isVoice') === 'true';
+  const voiceDisplayNameRaw = formData.get('voiceDisplayName');
+  const voiceDisplayName =
+    isVoice && typeof voiceDisplayNameRaw === 'string' && voiceDisplayNameRaw.trim().length > 0
+      ? voiceDisplayNameRaw.trim()
+      : undefined;
+
   const asset = await vaultManager.depositAsset({
     operationId: persisted.assetId,
     subscriberTenantId: session.creatorId,
@@ -98,6 +109,8 @@ export async function POST(request: NextRequest) {
     metadata: {
       fileSizeBytes: bytes.length,
       providerId: 'creator-upload',
+      ...(isVoice ? { isVoiceAsset: true } : {}),
+      ...(voiceDisplayName ? { voiceDisplayName } : {}),
     },
   });
 

@@ -275,6 +275,33 @@
  * (app/ras-amr/page.tsx) reference none of these three classes — export
  * logic lives exclusively in Makman, never in Ras Al Amr's own Direction
  * handlers.
+ *
+ * RAS AL AMR — MINISTRY I: VOICE ECOSYSTEM (2026-07-29): the first of the
+ * Chief Architect's "Final Constitutional Production Phase" production
+ * ministries — imported voices, voice library, voice identity, voice
+ * selection (NOT generation or cloning — Ministries II/III). Investigated
+ * first: no VOICE-specific AssetFamily/CapabilityTarget exists, and none
+ * was created — a voice is simply a real VaultAsset (AssetFamily.MEDIA,
+ * CapabilityTarget.AUDIO) the Creator explicitly marked as one.
+ *
+ * - Voice identity / imported voices: `VaultAssetMetadata.isVoiceAsset` /
+ *   `voiceDisplayName` (sovereign-vault-types.ts, new, both optional) set
+ *   at upload time via POST /api/vault/assets/upload (Package XIX's own
+ *   real route, extended, not duplicated) — no parallel ingestion path.
+ * - Voice library: `filterVoiceLibrary()` (sovereign-vault-types.ts, new)
+ *   — a pure filter over the Creator's already-fetched Vault asset list;
+ *   no new storage, no new fetch.
+ * - Voice selection: `VoiceAssignmentDirective` (assembly-directive-
+ *   payloads.ts, new) under the already-real `UPDATE_ADVANCED_DIRECTIVE`
+ *   mutation (new `'voice'` directiveKey added to its existing closed
+ *   union) — `RasAlAmrStateManager.handleUpdateAdvanced` is already fully
+ *   generic over `directiveKey`, so ZERO state-manager code changed; zero
+ *   new `CanvasActionType`. Assigning a voice to a node is a genuine
+ *   Manual Direction Decision, executed through `executeDirectionDecision()`
+ *   → `AssemblyRuntime.execute()` (app/ras-amr/page.tsx) — the same
+ *   Direction Decision → Assembly Runtime path every other real Manual
+ *   Direction Decision already uses; nothing bypasses it, per this
+ *   phase's own constitutional requirement.
  */
 
 import type { CanvasMutationPayload } from './assembly-directive-payloads';
@@ -388,9 +415,22 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
   {
     capability: 'Voice generation / cloning / text-to-speech',
     constitutionalLocation:
-      'A future extension of AssemblyNode.customDirectives (assembly-contracts.ts) — not yet built; belongs ' +
-      'to Ras Al Amr, never Qiyamah, per the Sovereign Direction State ruling',
+      'A future extension of AssemblyNode.customDirectives (assembly-contracts.ts) — generation (Ministry II) ' +
+      'and cloning (Ministry III) not yet built; belongs to Ras Al Amr, never Qiyamah, per the Sovereign ' +
+      'Direction State ruling. Imported/pre-recorded voice management is separately real — see "Imported ' +
+      'voice management" below (Ministry I)',
     implemented: false,
+  },
+  {
+    capability: 'Imported voice management (library / identity / selection)',
+    constitutionalLocation:
+      'VaultAssetMetadata.isVoiceAsset/voiceDisplayName (sovereign-vault-types.ts, Ministry I) — a real, ' +
+      'Creator-declared classification set at upload time (POST /api/vault/assets/upload); ' +
+      'filterVoiceLibrary() is the real Voice Library query; VoiceAssignmentDirective under ' +
+      "CanvasActionType.UPDATE_ADVANCED_DIRECTIVE ('voice' directiveKey, assembly-directive-payloads.ts) is " +
+      'real Voice Selection, executed through the same Direction Decision / Assembly Runtime path as every ' +
+      'other Manual Direction Decision. Voice generation/cloning/TTS remain separately unbuilt (see above)',
+    implemented: true,
   },
   {
     capability: 'Music / sound placement',
@@ -414,9 +454,12 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
   {
     capability: 'Export / delivery',
     constitutionalLocation:
-      'PrePublishingBoundary.compileForPublishing() (pre-publishing-boundary.ts) compiles a real ' +
-      'CompiledAssemblyGraph today; final render/delivery export is future work',
-    implemented: false,
+      'SUPERSEDED by "Sovereign Export Engine (Render Graph delivery)" below (Package XXVII) — ' +
+      'MakmanGoalDistributionBridge/FlattenedRenderingBridge/PublicConsumptionBoundary now publish, ' +
+      'render-dispatch, and deliver in full for structural/logic graphs; CINEMATIC file flattening still ' +
+      'honestly fails on a disclosed, separate Fleet/Ledger placeholder gap (kept as history, not deleted, ' +
+      'per this codebase\'s own stale-entry-correction discipline)',
+    implemented: true,
   },
   {
     capability: 'Manual Direction Decisions (Promote/Demote/Activate/Disable/Mark Primary/Mark Supporting/Lock/Unlock)',

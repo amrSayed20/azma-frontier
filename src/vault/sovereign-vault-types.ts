@@ -58,6 +58,17 @@ export enum AssetFamily {
   // and SovereignVaultManager.linkGoalToAsset). Absent until a Goal has
   // actually been created for this asset — never guessed or backfilled.
   goalId?: string;
+
+  // RAS AL AMR — MINISTRY I: VOICE ECOSYSTEM: a real, Creator-declared
+  // classification distinguishing "this audio asset is a voice" from any
+  // other audio (music, ambient sound, sound effect) — never inferred
+  // from file content or MIME type, only ever set explicitly by the
+  // Creator at upload time (POST /api/vault/assets/upload). `voiceDisplayName`
+  // is the voice's own real identity label (e.g. "Warm Narrator"),
+  // distinct from the underlying file's own name. Both genuinely optional
+  // — absence means "not marked as a voice," never defaulted or guessed.
+  isVoiceAsset?: boolean;
+  voiceDisplayName?: string;
 }
 
 /**
@@ -88,13 +99,29 @@ export interface VaultAsset {
   originatingOperationId: string;    // The operation that birthed this asset
   capabilityTarget: CapabilityTarget;// The Qiyamah capability that originated the asset
   assetFamily: AssetFamily;
-  
+
   secureStorageUri: string;
   metadata: VaultAssetMetadata;
-  
+
   createdAt: number;
   updatedAt: number;
-  
-  // Note: Application of the Sovereign Seal (Al-Khatm Al-Siyadi) is deferred 
+
+  // Note: Application of the Sovereign Seal (Al-Khatm Al-Siyadi) is deferred
   // to Makman Al-Ghayah and is NOT automatically applied to this raw generation record.
+}
+
+// ==========================================
+// 4. RAS AL AMR — MINISTRY I: VOICE LIBRARY
+// ==========================================
+// A real, queryable Voice Library reusing the Vault's own already-durable
+// asset catalog — no new storage system, no separate registry. A "voice"
+// is simply any VaultAsset the Creator explicitly marked as one at
+// upload time (see POST /api/vault/assets/upload).
+
+export function isVoiceAsset(asset: VaultAsset): boolean {
+  return asset.metadata.isVoiceAsset === true;
+}
+
+export function filterVoiceLibrary(assets: readonly VaultAsset[]): VaultAsset[] {
+  return assets.filter(isVoiceAsset);
 }

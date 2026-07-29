@@ -37,9 +37,11 @@ describe('Package XVIII — Direction Workspace Foundation', () => {
     const unimplemented = DIRECTION_WORKSPACE_CAPABILITY_MAP.filter((entry) => !entry.implemented);
     expect(unimplemented.length).toBeGreaterThan(0);
     // Every capability this ruling explicitly named as belonging to Ras Al Amr but not yet built.
+    // (superseded finding, kept as history): 'Export / delivery' was true at ruling time in 2026-07-28
+    // (Package XVIII) but is now implemented (Package XXVII) — see its own entry's disclosure.
     const unimplementedNames = unimplemented.map((entry) => entry.capability);
     expect(unimplementedNames).toEqual(
-      expect.arrayContaining(['Voice generation / cloning / text-to-speech', 'Export / delivery']),
+      expect.arrayContaining(['Voice generation / cloning / text-to-speech']),
     );
   });
 
@@ -263,6 +265,22 @@ describe('Package XXVI — Sovereign Rendering Engine', () => {
     expect(entry?.implemented).toBe(true);
     expect(entry?.constitutionalLocation).toMatch(/PrePublishingBoundary\.compileForPublishing/);
     expect(entry?.constitutionalLocation).toMatch(/AssemblyRuntime/);
+  });
+});
+
+describe('Ministry I — Voice Ecosystem', () => {
+  it('marks imported voice management as genuinely implemented, distinct from still-unbuilt generation/cloning', () => {
+    const importedVoice = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) =>
+      e.capability.startsWith('Imported voice management'),
+    );
+    expect(importedVoice?.implemented).toBe(true);
+    expect(importedVoice?.constitutionalLocation).toMatch(/filterVoiceLibrary/);
+    expect(importedVoice?.constitutionalLocation).toMatch(/VoiceAssignmentDirective/);
+
+    const generation = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) =>
+      e.capability === 'Voice generation / cloning / text-to-speech',
+    );
+    expect(generation?.implemented).toBe(false);
   });
 });
 

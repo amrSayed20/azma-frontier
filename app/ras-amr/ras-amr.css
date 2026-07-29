@@ -945,6 +945,43 @@ body, html {
   display: inline-block;
 }
 
+/* MINISTRY I — VOICE ECOSYSTEM: voice-identity upload controls. */
+.hud-voice-upload-row {
+  padding: 0 30px 14px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.hud-voice-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.hud-voice-name-input {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--neon-gold-dim);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-family: inherit;
+  padding: 6px 10px;
+}
+
+.narrative-node-voice {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--neon-gold-dim);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
 .hud-body-layout {
   flex: 1;
   display: grid;

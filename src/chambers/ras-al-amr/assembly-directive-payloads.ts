@@ -41,12 +41,26 @@ export interface StructuralLogicDirective {
 }
 
 /**
- * Non-destructive semantic link tying this temporal node to a specific text block 
+ * Non-destructive semantic link tying this temporal node to a specific text block
  * coming from the Hujjah Chamber. Essential for the Hybrid Timeline Core Engine.
  */
 export interface SemanticLinkDirective {
   linkedScriptBlockId: string;   // The ID of the text block (e.g., "hook_sentence_1")
   autoRippleOnTextEdit: boolean; // If true, moving/modifying text adjusts the video automatically
+}
+
+/**
+ * RAS AL AMR — MINISTRY I: VOICE ECOSYSTEM (Voice Selection).
+ * Non-destructive assignment of a real, Vault-owned voice asset to a
+ * Direction Node — the Creator's own declared choice, never inferred.
+ * `vaultAssetId` must reference a real VaultAsset the Creator marked as a
+ * voice (see isVoiceAsset(), sovereign-vault-types.ts); this directive
+ * itself does not enforce that — the assigning UI is responsible for only
+ * offering real voice assets, the same trust boundary every other
+ * customDirective already relies on.
+ */
+export interface VoiceAssignmentDirective {
+  vaultAssetId: string;
 }
 
 // ==========================================
@@ -133,12 +147,13 @@ export interface UpdateNodeAdvancedPayload extends BaseCanvasMutation {
   actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE;
   targetNodeId: string;
   targetTrackId: string;
-  directiveKey: 'audio' | 'visual' | 'structural' | 'semantic'; // دمج أصيل ومباشر
-  directivePayload: 
-    | AudioMixingDirective 
-    | VisualFilterDirective 
-    | StructuralLogicDirective 
-    | SemanticLinkDirective;   // توسيع العقد ليشمل الرابط الدلالي
+  directiveKey: 'audio' | 'visual' | 'structural' | 'semantic' | 'voice'; // دمج أصيل ومباشر — 'voice' added Ministry I
+  directivePayload:
+    | AudioMixingDirective
+    | VisualFilterDirective
+    | StructuralLogicDirective
+    | SemanticLinkDirective
+    | VoiceAssignmentDirective;   // توسيع العقد ليشمل اختيار الصوت (وزارة الصوت الأولى)
 }
 
 /**

@@ -373,6 +373,22 @@
  * `handleApplyDirectorDecision`. Flagged for the Chief Architect in case
  * "RasAlAmrStateManager is no longer called directly by either Director"
  * was intended to reach these three as well.
+ *
+ * MINISTRY I — VOICE ECOSYSTEM (2026-07-29): real Voice Library, Voice
+ * Identity, Imported Voices, and Voice Selection. The upload form
+ * (`handleUploadAsset`) gained a real "this is a voice" checkbox + a
+ * voice display-name input, threaded to POST /api/vault/assets/upload
+ * (Package XIX's own real upload route). `voiceLibrary` filters the
+ * already-fetched `vaultAssets` down to real voices via the new
+ * `filterVoiceLibrary()` (sovereign-vault-types.ts) — no new fetch, no
+ * new storage. `handleAssignVoiceToNode` is a genuine Manual Direction
+ * Decision — it builds a real `VoiceAssignmentDirective` under the
+ * already-real `UPDATE_ADVANCED_DIRECTIVE` mutation (new `'voice'`
+ * directiveKey; `RasAlAmrStateManager.handleUpdateAdvanced` is already
+ * fully generic over `directiveKey`, so zero state-manager code changed)
+ * and executes through `executeDirectionDecision()`/`AssemblyRuntime` —
+ * the same Direction Decision → Assembly Runtime path every other real
+ * Manual Direction Decision already uses; nothing bypasses it.
  */
 
 'use client';
@@ -381,6 +397,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { RasAmrExperience } from '@/src/imperial-experience-engine';
 import type { VaultAsset, AssetFamily } from '@/src/vault/sovereign-vault-types';
+import { filterVoiceLibrary } from '@/src/vault/sovereign-vault-types';
 import type { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
 import { CanvasType, DirectionNodeRole } from '@/src/chambers/ras-al-amr/assembly-contracts';
 import type { SovereignCanvas, SpatialDirective, TemporalDirective } from '@/src/chambers/ras-al-amr/assembly-contracts';
@@ -403,6 +420,7 @@ import type {
   VisualFilterDirective,
   StructuralLogicDirective,
   AudioMixingDirective,
+  VoiceAssignmentDirective,
 } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
 import { decideMultiNodeCinematicDirection } from '@/src/chambers/ras-al-amr/automatic-director';
 import { validateNarrativeIntegrity } from '@/src/chambers/ras-al-amr/automatic-director-constitution';
@@ -924,12 +942,22 @@ export default function RasAmrChamber() {
   const [isUploadingAsset, setIsUploadingAsset] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  // MINISTRY I — VOICE ECOSYSTEM: real Creator-declared "this is a voice"
+  // intent, never inferred from the file itself. Both genuinely optional —
+  // an unchecked upload behaves exactly as it did before this Ministry.
+  const [isVoiceUpload, setIsVoiceUpload] = useState<boolean>(false);
+  const [voiceDisplayNameInput, setVoiceDisplayNameInput] = useState<string>('');
+
   const handleUploadAsset = async (file: File) => {
     setIsUploadingAsset(true);
     setUploadError(null);
     try {
       const body = new FormData();
       body.append('file', file);
+      if (isVoiceUpload) {
+        body.append('isVoice', 'true');
+        if (voiceDisplayNameInput.trim()) body.append('voiceDisplayName', voiceDisplayNameInput.trim());
+      }
       const response = await fetch('/api/vault/assets/upload', { method: 'POST', body });
       const result = await response.json();
       if (!response.ok || result.status !== 'succeeded') {
@@ -937,12 +965,43 @@ export default function RasAmrChamber() {
         return;
       }
       setVaultAssets((prev) => [...prev, result.asset]);
+      setIsVoiceUpload(false);
+      setVoiceDisplayNameInput('');
     } catch {
       setUploadError('تعذّر الوصول إلى بوابة الرفع السيادية.');
     } finally {
       setIsUploadingAsset(false);
       if (uploadFileInputRef.current) uploadFileInputRef.current.value = '';
     }
+  };
+
+  // MINISTRY I — VOICE ECOSYSTEM: the real Voice Library — every VaultAsset
+  // the Creator explicitly marked as a voice, reusing the already-fetched
+  // vaultAssets list (no new fetch, no new storage).
+  const voiceLibrary = useMemo(() => filterVoiceLibrary(vaultAssets), [vaultAssets]);
+
+  // MINISTRY I — VOICE ECOSYSTEM: Voice Selection — a genuine Manual
+  // Direction Decision, executed through the same Direction Decision /
+  // Assembly Runtime path every other real decision uses. `vaultAssetId`
+  // of '' means "unassign" and is honestly represented as undefined in
+  // the resulting VoiceAssignmentDirective's absence — handled by
+  // clearing the directive rather than storing an empty string.
+  const handleAssignVoiceToNode = (nodeId: string, vaultAssetId: string) => {
+    if (!sessionCanvas) return;
+    const track = sessionCanvas.tracks.find((t) => t.nodes.some((n) => n.nodeId === nodeId));
+    if (!track) return;
+
+    const mutation: UpdateNodeAdvancedPayload = {
+      actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: track.trackId,
+      targetNodeId: nodeId,
+      directiveKey: 'voice',
+      directivePayload: { vaultAssetId } as VoiceAssignmentDirective,
+    };
+
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
   };
 
   // ai-director — THE AUTOMATIC DIRECTOR: decides the real Cinematic
@@ -1455,6 +1514,12 @@ export default function RasAmrChamber() {
                                 return proposed ? ` — مُقترَح ${proposed.globalStartTimeSeconds}s→${proposed.globalStartTimeSeconds + proposed.playDurationSeconds}s` : '';
                               })()}
                               {multiNodeDirection?.primaryNodeId === node.nodeId ? ' — ★ الاتجاه الأساسي' : ''}
+                              {(() => {
+                                const assignedVoiceId = (node.customDirectives?.voice as VoiceAssignmentDirective | undefined)?.vaultAssetId;
+                                if (!assignedVoiceId) return '';
+                                const assignedVoice = voiceLibrary.find((v) => v.assetId === assignedVoiceId);
+                                return ` — 🎙 ${assignedVoice?.metadata.voiceDisplayName ?? assignedVoiceId}`;
+                              })()}
                             </button>
                             {/* PACKAGE XXI — DIRECTION NODE LAYER: real cinematic classification, genuinely optional. */}
                             <select
@@ -1480,6 +1545,21 @@ export default function RasAmrChamber() {
                               <option value="">بلا تمييز</option>
                               <option value="primary">أساسي</option>
                               <option value="supporting">مساند</option>
+                            </select>
+                            {/* MINISTRY I — VOICE ECOSYSTEM: Voice Selection — assign a real voice from the Voice Library to this Direction Node. */}
+                            <select
+                              className="narrative-node-voice"
+                              value={(node.customDirectives?.voice as VoiceAssignmentDirective | undefined)?.vaultAssetId ?? ''}
+                              onChange={(e) => handleAssignVoiceToNode(node.nodeId, e.target.value)}
+                              disabled={node.isLocked || voiceLibrary.length === 0}
+                              aria-label="الصوت المُسنَد لهذه العقدة"
+                            >
+                              <option value="">بلا صوت مُسنَد</option>
+                              {voiceLibrary.map((voice) => (
+                                <option key={voice.assetId} value={voice.assetId}>
+                                  {voice.metadata.voiceDisplayName ?? voice.assetId}
+                                </option>
+                              ))}
                             </select>
                             {/* PACKAGE XXII — MANUAL DIRECTION ENGINE: Promote/Demote Node reuse the real REORDER_NODE mutation (Package XX). */}
                             <button
@@ -1843,6 +1923,28 @@ export default function RasAmrChamber() {
                 {isUploadingAsset ? '⏳ جارٍ الرفع إلى الخزانة السيادية...' : '⬆ رفع ملف حقيقي من الجهاز إلى الخزانة'}
               </label>
               {uploadError && <p className="spatial-current-state narrative-integrity-violation">{uploadError}</p>}
+            </div>
+            {/* MINISTRY I — VOICE ECOSYSTEM: real, Creator-declared voice identity, set before choosing the file above. */}
+            <div className="hud-voice-upload-row">
+              <label className="hud-voice-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={isVoiceUpload}
+                  onChange={(e) => setIsVoiceUpload(e.target.checked)}
+                  disabled={isUploadingAsset}
+                />
+                هذا الملف صوت (Voice)
+              </label>
+              {isVoiceUpload && (
+                <input
+                  type="text"
+                  className="hud-voice-name-input"
+                  placeholder="اسم هوية الصوت (اختياري)"
+                  value={voiceDisplayNameInput}
+                  onChange={(e) => setVoiceDisplayNameInput(e.target.value)}
+                  disabled={isUploadingAsset}
+                />
+              )}
             </div>
 
             {vaultAssetsLoaded && realVaultCategories.length === 0 ? (
