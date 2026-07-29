@@ -69,6 +69,15 @@ export enum AssetFamily {
   // — absence means "not marked as a voice," never defaulted or guessed.
   isVoiceAsset?: boolean;
   voiceDisplayName?: string;
+
+  // RAS AL AMR — MINISTRY III: VOICE CLONING ENGINE: optional flags that
+  // distinguish a cloned voice from an imported or TTS-generated one.
+  // `isClonedVoice` is set only by the cloning route — never inferred.
+  // `clonedVoiceProviderId` is the provider-issued voice identity for
+  // this clone — an internal reference, never surfaced to the Creator.
+  // Both absent means "not a cloned voice."
+  isClonedVoice?: boolean;
+  clonedVoiceProviderId?: string;
 }
 
 /**

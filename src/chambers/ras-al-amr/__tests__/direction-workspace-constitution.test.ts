@@ -40,12 +40,13 @@ describe('Package XVIII — Direction Workspace Foundation', () => {
     // (superseded finding, kept as history): 'Export / delivery' was true at ruling time in 2026-07-28
     // (Package XVIII) but is now implemented (Package XXVII) — see its own entry's disclosure.
     // (superseded finding, kept as history): 'Voice generation / cloning / text-to-speech' was one combined
-    // row at ruling time; Text To Speech is now real (Ministry II) and the row was split — only 'Voice
-    // cloning' (Ministry III) remains unimplemented.
+    // row at ruling time; Text To Speech is now real (Ministry II), Voice Cloning is now real (Ministry III)
+    // — the row was split and both are implemented.
     const unimplementedNames = unimplemented.map((entry) => entry.capability);
     expect(unimplementedNames).toEqual(
-      expect.arrayContaining(['Voice cloning']),
+      expect.arrayContaining(['Music / sound placement', 'Mixing', 'Subtitle decisions']),
     );
+    expect(unimplementedNames).not.toContain('Voice cloning');
   });
 
   it('marks the already-real capabilities as implemented, reusing existing structures rather than re-declaring them as future work', () => {
@@ -272,28 +273,32 @@ describe('Package XXVI — Sovereign Rendering Engine', () => {
 });
 
 describe('Ministry I — Voice Ecosystem', () => {
-  it('marks imported voice management as genuinely implemented, distinct from still-unbuilt generation/cloning', () => {
+  it('marks imported voice management as genuinely implemented', () => {
     const importedVoice = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) =>
       e.capability.startsWith('Imported voice management'),
     );
     expect(importedVoice?.implemented).toBe(true);
     expect(importedVoice?.constitutionalLocation).toMatch(/filterVoiceLibrary/);
     expect(importedVoice?.constitutionalLocation).toMatch(/VoiceAssignmentDirective/);
-
-    const cloning = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) => e.capability === 'Voice cloning');
-    expect(cloning?.implemented).toBe(false);
   });
 });
 
 describe('Ministry II — Text To Speech Engine', () => {
-  it('marks Text To Speech as genuinely implemented, distinct from still-unbuilt Voice Cloning', () => {
+  it('marks Text To Speech as genuinely implemented', () => {
     const tts = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) => e.capability.startsWith('Text To Speech'));
     expect(tts?.implemented).toBe(true);
     expect(tts?.constitutionalLocation).toMatch(/speech-provider\.ts/);
     expect(tts?.constitutionalLocation).toMatch(/generate-speech/);
+  });
+});
 
+describe('Ministry III — Voice Cloning Engine', () => {
+  it('marks Voice Cloning as genuinely implemented, completing the Sovereign Voice Ecosystem', () => {
     const cloning = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) => e.capability === 'Voice cloning');
-    expect(cloning?.implemented).toBe(false);
+    expect(cloning?.implemented).toBe(true);
+    expect(cloning?.constitutionalLocation).toMatch(/voice-cloning-provider\.ts/);
+    expect(cloning?.constitutionalLocation).toMatch(/clone-voice/);
+    expect(cloning?.constitutionalLocation).toMatch(/isVoiceAsset/);
   });
 });
 

@@ -435,11 +435,15 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
   {
     capability: 'Voice cloning',
     constitutionalLocation:
-      'A future extension of AssemblyNode.customDirectives (assembly-contracts.ts) — not yet built (Ministry ' +
-      'III); belongs to Ras Al Amr, never Qiyamah, per the Sovereign Direction State ruling. Distinct from ' +
-      'Text To Speech (below, Ministry II, real) — cloning reproduces a specific reference voice, TTS uses ' +
-      "the Launch Provider's own closed preset voice set",
-    implemented: false,
+      'voice-cloning-provider.ts (Ministry III, new) wraps the Launch Provider\'s real voice cloning API, ' +
+      'mirroring speech-provider.ts\'s own isolation pattern; POST /api/vault/assets/clone-voice (new) ' +
+      'reads the Creator\'s own reference Voice Asset from local storage, submits it to the Launch Provider, ' +
+      'and deposits the resulting cloned voice identity as a new Sovereign Voice Asset — tagged ' +
+      'isVoiceAsset/isClonedVoice/voiceDisplayName/clonedVoiceProviderId exactly like every other Voice ' +
+      'Asset (Ministry I imported, Ministry II TTS-generated) — one Voice Library, one Voice Selection ' +
+      'path, no duplicate pipeline. Gated behind the same billing entitlement every other real AI ' +
+      'generation capability requires.',
+    implemented: true,
   },
   {
     capability: 'Imported voice management (library / identity / selection)',

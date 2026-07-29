@@ -51,3 +51,40 @@ describe('Ministry I — Voice Library', () => {
     expect(filterVoiceLibrary(assets)).toEqual([]);
   });
 });
+
+describe('Ministry III — Voice Cloning: cloned voices in the Voice Library', () => {
+  it('a cloned voice (isVoiceAsset + isClonedVoice) appears in the Voice Library — same path as imported or TTS voices', () => {
+    const clonedVoice = makeAsset({
+      assetId: 'cloned-1',
+      metadata: {
+        isVoiceAsset: true,
+        isClonedVoice: true,
+        voiceDisplayName: 'Cloned Narrator',
+        clonedVoiceProviderId: 'pNInz6obpgDQGcFmaJgB',
+        providerId: 'voice-cloning-provider',
+      },
+    });
+
+    expect(isVoiceAsset(clonedVoice)).toBe(true);
+    expect(filterVoiceLibrary([clonedVoice])).toHaveLength(1);
+  });
+
+  it('cloned, imported, and TTS-generated voices all coexist in the same Voice Library without duplication', () => {
+    const imported = makeAsset({ assetId: 'imp-1', metadata: { isVoiceAsset: true, voiceDisplayName: 'Imported' } });
+    const tts = makeAsset({ assetId: 'tts-1', metadata: { isVoiceAsset: true, voiceDisplayName: 'TTS Nova', providerId: 'openai-tts-1' } });
+    const cloned = makeAsset({ assetId: 'clone-1', metadata: { isVoiceAsset: true, isClonedVoice: true, voiceDisplayName: 'Cloned One', clonedVoiceProviderId: 'abc-123' } });
+    const nonVoice = makeAsset({ assetId: 'music-1' });
+
+    const library = filterVoiceLibrary([imported, tts, cloned, nonVoice]);
+
+    expect(library.map((a) => a.assetId)).toEqual(['imp-1', 'tts-1', 'clone-1']);
+  });
+
+  it('clonedVoiceProviderId is optional on VaultAssetMetadata — absence does not break anything', () => {
+    const voiceWithoutProviderId = makeAsset({
+      assetId: 'clone-no-id',
+      metadata: { isVoiceAsset: true, isClonedVoice: true },
+    });
+    expect(isVoiceAsset(voiceWithoutProviderId)).toBe(true);
+  });
+});
