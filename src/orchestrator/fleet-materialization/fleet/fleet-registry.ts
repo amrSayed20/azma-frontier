@@ -45,6 +45,22 @@ export class FleetRegistry implements IFleetRegistry {
   }
 
   /**
+   * Synchronous registration path for module-level composition (composition.ts
+   * runs at module load time and cannot await). Callers supply capabilities
+   * explicitly — adapter.CAPABILITIES is the canonical source.
+   * The async registerAdapter() path (used by FleetMaterializationBootstrapper)
+   * remains unchanged.
+   */
+  public registerAdapterSync(adapter: IProviderAdapter, capabilities: import('./fleet-types').ProviderCapabilities): void {
+    capabilities.supportedTargets.forEach((target) => {
+      const pool = this.adapterPools.get(target);
+      if (pool) {
+        pool.set(adapter.providerId, adapter);
+      }
+    });
+  }
+
+  /**
    * Safely decommissions a provider adapter from all active capability pools.
    * Useful for dynamic load balancing or responding to vendor outages.
    */

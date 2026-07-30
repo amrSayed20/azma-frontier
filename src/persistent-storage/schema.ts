@@ -84,6 +84,25 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     canvas_json TEXT NOT NULL,
     saved_at INTEGER NOT NULL
   )`,
+  // MINISTRY VII — REAL FLEET INFRASTRUCTURE: durable operation ledger
+  // replacing the in-memory Map in OperationLedgerManager. Every fleet
+  // dispatch creates one row; state transitions UPDATE it in place.
+  // source_intent_json stores the full AZMAPolymorphicIntent (JSON) so
+  // adapters can retrieve the assembly payload on resolution.
+  `CREATE TABLE IF NOT EXISTS operation_ledger (
+    operation_id TEXT PRIMARY KEY,
+    subscriber_tenant_id TEXT NOT NULL,
+    capability_target TEXT NOT NULL,
+    current_state TEXT NOT NULL,
+    source_intent_json TEXT NOT NULL,
+    estimated_resource_cost REAL NOT NULL,
+    actual_resource_cost REAL,
+    allocated_provider_id TEXT,
+    external_job_id TEXT,
+    resolved_at INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
 ];
 
 /** Columns added to `creators` after its original creation — applied via ALTER TABLE for pre-existing databases. */

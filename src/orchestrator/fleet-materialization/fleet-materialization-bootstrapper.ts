@@ -19,6 +19,7 @@
 
 import { OperationLedgerManager } from './ledger/operation-ledger-manager';
 import { SovereignVaultManager } from '../../vault/sovereign-vault-manager';
+import { getDb } from '../../persistent-storage/db';
 import { SecureContextHydrator } from './fleet/secure-context-hydrator';
 import { FleetRegistry } from './fleet/fleet-registry';
 import { NativeStructuralAdapter } from './fleet/adapters/native-structural-adapter';
@@ -59,7 +60,7 @@ export class FleetMaterializationRuntime {
   public static async bootstrap(): Promise<FleetMaterializationRuntime> {
     
     // 1. Initialize Foundational State Managers (No external dependencies)
-    const ledgerManager = new OperationLedgerManager();
+    const ledgerManager = new OperationLedgerManager(getDb());
     const vaultManager = new SovereignVaultManager();
 
     // 2. Initialize Security & Hydration Layer

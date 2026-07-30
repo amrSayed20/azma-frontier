@@ -13,25 +13,23 @@ import { OperationLedgerEntry } from '../../ledger/operation-ledger-types';
 import { CapabilityTarget, WritingIntent, DirectorialIntent } from '../../../../core/sovereign-orchestrator/qiyamah-intent-types';
 
 export class NativeStructuralAdapter extends BaseProviderAdapter {
-  // Uniquely identifies this concrete implementation within the Fleet Registry
   public readonly providerId = 'azma-native-structural-v1';
+
+  /** Canonical capability declaration — used by registerAdapterSync() in fleet-factory.ts. */
+  public static readonly CAPABILITIES: ProviderCapabilities = {
+    supportedTargets: [CapabilityTarget.WRITING, CapabilityTarget.DIRECTORIAL],
+    maxConcurrentOperations: 500,
+    unitCostMultiplier: 1.0,
+    averageLatencyMs: 3000,
+    isAvailable: true,
+  };
 
   constructor(hydrator: SecureContextHydrator) {
     super(hydrator);
   }
 
-  /**
-   * Declares the constitutional capabilities this specific adapter can fulfill.
-   * The Fleet Registry uses this to route operations accurately.
-   */
   public async getCapabilities(): Promise<ProviderCapabilities> {
-    return {
-      supportedTargets: [CapabilityTarget.WRITING, CapabilityTarget.DIRECTORIAL],
-      maxConcurrentOperations: 500,    // High concurrency for text/logic operations
-      unitCostMultiplier: 1.0,         // Base tier operational cost
-      averageLatencyMs: 3000,          // Expected time-to-completion
-      isAvailable: true
-    };
+    return NativeStructuralAdapter.CAPABILITIES;
   }
 
   /**

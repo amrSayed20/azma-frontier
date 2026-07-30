@@ -19,29 +19,31 @@
  * exactly, without calling that function. MAG-LF-001's own file is
  * unmodified.
  *
- * Al-Watin composition remains an unbuilt platform-level gap (disclosed
- * since MAG-LF-001); see unbuilt-al-watin-placeholder.ts.
- *
  * EXTENDED (MAG-LB-002): also composes RAS AL AMR's compilation chain —
  * SovereignVaultManager → VaultRehydrationBridge → PrePublishingBoundary.
- * Unlike Al-Watin, every collaborator here is real: SovereignVaultManager
- * (src/vault/sovereign-vault-manager.ts) is a genuine, no-argument,
- * in-memory implementation of IVaultManager — no placeholder is needed.
+ * SovereignVaultManager is a genuine, no-argument, SQLite-backed
+ * implementation of IVaultManager — no placeholder is needed.
  * See RAS_AL_AMR_ENTRY_ENGINEERING_REVIEW.ts for the one real operational
  * limitation this composition has (assets must already exist in this
  * same in-memory vault instance).
  *
  * BRIDGED (MAG-LB-003): vaultManager is now constructed once and shared
- * by BOTH FleetDispatcher (the currently certified asset-generation
- * flow's resolveOperation() deposit path, src/orchestrator/al-watin/fleet/fleet-dispatcher.ts)
- * and RAS AL AMR's VaultRehydrationBridge. Before this, they were two
- * separate SovereignVaultManager instances — anything Al-Watin deposited
- * would have been invisible to RAS AL AMR's compilation even once real
- * dispatch/ledger composition exists. Sharing the instance is the entire
- * bridge; no new business logic was introduced, and the Vault itself
- * remains the sole constitutional owner of every asset — neither
- * Al-Watin nor RAS AL AMR gains ownership, only shared read/write access
- * to one already-certified store.
+ * by BOTH FleetDispatcher (the dispatch path for CINEMATIC canvas exports,
+ * src/orchestrator/fleet-materialization/fleet/fleet-dispatcher.ts)
+ * and RAS AL AMR's VaultRehydrationBridge. Sharing the instance ensures
+ * that assets Fleet deposits are immediately visible to RAS AL AMR's
+ * compilation pipeline with no manual intervention.
+ *
+ * MINISTRY VII — REAL FLEET INFRASTRUCTURE: the former
+ * createUnbuiltAlWatinPlaceholder() (unbuilt-al-watin-placeholder.ts,
+ * now deleted) is replaced by buildFleetRuntime(vaultManager) —
+ * a synchronous factory that wires real OperationLedgerManager (SQLite),
+ * real FleetRegistry, NativeStructuralAdapter (WRITING/DIRECTORIAL), and
+ * CinematicAssemblyAdapter (VISUAL). CINEMATIC canvas export no longer
+ * unconditionally throws; it dispatches a real job, durably records it in
+ * the operation_ledger table, and returns PROCESSING render state.
+ * fleetRuntime is exported so future resolution routes can reach the
+ * AsynchronousResolutionGateway without a second composition.
  */
 
 import { GoalState } from '../chambers/makman-al-ghayah/goal-state';
@@ -53,18 +55,21 @@ import { FlattenedRenderingBridge } from '../chambers/makman-al-ghayah/rendering
 import { SovereignAccessPolicyEngine } from '../chambers/makman-al-ghayah/access-policy-engine';
 import { MonetizationLedgerGateway } from '../chambers/makman-al-ghayah/monetization-ledger-gateway';
 import { PublicConsumptionBoundary } from '../chambers/makman-al-ghayah/consumption-boundary';
-import { createUnbuiltAlWatinPlaceholder } from './unbuilt-al-watin-placeholder';
 import { SovereignVaultManager } from '../vault/sovereign-vault-manager';
 import { VaultRehydrationBridge } from '../chambers/ras-al-amr/vault-rehydration-bridge';
 import { PrePublishingBoundary } from '../chambers/ras-al-amr/pre-publishing-boundary';
 import { SovereignOperationalEntryLayer } from './soel';
+import { buildFleetRuntime } from '../orchestrator/fleet-materialization/fleet-factory';
 
-/** The one Sovereign Vault instance for this server process — shared by Al-Watin's deposit path and RAS AL AMR's rehydration read path. See MAG-LB-003. */
+/** One Sovereign Vault instance for this server process — shared by Fleet's deposit path and RAS AL AMR's rehydration read path. See MAG-LB-003. */
 const vaultManager = new SovereignVaultManager();
+
+/** Real Fleet runtime: real OperationLedgerManager (SQLite) + FleetRegistry + adapters + AsynchronousResolutionGateway. See Ministry VII. */
+export const fleetRuntime = buildFleetRuntime(vaultManager);
 
 const goalState = new GoalState();
 const publicationRegistry = new MakmanPublicationRegistry();
-const renderingBridge = new FlattenedRenderingBridge(createUnbuiltAlWatinPlaceholder(vaultManager));
+const renderingBridge = new FlattenedRenderingBridge(fleetRuntime.dispatcher);
 const bridge = new MakmanGoalDistributionBridge(publicationRegistry, renderingBridge);
 const policyEngine = new SovereignAccessPolicyEngine();
 const ledgerGateway = new MonetizationLedgerGateway();

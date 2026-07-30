@@ -8,13 +8,11 @@
  * without ever thinking, rendering, modifying, or directing. None of
  * these three files had any test before this package.
  *
- * Also proves the honestly disclosed gap: FlattenedRenderingBridge's own
- * CINEMATIC-flattening path genuinely fails today (not fabricated as a
- * false success) because the real FleetDispatcher it depends on is
- * composed with the pre-existing, disclosed placeholder
- * (createUnbuiltAlWatinPlaceholder, MAG-LF-001) — a platform-level gap
- * this package does not attempt to close, per its own "do not implement
- * new orchestration/new media processing" prohibition.
+ * MINISTRY VII — REAL FLEET INFRASTRUCTURE: the former placeholder
+ * (createUnbuiltAlWatinPlaceholder, MAG-LF-001) has been eliminated.
+ * Tests now build a real FleetDispatcher with OperationLedgerManager
+ * (SQLite :memory:) and CinematicAssemblyAdapter. The CINEMATIC dispatch
+ * test now asserts PROCESSING, not FAILED.
  */
 import { FlattenedRenderingBridge, RenderStatus } from '../rendering-bridge';
 import { MakmanGoalDistributionBridge, MakmanPublicationRegistry } from '../MAKMAN_GOAL_DISTRIBUTION_BRIDGE';
@@ -29,8 +27,13 @@ import type { RuntimeChainContext } from '../MAKMAN_OPERATIONAL_DELIVERY_CONTRAC
 import type { MakmanCommercialIntent } from '../MAKMAN_COMMERCIAL_DISTRIBUTION_CONTRACTS';
 import { CanvasType } from '../../ras-al-amr/assembly-contracts';
 import type { CompiledAssemblyGraph } from '../../ras-al-amr/pre-publishing-boundary';
-import { createUnbuiltAlWatinPlaceholder } from '../../../sovereign-entry/unbuilt-al-watin-placeholder';
 import type { IVaultManager } from '../../../orchestrator/fleet-materialization/fleet/fleet-dispatcher';
+import { FleetDispatcher } from '../../../orchestrator/fleet-materialization/fleet/fleet-dispatcher';
+import { FleetRegistry } from '../../../orchestrator/fleet-materialization/fleet/fleet-registry';
+import { OperationLedgerManager } from '../../../orchestrator/fleet-materialization/ledger/operation-ledger-manager';
+import { SecureContextHydrator } from '../../../orchestrator/fleet-materialization/fleet/secure-context-hydrator';
+import { CinematicAssemblyAdapter } from '../../../orchestrator/fleet-materialization/fleet/adapters/cinematic-assembly-adapter';
+import { createDatabase } from '../../../persistent-storage/db';
 
 function makeCompiledGraph(overrides: Partial<CompiledAssemblyGraph> = {}): CompiledAssemblyGraph {
   return {
@@ -61,7 +64,12 @@ const stubVaultManager: IVaultManager = {
 };
 
 function makeFleetDispatcher() {
-  return createUnbuiltAlWatinPlaceholder(stubVaultManager);
+  const db = createDatabase(':memory:');
+  const ledgerManager = new OperationLedgerManager(db);
+  const hydrator = new SecureContextHydrator(stubVaultManager);
+  const registry = new FleetRegistry();
+  registry.registerAdapterSync(new CinematicAssemblyAdapter(hydrator), CinematicAssemblyAdapter.CAPABILITIES);
+  return new FleetDispatcher(registry, ledgerManager, stubVaultManager);
 }
 
 describe('Package XXVII — Sovereign Export Engine: FlattenedRenderingBridge', () => {
@@ -86,7 +94,7 @@ describe('Package XXVII — Sovereign Export Engine: FlattenedRenderingBridge', 
     expect(directorialState.status).toBe(RenderStatus.DYNAMIC);
   });
 
-  it('honestly resolves to FAILED — never a fabricated COMPLETED — when CINEMATIC flattening hits the disclosed Fleet/Ledger placeholder gap', async () => {
+  it('resolves PROCESSING for CINEMATIC canvas dispatch — real Fleet accepts the job without throwing (Ministry VII)', async () => {
     const bridge = new FlattenedRenderingBridge(makeFleetDispatcher());
     const publication: SovereignPublication = {
       publicationId: 'pub-2',
@@ -102,8 +110,9 @@ describe('Package XXVII — Sovereign Export Engine: FlattenedRenderingBridge', 
 
     const state = await bridge.evaluateAndDispatchRender(publication, makeCompiledGraph({ canvasType: CanvasType.CINEMATIC, compilationId: 'comp-2' }));
 
-    expect(state.status).toBe(RenderStatus.FAILED);
-    expect(bridge.getRenderState('pub-2')?.status).toBe(RenderStatus.FAILED);
+    expect(state.status).toBe(RenderStatus.PROCESSING);
+    expect(state.activeOperationId).toBeDefined();
+    expect(bridge.getRenderState('pub-2')?.status).toBe(RenderStatus.PROCESSING);
   });
 });
 
