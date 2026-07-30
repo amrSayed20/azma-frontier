@@ -50,6 +50,7 @@ export interface ICinematicLedger {
     sourceCanvasId: string,
     canvasType: string,
     initialRenderStatus: string,
+    operationId?: string,
   ): void;
 }
 
@@ -143,6 +144,7 @@ export class MakmanGoalDistributionBridge {
       intent.compiledAssemblyGraph.sourceCanvasId,
       intent.compiledAssemblyGraph.canvasType,
       renderState.status,
+      renderState.activeOperationId,
     );
 
     return { publication, renderState, chainContext };

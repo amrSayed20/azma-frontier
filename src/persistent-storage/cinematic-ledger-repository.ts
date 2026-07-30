@@ -33,6 +33,7 @@ export interface CinematicProductionRecord {
   publisherTenantId: string;
   sourceCanvasId: string;
   sourceCompilationId: string;
+  operationId?: string;
   canvasType: string;
   title: string;
   description: string;
@@ -58,20 +59,22 @@ export class CinematicLedger implements ICinematicLedger {
     sourceCanvasId: string,
     canvasType: string,
     initialRenderStatus: string,
+    operationId?: string,
   ): void {
     this.db
       .prepare(
         `INSERT OR REPLACE INTO cinematic_ledger
           (publication_id, publisher_tenant_id, source_canvas_id, source_compilation_id,
-           canvas_type, title, description, render_status, flattened_vault_asset_id,
+           operation_id, canvas_type, title, description, render_status, flattened_vault_asset_id,
            published_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         publication.publicationId,
         publication.publisherTenantId,
         sourceCanvasId,
         publication.sourceCompilationId,
+        operationId ?? null,
         canvasType,
         publication.title,
         publication.description,
@@ -81,6 +84,27 @@ export class CinematicLedger implements ICinematicLedger {
         publication.createdAt,
         publication.updatedAt,
       );
+  }
+
+  /**
+   * Updates the constitutional production status by fleet operation id.
+   * Called by the resolution route after the fleet confirms completion —
+   * the route has only the operationId, not the publicationId.
+   * Tenant isolation is enforced upstream (AsynchronousResolutionGateway
+   * throws on subscriber mismatch before the route ever calls this).
+   */
+  public updateProductionStatusByOperationId(
+    operationId: string,
+    renderStatus: string,
+    flattenedVaultAssetId?: string,
+  ): void {
+    this.db
+      .prepare(
+        `UPDATE cinematic_ledger
+         SET render_status = ?, flattened_vault_asset_id = COALESCE(?, flattened_vault_asset_id), updated_at = ?
+         WHERE operation_id = ?`,
+      )
+      .run(renderStatus, flattenedVaultAssetId ?? null, Date.now(), operationId);
   }
 
   /**
@@ -135,6 +159,7 @@ export class CinematicLedger implements ICinematicLedger {
       publisherTenantId: row.publisher_tenant_id as string,
       sourceCanvasId: row.source_canvas_id as string,
       sourceCompilationId: row.source_compilation_id as string,
+      operationId: row.operation_id != null ? (row.operation_id as string) : undefined,
       canvasType: row.canvas_type as string,
       title: row.title as string,
       description: row.description as string,

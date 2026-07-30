@@ -70,7 +70,7 @@ const vaultManager = new SovereignVaultManager();
 export const fleetRuntime = buildFleetRuntime(vaultManager);
 
 /** Cinematic Ledger: permanent constitutional record of every creative production event. See Ministry VIII. */
-const cinemaLedger = new CinematicLedger(getDb());
+export const cinemaLedger = new CinematicLedger(getDb());
 
 const goalState = new GoalState();
 const publicationRegistry = new MakmanPublicationRegistry();

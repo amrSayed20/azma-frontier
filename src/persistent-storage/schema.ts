@@ -26,6 +26,7 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     publisher_tenant_id TEXT NOT NULL,
     source_canvas_id TEXT NOT NULL,
     source_compilation_id TEXT NOT NULL,
+    operation_id TEXT,
     canvas_type TEXT NOT NULL,
     title TEXT NOT NULL,
     description TEXT NOT NULL,
@@ -124,6 +125,11 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`,
+];
+
+/** Columns added to `cinematic_ledger` after its original creation — applied via ALTER TABLE for pre-existing databases. */
+export const CINEMATIC_LEDGER_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
+  { name: 'operation_id', ddl: 'operation_id TEXT' },
 ];
 
 /** Columns added to `creators` after its original creation — applied via ALTER TABLE for pre-existing databases. */

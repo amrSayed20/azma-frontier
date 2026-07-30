@@ -100,6 +100,41 @@ describe('Ministry VIII — CinematicLedger repository', () => {
     expect(all).toHaveLength(1);
   });
 
+  it('record() stores operationId when provided', () => {
+    ledger.record(makePublication(), 'canvas-1', CanvasType.CINEMATIC, RenderStatus.PROCESSING, 'op-cinematic-001');
+
+    const rec = ledger.getProductionRecord('pub-1', 'tenant-1');
+    expect(rec!.operationId).toBe('op-cinematic-001');
+  });
+
+  it('record() without operationId — NARRATIVE/DIRECTORIAL have no fleet operation', () => {
+    ledger.record(makePublication(), 'canvas-1', CanvasType.NARRATIVE, RenderStatus.DYNAMIC);
+
+    const rec = ledger.getProductionRecord('pub-1', 'tenant-1');
+    expect(rec!.operationId).toBeUndefined();
+  });
+
+  it('updateProductionStatusByOperationId() resolves a CINEMATIC production to COMPLETED', () => {
+    ledger.record(makePublication(), 'canvas-1', CanvasType.CINEMATIC, RenderStatus.PROCESSING, 'op-abc');
+
+    ledger.updateProductionStatusByOperationId('op-abc', RenderStatus.COMPLETED, 'vault-asset-xyz');
+
+    const rec = ledger.getProductionRecord('pub-1', 'tenant-1');
+    expect(rec!.renderStatus).toBe(RenderStatus.COMPLETED);
+    expect(rec!.flattenedVaultAssetId).toBe('vault-asset-xyz');
+    expect(rec!.updatedAt).toBeGreaterThan(1_000);
+  });
+
+  it('updateProductionStatusByOperationId() without flattenedVaultAssetId marks FAILED without overwriting null', () => {
+    ledger.record(makePublication(), 'canvas-1', CanvasType.CINEMATIC, RenderStatus.PROCESSING, 'op-fail');
+
+    ledger.updateProductionStatusByOperationId('op-fail', RenderStatus.FAILED);
+
+    const rec = ledger.getProductionRecord('pub-1', 'tenant-1');
+    expect(rec!.renderStatus).toBe(RenderStatus.FAILED);
+    expect(rec!.flattenedVaultAssetId).toBeUndefined();
+  });
+
   it('updateProductionStatus() changes renderStatus and updates timestamp', () => {
     ledger.record(makePublication(), 'canvas-1', CanvasType.CINEMATIC, RenderStatus.PROCESSING);
 

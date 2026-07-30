@@ -24,7 +24,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
-import { SCHEMA_STATEMENTS, CREATORS_MIGRATION_COLUMNS, INDEX_STATEMENTS } from './schema';
+import { SCHEMA_STATEMENTS, CINEMATIC_LEDGER_MIGRATION_COLUMNS, CREATORS_MIGRATION_COLUMNS, INDEX_STATEMENTS } from './schema';
 
 const DEFAULT_DB_PATH = join(process.cwd(), 'data', 'azma-os.db');
 
@@ -37,6 +37,17 @@ const DEFAULT_DB_PATH = join(process.cwd(), 'data', 'azma-os.db');
  * shape. Real bug, found by actually running this app against its own
  * pre-existing dev database, not by inspection.
  */
+function migrateCinematicLedgerTable(db: DatabaseSync): void {
+  const existingColumns = new Set(
+    (db.prepare('PRAGMA table_info(cinematic_ledger)').all() as { name: string }[]).map((row) => row.name),
+  );
+  for (const column of CINEMATIC_LEDGER_MIGRATION_COLUMNS) {
+    if (!existingColumns.has(column.name)) {
+      db.exec(`ALTER TABLE cinematic_ledger ADD COLUMN ${column.ddl}`);
+    }
+  }
+}
+
 function migrateCreatorsTable(db: DatabaseSync): void {
   const existingColumns = new Set(
     (db.prepare('PRAGMA table_info(creators)').all() as { name: string }[]).map((row) => row.name),
@@ -56,6 +67,7 @@ export function createDatabase(path: string = DEFAULT_DB_PATH): DatabaseSync {
   for (const statement of SCHEMA_STATEMENTS) {
     db.exec(statement);
   }
+  migrateCinematicLedgerTable(db);
   migrateCreatorsTable(db);
   for (const statement of INDEX_STATEMENTS) {
     db.exec(statement);
