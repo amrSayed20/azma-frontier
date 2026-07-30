@@ -565,6 +565,18 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
       'structural/logic graphs (NARRATIVE/DIRECTORIAL) already export and deliver in full',
     implemented: true,
   },
+  {
+    capability: 'Project Resume (canvas persistence)',
+    constitutionalLocation:
+      'sovereign_canvases table (src/persistent-storage/schema.ts); ' +
+      'saveCanvas()/loadCanvas()/listCanvasesForTenant() (src/persistent-storage/canvas-repository.ts); ' +
+      'POST /api/ras-amr/canvas (save, tenant-forced from session) + ' +
+      'GET /api/ras-amr/canvas/[canvasId] (restore full SovereignCanvas) + ' +
+      'GET /api/ras-amr/canvas (list summaries); ' +
+      'restoration IS the SovereignCanvas itself — JSON-roundtripped, no secondary state, no reconstruction; ' +
+      'Manual Director, Automatic Director, Assembly Runtime, and Rendering Engine all resume from the same object — Ministry VI',
+    implemented: true,
+  },
 ] as const;
 
 // ── Media Ingestion Sources — Package XIX ────────────────────────────────

@@ -31,3 +31,6 @@ export {
   getSubscriptionByStripeSubscriptionId,
   updateSubscription,
 } from './subscription-repository';
+
+export type { CanvasSummary } from './canvas-repository';
+export { saveCanvas, loadCanvas, listCanvasesForTenant } from './canvas-repository';

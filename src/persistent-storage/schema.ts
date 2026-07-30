@@ -70,6 +70,20 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`,
+  // MINISTRY VI — SOVEREIGN PROJECT RESUME: durable storage for
+  // SovereignCanvas state. Full canvas is JSON-serialized in canvas_json;
+  // title/canvas_type are extracted as redundant columns so listing can
+  // return summaries without deserializing every canvas's full JSON.
+  // INSERT OR REPLACE (upsert on canvas_id) makes every save idempotent —
+  // re-saving a canvas replaces the prior snapshot, no version history.
+  `CREATE TABLE IF NOT EXISTS sovereign_canvases (
+    canvas_id TEXT PRIMARY KEY,
+    subscriber_tenant_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    canvas_type TEXT NOT NULL,
+    canvas_json TEXT NOT NULL,
+    saved_at INTEGER NOT NULL
+  )`,
 ];
 
 /** Columns added to `creators` after its original creation — applied via ALTER TABLE for pre-existing databases. */

@@ -311,6 +311,21 @@ describe('Ministry V — Sovereign Subtitle System', () => {
   });
 });
 
+describe('Ministry VI — Sovereign Project Resume', () => {
+  it('marks Project Resume as genuinely implemented, citing the real persistence and restoration path', () => {
+    const entry = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) =>
+      e.capability.startsWith('Project Resume'),
+    );
+    expect(entry?.implemented).toBe(true);
+    expect(entry?.constitutionalLocation).toMatch(/sovereign_canvases/);
+    expect(entry?.constitutionalLocation).toMatch(/saveCanvas/);
+    expect(entry?.constitutionalLocation).toMatch(/loadCanvas/);
+    expect(entry?.constitutionalLocation).toMatch(/canvas-repository/);
+    expect(entry?.constitutionalLocation).toMatch(/api\/ras-amr\/canvas/);
+    expect(entry?.constitutionalLocation).toMatch(/SovereignCanvas.*itself|restoration IS the SovereignCanvas/i);
+  });
+});
+
 describe('Ministry IV — Sovereign Mixing Engine', () => {
   it('marks Mixing as genuinely implemented, citing the full per-node and track-level mixing path', () => {
     const mixing = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) => e.capability === 'Mixing');
