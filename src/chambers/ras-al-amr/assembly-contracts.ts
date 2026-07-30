@@ -159,6 +159,13 @@ export interface AssemblyNode {
  * A logical grouping of Assembly Nodes.
  * In a CINEMATIC canvas, this is a Timeline Track (e.g., "Audio Track 1").
  * In a NARRATIVE canvas, this is a Story Sequence (e.g., "Act 1").
+ *
+ * MINISTRY IV — SOVEREIGN MIXING ENGINE: `trackVolumeDb` is the track-level
+ * fader — attenuation applied to the entire track's own audio output before
+ * the master mix. Optional; absent = 0 dB (unity, the same honest default
+ * every pre-existing track already behaved as). Set via
+ * `CanvasActionType.SET_TRACK_VOLUME`; compiled into
+ * `CompiledMixPlan.trackMixes` alongside `isMuted`.
  */
 export interface AssemblyTrack {
   trackId: string;
@@ -166,6 +173,7 @@ export interface AssemblyTrack {
   isMuted: boolean;               // Disables processing for this track
   isHidden: boolean;
   nodes: AssemblyNode[];
+  trackVolumeDb?: number;         // Track-level fader; absent = 0 dB (unity)
 }
 
 // ==========================================

@@ -43,10 +43,12 @@ describe('Package XVIII — Direction Workspace Foundation', () => {
     // row at ruling time; Text To Speech is now real (Ministry II), Voice Cloning is now real (Ministry III)
     // — the row was split and both are implemented.
     const unimplementedNames = unimplemented.map((entry) => entry.capability);
-    expect(unimplementedNames).toEqual(
-      expect.arrayContaining(['Music / sound placement', 'Mixing', 'Subtitle decisions']),
-    );
+    // (superseded finding, kept as history): 'Music / sound placement' and 'Mixing' were unimplemented
+    // at Package XVIII ruling time; both are now real (Ministry IV) — see their own entries.
+    expect(unimplementedNames).toEqual(expect.arrayContaining(['Subtitle decisions']));
     expect(unimplementedNames).not.toContain('Voice cloning');
+    expect(unimplementedNames).not.toContain('Music / sound placement');
+    expect(unimplementedNames).not.toContain('Mixing');
   });
 
   it('marks the already-real capabilities as implemented, reusing existing structures rather than re-declaring them as future work', () => {
@@ -299,6 +301,31 @@ describe('Ministry III — Voice Cloning Engine', () => {
     expect(cloning?.constitutionalLocation).toMatch(/voice-cloning-provider\.ts/);
     expect(cloning?.constitutionalLocation).toMatch(/clone-voice/);
     expect(cloning?.constitutionalLocation).toMatch(/isVoiceAsset/);
+  });
+});
+
+describe('Ministry IV — Sovereign Mixing Engine', () => {
+  it('marks Mixing as genuinely implemented, citing the full per-node and track-level mixing path', () => {
+    const mixing = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) => e.capability === 'Mixing');
+    expect(mixing?.implemented).toBe(true);
+    expect(mixing?.constitutionalLocation).toMatch(/AudioMixingDirective/);
+    expect(mixing?.constitutionalLocation).toMatch(/fadeInSeconds/);
+    expect(mixing?.constitutionalLocation).toMatch(/SET_TRACK_VOLUME/);
+    expect(mixing?.constitutionalLocation).toMatch(/CompiledMixPlan/);
+    expect(mixing?.constitutionalLocation).toMatch(/compileMixPlan/);
+  });
+
+  it('marks Music / sound placement as genuinely implemented, citing the real node placement and compilation path', () => {
+    const music = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) => e.capability === 'Music / sound placement');
+    expect(music?.implemented).toBe(true);
+    expect(music?.constitutionalLocation).toMatch(/MUSIC_LAYER/);
+    expect(music?.constitutionalLocation).toMatch(/AudioMixingDirective/);
+    expect(music?.constitutionalLocation).toMatch(/CompiledMixPlan/);
+  });
+
+  it('honestly discloses that all three Sovereign Voice Asset types mix through the same path', () => {
+    const mixing = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) => e.capability === 'Mixing');
+    expect(mixing?.constitutionalLocation).toMatch(/imported.*TTS.*cloned|imported\/TTS\/cloned/i);
   });
 });
 

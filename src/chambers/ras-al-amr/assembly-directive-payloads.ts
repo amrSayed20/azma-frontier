@@ -15,11 +15,18 @@ import { TemporalDirective, SpatialDirective, DirectionNodeRole } from './assemb
 
 /**
  * Non-destructive auditory manipulations applied over the base audio asset.
+ * RAS AL AMR — MINISTRY IV: SOVEREIGN MIXING ENGINE added fadeInSeconds/
+ * fadeOutSeconds for basic entry/exit envelope control. Both optional —
+ * an absent value means no fade (the pre-existing honest default for all
+ * assets that were placed before Ministry IV). Written via the already-real
+ * UPDATE_ADVANCED_DIRECTIVE('audio') path; no new mutation or execution path.
  */
 export interface AudioMixingDirective {
   volumeDb: number;        // e.g., 0 for unity gain, -6 for attenuation
   panCenter: number;       // -1.0 (Hard Left) to 1.0 (Hard Right)
   isMuted: boolean;
+  fadeInSeconds?: number;  // Entry envelope duration; absent = no fade
+  fadeOutSeconds?: number; // Exit envelope duration; absent = no fade
 }
 
 /**
@@ -86,7 +93,9 @@ export enum CanvasActionType {
   /** PACKAGE XXII — MANUAL DIRECTION ENGINE: Mark as Primary / Mark as Supporting (or clear the mark). */
   SET_NODE_EMPHASIS = 'SET_NODE_EMPHASIS',
   /** PACKAGE XXII — MANUAL DIRECTION ENGINE: Lock Direction / Unlock Direction. */
-  SET_NODE_LOCK = 'SET_NODE_LOCK'
+  SET_NODE_LOCK = 'SET_NODE_LOCK',
+  /** MINISTRY IV — SOVEREIGN MIXING ENGINE: sets track-level volume attenuation; reuses existing AssemblyTrack as the track-level mixing state container. */
+  SET_TRACK_VOLUME = 'SET_TRACK_VOLUME'
 }
 
 /**
@@ -247,6 +256,20 @@ export interface SetNodeLockPayload extends BaseCanvasMutation {
 }
 
 /**
+ * MINISTRY IV — SOVEREIGN MIXING ENGINE: sets the volume attenuation (in dB)
+ * for an entire track — the track-level fader in the Mixing Engine. Stored
+ * in `AssemblyTrack.trackVolumeDb` (assembly-contracts.ts); compiled into
+ * `CompiledMixPlan.trackMixes` by `PrePublishingBoundary.compileMixPlan()`.
+ * Not subject to any per-node lock guard — track-level mixing decisions are
+ * separate from node-level Direction Decisions.
+ */
+export interface SetTrackVolumePayload extends BaseCanvasMutation {
+  actionType: CanvasActionType.SET_TRACK_VOLUME;
+  targetTrackId: string;
+  volumeDb: number;
+}
+
+/**
  * The definitive union type consumed by the Ras Al-Amr State Manager.
  */
 export type CanvasMutationPayload =
@@ -261,4 +284,5 @@ export type CanvasMutationPayload =
   | UpdateNodeClassificationPayload
   | SetNodeActivePayload
   | SetNodeEmphasisPayload
-  | SetNodeLockPayload;
+  | SetNodeLockPayload
+  | SetTrackVolumePayload;

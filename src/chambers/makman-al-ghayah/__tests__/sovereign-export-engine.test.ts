@@ -48,6 +48,7 @@ function makeCompiledGraph(overrides: Partial<CompiledAssemblyGraph> = {}): Comp
       updatedAt: 0,
     },
     metadata: { totalTracks: 0, totalNodes: 0, aggregatedAssetFamilies: [] },
+    mixPlan: { nodeMixes: [], trackMixes: [] },
     compiledAt: 0,
     ...overrides,
   };

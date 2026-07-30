@@ -56,7 +56,8 @@ import {
   UpdateNodeClassificationPayload,
   SetNodeActivePayload,
   SetNodeEmphasisPayload,
-  SetNodeLockPayload
+  SetNodeLockPayload,
+  SetTrackVolumePayload
 } from './assembly-directive-payloads';
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 import { AssetFamily } from '../../vault/sovereign-vault-types';
@@ -111,6 +112,8 @@ export class RasAlAmrStateManager {
         return this.handleSetNodeEmphasis(updatedCanvas, mutation);
       case CanvasActionType.SET_NODE_LOCK:
         return this.handleSetNodeLock(updatedCanvas, mutation);
+      case CanvasActionType.SET_TRACK_VOLUME:
+        return this.handleSetTrackVolume(updatedCanvas, mutation);
       default:
         return updatedCanvas;
     }
@@ -496,6 +499,20 @@ export class RasAlAmrStateManager {
       ]
     };
 
+    return canvas;
+  }
+
+  /**
+   * MINISTRY IV — SOVEREIGN MIXING ENGINE: sets the track-level volume
+   * attenuation for the named track. No per-node lock guard — track-level
+   * mixing is a separate concern from per-node Direction Decisions. No-ops
+   * silently if `targetTrackId` does not match any track in the canvas.
+   */
+  private handleSetTrackVolume(canvas: SovereignCanvas, payload: SetTrackVolumePayload): SovereignCanvas {
+    const trackIndex = canvas.tracks.findIndex((t) => t.trackId === payload.targetTrackId);
+    if (trackIndex === -1) return canvas;
+
+    canvas.tracks[trackIndex] = { ...canvas.tracks[trackIndex], trackVolumeDb: payload.volumeDb };
     return canvas;
   }
 }

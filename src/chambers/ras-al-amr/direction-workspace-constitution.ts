@@ -471,16 +471,20 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
   {
     capability: 'Music / sound placement',
     constitutionalLocation:
-      'AssemblyNode.customDirectives.audio (AudioMixingDirective, assembly-directive-payloads.ts) — placement ' +
-      'is real; generation or import of the sound itself is future work',
-    implemented: false,
+      'Music Asset (CapabilityTarget.AUDIO, DirectionNodeRole.MUSIC_LAYER) placed as AssemblyNode via ADD_NODE; ' +
+      'AudioMixingDirective written via UPDATE_ADVANCED_DIRECTIVE(\'audio\') through AssemblyRuntime; ' +
+      'compiled into CompiledMixPlan.nodeMixes by PrePublishingBoundary.compileMixPlan() — Ministry IV',
+    implemented: true,
   },
   {
     capability: 'Mixing',
     constitutionalLocation:
-      'AudioMixingDirective (assembly-directive-payloads.ts) — volumeDb/panCenter/isMuted fields already exist; ' +
-      'real mixing logic is future work',
-    implemented: false,
+      'AudioMixingDirective (assembly-directive-payloads.ts): volumeDb/panCenter/isMuted/fadeInSeconds/fadeOutSeconds; ' +
+      'AssemblyTrack.trackVolumeDb (assembly-contracts.ts) via SET_TRACK_VOLUME mutation; ' +
+      'UPDATE_ADVANCED_DIRECTIVE(\'audio\') → AssemblyRuntime → RasAlAmrStateManager; ' +
+      'CompiledMixPlan (nodeMixes + trackMixes) compiled by PrePublishingBoundary.compileMixPlan() — Ministry IV; ' +
+      'all three Sovereign Voice Asset types (imported/TTS/cloned) mix through the same path',
+    implemented: true,
   },
   {
     capability: 'Subtitle decisions',

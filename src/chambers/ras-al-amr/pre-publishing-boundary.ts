@@ -19,6 +19,7 @@
 
 import { SovereignCanvas, CanvasType } from './assembly-contracts';
 import { VaultRehydrationBridge, HydratedSovereignCanvas } from './vault-rehydration-bridge';
+import type { AudioMixingDirective } from './assembly-directive-payloads';
 
 // ==========================================
 // 1. COMPILATION CONTRACTS
@@ -32,8 +33,57 @@ export interface CompilationMetadata {
 }
 
 /**
+ * MINISTRY IV — SOVEREIGN MIXING ENGINE: the resolved mixing parameters for
+ * a single Direction Node in the Render Graph. Extracted from the node's own
+ * `customDirectives.audio` (AudioMixingDirective) by
+ * `PrePublishingBoundary.compileMixPlan()`. Absent directives resolve to
+ * honest zero-defaults matching the pre-Ministry-IV behaviour — no node
+ * ever suddenly changes its effective mix because it had no directive yet.
+ */
+export interface CompiledNodeMix {
+  readonly nodeId: string;
+  readonly trackId: string;
+  readonly volumeDb: number;
+  readonly panCenter: number;
+  readonly isMuted: boolean;
+  readonly fadeInSeconds?: number;
+  readonly fadeOutSeconds?: number;
+}
+
+/**
+ * MINISTRY IV — SOVEREIGN MIXING ENGINE: the resolved track-level fader
+ * state for one track. Extracted from `AssemblyTrack.trackVolumeDb` and
+ * `isMuted` by `PrePublishingBoundary.compileMixPlan()`. Absent
+ * `trackVolumeDb` resolves to 0 dB (unity) — the pre-existing honest
+ * default every track without an explicit fader already behaved as.
+ */
+export interface CompiledTrackMix {
+  readonly trackId: string;
+  readonly trackVolumeDb: number;
+  readonly isMuted: boolean;
+}
+
+/**
+ * MINISTRY IV — SOVEREIGN MIXING ENGINE: the full structured mix plan
+ * compiled by `PrePublishingBoundary.compileMixPlan()` and carried in
+ * `CompiledAssemblyGraph`. This is how the Sovereign Mixing Engine becomes
+ * consumable by the Rendering Engine — the already-real
+ * `PrePublishingBoundary` reads every audio node's Direction State and
+ * emits one unified, export-ready plan with zero new execution paths.
+ * `nodeMixes` excludes nodes on muted or hidden tracks; `trackMixes`
+ * includes every track (the export layer must honour the track-level fader
+ * even when it decides which tracks to render).
+ */
+export interface CompiledMixPlan {
+  readonly nodeMixes: readonly CompiledNodeMix[];
+  readonly trackMixes: readonly CompiledTrackMix[];
+}
+
+/**
  * The immutable, final output of the Ras Al-Amr chamber.
  * This is the exact payload handed to the rendering and distribution engines.
+ * MINISTRY IV — `mixPlan` carries the structured, export-ready mix state
+ * for every audio node and track in the canvas.
  */
 export interface CompiledAssemblyGraph {
   compilationId: string;
@@ -42,6 +92,7 @@ export interface CompiledAssemblyGraph {
   canvasType: CanvasType;
   hydratedCanvas: HydratedSovereignCanvas;
   metadata: CompilationMetadata;
+  mixPlan: CompiledMixPlan;
   compiledAt: number;
 }
 
@@ -81,7 +132,10 @@ export class PrePublishingBoundary {
     // 4. Compute Master Metadata
     const metadata = this.computeMasterMetadata(hydratedCanvas);
 
-    // 5. Seal and Return the Compiled Graph
+    // 5. Compile the Mixing Plan (Ministry IV)
+    const mixPlan = this.compileMixPlan(hydratedCanvas);
+
+    // 6. Seal and Return the Compiled Graph
     return {
       compilationId: `comp_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`,
       sourceCanvasId: hydratedCanvas.canvasId,
@@ -89,6 +143,7 @@ export class PrePublishingBoundary {
       canvasType: hydratedCanvas.canvasType,
       hydratedCanvas,
       metadata,
+      mixPlan,
       compiledAt: Date.now()
     };
   }
@@ -96,6 +151,46 @@ export class PrePublishingBoundary {
   // ==========================================
   // INTERNAL COMPUTATION
   // ==========================================
+
+  /**
+   * MINISTRY IV — SOVEREIGN MIXING ENGINE: walks the hydrated canvas and
+   * extracts every audio node's `AudioMixingDirective` plus every track's
+   * `trackVolumeDb`/`isMuted` into a single, structured `CompiledMixPlan`.
+   * The plan covers ALL tracks in `trackMixes` (so the export layer can
+   * honour track-level faders), but skips muted/hidden tracks' nodes in
+   * `nodeMixes` (matching the existing compile behaviour for content nodes).
+   * No new execution path — reads the same `hydratedCanvas` the rest of
+   * `compileForPublishing` already has.
+   */
+  private compileMixPlan(hydratedCanvas: HydratedSovereignCanvas): CompiledMixPlan {
+    const nodeMixes: CompiledNodeMix[] = [];
+    const trackMixes: CompiledTrackMix[] = [];
+
+    for (const track of hydratedCanvas.tracks) {
+      trackMixes.push({
+        trackId: track.trackId,
+        trackVolumeDb: track.trackVolumeDb ?? 0,
+        isMuted: track.isMuted,
+      });
+
+      if (track.isMuted || track.isHidden) continue;
+
+      for (const node of track.nodes) {
+        const audio = node.customDirectives?.audio as AudioMixingDirective | undefined;
+        nodeMixes.push({
+          nodeId: node.nodeId,
+          trackId: track.trackId,
+          volumeDb: audio?.volumeDb ?? 0,
+          panCenter: audio?.panCenter ?? 0,
+          isMuted: audio?.isMuted ?? false,
+          fadeInSeconds: audio?.fadeInSeconds,
+          fadeOutSeconds: audio?.fadeOutSeconds,
+        });
+      }
+    }
+
+    return { nodeMixes, trackMixes };
+  }
 
   private computeMasterMetadata(hydratedCanvas: HydratedSovereignCanvas): CompilationMetadata {
     let totalNodes = 0;
