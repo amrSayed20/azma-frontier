@@ -488,8 +488,13 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
   },
   {
     capability: 'Subtitle decisions',
-    constitutionalLocation: 'A future extension of AssemblyNode.customDirectives — not yet built',
-    implemented: false,
+    constitutionalLocation:
+      'SubtitleDirective (subtitle-directive.ts) in AssemblyNode.customDirectives.subtitles; ' +
+      'written via UPDATE_ADVANCED_DIRECTIVE(\'subtitles\') through AssemblyRuntime; ' +
+      'parseSrt()/parseVtt() (subtitle-parser.ts) → POST /api/vault/assets/import-subtitles; ' +
+      'CompiledSubtitlePlan.absoluteCues compiled by PrePublishingBoundary.compileSubtitlePlan() — Ministry V; ' +
+      'cue times are relative to parent Direction Node, made absolute only at compile time',
+    implemented: true,
   },
   {
     capability: 'Export / delivery',

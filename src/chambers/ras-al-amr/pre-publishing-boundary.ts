@@ -20,6 +20,7 @@
 import { SovereignCanvas, CanvasType } from './assembly-contracts';
 import { VaultRehydrationBridge, HydratedSovereignCanvas } from './vault-rehydration-bridge';
 import type { AudioMixingDirective } from './assembly-directive-payloads';
+import type { SubtitleDirective } from './subtitle-directive';
 
 // ==========================================
 // 1. COMPILATION CONTRACTS
@@ -80,6 +81,38 @@ export interface CompiledMixPlan {
 }
 
 /**
+ * MINISTRY V — SOVEREIGN SUBTITLE SYSTEM: a single subtitle cue with
+ * ABSOLUTE master-timeline positions, derived from the parent Direction
+ * Node's own `temporal.globalStartTimeSeconds` + the cue's own relative
+ * start/end. Absent temporal directive (un-timed node) means the cue's
+ * absolute times are treated as if the node starts at 0, matching the
+ * Automatic Director's existing fallback behaviour for un-timed nodes.
+ */
+export interface CompiledSubtitleCue {
+  readonly cueId: string;
+  readonly nodeId: string;
+  readonly trackId: string;
+  readonly absoluteStartSeconds: number;
+  readonly absoluteEndSeconds: number;
+  readonly text: string;
+  readonly language?: string;
+}
+
+/**
+ * MINISTRY V — SOVEREIGN SUBTITLE SYSTEM: the full, merged, chronologically
+ * ordered subtitle plan for the compiled canvas. Extracted from every
+ * active Direction Node's own `SubtitleDirective` by
+ * `PrePublishingBoundary.compileSubtitlePlan()`. Nodes on muted/hidden
+ * tracks contribute no entries — matching the compile-time skip already
+ * applied to metadata and mix-plan. Cues are sorted by
+ * `absoluteStartSeconds` ascending — the natural consumption order for any
+ * renderer or exporter.
+ */
+export interface CompiledSubtitlePlan {
+  readonly absoluteCues: readonly CompiledSubtitleCue[];
+}
+
+/**
  * The immutable, final output of the Ras Al-Amr chamber.
  * This is the exact payload handed to the rendering and distribution engines.
  * MINISTRY IV — `mixPlan` carries the structured, export-ready mix state
@@ -93,6 +126,7 @@ export interface CompiledAssemblyGraph {
   hydratedCanvas: HydratedSovereignCanvas;
   metadata: CompilationMetadata;
   mixPlan: CompiledMixPlan;
+  subtitlePlan: CompiledSubtitlePlan;
   compiledAt: number;
 }
 
@@ -135,7 +169,10 @@ export class PrePublishingBoundary {
     // 5. Compile the Mixing Plan (Ministry IV)
     const mixPlan = this.compileMixPlan(hydratedCanvas);
 
-    // 6. Seal and Return the Compiled Graph
+    // 6. Compile the Subtitle Plan (Ministry V)
+    const subtitlePlan = this.compileSubtitlePlan(hydratedCanvas);
+
+    // 7. Seal and Return the Compiled Graph
     return {
       compilationId: `comp_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`,
       sourceCanvasId: hydratedCanvas.canvasId,
@@ -144,6 +181,7 @@ export class PrePublishingBoundary {
       hydratedCanvas,
       metadata,
       mixPlan,
+      subtitlePlan,
       compiledAt: Date.now()
     };
   }
@@ -190,6 +228,45 @@ export class PrePublishingBoundary {
     }
 
     return { nodeMixes, trackMixes };
+  }
+
+  /**
+   * MINISTRY V — SOVEREIGN SUBTITLE SYSTEM: walks the hydrated canvas and
+   * extracts every active Direction Node's own SubtitleDirective into a
+   * single, chronologically ordered CompiledSubtitlePlan. Cue times are
+   * made absolute by adding the parent node's own globalStartTimeSeconds
+   * (or 0 when the node has no temporal directive, matching the Automatic
+   * Director's own un-timed-node fallback). Nodes on muted/hidden tracks
+   * are skipped — matching compileMixPlan() and computeMasterMetadata().
+   */
+  private compileSubtitlePlan(hydratedCanvas: HydratedSovereignCanvas): CompiledSubtitlePlan {
+    const absoluteCues: CompiledSubtitleCue[] = [];
+
+    for (const track of hydratedCanvas.tracks) {
+      if (track.isMuted || track.isHidden) continue;
+
+      for (const node of track.nodes) {
+        const directive = node.customDirectives?.subtitles as SubtitleDirective | undefined;
+        if (!directive || directive.cues.length === 0) continue;
+
+        const nodeStartSeconds = node.temporal?.globalStartTimeSeconds ?? 0;
+
+        for (const cue of directive.cues) {
+          absoluteCues.push({
+            cueId: cue.cueId,
+            nodeId: node.nodeId,
+            trackId: track.trackId,
+            absoluteStartSeconds: nodeStartSeconds + cue.startSeconds,
+            absoluteEndSeconds: nodeStartSeconds + cue.endSeconds,
+            text: cue.text,
+            language: directive.language,
+          });
+        }
+      }
+    }
+
+    absoluteCues.sort((a, b) => a.absoluteStartSeconds - b.absoluteStartSeconds);
+    return { absoluteCues };
   }
 
   private computeMasterMetadata(hydratedCanvas: HydratedSovereignCanvas): CompilationMetadata {

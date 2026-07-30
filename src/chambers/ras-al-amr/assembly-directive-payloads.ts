@@ -8,6 +8,7 @@
  */
 
 import { TemporalDirective, SpatialDirective, DirectionNodeRole } from './assembly-contracts';
+import type { SubtitleDirective } from './subtitle-directive';
 
 // ==========================================
 // 1. ADVANCED MULTI-MODAL DIRECTIVES 
@@ -156,13 +157,14 @@ export interface UpdateNodeAdvancedPayload extends BaseCanvasMutation {
   actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE;
   targetNodeId: string;
   targetTrackId: string;
-  directiveKey: 'audio' | 'visual' | 'structural' | 'semantic' | 'voice'; // دمج أصيل ومباشر — 'voice' added Ministry I
+  directiveKey: 'audio' | 'visual' | 'structural' | 'semantic' | 'voice' | 'subtitles'; // 'subtitles' added Ministry V
   directivePayload:
     | AudioMixingDirective
     | VisualFilterDirective
     | StructuralLogicDirective
     | SemanticLinkDirective
-    | VoiceAssignmentDirective;   // توسيع العقد ليشمل اختيار الصوت (وزارة الصوت الأولى)
+    | VoiceAssignmentDirective
+    | SubtitleDirective;   // MINISTRY V: subtitle cues as Direction, not Rendering
 }
 
 /**

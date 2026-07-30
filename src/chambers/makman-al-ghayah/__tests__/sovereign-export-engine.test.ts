@@ -49,6 +49,7 @@ function makeCompiledGraph(overrides: Partial<CompiledAssemblyGraph> = {}): Comp
     },
     metadata: { totalTracks: 0, totalNodes: 0, aggregatedAssetFamilies: [] },
     mixPlan: { nodeMixes: [], trackMixes: [] },
+    subtitlePlan: { absoluteCues: [] },
     compiledAt: 0,
     ...overrides,
   };

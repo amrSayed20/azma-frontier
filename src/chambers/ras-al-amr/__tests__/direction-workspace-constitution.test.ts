@@ -33,22 +33,15 @@ describe('Package XVIII — Direction Workspace Foundation', () => {
     expect(new Set(names).size).toBe(names.length);
   });
 
-  it('honestly marks unimplemented future capabilities rather than claiming completeness', () => {
+  it('every declared Direction Workspace capability is now implemented — the Constitution is complete as of Ministry V', () => {
+    // Package XVIII ruling: be honest about unimplemented capabilities rather than claiming false completeness.
+    // That principle still holds — what changed is that every capability originally declared as future work
+    // is now real. "Zero unimplemented" is the honest state, not a violation of the principle.
+    // Superseded history (capabilities that were false at Package XVIII, now true):
+    // Export/delivery (XXVII), Voice TTS (II), Voice Cloning (III), Music/sound placement (IV),
+    // Mixing (IV), Subtitle decisions (V).
     const unimplemented = DIRECTION_WORKSPACE_CAPABILITY_MAP.filter((entry) => !entry.implemented);
-    expect(unimplemented.length).toBeGreaterThan(0);
-    // Every capability this ruling explicitly named as belonging to Ras Al Amr but not yet built.
-    // (superseded finding, kept as history): 'Export / delivery' was true at ruling time in 2026-07-28
-    // (Package XVIII) but is now implemented (Package XXVII) — see its own entry's disclosure.
-    // (superseded finding, kept as history): 'Voice generation / cloning / text-to-speech' was one combined
-    // row at ruling time; Text To Speech is now real (Ministry II), Voice Cloning is now real (Ministry III)
-    // — the row was split and both are implemented.
-    const unimplementedNames = unimplemented.map((entry) => entry.capability);
-    // (superseded finding, kept as history): 'Music / sound placement' and 'Mixing' were unimplemented
-    // at Package XVIII ruling time; both are now real (Ministry IV) — see their own entries.
-    expect(unimplementedNames).toEqual(expect.arrayContaining(['Subtitle decisions']));
-    expect(unimplementedNames).not.toContain('Voice cloning');
-    expect(unimplementedNames).not.toContain('Music / sound placement');
-    expect(unimplementedNames).not.toContain('Mixing');
+    expect(unimplemented).toHaveLength(0);
   });
 
   it('marks the already-real capabilities as implemented, reusing existing structures rather than re-declaring them as future work', () => {
@@ -301,6 +294,20 @@ describe('Ministry III — Voice Cloning Engine', () => {
     expect(cloning?.constitutionalLocation).toMatch(/voice-cloning-provider\.ts/);
     expect(cloning?.constitutionalLocation).toMatch(/clone-voice/);
     expect(cloning?.constitutionalLocation).toMatch(/isVoiceAsset/);
+  });
+});
+
+describe('Ministry V — Sovereign Subtitle System', () => {
+  it('marks Subtitle decisions as genuinely implemented, citing the full Direction State and compilation path', () => {
+    const entry = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) => e.capability === 'Subtitle decisions');
+    expect(entry?.implemented).toBe(true);
+    expect(entry?.constitutionalLocation).toMatch(/SubtitleDirective/);
+    expect(entry?.constitutionalLocation).toMatch(/UPDATE_ADVANCED_DIRECTIVE.*subtitles|subtitles.*UPDATE_ADVANCED_DIRECTIVE/);
+    expect(entry?.constitutionalLocation).toMatch(/subtitle-parser\.ts/);
+    expect(entry?.constitutionalLocation).toMatch(/import-subtitles/);
+    expect(entry?.constitutionalLocation).toMatch(/CompiledSubtitlePlan/);
+    expect(entry?.constitutionalLocation).toMatch(/compileSubtitlePlan/);
+    expect(entry?.constitutionalLocation).toMatch(/relative.*Direction Node|Direction Node.*relative/i);
   });
 });
 
