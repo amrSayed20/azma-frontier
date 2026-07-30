@@ -31,6 +31,28 @@ import type { IPublicationRegistry } from './consumption-boundary';
 import type { RuntimeChainContext } from './MAKMAN_OPERATIONAL_DELIVERY_CONTRACTS';
 import type { MakmanCommercialIntent, GoalDistributionBridgeResult } from './MAKMAN_COMMERCIAL_DISTRIBUTION_CONTRACTS';
 
+/**
+ * MINISTRY VIII — REAL CINEMATIC LEDGER
+ *
+ * The Cinematic Ledger dependency the Distribution Bridge writes to.
+ * Defined here because this bridge is the constitutional point of production —
+ * the moment a completed Goal transitions into a permanent sovereign publication.
+ * The concrete implementation (CinematicLedger in persistent-storage) adapts to
+ * this interface without modifying the bridge's own business logic.
+ *
+ * record() is called after evaluateAndDispatchRender() resolves, so
+ * initialRenderStatus reflects the genuine starting production status
+ * (DYNAMIC/PROCESSING/FAILED), not a placeholder.
+ */
+export interface ICinematicLedger {
+  record(
+    publication: SovereignPublication,
+    sourceCanvasId: string,
+    canvasType: string,
+    initialRenderStatus: string,
+  ): void;
+}
+
 export class MakmanGoalNotCompletedError extends Error {
   constructor(goalId: string, actualStatus: GoalStatus) {
     super(`Goal [${goalId}] cannot enter the Distribution Bridge: status is [${actualStatus}], not COMPLETED. Goal Commitment must reach Fulfilment before Distribution.`);
@@ -79,7 +101,8 @@ export class MakmanPublicationRegistry implements IPublicationRegistry {
 export class MakmanGoalDistributionBridge {
   constructor(
     private readonly registry: MakmanPublicationRegistry,
-    private readonly renderingBridge: FlattenedRenderingBridge
+    private readonly renderingBridge: FlattenedRenderingBridge,
+    private readonly cinemaLedger?: ICinematicLedger,
   ) {}
 
   public async bridgeToDestination(
@@ -112,6 +135,15 @@ export class MakmanGoalDistributionBridge {
     this.registry.register(publication);
 
     const renderState = await this.renderingBridge.evaluateAndDispatchRender(publication, intent.compiledAssemblyGraph);
+
+    // Cinematic Ledger — permanent constitutional record of this production event.
+    // Written after render dispatch so the initial status is the genuine one.
+    this.cinemaLedger?.record(
+      publication,
+      intent.compiledAssemblyGraph.sourceCanvasId,
+      intent.compiledAssemblyGraph.canvasType,
+      renderState.status,
+    );
 
     return { publication, renderState, chainContext };
   }

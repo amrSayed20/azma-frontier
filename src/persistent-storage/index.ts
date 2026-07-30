@@ -34,3 +34,6 @@ export {
 
 export type { CanvasSummary } from './canvas-repository';
 export { saveCanvas, loadCanvas, listCanvasesForTenant } from './canvas-repository';
+
+export type { CinematicProductionRecord } from './cinematic-ledger-repository';
+export { CinematicLedger } from './cinematic-ledger-repository';

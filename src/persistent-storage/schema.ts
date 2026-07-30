@@ -14,6 +14,27 @@
  */
 
 export const SCHEMA_STATEMENTS: readonly string[] = [
+  // MINISTRY VIII — REAL CINEMATIC LEDGER: permanent constitutional record of
+  // every creative production event. Distinct from operation_ledger (execution
+  // internals); this table records WHAT WAS CREATED, not how workers executed it.
+  // Populated by MakmanGoalDistributionBridge after evaluateAndDispatchRender()
+  // resolves, so render_status reflects the actual initial production status
+  // (DYNAMIC/PROCESSING/FAILED), not a placeholder. INSERT OR REPLACE allows
+  // re-publishing a canvas to overwrite the prior record without duplication.
+  `CREATE TABLE IF NOT EXISTS cinematic_ledger (
+    publication_id TEXT PRIMARY KEY,
+    publisher_tenant_id TEXT NOT NULL,
+    source_canvas_id TEXT NOT NULL,
+    source_compilation_id TEXT NOT NULL,
+    canvas_type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    render_status TEXT NOT NULL,
+    flattened_vault_asset_id TEXT,
+    published_at INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
   // email/password_hash/role added for the Authentication Foundation
   // (Execution Package III). CREATE TABLE IF NOT EXISTS alone does NOT
   // alter an already-existing table — a real dev database created by

@@ -60,6 +60,8 @@ import { VaultRehydrationBridge } from '../chambers/ras-al-amr/vault-rehydration
 import { PrePublishingBoundary } from '../chambers/ras-al-amr/pre-publishing-boundary';
 import { SovereignOperationalEntryLayer } from './soel';
 import { buildFleetRuntime } from '../orchestrator/fleet-materialization/fleet-factory';
+import { CinematicLedger } from '../persistent-storage/cinematic-ledger-repository';
+import { getDb } from '../persistent-storage/db';
 
 /** One Sovereign Vault instance for this server process — shared by Fleet's deposit path and RAS AL AMR's rehydration read path. See MAG-LB-003. */
 const vaultManager = new SovereignVaultManager();
@@ -67,10 +69,13 @@ const vaultManager = new SovereignVaultManager();
 /** Real Fleet runtime: real OperationLedgerManager (SQLite) + FleetRegistry + adapters + AsynchronousResolutionGateway. See Ministry VII. */
 export const fleetRuntime = buildFleetRuntime(vaultManager);
 
+/** Cinematic Ledger: permanent constitutional record of every creative production event. See Ministry VIII. */
+const cinemaLedger = new CinematicLedger(getDb());
+
 const goalState = new GoalState();
 const publicationRegistry = new MakmanPublicationRegistry();
 const renderingBridge = new FlattenedRenderingBridge(fleetRuntime.dispatcher);
-const bridge = new MakmanGoalDistributionBridge(publicationRegistry, renderingBridge);
+const bridge = new MakmanGoalDistributionBridge(publicationRegistry, renderingBridge, cinemaLedger);
 const policyEngine = new SovereignAccessPolicyEngine();
 const ledgerGateway = new MonetizationLedgerGateway();
 const consumptionBoundary = new PublicConsumptionBoundary(
