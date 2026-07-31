@@ -57,10 +57,15 @@ import type { PrePublishingBoundary } from '../chambers/ras-al-amr/pre-publishin
 import type { CompiledAssemblyGraph } from '../chambers/ras-al-amr/pre-publishing-boundary';
 import type { SovereignCanvas } from '../chambers/ras-al-amr/assembly-contracts';
 import type { ISovereignPurposeStore, SovereignPurpose } from '../chambers/makman-al-ghayah/sovereign-purpose';
+import type { SuccessCriterion } from '../chambers/makman-al-ghayah/goal-contracts';
 
 export type MilestoneDesignationOutcome =
   | { readonly ok: true; readonly goal: GoalContract }
   | { readonly ok: false; readonly reason: 'NO_SOVEREIGN_PURPOSE' | 'GOAL_NOT_FOUND' };
+
+export type DefineSuccessCriteriaOutcome =
+  | { readonly ok: true; readonly goal: GoalContract }
+  | { readonly ok: false; readonly reason: 'GOAL_NOT_FOUND' };
 
 export class SovereignOperationalEntryLayer {
   constructor(
@@ -131,6 +136,36 @@ export class SovereignOperationalEntryLayer {
       throw new Error('Sovereign Purpose store is not wired — setSovereignPurpose() requires a configured ISovereignPurposeStore.');
     }
     return this.purposeStore.setSovereignPurpose(creatorId, purposeStatement);
+  }
+
+  /**
+   * MILESTONE SUCCESS DEFINITION FOUNDATION (Constitutional Package III).
+   * Records the Creator's explicit definition of what must become observably
+   * true for a Goal to be considered successful. Replaces any prior criteria
+   * list on the Goal. Each description becomes one SuccessCriterion with a
+   * server-generated criterionId and definedAtMs timestamp.
+   *
+   * GoalStatus.COMPLETED ≠ any criterion being satisfied. These remain
+   * constitutionally distinct: this method defines intent; assessment is future.
+   */
+  public defineSuccessCriteria(
+    goalId: string,
+    creatorId: string,
+    descriptions: readonly string[],
+  ): DefineSuccessCriteriaOutcome {
+    const goal = this.goalState.getGoal(goalId);
+    if (!goal || goal.subscriberTenantId !== creatorId) {
+      return { ok: false, reason: 'GOAL_NOT_FOUND' };
+    }
+    const now = Date.now();
+    const successCriteria: readonly SuccessCriterion[] = descriptions.map((description, index) => ({
+      criterionId: `${now}-${index}`,
+      description,
+      definedAtMs: now,
+    }));
+    const updated: GoalContract = { ...goal, successCriteria, updatedAtMs: now };
+    this.goalState.update(updated, { isAuthorized: true });
+    return { ok: true, goal: updated };
   }
 
   /**

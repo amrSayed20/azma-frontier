@@ -33,6 +33,7 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     pacing_preference TEXT,
     transition_preference TEXT,
     sovereign_purpose_statement TEXT,
+    success_criteria_json TEXT,
     created_at_ms INTEGER NOT NULL,
     updated_at_ms INTEGER NOT NULL
   )`,
@@ -182,6 +183,11 @@ export const GOALS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly
   // when non-null, the Goal is a Milestone Goal serving the Creator's Sovereign
   // Purpose; the value is the exact Purpose wording at designation time.
   { name: 'sovereign_purpose_statement', ddl: 'sovereign_purpose_statement TEXT' },
+  // MILESTONE SUCCESS DEFINITION FOUNDATION (Constitutional Package III):
+  // JSON-serialized SuccessCriterion[] — the Creator's explicit definition of
+  // what must become observably true for this Goal to be considered successful.
+  // Constitutionally distinct from GoalStatus.COMPLETED (operational completion).
+  { name: 'success_criteria_json', ddl: 'success_criteria_json TEXT' },
 ];
 
 /** Run only after CREATORS_MIGRATION_COLUMNS has ensured the columns exist — SQLite cannot index a column that isn't there yet. */

@@ -59,6 +59,38 @@ export interface GoalMetric {
   readonly value: number;
 }
 
+/**
+ * MILESTONE SUCCESS DEFINITION FOUNDATION (Constitutional Package III):
+ * a single Creator-stated criterion for what must become observably true
+ * for a Milestone Goal to be considered successful.
+ *
+ * CONSTITUTIONAL DISTINCTION (required by Package III Decree):
+ *   GoalStatus        = operational lifecycle state (what the pipeline did)
+ *   SuccessCriterion  = Creator's declared intent (what must happen in reality)
+ *   Observed Outcome  = what later actually happened (future — not built here)
+ *   Milestone Fulfillment = judgment comparing criterion vs. outcome (future)
+ *   Sovereign Purpose Fulfillment = highest judgment (future)
+ *
+ * These MUST NOT be collapsed. A Goal whose status is COMPLETED has NOT
+ * automatically satisfied any SuccessCriterion — those are constitutionally
+ * distinct events.
+ *
+ * `description` is deliberately open-form: the Creator expresses what must
+ * be observably true without being forced into a closed taxonomy (the decree
+ * explicitly prohibits hard-coding a fixed set of outcome types).
+ *
+ * `definedAtMs` records when the Creator stated this criterion. If the
+ * Creator later replaces their criteria list, the new list's timestamps
+ * reflect the replacement; the historical list is not retained (minimum
+ * construction — no version history). Future observation infrastructure
+ * should snapshot criterion state at assessment time.
+ */
+export interface SuccessCriterion {
+  readonly criterionId: string;
+  readonly description: string;
+  readonly definedAtMs: number;
+}
+
 export interface GoalDependency {
   readonly goalId: string;
 }
@@ -126,6 +158,21 @@ export interface GoalContract {
    * absent means "not stated," never defaulted to a guessed value.
    */
   readonly transitionPreference?: TransitionPreference;
+
+  /**
+   * MILESTONE SUCCESS DEFINITION FOUNDATION (Constitutional Package III):
+   * the Creator's explicit definition of what observable outcomes must occur
+   * for this Goal to be considered successful. Absent when the Creator has
+   * not yet stated a Success Definition — never inferred, never defaulted.
+   *
+   * An empty array means the Creator submitted an explicit empty list
+   * (i.e., removed all criteria). Absent (undefined) means criteria were
+   * never stated.
+   *
+   * GoalStatus.COMPLETED ≠ any criterion being satisfied. These are
+   * constitutionally separate events — see SuccessCriterion above.
+   */
+  readonly successCriteria?: readonly SuccessCriterion[];
 
   /**
    * SOVEREIGN PURPOSE → MILESTONE GOAL FOUNDATION (Constitutional Package II):

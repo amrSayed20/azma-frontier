@@ -12,7 +12,7 @@
  */
 
 import type { DatabaseSync } from 'node:sqlite';
-import type { GoalContract, GoalDependency, GoalMetric } from '../chambers/makman-al-ghayah/goal-contracts';
+import type { GoalContract, GoalDependency, GoalMetric, SuccessCriterion } from '../chambers/makman-al-ghayah/goal-contracts';
 import { GoalStatus, GoalPriority, PacingPreference, TransitionPreference } from '../chambers/makman-al-ghayah/goal-contracts';
 import type { MakmanCommercialIntent } from '../chambers/makman-al-ghayah/MAKMAN_COMMERCIAL_DISTRIBUTION_CONTRACTS';
 import type { IGoalRepository } from '../chambers/makman-al-ghayah/goal-state';
@@ -30,6 +30,7 @@ type GoalRow = {
   pacing_preference: string | null;
   transition_preference: string | null;
   sovereign_purpose_statement: string | null;
+  success_criteria_json: string | null;
   created_at_ms: number;
   updated_at_ms: number;
 };
@@ -50,6 +51,9 @@ function rowToGoal(row: GoalRow): GoalContract {
     pacingPreference: row.pacing_preference ? (row.pacing_preference as PacingPreference) : undefined,
     transitionPreference: row.transition_preference ? (row.transition_preference as TransitionPreference) : undefined,
     sovereignPurposeStatement: row.sovereign_purpose_statement ?? undefined,
+    successCriteria: row.success_criteria_json
+      ? (JSON.parse(row.success_criteria_json) as SuccessCriterion[])
+      : undefined,
     createdAtMs: row.created_at_ms,
     updatedAtMs: row.updated_at_ms,
   };
@@ -65,8 +69,8 @@ export class GoalRepository implements IGoalRepository {
           goal_id, subscriber_tenant_id, title, description, priority, status,
           dependencies_json, metrics_json, commercial_intent_json,
           pacing_preference, transition_preference, sovereign_purpose_statement,
-          created_at_ms, updated_at_ms
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          success_criteria_json, created_at_ms, updated_at_ms
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         goal.goalId,
@@ -81,6 +85,7 @@ export class GoalRepository implements IGoalRepository {
         goal.pacingPreference ?? null,
         goal.transitionPreference ?? null,
         goal.sovereignPurposeStatement ?? null,
+        goal.successCriteria !== undefined ? JSON.stringify(goal.successCriteria) : null,
         goal.createdAtMs,
         goal.updatedAtMs,
       );
