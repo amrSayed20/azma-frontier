@@ -61,6 +61,7 @@ import { PrePublishingBoundary } from '../chambers/ras-al-amr/pre-publishing-bou
 import { SovereignOperationalEntryLayer } from './soel';
 import { buildFleetRuntime } from '../orchestrator/fleet-materialization/fleet-factory';
 import { CinematicLedger } from '../persistent-storage/cinematic-ledger-repository';
+import { GoalRepository } from '../persistent-storage/goal-repository';
 import { getDb } from '../persistent-storage/db';
 
 /** One Sovereign Vault instance for this server process — shared by Fleet's deposit path and RAS AL AMR's rehydration read path. See MAG-LB-003. */
@@ -72,7 +73,9 @@ export const fleetRuntime = buildFleetRuntime(vaultManager);
 /** Cinematic Ledger: permanent constitutional record of every creative production event. See Ministry VIII. */
 export const cinemaLedger = new CinematicLedger(getDb());
 
-const goalState = new GoalState();
+/** Goal Repository: durable store for GoalContracts — the constitutional source of truth after Ministry IX. */
+const goalRepository = new GoalRepository(getDb());
+const goalState = new GoalState(goalRepository);
 const publicationRegistry = new MakmanPublicationRegistry();
 const renderingBridge = new FlattenedRenderingBridge(fleetRuntime.dispatcher);
 const bridge = new MakmanGoalDistributionBridge(publicationRegistry, renderingBridge, cinemaLedger);

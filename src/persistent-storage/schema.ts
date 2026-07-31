@@ -14,6 +14,27 @@
  */
 
 export const SCHEMA_STATEMENTS: readonly string[] = [
+  // MINISTRY IX — GOAL PERSISTENCE: durable GoalContract storage. Every
+  // committed Goal is written here at register() time and updated at every
+  // status transition. GoalState uses this table as the authoritative source
+  // of truth — the in-memory Map becomes an operational cache only. The
+  // commercial_intent_json column stores the full MakmanCommercialIntent as
+  // JSON so all commercial decisions survive restart alongside the Goal.
+  `CREATE TABLE IF NOT EXISTS goals (
+    goal_id TEXT PRIMARY KEY,
+    subscriber_tenant_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    priority TEXT NOT NULL,
+    status TEXT NOT NULL,
+    dependencies_json TEXT NOT NULL,
+    metrics_json TEXT NOT NULL,
+    commercial_intent_json TEXT,
+    pacing_preference TEXT,
+    transition_preference TEXT,
+    created_at_ms INTEGER NOT NULL,
+    updated_at_ms INTEGER NOT NULL
+  )`,
   // MINISTRY VIII — REAL CINEMATIC LEDGER: permanent constitutional record of
   // every creative production event. Distinct from operation_ledger (execution
   // internals); this table records WHAT WAS CREATED, not how workers executed it.
