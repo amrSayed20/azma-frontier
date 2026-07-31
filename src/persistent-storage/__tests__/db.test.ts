@@ -33,6 +33,43 @@ describe('Persistent Storage Foundation — database connection', () => {
     expect(first).toBe(second);
   });
 
+  it('migrates a pre-existing goals table that predates sovereign_purpose_statement (Package II column)', () => {
+    const path = join(tmpdir(), `azma-test-legacy-goals-${Date.now()}.db`);
+
+    // Simulate a database created after Ministry IX but before Package II.
+    const legacy = new DatabaseSync(path);
+    legacy.exec(`CREATE TABLE goals (
+      goal_id TEXT PRIMARY KEY,
+      subscriber_tenant_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      priority TEXT NOT NULL,
+      status TEXT NOT NULL,
+      dependencies_json TEXT NOT NULL,
+      metrics_json TEXT NOT NULL,
+      commercial_intent_json TEXT,
+      pacing_preference TEXT,
+      transition_preference TEXT,
+      created_at_ms INTEGER NOT NULL,
+      updated_at_ms INTEGER NOT NULL
+    )`);
+    legacy.prepare('INSERT INTO goals VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+      'g-1', 'tenant-1', 'Old Goal', 'desc', 'HIGH', 'CREATED', '[]', '[]', null, null, null, 1000, 1000,
+    );
+    legacy.close();
+
+    const migrated = createDatabase(path);
+    const columns = (migrated.prepare('PRAGMA table_info(goals)').all() as { name: string }[]).map((r) => r.name);
+    expect(columns).toEqual(expect.arrayContaining(['goal_id', 'sovereign_purpose_statement']));
+
+    // Pre-existing row reads back with null (no purpose snapshot yet)
+    const row = migrated.prepare('SELECT sovereign_purpose_statement FROM goals WHERE goal_id = ?').get('g-1') as { sovereign_purpose_statement: string | null };
+    expect(row.sovereign_purpose_statement).toBeNull();
+
+    migrated.close();
+    unlinkSync(path);
+  });
+
   it('migrates a pre-existing database whose creators table predates email/password_hash/role — the real bug found by running the app', () => {
     const path = join(tmpdir(), `azma-test-legacy-creators-${Date.now()}.db`);
 

@@ -58,6 +58,10 @@ import type { CompiledAssemblyGraph } from '../chambers/ras-al-amr/pre-publishin
 import type { SovereignCanvas } from '../chambers/ras-al-amr/assembly-contracts';
 import type { ISovereignPurposeStore, SovereignPurpose } from '../chambers/makman-al-ghayah/sovereign-purpose';
 
+export type MilestoneDesignationOutcome =
+  | { readonly ok: true; readonly goal: GoalContract }
+  | { readonly ok: false; readonly reason: 'NO_SOVEREIGN_PURPOSE' | 'GOAL_NOT_FOUND' };
+
 export class SovereignOperationalEntryLayer {
   constructor(
     private readonly goalState: GoalState,
@@ -127,5 +131,29 @@ export class SovereignOperationalEntryLayer {
       throw new Error('Sovereign Purpose store is not wired — setSovereignPurpose() requires a configured ISovereignPurposeStore.');
     }
     return this.purposeStore.setSovereignPurpose(creatorId, purposeStatement);
+  }
+
+  /**
+   * SOVEREIGN PURPOSE → MILESTONE GOAL FOUNDATION (Constitutional Package II).
+   * Designates an existing Goal as a Milestone Goal serving the Creator's
+   * Sovereign Purpose. Snapshots the current Purpose wording into the Goal
+   * so the historical relationship survives any future Purpose edits.
+   * Returns ok:false rather than throwing for the two expected failure modes
+   * so the API route can produce the correct HTTP status without catching.
+   */
+  public designateGoalAsMilestone(goalId: string, creatorId: string): MilestoneDesignationOutcome {
+    const purpose = this.purposeStore?.getSovereignPurpose(creatorId) ?? null;
+    if (!purpose) return { ok: false, reason: 'NO_SOVEREIGN_PURPOSE' };
+
+    const goal = this.goalState.getGoal(goalId);
+    if (!goal || goal.subscriberTenantId !== creatorId) return { ok: false, reason: 'GOAL_NOT_FOUND' };
+
+    const updated: GoalContract = {
+      ...goal,
+      sovereignPurposeStatement: purpose.purposeStatement,
+      updatedAtMs: Date.now(),
+    };
+    this.goalState.update(updated, { isAuthorized: true });
+    return { ok: true, goal: updated };
   }
 }

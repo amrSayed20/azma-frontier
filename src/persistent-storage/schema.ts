@@ -32,6 +32,7 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     commercial_intent_json TEXT,
     pacing_preference TEXT,
     transition_preference TEXT,
+    sovereign_purpose_statement TEXT,
     created_at_ms INTEGER NOT NULL,
     updated_at_ms INTEGER NOT NULL
   )`,
@@ -170,6 +171,17 @@ export const CREATORS_MIGRATION_COLUMNS: readonly { readonly name: string; reado
   { name: 'sovereign_purpose', ddl: 'sovereign_purpose TEXT' },
   { name: 'sovereign_purpose_created_at', ddl: 'sovereign_purpose_created_at INTEGER' },
   { name: 'sovereign_purpose_updated_at', ddl: 'sovereign_purpose_updated_at INTEGER' },
+];
+
+/**
+ * Columns added to `goals` after its original creation (Ministry IX) — applied
+ * via ALTER TABLE for databases that already have the goals table.
+ */
+export const GOALS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
+  // SOVEREIGN PURPOSE → MILESTONE GOAL FOUNDATION (Constitutional Package II):
+  // when non-null, the Goal is a Milestone Goal serving the Creator's Sovereign
+  // Purpose; the value is the exact Purpose wording at designation time.
+  { name: 'sovereign_purpose_statement', ddl: 'sovereign_purpose_statement TEXT' },
 ];
 
 /** Run only after CREATORS_MIGRATION_COLUMNS has ensured the columns exist — SQLite cannot index a column that isn't there yet. */

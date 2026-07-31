@@ -29,6 +29,7 @@ type GoalRow = {
   commercial_intent_json: string | null;
   pacing_preference: string | null;
   transition_preference: string | null;
+  sovereign_purpose_statement: string | null;
   created_at_ms: number;
   updated_at_ms: number;
 };
@@ -48,6 +49,7 @@ function rowToGoal(row: GoalRow): GoalContract {
       : undefined,
     pacingPreference: row.pacing_preference ? (row.pacing_preference as PacingPreference) : undefined,
     transitionPreference: row.transition_preference ? (row.transition_preference as TransitionPreference) : undefined,
+    sovereignPurposeStatement: row.sovereign_purpose_statement ?? undefined,
     createdAtMs: row.created_at_ms,
     updatedAtMs: row.updated_at_ms,
   };
@@ -62,8 +64,9 @@ export class GoalRepository implements IGoalRepository {
         `INSERT OR REPLACE INTO goals (
           goal_id, subscriber_tenant_id, title, description, priority, status,
           dependencies_json, metrics_json, commercial_intent_json,
-          pacing_preference, transition_preference, created_at_ms, updated_at_ms
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          pacing_preference, transition_preference, sovereign_purpose_statement,
+          created_at_ms, updated_at_ms
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         goal.goalId,
@@ -77,6 +80,7 @@ export class GoalRepository implements IGoalRepository {
         goal.commercialIntent ? JSON.stringify(goal.commercialIntent) : null,
         goal.pacingPreference ?? null,
         goal.transitionPreference ?? null,
+        goal.sovereignPurposeStatement ?? null,
         goal.createdAtMs,
         goal.updatedAtMs,
       );

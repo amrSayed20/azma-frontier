@@ -24,7 +24,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
-import { SCHEMA_STATEMENTS, CINEMATIC_LEDGER_MIGRATION_COLUMNS, CREATORS_MIGRATION_COLUMNS, INDEX_STATEMENTS } from './schema';
+import { SCHEMA_STATEMENTS, CINEMATIC_LEDGER_MIGRATION_COLUMNS, CREATORS_MIGRATION_COLUMNS, GOALS_MIGRATION_COLUMNS, INDEX_STATEMENTS } from './schema';
 
 const DEFAULT_DB_PATH = join(process.cwd(), 'data', 'azma-os.db');
 
@@ -59,6 +59,17 @@ function migrateCreatorsTable(db: DatabaseSync): void {
   }
 }
 
+function migrateGoalsTable(db: DatabaseSync): void {
+  const existingColumns = new Set(
+    (db.prepare('PRAGMA table_info(goals)').all() as { name: string }[]).map((row) => row.name),
+  );
+  for (const column of GOALS_MIGRATION_COLUMNS) {
+    if (!existingColumns.has(column.name)) {
+      db.exec(`ALTER TABLE goals ADD COLUMN ${column.ddl}`);
+    }
+  }
+}
+
 export function createDatabase(path: string = DEFAULT_DB_PATH): DatabaseSync {
   if (path !== ':memory:') {
     mkdirSync(dirname(path), { recursive: true });
@@ -69,6 +80,7 @@ export function createDatabase(path: string = DEFAULT_DB_PATH): DatabaseSync {
   }
   migrateCinematicLedgerTable(db);
   migrateCreatorsTable(db);
+  migrateGoalsTable(db);
   for (const statement of INDEX_STATEMENTS) {
     db.exec(statement);
   }

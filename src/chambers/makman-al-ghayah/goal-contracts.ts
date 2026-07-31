@@ -126,4 +126,24 @@ export interface GoalContract {
    * absent means "not stated," never defaulted to a guessed value.
    */
   readonly transitionPreference?: TransitionPreference;
+
+  /**
+   * SOVEREIGN PURPOSE → MILESTONE GOAL FOUNDATION (Constitutional Package II):
+   * when present, this Goal is constitutionally a Milestone Goal serving
+   * the Creator's Sovereign Purpose. The field stores the exact wording of
+   * the Purpose at the time of designation (a snapshot), not a foreign-key
+   * reference to the current Purpose text.
+   *
+   * TEMPORAL GUARANTEE: if the Creator later updates their Sovereign Purpose
+   * wording, existing Milestone Goals retain the Purpose statement they were
+   * designated under — the historical relationship is preserved without
+   * requiring a full Purpose version history. Re-designating a Goal as a
+   * Milestone AFTER updating the Purpose stamps the new wording (the Creator
+   * is explicitly re-affirming the relationship under the new Purpose, which
+   * is a correct semantic act, not an accidental overwrite).
+   *
+   * Absent = this Goal is NOT a Milestone Goal.
+   * Present = this Goal IS a Milestone Goal; the value is the Purpose it serves.
+   */
+  readonly sovereignPurposeStatement?: string;
 }
