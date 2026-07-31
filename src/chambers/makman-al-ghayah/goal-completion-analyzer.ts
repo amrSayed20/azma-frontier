@@ -3,6 +3,20 @@
  * File: goal-completion-analyzer.ts
  *
  * Goal Completion Analyzer.
+ *
+ * CONSTITUTIONAL DEBT — FORMALLY ISOLATED (Constitutional Foundation Package V):
+ * `successRate` and `fullyCompleted` compute ratios from GoalStatus.COMPLETED
+ * counts, conflating operational production completion with Milestone success.
+ * GoalStatus.COMPLETED means the Creator's production workflow finished; it
+ * does NOT mean any SuccessCriterion was satisfied, any Observation supported
+ * fulfillment, or any Fulfillment Assessment concluded positively.
+ *
+ * This class has zero external consumers (no SOEL method, no API route, no test
+ * outside this file calls it). It is NOT used in the Fulfillment Assessment path.
+ * It is preserved here because it is part of certified chamber architecture;
+ * regrounding its semantics requires a future package with explicit authorization.
+ *
+ * Do NOT import or use this class in any new constitutional construction.
  */
 
 import {

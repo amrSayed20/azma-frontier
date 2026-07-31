@@ -130,6 +130,20 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     canvas_json TEXT NOT NULL,
     saved_at INTEGER NOT NULL
   )`,
+  // FULFILLMENT ASSESSMENT FOUNDATION (Constitutional Foundation Package V):
+  // persists every Fulfillment Assessment as a historical conclusion.
+  // criteria_assessments_json stores the full CriterionAssessment[] (including
+  // criterionDescriptionSnapshot) so the assessment never silently changes
+  // meaning when the Creator later replaces their Success Criteria list.
+  // publisher_tenant_id is denormalized at write time for tenant-isolated reads.
+  `CREATE TABLE IF NOT EXISTS fulfillment_assessments (
+    assessment_id TEXT PRIMARY KEY,
+    goal_id TEXT NOT NULL,
+    publisher_tenant_id TEXT NOT NULL,
+    assessed_at_ms INTEGER NOT NULL,
+    overall_verdict TEXT NOT NULL,
+    criteria_assessments_json TEXT NOT NULL
+  )`,
   // REALITY OBSERVATION FOUNDATION (Constitutional Foundation Package IV):
   // records every real signal observed about a Milestone Goal's publications.
   // An Observation is a statement of reality (CONSUMPTION_ATTEMPT with

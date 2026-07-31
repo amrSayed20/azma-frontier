@@ -59,6 +59,11 @@ import type { SovereignCanvas } from '../chambers/ras-al-amr/assembly-contracts'
 import type { ISovereignPurposeStore, SovereignPurpose } from '../chambers/makman-al-ghayah/sovereign-purpose';
 import type { SuccessCriterion } from '../chambers/makman-al-ghayah/goal-contracts';
 import type { IObservationStore, ObservationRecord } from '../chambers/makman-al-ghayah/observation-contracts';
+import type {
+  IFulfillmentAssessmentStore,
+  GoalFulfillmentAssessment,
+} from '../chambers/makman-al-ghayah/fulfillment-assessment-contracts';
+import { assessGoalFulfillment } from '../chambers/makman-al-ghayah/fulfillment-assessment-engine';
 
 export type MilestoneDesignationOutcome =
   | { readonly ok: true; readonly goal: GoalContract }
@@ -68,6 +73,10 @@ export type DefineSuccessCriteriaOutcome =
   | { readonly ok: true; readonly goal: GoalContract }
   | { readonly ok: false; readonly reason: 'GOAL_NOT_FOUND' | 'NOT_A_MILESTONE_GOAL' };
 
+export type RequestAssessmentOutcome =
+  | { readonly ok: true; readonly assessment: GoalFulfillmentAssessment }
+  | { readonly ok: false; readonly reason: 'GOAL_NOT_FOUND' };
+
 export class SovereignOperationalEntryLayer {
   constructor(
     private readonly goalState: GoalState,
@@ -76,6 +85,7 @@ export class SovereignOperationalEntryLayer {
     private readonly prePublishingBoundary: PrePublishingBoundary,
     private readonly purposeStore?: ISovereignPurposeStore,
     private readonly observationStore?: IObservationStore,
+    private readonly assessmentStore?: IFulfillmentAssessmentStore,
   ) {}
 
   /** Forwards to Makman's already-certified runFirstCustomerJourney() with a freshly-constructed, single-use Runtime. */
@@ -193,6 +203,44 @@ export class SovereignOperationalEntryLayer {
     const updated: GoalContract = { ...goal, successCriteria, updatedAtMs: now };
     this.goalState.update(updated, { isAuthorized: true });
     return { ok: true, goal: updated };
+  }
+
+  /**
+   * FULFILLMENT ASSESSMENT FOUNDATION — Constitutional Foundation Package V.
+   * Computes the Empire's honest judgment of whether available evidence
+   * demonstrates progress toward each of the Goal's Success Criteria.
+   * Persists the assessment as a historical snapshot before returning it.
+   * Returns ok:false when the Goal does not exist or belongs to another Creator.
+   *
+   * The assessment engine reasons from facts only. It never manufactures
+   * certainty — with current signals (CONSUMPTION_ATTEMPT only), all criteria
+   * receive INSUFFICIENT_EVIDENCE (observations exist) or ASSESSMENT_NOT_POSSIBLE
+   * (no observations). Future signal types will enable stronger verdicts.
+   *
+   * Every call produces a new immutable historical record. Past assessments
+   * survive future criteria changes because descriptions are snapshotted.
+   */
+  public requestFulfillmentAssessment(goalId: string, creatorId: string): RequestAssessmentOutcome {
+    const goal = this.getCreatorGoal(goalId, creatorId);
+    if (!goal) return { ok: false, reason: 'GOAL_NOT_FOUND' };
+
+    const observations = this.observationStore?.listObservationsForGoal(goalId, creatorId) ?? [];
+    const assessment = assessGoalFulfillment(goal, observations);
+
+    this.assessmentStore?.save(assessment, creatorId);
+    return { ok: true, assessment };
+  }
+
+  /**
+   * FULFILLMENT ASSESSMENT FOUNDATION — Constitutional Foundation Package V.
+   * Returns all persisted Fulfillment Assessments for a Goal, most recent first.
+   * Returns an empty array if no assessments have been requested yet or if the
+   * assessment store is not wired. Tenant-isolated by goal ownership.
+   */
+  public listFulfillmentAssessments(goalId: string, creatorId: string): readonly GoalFulfillmentAssessment[] {
+    const goal = this.goalState.getGoal(goalId);
+    if (!goal || goal.subscriberTenantId !== creatorId) return [];
+    return this.assessmentStore?.listForGoal(goalId, creatorId) ?? [];
   }
 
   /**
