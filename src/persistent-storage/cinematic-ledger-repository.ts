@@ -39,6 +39,7 @@ export interface CinematicProductionRecord {
   description: string;
   renderStatus: string;
   flattenedVaultAssetId?: string;
+  goalId?: string;
   publishedAt?: number;
   createdAt: number;
   updatedAt: number;
@@ -60,14 +61,15 @@ export class CinematicLedger implements ICinematicLedger {
     canvasType: string,
     initialRenderStatus: string,
     operationId?: string,
+    goalId?: string,
   ): void {
     this.db
       .prepare(
         `INSERT OR REPLACE INTO cinematic_ledger
           (publication_id, publisher_tenant_id, source_canvas_id, source_compilation_id,
            operation_id, canvas_type, title, description, render_status, flattened_vault_asset_id,
-           published_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           goal_id, published_at, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         publication.publicationId,
@@ -80,6 +82,7 @@ export class CinematicLedger implements ICinematicLedger {
         publication.description,
         initialRenderStatus,
         null,
+        goalId ?? null,
         publication.publishedAt ?? null,
         publication.createdAt,
         publication.updatedAt,
@@ -165,6 +168,7 @@ export class CinematicLedger implements ICinematicLedger {
       description: row.description as string,
       renderStatus: row.render_status as string,
       flattenedVaultAssetId: row.flattened_vault_asset_id != null ? (row.flattened_vault_asset_id as string) : undefined,
+      goalId: row.goal_id != null ? (row.goal_id as string) : undefined,
       publishedAt: row.published_at != null ? (row.published_at as number) : undefined,
       createdAt: row.created_at as number,
       updatedAt: row.updated_at as number,

@@ -55,6 +55,7 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     description TEXT NOT NULL,
     render_status TEXT NOT NULL,
     flattened_vault_asset_id TEXT,
+    goal_id TEXT,
     published_at INTEGER,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
@@ -129,6 +130,23 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     canvas_json TEXT NOT NULL,
     saved_at INTEGER NOT NULL
   )`,
+  // REALITY OBSERVATION FOUNDATION (Constitutional Foundation Package IV):
+  // records every real signal observed about a Milestone Goal's publications.
+  // An Observation is a statement of reality (CONSUMPTION_ATTEMPT with
+  // AUTHORIZED/DENIED outcome) — constitutionally distinct from a
+  // SuccessCriterion (what the Creator declared must become true) and from
+  // any future Fulfillment Assessment (comparing definition vs. reality).
+  // goal_id + publisher_tenant_id are denormalized from cinematic_ledger at
+  // write time so reads need no join and tenant isolation is enforced in SQL.
+  `CREATE TABLE IF NOT EXISTS observations (
+    observation_id TEXT PRIMARY KEY,
+    goal_id TEXT NOT NULL,
+    publisher_tenant_id TEXT NOT NULL,
+    publication_id TEXT NOT NULL,
+    signal TEXT NOT NULL,
+    outcome TEXT NOT NULL,
+    observed_at_ms INTEGER NOT NULL
+  )`,
   // MINISTRY VII — REAL FLEET INFRASTRUCTURE: durable operation ledger
   // replacing the in-memory Map in OperationLedgerManager. Every fleet
   // dispatch creates one row; state transitions UPDATE it in place.
@@ -153,6 +171,10 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
 /** Columns added to `cinematic_ledger` after its original creation — applied via ALTER TABLE for pre-existing databases. */
 export const CINEMATIC_LEDGER_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
   { name: 'operation_id', ddl: 'operation_id TEXT' },
+  // REALITY OBSERVATION FOUNDATION (Constitutional Foundation Package IV):
+  // links a publication back to the Goal it was created from, enabling
+  // consumption events to be recorded as Observations against that Goal.
+  { name: 'goal_id', ddl: 'goal_id TEXT' },
 ];
 
 /** Columns added to `creators` after its original creation — applied via ALTER TABLE for pre-existing databases. */

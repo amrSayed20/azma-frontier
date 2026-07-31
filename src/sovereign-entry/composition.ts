@@ -63,6 +63,7 @@ import { buildFleetRuntime } from '../orchestrator/fleet-materialization/fleet-f
 import { CinematicLedger } from '../persistent-storage/cinematic-ledger-repository';
 import { GoalRepository } from '../persistent-storage/goal-repository';
 import { SovereignPurposeRepository } from '../persistent-storage/sovereign-purpose-repository';
+import { ObservationRepository } from '../persistent-storage/observation-repository';
 import { getDb } from '../persistent-storage/db';
 
 /** One Sovereign Vault instance for this server process — shared by Fleet's deposit path and RAS AL AMR's rehydration read path. See MAG-LB-003. */
@@ -80,6 +81,8 @@ const goalState = new GoalState(goalRepository);
 
 /** Sovereign Purpose Repository: durable CREATOR → SOVEREIGN PURPOSE relationship — Constitutional Foundation Package I. */
 const purposeStore = new SovereignPurposeRepository(getDb());
+/** Observation Repository: real post-production signals recorded against Milestone Goals — Constitutional Foundation Package IV. */
+const observationStore = new ObservationRepository(getDb());
 const publicationRegistry = new MakmanPublicationRegistry();
 const renderingBridge = new FlattenedRenderingBridge(fleetRuntime.dispatcher);
 const bridge = new MakmanGoalDistributionBridge(publicationRegistry, renderingBridge, cinemaLedger);
@@ -96,4 +99,4 @@ const rehydrationBridge = new VaultRehydrationBridge(vaultManager);
 const prePublishingBoundary = new PrePublishingBoundary(rehydrationBridge);
 
 /** The single, server-process-lifetime SOEL instance every entry route calls. */
-export const soel = new SovereignOperationalEntryLayer(goalState, bridge, consumptionBoundary, prePublishingBoundary, purposeStore);
+export const soel = new SovereignOperationalEntryLayer(goalState, bridge, consumptionBoundary, prePublishingBoundary, purposeStore, observationStore);

@@ -58,6 +58,7 @@ import type { CompiledAssemblyGraph } from '../chambers/ras-al-amr/pre-publishin
 import type { SovereignCanvas } from '../chambers/ras-al-amr/assembly-contracts';
 import type { ISovereignPurposeStore, SovereignPurpose } from '../chambers/makman-al-ghayah/sovereign-purpose';
 import type { SuccessCriterion } from '../chambers/makman-al-ghayah/goal-contracts';
+import type { IObservationStore, ObservationRecord } from '../chambers/makman-al-ghayah/observation-contracts';
 
 export type MilestoneDesignationOutcome =
   | { readonly ok: true; readonly goal: GoalContract }
@@ -74,6 +75,7 @@ export class SovereignOperationalEntryLayer {
     private readonly consumptionBoundary: PublicConsumptionBoundary,
     private readonly prePublishingBoundary: PrePublishingBoundary,
     private readonly purposeStore?: ISovereignPurposeStore,
+    private readonly observationStore?: IObservationStore,
   ) {}
 
   /** Forwards to Makman's already-certified runFirstCustomerJourney() with a freshly-constructed, single-use Runtime. */
@@ -97,14 +99,36 @@ export class SovereignOperationalEntryLayer {
     return goal;
   }
 
-  /** Forwards to Makman's already-certified PublicConsumptionBoundary.requestConsumption(). */
+  /**
+   * Forwards to Makman's already-certified PublicConsumptionBoundary.requestConsumption().
+   * After every response, records the access attempt as an Observation against
+   * the Goal that produced this publication (if the ledger link exists).
+   * The observation store is optional so existing tests with 4-arg SOEL
+   * construction continue to pass without modification.
+   */
   public async requestConsumption(
     publicationId: string,
     requesterTenantId?: string,
     isAgeVerified = false,
     isoCountryCode?: string,
   ): Promise<ConsumptionResponse> {
-    return this.consumptionBoundary.requestConsumption(publicationId, requesterTenantId, isAgeVerified, isoCountryCode);
+    const response = await this.consumptionBoundary.requestConsumption(publicationId, requesterTenantId, isAgeVerified, isoCountryCode);
+    this.observationStore?.recordConsumptionEvent(publicationId, response.isAuthorized, Date.now());
+    return response;
+  }
+
+  /**
+   * REALITY OBSERVATION FOUNDATION — Constitutional Foundation Package IV.
+   * Returns all Observations for a Milestone Goal owned by this Creator,
+   * most recent first. Returns an empty array if no observations exist yet
+   * or if the observation store is not wired.
+   * The goal ownership check ensures a Creator cannot probe another Creator's
+   * observation history even by guessing goalIds.
+   */
+  public listObservationsForGoal(goalId: string, creatorId: string): readonly ObservationRecord[] {
+    const goal = this.goalState.getGoal(goalId);
+    if (!goal || goal.subscriberTenantId !== creatorId) return [];
+    return this.observationStore?.listObservationsForGoal(goalId, creatorId) ?? [];
   }
 
   /** Forwards to RAS AL AMR's already-certified PrePublishingBoundary.compileForPublishing(). */
