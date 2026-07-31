@@ -162,6 +162,14 @@ export const CREATORS_MIGRATION_COLUMNS: readonly { readonly name: string; reado
   // database (this project's own dev database included) needs the same
   // real ALTER TABLE path, not just the CREATE TABLE IF NOT EXISTS above.
   { name: 'preferred_locale', ddl: 'preferred_locale TEXT' },
+  // SOVEREIGN PURPOSE FOUNDATION (Constitutional Foundation Package I):
+  // three columns make CREATOR → SOVEREIGN PURPOSE a durable relationship.
+  // sovereign_purpose_created_at is set once on the first setSovereignPurpose()
+  // call (via COALESCE — never overwritten); sovereign_purpose_updated_at
+  // reflects every subsequent update.
+  { name: 'sovereign_purpose', ddl: 'sovereign_purpose TEXT' },
+  { name: 'sovereign_purpose_created_at', ddl: 'sovereign_purpose_created_at INTEGER' },
+  { name: 'sovereign_purpose_updated_at', ddl: 'sovereign_purpose_updated_at INTEGER' },
 ];
 
 /** Run only after CREATORS_MIGRATION_COLUMNS has ensured the columns exist — SQLite cannot index a column that isn't there yet. */

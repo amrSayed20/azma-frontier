@@ -56,6 +56,7 @@ import type {
 import type { PrePublishingBoundary } from '../chambers/ras-al-amr/pre-publishing-boundary';
 import type { CompiledAssemblyGraph } from '../chambers/ras-al-amr/pre-publishing-boundary';
 import type { SovereignCanvas } from '../chambers/ras-al-amr/assembly-contracts';
+import type { ISovereignPurposeStore, SovereignPurpose } from '../chambers/makman-al-ghayah/sovereign-purpose';
 
 export class SovereignOperationalEntryLayer {
   constructor(
@@ -63,6 +64,7 @@ export class SovereignOperationalEntryLayer {
     private readonly bridge: MakmanGoalDistributionBridge,
     private readonly consumptionBoundary: PublicConsumptionBoundary,
     private readonly prePublishingBoundary: PrePublishingBoundary,
+    private readonly purposeStore?: ISovereignPurposeStore,
   ) {}
 
   /** Forwards to Makman's already-certified runFirstCustomerJourney() with a freshly-constructed, single-use Runtime. */
@@ -102,5 +104,28 @@ export class SovereignOperationalEntryLayer {
     authenticatedTenantId: string,
   ): Promise<CompiledAssemblyGraph> {
     return this.prePublishingBoundary.compileForPublishing(canvas, authenticatedTenantId);
+  }
+
+  /**
+   * SOVEREIGN PURPOSE FOUNDATION — Constitutional Foundation Package I.
+   * Returns the Creator's Sovereign Purpose, or null if never stated.
+   * A Creator can only read their own Purpose — the creatorId is always
+   * sourced from the verified session, never from a caller-supplied value.
+   */
+  public getSovereignPurpose(creatorId: string): SovereignPurpose | null {
+    return this.purposeStore?.getSovereignPurpose(creatorId) ?? null;
+  }
+
+  /**
+   * SOVEREIGN PURPOSE FOUNDATION — Constitutional Foundation Package I.
+   * Records the Creator's Sovereign Purpose durably. Only the Creator
+   * themselves may set their own Purpose — creatorId is always sourced
+   * from the verified session. Returns the persisted SovereignPurpose.
+   */
+  public setSovereignPurpose(creatorId: string, purposeStatement: string): SovereignPurpose {
+    if (!this.purposeStore) {
+      throw new Error('Sovereign Purpose store is not wired — setSovereignPurpose() requires a configured ISovereignPurposeStore.');
+    }
+    return this.purposeStore.setSovereignPurpose(creatorId, purposeStatement);
   }
 }
