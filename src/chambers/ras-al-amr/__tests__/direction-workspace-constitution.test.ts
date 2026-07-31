@@ -351,8 +351,8 @@ describe('Ministry IV — Sovereign Mixing Engine', () => {
   });
 });
 
-describe('Package XXVII — Sovereign Export Engine', () => {
-  it('marks the Export Engine capability as genuinely implemented, citing all three real pre-existing components and the disclosed Fleet gap', () => {
+describe('Package XXVII — Sovereign Export Engine + Resolution Gate', () => {
+  it('marks the Export Engine as fully implemented — all three canvas types export and the CINEMATIC cycle resolves', () => {
     const entry = DIRECTION_WORKSPACE_CAPABILITY_MAP.find((e) =>
       e.capability.startsWith('Sovereign Export Engine'),
     );
@@ -360,6 +360,9 @@ describe('Package XXVII — Sovereign Export Engine', () => {
     expect(entry?.constitutionalLocation).toMatch(/MakmanGoalDistributionBridge\.bridgeToDestination/);
     expect(entry?.constitutionalLocation).toMatch(/FlattenedRenderingBridge\.evaluateAndDispatchRender/);
     expect(entry?.constitutionalLocation).toMatch(/PublicConsumptionBoundary\.requestConsumption/);
-    expect(entry?.constitutionalLocation).toMatch(/FAILED/);
+    // The Resolution Gate (6059812) closed the prior CINEMATIC gap:
+    // PROCESSING → Vault → COMPLETED is now the documented constitutional path.
+    expect(entry?.constitutionalLocation).toMatch(/Resolution Gate/);
+    expect(entry?.constitutionalLocation).toMatch(/COMPLETED/);
   });
 });

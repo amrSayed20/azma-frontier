@@ -501,9 +501,10 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
     constitutionalLocation:
       'SUPERSEDED by "Sovereign Export Engine (Render Graph delivery)" below (Package XXVII) — ' +
       'MakmanGoalDistributionBridge/FlattenedRenderingBridge/PublicConsumptionBoundary now publish, ' +
-      'render-dispatch, and deliver in full for structural/logic graphs; CINEMATIC file flattening still ' +
-      'honestly fails on a disclosed, separate Fleet/Ledger placeholder gap (kept as history, not deleted, ' +
-      'per this codebase\'s own stale-entry-correction discipline)',
+      'render-dispatch, and deliver in full for all three canvas types. CINEMATIC flattening dispatches a ' +
+      'real fleet job (Ministry VII), records PROCESSING in the Cinematic Ledger (Ministry VIII), and ' +
+      'resolves to COMPLETED via GET /api/ras-amr/resolution/[operationId] (Resolution Gate 6059812). ' +
+      'The disclosed Fleet/Ledger placeholder gap (MAG-LF-001) is fully closed.',
     implemented: true,
   },
   {
@@ -559,10 +560,12 @@ export const DIRECTION_WORKSPACE_CAPABILITY_MAP: readonly DirectionCapabilityLoc
       'MakmanGoalDistributionBridge.bridgeToDestination() + FlattenedRenderingBridge.evaluateAndDispatchRender() ' +
       '+ PublicConsumptionBoundary.requestConsumption() (src/chambers/makman-al-ghayah/, Package XXVII) ARE the ' +
       'Export Engine — publish, render-dispatch, and deliver the already-produced Render Graph, reached ' +
-      'through exactly two live SOEL paths, proven end-to-end by __tests__/sovereign-export-engine.test.ts. ' +
-      'CINEMATIC file flattening honestly fails today (resolves to FAILED, never a false COMPLETED) — a ' +
-      'disclosed, pre-existing Fleet/Ledger placeholder gap (MAG-LF-001), not closed by this package; ' +
-      'structural/logic graphs (NARRATIVE/DIRECTORIAL) already export and deliver in full',
+      'through exactly two live SOEL paths. NARRATIVE/DIRECTORIAL export and deliver synchronously (DYNAMIC). ' +
+      'CINEMATIC dispatches a real fleet job → OperationLedgerManager (Ministry VII) → CinematicLedger records ' +
+      'PROCESSING (Ministry VIII) → Creator polls GET /api/ras-amr/resolution/[operationId] → ' +
+      'AsynchronousResolutionGateway resolves → Vault deposition → CinematicLedger updated COMPLETED ' +
+      '(Resolution Gate 6059812). The complete cinematic production lifecycle — Direction to final production ' +
+      'record — is constitutionally complete.',
     implemented: true,
   },
   {

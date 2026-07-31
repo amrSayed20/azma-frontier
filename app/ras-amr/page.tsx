@@ -331,10 +331,11 @@
  * the most recent one live, so "Manual decisions produce it" is a
  * provable, live-verifiable fact, not just a callable function.
  * `handleApplySpatialAdjustment`/`handleApplyVisualAdjustment`/
- * `handleApplyTemporalAdjustment` deliberately do NOT feed this log —
- * those are fine-grained editing adjustments that predate the Sovereign
- * Direction State ruling, not one of the ruling's own named Direction
- * Decisions.
+ * `handleApplyTemporalAdjustment` also feed this log — wired through
+ * `executeDirectionDecision()` during Constitutional Consolidation
+ * (Chief Architect ruling 2026-07-31) which closed the final transitional
+ * path. Every execution path in the Sovereign State of Direction now
+ * flows through `AssemblyRuntime.execute()` without exception.
  *
  * PACKAGE XXIV — SOVEREIGN ASSEMBLY RUNTIME (2026-07-28): those same nine
  * handlers no longer call `RasAlAmrStateManager.applyMutation()` directly.
@@ -364,15 +365,12 @@
  * `DirectionDecision` objects from an already-decided judgment, never
  * mutates state itself, and never executes anything outside the Runtime.
  * `handleApplySpatialAdjustment`/`handleApplyVisualAdjustment`/
- * `handleApplyTemporalAdjustment` still call
- * `RasAlAmrStateManager.applyMutation()` directly — deliberately left
- * outside this package's scope, unchanged since Package XXIII's own
- * disclosed boundary: they are pre-ruling fine-grained editing controls,
- * not one of the ruling's named Direction Decisions, and Package XXV's own
- * "THIS PACKAGE SHALL IMPLEMENT" section named only
- * `handleApplyDirectorDecision`. Flagged for the Chief Architect in case
- * "RasAlAmrStateManager is no longer called directly by either Director"
- * was intended to reach these three as well.
+ * `handleApplyTemporalAdjustment` now also route through
+ * `executeDirectionDecision()` — the Constitutional Consolidation
+ * (Chief Architect ruling 2026-07-31) closed the final transitional path.
+ * `RasAlAmrStateManager.applyMutation()` is no longer called directly by
+ * any handler in this file; every mutation flows through
+ * `AssemblyRuntime.execute()` without exception.
  *
  * MINISTRY I — VOICE ECOSYSTEM (2026-07-29): real Voice Library, Voice
  * Identity, Imported Voices, and Voice Selection. The upload form
@@ -886,8 +884,7 @@ export default function RasAmrChamber() {
       spatialUpdates: spatialForm,
     };
 
-    const updatedCanvas = rasAlAmrStateManager.applyMutation(sessionCanvas, mutation);
-    setSessionCanvas(updatedCanvas);
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
   };
 
   // pixel-grade + chroma-forge share this one real 'visual' directive slot.
@@ -906,8 +903,7 @@ export default function RasAmrChamber() {
       directivePayload: visualForm,
     };
 
-    const updatedCanvas = rasAlAmrStateManager.applyMutation(sessionCanvas, mutation);
-    setSessionCanvas(updatedCanvas);
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
   };
 
   // neural-sync drives real timeline timing — the truthful reading of
@@ -926,8 +922,7 @@ export default function RasAmrChamber() {
       temporalUpdates: temporalForm,
     };
 
-    const updatedCanvas = rasAlAmrStateManager.applyMutation(sessionCanvas, mutation);
-    setSessionCanvas(updatedCanvas);
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
   };
 
   // --- Summoning Bridge States ---
