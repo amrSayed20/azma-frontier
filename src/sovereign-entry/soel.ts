@@ -65,7 +65,7 @@ export type MilestoneDesignationOutcome =
 
 export type DefineSuccessCriteriaOutcome =
   | { readonly ok: true; readonly goal: GoalContract }
-  | { readonly ok: false; readonly reason: 'GOAL_NOT_FOUND' };
+  | { readonly ok: false; readonly reason: 'GOAL_NOT_FOUND' | 'NOT_A_MILESTONE_GOAL' };
 
 export class SovereignOperationalEntryLayer {
   constructor(
@@ -156,6 +156,9 @@ export class SovereignOperationalEntryLayer {
     const goal = this.goalState.getGoal(goalId);
     if (!goal || goal.subscriberTenantId !== creatorId) {
       return { ok: false, reason: 'GOAL_NOT_FOUND' };
+    }
+    if (!goal.sovereignPurposeStatement) {
+      return { ok: false, reason: 'NOT_A_MILESTONE_GOAL' };
     }
     const now = Date.now();
     const successCriteria: readonly SuccessCriterion[] = descriptions.map((description, index) => ({

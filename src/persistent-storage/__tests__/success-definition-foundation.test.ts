@@ -126,6 +126,20 @@ describe('Package III — SOEL.defineSuccessCriteria outcome paths', () => {
   beforeEach(() => { db = createDatabase(':memory:'); });
   afterEach(() => db.close());
 
+  it('returns ok:false / NOT_A_MILESTONE_GOAL for a Goal that has no sovereignPurposeStatement', () => {
+    const soel = makeSoel(db, { withGoal: makeGoal() }); // no sovereignPurposeStatement
+    const outcome = soel.defineSuccessCriteria('goal-1', 'creator-1', ['A criterion.']);
+    expect(outcome.ok).toBe(false);
+    expect(!outcome.ok && outcome.reason).toBe('NOT_A_MILESTONE_GOAL');
+  });
+
+  it('returns ok:true once the Goal is designated as a Milestone Goal', () => {
+    const goal = makeGoal({ sovereignPurposeStatement: 'Build the Empire.' });
+    const soel = makeSoel(db, { withGoal: goal });
+    const outcome = soel.defineSuccessCriteria('goal-1', 'creator-1', ['A criterion.']);
+    expect(outcome.ok).toBe(true);
+  });
+
   it('returns ok:false / GOAL_NOT_FOUND for a Goal that does not exist', () => {
     const soel = makeSoel(db);
     const outcome = soel.defineSuccessCriteria('no-such-goal', 'creator-1', ['A criterion.']);
@@ -141,7 +155,7 @@ describe('Package III — SOEL.defineSuccessCriteria outcome paths', () => {
   });
 
   it('returns ok:true with the updated Goal on success', () => {
-    const soel = makeSoel(db, { withGoal: makeGoal() });
+    const soel = makeSoel(db, { withGoal: makeGoal({ sovereignPurposeStatement: 'Build the Empire.' }) });
     const outcome = soel.defineSuccessCriteria('goal-1', 'creator-1', ['Reach 10,000 views.']);
     expect(outcome.ok).toBe(true);
     expect(outcome.ok && outcome.goal.successCriteria).toHaveLength(1);
@@ -149,7 +163,7 @@ describe('Package III — SOEL.defineSuccessCriteria outcome paths', () => {
   });
 
   it('generates a criterionId and definedAtMs for each criterion', () => {
-    const soel = makeSoel(db, { withGoal: makeGoal() });
+    const soel = makeSoel(db, { withGoal: makeGoal({ sovereignPurposeStatement: 'Build the Empire.' }) });
     const outcome = soel.defineSuccessCriteria('goal-1', 'creator-1', ['First.', 'Second.']);
     expect(outcome.ok && typeof outcome.goal.successCriteria![0].criterionId).toBe('string');
     expect(outcome.ok && outcome.goal.successCriteria![0].criterionId.length > 0).toBe(true);
@@ -157,7 +171,7 @@ describe('Package III — SOEL.defineSuccessCriteria outcome paths', () => {
   });
 
   it('second call replaces the first criteria list entirely', () => {
-    const soel = makeSoel(db, { withGoal: makeGoal() });
+    const soel = makeSoel(db, { withGoal: makeGoal({ sovereignPurposeStatement: 'Build the Empire.' }) });
     soel.defineSuccessCriteria('goal-1', 'creator-1', ['First criterion.', 'Second criterion.']);
     const second = soel.defineSuccessCriteria('goal-1', 'creator-1', ['Replacement only.']);
 
@@ -168,7 +182,7 @@ describe('Package III — SOEL.defineSuccessCriteria outcome paths', () => {
   it('defineSuccessCriteria writes through to GoalRepository', () => {
     const goalRepo = new GoalRepository(db);
     const goalState = new GoalState(goalRepo);
-    goalState.register(makeGoal());
+    goalState.register(makeGoal({ sovereignPurposeStatement: 'Build the Empire.' }));
     const soel = new SovereignOperationalEntryLayer(
       goalState,
       {} as MakmanGoalDistributionBridge,

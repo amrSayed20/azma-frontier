@@ -58,6 +58,12 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ goa
   const outcome = soel.defineSuccessCriteria(goalId, session.creatorId, descriptions);
 
   if (!outcome.ok) {
+    if (outcome.reason === 'NOT_A_MILESTONE_GOAL') {
+      return NextResponse.json(
+        { error: 'Designate this Goal as a Milestone Goal before defining Success Criteria.' },
+        { status: 400 },
+      );
+    }
     return NextResponse.json({ error: 'No Goal found for this Creator with that id.' }, { status: 404 });
   }
 
