@@ -66,6 +66,8 @@ import type {
 import { assessGoalFulfillment } from '../chambers/makman-al-ghayah/fulfillment-assessment-engine';
 import { deriveGapReport } from '../chambers/makman-al-ghayah/fulfillment-gap-engine';
 import type { GoalFulfillmentGapReport } from '../chambers/makman-al-ghayah/fulfillment-gap-contracts';
+import { deriveKnowledgeRequirements } from '../chambers/makman-al-ghayah/gap-investigation-engine';
+import type { GapKnowledgeRequirementReport } from '../chambers/makman-al-ghayah/gap-investigation-contracts';
 
 export type MilestoneDesignationOutcome =
   | { readonly ok: true; readonly goal: GoalContract }
@@ -81,6 +83,10 @@ export type RequestAssessmentOutcome =
 
 export type RequestGapReportOutcome =
   | { readonly ok: true; readonly gapReport: GoalFulfillmentGapReport }
+  | { readonly ok: false; readonly reason: 'GOAL_NOT_FOUND' | 'NO_ASSESSMENT_AVAILABLE' };
+
+export type RequestKnowledgeRequirementsOutcome =
+  | { readonly ok: true; readonly requirements: GapKnowledgeRequirementReport }
   | { readonly ok: false; readonly reason: 'GOAL_NOT_FOUND' | 'NO_ASSESSMENT_AVAILABLE' };
 
 export class SovereignOperationalEntryLayer {
@@ -271,6 +277,29 @@ export class SovereignOperationalEntryLayer {
     const latest = this.assessmentStore?.findLatestForGoal(goalId, creatorId) ?? null;
     if (!latest) return { ok: false, reason: 'NO_ASSESSMENT_AVAILABLE' };
     return { ok: true, gapReport: deriveGapReport(latest) };
+  }
+
+  /**
+   * SOVEREIGN GAP INVESTIGATION FOUNDATION — Constitutional Foundation Package VIII.
+   * Derives the Knowledge Requirement report for a Milestone Goal by first
+   * deriving the Gap report from the latest persisted assessment, then mapping
+   * each active gap to its constitutional Knowledge Requirement.
+   *
+   * Knowledge Requirements name what the Empire must learn and where that
+   * knowledge can currently be obtained. They do not obtain the knowledge.
+   * They do not invoke Al Hujjah. That authority belongs to a future package.
+   *
+   * Reuses requestGapReport() — a single source of truth for the gap derivation
+   * chain. No new store access; no new infrastructure.
+   *
+   * Returns ok:false GOAL_NOT_FOUND when the Goal does not exist or belongs to
+   * another Creator. Returns ok:false NO_ASSESSMENT_AVAILABLE when no assessment
+   * has been requested yet for this Goal (same failure chain as requestGapReport).
+   */
+  public requestKnowledgeRequirements(goalId: string, creatorId: string): RequestKnowledgeRequirementsOutcome {
+    const gapOutcome = this.requestGapReport(goalId, creatorId);
+    if (!gapOutcome.ok) return { ok: false, reason: gapOutcome.reason };
+    return { ok: true, requirements: deriveKnowledgeRequirements(gapOutcome.gapReport) };
   }
 
   /**
