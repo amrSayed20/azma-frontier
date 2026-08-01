@@ -64,6 +64,8 @@ import type {
   GoalFulfillmentAssessment,
 } from '../chambers/makman-al-ghayah/fulfillment-assessment-contracts';
 import { assessGoalFulfillment } from '../chambers/makman-al-ghayah/fulfillment-assessment-engine';
+import { deriveGapReport } from '../chambers/makman-al-ghayah/fulfillment-gap-engine';
+import type { GoalFulfillmentGapReport } from '../chambers/makman-al-ghayah/fulfillment-gap-contracts';
 
 export type MilestoneDesignationOutcome =
   | { readonly ok: true; readonly goal: GoalContract }
@@ -76,6 +78,10 @@ export type DefineSuccessCriteriaOutcome =
 export type RequestAssessmentOutcome =
   | { readonly ok: true; readonly assessment: GoalFulfillmentAssessment }
   | { readonly ok: false; readonly reason: 'GOAL_NOT_FOUND' };
+
+export type RequestGapReportOutcome =
+  | { readonly ok: true; readonly gapReport: GoalFulfillmentGapReport }
+  | { readonly ok: false; readonly reason: 'GOAL_NOT_FOUND' | 'NO_ASSESSMENT_AVAILABLE' };
 
 export class SovereignOperationalEntryLayer {
   constructor(
@@ -241,6 +247,30 @@ export class SovereignOperationalEntryLayer {
     const goal = this.goalState.getGoal(goalId);
     if (!goal || goal.subscriberTenantId !== creatorId) return [];
     return this.assessmentStore?.listForGoal(goalId, creatorId) ?? [];
+  }
+
+  /**
+   * SOVEREIGN FULFILLMENT GAP FOUNDATION — Constitutional Foundation Package VI.
+   * Derives the Fulfillment Gap report from the latest persisted assessment for
+   * a Milestone Goal. The Gap describes what remains unproven, contradicted, or
+   * unresolved relative to each Success Criterion, without diagnosing causes.
+   *
+   * The Gap is derived on demand from the immutable assessment — it is not
+   * persisted separately, because it is a pure function of an already-persisted
+   * immutable record.
+   *
+   * Returns ok:false GOAL_NOT_FOUND when the Goal does not exist or belongs to
+   * another Creator. Returns ok:false NO_ASSESSMENT_AVAILABLE when no assessment
+   * has been requested yet for this Goal.
+   */
+  public requestGapReport(goalId: string, creatorId: string): RequestGapReportOutcome {
+    const goal = this.goalState.getGoal(goalId);
+    if (!goal || goal.subscriberTenantId !== creatorId) {
+      return { ok: false, reason: 'GOAL_NOT_FOUND' };
+    }
+    const latest = this.assessmentStore?.findLatestForGoal(goalId, creatorId) ?? null;
+    if (!latest) return { ok: false, reason: 'NO_ASSESSMENT_AVAILABLE' };
+    return { ok: true, gapReport: deriveGapReport(latest) };
   }
 
   /**
