@@ -68,6 +68,8 @@ import { deriveGapReport } from '../chambers/makman-al-ghayah/fulfillment-gap-en
 import type { GoalFulfillmentGapReport } from '../chambers/makman-al-ghayah/fulfillment-gap-contracts';
 import { deriveKnowledgeRequirements } from '../chambers/makman-al-ghayah/gap-investigation-engine';
 import type { GapKnowledgeRequirementReport } from '../chambers/makman-al-ghayah/gap-investigation-contracts';
+import { buildKnowledgeRequests } from '../chambers/makman-al-ghayah/sovereign-knowledge-request-engine';
+import type { SovereignKnowledgeRequestBatch } from '../chambers/makman-al-ghayah/sovereign-knowledge-request-contracts';
 
 export type MilestoneDesignationOutcome =
   | { readonly ok: true; readonly goal: GoalContract }
@@ -87,6 +89,10 @@ export type RequestGapReportOutcome =
 
 export type RequestKnowledgeRequirementsOutcome =
   | { readonly ok: true; readonly requirements: GapKnowledgeRequirementReport }
+  | { readonly ok: false; readonly reason: 'GOAL_NOT_FOUND' | 'NO_ASSESSMENT_AVAILABLE' };
+
+export type IssueKnowledgeRequestsOutcome =
+  | { readonly ok: true; readonly batch: SovereignKnowledgeRequestBatch }
   | { readonly ok: false; readonly reason: 'GOAL_NOT_FOUND' | 'NO_ASSESSMENT_AVAILABLE' };
 
 export class SovereignOperationalEntryLayer {
@@ -300,6 +306,30 @@ export class SovereignOperationalEntryLayer {
     const gapOutcome = this.requestGapReport(goalId, creatorId);
     if (!gapOutcome.ok) return { ok: false, reason: gapOutcome.reason };
     return { ok: true, requirements: deriveKnowledgeRequirements(gapOutcome.gapReport) };
+  }
+
+  /**
+   * SOVEREIGN KNOWLEDGE REQUEST FOUNDATION — Constitutional Foundation Package IX.
+   * Issues the formal constitutional Knowledge Requests from Makman Al-Ghayah
+   * to Al Hujjah Al-Damighah by:
+   *   1. Deriving Knowledge Requirements from the latest assessment (via
+   *      requestKnowledgeRequirements — one source of truth for the chain).
+   *   2. Building typed SovereignKnowledgeRequests from those requirements.
+   *
+   * The returned batch is Makman's formal constitutional statement:
+   *   "I know exactly what I need to know. I have formally requested it."
+   *
+   * The requests remain unanswered. This method does not invoke Al Hujjah.
+   * It does not search for knowledge. It does not evaluate evidence.
+   * It constructs the constitutional question and stops.
+   *
+   * Returns ok:false with the same failure reasons as requestKnowledgeRequirements
+   * (GOAL_NOT_FOUND, NO_ASSESSMENT_AVAILABLE) — same failure chain, no new modes.
+   */
+  public issueKnowledgeRequests(goalId: string, creatorId: string): IssueKnowledgeRequestsOutcome {
+    const reqOutcome = this.requestKnowledgeRequirements(goalId, creatorId);
+    if (!reqOutcome.ok) return { ok: false, reason: reqOutcome.reason };
+    return { ok: true, batch: buildKnowledgeRequests(reqOutcome.requirements) };
   }
 
   /**
