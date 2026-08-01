@@ -27,6 +27,7 @@ import type {
   CriterionFulfillmentGap,
   GoalFulfillmentGapReport,
   FulfillmentGapCategory,
+  GapClass,
 } from './fulfillment-gap-contracts';
 
 function verdictToGapCategory(verdict: CriterionEvidenceVerdict): FulfillmentGapCategory {
@@ -35,6 +36,32 @@ function verdictToGapCategory(verdict: CriterionEvidenceVerdict): FulfillmentGap
     case 'INSUFFICIENT_EVIDENCE':    return 'EVIDENCE_SUFFICIENCY';
     case 'SUPPORTS_NON_FULFILLMENT': return 'FULFILLMENT_ABSENT';
     case 'SUPPORTS_FULFILLMENT':     return 'NO_ACTIVE_GAP';
+  }
+}
+
+/**
+ * SOVEREIGN GAP CLASSIFICATION FOUNDATION — Constitutional Foundation Package VII.
+ * Maps the evidential FulfillmentGapCategory to the constitutional GapClass —
+ * the higher-level nature of the Gap.
+ *
+ * OBSERVATION_GAP: both EVIDENCE_AVAILABILITY and EVIDENCE_SUFFICIENCY share
+ *   this class. Both mean "the Empire lacks enough to judge." The distinction
+ *   between them (no observations vs. insufficient observations) is preserved
+ *   in gapCategory; gapClass names their shared constitutional nature.
+ *
+ * FULFILLMENT_GAP: FULFILLMENT_ABSENT — evidence contradicts fulfillment.
+ *   The sub-nature (business/creative/distribution/strategic weakness) is
+ *   unknown until Investigation (future package). gapClass names only
+ *   the constitutional nature; it does not invent a sub-cause.
+ *
+ * NO_ACTIVE_GAP: no gap to classify.
+ */
+function categoryToGapClass(category: FulfillmentGapCategory): GapClass {
+  switch (category) {
+    case 'EVIDENCE_AVAILABILITY': return 'OBSERVATION_GAP';
+    case 'EVIDENCE_SUFFICIENCY':  return 'OBSERVATION_GAP';
+    case 'FULFILLMENT_ABSENT':    return 'FULFILLMENT_GAP';
+    case 'NO_ACTIVE_GAP':        return 'NO_ACTIVE_GAP';
   }
 }
 
@@ -61,6 +88,7 @@ function deriveOneCriterionGap(
   assessmentId: string,
 ): CriterionFulfillmentGap {
   const gapCategory = verdictToGapCategory(ca.evidenceVerdict);
+  const gapClass = categoryToGapClass(gapCategory);
   return {
     goalId,
     assessmentId,
@@ -68,6 +96,7 @@ function deriveOneCriterionGap(
     criterionDescriptionSnapshot: ca.criterionDescriptionSnapshot,
     evidenceVerdict: ca.evidenceVerdict,
     gapCategory,
+    gapClass,
     gapStatement: buildGapStatement(gapCategory, ca.criterionDescriptionSnapshot, ca.observationCount),
     identifiedAtMs: ca.assessedAtMs,
   };

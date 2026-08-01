@@ -60,6 +60,27 @@ export type FulfillmentGapCategory =
   | 'NO_ACTIVE_GAP';
 
 /**
+ * The constitutional class of a Fulfillment Gap — the nature of the Gap at
+ * a higher level of abstraction than FulfillmentGapCategory.
+ *
+ * OBSERVATION_GAP: The gap is in the observation layer. The Empire either has
+ *   no observations at all (EVIDENCE_AVAILABILITY) or has observations that
+ *   cannot validate this criterion's open-form text (EVIDENCE_SUFFICIENCY).
+ *   Both cases reflect the same constitutional nature: "We do not know enough
+ *   to judge this." Never a statement about what happened in reality.
+ *
+ * FULFILLMENT_GAP: The gap is in the outcome layer. Available evidence actively
+ *   supports the conclusion that the criterion has not been fulfilled
+ *   (FULFILLMENT_ABSENT). This is a reality gap — the Empire has seen evidence
+ *   that contradicts fulfillment. The specific sub-nature of this gap
+ *   (whether it is a business weakness, creative weakness, distribution weakness,
+ *   or strategic weakness) requires investigation and belongs to a future package.
+ *
+ * NO_ACTIVE_GAP: Evidence supports fulfillment. No gap exists to classify.
+ */
+export type GapClass = 'OBSERVATION_GAP' | 'FULFILLMENT_GAP' | 'NO_ACTIVE_GAP';
+
+/**
  * The Empire's statement of what remains unproven, contradicted, or unresolved
  * relative to one Creator-defined Success Criterion.
  *
@@ -84,6 +105,7 @@ export interface CriterionFulfillmentGap {
   readonly criterionDescriptionSnapshot: string;
   readonly evidenceVerdict: CriterionEvidenceVerdict;
   readonly gapCategory: FulfillmentGapCategory;
+  readonly gapClass: GapClass;
   readonly gapStatement: string | null;
   readonly identifiedAtMs: number;
 }
