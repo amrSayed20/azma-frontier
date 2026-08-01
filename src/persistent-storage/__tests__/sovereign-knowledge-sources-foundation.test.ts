@@ -317,7 +317,7 @@ describe('Full chain — evidence.sourceProvider is Ministry ID after real HTTP'
     expect(outcome.result.rawBundle).toBeDefined();
   });
 
-  it('evidence items have sourceProvider=ministry-human-knowledge', async () => {
+  it('evidence items have a constitutional Ministry ID as sourceProvider', async () => {
     const reception = receiveCitizenKnowledgeRequest('What is Romeo and Juliet about?', 'literature');
     const understanding = understandKnowledgeReception(reception);
     if (!understanding.ok) return;
@@ -326,7 +326,8 @@ describe('Full chain — evidence.sourceProvider is Ministry ID after real HTTP'
     if (!outcome.ok) return;
 
     for (const evidence of outcome.result.rawBundle.evidence) {
-      expect(evidence.sourceProvider).toBe('ministry-human-knowledge');
+      // Any constitutional Ministry ID is valid — multiple Ministries may now be active
+      expect(evidence.sourceProvider).toMatch(/^ministry-/);
     }
   });
 
@@ -355,9 +356,9 @@ describe('Full chain — evidence.sourceProvider is Ministry ID after real HTTP'
     expect(collectionOutcome.ok).toBe(true);
     if (!collectionOutcome.ok) return;
 
-    // Items have Ministry identity
+    // Items have a constitutional Ministry identity (any of the 8 constitutional Ministries)
     for (const item of collectionOutcome.collection.items) {
-      expect(item.evidence.sourceProvider).toBe('ministry-human-knowledge');
+      expect(item.evidence.sourceProvider).toMatch(/^ministry-/);
     }
   });
 

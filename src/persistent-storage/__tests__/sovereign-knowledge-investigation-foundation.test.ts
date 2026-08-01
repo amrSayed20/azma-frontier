@@ -10,7 +10,14 @@
  *   5. Origin distinction — Citizen and Sovereign results are never confused
  *   6. Constitutional boundaries — what the result contains and does not contain
  *   7. Error cases
+ *
+ * Note: jest.setTimeout extended to 30 000 ms — the IntelligenceEngine now
+ * queries three active providers (Human Knowledge, Business Intelligence,
+ * Media Intelligence) in parallel. This is the production configuration as of
+ * Package XVII (Sovereign Knowledge Ministry Expansion).
  */
+
+jest.setTimeout(30000);
 
 import {
   receiveCitizenKnowledgeRequest,

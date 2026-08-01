@@ -6,21 +6,25 @@
  * Wires the Ministry Registry, attaches launch providers to their Ministries,
  * builds the RepositoryManager, and yields a Singleton IntelligenceEngine.
  *
- * PACKAGE XV UPDATE (Knowledge Ministries Foundation):
- *   Providers are no longer registered directly on the RepositoryManager.
- *   They are attached to constitutional Ministries via MinistryRegistry.
- *   MinistryRegistry.buildRepositoryManager() produces a RepositoryManager
- *   whose registered providers are Ministry wrappers — each carrying the
- *   Ministry's constitutional ID as their providerId.
+ * ─── MINISTRY → PROVIDER MAP (current) ──────────────────────────────────────
  *
- *   Evidence items produced by Investigation now carry
- *   evidence.sourceProvider = 'ministry-human-knowledge' (not 'gutenberg').
- *   Replacing GutenbergProvider with a real HTTP client requires only a change
- *   to the attachProvider() call below — zero changes to the constitutional chain.
+ *   ministry-human-knowledge       → GutenbergProvider (real HTTP, Package XVI)
+ *   ministry-business-intelligence → GoogleTrendsProvider (real HTTP, Package XVII)
+ *   ministry-media-intelligence    → RedditProvider (real HTTP, Package XVII)
+ *   all other Ministries           → deferred (return empty results honestly)
+ *
+ * ─── HOW TO ADD A PROVIDER ───────────────────────────────────────────────────
+ *
+ *   1. Create the provider in providers/ implementing IRepositoryProvider.
+ *   2. Import it here.
+ *   3. Call registry.attachProvider(ministryId, new YourProvider()).
+ *   No other changes needed. Constitutional chain is unaffected.
  */
 
 import { IntelligenceEngine } from './core/intelligence-engine';
 import { GutenbergProvider } from './providers/gutenberg-provider';
+import { GoogleTrendsProvider } from './providers/google-trends-provider';
+import { RedditProvider } from './providers/reddit-provider';
 import { MinistryRegistry } from './ministries/ministry-registry';
 
 export class IntelligenceCompositionFactory {
@@ -43,9 +47,9 @@ export class IntelligenceCompositionFactory {
     const registry = new MinistryRegistry();
 
     // 2. Attach launch providers to their Ministries
-    //    Human Knowledge: GutenbergProvider (simulated; real HTTP deferred)
-    //    All other Ministries: providers deferred to Knowledge Sources phase
     registry.attachProvider('ministry-human-knowledge', new GutenbergProvider());
+    registry.attachProvider('ministry-business-intelligence', new GoogleTrendsProvider());
+    registry.attachProvider('ministry-media-intelligence', new RedditProvider());
 
     // 3. Build the RepositoryManager through the Ministry layer
     const repositoryManager = registry.buildRepositoryManager();

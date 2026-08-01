@@ -13,7 +13,12 @@
  *   8. Sovereign lineage — preserved in full from Makman path
  *   9. Citizen full chain — Reception → Understanding → Investigation → Evidence → Knowledge
  *  10. Sovereign full chain — same chain via Sovereign path with lineage
+ *
+ * Note: jest.setTimeout extended to 30 000 ms — the IntelligenceEngine now
+ * queries three active providers in parallel as of Package XVII.
  */
+
+jest.setTimeout(30000);
 
 import {
   receiveCitizenKnowledgeRequest,

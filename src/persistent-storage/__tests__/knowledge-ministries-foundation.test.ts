@@ -14,7 +14,12 @@
  *      with evidence.sourceProvider = 'ministry-human-knowledge'
  *   9. Provider encapsulation — raw provider identity hidden from search results
  *  10. Error cases — unknown ministry, invalid composite key
+ *
+ * Note: jest.setTimeout extended to 30 000 ms — the IntelligenceEngine now
+ * queries three active providers in parallel as of Package XVII.
  */
+
+jest.setTimeout(30000);
 
 import {
   CONSTITUTIONAL_MINISTRIES,
@@ -430,17 +435,16 @@ describe('Constitutional identity stability — Ministry IDs are stable and prov
 // ─── SECTION 8: FULL CHAIN — EVIDENCE.SOURCEPROVIDER = MINISTRY ID ──────────
 
 describe('Full chain — evidence.sourceProvider is Ministry constitutional ID', () => {
-  it('evidence items in the collection have sourceProvider=ministry-human-knowledge', async () => {
+  it('evidence items in the collection have a constitutional Ministry ID as sourceProvider', async () => {
     const { collection } = await citizenFullChain('What is photosynthesis?', 'biology');
-    if (collection.items.length > 0) {
-      for (const item of collection.items) {
-        expect(item.evidence.sourceProvider).toBe('ministry-human-knowledge');
-      }
+    for (const item of collection.items) {
+      // sourceProvider must be a constitutional Ministry ID — never a raw provider ID
+      expect(item.evidence.sourceProvider).toMatch(/^ministry-/);
     }
     // Empty collection is valid — no items to check
   });
 
-  it('rawBundle evidence items have sourceProvider=ministry-human-knowledge', async () => {
+  it('rawBundle evidence items have a constitutional Ministry ID as sourceProvider', async () => {
     const reception = receiveCitizenKnowledgeRequest('What is entropy?', 'physics');
     const understanding = understandKnowledgeReception(reception);
     expect(understanding.ok).toBe(true);
@@ -449,7 +453,8 @@ describe('Full chain — evidence.sourceProvider is Ministry constitutional ID',
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) return;
     for (const evidence of outcome.result.rawBundle.evidence) {
-      expect(evidence.sourceProvider).toBe('ministry-human-knowledge');
+      // Multiple ministries may now be active — any constitutional Ministry ID is valid
+      expect(evidence.sourceProvider).toMatch(/^ministry-/);
     }
   });
 
@@ -466,7 +471,7 @@ describe('Full chain — evidence.sourceProvider is Ministry constitutional ID',
     expect(declaration.origin).toBe('CITIZEN');
   });
 
-  it('Sovereign chain also produces evidence with sourceProvider=ministry-human-knowledge', async () => {
+  it('Sovereign chain also produces evidence with a constitutional Ministry ID as sourceProvider', async () => {
     const reception = receiveSovereignKnowledgeRequest(SOVEREIGN_PAYLOAD);
     const understanding = understandKnowledgeReception(reception);
     expect(understanding.ok).toBe(true);
@@ -475,7 +480,7 @@ describe('Full chain — evidence.sourceProvider is Ministry constitutional ID',
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) return;
     for (const evidence of outcome.result.rawBundle.evidence) {
-      expect(evidence.sourceProvider).toBe('ministry-human-knowledge');
+      expect(evidence.sourceProvider).toMatch(/^ministry-/);
     }
   });
 });

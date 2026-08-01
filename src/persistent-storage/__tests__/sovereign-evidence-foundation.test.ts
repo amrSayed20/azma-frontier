@@ -11,7 +11,12 @@
  *   6. Origin distinction
  *   7. Constitutional boundaries — what the collection contains and does not contain
  *   8. Constitutional guard — investigation not completed
+ *
+ * Note: jest.setTimeout extended to 30 000 ms — the IntelligenceEngine now
+ * queries three active providers in parallel as of Package XVII.
  */
+
+jest.setTimeout(30000);
 
 import {
   receiveCitizenKnowledgeRequest,
