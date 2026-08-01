@@ -31,9 +31,10 @@ export class IntelligenceEngine {
     // 3. Extract and compile intelligence
     for (const result of searchResults) {
       try {
-        // Note: In V1, we route through Gutenberg as the primary foundational provider.
-        // The awaited result is constitutionally typed as SourceDocument via Phase 9 RepositoryManager.
-        const document: SourceDocument = await this.repositoryManager.fetchDocument('gutenberg', result.id);
+        // Routes by result.provider — the Ministry's constitutional ID (e.g., 'ministry-human-knowledge').
+        // The Ministry wrapper decodes the composite document key and delegates to the correct sub-provider.
+        // PACKAGE XV: fixed from hardcoded 'gutenberg' to result.provider for Ministry-agnostic routing.
+        const document: SourceDocument = await this.repositoryManager.fetchDocument(result.provider, result.id);
         
         // Extraction strictly utilizes Phase 9 SourceDocument contract.
         const extractedEvidence = EvidenceExtractor.extract(document, claim);

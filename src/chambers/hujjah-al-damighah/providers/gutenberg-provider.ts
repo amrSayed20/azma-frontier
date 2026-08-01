@@ -13,7 +13,8 @@ import { RepositorySearchResult } from '../domain/evidence.types';
 import { SourceDocument } from '../core/evidence-extractor';
 
 export class GutenbergProvider implements IRepositoryProvider {
-  // Must exactly match the hardcoded string expected by the Intelligence Engine
+  // Internal sub-provider identity. Used by MinistryRegistry to route composite-key fetches.
+  // The Investigation Engine no longer references 'gutenberg' directly — it routes by Ministry ID.
   public readonly providerId: string = 'gutenberg';
 
   /**
