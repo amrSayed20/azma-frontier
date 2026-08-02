@@ -72,6 +72,10 @@ import { buildKnowledgeRequests } from '../chambers/makman-al-ghayah/sovereign-k
 import type { SovereignKnowledgeRequestBatch } from '../chambers/makman-al-ghayah/sovereign-knowledge-request-contracts';
 import { conductSovereignKnowledgeInvestigation } from '../imperial-integration/makman-hujjah-bridge';
 import type { KnowledgeExportRecord } from '../chambers/hujjah-al-damighah/knowledge-export-contracts';
+import type {
+  IKnowledgeInvestigationStore,
+  KnowledgeInvestigationRecord,
+} from '../chambers/hujjah-al-damighah/knowledge-investigation-store-contracts';
 
 export type MilestoneDesignationOutcome =
   | { readonly ok: true; readonly goal: GoalContract }
@@ -101,6 +105,8 @@ export type ConductKnowledgeInvestigationOutcome =
   | { readonly ok: true; readonly records: readonly KnowledgeExportRecord[] }
   | { readonly ok: false; readonly reason: 'GOAL_NOT_FOUND' | 'NO_ASSESSMENT_AVAILABLE' };
 
+export type { KnowledgeInvestigationRecord };
+
 export class SovereignOperationalEntryLayer {
   constructor(
     private readonly goalState: GoalState,
@@ -110,6 +116,7 @@ export class SovereignOperationalEntryLayer {
     private readonly purposeStore?: ISovereignPurposeStore,
     private readonly observationStore?: IObservationStore,
     private readonly assessmentStore?: IFulfillmentAssessmentStore,
+    private readonly investigationStore?: IKnowledgeInvestigationStore,
   ) {}
 
   /** Forwards to Makman's already-certified runFirstCustomerJourney() with a freshly-constructed, single-use Runtime. */
@@ -391,6 +398,51 @@ export class SovereignOperationalEntryLayer {
     if (!batchOutcome.ok) return { ok: false, reason: batchOutcome.reason };
 
     const records = await conductSovereignKnowledgeInvestigation(batchOutcome.batch);
+
+    if (this.investigationStore) {
+      this.investigationStore.save({
+        investigationId: crypto.randomUUID(),
+        goalId,
+        creatorId,
+        records,
+        recordCount: records.length,
+        investigatedAtMs: Date.now(),
+      });
+    }
+
     return { ok: true, records };
+  }
+
+  /**
+   * SOVEREIGN KNOWLEDGE INVESTIGATION PERSISTENCE — Final Launch Foundation.
+   * Returns all completed Knowledge Investigations for a Milestone Goal owned
+   * by this Creator, most recent first. Returns an empty array when no
+   * investigations have been conducted yet or when the store is not wired.
+   * Tenant-isolated by goal ownership — a Creator cannot probe another
+   * Creator's investigation history even by guessing goalIds.
+   */
+  public listKnowledgeInvestigations(
+    goalId: string,
+    creatorId: string,
+  ): readonly KnowledgeInvestigationRecord[] {
+    const goal = this.goalState.getGoal(goalId);
+    if (!goal || goal.subscriberTenantId !== creatorId) return [];
+    return this.investigationStore?.listForGoal(goalId, creatorId) ?? [];
+  }
+
+  /**
+   * SOVEREIGN KNOWLEDGE INVESTIGATION PERSISTENCE — Final Launch Foundation.
+   * Returns the most recent completed Investigation for a Milestone Goal, or
+   * null if no investigation has been conducted yet. Used by Makman for future
+   * lookup of the last known investigation conclusion for a Goal.
+   * Tenant-isolated by goal ownership.
+   */
+  public getLatestKnowledgeInvestigation(
+    goalId: string,
+    creatorId: string,
+  ): KnowledgeInvestigationRecord | null {
+    const goal = this.goalState.getGoal(goalId);
+    if (!goal || goal.subscriberTenantId !== creatorId) return null;
+    return this.investigationStore?.findLatestForGoal(goalId, creatorId) ?? null;
   }
 }

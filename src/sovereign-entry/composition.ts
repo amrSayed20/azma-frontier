@@ -65,6 +65,7 @@ import { GoalRepository } from '../persistent-storage/goal-repository';
 import { SovereignPurposeRepository } from '../persistent-storage/sovereign-purpose-repository';
 import { ObservationRepository } from '../persistent-storage/observation-repository';
 import { FulfillmentAssessmentRepository } from '../persistent-storage/fulfillment-assessment-repository';
+import { KnowledgeInvestigationRepository } from '../persistent-storage/knowledge-investigation-repository';
 import { getDb } from '../persistent-storage/db';
 
 /** One Sovereign Vault instance for this server process — shared by Fleet's deposit path and RAS AL AMR's rehydration read path. See MAG-LB-003. */
@@ -86,6 +87,8 @@ const purposeStore = new SovereignPurposeRepository(getDb());
 const observationStore = new ObservationRepository(getDb());
 /** Fulfillment Assessment Repository: historical assessment conclusions — Constitutional Foundation Package V. */
 const assessmentStore = new FulfillmentAssessmentRepository(getDb());
+/** Knowledge Investigation Repository: permanent Imperial record of every completed Sovereign Investigation — Final Launch Foundation. */
+const investigationStore = new KnowledgeInvestigationRepository(getDb());
 const publicationRegistry = new MakmanPublicationRegistry();
 const renderingBridge = new FlattenedRenderingBridge(fleetRuntime.dispatcher);
 const bridge = new MakmanGoalDistributionBridge(publicationRegistry, renderingBridge, cinemaLedger);
@@ -102,4 +105,4 @@ const rehydrationBridge = new VaultRehydrationBridge(vaultManager);
 const prePublishingBoundary = new PrePublishingBoundary(rehydrationBridge);
 
 /** The single, server-process-lifetime SOEL instance every entry route calls. */
-export const soel = new SovereignOperationalEntryLayer(goalState, bridge, consumptionBoundary, prePublishingBoundary, purposeStore, observationStore, assessmentStore);
+export const soel = new SovereignOperationalEntryLayer(goalState, bridge, consumptionBoundary, prePublishingBoundary, purposeStore, observationStore, assessmentStore, investigationStore);

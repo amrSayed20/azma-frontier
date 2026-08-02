@@ -16,7 +16,7 @@ describe('Persistent Storage Foundation — database connection', () => {
       .all()
       .map((row) => row.name);
 
-    expect(tables).toEqual(['cinematic_ledger', 'creators', 'fulfillment_assessments', 'generation_records', 'goals', 'observations', 'operation_ledger', 'sessions', 'sovereign_canvases', 'subscriptions', 'vault_assets']);
+    expect(tables).toEqual(['cinematic_ledger', 'creators', 'fulfillment_assessments', 'generation_records', 'goals', 'knowledge_investigations', 'observations', 'operation_ledger', 'sessions', 'sovereign_canvases', 'subscriptions', 'vault_assets']);
     db.close();
   });
 

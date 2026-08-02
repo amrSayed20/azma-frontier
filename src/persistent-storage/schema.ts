@@ -144,6 +144,22 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     overall_verdict TEXT NOT NULL,
     criteria_assessments_json TEXT NOT NULL
   )`,
+  // SOVEREIGN KNOWLEDGE INVESTIGATION PERSISTENCE (Final Launch Foundation):
+  // permanent constitutional memory of every completed Sovereign Investigation.
+  // Each row is a sealed historical fact: what was investigated, what the
+  // constitutional chain concluded, and when. records_json stores the full
+  // KnowledgeExportRecord[] — already scrubbed of all provider identity,
+  // provider URLs, and external service names by the constitutional chain.
+  // record_count is denormalized from records_json length for fast queries.
+  // creator_id is stored for tenant-isolated reads — no join required.
+  `CREATE TABLE IF NOT EXISTS knowledge_investigations (
+    investigation_id TEXT PRIMARY KEY,
+    goal_id TEXT NOT NULL,
+    creator_id TEXT NOT NULL,
+    record_count INTEGER NOT NULL,
+    records_json TEXT NOT NULL,
+    investigated_at_ms INTEGER NOT NULL
+  )`,
   // REALITY OBSERVATION FOUNDATION (Constitutional Foundation Package IV):
   // records every real signal observed about a Milestone Goal's publications.
   // An Observation is a statement of reality (CONSUMPTION_ATTEMPT with
