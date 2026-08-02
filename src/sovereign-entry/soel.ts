@@ -70,6 +70,8 @@ import { deriveKnowledgeRequirements } from '../chambers/makman-al-ghayah/gap-in
 import type { GapKnowledgeRequirementReport } from '../chambers/makman-al-ghayah/gap-investigation-contracts';
 import { buildKnowledgeRequests } from '../chambers/makman-al-ghayah/sovereign-knowledge-request-engine';
 import type { SovereignKnowledgeRequestBatch } from '../chambers/makman-al-ghayah/sovereign-knowledge-request-contracts';
+import { conductSovereignKnowledgeInvestigation } from '../imperial-integration/makman-hujjah-bridge';
+import type { KnowledgeExportRecord } from '../chambers/hujjah-al-damighah/knowledge-export-contracts';
 
 export type MilestoneDesignationOutcome =
   | { readonly ok: true; readonly goal: GoalContract }
@@ -93,6 +95,10 @@ export type RequestKnowledgeRequirementsOutcome =
 
 export type IssueKnowledgeRequestsOutcome =
   | { readonly ok: true; readonly batch: SovereignKnowledgeRequestBatch }
+  | { readonly ok: false; readonly reason: 'GOAL_NOT_FOUND' | 'NO_ASSESSMENT_AVAILABLE' };
+
+export type ConductKnowledgeInvestigationOutcome =
+  | { readonly ok: true; readonly records: readonly KnowledgeExportRecord[] }
   | { readonly ok: false; readonly reason: 'GOAL_NOT_FOUND' | 'NO_ASSESSMENT_AVAILABLE' };
 
 export class SovereignOperationalEntryLayer {
@@ -354,5 +360,37 @@ export class SovereignOperationalEntryLayer {
     };
     this.goalState.update(updated, { isAuthorized: true });
     return { ok: true, goal: updated };
+  }
+
+  /**
+   * IMPERIAL INTEGRATION PACKAGE I — MAKMAN AL GHAYAH ↔ AL HUJJAH AL DAMIGHAH.
+   *
+   * Conducts the full sovereign knowledge investigation for a Milestone Goal:
+   *   1. Issues the Knowledge Request batch (via issueKnowledgeRequests).
+   *   2. Submits the batch to the Imperial Integration Layer bridge.
+   *   3. Returns the sealed KnowledgeExportRecord array from Al Hujjah.
+   *
+   * Each record carries a Sovereign Knowledge Response addressed to
+   * MAKMAN_AL_GHAYAH. Records are produced only for requests with
+   * availability=REQUIRES_INVESTIGATION that succeed through the full
+   * constitutional chain (Reception→Understanding→Investigation→Evidence
+   * →Knowledge→Response→Export).
+   *
+   * An empty records array is honest — it means either no active gaps
+   * required investigation, or all investigations failed gracefully.
+   * The Empire does not manufacture knowledge.
+   *
+   * Returns ok:false with the same failure reasons as issueKnowledgeRequests
+   * (GOAL_NOT_FOUND, NO_ASSESSMENT_AVAILABLE) — same failure chain, no new modes.
+   */
+  public async conductKnowledgeInvestigation(
+    goalId: string,
+    creatorId: string,
+  ): Promise<ConductKnowledgeInvestigationOutcome> {
+    const batchOutcome = this.issueKnowledgeRequests(goalId, creatorId);
+    if (!batchOutcome.ok) return { ok: false, reason: batchOutcome.reason };
+
+    const records = await conductSovereignKnowledgeInvestigation(batchOutcome.batch);
+    return { ok: true, records };
   }
 }
