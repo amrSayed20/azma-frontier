@@ -12,6 +12,7 @@
  *   ministry-business-intelligence → GoogleTrendsProvider (real HTTP, Package XVII)
  *                                  → HackerNewsProvider (real HTTP, Ministry VI)
  *   ministry-media-intelligence    → RedditProvider (real HTTP, Package XVII)
+ *                                  → WikipediaProvider (real HTTP, Ministry VII)
  *   all other Ministries           → deferred (return empty results honestly)
  *
  * ─── HOW TO ADD A PROVIDER ───────────────────────────────────────────────────
@@ -27,6 +28,7 @@ import { GutenbergProvider } from './providers/gutenberg-provider';
 import { GoogleTrendsProvider } from './providers/google-trends-provider';
 import { HackerNewsProvider } from './providers/hacker-news-provider';
 import { RedditProvider } from './providers/reddit-provider';
+import { WikipediaProvider } from './providers/wikipedia-provider';
 import { MinistryRegistry } from './ministries/ministry-registry';
 
 export class IntelligenceCompositionFactory {
@@ -53,6 +55,7 @@ export class IntelligenceCompositionFactory {
     registry.attachProvider('ministry-business-intelligence', new GoogleTrendsProvider());
     registry.attachProvider('ministry-business-intelligence', new HackerNewsProvider());
     registry.attachProvider('ministry-media-intelligence', new RedditProvider());
+    registry.attachProvider('ministry-media-intelligence', new WikipediaProvider());
 
     // 3. Build the RepositoryManager through the Ministry layer
     const repositoryManager = registry.buildRepositoryManager();
