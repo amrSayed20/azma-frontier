@@ -1,0 +1,376 @@
+/* ══════════════════════════════════════════════════════════════════
+   AZMA OS — Imperial Foyer
+   The first place every Creator enters after authentication.
+   Center: Sovereign Vault Palace. Around it: the four Chambers.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Viewport ────────────────────────────────────────────────────── */
+
+.foyer-viewport {
+  position:        relative;
+  min-height:      100dvh;
+  width:           100%;
+  overflow-x:      hidden;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  padding:         2rem 1.5rem 3rem;
+  gap:             2rem;
+  background:      #08090c;
+  color:           #e8e4dc;
+  font-family:     'Segoe UI', system-ui, sans-serif;
+
+  /* Entry state: invisible until mounted */
+  opacity:         0;
+  transform:       translateY(6px);
+  transition:      opacity 0.55s ease, transform 0.55s ease;
+}
+
+.foyer-viewport.foyer-entered {
+  opacity:   1;
+  transform: translateY(0);
+}
+
+.foyer-viewport.foyer-departing {
+  opacity:   0;
+  transform: translateY(-6px);
+  transition-duration: 0.4s;
+}
+
+/* ── Ambient Background ──────────────────────────────────────────── */
+
+.foyer-ambient {
+  position:   absolute;
+  inset:      0;
+  pointer-events: none;
+  z-index:    0;
+  overflow:   hidden;
+}
+
+.foyer-grid {
+  position:   absolute;
+  inset:      0;
+  background-image:
+    linear-gradient(rgba(180, 150, 80, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(180, 150, 80, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+.foyer-glow-primary {
+  position: absolute;
+  top:      -10%;
+  left:     50%;
+  transform: translateX(-50%);
+  width:    70%;
+  height:   50%;
+  background: radial-gradient(ellipse at center, rgba(180, 150, 60, 0.07) 0%, transparent 70%);
+}
+
+.foyer-glow-secondary {
+  position: absolute;
+  bottom:   -5%;
+  right:    10%;
+  width:    40%;
+  height:   35%;
+  background: radial-gradient(ellipse at center, rgba(80, 60, 180, 0.05) 0%, transparent 70%);
+}
+
+/* ── Imperial Voice ──────────────────────────────────────────────── */
+
+.foyer-companion {
+  position: relative;
+  z-index:  10;
+  width:    100%;
+  max-width: 640px;
+}
+
+/* ── Interaction Modes ───────────────────────────────────────────── */
+
+.foyer-modes {
+  position:       relative;
+  z-index:        10;
+  display:        flex;
+  gap:            0.75rem;
+  justify-content: center;
+  flex-wrap:      wrap;
+}
+
+.foyer-mode-btn {
+  display:        flex;
+  align-items:    center;
+  gap:            0.5rem;
+  padding:        0.5rem 1.1rem;
+  border:         1px solid rgba(180, 150, 60, 0.2);
+  border-radius:  2rem;
+  background:     rgba(255, 255, 255, 0.03);
+  color:          rgba(232, 228, 220, 0.55);
+  cursor:         pointer;
+  font-size:      0.85rem;
+  letter-spacing: 0.04em;
+  transition:     background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.foyer-mode-btn:hover {
+  background:    rgba(180, 150, 60, 0.08);
+  border-color:  rgba(180, 150, 60, 0.4);
+  color:         rgba(232, 228, 220, 0.85);
+}
+
+.foyer-mode-btn.mode-active {
+  background:    rgba(180, 150, 60, 0.12);
+  border-color:  rgba(180, 150, 60, 0.6);
+  color:         #d4b966;
+}
+
+.mode-glyph {
+  font-size: 0.9rem;
+  opacity:   0.8;
+}
+
+.mode-name {
+  font-size: 0.85rem;
+}
+
+/* ── Vault Palace Card — center, prominent ───────────────────────── */
+
+.foyer-center {
+  position:  relative;
+  z-index:   10;
+  width:     100%;
+  max-width: 560px;
+}
+
+.foyer-vault-card {
+  width:         100%;
+  padding:       2rem 1.75rem;
+  border:        1px solid rgba(180, 150, 60, 0.35);
+  border-radius: 12px;
+  background:    rgba(180, 150, 60, 0.06);
+  cursor:        pointer;
+  display:       flex;
+  align-items:   center;
+  gap:           1.5rem;
+  text-align:    right;
+  transition:    background 0.25s, border-color 0.25s, transform 0.25s;
+  color:         inherit;
+}
+
+.foyer-vault-card:hover {
+  background:    rgba(180, 150, 60, 0.11);
+  border-color:  rgba(180, 150, 60, 0.65);
+  transform:     translateY(-2px);
+}
+
+.foyer-vault-card:active {
+  transform: translateY(0);
+}
+
+.vault-card-seal {
+  font-size:  2.6rem;
+  color:      rgba(212, 185, 102, 0.85);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.vault-card-body {
+  flex:       1;
+  display:    flex;
+  flex-direction: column;
+  gap:        0.35rem;
+}
+
+.vault-card-name {
+  font-size:      1.3rem;
+  font-weight:    500;
+  color:          #d4b966;
+  letter-spacing: 0.02em;
+  margin:         0;
+}
+
+.vault-card-role {
+  font-size:   0.85rem;
+  color:       rgba(232, 228, 220, 0.5);
+  margin:      0;
+  line-height: 1.5;
+}
+
+.vault-card-state {
+  flex-shrink: 0;
+}
+
+.vault-state-loading {
+  font-size: 0.75rem;
+  color:     rgba(180, 150, 60, 0.4);
+  animation: foyer-pulse 1.4s ease-in-out infinite;
+}
+
+.vault-state-empty {
+  font-size:  0.78rem;
+  color:      rgba(232, 228, 220, 0.35);
+  white-space: nowrap;
+}
+
+.vault-state-count {
+  font-size:      0.85rem;
+  color:          rgba(212, 185, 102, 0.8);
+  font-variant-numeric: tabular-nums;
+  white-space:    nowrap;
+}
+
+/* ── Constitutional Chamber Cards ────────────────────────────────── */
+
+.foyer-chambers {
+  position:        relative;
+  z-index:         10;
+  display:         grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap:             1rem;
+  width:           100%;
+  max-width:       560px;
+}
+
+.foyer-chamber-card {
+  display:        flex;
+  align-items:    center;
+  gap:            1rem;
+  padding:        1.1rem 1.25rem;
+  border:         1px solid rgba(232, 228, 220, 0.1);
+  border-radius:  10px;
+  background:     rgba(255, 255, 255, 0.025);
+  cursor:         pointer;
+  text-align:     right;
+  color:          inherit;
+  transition:     background 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+.foyer-chamber-card:hover {
+  background:    rgba(255, 255, 255, 0.05);
+  border-color:  rgba(232, 228, 220, 0.22);
+  transform:     translateY(-1px);
+}
+
+.foyer-chamber-card:active {
+  transform: translateY(0);
+}
+
+/* Per-chamber accent on hover */
+.foyer-chamber-hujjah-al-damighah:hover { border-color: rgba(180, 40, 40, 0.45);  }
+.foyer-chamber-qiyamah-chamber:hover    { border-color: rgba(120, 40, 200, 0.45); }
+.foyer-chamber-ras-amr:hover            { border-color: rgba(20, 140, 140, 0.45); }
+.foyer-chamber-makman-al-ghayah:hover   { border-color: rgba(30, 100, 50, 0.45);  }
+
+.chamber-glyph {
+  font-size:   1.4rem;
+  flex-shrink: 0;
+  opacity:     0.7;
+  line-height: 1;
+}
+
+.chamber-identity {
+  display:        flex;
+  flex-direction: column;
+  gap:            0.2rem;
+}
+
+.chamber-name {
+  font-size:      0.95rem;
+  font-weight:    500;
+  color:          rgba(232, 228, 220, 0.9);
+  letter-spacing: 0.02em;
+}
+
+.chamber-role {
+  font-size: 0.75rem;
+  color:     rgba(232, 228, 220, 0.4);
+}
+
+/* ── Animation ───────────────────────────────────────────────────── */
+
+@keyframes foyer-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1;   }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .foyer-chambers {
+    grid-template-columns: 1fr;
+  }
+
+  .foyer-vault-card {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .vault-card-seal {
+    font-size: 2rem;
+  }
+}
+
+/* ── Dark-mode: already dark by default; light-mode override ─────── */
+
+@media (prefers-color-scheme: light) {
+  .foyer-viewport {
+    background: #f7f4ef;
+    color:      #1a1710;
+  }
+
+  .foyer-grid {
+    background-image:
+      linear-gradient(rgba(100, 80, 20, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(100, 80, 20, 0.06) 1px, transparent 1px);
+  }
+
+  .foyer-glow-primary {
+    background: radial-gradient(ellipse at center, rgba(180, 150, 60, 0.08) 0%, transparent 70%);
+  }
+
+  .foyer-mode-btn {
+    border-color: rgba(100, 80, 20, 0.25);
+    color:        rgba(26, 23, 16, 0.55);
+    background:   rgba(0, 0, 0, 0.03);
+  }
+
+  .foyer-mode-btn:hover {
+    background:   rgba(100, 80, 20, 0.08);
+    border-color: rgba(100, 80, 20, 0.45);
+    color:        rgba(26, 23, 16, 0.85);
+  }
+
+  .foyer-mode-btn.mode-active {
+    background:   rgba(100, 80, 20, 0.12);
+    border-color: rgba(100, 80, 20, 0.6);
+    color:        #7a5e14;
+  }
+
+  .vault-card-name { color: #8a6a10; }
+  .vault-state-count { color: rgba(120, 90, 16, 0.85); }
+
+  .foyer-vault-card {
+    background:   rgba(100, 80, 20, 0.06);
+    border-color: rgba(100, 80, 20, 0.3);
+  }
+
+  .foyer-vault-card:hover {
+    background:   rgba(100, 80, 20, 0.1);
+    border-color: rgba(100, 80, 20, 0.55);
+  }
+
+  .foyer-chamber-card {
+    background:   rgba(0, 0, 0, 0.03);
+    border-color: rgba(26, 23, 16, 0.12);
+  }
+
+  .foyer-chamber-card:hover {
+    background:   rgba(0, 0, 0, 0.06);
+    border-color: rgba(26, 23, 16, 0.25);
+  }
+
+  .chamber-name { color: rgba(26, 23, 16, 0.9); }
+  .chamber-role { color: rgba(26, 23, 16, 0.45); }
+  .vault-card-role { color: rgba(26, 23, 16, 0.5); }
+  .vault-card-seal { color: rgba(120, 90, 16, 0.8); }
+}
+
+:root[data-theme='light'] .foyer-viewport { background: #f7f4ef; color: #1a1710; }
+:root[data-theme='dark']  .foyer-viewport { background: #08090c; color: #e8e4dc; }

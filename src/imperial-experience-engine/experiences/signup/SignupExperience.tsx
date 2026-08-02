@@ -87,7 +87,7 @@ export function SignupExperience({ children, dict, locale }: Props) {
   }, []);
 
   const handleRegistrationSuccess = () => {
-    beginHandoff('/qiyamah-chamber');
+    beginHandoff('/imperial-foyer');
   };
 
   const companionMessageKey = phase === 'exiting' ? 'signup.companionMessageBorn' : 'signup.companionMessage';

@@ -57,7 +57,7 @@ export function SignupForm({ dict, onSuccess }: Props) {
       if (onSuccess) {
         onSuccess();
       } else {
-        router.push('/qiyamah-chamber');
+        router.push('/imperial-foyer');
       }
     } catch {
       setError(t(dict, 'signup.errorUnreachable'));

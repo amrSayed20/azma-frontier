@@ -52,7 +52,7 @@ export function LoginForm({ dict, onSuccess }: Props) {
         return;
       }
 
-      const destination = result.role === 'founder' ? '/sovereign-high-council' : '/qiyamah-chamber';
+      const destination = result.role === 'founder' ? '/sovereign-high-council' : '/imperial-foyer';
       if (onSuccess) {
         onSuccess(destination);
       } else {
