@@ -10,6 +10,7 @@
  *
  *   ministry-human-knowledge       → GutenbergProvider (real HTTP, Package XVI)
  *   ministry-business-intelligence → GoogleTrendsProvider (real HTTP, Package XVII)
+ *                                  → HackerNewsProvider (real HTTP, Ministry VI)
  *   ministry-media-intelligence    → RedditProvider (real HTTP, Package XVII)
  *   all other Ministries           → deferred (return empty results honestly)
  *
@@ -24,6 +25,7 @@
 import { IntelligenceEngine } from './core/intelligence-engine';
 import { GutenbergProvider } from './providers/gutenberg-provider';
 import { GoogleTrendsProvider } from './providers/google-trends-provider';
+import { HackerNewsProvider } from './providers/hacker-news-provider';
 import { RedditProvider } from './providers/reddit-provider';
 import { MinistryRegistry } from './ministries/ministry-registry';
 
@@ -49,6 +51,7 @@ export class IntelligenceCompositionFactory {
     // 2. Attach launch providers to their Ministries
     registry.attachProvider('ministry-human-knowledge', new GutenbergProvider());
     registry.attachProvider('ministry-business-intelligence', new GoogleTrendsProvider());
+    registry.attachProvider('ministry-business-intelligence', new HackerNewsProvider());
     registry.attachProvider('ministry-media-intelligence', new RedditProvider());
 
     // 3. Build the RepositoryManager through the Ministry layer
