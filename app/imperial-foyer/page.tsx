@@ -72,6 +72,16 @@ const COMPANION_MESSAGES: Record<AzmaTongue, string> = {
   silent:       '.',
 };
 
+// ── Creator Identity — Package G ─────────────────────────────────────────
+// The Empire's certified knowledge of who the Creator is.
+// Source: GET /api/auth/me — only fields the route already exposes.
+// Nothing predicted, nothing inferred, nothing artificial.
+
+interface CreatorIdentity {
+  displayName: string | null;
+  role: 'founder' | 'creator';
+}
+
 // ── Sovereign Presence State ──────────────────────────────────────────────
 // The shape returned by GET /api/sovereign/presence. Reflects only what is
 // already durably recorded in the Empire — never invented, never inferred.
@@ -101,21 +111,62 @@ interface SovereignPresence {
 }
 
 // Returns the most constitutionally significant presence state as a companion
-// message — or null when no meaningful state is worth surfacing (empty Empire
-// or fully-completed journey with nothing outstanding).
-function derivePresenceMessage(p: SovereignPresence): string | null {
+// message — now identity-aware (Package G). Named goals/canvases and the
+// Creator's sovereign purpose are referenced when they exist, making the
+// message personal rather than generic. Never invented, never predicted.
+function derivePresenceMessage(
+  p: SovereignPresence,
+  identity?: { displayName: string | null; purpose: string | null },
+): string | null {
   if (p.makman.hasProcessingProduction) {
-    return 'الإمبراطورية تُنتج الآن — مكمن الغاية يسير نحو غايته';
+    return identity?.displayName
+      ? `${identity.displayName} — الإمبراطورية تُنتج الآن نحو غايتك`
+      : 'الإمبراطورية تُنتج الآن — مكمن الغاية يسير نحو غايته';
   }
   if (p.hujjah.hasActiveGoal) {
-    return 'غاية نشطة في التحقيق — حجة الدامغة تنتظر توجيهك';
+    const goalTitle = p.hujjah.mostRecentGoalTitle;
+    return goalTitle
+      ? `هدف "${goalTitle}" نشط — حجة الدامغة تنتظر توجيهك`
+      : 'غاية نشطة في التحقيق — حجة الدامغة تنتظر توجيهك';
   }
   if (p.rasAlAmr.savedCanvasCount > 0 && p.makman.productionCount === 0) {
-    return 'تشكيلة سردية محفوظة في رأس الأمر — هل أنت مستعدّ لصهرها؟';
+    const canvasTitle = p.rasAlAmr.mostRecentTitle;
+    return canvasTitle
+      ? `تشكيلة "${canvasTitle}" محفوظة — مكمن الغاية جاهز لاستقبالها`
+      : 'تشكيلة سردية محفوظة في رأس الأمر — هل أنت مستعدّ لصهرها؟';
   }
   if (p.qiyamah.creationCount > 0 && p.rasAlAmr.savedCanvasCount === 0) {
-    return 'إبداعك موجود في الخزانة — رأس الأمر يستقبل توجيهك';
+    return identity?.purpose
+      ? 'إبداعك في الخزانة السيادية — رأس الأمر يستعد لتوجيهه نحو غايتك'
+      : 'إبداعك موجود في الخزانة — رأس الأمر يستقبل توجيهك';
   }
+  if (identity?.purpose && p.qiyamah.creationCount === 0) {
+    return 'غايتك السيادية أُعلنت — حجرة القيامة تنتظر أول إبداع';
+  }
+  return null;
+}
+
+// Derives which chamber the Empire naturally awaits the Creator in,
+// based purely on certified constitutional state. Returns a chamberId
+// or null when no single chamber is more urgent than another.
+// This drives the subtle visual invitation on one chamber card only.
+function deriveNaturalNextChamber(
+  presence: SovereignPresence | null,
+  hasPurpose: boolean,
+): string | null {
+  if (!presence) return null;
+  // Production live → Creator should monitor Makman
+  if (presence.makman.hasProcessingProduction) return 'makman-al-ghayah';
+  // Active goal → Al Hujjah awaits investigation
+  if (presence.hujjah.hasActiveGoal) return 'hujjah-al-damighah';
+  // Canvas saved but no production → Makman can receive it
+  if (presence.rasAlAmr.savedCanvasCount > 0 && presence.makman.productionCount === 0) return 'makman-al-ghayah';
+  // Creation exists but no canvas → Ras Al Amr awaits direction
+  if (presence.qiyamah.creationCount > 0 && presence.rasAlAmr.savedCanvasCount === 0) return 'ras-amr';
+  // Purpose declared but no goals registered → Makman awaits
+  if (hasPurpose && presence.hujjah.goalCount === 0) return 'makman-al-ghayah';
+  // Nothing yet → Qiyamah holds the first invitation
+  if (presence.qiyamah.creationCount === 0) return 'qiyamah-chamber';
   return null;
 }
 
@@ -188,6 +239,13 @@ export default function ImperialFoyer() {
   const [kernelSession,   setKernelSession]   = useState<InteractionSession | null>(null);
   const [preparingId,     setPreparingId]     = useState<string | null>(null);
   const [preparingNameAr, setPreparingNameAr] = useState<string | null>(null);
+  // CREATOR IDENTITY PRESENCE — Package G:
+  // The Empire's certified knowledge of who the Creator is and what they
+  // have declared as their sovereign purpose. Two additional fetches on
+  // mount; both are enhancement-only — failures are silenced, never
+  // blocking the Foyer's core functionality.
+  const [creatorIdentity,  setCreatorIdentity]  = useState<CreatorIdentity | null>(null);
+  const [sovereignPurpose, setSovereignPurpose] = useState<string | null>(null);
   // IMPERIAL JOURNEY CONTINUITY — Package D:
   // Holds the constitutional return message for one beat after the Creator
   // returns from a chamber. Cleared when they choose an interaction mode
@@ -244,6 +302,28 @@ export default function ImperialFoyer() {
       })
       .catch(() => { /* presence is enhancement — silence failures */ });
 
+    // CREATOR IDENTITY PRESENCE — Package G:
+    // The Empire knows who this Creator is. Reveal constitutional truth
+    // about their identity and declared sovereign purpose.
+    fetch('/api/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { authenticated?: boolean; displayName?: string | null; role?: string } | null) => {
+        if (data?.authenticated) {
+          setCreatorIdentity({
+            displayName: data.displayName ?? null,
+            role: (data.role === 'founder' || data.role === 'creator') ? data.role : 'creator',
+          });
+        }
+      })
+      .catch(() => { /* identity is enhancement — silence failures */ });
+
+    fetch('/api/sovereign/entry/purpose')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { purpose?: string | null } | null) => {
+        if (data?.purpose) setSovereignPurpose(data.purpose);
+      })
+      .catch(() => { /* purpose is enhancement — silence failures */ });
+
     return () => cancelAnimationFrame(raf);
   }, []);
 
@@ -297,8 +377,14 @@ export default function ImperialFoyer() {
   // 1. Kernel ready message — the Foyer is actively preparing departure
   // 2. Constitutional return message — the Creator just returned from a chamber
   // 3. Presence message — notable constitutional state already in the Empire
+  //    (now identity-aware: uses displayName + purpose + named goal/canvas titles)
   // 4. Default tongue message — no journey context active
-  const presenceMsg = presence ? derivePresenceMessage(presence) : null;
+  const identityCtx = {
+    displayName: creatorIdentity?.displayName ?? null,
+    purpose:     sovereignPurpose,
+  };
+  const presenceMsg = presence ? derivePresenceMessage(presence, identityCtx) : null;
+  const naturalNextChamber = deriveNaturalNextChamber(presence, sovereignPurpose !== null);
   const companionMsg =
     kernelSession && isPreparing && preparingNameAr
       ? kernelReadyMessage(kernelSession, preparingNameAr)
@@ -325,6 +411,26 @@ export default function ImperialFoyer() {
           context="universal"
         />
       </div>
+
+      {/* CREATOR IDENTITY PRESENCE — Package G
+          The Empire's constitutional mirror of the Creator.
+          Surfaces only certified truth: displayName (from /api/auth/me)
+          and sovereignPurpose (from /api/sovereign/entry/purpose).
+          Never a dashboard. Never analytics. Only who the Creator is
+          and what they have declared as their sovereign direction. */}
+      {creatorIdentity && (
+        <div className="foyer-creator-identity">
+          <span className="creator-greeting">
+            {creatorIdentity.displayName
+              ? `مرحباً، ${creatorIdentity.displayName}`
+              : 'مرحباً بالخالق السيادي'
+            }
+          </span>
+          {sovereignPurpose && (
+            <span className="creator-purpose">&quot;{sovereignPurpose}&quot;</span>
+          )}
+        </div>
+      )}
 
       {/* Empire Interaction Modes — promoted from chamber-level */}
       <div className="foyer-modes" role="group" aria-label="أسلوب التفاعل مع الإمبراطورية">
@@ -375,7 +481,7 @@ export default function ImperialFoyer() {
           return (
             <button
               key={ch.id}
-              className={`foyer-chamber-card foyer-chamber-${ch.id} ${preparingId === ch.id ? 'chamber-preparing' : ''} ${chamberPresence ? 'chamber-has-presence' : ''}`}
+              className={`foyer-chamber-card foyer-chamber-${ch.id} ${preparingId === ch.id ? 'chamber-preparing' : ''} ${chamberPresence ? 'chamber-has-presence' : ''} ${naturalNextChamber === ch.id ? 'chamber-natural-next' : ''}`}
               onClick={() => launchChamber(ch.id, ch.route, ch.nameAr)}
               aria-label={`الدخول إلى ${ch.nameAr}`}
               disabled={isPreparing}

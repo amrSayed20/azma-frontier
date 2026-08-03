@@ -284,6 +284,50 @@
   color:     rgba(232, 228, 220, 0.4);
 }
 
+/* ── Creator Identity Presence — Package G ───────────────────────────── */
+/* The Empire's constitutional mirror of the Creator. Surfaces certified
+   truth only: displayName and sovereignPurpose. Never a dashboard.
+   Positioned between the Living Companion and the interaction mode buttons. */
+
+.foyer-creator-identity {
+  position:        relative;
+  z-index:         10;
+  width:           100%;
+  max-width:       560px;
+  text-align:      center;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  gap:             0.3rem;
+}
+
+.creator-greeting {
+  font-size:      1.0rem;
+  font-weight:    400;
+  color:          rgba(232, 228, 220, 0.8);
+  letter-spacing: 0.07em;
+}
+
+.creator-purpose {
+  font-size:      0.78rem;
+  color:          rgba(212, 185, 102, 0.6);
+  font-style:     italic;
+  letter-spacing: 0.03em;
+  line-height:    1.55;
+  max-width:      460px;
+}
+
+/* ── Natural Next Chamber — Package G ────────────────────────────────── */
+/* The Empire's awareness of where the Creator's journey naturally
+   continues. Subtle: brighter border and a gentle inner glow on one card.
+   No text label. No arrow. The Empire speaks through visual presence. */
+
+.foyer-chamber-card.chamber-natural-next {
+  border-color: rgba(212, 185, 102, 0.42);
+  background:   rgba(212, 185, 102, 0.055);
+  box-shadow:   0 0 18px rgba(212, 185, 102, 0.07), inset 0 0 12px rgba(212, 185, 102, 0.04);
+}
+
 /* ── Chamber Presence Indicators — Package E ─────────────────────── */
 /* Reveals constitutional state already recorded in the Empire.
    Not statistics. Not activity. Honest constitutional presence only. */
