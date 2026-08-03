@@ -965,14 +965,14 @@ export default function RasAmrChamber() {
       const response = await fetch('/api/vault/assets/upload', { method: 'POST', body });
       const result = await response.json();
       if (!response.ok || result.status !== 'succeeded') {
-        setUploadError(result.message ?? 'تعذّر رفع الملف.');
+        setUploadError(result.message ?? 'الملف لم يصل إلى الخزانة.');
         return;
       }
       setVaultAssets((prev) => [...prev, result.asset]);
       setIsVoiceUpload(false);
       setVoiceDisplayNameInput('');
     } catch {
-      setUploadError('تعذّر الوصول إلى بوابة الرفع السيادية.');
+      setUploadError('بوابة الرفع لا تستجيب.');
     } finally {
       setIsUploadingAsset(false);
       if (uploadFileInputRef.current) uploadFileInputRef.current.value = '';
@@ -1006,14 +1006,14 @@ export default function RasAmrChamber() {
       });
       const result = await response.json();
       if (!response.ok || result.status !== 'succeeded') {
-        setTtsError(result.message ?? 'تعذّر توليد الصوت.');
+        setTtsError(result.message ?? 'الصوت لم يُولَّد.');
         return;
       }
       setVaultAssets((prev) => [...prev, result.asset]);
       setTtsText('');
       setTtsDisplayNameInput('');
     } catch {
-      setTtsError('تعذّر الوصول إلى محرك تحويل النص إلى كلام.');
+      setTtsError('بوابة الصوت لا تستجيب.');
     } finally {
       setIsGeneratingSpeech(false);
     }
@@ -1249,7 +1249,7 @@ export default function RasAmrChamber() {
     if (!activeAsset?.isRealAsset || !sessionCanvas) return;
 
     setIsRendering(true);
-    setRenderStatus('جاري الصهر الحقيقي عبر بوابة الدخول السيادية...');
+    setRenderStatus('الصهر الحقيقي جارٍ…');
 
     const canvas: SovereignCanvas = { ...sessionCanvas, updatedAt: Date.now() };
 
@@ -1262,7 +1262,7 @@ export default function RasAmrChamber() {
       const result = await response.json();
 
       if (!response.ok) {
-        setRenderStatus(`فشل الصهر الحقيقي — ${result.message ?? result.error ?? 'خطأ غير معروف'}`);
+        setRenderStatus(`الصهر لم يكتمل — ${result.message ?? result.error ?? 'ما لم يُتوقَّع'}`);
         return;
       }
 
@@ -1273,7 +1273,7 @@ export default function RasAmrChamber() {
         `تم الصهر الحقيقي بنجاح — ${compiled.compilationId} — ${compiled.metadata.totalNodes} عنصر مضمَّن`,
       );
     } catch {
-      setRenderStatus('تعذّر الوصول إلى بوابة الدخول السيادية للصهر.');
+      setRenderStatus('بوابة الصهر لا تستجيب.');
     } finally {
       setIsRendering(false);
     }
@@ -1351,13 +1351,13 @@ export default function RasAmrChamber() {
         body: JSON.stringify(sessionCanvas),
       });
       if (r.ok) {
-        setSaveCanvasStatus('تم حفظ القماش السردي ✔️');
+        setSaveCanvasStatus('القماش السردي محفوظ ✔');
       } else {
         const d = await r.json() as { error?: string };
-        setSaveCanvasStatus(d.error ?? 'تعذّر حفظ القماش السردي');
+        setSaveCanvasStatus(d.error ?? 'القماش السردي لم يُحفظ.');
       }
     } catch {
-      setSaveCanvasStatus('تعذّر الوصول إلى بوابة الحفظ');
+      setSaveCanvasStatus('بوابة الحفظ لا تستجيب.');
     } finally {
       setIsSavingCanvas(false);
     }
@@ -1384,7 +1384,7 @@ export default function RasAmrChamber() {
         if (d.status === 'succeeded') {
           setSessionCanvas(d.canvas);
           setShowCanvasLoad(false);
-          setSaveCanvasStatus('تم استعادة القماش السردي ✔️');
+          setSaveCanvasStatus('القماش السردي مُستعاد ✔');
         }
       }
     } catch { /* silent */ }
@@ -2064,7 +2064,7 @@ export default function RasAmrChamber() {
                 onClick={() => void handleSaveCanvas()}
                 disabled={isSavingCanvas}
               >
-                {isSavingCanvas ? '... جارٍ الحفظ ...' : '💾 حفظ القماش السردي'}
+                {isSavingCanvas ? 'القماش يُحفظ…' : '💾 حفظ القماش السردي'}
               </button>
             )}
 
@@ -2081,7 +2081,7 @@ export default function RasAmrChamber() {
 
             {showCanvasLoad && (
               <div className="canvas-load-panel">
-                {isLoadingCanvases && <p className="canvas-load-hint">جارٍ تحميل التشكيلات المحفوظة...</p>}
+                {isLoadingCanvases && <p className="canvas-load-hint">التشكيلات تُحمَّل…</p>}
                 {!isLoadingCanvases && savedCanvases.length === 0 && (
                   <p className="canvas-load-hint">لا توجد تشكيلات محفوظة بعد.</p>
                 )}
@@ -2131,7 +2131,7 @@ export default function RasAmrChamber() {
                 }}
               />
               <label htmlFor="ras-amr-media-upload" className="action-trigger-btn hud-upload-label">
-                {isUploadingAsset ? '⏳ جارٍ الرفع إلى الخزانة السيادية...' : '⬆ رفع ملف حقيقي من الجهاز إلى الخزانة'}
+                {isUploadingAsset ? '⏳ الرفع إلى الخزانة جارٍ…' : '⬆ رفع ملف حقيقي من الجهاز إلى الخزانة'}
               </label>
               {uploadError && <p className="spatial-current-state narrative-integrity-violation">{uploadError}</p>}
             </div>
@@ -2193,7 +2193,7 @@ export default function RasAmrChamber() {
                   onClick={handleGenerateSpeech}
                   disabled={isGeneratingSpeech || !ttsText.trim()}
                 >
-                  {isGeneratingSpeech ? '⏳ جارٍ توليد الصوت...' : '🗣 توليد كلام حقيقي'}
+                  {isGeneratingSpeech ? '⏳ الصوت يُولَّد…' : '🗣 توليد كلام حقيقي'}
                 </button>
               </div>
               {ttsError && <p className="spatial-current-state narrative-integrity-violation">{ttsError}</p>}

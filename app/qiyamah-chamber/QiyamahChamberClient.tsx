@@ -179,7 +179,7 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
               <p>صف ما تريد أن تبعثه، والقيامة تتولى الباقي.</p>
               <textarea
                 className="prompt-textarea"
-                placeholder="اكتب وصف المشهد هنا..."
+                placeholder="صِف ما تريد أن تبعثه…"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
               />

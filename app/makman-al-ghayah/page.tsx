@@ -107,6 +107,13 @@ const GOAL_PRIORITY_AR: Record<string, string> = {
   CRITICAL: 'حرجة',
 };
 
+const VERDICT_AR: Record<string, string> = {
+  FULFILLED:           'مُحقَّق',
+  PARTIALLY_FULFILLED: 'مُحقَّق جزئياً',
+  NOT_FULFILLED:       'غير مُحقَّق',
+  CANNOT_ASSESS:       'لا يمكن التقييم',
+};
+
 export default function MakmanAlGhayah() {
   const router = useRouter();
   const realProduction = useSyncExternalStore(subscribeToNothing, getRealProductionSnapshot, getRealProductionServerSnapshot);
@@ -184,10 +191,10 @@ export default function MakmanAlGhayah() {
         setSovereignPurpose(data.purpose);
         setIsEditingPurpose(false);
       } else {
-        setPurposeError(data.error ?? 'تعذّر حفظ الغاية السيادية');
+        setPurposeError(data.error ?? 'الغاية السيادية لم تُحفظ.');
       }
     } catch {
-      setPurposeError('تعذّر الوصول إلى بوابة الغاية السيادية');
+      setPurposeError('البوابة لا تستجيب.');
     } finally {
       setIsSavingPurpose(false);
     }
@@ -221,13 +228,13 @@ export default function MakmanAlGhayah() {
       });
       const result = await response.json();
       if (!response.ok) {
-        setRealDistributionError(result.message ?? result.error ?? 'خطأ غير معروف');
+        setRealDistributionError(result.message ?? result.error ?? 'حدث ما لم يُتوقَّع.');
         return;
       }
       setRealDistributionResult(result as MakmanFirstCustomerJourneyResult);
       void fetchGoals(); // refresh goals list after a new goal is registered
     } catch {
-      setRealDistributionError('تعذّر الوصول إلى بوابة الدخول السيادية للتوزيع.');
+      setRealDistributionError('بوابة التوزيع لا تستجيب.');
     } finally {
       setIsSubmittingReal(false);
     }
@@ -336,7 +343,7 @@ export default function MakmanAlGhayah() {
                   onClick={() => void handleSavePurpose()}
                   disabled={isSavingPurpose || !purposeInput.trim()}
                 >
-                  {isSavingPurpose ? '... جاري الحفظ ...' : 'حفظ الغاية السيادية'}
+                  {isSavingPurpose ? 'الغاية تُحفظ…' : 'حفظ الغاية السيادية'}
                 </button>
                 <button className="import-btn" onClick={() => setIsEditingPurpose(false)}>
                   إلغاء
@@ -353,7 +360,7 @@ export default function MakmanAlGhayah() {
             <h2>أهدافك الاستراتيجية المسجّلة</h2>
           </div>
 
-          {isFetchingGoals && <p className="project-status">جارٍ تحميل الأهداف...</p>}
+          {isFetchingGoals && <p className="project-status">الأهداف تُحمَّل…</p>}
 
           {!isFetchingGoals && goals.length === 0 && (
             <div className="makman-goals-empty">
@@ -391,27 +398,31 @@ export default function MakmanAlGhayah() {
                         onClick={(e) => { e.stopPropagation(); void handleAssessFulfillment(goal.goalId); }}
                         disabled={isAssessing}
                       >
-                        {isAssessing ? 'جارٍ التقييم...' : '⚖ تقييم الإنجاز والفجوات'}
+                        {isAssessing ? 'التقييم جارٍ…' : '⚖ تقييم الإنجاز والفجوات'}
                       </button>
 
                       {fulfillmentResult && (
                         <div className="goal-assessment-result">
                           <p className="project-status">
-                            تقييم الإنجاز: {JSON.stringify((fulfillmentResult as { overallVerdict?: string }).overallVerdict ?? fulfillmentResult)}
+                            تقييم الإنجاز: {VERDICT_AR[(fulfillmentResult as { overallVerdict?: string }).overallVerdict ?? ''] ?? '—'}
                           </p>
                         </div>
                       )}
                       {gapResult && (
                         <div className="goal-assessment-result">
                           <p className="project-status">
-                            تقرير الفجوات: {JSON.stringify((gapResult as { gaps?: unknown }).gaps ?? gapResult)}
+                            تقرير الفجوات: {Array.isArray((gapResult as { gaps?: unknown[] }).gaps)
+                              ? `${(gapResult as { gaps: unknown[] }).gaps.length} فجوة مرصودة`
+                              : 'لا فجوات مرصودة'}
                           </p>
                         </div>
                       )}
                       {investigationResult && (
                         <div className="goal-assessment-result">
                           <p className="project-status">
-                            متطلبات المعرفة: {JSON.stringify((investigationResult as { knowledgeRequirements?: unknown }).knowledgeRequirements ?? investigationResult)}
+                            متطلبات المعرفة: {Array.isArray((investigationResult as { knowledgeRequirements?: unknown[] }).knowledgeRequirements)
+                              ? `${(investigationResult as { knowledgeRequirements: unknown[] }).knowledgeRequirements.length} متطلبات معرفية`
+                              : 'لا متطلبات إضافية'}
                           </p>
                         </div>
                       )}
@@ -477,9 +488,9 @@ export default function MakmanAlGhayah() {
                 disabled={isSubmittingReal || Boolean(realDistributionResult)}
               >
                 {isSubmittingReal
-                  ? '... جاري التسجيل الاستراتيجي ...'
+                  ? 'التسجيل الاستراتيجي جارٍ…'
                   : realDistributionResult
-                    ? 'تم التسجيل الاستراتيجي ✔️'
+                    ? 'التسجيل الاستراتيجي مكتمل ✔'
                     : 'تسجيل الهدف وإطلاق الإنتاج 👑'}
               </button>
             </div>

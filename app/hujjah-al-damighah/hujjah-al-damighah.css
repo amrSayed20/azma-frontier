@@ -1492,11 +1492,11 @@ body, html {
   opacity: 0.55;
 }
 
-.coming-soon {
-  font-size: 8px;
-  color: var(--ig-2);
-  letter-spacing: 1px;
-  font-style: italic;
+.dormant-authority {
+  font-size: 11px;
+  color: var(--ig-4);
+  font-style: normal;
+  opacity: 0.75;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -1722,12 +1722,7 @@ body, html {
   position: relative;
 }
 
-.inv-coming-soon {
-  font-size: 8px;
-  color: var(--ig-2);
-  letter-spacing: 1px;
-  font-style: italic;
-}
+/* .dormant-authority — shared class defined above in the gateway section */
 
 /* ═══════════════════════════════════════════════════════════════════════
    VOICE MODE — Companion Zone

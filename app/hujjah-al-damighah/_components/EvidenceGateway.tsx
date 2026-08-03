@@ -18,7 +18,7 @@ function StubAction({ label }: { label: string }) {
   return (
     <button className="gateway-action-stub" disabled aria-label={label}>
       {label}
-      <span className="coming-soon">قريباً</span>
+      <span className="dormant-authority">◎</span>
     </button>
   );
 }

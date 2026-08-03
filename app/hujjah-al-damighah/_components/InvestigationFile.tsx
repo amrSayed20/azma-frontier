@@ -48,11 +48,11 @@ export function InvestigationFile({
         </button>
         <button className="inv-action inv-stub" disabled>
           توليد تقرير
-          <span className="inv-coming-soon">قريباً</span>
+          <span className="dormant-authority">◎</span>
         </button>
         <button className="inv-action inv-stub" disabled>
           توليد وثيقة
-          <span className="inv-coming-soon">قريباً</span>
+          <span className="dormant-authority">◎</span>
         </button>
       </div>
     </div>

@@ -513,7 +513,7 @@ function VerdictBlock({
     <div className={`verdict-sanctum ev-count-${evCount}`}>
       {!result.success && (
         <div className="verdict-error" role="alert">
-          <p>{result.error ?? 'تعذّر الاتصال بالمستودعات المعرفية.'}</p>
+          <p>{result.error ?? 'المستودعات المعرفية لا تستجيب.'}</p>
         </div>
       )}
       {isUncertain && (

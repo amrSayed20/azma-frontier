@@ -1017,25 +1017,25 @@ export default function SovereignVaultPalace() {
                           <button className="detail-action action-duplicate"
                             onClick={() => handleDuplicate(selectedTreasure)}
                             disabled={selectedTreasure.isRealAsset}
-                            title={selectedTreasure.isRealAsset ? 'قريباً — لا يوجد بعد مسار حقيقي للنسخ داخل الخزانة السيادية' : undefined}>
+                            title={selectedTreasure.isRealAsset ? '◎ صلاحية كامنة — سلطة النسخ السيادي في انتظار استدعائها' : undefined}>
                             نسخ سيادي
                           </button>
                           <button className="detail-action action-seal"
                             onClick={() => sealTreasure(selectedTreasure.id)}
                             disabled={selectedTreasure.isRealAsset}
-                            title={selectedTreasure.isRealAsset ? 'قريباً — لا يوجد بعد مسار حقيقي للإحكام داخل الخزانة السيادية' : undefined}>
+                            title={selectedTreasure.isRealAsset ? '◎ صلاحية كامنة — سلطة الإحكام في انتظار استدعائها' : undefined}>
                             إحكام الكنز
                           </button>
                           <button className="detail-action action-archive"
                             onClick={() => archiveTreasure(selectedTreasure.id)}
                             disabled={selectedTreasure.isRealAsset}
-                            title={selectedTreasure.isRealAsset ? 'قريباً — لا يوجد بعد مسار حقيقي للأرشفة داخل الخزانة السيادية' : undefined}>
+                            title={selectedTreasure.isRealAsset ? '◎ صلاحية كامنة — سلطة الأرشفة الملكية في انتظار استدعائها' : undefined}>
                             أرشفة ملكية
                           </button>
                           <button className="detail-action action-dispose"
                             onClick={() => disposeTreasure(selectedTreasure.id)}
                             disabled={selectedTreasure.isRealAsset}
-                            title={selectedTreasure.isRealAsset ? 'قريباً — لا يوجد بعد مسار حقيقي للإتلاف داخل الخزانة السيادية' : undefined}>
+                            title={selectedTreasure.isRealAsset ? '◎ صلاحية كامنة — سلطة الإتلاف الدائم في انتظار استدعائها' : undefined}>
                             إتلاف دائم
                           </button>
                         </div>
