@@ -240,6 +240,12 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
                 {completeAction && (
                   <button className="trigger-genesis-btn" onClick={generateAnother}>{t(dict, completeAction.labelKey)}</button>
                 )}
+                <button
+                  className="vault-path-btn"
+                  onClick={() => router.push('/sovereign-vault-palace')}
+                >
+                  📥 عرض في القصر السيادي
+                </button>
               </div>
             </div>
           )}

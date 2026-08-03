@@ -1330,6 +1330,66 @@ export default function RasAmrChamber() {
     router.push('/makman-al-ghayah');
   };
 
+  // PACKAGE F — CONSTITUTIONAL CAPABILITY REVELATION
+  // Canvas save/load: reveals the certified persistence capability
+  // that was previously 100% hidden. Uses the already-certified
+  // POST /api/ras-amr/canvas and GET /api/ras-amr/canvas routes.
+  const [isSavingCanvas,   setIsSavingCanvas]   = useState(false);
+  const [saveCanvasStatus, setSaveCanvasStatus] = useState<string | null>(null);
+  const [savedCanvases,    setSavedCanvases]    = useState<{ canvasId: string; title: string }[]>([]);
+  const [showCanvasLoad,   setShowCanvasLoad]   = useState(false);
+  const [isLoadingCanvases, setIsLoadingCanvases] = useState(false);
+
+  const handleSaveCanvas = async () => {
+    if (!sessionCanvas) return;
+    setIsSavingCanvas(true);
+    setSaveCanvasStatus(null);
+    try {
+      const r = await fetch('/api/ras-amr/canvas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sessionCanvas),
+      });
+      if (r.ok) {
+        setSaveCanvasStatus('تم حفظ القماش السردي ✔️');
+      } else {
+        const d = await r.json() as { error?: string };
+        setSaveCanvasStatus(d.error ?? 'تعذّر حفظ القماش السردي');
+      }
+    } catch {
+      setSaveCanvasStatus('تعذّر الوصول إلى بوابة الحفظ');
+    } finally {
+      setIsSavingCanvas(false);
+    }
+  };
+
+  const handleLoadCanvases = async () => {
+    setIsLoadingCanvases(true);
+    setShowCanvasLoad(true);
+    try {
+      const r = await fetch('/api/ras-amr/canvas');
+      if (r.ok) {
+        const d = await r.json() as { status: string; canvases: { canvasId: string; title: string }[] };
+        if (d.status === 'succeeded') setSavedCanvases(d.canvases);
+      }
+    } catch { /* silent */ }
+    finally { setIsLoadingCanvases(false); }
+  };
+
+  const handleRestoreCanvas = async (canvasId: string) => {
+    try {
+      const r = await fetch(`/api/ras-amr/canvas/${encodeURIComponent(canvasId)}`);
+      if (r.ok) {
+        const d = await r.json() as { status: string; canvas: SovereignCanvas };
+        if (d.status === 'succeeded') {
+          setSessionCanvas(d.canvas);
+          setShowCanvasLoad(false);
+          setSaveCanvasStatus('تم استعادة القماش السردي ✔️');
+        }
+      }
+    } catch { /* silent */ }
+  };
+
   return (
     <RasAmrExperience>
     <main className={`ras-amr-viewport ${injectionFlash ? 'neon-flash-active' : ''}`}>
@@ -1983,7 +2043,7 @@ export default function RasAmrChamber() {
             >
               🎬 صهر الإخراج النهائي (Master Render)
             </button>
-            
+
             <button
               className="action-trigger-btn forward-btn"
               onClick={handleForwardToMakman}
@@ -1995,6 +2055,48 @@ export default function RasAmrChamber() {
             >
               👑 ترحيل العمل المكتمل لـ &quot;مكمن الغاية&quot;
             </button>
+
+            {/* PACKAGE F — Canvas save/load: reveals the certified persistence
+                capability that previously had API routes but zero UI surface. */}
+            {sessionCanvas && (
+              <button
+                className={`action-trigger-btn canvas-save-btn ${isSavingCanvas ? 'rendering' : ''}`}
+                onClick={() => void handleSaveCanvas()}
+                disabled={isSavingCanvas}
+              >
+                {isSavingCanvas ? '... جارٍ الحفظ ...' : '💾 حفظ القماش السردي'}
+              </button>
+            )}
+
+            <button
+              className="action-trigger-btn canvas-load-btn"
+              onClick={() => void handleLoadCanvases()}
+            >
+              📂 استعادة قماش محفوظ
+            </button>
+
+            {saveCanvasStatus && (
+              <p className="canvas-save-status">{saveCanvasStatus}</p>
+            )}
+
+            {showCanvasLoad && (
+              <div className="canvas-load-panel">
+                {isLoadingCanvases && <p className="canvas-load-hint">جارٍ تحميل التشكيلات المحفوظة...</p>}
+                {!isLoadingCanvases && savedCanvases.length === 0 && (
+                  <p className="canvas-load-hint">لا توجد تشكيلات محفوظة بعد.</p>
+                )}
+                {savedCanvases.map((c) => (
+                  <button
+                    key={c.canvasId}
+                    className="canvas-load-item"
+                    onClick={() => void handleRestoreCanvas(c.canvasId)}
+                  >
+                    {c.title || c.canvasId}
+                  </button>
+                ))}
+                <button className="canvas-load-close" onClick={() => setShowCanvasLoad(false)}>✖ إغلاق</button>
+              </div>
+            )}
           </div>
         </aside>
 

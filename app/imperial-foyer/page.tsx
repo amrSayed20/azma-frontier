@@ -51,18 +51,19 @@ function writeTongue(t: AzmaTongue): void {
 // identifiers that must match the sovereign-chamber-manifest exactly.
 
 interface ChamberCard {
-  id:     ManifestChamberContext;
-  nameAr: string;
-  roleAr: string;
-  glyph:  string;
-  route:  string;
+  id:       ManifestChamberContext;
+  nameAr:   string;
+  roleAr:   string;
+  actionAr: string;
+  glyph:    string;
+  route:    string;
 }
 
 const CONSTITUTIONAL_CHAMBERS: ChamberCard[] = [
-  { id: 'hujjah-al-damighah', nameAr: 'حجة الدامغة', roleAr: 'تحقيق معرفي',  glyph: '⚖', route: '/hujjah-al-damighah' },
-  { id: 'qiyamah-chamber',    nameAr: 'القيامة',      roleAr: 'إنتاج إبداعي', glyph: '◈', route: '/qiyamah-chamber'    },
-  { id: 'ras-amr',            nameAr: 'رأس الأمر',    roleAr: 'توجيه سيادي',  glyph: '◎', route: '/ras-amr'            },
-  { id: 'makman-al-ghayah',   nameAr: 'مكمن الغاية',  roleAr: 'استراتيجية',   glyph: '⬟', route: '/makman-al-ghayah'  },
+  { id: 'hujjah-al-damighah', nameAr: 'حجة الدامغة', roleAr: 'تحقيق معرفي',  actionAr: 'اطرح سؤالاً — ابدأ التحقيق',    glyph: '⚖', route: '/hujjah-al-damighah' },
+  { id: 'qiyamah-chamber',    nameAr: 'القيامة',      roleAr: 'إنتاج إبداعي', actionAr: 'صِف مشهداً — أنشئ صورة',        glyph: '◈', route: '/qiyamah-chamber'    },
+  { id: 'ras-amr',            nameAr: 'رأس الأمر',    roleAr: 'توجيه سيادي',  actionAr: 'وجّه قماشك السردي',              glyph: '◎', route: '/ras-amr'            },
+  { id: 'makman-al-ghayah',   nameAr: 'مكمن الغاية',  roleAr: 'غاية وأهداف',  actionAr: 'أعلن غايتك — سجّل هدفك',       glyph: '⬟', route: '/makman-al-ghayah'  },
 ];
 
 const COMPANION_MESSAGES: Record<AzmaTongue, string> = {
@@ -383,6 +384,7 @@ export default function ImperialFoyer() {
               <div className="chamber-identity">
                 <span className="chamber-name">{ch.nameAr}</span>
                 <span className="chamber-role">{ch.roleAr}</span>
+                <span className="chamber-action">{ch.actionAr}</span>
                 {chamberPresence && (
                   <span
                     className={`chamber-presence-state ${ch.id === 'makman-al-ghayah' && presence?.makman.hasProcessingProduction ? 'presence-processing' : 'presence-active'}`}

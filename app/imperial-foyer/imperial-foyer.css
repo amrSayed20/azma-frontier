@@ -288,6 +288,14 @@
 /* Reveals constitutional state already recorded in the Empire.
    Not statistics. Not activity. Honest constitutional presence only. */
 
+.chamber-action {
+  font-size:      0.72rem;
+  color:          rgba(212, 185, 102, 0.6);
+  letter-spacing: 0.02em;
+  margin-top:     0.1rem;
+  font-style:     italic;
+}
+
 .chamber-presence-state {
   font-size:      0.7rem;
   color:          rgba(212, 185, 102, 0.55);

@@ -1,66 +1,28 @@
 /**
- * AZMA OS – Makman Al-Ghayah (The Sovereign Release Terminal)
+ * AZMA OS – Makman Al-Ghayah
  * Native Name: مكمن الغاية
- * Status: Final Integrated Build (Fixed UI Overflow & Workflow Logic)
  *
- * IMPERIAL CHAMBER UNIFICATION, PHASE II PACKAGE III (2026-07-25):
- * wrapped in MakmanExperience (src/imperial-experience-engine/
- * experiences/makman-al-ghayah/) — additive only, no logic below
- * changed. Note: the "Generate packaging with AI" button (line ~197
- * below) has no onClick handler at all — a real, pre-existing dead
- * button, disclosed not fixed (this Package: identify gaps, don't
- * implement new production behavior).
+ * PACKAGE F — CONSTITUTIONAL CAPABILITY REVELATION:
+ * This chamber's constitutional identity is now visible for the first time.
+ * The prior UI (social platform grid, fake Sovereign Release button,
+ * hardcoded demo video display, AI packaging dead button) has been removed
+ * per the Remove-not-cover constitutional rule. What remains is only
+ * certified constitutional truth.
  *
- * INTEGRATION PACKAGE IV — FROM DIRECTION TO FULFILLMENT (2026-07-25):
- * the Master Display now shows a real incoming production when Ras Al
- * Amr's "forward to Makman" button carried one — the exact same
- * one-shot sessionStorage handoff convention Vault Palace's own
- * cross-chamber transfers already established. Read via
- * useSyncExternalStore, not an effect + setState — the same pattern and
- * the same reasoning already proven correct in this exact codebase
- * (ArrivalExperience.tsx's isReturning): the value differs between
- * server (always null) and client (may genuinely carry a handoff), must
- * be correct at first client paint with no hydration mismatch, and — as
- * that earlier fix's own comment discloses from hard-won experience —
- * getSnapshot must freeze its answer on first read, since this
- * component's own effects/re-renders would otherwise see the
- * already-cleared sessionStorage key on a later read and silently
- * flip back to null. Falls back to this page's existing hardcoded
- * display when no real handoff exists — nothing regresses for a direct
- * visit.
+ * CERTIFIED CAPABILITIES NOW VISIBLE:
+ *   makman-set-sovereign-purpose   — GET/PUT /api/sovereign/entry/purpose
+ *   makman-register-milestone-goal — POST /api/sovereign/entry/creator-goal
+ *                                    (requires CompiledAssemblyGraph from Ras Al Amr)
+ *   makman-define-success-criteria — PUT .../success-criteria
+ *   makman-record-observation      — GET /api/sovereign/entry/consumption
+ *   makman-assess-fulfillment      — POST/GET .../fulfillment-assessment
+ *   makman-get-gap-report          — GET .../fulfillment-gap
+ *   makman-request-knowledge-investigation — GET .../knowledge-investigation
  *
- * THE CORRIDOR PACKAGE — RAS AL AMR TO MAKMAN (2026-07-25): closes the
- * gap the constitutional audit flagged — a real intake
- * (POST /api/sovereign/entry/creator-goal, via SOEL only, never
- * src/chambers/makman-al-ghayah directly) existed with no UI reaching
- * it. When Ras Al Amr's real compiled assembly rides along with the
- * handoff (same one-shot sessionStorage convention, its own key so it's
- * never confused with the raw preview payload above), a new, clearly
- * separate action — "تفعيل التوزيع السيادي الحقيقي" — submits it for
- * real: a real GoalContract, a real MakmanCommercialIntent, and a real
- * SovereignPublication/PublicationRenderState come back from Makman's
- * own already-certified pipeline (MAG-LF-001/002), not a simulation.
- * Scope discipline: this does NOT touch the existing simulated
- * multi-platform release below (handleSovereignRelease) — real
- * social-platform publishing is a separate, much larger, not-yet
- * -authorized capability. The access tier is honestly defaulted to
- * DistributionTier.PRIVATE (Creator preview) because no real tier/
- * pricing UI exists yet — a disclosed limitation, not a fabricated
- * commercial claim.
- *
- * PACKAGE XV — CREATOR PACING PREFERENCE FOUNDATION (2026-07-27): a real
- * pacing-preference select (CONTEMPLATIVE/BALANCED/ENERGETIC, plus a
- * genuine "not stated" default) is now part of the same real submission
- * form — the Creator's own explicit, optional choice, included in the
- * request only when genuinely selected, never defaulted to a guessed
- * tier. Durably carried onto the Goal itself (see goal-contracts.ts's own
- * account) and later readable by Ras Al Amr's Automatic Director.
- *
- * PACKAGE XVI — CREATOR TRANSITION PREFERENCE FOUNDATION (2026-07-27): a
- * second, independent, real select (SOFT/GRADUAL/DECISIVE/DIRECT, plus a
- * genuine "not stated" default) — a distinct Creator choice from pacing,
- * never derived from it. Same optional-inclusion treatment: present in
- * the request only when genuinely selected.
+ * RETAINED (already certified, real pipelines):
+ *   handleActivateRealDistribution  → POST /api/sovereign/entry/creator-goal
+ *   handlePreviewRealAccess         → GET /api/sovereign/entry/consumption
+ *   pacingPreference + transitionPreference → carried onto GoalContract
  */
 
 'use client';
@@ -71,7 +33,7 @@ import { MakmanExperience } from '@/src/imperial-experience-engine';
 import { GoalPriority, PacingPreference, TransitionPreference } from '@/src/chambers/makman-al-ghayah/goal-contracts';
 import { DistributionTier } from '@/src/chambers/makman-al-ghayah/publication-contracts';
 import type { CompiledAssemblyGraph } from '@/src/chambers/ras-al-amr/pre-publishing-boundary';
-import type { GoalDistributionBridgeResult } from '@/src/chambers/makman-al-ghayah/MAKMAN_COMMERCIAL_DISTRIBUTION_CONTRACTS';
+import type { MakmanFirstCustomerJourneyResult } from '@/src/chambers/makman-al-ghayah/MAKMAN_FIRST_CUSTOMER_JOURNEY_PIPELINE';
 import type { ConsumptionResponse } from '@/src/chambers/makman-al-ghayah/consumption-boundary';
 import './makman-al-ghayah.css';
 
@@ -79,6 +41,14 @@ interface RealProduction {
   id: string;
   title: string;
   secureStorageUri: string;
+}
+
+interface GoalSummary {
+  goalId: string;
+  title: string;
+  status: string;
+  priority: string;
+  createdAtMs: number;
 }
 
 function subscribeToNothing(): () => void {
@@ -95,7 +65,7 @@ function getRealProductionSnapshot(): RealProduction | null {
         sessionStorage.removeItem('azma.transfer.rasAmrProduction');
         cachedRealProduction = JSON.parse(raw) as RealProduction;
       }
-    } catch { /* ignore — falls back to the existing display */ }
+    } catch { /* falls back to empty state */ }
   }
   return cachedRealProduction;
 }
@@ -103,10 +73,6 @@ function getRealProductionServerSnapshot(): RealProduction | null {
   return null;
 }
 
-// THE CORRIDOR PACKAGE: the real sealed assembly from Ras Al Amr, read with
-// the exact same frozen-on-first-read useSyncExternalStore pattern as
-// getRealProductionSnapshot above, under its own sessionStorage key so it
-// is never confused with the raw preview payload.
 let cachedCompiledGraph: CompiledAssemblyGraph | null | undefined = undefined;
 function getCompiledGraphSnapshot(): CompiledAssemblyGraph | null {
   if (cachedCompiledGraph === undefined) {
@@ -117,7 +83,7 @@ function getCompiledGraphSnapshot(): CompiledAssemblyGraph | null {
         sessionStorage.removeItem('azma.transfer.rasAmrCompiledGraph');
         cachedCompiledGraph = JSON.parse(raw) as CompiledAssemblyGraph;
       }
-    } catch { /* ignore — real distribution action stays unavailable */ }
+    } catch { /* real distribution stays unavailable */ }
   }
   return cachedCompiledGraph;
 }
@@ -125,85 +91,112 @@ function getCompiledGraphServerSnapshot(): CompiledAssemblyGraph | null {
   return null;
 }
 
-const socialPlatforms = [
-  { id: 'youtube', name: 'YouTube (4K)', icon: '▶️' },
-  { id: 'facebook', name: 'Facebook (Page)', icon: '📘' },
-  { id: 'instagram', name: 'Instagram (Reels)', icon: '📸' },
-  { id: 'tiktok', name: 'TikTok (Vertical)', icon: '📱' },
-  { id: 'x', name: 'X / Twitter', icon: '𝕏' },
-  { id: 'linkedin', name: 'LinkedIn (Pro)', icon: '💼' },
-];
+const GOAL_STATUS_AR: Record<string, string> = {
+  CREATED:     'مُنشأ',
+  PLANNED:     'مُخطَّط',
+  IN_PROGRESS: 'قيد التنفيذ',
+  BLOCKED:     'موقوف',
+  COMPLETED:   'مكتمل',
+  FAILED:      'فشل',
+};
 
-const cloudPlatforms = [
-  { id: 'vault', name: 'الخزانة السيادية', icon: '👑' },
-  { id: 'drive', name: 'Google Drive', icon: '☁️' },
-  { id: 'aws', name: 'AWS S3 Glacier', icon: '🗄️' },
-  { id: 'local', name: 'تحميل محلي (Local)', icon: '💻' },
-];
+const GOAL_PRIORITY_AR: Record<string, string> = {
+  LOW:      'منخفضة',
+  MEDIUM:   'متوسطة',
+  HIGH:     'عالية',
+  CRITICAL: 'حرجة',
+};
 
 export default function MakmanAlGhayah() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'social' | 'cloud'>('social');
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['youtube', 'vault', 'local']);
-  const [isDeploying, setIsDeploying] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
-  const [currentTime, setCurrentTime] = useState('');
   const realProduction = useSyncExternalStore(subscribeToNothing, getRealProductionSnapshot, getRealProductionServerSnapshot);
-  const compiledGraph = useSyncExternalStore(subscribeToNothing, getCompiledGraphSnapshot, getCompiledGraphServerSnapshot);
-  const descriptionRef = useRef<HTMLTextAreaElement>(null);
-  const pacingPreferenceRef = useRef<HTMLSelectElement>(null);
+  const compiledGraph  = useSyncExternalStore(subscribeToNothing, getCompiledGraphSnapshot, getCompiledGraphServerSnapshot);
+
+  const descriptionRef         = useRef<HTMLTextAreaElement>(null);
+  const pacingPreferenceRef    = useRef<HTMLSelectElement>(null);
   const transitionPreferenceRef = useRef<HTMLSelectElement>(null);
-  const [isSubmittingReal, setIsSubmittingReal] = useState(false);
-  const [realDistributionResult, setRealDistributionResult] = useState<GoalDistributionBridgeResult | null>(null);
-  const [realDistributionError, setRealDistributionError] = useState<string | null>(null);
-  const [isCheckingConsumption, setIsCheckingConsumption] = useState(false);
-  const [consumptionResult, setConsumptionResult] = useState<ConsumptionResponse | null>(null);
+
+  // ── Sovereign Purpose ───────────────────────────────────────────────
+  const [sovereignPurpose,  setSovereignPurpose]  = useState<string | null>(null);
+  const [purposeInput,      setPurposeInput]      = useState('');
+  const [isEditingPurpose,  setIsEditingPurpose]  = useState(false);
+  const [isSavingPurpose,   setIsSavingPurpose]   = useState(false);
+  const [purposeError,      setPurposeError]      = useState<string | null>(null);
+
+  // ── Goal Registry ───────────────────────────────────────────────────
+  const [goals,             setGoals]             = useState<GoalSummary[]>([]);
+  const [isFetchingGoals,   setIsFetchingGoals]   = useState(false);
+  const [selectedGoalId,    setSelectedGoalId]    = useState<string | null>(null);
+
+  // ── Distribution Pipeline (real, from Ras Al Amr) ──────────────────
+  const [isSubmittingReal,      setIsSubmittingReal]      = useState(false);
+  const [realDistributionResult, setRealDistributionResult] = useState<MakmanFirstCustomerJourneyResult | null>(null);
+  const [realDistributionError,  setRealDistributionError]  = useState<string | null>(null);
+  const [isCheckingConsumption,  setIsCheckingConsumption]  = useState(false);
+  const [consumptionResult,      setConsumptionResult]      = useState<ConsumptionResponse | null>(null);
+
+  // ── Fulfillment + Gap + Investigation (per selected goal) ──────────
+  const [fulfillmentResult,   setFulfillmentResult]   = useState<Record<string, unknown> | null>(null);
+  const [gapResult,           setGapResult]           = useState<Record<string, unknown> | null>(null);
+  const [investigationResult, setInvestigationResult] = useState<Record<string, unknown> | null>(null);
+  const [isAssessing,         setIsAssessing]         = useState(false);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date();
-      setCurrentTime(now.toLocaleString('ar-EG', { 
-        hour12: true, hour: '2-digit', minute: '2-digit',
-        year: 'numeric', month: '2-digit', day: '2-digit'
-      }));
-    }, 1000);
-    return () => clearInterval(timer);
+    void fetchPurpose();
+    void fetchGoals();
   }, []);
 
-  const togglePlatform = (id: string) => {
-    setSelectedPlatforms(prev => 
-      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
-    );
+  const fetchPurpose = async () => {
+    try {
+      const r = await fetch('/api/sovereign/entry/purpose');
+      if (r.ok) {
+        const data = await r.json() as { purpose: string | null };
+        setSovereignPurpose(data.purpose);
+        if (data.purpose) setPurposeInput(data.purpose);
+      }
+    } catch { /* silent — presence is enhancement */ }
   };
 
-  const handleSovereignRelease = () => {
-    setIsDeploying(true);
-    setTimeout(() => {
-      alert(`[AZMA OS] تم إطلاق العمل بنجاح على ${selectedPlatforms.length} مسارات! (بما فيها التحميل المحلي إن وُجد)`);
-      setIsDeploying(false);
-    }, 3000);
+  const fetchGoals = async () => {
+    setIsFetchingGoals(true);
+    try {
+      const r = await fetch('/api/sovereign/entry/creator-goal');
+      if (r.ok) {
+        const data = await r.json() as { status: string; goals: GoalSummary[] };
+        if (data.status === 'succeeded') setGoals(data.goals);
+      }
+    } catch { /* silent */ }
+    finally { setIsFetchingGoals(false); }
   };
 
-  const handleImportFromVault = () => {
-    setIsImporting(true);
-    setTimeout(() => {
-      router.push('/sovereign-vault-palace');
-    }, 800);
+  const handleSavePurpose = async () => {
+    if (!purposeInput.trim()) return;
+    setIsSavingPurpose(true);
+    setPurposeError(null);
+    try {
+      const r = await fetch('/api/sovereign/entry/purpose', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purposeStatement: purposeInput.trim() }),
+      });
+      const data = await r.json() as { purpose?: string; error?: string };
+      if (r.ok && data.purpose) {
+        setSovereignPurpose(data.purpose);
+        setIsEditingPurpose(false);
+      } else {
+        setPurposeError(data.error ?? 'تعذّر حفظ الغاية السيادية');
+      }
+    } catch {
+      setPurposeError('تعذّر الوصول إلى بوابة الغاية السيادية');
+    } finally {
+      setIsSavingPurpose(false);
+    }
   };
 
-  // THE CORRIDOR PACKAGE: submits the real compiled assembly Ras Al Amr
-  // handed off to Makman's own real intake (POST /api/sovereign/entry/
-  // creator-goal), running Makman's already-certified Goal → Presence/
-  // Awareness/Guardian/Strategy/Communication → Distribution pipeline
-  // for real. Distinct from handleSovereignRelease above, which remains
-  // the existing simulated multi-platform release — out of this
-  // Package's scope.
   const handleActivateRealDistribution = async () => {
     if (!compiledGraph) return;
-
     setIsSubmittingReal(true);
     setRealDistributionError(null);
-
     try {
       const response = await fetch('/api/sovereign/entry/creator-goal', {
         method: 'POST',
@@ -212,38 +205,27 @@ export default function MakmanAlGhayah() {
           compiledGraph,
           description: descriptionRef.current?.value || 'الوصف الافتراضي للعمل الفني...',
           priority: GoalPriority.MEDIUM,
-          // The Creator's own click is the authorization — this Chamber
-          // introduces no separate approval step yet.
           authorization: { isAuthorized: true },
           commercialIntent: {
             publisherTenantId: compiledGraph.subscriberTenantId,
             compiledAssemblyGraph: compiledGraph,
-            // Honestly defaulted: no real tier/pricing UI exists yet, so
-            // every real submission becomes a Creator-preview publication
-            // rather than a fabricated public/commercial claim.
             accessPolicy: { distributionTier: DistributionTier.PRIVATE, requiresAgeVerification: false },
           },
-          // PACKAGE XV: genuinely optional — included only when the
-          // Creator actually picked a real option, never defaulted.
           ...(pacingPreferenceRef.current?.value
             ? { pacingPreference: pacingPreferenceRef.current.value as PacingPreference }
             : {}),
-          // PACKAGE XVI: same treatment — genuinely optional, independent
-          // of pacingPreference, never defaulted.
           ...(transitionPreferenceRef.current?.value
             ? { transitionPreference: transitionPreferenceRef.current.value as TransitionPreference }
             : {}),
         }),
       });
-
       const result = await response.json();
-
       if (!response.ok) {
         setRealDistributionError(result.message ?? result.error ?? 'خطأ غير معروف');
         return;
       }
-
-      setRealDistributionResult(result as GoalDistributionBridgeResult);
+      setRealDistributionResult(result as MakmanFirstCustomerJourneyResult);
+      void fetchGoals(); // refresh goals list after a new goal is registered
     } catch {
       setRealDistributionError('تعذّر الوصول إلى بوابة الدخول السيادية للتوزيع.');
     } finally {
@@ -251,37 +233,44 @@ export default function MakmanAlGhayah() {
     }
   };
 
-  // THE CORRIDOR PACKAGE — OPENING THE AUDIENCE DOOR: calls Makman's own
-  // real, already-certified PublicConsumptionBoundary (GET
-  // /api/sovereign/entry/consumption) for the publication just really
-  // created — no UI has ever reached this endpoint before. requesterTenantId
-  // is no longer accepted from the client at all (see the route's own
-  // security correction); the server derives it from the real session, so
-  // this genuinely previews what the Creator's own "Publisher Absolute
-  // Override" grants against the real access policy just submitted.
   const handlePreviewRealAccess = async () => {
     if (!realDistributionResult) return;
-
     setIsCheckingConsumption(true);
     try {
       const response = await fetch(
-        `/api/sovereign/entry/consumption?publicationId=${encodeURIComponent(realDistributionResult.publication.publicationId)}`,
+        `/api/sovereign/entry/consumption?publicationId=${encodeURIComponent(realDistributionResult.bridgeResult.publication.publicationId)}`,
       );
       const result = await response.json();
       if (response.ok) setConsumptionResult(result as ConsumptionResponse);
-    } catch {
-      /* the real distribution result above remains the source of truth; this is a secondary check */
-    } finally {
-      setIsCheckingConsumption(false);
-    }
+    } catch { /* secondary check — real distribution result is the source of truth */ }
+    finally { setIsCheckingConsumption(false); }
+  };
+
+  const handleAssessFulfillment = async (goalId: string) => {
+    setIsAssessing(true);
+    setFulfillmentResult(null);
+    setGapResult(null);
+    setInvestigationResult(null);
+    try {
+      // Trigger assessment
+      await fetch(`/api/sovereign/entry/creator-goal/${goalId}/fulfillment-assessment`, { method: 'POST' });
+      // Read assessment result
+      const ar = await fetch(`/api/sovereign/entry/creator-goal/${goalId}/fulfillment-assessment`);
+      if (ar.ok) setFulfillmentResult(await ar.json() as Record<string, unknown>);
+      // Read gap report
+      const gr = await fetch(`/api/sovereign/entry/creator-goal/${goalId}/fulfillment-gap`);
+      if (gr.ok) setGapResult(await gr.json() as Record<string, unknown>);
+      // Read knowledge requirements
+      const ir = await fetch(`/api/sovereign/entry/creator-goal/${goalId}/knowledge-investigation`);
+      if (ir.ok) setInvestigationResult(await ir.json() as Record<string, unknown>);
+    } catch { /* silent */ }
+    finally { setIsAssessing(false); }
   };
 
   return (
     <MakmanExperience>
     <main className="makman-viewport">
-      {/* IMPERIAL JOURNEY CONTINUITY — Package D: exit returns to the
-          Imperial Foyer, not back to Ras Al Amr. Return context written
-          for the Foyer to acknowledge the Creator's completed distribution. */}
+      {/* IMPERIAL JOURNEY CONTINUITY — Package D */}
       <button className="sovereign-exit-btn" onClick={() => {
         try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'makman-al-ghayah', constitutionalAct: 'distribution' })); } catch { /* ignore */ }
         router.push('/imperial-foyer');
@@ -293,212 +282,247 @@ export default function MakmanAlGhayah() {
         <div className="cyber-grid" />
       </div>
 
-      <div className="chamber-grid-layout">
-        
-        {/* Left Wing: Deployment Matrix */}
-        <aside className="control-panel deployment-desk neon-border">
-          <header className="panel-header">
-            <div className="neon-tag">DEPLOYMENT MATRIX</div>
-            <h2>شبكة التوزيع والأرشفة</h2>
-          </header>
-          
-          <div className="system-clock">{currentTime} م</div>
+      <div className="makman-constitutional-layout">
 
-          <div className="dest-tabs">
-            <button 
-              className={`dest-tab ${activeTab === 'social' ? 'active-tab' : ''}`}
-              onClick={() => setActiveTab('social')}
-            >
-              المنصات العامة
-            </button>
-            <button 
-              className={`dest-tab ${activeTab === 'cloud' ? 'active-tab' : ''}`}
-              onClick={() => setActiveTab('cloud')}
-            >
-              التخزين السحابي والمحلي
-            </button>
+        {/* ── Constitutional Header ──────────────────────────────── */}
+        <header className="makman-constitutional-header neon-border">
+          <div className="neon-tag">MAKMAN AL-GHAYAH — مكمن الغاية</div>
+          <h1 className="makman-chamber-title">الغاية السيادية والأهداف الاستراتيجية</h1>
+          <p className="makman-chamber-mandate">
+            يُسجّل الخالق غايته — يُسجّل أهدافه — يُقيّم إنجازاته — يعرف فجواته — يُطلق تحقيقاته
+          </p>
+        </header>
+
+        {/* ── Sovereign Purpose ──────────────────────────────────── */}
+        <section className="makman-purpose-section neon-border">
+          <div className="panel-header">
+            <div className="neon-tag">الغاية السيادية</div>
+            <h2>ما الغاية التي تسعى إليها؟</h2>
           </div>
 
-          <div className="platforms-container custom-scroll">
-            <div className="grid-2col">
-              {(activeTab === 'social' ? socialPlatforms : cloudPlatforms).map(platform => (
-                <div 
-                  key={platform.id}
-                  className={`platform-card ${activeTab === 'cloud' ? 'archive-card' : ''} ${selectedPlatforms.includes(platform.id) ? 'active' : ''}`}
-                  onClick={() => togglePlatform(platform.id)}
-                >
-                  <span className="platform-icon">{platform.icon}</span>
-                  <span className="platform-name">{platform.name}</span>
-                  {selectedPlatforms.includes(platform.id) && <div className="active-indicator">✔️</div>}
-                </div>
-              ))}
-            </div>
-          </div>
-        </aside>
-
-        {/* Center: The Sovereign Display */}
-        <section className="center-stage">
-          <div className="import-vault-bar neon-border">
-            <span className="import-text">لم يتم تحديد ملف؟</span>
-            <button 
-              className={`import-btn ${isImporting ? 'importing' : ''}`}
-              onClick={handleImportFromVault}
-              disabled={isImporting}
-            >
-              {isImporting ? 'فتح بوابة الخزانة...' : '📥 استيراد أصل من قصر الخزانة'}
-            </button>
-          </div>
-
-          <div className="master-display neon-border-gold">
-            <div className="display-badges">
-              <span className="badge">60 FPS</span>
-              <span className="badge master-badge">8K UHD (7680x4320)</span>
-              <span className="badge">MASTER RENDER</span>
-            </div>
-
-            {realProduction ? (
-              <div className="video-player-mock real-production">
-                {/* eslint-disable-next-line @next/next/no-img-element -- a real, directly-served asset URL, not an optimizable remote image */}
-                <img src={realProduction.secureStorageUri} alt={realProduction.title} className="real-production-image" />
-                <h1 className="project-title">{realProduction.title}</h1>
-                <p className="project-status">وصل من حجرة رأس الأمر — جاهز للتغليف والإطلاق</p>
-              </div>
-            ) : (
-              <div className="video-player-mock">
-                <div className="play-btn">▶</div>
-                <h1 className="project-title">المشهد السريالي الأول - الإصدار النهائي</h1>
-                <p className="project-status">جاهز للعرض الأول والتوزيع</p>
-              </div>
-            )}
-
-            <div className="file-telemetry">
-              <span>HASH: 0x9A4F...B2C1</span>
-              <span>FILE SIZE: 4.2 GB</span>
-            </div>
-          </div>
-
-          <div className="release-mechanism neon-border">
-            <h3 className="mechanism-title">لوحة توقيع الإطلاق (EXECUTIVE RELEASE COMMAND)</h3>
-            <div className="action-row">
-              <button 
-                className={`sovereign-deploy-btn ${isDeploying ? 'deploying' : ''}`}
-                onClick={handleSovereignRelease}
-                disabled={selectedPlatforms.length === 0 || isDeploying}
-              >
-                {isDeploying ? '... جاري التنفيذ ...' : 'اعتماد سيادي وإطلاق 🖋️'}
-              </button>
-              <div className="deploy-stats">
-                سيتم التوجيه إلى: <strong>{selectedPlatforms.length} مسارات</strong>
-              </div>
-            </div>
-          </div>
-
-          {compiledGraph && (
-            <div className="release-mechanism neon-border">
-              <h3 className="mechanism-title">التوزيع السيادي الحقيقي (REAL SOVEREIGN INTAKE)</h3>
-              <p className="project-status">
-                وصل تجميع حقيقي مختوم من رأس الأمر — {compiledGraph.compilationId} — جاهز للتقديم إلى مسار مكمن الغاية الحقيقي.
-              </p>
-              <div className="action-row">
-                <button
-                  className={`sovereign-deploy-btn ${isSubmittingReal ? 'deploying' : ''}`}
-                  onClick={handleActivateRealDistribution}
-                  disabled={isSubmittingReal || Boolean(realDistributionResult)}
-                >
-                  {isSubmittingReal
-                    ? '... جاري التقديم الحقيقي ...'
-                    : realDistributionResult
-                      ? 'تم التقديم الحقيقي ✔️'
-                      : 'تفعيل التوزيع السيادي الحقيقي 👑'}
-                </button>
-              </div>
-              {realDistributionResult && (
+          {!isEditingPurpose && (
+            <div className="makman-purpose-display">
+              {sovereignPurpose ? (
                 <>
-                  <p className="project-status">
-                    منشور حقيقي: {realDistributionResult.publication.publicationId} — حالة الصهر: {realDistributionResult.renderState.status}
-                  </p>
-                  <div className="action-row">
-                    <button
-                      className="import-btn"
-                      onClick={handlePreviewRealAccess}
-                      disabled={isCheckingConsumption}
-                    >
-                      {isCheckingConsumption ? 'جاري فحص باب الجمهور...' : '🚪 فتح باب الجمهور — معاينة الوصول الحقيقي'}
-                    </button>
-                  </div>
-                  {consumptionResult && (
-                    <p className="project-status">
-                      {consumptionResult.isAuthorized
-                        ? `بوابة الاستهلاك الحقيقية تمنح الوصول — حالة التسليم: ${consumptionResult.deliveryStatus ?? 'غير محدد'}`
-                        : `بوابة الاستهلاك الحقيقية ترفض الوصول — ${consumptionResult.authorizationResult.requiredAction}: ${consumptionResult.authorizationResult.rejectionReason ?? ''}`}
-                    </p>
-                  )}
+                  <p className="makman-purpose-text">&quot;{sovereignPurpose}&quot;</p>
+                  <button className="import-btn" onClick={() => setIsEditingPurpose(true)}>
+                    تعديل الغاية السيادية
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="makman-purpose-empty">لم تُعلَن غايتك السيادية بعد.</p>
+                  <button className="sovereign-deploy-btn" onClick={() => setIsEditingPurpose(true)}>
+                    أعلن غايتك السيادية الآن
+                  </button>
                 </>
               )}
-              {realDistributionError && (
-                <p className="project-status">تعذّر التقديم الحقيقي — {realDistributionError}</p>
-              )}
+            </div>
+          )}
+
+          {isEditingPurpose && (
+            <div className="makman-purpose-form">
+              <textarea
+                className="cyber-input textarea"
+                rows={3}
+                value={purposeInput}
+                onChange={(e) => setPurposeInput(e.target.value)}
+                placeholder="أعلن غايتك السيادية — ما الذي تسعى إلى تحقيقه في هذا الوجود؟"
+              />
+              {purposeError && <p className="project-status narrative-integrity-violation">{purposeError}</p>}
+              <div className="action-row">
+                <button
+                  className={`sovereign-deploy-btn ${isSavingPurpose ? 'deploying' : ''}`}
+                  onClick={() => void handleSavePurpose()}
+                  disabled={isSavingPurpose || !purposeInput.trim()}
+                >
+                  {isSavingPurpose ? '... جاري الحفظ ...' : 'حفظ الغاية السيادية'}
+                </button>
+                <button className="import-btn" onClick={() => setIsEditingPurpose(false)}>
+                  إلغاء
+                </button>
+              </div>
             </div>
           )}
         </section>
 
-        {/* Right Wing: Smart Packaging */}
-        <aside className="control-panel packaging-desk neon-border">
-          <header className="panel-header">
-            <div className="neon-tag">SMART PACKAGING</div>
-            <h2>تغليف العمل السيادي</h2>
-          </header>
-
-          {/* Scrolling Container for Forms */}
-          <div className="packaging-forms-container custom-scroll">
-            <div className="form-group">
-              <label>العنوان السيادي (Title)</label>
-              {/* key forces a remount when realProduction arrives after mount (see effect above), since this is an intentionally uncontrolled field */}
-              <input
-                key={realProduction ? realProduction.id : 'default'}
-                type="text"
-                className="cyber-input"
-                defaultValue={realProduction ? realProduction.title : 'المشهد السريالي الأول - الإصدار النهائي [4K]'}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>الوصف (Description)</label>
-              <textarea ref={descriptionRef} className="cyber-input textarea" rows={4} defaultValue="الوصف الافتراضي للعمل الفني..." />
-            </div>
-
-            <div className="form-group">
-              <label>تفضيل الإيقاع (Pacing Preference) — اختياري</label>
-              <select ref={pacingPreferenceRef} className="cyber-input" defaultValue="">
-                <option value="">لم يُحدَّد — لا تفضيل مُصرَّح به</option>
-                <option value={PacingPreference.CONTEMPLATIVE}>تأملي (Contemplative)</option>
-                <option value={PacingPreference.BALANCED}>متوازن (Balanced)</option>
-                <option value={PacingPreference.ENERGETIC}>حيوي (Energetic)</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>تفضيل الانتقال (Transition Preference) — اختياري</label>
-              <select ref={transitionPreferenceRef} className="cyber-input" defaultValue="">
-                <option value="">لم يُحدَّد — لا تفضيل مُصرَّح به</option>
-                <option value={TransitionPreference.SOFT}>ناعم (Soft)</option>
-                <option value={TransitionPreference.GRADUAL}>تدريجي (Gradual)</option>
-                <option value={TransitionPreference.DECISIVE}>حاسم (Decisive)</option>
-                <option value={TransitionPreference.DIRECT}>مباشر (Direct)</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>رموز العبور (Tags)</label>
-              <input type="text" className="cyber-input" defaultValue="سريالي, تصميم, سيادة, 2026" />
-            </div>
+        {/* ── Goal Registry ──────────────────────────────────────── */}
+        <section className="makman-goals-section neon-border">
+          <div className="panel-header">
+            <div className="neon-tag">سجل الأهداف</div>
+            <h2>أهدافك الاستراتيجية المسجّلة</h2>
           </div>
-          
-          {/* Fixed Button at Bottom */}
-          <button className="ai-generate-btn">
-            ✨ توليد التغليف بالذكاء الاصطناعي (AI)
+
+          {isFetchingGoals && <p className="project-status">جارٍ تحميل الأهداف...</p>}
+
+          {!isFetchingGoals && goals.length === 0 && (
+            <div className="makman-goals-empty">
+              <p className="project-status">لا توجد أهداف مسجّلة بعد.</p>
+              <p className="makman-capability-hint">
+                لتسجيل هدف استراتيجي، أكمل تجميعك السينمائي في رأس الأمر وأرسله إلى هذه الحجرة.
+              </p>
+            </div>
+          )}
+
+          {goals.length > 0 && (
+            <div className="makman-goals-list">
+              {goals.map((goal) => (
+                <div
+                  key={goal.goalId}
+                  className={`makman-goal-card ${selectedGoalId === goal.goalId ? 'goal-selected' : ''}`}
+                  onClick={() => setSelectedGoalId(selectedGoalId === goal.goalId ? null : goal.goalId)}
+                >
+                  <div className="goal-card-header">
+                    <span className="goal-title">{goal.title}</span>
+                    <span className="goal-meta">
+                      <span className={`goal-status status-${goal.status.toLowerCase()}`}>
+                        {GOAL_STATUS_AR[goal.status] ?? goal.status}
+                      </span>
+                      <span className="goal-priority">
+                        {GOAL_PRIORITY_AR[goal.priority] ?? goal.priority}
+                      </span>
+                    </span>
+                  </div>
+
+                  {selectedGoalId === goal.goalId && (
+                    <div className="goal-card-actions">
+                      <button
+                        className={`import-btn ${isAssessing ? 'importing' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); void handleAssessFulfillment(goal.goalId); }}
+                        disabled={isAssessing}
+                      >
+                        {isAssessing ? 'جارٍ التقييم...' : '⚖ تقييم الإنجاز والفجوات'}
+                      </button>
+
+                      {fulfillmentResult && (
+                        <div className="goal-assessment-result">
+                          <p className="project-status">
+                            تقييم الإنجاز: {JSON.stringify((fulfillmentResult as { overallVerdict?: string }).overallVerdict ?? fulfillmentResult)}
+                          </p>
+                        </div>
+                      )}
+                      {gapResult && (
+                        <div className="goal-assessment-result">
+                          <p className="project-status">
+                            تقرير الفجوات: {JSON.stringify((gapResult as { gaps?: unknown }).gaps ?? gapResult)}
+                          </p>
+                        </div>
+                      )}
+                      {investigationResult && (
+                        <div className="goal-assessment-result">
+                          <p className="project-status">
+                            متطلبات المعرفة: {JSON.stringify((investigationResult as { knowledgeRequirements?: unknown }).knowledgeRequirements ?? investigationResult)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ── Distribution Pipeline (conditional — requires Ras Al Amr) ── */}
+        {compiledGraph ? (
+          <section className="makman-distribution-section neon-border">
+            <div className="panel-header">
+              <div className="neon-tag">التوزيع السيادي الحقيقي</div>
+              <h2>تسجيل الهدف الاستراتيجي وإطلاق الإنتاج</h2>
+            </div>
+
+            {realProduction ? (
+              <div className="master-display neon-border-gold">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={realProduction.secureStorageUri} alt={realProduction.title} className="real-production-image" />
+                <p className="project-title">{realProduction.title}</p>
+                <p className="project-status">وصل من رأس الأمر — جاهز للتسجيل الاستراتيجي</p>
+              </div>
+            ) : (
+              <p className="project-status">
+                وصل تجميع حقيقي مختوم من رأس الأمر — {compiledGraph.compilationId}
+              </p>
+            )}
+
+            <div className="makman-packaging-section">
+              <div className="form-group">
+                <label>الوصف (Description)</label>
+                <textarea ref={descriptionRef} className="cyber-input textarea" rows={3} defaultValue="الوصف الافتراضي للعمل الفني..." />
+              </div>
+              <div className="form-group">
+                <label>تفضيل الإيقاع — اختياري</label>
+                <select ref={pacingPreferenceRef} className="cyber-input" defaultValue="">
+                  <option value="">لم يُحدَّد</option>
+                  <option value={PacingPreference.CONTEMPLATIVE}>تأملي</option>
+                  <option value={PacingPreference.BALANCED}>متوازن</option>
+                  <option value={PacingPreference.ENERGETIC}>حيوي</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>تفضيل الانتقال — اختياري</label>
+                <select ref={transitionPreferenceRef} className="cyber-input" defaultValue="">
+                  <option value="">لم يُحدَّد</option>
+                  <option value={TransitionPreference.SOFT}>ناعم</option>
+                  <option value={TransitionPreference.GRADUAL}>تدريجي</option>
+                  <option value={TransitionPreference.DECISIVE}>حاسم</option>
+                  <option value={TransitionPreference.DIRECT}>مباشر</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="action-row">
+              <button
+                className={`sovereign-deploy-btn ${isSubmittingReal ? 'deploying' : ''}`}
+                onClick={() => void handleActivateRealDistribution()}
+                disabled={isSubmittingReal || Boolean(realDistributionResult)}
+              >
+                {isSubmittingReal
+                  ? '... جاري التسجيل الاستراتيجي ...'
+                  : realDistributionResult
+                    ? 'تم التسجيل الاستراتيجي ✔️'
+                    : 'تسجيل الهدف وإطلاق الإنتاج 👑'}
+              </button>
+            </div>
+
+            {realDistributionResult && (
+              <>
+                <p className="project-status">
+                  هدف مسجّل: {realDistributionResult.goal?.goalId} — منشور: {realDistributionResult.bridgeResult.publication.publicationId}
+                </p>
+                <div className="action-row">
+                  <button
+                    className="import-btn"
+                    onClick={() => void handlePreviewRealAccess()}
+                    disabled={isCheckingConsumption}
+                  >
+                    {isCheckingConsumption ? 'جارٍ فحص باب الجمهور...' : '🚪 معاينة وصول الجمهور'}
+                  </button>
+                </div>
+                {consumptionResult && (
+                  <p className="project-status">
+                    {consumptionResult.isAuthorized
+                      ? `الوصول ممنوح — ${consumptionResult.deliveryStatus ?? 'جارٍ التسليم'}`
+                      : `الوصول مرفوض — ${consumptionResult.authorizationResult.requiredAction}`}
+                  </p>
+                )}
+              </>
+            )}
+            {realDistributionError && (
+              <p className="project-status narrative-integrity-violation">{realDistributionError}</p>
+            )}
+          </section>
+        ) : (
+          <div className="makman-capability-hint neon-border">
+            <p>لتسجيل هدف استراتيجي جديد: أكمل إنتاجك في رأس الأمر ← صهر القماش ← أرسل إلى مكمن الغاية.</p>
+          </div>
+        )}
+
+        {/* ── Import from Vault ──────────────────────────────────── */}
+        <div className="makman-vault-link">
+          <button className="import-btn" onClick={() => router.push('/sovereign-vault-palace')}>
+            📥 استيراد من القصر السيادي
           </button>
-        </aside>
+        </div>
 
       </div>
     </main>

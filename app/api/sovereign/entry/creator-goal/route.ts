@@ -4,6 +4,8 @@ import type { MakmanFirstCustomerJourneyRequest } from '@/src/chambers/makman-al
 import { createPerceptionEndpointForOrgan } from '@/src/sovereign-nervous-system';
 import { verifySession } from '@/src/authentication';
 import { SovereignVaultManager } from '@/src/vault/sovereign-vault-manager';
+import { GoalRepository } from '@/src/persistent-storage/goal-repository';
+import { getDb } from '@/src/persistent-storage';
 
 // PACKAGE IX: Vault is its own already-directly-imported system elsewhere
 // (e.g. app/api/vault/assets/route.ts) — not part of the Makman Runtime
@@ -20,6 +22,25 @@ const SESSION_COOKIE = 'azma_session';
  * succeeded or failed — never the goal's own content.
  */
 const makmanPerception = createPerceptionEndpointForOrgan('makman-al-ghayah');
+
+/**
+ * PACKAGE F — CONSTITUTIONAL CAPABILITY REVELATION
+ * Lists all GoalContracts for the authenticated Creator, most recent first.
+ * Enables Makman Al-Ghayah to surface the Creator's active constitutional
+ * goals without requiring them to know a specific goalId.
+ */
+export async function GET(request: NextRequest) {
+  const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
+  const session = sessionId ? verifySession(sessionId) : null;
+
+  if (!session) {
+    return NextResponse.json({ error: 'Sign in to view your goals.' }, { status: 401 });
+  }
+
+  const db = getDb();
+  const goals = new GoalRepository(db).findByTenant(session.creatorId);
+  return NextResponse.json({ status: 'succeeded', goals });
+}
 
 const REQUIRED_TOP_LEVEL_FIELDS = ['compiledGraph', 'description', 'priority', 'authorization', 'commercialIntent'] as const;
 
