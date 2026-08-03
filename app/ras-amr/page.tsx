@@ -1096,12 +1096,23 @@ export default function RasAmrChamber() {
   // Imperial Continuity — consumes the InteractionSession the Imperial Foyer
   // writes before departing (sessionStorage['azma.kernel.session']). If
   // RESOLVED, records the mode so the chamber can acknowledge the journey.
+  // Also consumes treasure context written by the Vault Palace (Package D).
   const [kernelContinuity, setKernelContinuity] = useState<string | null>(null);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const raw = sessionStorage.getItem('azma.kernel.session');
+    if (raw) sessionStorage.removeItem('azma.kernel.session');
+
+    // Consume Palace treasure context — acknowledged via the continuity banner
+    const treasureRaw = sessionStorage.getItem('azma.transfer.treasure');
+    if (treasureRaw) {
+      sessionStorage.removeItem('azma.transfer.treasure');
+      sessionStorage.removeItem('azma.transfer.origin');
+      setKernelContinuity('palace-treasure');
+      return;
+    }
+
     if (!raw) return;
-    sessionStorage.removeItem('azma.kernel.session');
     try {
       const s = JSON.parse(raw) as { status?: string; activeInteractionMode?: string };
       if (s?.status === 'RESOLVED') setKernelContinuity(s.activeInteractionMode ?? 'navigate');
@@ -1322,8 +1333,12 @@ export default function RasAmrChamber() {
   return (
     <RasAmrExperience>
     <main className={`ras-amr-viewport ${injectionFlash ? 'neon-flash-active' : ''}`}>
-      {/* Return to the Imperial Foyer — the constitutional return path */}
-      <button className="sovereign-exit-btn" onClick={() => router.push('/imperial-foyer')}>
+      {/* IMPERIAL JOURNEY CONTINUITY — Package D: return context written
+          so the Foyer can acknowledge the Creator's return from Ras Al Amr. */}
+      <button className="sovereign-exit-btn" onClick={() => {
+        try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'ras-amr', constitutionalAct: 'direction' })); } catch { /* ignore */ }
+        router.push('/imperial-foyer');
+      }}>
         ⮜ قلب الإمبراطورية
       </button>
 
@@ -1384,10 +1399,12 @@ export default function RasAmrChamber() {
         {/* =========================================== */}
         <section className="main-director-core director-identity-surface">
 
-          {/* Imperial Continuity — acknowledges the journey from the Foyer */}
+          {/* Imperial Continuity — acknowledges the journey origin */}
           {kernelContinuity && (
             <div className="director-continuity-banner">
-              الإمبراطورية أعدّت هذه الجلسة — المخرج الإمبراطوري يستقبلك
+              {kernelContinuity === 'palace-treasure'
+                ? 'أصل قادم من القصر — المخرج الإمبراطوري على استعداد'
+                : 'الإمبراطورية أعدّت هذه الجلسة — المخرج الإمبراطوري يستقبلك'}
             </div>
           )}
 

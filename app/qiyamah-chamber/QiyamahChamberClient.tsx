@@ -151,9 +151,15 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
         <div className="cyber-grid-red"></div>
       </div>
 
-      {/* Top Nav & Navigation — returns to the real Arrival gate ('/') */}
-      <button className="sovereign-exit-btn" onClick={() => router.push('/')}>
-        ⮜ العودة للعبور السيادي
+      {/* IMPERIAL JOURNEY CONTINUITY — Package D: exit returns to the
+          Imperial Foyer (the Empire's center), not the Arrival page. The
+          return context written here is consumed by the Foyer on its next
+          mount so it can acknowledge the Creator's return. */}
+      <button className="sovereign-exit-btn" onClick={() => {
+        try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'qiyamah-chamber', constitutionalAct: 'creation' })); } catch { /* ignore */ }
+        router.push('/imperial-foyer');
+      }}>
+        ⮜ قلب الإمبراطورية
       </button>
 
       {/* Greeting Badge — replaces the fictional AZMA Credits HUD */}

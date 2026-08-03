@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
 import { useVisitorPresence } from '@/src/visitor-presence';
 import { setAtmosphere } from '@/src/design-system';
@@ -9,11 +9,8 @@ import './makman-experience.css';
 
 const REVEAL_DURATION_MS = 500;
 
-/** Arabic-only, hardcoded — matching this page's own existing reality:
-    every other string on app/makman-al-ghayah/page.tsx is a hardcoded
-    Arabic literal, no dict/locale system is wired in there at all. The
-    message deliberately echoes the Chamber's own name: "Ghayah" means
-    purpose/destination — the Creator has reached their Ghayah. */
+/** Default message — the Chamber's constitutional name means "purpose has
+    been reached." Used when no richer journey context is available. */
 const COMPANION_MESSAGE = 'بلغتَ غايتك';
 
 interface Props {
@@ -52,6 +49,33 @@ export function MakmanExperience({ children }: Props) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const presence = useVisitorPresence();
 
+  const [companionMsg, setCompanionMsg] = useState<string>(COMPANION_MESSAGE);
+
+  // IMPERIAL JOURNEY CONTINUITY — Package D:
+  // Consume the kernel session the Foyer wrote, and the treasure context
+  // the Palace wrote when directing the Creator here.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const kernelRaw = sessionStorage.getItem('azma.kernel.session');
+    if (kernelRaw) sessionStorage.removeItem('azma.kernel.session');
+
+    const treasureRaw = sessionStorage.getItem('azma.transfer.treasure');
+    if (treasureRaw) sessionStorage.removeItem('azma.transfer.treasure');
+    sessionStorage.removeItem('azma.transfer.origin');
+
+    if (treasureRaw) {
+      setCompanionMsg('كنز القصر بلغ غايته — هنا يكتمل المسار');
+    } else if (kernelRaw) {
+      try {
+        const s = JSON.parse(kernelRaw) as { status?: string };
+        if (s?.status === 'RESOLVED') {
+          setCompanionMsg('الإمبراطورية أعدّت هذه الجلسة — مكمن الغاية يستقبلك');
+        }
+      } catch { /* ignore malformed session */ }
+    }
+  }, []);
+
   useEffect(() => {
     setAtmosphere(rootRef.current, 'victorious');
   }, []);
@@ -64,9 +88,9 @@ export function MakmanExperience({ children }: Props) {
 
       <div className="makman-companion">
         <LivingCompanion
-          message={COMPANION_MESSAGE}
+          message={companionMsg}
           visible={true}
-          textToSpeak={COMPANION_MESSAGE}
+          textToSpeak={companionMsg}
           context="makman-al-ghayah"
         />
       </div>

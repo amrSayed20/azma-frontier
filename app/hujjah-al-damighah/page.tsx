@@ -766,6 +766,16 @@ export default function HujjahAlDamighah() {
       ? (() => { try { const s = JSON.parse(foyerRaw) as { status?: string }; return s?.status === 'RESOLVED'; } catch { return false; } })()
       : false;
 
+    // IMPERIAL JOURNEY CONTINUITY — Package D:
+    // Consume treasure context written by the Vault Palace when directing
+    // the Creator to Hujjah via a treasure-path navigation.
+    const treasureRaw = typeof window !== 'undefined'
+      ? sessionStorage.getItem('azma.transfer.treasure') : null;
+    if (treasureRaw) {
+      sessionStorage.removeItem('azma.transfer.treasure');
+      sessionStorage.removeItem('azma.transfer.origin');
+    }
+
     const stored   = getStoredTongue();
     const mem      = readMemory();
     const quiet    = isQuietMode(mem);
@@ -779,9 +789,11 @@ export default function HujjahAlDamighah() {
         setTongue(stored);
         setChamberInit('active');
         if (!quiet) {
-          const firstMsg = foyerResolved
-            ? 'الإمبراطورية أعدّت هذه الجلسة — حجرة المعرفة تنتظر سؤالك'
-            : greeting;
+          const firstMsg = treasureRaw
+            ? 'كنز القصر ينتظر — الحجة الدامغة تكشف ما بداخله'
+            : foyerResolved
+              ? 'الإمبراطورية أعدّت هذه الجلسة — حجرة المعرفة تنتظر سؤالك'
+              : greeting;
           setTimeout(() => showCompanion(firstMsg), greetDelay);
         }
         resetIdleTimer();
@@ -1182,6 +1194,11 @@ export default function HujjahAlDamighah() {
           query: query.trim(), evidence: result.evidence, timestamp: Date.now(),
         }));
       } catch { /* ignore */ }
+    }
+    // IMPERIAL JOURNEY CONTINUITY — Package D: when returning to the Foyer,
+    // write return context so the Foyer can acknowledge the Creator's return.
+    if (destination === '/imperial-foyer') {
+      try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'hujjah-al-damighah', constitutionalAct: 'investigation' })); } catch { /* ignore */ }
     }
     showCompanion(COMPANION_MSGS.departure);
     setIsExiting(true);

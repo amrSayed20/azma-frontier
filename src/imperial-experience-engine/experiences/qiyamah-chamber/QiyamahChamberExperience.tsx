@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { t } from '@/src/creator-language';
 import type { Dictionary, Locale } from '@/src/creator-language';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
@@ -66,6 +66,41 @@ export function QiyamahChamberExperience({ children, dict, locale }: Props) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const presence = useVisitorPresence();
 
+  const [companionMsg, setCompanionMsg] = useState<string>(() => t(dict, 'qiyamah.companionMessage'));
+
+  // IMPERIAL JOURNEY CONTINUITY — Package D:
+  // Consume the kernel session the Foyer wrote before launching this chamber,
+  // the investigation context Hujjah wrote when transferring here,
+  // and the treasure context the Palace wrote when directing here.
+  // All three keys are consumed (removed) immediately — they must not linger.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const kernelRaw = sessionStorage.getItem('azma.kernel.session');
+    if (kernelRaw) sessionStorage.removeItem('azma.kernel.session');
+
+    const investigationRaw = sessionStorage.getItem('azma.transfer.investigation');
+    if (investigationRaw) sessionStorage.removeItem('azma.transfer.investigation');
+
+    const treasureRaw = sessionStorage.getItem('azma.transfer.treasure');
+    if (treasureRaw) sessionStorage.removeItem('azma.transfer.treasure');
+    sessionStorage.removeItem('azma.transfer.origin');
+
+    if (investigationRaw) {
+      // Creator arrived from Hujjah after an investigation — the most specific context
+      setCompanionMsg('قادم من حجرة المعرفة — القيامة تحوّل ما تعلمته إلى وجود');
+    } else if (treasureRaw) {
+      setCompanionMsg('الكنز وصل — القيامة تستعدّ لتحويله إلى عمل');
+    } else if (kernelRaw) {
+      try {
+        const s = JSON.parse(kernelRaw) as { status?: string };
+        if (s?.status === 'RESOLVED') {
+          setCompanionMsg('الإمبراطورية أعدّت هذه الجلسة — حجرة القيامة تستقبلك');
+        }
+      } catch { /* ignore malformed session */ }
+    }
+  }, []);
+
   useEffect(() => {
     setAtmosphere(rootRef.current, 'creating');
   }, []);
@@ -78,9 +113,9 @@ export function QiyamahChamberExperience({ children, dict, locale }: Props) {
 
       <div className="qiyamah-chamber-companion">
         <LivingCompanion
-          message={t(dict, 'qiyamah.companionMessage')}
+          message={companionMsg}
           visible={true}
-          textToSpeak={t(dict, 'qiyamah.companionMessage')}
+          textToSpeak={companionMsg}
           context="qiyamah-chamber"
           locale={locale}
         />

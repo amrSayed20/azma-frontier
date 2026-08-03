@@ -346,6 +346,23 @@ export default function SovereignVaultPalace() {
     return () => { stream?.getTracks().forEach((t) => t.stop()); };
   }, [authMethod, phase]);
 
+  // IMPERIAL JOURNEY CONTINUITY — Package D:
+  // Consume and remove the kernel session the Foyer wrote before launching
+  // the Palace. The Palace gate is the first thing the Creator sees, so
+  // the companion acknowledges arrival while the Creator authenticates.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const raw = sessionStorage.getItem('azma.kernel.session');
+    if (!raw) return;
+    sessionStorage.removeItem('azma.kernel.session');
+    try {
+      const s = JSON.parse(raw) as { status?: string };
+      if (s?.status === 'RESOLVED') {
+        setCompanionMsg('الإمبراطورية أعدّت هذه الجلسة — القصر السيادي يستقبلك');
+      }
+    } catch { /* ignore malformed session */ }
+  }, []);
+
   // ── Auth ─────────────────────────────────────────────────────────────────
 
   const enterPalace = useCallback(() => {
@@ -743,8 +760,14 @@ export default function SovereignVaultPalace() {
               )}
             </div>
             <div className="palace-crown-nav">
-              <button className="palace-exit-btn" onClick={() => handleTransfer('/ras-amr')}>
-                ⮜ الخروج
+              {/* IMPERIAL JOURNEY CONTINUITY — Package D: exit returns to
+                  the Foyer, not to Ras Al Amr. Return context written so
+                  the Foyer acknowledges the Creator's return from the Palace. */}
+              <button className="palace-exit-btn" onClick={() => {
+                try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'sovereign-vault-palace', constitutionalAct: 'treasury' })); } catch { /* ignore */ }
+                router.push('/imperial-foyer');
+              }}>
+                ⮜ قلب الإمبراطورية
               </button>
             </div>
           </div>

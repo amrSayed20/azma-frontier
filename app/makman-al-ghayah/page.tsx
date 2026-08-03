@@ -279,8 +279,14 @@ export default function MakmanAlGhayah() {
   return (
     <MakmanExperience>
     <main className="makman-viewport">
-      <button className="sovereign-exit-btn" onClick={() => router.push('/ras-amr')}>
-        ⮜ التراجع لحجرة رأس الأمر
+      {/* IMPERIAL JOURNEY CONTINUITY — Package D: exit returns to the
+          Imperial Foyer, not back to Ras Al Amr. Return context written
+          for the Foyer to acknowledge the Creator's completed distribution. */}
+      <button className="sovereign-exit-btn" onClick={() => {
+        try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'makman-al-ghayah', constitutionalAct: 'distribution' })); } catch { /* ignore */ }
+        router.push('/imperial-foyer');
+      }}>
+        ⮜ قلب الإمبراطورية
       </button>
 
       <div className="neon-layer">

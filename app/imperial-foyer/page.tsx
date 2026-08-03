@@ -71,6 +71,20 @@ const COMPANION_MESSAGES: Record<AzmaTongue, string> = {
   silent:       '.',
 };
 
+// ── Constitutional Return Map ─────────────────────────────────────────────
+// Each constitutional act maps to a return message that names what just
+// ended AND names the natural next step — so the Creator immediately
+// perceives "I have returned to the Empire" rather than "I navigated back."
+// Values answer: what responsibility just completed? what comes naturally next?
+
+const CONSTITUTIONAL_RETURN_MESSAGES: Record<string, string> = {
+  investigation: 'المعرفة اكتملت — هل تريد تحويلها إلى إبداع أو توجيه؟',
+  creation:      'الإبداع وُلد — هل تريد توجيهه أو توزيعه على العالم؟',
+  direction:     'التوجيه اكتمل — هل تريد الانتقال إلى مكمن الغاية؟',
+  distribution:  'الغاية بلغت — الإمبراطورية تستقبلك لرحلة جديدة.',
+  treasury:      'القصر السيادي أغلق أبوابه — ما الذي تريد بناؤه الآن؟',
+};
+
 // ── Kernel Companion Message ──────────────────────────────────────────────
 // Replaces the default greeting for the 600ms preparation window.
 // Shows the Creator: which chamber the Kernel resolved, and which
@@ -101,6 +115,11 @@ export default function ImperialFoyer() {
   const [kernelSession,   setKernelSession]   = useState<InteractionSession | null>(null);
   const [preparingId,     setPreparingId]     = useState<string | null>(null);
   const [preparingNameAr, setPreparingNameAr] = useState<string | null>(null);
+  // IMPERIAL JOURNEY CONTINUITY — Package D:
+  // Holds the constitutional return message for one beat after the Creator
+  // returns from a chamber. Cleared when they choose an interaction mode
+  // (at which point their attention has turned forward, not backward).
+  const [returnMsg,       setReturnMsg]       = useState<string | null>(null);
 
   // Guard: prevents a second chamber from being launched while one is
   // already in the 600ms preparation window.
@@ -108,6 +127,26 @@ export default function ImperialFoyer() {
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => setEntered(true));
+
+    // IMPERIAL JOURNEY CONTINUITY — Package D:
+    // Consume the constitutional return context a chamber wrote before
+    // departing to this Foyer. Map the constitutional act to a message that
+    // names what just ended and what naturally comes next. The Creator
+    // immediately perceives "I have returned to the Empire" — not "I
+    // navigated back to a page." Only the constitutional act drives the
+    // message; raw origin/storage keys are never exposed.
+    const returnRaw = typeof window !== 'undefined'
+      ? sessionStorage.getItem('azma.return.session') : null;
+    if (returnRaw) {
+      sessionStorage.removeItem('azma.return.session');
+      try {
+        const s = JSON.parse(returnRaw) as { constitutionalAct?: string };
+        const msg = s?.constitutionalAct
+          ? CONSTITUTIONAL_RETURN_MESSAGES[s.constitutionalAct]
+          : null;
+        if (msg) setReturnMsg(msg);
+      } catch { /* ignore malformed payload */ }
+    }
 
     fetch('/api/vault/assets')
       .then((r) => (r.ok ? r.json() : null))
@@ -126,6 +165,7 @@ export default function ImperialFoyer() {
   function selectTongue(t: AzmaTongue) {
     writeTongue(t);
     setTongue(t);
+    setReturnMsg(null); // Creator has turned attention forward — return acknowledgment served its purpose
   }
 
   // ── Kernel-mediated chamber launch ────────────────────────────────────
@@ -168,12 +208,14 @@ export default function ImperialFoyer() {
 
   const isPreparing = preparingId !== null;
 
-  // During the preparation window: show what the Kernel resolved.
-  // After departure begins: keep the Kernel message (Foyer is fading out).
+  // Priority order (highest → lowest):
+  // 1. Kernel ready message — the Foyer is actively preparing departure
+  // 2. Constitutional return message — the Creator just returned from a chamber
+  // 3. Default tongue message — no journey context active
   const companionMsg =
     kernelSession && isPreparing && preparingNameAr
       ? kernelReadyMessage(kernelSession, preparingNameAr)
-      : COMPANION_MESSAGES[tongue];
+      : returnMsg ?? COMPANION_MESSAGES[tongue];
 
   return (
     <main
