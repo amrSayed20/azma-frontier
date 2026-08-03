@@ -71,6 +71,77 @@ const COMPANION_MESSAGES: Record<AzmaTongue, string> = {
   silent:       '.',
 };
 
+// ── Sovereign Presence State ──────────────────────────────────────────────
+// The shape returned by GET /api/sovereign/presence. Reflects only what is
+// already durably recorded in the Empire — never invented, never inferred.
+
+interface SovereignPresence {
+  qiyamah: {
+    creationCount:    number;
+    mostRecentPrompt: string | null;
+    mostRecentAt:     number | null;
+  };
+  rasAlAmr: {
+    savedCanvasCount: number;
+    mostRecentTitle:  string | null;
+    mostRecentSavedAt: number | null;
+  };
+  makman: {
+    productionCount:          number;
+    mostRecentTitle:          string | null;
+    mostRecentRenderStatus:   string | null;
+    hasProcessingProduction:  boolean;
+  };
+  hujjah: {
+    goalCount:            number;
+    hasActiveGoal:        boolean;
+    mostRecentGoalTitle:  string | null;
+  };
+}
+
+// Returns the most constitutionally significant presence state as a companion
+// message — or null when no meaningful state is worth surfacing (empty Empire
+// or fully-completed journey with nothing outstanding).
+function derivePresenceMessage(p: SovereignPresence): string | null {
+  if (p.makman.hasProcessingProduction) {
+    return 'الإمبراطورية تُنتج الآن — مكمن الغاية يسير نحو غايته';
+  }
+  if (p.hujjah.hasActiveGoal) {
+    return 'غاية نشطة في التحقيق — حجة الدامغة تنتظر توجيهك';
+  }
+  if (p.rasAlAmr.savedCanvasCount > 0 && p.makman.productionCount === 0) {
+    return 'تشكيلة سردية محفوظة في رأس الأمر — هل أنت مستعدّ لصهرها؟';
+  }
+  if (p.qiyamah.creationCount > 0 && p.rasAlAmr.savedCanvasCount === 0) {
+    return 'إبداعك موجود في الخزانة — رأس الأمر يستقبل توجيهك';
+  }
+  return null;
+}
+
+// Returns a short presence phrase for a specific chamber card.
+// Null means the chamber has no recorded state worth showing.
+function getChamberPresence(chamberId: string, p: SovereignPresence | null): string | null {
+  if (!p) return null;
+  switch (chamberId) {
+    case 'hujjah-al-damighah':
+      if (p.hujjah.hasActiveGoal)   return '● غاية نشطة';
+      if (p.hujjah.goalCount > 0)   return '◎ تحقيق مكتمل';
+      return null;
+    case 'qiyamah-chamber':
+      if (p.qiyamah.creationCount > 0) return '● إبداع في الخزانة';
+      return null;
+    case 'ras-amr':
+      if (p.rasAlAmr.savedCanvasCount > 0) return '● تشكيلة محفوظة';
+      return null;
+    case 'makman-al-ghayah':
+      if (p.makman.hasProcessingProduction) return '◉ إنتاج جارٍ';
+      if (p.makman.productionCount > 0)     return '◎ توزيع مكتمل';
+      return null;
+    default:
+      return null;
+  }
+}
+
 // ── Constitutional Return Map ─────────────────────────────────────────────
 // Each constitutional act maps to a return message that names what just
 // ended AND names the natural next step — so the Creator immediately
@@ -110,6 +181,7 @@ export default function ImperialFoyer() {
 
   const [tongue,          setTongue]          = useState<AzmaTongue>(() => readTongue());
   const [vaultCount,      setVaultCount]      = useState<number | null>(null);
+  const [presence,        setPresence]        = useState<SovereignPresence | null>(null);
   const [entered,         setEntered]         = useState(false);
   const [departing,       setDeparting]       = useState(false);
   const [kernelSession,   setKernelSession]   = useState<InteractionSession | null>(null);
@@ -158,6 +230,18 @@ export default function ImperialFoyer() {
         }
       })
       .catch(() => setVaultCount(0));
+
+    // IMPERIAL PRESENCE LAYER — Package E:
+    // Reveal the Empire's current constitutional state without the Creator
+    // opening a single chamber. Only what is already durably recorded.
+    fetch('/api/sovereign/presence')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.status === 'succeeded' && data.presence) {
+          setPresence(data.presence as SovereignPresence);
+        }
+      })
+      .catch(() => { /* presence is enhancement — silence failures */ });
 
     return () => cancelAnimationFrame(raf);
   }, []);
@@ -211,11 +295,13 @@ export default function ImperialFoyer() {
   // Priority order (highest → lowest):
   // 1. Kernel ready message — the Foyer is actively preparing departure
   // 2. Constitutional return message — the Creator just returned from a chamber
-  // 3. Default tongue message — no journey context active
+  // 3. Presence message — notable constitutional state already in the Empire
+  // 4. Default tongue message — no journey context active
+  const presenceMsg = presence ? derivePresenceMessage(presence) : null;
   const companionMsg =
     kernelSession && isPreparing && preparingNameAr
       ? kernelReadyMessage(kernelSession, preparingNameAr)
-      : returnMsg ?? COMPANION_MESSAGES[tongue];
+      : returnMsg ?? presenceMsg ?? COMPANION_MESSAGES[tongue];
 
   return (
     <main
@@ -283,21 +369,32 @@ export default function ImperialFoyer() {
 
       {/* Constitutional Chamber Cards */}
       <div className="foyer-chambers">
-        {CONSTITUTIONAL_CHAMBERS.map((ch) => (
-          <button
-            key={ch.id}
-            className={`foyer-chamber-card foyer-chamber-${ch.id} ${preparingId === ch.id ? 'chamber-preparing' : ''}`}
-            onClick={() => launchChamber(ch.id, ch.route, ch.nameAr)}
-            aria-label={`الدخول إلى ${ch.nameAr}`}
-            disabled={isPreparing}
-          >
-            <span className="chamber-glyph" aria-hidden="true">{ch.glyph}</span>
-            <div className="chamber-identity">
-              <span className="chamber-name">{ch.nameAr}</span>
-              <span className="chamber-role">{ch.roleAr}</span>
-            </div>
-          </button>
-        ))}
+        {CONSTITUTIONAL_CHAMBERS.map((ch) => {
+          const chamberPresence = getChamberPresence(ch.id, presence);
+          return (
+            <button
+              key={ch.id}
+              className={`foyer-chamber-card foyer-chamber-${ch.id} ${preparingId === ch.id ? 'chamber-preparing' : ''} ${chamberPresence ? 'chamber-has-presence' : ''}`}
+              onClick={() => launchChamber(ch.id, ch.route, ch.nameAr)}
+              aria-label={`الدخول إلى ${ch.nameAr}`}
+              disabled={isPreparing}
+            >
+              <span className="chamber-glyph" aria-hidden="true">{ch.glyph}</span>
+              <div className="chamber-identity">
+                <span className="chamber-name">{ch.nameAr}</span>
+                <span className="chamber-role">{ch.roleAr}</span>
+                {chamberPresence && (
+                  <span
+                    className={`chamber-presence-state ${ch.id === 'makman-al-ghayah' && presence?.makman.hasProcessingProduction ? 'presence-processing' : 'presence-active'}`}
+                    aria-live="polite"
+                  >
+                    {chamberPresence}
+                  </span>
+                )}
+              </div>
+            </button>
+          );
+        })}
       </div>
     </main>
   );

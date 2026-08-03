@@ -284,6 +284,32 @@
   color:     rgba(232, 228, 220, 0.4);
 }
 
+/* ── Chamber Presence Indicators — Package E ─────────────────────── */
+/* Reveals constitutional state already recorded in the Empire.
+   Not statistics. Not activity. Honest constitutional presence only. */
+
+.chamber-presence-state {
+  font-size:      0.7rem;
+  color:          rgba(212, 185, 102, 0.55);
+  letter-spacing: 0.02em;
+  margin-top:     0.15rem;
+  line-height:    1;
+}
+
+.chamber-presence-state.presence-active {
+  color: rgba(212, 185, 102, 0.75);
+}
+
+.chamber-presence-state.presence-processing {
+  color:     rgba(212, 185, 102, 0.95);
+  animation: foyer-pulse 2.2s ease-in-out infinite;
+}
+
+/* Subtle border accent when a chamber has recorded constitutional state */
+.foyer-chamber-card.chamber-has-presence {
+  border-color: rgba(232, 228, 220, 0.16);
+}
+
 /* ── Kernel Preparation State ────────────────────────────────────── */
 /* Applied to the card the Creator selected for the 600ms window while
    the Sovereign Interaction Kernel prepares the InteractionSession. */
