@@ -1,9 +1,27 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+/**
+ * AZMA OS — Imperial Foyer
+ *
+ * CONSTITUTIONAL INTEGRATION (2026-08-03):
+ * Every interaction leaving this Foyer now first passes through the
+ * Sovereign Interaction Kernel (src/sovereign-interaction-kernel/).
+ * The preparation window (600ms) lets the Creator observe what the Kernel
+ * resolved — chamber identity and interaction mode — before the Foyer
+ * departs. The prepared InteractionSession is written to sessionStorage
+ * under 'azma.kernel.session' so entering chambers can read the Kernel's
+ * intent on mount.
+ *
+ * No new capabilities. No new engines. Only constitutional visibility.
+ */
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import './imperial-foyer.css';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
+import { prepareInteractionSession } from '@/src/sovereign-interaction-kernel';
+import type { InteractionSession } from '@/src/sovereign-interaction-kernel';
+import type { ManifestChamberContext, ManifestInteractionMode } from '@/src/sovereign-chamber-manifest';
 
 // ── Interaction Mode — Empire-level (promotes azma.tongue.style) ──────────
 // The three modes are canonical across the Empire; the key is shared
@@ -29,9 +47,11 @@ function writeTongue(t: AzmaTongue): void {
 }
 
 // ── Constitutional Chamber Registry ──────────────────────────────────────
+// id is typed as ManifestChamberContext — these are constitutional chamber
+// identifiers that must match the sovereign-chamber-manifest exactly.
 
 interface ChamberCard {
-  id:     string;
+  id:     ManifestChamberContext;
   nameAr: string;
   roleAr: string;
   glyph:  string;
@@ -51,15 +71,40 @@ const COMPANION_MESSAGES: Record<AzmaTongue, string> = {
   silent:       '.',
 };
 
+// ── Kernel Companion Message ──────────────────────────────────────────────
+// Replaces the default greeting for the 600ms preparation window.
+// Shows the Creator: which chamber the Kernel resolved, and which
+// interaction mode it prepared — before the Foyer departs.
+
+const MODE_AR: Record<ManifestInteractionMode, string> = {
+  write:  'كتابة',
+  listen: 'استماع',
+  browse: 'تصفّح',
+};
+
+function kernelReadyMessage(session: InteractionSession, chamberNameAr: string): string {
+  if (session.status === 'RESOLVED' && session.activeInteractionMode) {
+    return `الإمبراطورية تستعدّ — ${chamberNameAr} — ${MODE_AR[session.activeInteractionMode]}`;
+  }
+  return `الإمبراطورية تستعدّ — ${chamberNameAr}`;
+}
+
 // ── Main Component ────────────────────────────────────────────────────────
 
 export default function ImperialFoyer() {
   const router = useRouter();
 
-  const [tongue,     setTongue]     = useState<AzmaTongue>(() => readTongue());
-  const [vaultCount, setVaultCount] = useState<number | null>(null);
-  const [entered,    setEntered]    = useState(false);
-  const [departing,  setDeparting]  = useState(false);
+  const [tongue,          setTongue]          = useState<AzmaTongue>(() => readTongue());
+  const [vaultCount,      setVaultCount]      = useState<number | null>(null);
+  const [entered,         setEntered]         = useState(false);
+  const [departing,       setDeparting]       = useState(false);
+  const [kernelSession,   setKernelSession]   = useState<InteractionSession | null>(null);
+  const [preparingId,     setPreparingId]     = useState<string | null>(null);
+  const [preparingNameAr, setPreparingNameAr] = useState<string | null>(null);
+
+  // Guard: prevents a second chamber from being launched while one is
+  // already in the 600ms preparation window.
+  const isPreparingRef = useRef(false);
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => setEntered(true));
@@ -83,12 +128,52 @@ export default function ImperialFoyer() {
     setTongue(t);
   }
 
-  const navigate = useCallback((route: string) => {
-    setDeparting(true);
-    setTimeout(() => router.push(route), 420);
+  // ── Kernel-mediated chamber launch ────────────────────────────────────
+  // Replaces the old hardcoded navigate(route) calls.
+  //
+  // Flow:
+  //   1. Kernel prepares an InteractionSession synchronously (< 1ms)
+  //   2. Preparation window (600ms): Creator sees the Kernel's resolution
+  //      via the LivingCompanion message and the preparing card glow
+  //   3. Session is written to sessionStorage for the entering chamber
+  //   4. Foyer departs (420ms fade-out)
+  //   5. router.push to the chamber
+
+  const launchChamber = useCallback((
+    chamberId: ManifestChamberContext,
+    route:     string,
+    nameAr:    string,
+  ) => {
+    if (isPreparingRef.current) return;
+    isPreparingRef.current = true;
+
+    const session = prepareInteractionSession({
+      intent: { kind: 'navigate', targetChamber: chamberId },
+    });
+
+    setKernelSession(session);
+    setPreparingId(chamberId);
+    setPreparingNameAr(nameAr);
+
+    setTimeout(() => {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('azma.kernel.session', JSON.stringify(session));
+      }
+      setPreparingId(null);
+      setPreparingNameAr(null);
+      setDeparting(true);
+      setTimeout(() => router.push(route), 420);
+    }, 600);
   }, [router]);
 
-  const companionMsg = COMPANION_MESSAGES[tongue];
+  const isPreparing = preparingId !== null;
+
+  // During the preparation window: show what the Kernel resolved.
+  // After departure begins: keep the Kernel message (Foyer is fading out).
+  const companionMsg =
+    kernelSession && isPreparing && preparingNameAr
+      ? kernelReadyMessage(kernelSession, preparingNameAr)
+      : COMPANION_MESSAGES[tongue];
 
   return (
     <main
@@ -119,6 +204,7 @@ export default function ImperialFoyer() {
             key={def.id}
             className={`foyer-mode-btn ${tongue === def.id ? 'mode-active' : ''}`}
             onClick={() => selectTongue(def.id)}
+            disabled={isPreparing}
           >
             <span className="mode-glyph" aria-hidden="true">{def.glyph}</span>
             <span className="mode-name">{def.nameAr}</span>
@@ -129,9 +215,10 @@ export default function ImperialFoyer() {
       {/* Sovereign Vault Palace — center of the Empire */}
       <div className="foyer-center">
         <button
-          className="foyer-vault-card"
-          onClick={() => navigate('/sovereign-vault-palace')}
+          className={`foyer-vault-card ${preparingId === 'sovereign-vault-palace' ? 'vault-preparing' : ''}`}
+          onClick={() => launchChamber('sovereign-vault-palace', '/sovereign-vault-palace', 'القصر السيادي')}
           aria-label="الدخول إلى القصر السيادي"
+          disabled={isPreparing}
         >
           <span className="vault-card-seal" aria-hidden="true">⬡</span>
           <div className="vault-card-body">
@@ -157,9 +244,10 @@ export default function ImperialFoyer() {
         {CONSTITUTIONAL_CHAMBERS.map((ch) => (
           <button
             key={ch.id}
-            className={`foyer-chamber-card foyer-chamber-${ch.id}`}
-            onClick={() => navigate(ch.route)}
+            className={`foyer-chamber-card foyer-chamber-${ch.id} ${preparingId === ch.id ? 'chamber-preparing' : ''}`}
+            onClick={() => launchChamber(ch.id, ch.route, ch.nameAr)}
             aria-label={`الدخول إلى ${ch.nameAr}`}
+            disabled={isPreparing}
           >
             <span className="chamber-glyph" aria-hidden="true">{ch.glyph}</span>
             <div className="chamber-identity">

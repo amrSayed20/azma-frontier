@@ -284,6 +284,24 @@
   color:     rgba(232, 228, 220, 0.4);
 }
 
+/* ── Kernel Preparation State ────────────────────────────────────── */
+/* Applied to the card the Creator selected for the 600ms window while
+   the Sovereign Interaction Kernel prepares the InteractionSession. */
+
+.foyer-chamber-card.chamber-preparing {
+  border-color: rgba(180, 150, 60, 0.65);
+  background:   rgba(180, 150, 60, 0.09);
+  transform:    translateY(-1px);
+  transition:   background 0.15s, border-color 0.15s;
+}
+
+.foyer-vault-card.vault-preparing {
+  border-color: rgba(180, 150, 60, 0.85);
+  background:   rgba(180, 150, 60, 0.12);
+  transform:    translateY(-2px);
+  transition:   background 0.15s, border-color 0.15s;
+}
+
 /* ── Animation ───────────────────────────────────────────────────── */
 
 @keyframes foyer-pulse {
@@ -364,6 +382,16 @@
   .foyer-chamber-card:hover {
     background:   rgba(0, 0, 0, 0.06);
     border-color: rgba(26, 23, 16, 0.25);
+  }
+
+  .foyer-chamber-card.chamber-preparing {
+    border-color: rgba(100, 80, 20, 0.65);
+    background:   rgba(100, 80, 20, 0.09);
+  }
+
+  .foyer-vault-card.vault-preparing {
+    border-color: rgba(100, 80, 20, 0.80);
+    background:   rgba(100, 80, 20, 0.11);
   }
 
   .chamber-name { color: rgba(26, 23, 16, 0.9); }
