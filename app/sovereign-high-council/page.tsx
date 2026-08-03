@@ -404,7 +404,7 @@ export default function SovereignHighCouncilPage() {
           justify-content: center;
           height: 100vh;
           background: linear-gradient(to br, rgb(15, 23, 42), rgb(2, 6, 23));
-          font-family: 'Cairo', sans-serif;
+          font-family: var(--azma-font-family);
         }
 
         .loading-spinner {
@@ -429,7 +429,7 @@ export default function SovereignHighCouncilPage() {
         }
 
         .sovereign-high-council {
-          font-family: 'Inter', system-ui, sans-serif;
+          font-family: var(--azma-font-family);
         }
 
         .gold {

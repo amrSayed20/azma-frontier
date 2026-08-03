@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Sans_Arabic, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 import "@/src/design-system/azma-identity.css";
 import "@/src/design-system/azma-behaviors.css";
@@ -17,14 +17,18 @@ import { resolveRequestLocale } from "@/src/creator-language/resolve-request-loc
 import { getLocaleDefinition } from "@/src/creator-language";
 import { InstallInvitationProvider, InstallInvitation, ServiceWorkerRegistrar } from "@/src/install-experience";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const arabicFont = IBM_Plex_Sans_Arabic({
+  variable: "--font-arabic",
+  subsets: ["arabic"],
+  weight: ["100", "200", "300", "400", "500", "600", "700"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const latinFont = IBM_Plex_Sans({
+  variable: "--font-latin",
+  subsets: ["latin", "latin-ext", "cyrillic"],
+  weight: ["100", "200", "300", "400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -63,7 +67,7 @@ export default async function RootLayout({
     <html
       lang={locale}
       dir={direction}
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${arabicFont.variable} ${latinFont.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <InstallInvitationProvider>

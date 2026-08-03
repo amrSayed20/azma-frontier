@@ -97,7 +97,9 @@
        so chambers can consume var(--azma-font-family) instead of
        independently copying or approximating this string (SIO-007,
        Restoration Package II — Constitutional Inheritance, Typography). */
-    --azma-font-family: system-ui, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    --azma-font-family: var(--font-arabic, 'IBM Plex Sans Arabic'),
+                        var(--font-latin, 'IBM Plex Sans'),
+                        system-ui, sans-serif;
 
     /* ── Typography Scale ─────────────────────────────────────────── */
     /* TYPOGRAPHY.scale.[nano..throne]                                */

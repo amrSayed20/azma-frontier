@@ -61,8 +61,6 @@ export default function SovereignHighCouncilStyles() {
         }
       }
 
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;800&display=swap');
-
       .gold {
         color: var(--color-gold);
       }
