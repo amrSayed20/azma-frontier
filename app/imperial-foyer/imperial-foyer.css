@@ -387,6 +387,52 @@
   50%       { opacity: 1;   }
 }
 
+/* ── Staged Entry Ceremony — Package H ──────────────────────────────
+   The Empire reveals itself in layers. Companion speaks first; chambers
+   last. Communicates depth before the Creator takes a single step.
+   Departure collapses all together (transition-delay reset to 0s).     */
+
+.foyer-companion,
+.foyer-modes,
+.foyer-center,
+.foyer-chambers {
+  opacity:   0;
+  transform: translateY(6px);
+}
+
+.foyer-companion { transition: opacity 0.4s ease 0s,    transform 0.4s ease 0s;    }
+.foyer-modes     { transition: opacity 0.4s ease 0.2s,  transform 0.4s ease 0.2s;  }
+.foyer-center    { transition: opacity 0.4s ease 0.38s, transform 0.4s ease 0.38s; }
+.foyer-chambers  { transition: opacity 0.4s ease 0.55s, transform 0.4s ease 0.55s; }
+
+.foyer-viewport.foyer-entered .foyer-companion,
+.foyer-viewport.foyer-entered .foyer-modes,
+.foyer-viewport.foyer-entered .foyer-center,
+.foyer-viewport.foyer-entered .foyer-chambers {
+  opacity:   1;
+  transform: translateY(0);
+}
+
+.foyer-viewport.foyer-departing .foyer-companion,
+.foyer-viewport.foyer-departing .foyer-modes,
+.foyer-viewport.foyer-departing .foyer-center,
+.foyer-viewport.foyer-departing .foyer-chambers {
+  transition-delay: 0s;
+}
+
+/* Creator Identity Presence — fade-in on mount — Package H ──────────
+   Conditionally rendered (async identity fetch). Fires on first mount
+   regardless of when during the session the element appears.           */
+
+@keyframes foyer-identity-appear {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+.foyer-creator-identity {
+  animation: foyer-identity-appear 0.35s ease;
+}
+
 /* ── Responsive ──────────────────────────────────────────────────── */
 
 @media (max-width: 480px) {

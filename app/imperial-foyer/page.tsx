@@ -60,16 +60,45 @@ interface ChamberCard {
 }
 
 const CONSTITUTIONAL_CHAMBERS: ChamberCard[] = [
-  { id: 'hujjah-al-damighah', nameAr: 'حجة الدامغة', roleAr: 'تحقيق معرفي',  actionAr: 'اطرح سؤالاً — ابدأ التحقيق',    glyph: '⚖', route: '/hujjah-al-damighah' },
-  { id: 'qiyamah-chamber',    nameAr: 'القيامة',      roleAr: 'إنتاج إبداعي', actionAr: 'صِف مشهداً — أنشئ صورة',        glyph: '◈', route: '/qiyamah-chamber'    },
-  { id: 'ras-amr',            nameAr: 'رأس الأمر',    roleAr: 'توجيه سيادي',  actionAr: 'وجّه قماشك السردي',              glyph: '◎', route: '/ras-amr'            },
-  { id: 'makman-al-ghayah',   nameAr: 'مكمن الغاية',  roleAr: 'غاية وأهداف',  actionAr: 'أعلن غايتك — سجّل هدفك',       glyph: '⬟', route: '/makman-al-ghayah'  },
+  { id: 'hujjah-al-damighah', nameAr: 'حجة الدامغة', roleAr: 'تستدلّ', actionAr: 'اطرح سؤالاً — ابدأ التحقيق',  glyph: '⚖', route: '/hujjah-al-damighah' },
+  { id: 'qiyamah-chamber',    nameAr: 'القيامة',      roleAr: 'تخلق',   actionAr: 'صِف مشهداً — أنشئ صورة',      glyph: '◈', route: '/qiyamah-chamber'    },
+  { id: 'ras-amr',            nameAr: 'رأس الأمر',    roleAr: 'تحكم',   actionAr: 'وجّه ما خُلق نحو الغاية',     glyph: '◎', route: '/ras-amr'            },
+  { id: 'makman-al-ghayah',   nameAr: 'مكمن الغاية',  roleAr: 'تُحقق',  actionAr: 'أعلن غايتك — سجّل هدفك',     glyph: '⬟', route: '/makman-al-ghayah'  },
 ];
 
 const COMPANION_MESSAGES: Record<AzmaTongue, string> = {
   conversation: 'مرحباً بك في قلب الإمبراطورية. إلى أين تتجه؟',
   writing:      'الإمبراطورية تستقبلك. اختر حجرتك وابدأ.',
   silent:       '.',
+};
+
+// ── First-Visit Revelation — Package H ───────────────────────────────────
+// Cycles once when a brand-new Creator enters the Foyer with no
+// constitutional state (no creations, canvases, productions, or goals).
+// Not a tutorial. Not a walkthrough. The Empire declares its own nature.
+// A sessionStorage guard ensures it fires at most once per browser session.
+
+const FIRST_VISIT_REVELATION = [
+  'الإمبراطورية تراك.',
+  'خمس حجرات. رحلة واحدة.',
+  'القيامة تخلق. رأس الأمر يحكم. الغاية تُحقق.',
+] as const;
+
+const REVELATION_INTERVAL = 2800; // ms per declaration
+
+// ── Chamber Revelation on Hover — Package H ──────────────────────────────
+// When the Creator rests on a chamber card, the Empire reveals the chamber's
+// role in the constitutional journey. One declarative sentence — what the
+// chamber IS, not a feature description. Only perceptible when no presence
+// message is already occupying the companion (first-time Creators or those
+// with no current constitutional urgency).
+
+const CHAMBER_REVELATION: Record<string, string> = {
+  'hujjah-al-damighah':     'تبحث. تحقق. تبني الدليل.',
+  'qiyamah-chamber':        'تمنح الوجود لما تتخيّل.',
+  'ras-amr':                'تحكم ما خُلق وتُوجّهه.',
+  'makman-al-ghayah':       'تُحقق الغاية التي أعلنتها.',
+  'sovereign-vault-palace': 'تحمي ما يستحق البقاء.',
 };
 
 // ── Creator Identity — Package G ─────────────────────────────────────────
@@ -251,6 +280,12 @@ export default function ImperialFoyer() {
   // returns from a chamber. Cleared when they choose an interaction mode
   // (at which point their attention has turned forward, not backward).
   const [returnMsg,       setReturnMsg]       = useState<string | null>(null);
+  // IMPERIAL REVELATION — Package H:
+  // revealMsg: the cycling first-visit companion narrative (fires once per session).
+  // hoveredChamber: the chamber card the Creator is currently resting on —
+  // drives hover revelation messages from CHAMBER_REVELATION.
+  const [revealMsg,       setRevealMsg]       = useState<string | null>(null);
+  const [hoveredChamber,  setHoveredChamber]  = useState<string | null>(null);
 
   // Guard: prevents a second chamber from being launched while one is
   // already in the 600ms preparation window.
@@ -327,6 +362,44 @@ export default function ImperialFoyer() {
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  // FIRST-VISIT REVELATION — Package H:
+  // Fires once when presence loads and reveals a brand-new Creator (all
+  // constitutional counts zero, no declared sovereign purpose). Cycles through
+  // three declarations that reveal the Empire's nature and constitutional
+  // architecture, then settles on the default companion message.
+  useEffect(() => {
+    if (!presence) return;
+    if (returnMsg) return;
+
+    const isFirstVisit =
+      presence.qiyamah.creationCount    === 0 &&
+      presence.rasAlAmr.savedCanvasCount === 0 &&
+      presence.makman.productionCount    === 0 &&
+      presence.hujjah.goalCount          === 0 &&
+      !sovereignPurpose;
+
+    if (!isFirstVisit) return;
+
+    const alreadyRevealed =
+      typeof window !== 'undefined' &&
+      sessionStorage.getItem('azma.foyer.revealed') === '1';
+    if (alreadyRevealed) return;
+
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('azma.foyer.revealed', '1');
+    }
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    FIRST_VISIT_REVELATION.forEach((msg, i) => {
+      timers.push(setTimeout(() => setRevealMsg(msg), REVELATION_INTERVAL * i));
+    });
+    timers.push(
+      setTimeout(() => setRevealMsg(null), REVELATION_INTERVAL * FIRST_VISIT_REVELATION.length),
+    );
+
+    return () => timers.forEach(clearTimeout);
+  }, [presence, sovereignPurpose, returnMsg]);
+
   function selectTongue(t: AzmaTongue) {
     writeTongue(t);
     setTongue(t);
@@ -385,10 +458,14 @@ export default function ImperialFoyer() {
   };
   const presenceMsg = presence ? derivePresenceMessage(presence, identityCtx) : null;
   const naturalNextChamber = deriveNaturalNextChamber(presence, sovereignPurpose !== null);
+  // Hover revelation: what the Empire declares about a chamber when the Creator rests on it.
+  // Lower priority than presenceMsg — the Empire's specific knowledge of the Creator's
+  // current journey always outranks a generic chamber identity declaration.
+  const hoveredCompanion = hoveredChamber ? (CHAMBER_REVELATION[hoveredChamber] ?? null) : null;
   const companionMsg =
     kernelSession && isPreparing && preparingNameAr
       ? kernelReadyMessage(kernelSession, preparingNameAr)
-      : returnMsg ?? presenceMsg ?? COMPANION_MESSAGES[tongue];
+      : returnMsg ?? presenceMsg ?? hoveredCompanion ?? revealMsg ?? COMPANION_MESSAGES[tongue];
 
   return (
     <main
@@ -452,6 +529,8 @@ export default function ImperialFoyer() {
         <button
           className={`foyer-vault-card ${preparingId === 'sovereign-vault-palace' ? 'vault-preparing' : ''}`}
           onClick={() => launchChamber('sovereign-vault-palace', '/sovereign-vault-palace', 'القصر السيادي')}
+          onMouseEnter={() => { if (!isPreparing) setHoveredChamber('sovereign-vault-palace'); }}
+          onMouseLeave={() => setHoveredChamber(null)}
           aria-label="الدخول إلى القصر السيادي"
           disabled={isPreparing}
         >
@@ -483,6 +562,8 @@ export default function ImperialFoyer() {
               key={ch.id}
               className={`foyer-chamber-card foyer-chamber-${ch.id} ${preparingId === ch.id ? 'chamber-preparing' : ''} ${chamberPresence ? 'chamber-has-presence' : ''} ${naturalNextChamber === ch.id ? 'chamber-natural-next' : ''}`}
               onClick={() => launchChamber(ch.id, ch.route, ch.nameAr)}
+              onMouseEnter={() => { if (!isPreparing) setHoveredChamber(ch.id); }}
+              onMouseLeave={() => setHoveredChamber(null)}
               aria-label={`الدخول إلى ${ch.nameAr}`}
               disabled={isPreparing}
             >
