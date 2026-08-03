@@ -371,22 +371,13 @@ export default function ImperialFoyer() {
     if (!presence) return;
     if (returnMsg) return;
 
-    const isFirstVisit =
-      presence.qiyamah.creationCount    === 0 &&
-      presence.rasAlAmr.savedCanvasCount === 0 &&
-      presence.makman.productionCount    === 0 &&
-      presence.hujjah.goalCount          === 0 &&
-      !sovereignPurpose;
-
-    if (!isFirstVisit) return;
-
     const alreadyRevealed =
       typeof window !== 'undefined' &&
-      sessionStorage.getItem('azma.foyer.revealed') === '1';
+      localStorage.getItem('azma.foyer.revealed') === '1';
     if (alreadyRevealed) return;
 
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem('azma.foyer.revealed', '1');
+      localStorage.setItem('azma.foyer.revealed', '1');
     }
 
     const timers: ReturnType<typeof setTimeout>[] = [];

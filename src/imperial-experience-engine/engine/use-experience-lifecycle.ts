@@ -35,7 +35,7 @@ export function useExperienceLifecycle({ revealDurationMs, handoffDurationMs }: 
 
   const beginHandoff = useCallback((destinationHref: string) => {
     setPhase('exiting');
-    setTimeout(() => router.push(destinationHref), handoffDurationMs);
+    setTimeout(() => router.replace(destinationHref), handoffDurationMs);
   }, [handoffDurationMs, router]);
 
   return { phase, beginHandoff };

@@ -1383,7 +1383,7 @@ export default function HujjahAlDamighah() {
             </div>
             <div className="crown-nav">
               <button className="sovereign-exit-btn" onClick={() => handleCinematicExit('/imperial-foyer')}>
-                ⮜ العودة
+                ⮜ قلب الإمبراطورية
               </button>
             </div>
           </div>

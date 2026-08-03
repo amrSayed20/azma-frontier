@@ -76,9 +76,9 @@ export const ar: Dictionary = {
 
   'subscribeSuccess.kicker': 'بوابة العبور السيادي',
   'subscribeSuccess.title': 'مكانتك السيادية مؤكدة الآن',
-  'subscribeSuccess.subtitleNamed': 'أهلاً بك، {name}. حجرة القيامة مفتوحة أمامك الآن — يجري تفعيل اشتراكك، وهذا يستغرق لحظات فقط.',
-  'subscribeSuccess.subtitleAnonymous': 'أهلاً بك. حجرة القيامة مفتوحة أمامك الآن — يجري تفعيل اشتراكك، وهذا يستغرق لحظات فقط.',
-  'subscribeSuccess.enterButton': 'ادخل حجرة القيامة',
+  'subscribeSuccess.subtitleNamed': 'أهلاً بك، {name}. الإمبراطورية مفتوحة أمامك الآن — يجري تفعيل اشتراكك، وهذا يستغرق لحظات فقط.',
+  'subscribeSuccess.subtitleAnonymous': 'أهلاً بك. الإمبراطورية مفتوحة أمامك الآن — يجري تفعيل اشتراكك، وهذا يستغرق لحظات فقط.',
+  'subscribeSuccess.enterButton': 'ادخل الإمبراطورية',
 
   'notFound.kicker': 'بوابة العبور السيادي',
   'notFound.title': 'هذا المسار غير موجود داخل الإمبراطورية',

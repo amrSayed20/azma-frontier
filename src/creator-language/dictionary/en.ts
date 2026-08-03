@@ -80,9 +80,9 @@ export const en: Dictionary = {
 
   'subscribeSuccess.kicker': 'The Sovereign Passage',
   'subscribeSuccess.title': 'Your standing is confirmed',
-  'subscribeSuccess.subtitleNamed': 'Welcome, {name}. Qiyamah is now open to you — your subscription is being activated, which usually takes only a moment.',
-  'subscribeSuccess.subtitleAnonymous': 'Welcome. Qiyamah is now open to you — your subscription is being activated, which usually takes only a moment.',
-  'subscribeSuccess.enterButton': 'Enter Qiyamah',
+  'subscribeSuccess.subtitleNamed': 'Welcome, {name}. The Empire is now open to you — your subscription is being activated, which usually takes only a moment.',
+  'subscribeSuccess.subtitleAnonymous': 'Welcome. The Empire is now open to you — your subscription is being activated, which usually takes only a moment.',
+  'subscribeSuccess.enterButton': 'Enter the Empire',
 
   'notFound.kicker': 'The Sovereign Passage',
   'notFound.title': 'This path does not exist within the Empire',

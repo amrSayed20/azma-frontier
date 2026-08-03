@@ -34,7 +34,7 @@ export default async function SubscribeSuccessPage() {
         <p className="creator-access-kicker">{t(dict, 'subscribeSuccess.kicker')}</p>
         <h1 className="creator-access-title">{t(dict, 'subscribeSuccess.title')}</h1>
         <p className="creator-access-subtitle">{subtitle}</p>
-        <ConstitutionalLink to="qiyamah-chamber" className="creator-access-submit" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+        <ConstitutionalLink to="/imperial-foyer" replace className="creator-access-submit" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
           {t(dict, 'subscribeSuccess.enterButton')}
         </ConstitutionalLink>
       </div>
