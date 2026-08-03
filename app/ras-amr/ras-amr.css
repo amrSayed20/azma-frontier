@@ -317,206 +317,225 @@ body, html {
   height: calc(100vh - 100px);
 }
 
-.cinema-monitor-frame {
-  flex: 1;
-  background: #000000;
-  border-radius: 20px;
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 20px;
-  box-sizing: border-box;
+/* ============================================= */
+/* CONSTITUTIONAL IDENTITY SURFACE               */
+/* ============================================= */
+.director-identity-surface {
+  overflow-y: auto;
+  padding: 4px 2px;
+  gap: 14px;
 }
 
-.monitor-glass-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, transparent 50%);
-  pointer-events: none;
-}
-
-.monitor-safe-area-lines {
-  position: absolute;
-  inset: 15px;
-  border: 1px dashed rgba(255, 215, 0, 0.05);
-  pointer-events: none;
-}
-
-.monitor-meta-top {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  color: var(--text-muted);
-  font-family: monospace;
-  position: relative;
-  z-index: 10;
-}
-
-.rec-indicator {
-  color: #FF3B30;
-  animation: pulseOpacity 1s infinite alternate;
-}
-
-.monitor-center-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-}
-
-.active-rendering-visualization { text-align: center; }
-
-.hologram-asset-icon {
-  font-size: 4rem;
+.director-continuity-banner {
+  background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,215,0,0.03));
+  border: 1px solid rgba(255,215,0,0.25);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 12px;
   color: var(--neon-gold-bright);
-  text-shadow: 0 0 30px var(--neon-gold-bright);
-  margin-bottom: 15px;
-  animation: coreFloat 4s ease-in-out infinite alternate;
+  text-align: center;
+  letter-spacing: 0.4px;
 }
 
-.visualized-title {
-  margin: 0 0 6px 0;
-  font-size: 1.8rem;
+.director-chamber-identity {
+  border-radius: 14px;
+  padding: 18px 20px;
+  background: rgba(8, 8, 8, 0.8);
+}
+
+.dir-chamber-name {
+  margin: 6px 0 4px;
+  font-size: 1.4rem;
   font-weight: 900;
+  color: var(--neon-gold-bright);
   letter-spacing: 1px;
 }
 
-.visualized-subtitle { margin: 0; font-size: 12px; color: var(--neon-gold-primary); }
-
-.idle-monitor-text { color: var(--text-muted); font-size: 14px; }
-
-.monitor-meta-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.dir-chamber-mandate {
+  margin: 0;
   font-size: 11px;
   color: var(--text-muted);
-  font-family: monospace;
-  position: relative;
-  z-index: 10;
+  line-height: 1.6;
 }
 
-.waveform-sim {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  width: 80px;
-  height: 20px;
+.director-active-asset {
+  border-radius: 12px;
+  padding: 14px 18px;
+  background: rgba(8, 8, 8, 0.8);
 }
 
-.wave-bar { flex: 1; background: var(--neon-gold-primary); border-radius: 2px; }
+.director-active-asset.asset-real {
+  border-color: var(--neon-gold-primary) !important;
+  box-shadow: 0 0 20px rgba(255,215,0,0.12), inset 0 0 10px rgba(0,0,0,0.8) !important;
+}
 
-/* HOLLYWOOD TIMELINE PANEL */
-.sovereign-timeline-panel {
-  background: rgba(5, 5, 5, 0.9);
-  border-radius: 14px;
-  padding: 15px 20px;
+.director-active-asset.asset-empty {
+  opacity: 0.6;
+}
+
+.active-asset-title {
+  margin: 6px 0 3px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.active-asset-meta {
+  margin: 0;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.dir-empty-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.director-state-surface {
+  border-radius: 12px;
+  padding: 14px 18px;
+  background: rgba(8, 8, 8, 0.8);
+}
+
+.dir-state-grid {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
-.timeline-ruler {
+.dir-state-row {
   display: flex;
   justify-content: space-between;
-  font-size: 9px;
+  align-items: baseline;
+  font-size: 11px;
+  border-bottom: 1px solid rgba(255,215,0,0.05);
+  padding-bottom: 6px;
+}
+
+.dir-state-label { color: var(--text-muted); }
+
+.dir-state-value {
+  color: var(--neon-gold-primary);
+  font-weight: 600;
+  font-size: 11px;
+  text-align: left;
+}
+
+.dir-render-status {
+  margin: 8px 0 0;
+  font-size: 10px;
+  color: var(--neon-gold-bright);
+  font-style: italic;
+}
+
+.director-available-actions {
+  border-radius: 12px;
+  padding: 14px 18px;
+  background: rgba(8, 8, 8, 0.8);
+}
+
+.dir-actions-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dir-action-item {
+  font-size: 11px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  line-height: 1.5;
+}
+
+.dir-action-primary {
+  color: var(--neon-gold-bright);
+  background: rgba(255,215,0,0.05);
+  border: 1px solid rgba(255,215,0,0.15);
+}
+
+.dir-action-complete {
+  color: #4CAF50;
+  background: rgba(76,175,80,0.05);
+  border: 1px solid rgba(76,175,80,0.2);
+}
+
+.director-last-decision {
+  border-radius: 12px;
+  padding: 12px 18px;
+  background: rgba(8, 8, 8, 0.8);
+}
+
+.dir-decision-text {
+  margin: 8px 0 0;
+  font-size: 11px;
   color: var(--text-muted);
   font-family: monospace;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  padding-bottom: 5px;
+  line-height: 1.6;
 }
 
-.timeline-track {
-  height: 45px;
-  background: #000;
-  border-radius: 6px;
-  position: relative;
-  border: 1px solid rgba(255,215,0,0.05);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  padding: 0 10px;
-}
-
-.timeline-playhead {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: #FF3B30;
-  box-shadow: 0 0 10px #FF3B30;
-  z-index: 10;
-}
-
-.timeline-block-filled {
-  height: 70%;
-  background: linear-gradient(90deg, var(--neon-gold-dim), var(--neon-gold-primary));
-  border: 1px solid var(--neon-gold-bright);
-  border-radius: 4px;
-  color: #000;
-  font-size: 11px;
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  padding: 0 15px;
-  box-shadow: 0 0 12px var(--neon-gold-shadow);
-}
-
-.console-status-strip { display: flex; padding: 0 5px; }
-
-.status-node { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted); }
-
-.pulse-dot.gold {
-  width: 8px;
-  height: 8px;
-  background: var(--neon-gold-bright);
-  border-radius: 50%;
-  box-shadow: 0 0 10px var(--neon-gold-bright);
-  animation: pulseOpacity 1.5s infinite alternate;
+.queue-empty-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 16px;
+  border: 1px dashed rgba(255,215,0,0.1);
+  border-radius: 10px;
+  margin: 8px 0 0;
+  line-height: 1.6;
 }
 
 /* ========================================= */
-/* HOLLYWOOD CONSOLE SWITCHER & TOOLS        */
+/* CONSTITUTIONAL OPERATOR SWITCHER          */
 /* ========================================= */
-.mode-switcher-rack { display: flex; padding: 15px; gap: 10px; background: rgba(0,0,0,0.3); }
+.operator-switcher { display: flex; flex-direction: column; padding: 15px; gap: 10px; background: rgba(0,0,0,0.3); }
 
-.mode-btn {
-  flex: 1;
-  padding: 10px;
+.operator-btn {
+  width: 100%;
+  padding: 12px 16px;
   font-size: 11px;
-  font-weight: bold;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 215, 0, 0.1);
   background: var(--os-surface-elevated);
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.25s;
   font-family: inherit;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.active-smart {
-  background: linear-gradient(180deg, var(--neon-gold-dim), rgba(0,0,0,0.5)) !important;
-  border-color: var(--neon-gold-primary) !important;
-  color: #fff !important;
-  box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);
+.operator-btn-label {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--text-main);
 }
 
-.active-manual {
-  background: linear-gradient(180deg, #4A3600, rgba(0,0,0,0.5)) !important;
-  border-color: var(--neon-gold-bright) !important;
-  color: #fff !important;
-  box-shadow: 0 0 15px var(--neon-gold-shadow);
+.operator-btn-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
-.tools-rack-grid {
-  flex: 1;
-  padding: 15px;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  overflow-y: auto;
+.operator-btn.operator-active {
+  background: linear-gradient(180deg, rgba(255,215,0,0.12), rgba(0,0,0,0.5));
+  border-color: var(--neon-gold-primary);
+  box-shadow: 0 0 15px rgba(255,215,0,0.15);
+}
+
+.operator-btn.operator-active .operator-btn-label {
+  color: var(--neon-gold-bright);
+}
+
+.operator-btn.operator-active .operator-btn-desc {
+  color: var(--neon-gold-dim);
 }
 
 .tool-console-button {

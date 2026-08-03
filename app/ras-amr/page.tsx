@@ -520,11 +520,7 @@ interface QueueItem {
   capabilityOrigin?: CapabilityTarget;
 }
 
-const initialSmartQueue: QueueItem[] = [
-  { id: 'q-1', title: 'المشهد السريالي الأول', type: 'فيديو', source: 'حجرة القيامة', duration: '00:12', status: 'جاهز للصهر' },
-  { id: 'q-2', title: 'البصمة الصوتية السيادية', type: 'صوت', source: 'خزنة الأصوات', duration: '01:05', status: 'مزامنة عصبية معلقة' },
-  { id: 'q-3', title: 'مخطط الهوية البصرية الحية', type: 'علامة', source: 'خزنة العلامات', duration: '--:--', status: 'معالجة البكسل' },
-];
+const initialSmartQueue: QueueItem[] = [];
 
 // PACKAGE XXI — DIRECTION NODE LAYER: real Arabic labels for the Chief
 // Architect's own seven DirectionNodeRole examples — display only, the
@@ -539,21 +535,13 @@ const DIRECTION_NODE_ROLE_LABELS: Record<DirectionNodeRole, string> = {
   [DirectionNodeRole.CLOSING_SHOT]: 'لقطة ختامية',
 };
 
-const hollywoodTools = [
-  { id: 'pixel-grade', label: 'المعالج النقطي للبكسل', icon: '🎯', category: 'manual' },
-  { id: 'neural-sync', label: 'المزامنة العصبية للصوت', icon: '🎙', category: 'smart' },
-  { id: 'chroma-forge', label: 'صهر النطاق اللوني الحركي', icon: '🎨', category: 'manual' },
-  { id: 'ai-director', label: 'المخرج الذكي الآلي', icon: '🤖', category: 'smart' },
-  { id: 'optical-flow', label: 'التدفق البصري الفائق', icon: '🌊', category: 'smart' },
-  { id: 'master-render', label: 'التصوير النهائي السينمائي', icon: '🎬', category: 'manual' },
-];
 
 export default function RasAmrChamber() {
   const router = useRouter();
   
   // --- Core States ---
   const [queue, setQueue] = useState<QueueItem[]>(initialSmartQueue);
-  const [activeAsset, setActiveAsset] = useState<QueueItem | null>(initialSmartQueue[0]);
+  const [activeAsset, setActiveAsset] = useState<QueueItem | null>(null);
   // CONSTITUTIONAL NOTE (Ras Al Amr Chamber Reconstruction, 2026-07-25;
   // superseded/expanded by the Sovereign Direction State Ruling,
   // 2026-07-28, and Package XVIII, direction-workspace-constitution.ts):
@@ -575,8 +563,6 @@ export default function RasAmrChamber() {
   // Spatial/Visual/Temporal panels (manual) and the REAL — DIRECTOR panel
   // (automatic) already below, both always visible regardless of mode.
   const [directingMode, setDirectingMode] = useState<'smart' | 'manual'>('smart');
-  const [activeTool, setActiveTool] = useState<string>('ai-director');
-  const [timelineProgress, setTimelineProgress] = useState<number>(45);
   const [isRendering, setIsRendering] = useState<boolean>(false);
   const [renderStatus, setRenderStatus] = useState<string>('في وضع الاستعداد الإخراجي');
   // THE CORRIDOR PACKAGE: the real compiled graph from the most recent
@@ -1107,6 +1093,21 @@ export default function RasAmrChamber() {
     };
   }, [activeGoalId]);
 
+  // Imperial Continuity — consumes the InteractionSession the Imperial Foyer
+  // writes before departing (sessionStorage['azma.kernel.session']). If
+  // RESOLVED, records the mode so the chamber can acknowledge the journey.
+  const [kernelContinuity, setKernelContinuity] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const raw = sessionStorage.getItem('azma.kernel.session');
+    if (!raw) return;
+    sessionStorage.removeItem('azma.kernel.session');
+    try {
+      const s = JSON.parse(raw) as { status?: string; activeInteractionMode?: string };
+      if (s?.status === 'RESOLVED') setKernelContinuity(s.activeInteractionMode ?? 'navigate');
+    } catch { /* ignore malformed session */ }
+  }, []);
+
   // PACKAGE XIII — MULTI-NODE CINEMATIC DIRECTION: reasons across every
   // real node currently on the canvas, not just the selected one. A
   // formal Goal is only genuinely fetched today for the selected node
@@ -1226,13 +1227,6 @@ export default function RasAmrChamber() {
 
   const activeVaultCategory = realVaultCategories.find((c) => c.id === selectedVault) ?? realVaultCategories[0];
 
-  // --- Real-time Timeline Playhead Pulse ---
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimelineProgress(prev => (prev >= 100 ? 0 : prev + 0.15));
-    }, 100);
-    return () => clearInterval(interval);
-  }, []);
 
   // --- Real Director Compilation: compiles the real, per-session
   // SovereignCanvas (sessionCanvas) — including any real spatial edits
@@ -1328,9 +1322,9 @@ export default function RasAmrChamber() {
   return (
     <RasAmrExperience>
     <main className={`ras-amr-viewport ${injectionFlash ? 'neon-flash-active' : ''}`}>
-      {/* Universal Sovereign Back Button */}
-      <button className="sovereign-exit-btn" onClick={() => router.back()}>
-        ⮜ نحو حجره مكمن الغايه 
+      {/* Return to the Imperial Foyer — the constitutional return path */}
+      <button className="sovereign-exit-btn" onClick={() => router.push('/imperial-foyer')}>
+        ⮜ قلب الإمبراطورية
       </button>
 
       {/* Cyber Golden Neon Grid Atmosphere */}
@@ -1347,24 +1341,27 @@ export default function RasAmrChamber() {
         {/* ========================================= */}
         <aside className="control-panel queue-sidebar neon-border">
           <header className="panel-header">
-            <div className="neon-tag">AUTOMATED FLOW</div>
-            <h2>قائمة الانتظار الذكية</h2>
-            <p>تدفق الأصول الواردة من الحجرات</p>
+            <div className="neon-tag">الأصول</div>
+            <h2>أصول الإنتاج</h2>
+            <p>الأصول المستدعاة من الخزانة السيادية — تُضاف إلى القماش السردي</p>
 
-            {/* CRITICAL: Sovereign Summoning Bridge Trigger */}
-            <button 
+            <button
               className="summon-bridge-trigger-btn"
               onClick={() => setIsSummonOpen(true)}
             >
-              <span className="summon-pulse-icon">🎙️</span>
-              استدعاء من الخزائن الملكية
+              استدعِ من الخزانة السيادية
             </button>
           </header>
 
           <div className="queue-container custom-scroll">
+            {queue.length === 0 && (
+              <p className="queue-empty-hint">
+                لا توجد أصول مستدعاة بعد. استدعِ أصلاً حقيقياً من الخزانة السيادية للبدء.
+              </p>
+            )}
             {queue.map(asset => (
-              <div 
-                key={asset.id} 
+              <div
+                key={asset.id}
                 className={`queue-item-card ${activeAsset?.id === asset.id ? 'active-neon-card' : ''}`}
                 onClick={() => setActiveAsset(asset)}
               >
@@ -1382,72 +1379,124 @@ export default function RasAmrChamber() {
           </div>
         </aside>
 
-        {/* ========================================= */}
-        {/* 2. CENTRAL WING: MASTER PREVIEW & CONSOLE */}
-        {/* ========================================= */}
-        <section className="main-director-core">
-          
-          {/* Hollywood Monitor Viewport */}
-          <div className="cinema-monitor-frame neon-border-heavy">
-            <div className="monitor-glass-overlay" />
-            <div className="monitor-safe-area-lines" />
-            
-            <div className="monitor-meta-top">
-              <span className="rec-indicator">● LIVE MASTER DIRECT</span>
-              <span>RESOL: 8K SOVEREIGN ULTRA</span>
-              <span>FPS: 23.976fps CRYPTO</span>
-            </div>
+        {/* =========================================== */}
+        {/* 2. CENTER: IMPERIAL DIRECTOR IDENTITY       */}
+        {/* =========================================== */}
+        <section className="main-director-core director-identity-surface">
 
-            <div className="monitor-center-content">
-              {activeAsset ? (
-                <div className="active-rendering-visualization">
-                  <div className="hologram-asset-icon">✦</div>
-                  <h2 className="visualized-title">{activeAsset.title}</h2>
-                  <p className="visualized-subtitle">توجيه البكسل الجاري عبر: {hollywoodTools.find(t => t.id === activeTool)?.label}</p>
-                </div>
-              ) : (
-                <div className="idle-monitor-text">يرجى استدعاء أصل من قائمة الانتظار للبدء</div>
+          {/* Imperial Continuity — acknowledges the journey from the Foyer */}
+          {kernelContinuity && (
+            <div className="director-continuity-banner">
+              الإمبراطورية أعدّت هذه الجلسة — المخرج الإمبراطوري يستقبلك
+            </div>
+          )}
+
+          {/* Chamber Identity */}
+          <div className="director-chamber-identity neon-border">
+            <div className="neon-tag">المخرج الإمبراطوري</div>
+            <h2 className="dir-chamber-name">رأس الأمر</h2>
+            <p className="dir-chamber-mandate">
+              الجهة الدستورية لتوجيه الإنتاج السيادي — كل أصل يدخل القماش السردي تحت سلطة توجيهية حقيقية: مكانية، بصرية، زمنية، وصوتية
+            </p>
+          </div>
+
+          {/* Active Asset */}
+          {activeAsset ? (
+            <div className={`director-active-asset neon-border ${activeAsset.isRealAsset ? 'asset-real' : 'asset-demo'}`}>
+              <div className="neon-tag">{activeAsset.isRealAsset ? 'أصل حقيقي نشط' : 'عنصر تجريبي'}</div>
+              <h3 className="active-asset-title">{activeAsset.title}</h3>
+              <p className="active-asset-meta">{activeAsset.type} — {activeAsset.source}</p>
+            </div>
+          ) : (
+            <div className="director-active-asset neon-border asset-empty">
+              <p className="dir-empty-hint">لا يوجد أصل نشط — استدعِ أصلاً حقيقياً من الخزانة السيادية للبدء</p>
+            </div>
+          )}
+
+          {/* Constitutional State */}
+          <div className="director-state-surface neon-border">
+            <div className="neon-tag">الحالة الدستورية</div>
+            <div className="dir-state-grid">
+              <div className="dir-state-row">
+                <span className="dir-state-label">المخرج النشط</span>
+                <span className="dir-state-value">
+                  {directingMode === 'smart' ? 'المخرج الآلي' : 'المخرج اليدوي'}
+                </span>
+              </div>
+              <div className="dir-state-row">
+                <span className="dir-state-label">القماش السردي</span>
+                <span className="dir-state-value">
+                  {sessionCanvas
+                    ? `${sessionCanvas.tracks.flatMap(t => t.nodes).length} عقدة — ${sessionCanvas.tracks.length} مجموعة`
+                    : 'لم يُفتَح بعد'}
+                </span>
+              </div>
+              <div className="dir-state-row">
+                <span className="dir-state-label">الصهر</span>
+                <span className="dir-state-value">
+                  {isRendering ? 'جارٍ...'
+                    : compiledGraph && compiledForAssetId === activeAsset?.id
+                      ? `مكتمل — ${compiledGraph.metadata.totalNodes} عقدة`
+                      : 'لم يُصهر بعد'}
+                </span>
+              </div>
+            </div>
+            {renderStatus !== 'في وضع الاستعداد الإخراجي' && (
+              <p className="dir-render-status">{renderStatus}</p>
+            )}
+          </div>
+
+          {/* Available Paths — derived from constitutional state */}
+          <div className="director-available-actions neon-border">
+            <div className="neon-tag">المسارات المتاحة الآن</div>
+            <ul className="dir-actions-list">
+              <li className={`dir-action-item ${activeAsset?.isRealAsset ? 'dir-action-complete' : 'dir-action-primary'}`}>
+                {activeAsset?.isRealAsset
+                  ? `✓ أصل نشط: ${activeAsset.title.slice(0, 45)}`
+                  : '← استدعِ أصلاً حقيقياً من الخزانة السيادية (اللوحة اليسرى)'}
+              </li>
+              {activeAsset?.isRealAsset && (
+                <li className={`dir-action-item ${
+                  sessionCanvas?.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id)
+                    ? 'dir-action-complete' : 'dir-action-primary'
+                }`}>
+                  {sessionCanvas?.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id)
+                    ? '✓ الأصل في القماش السردي'
+                    : '← أضفه إلى القماش السردي (اللوحة اليمنى — القماش السردي → أضف الأصل النشط)'}
+                </li>
               )}
-            </div>
-
-            <div className="monitor-meta-bottom">
-              <span>TC: 01:22:14:09</span>
-              <div className="waveform-sim">
-                <span className="wave-bar" style={{height: '40%'}} />
-                <span className="wave-bar" style={{height: '70%'}} />
-                <span className="wave-bar" style={{height: '90%'}} />
-                <span className="wave-bar" style={{height: '50%'}} />
-                <span className="wave-bar" style={{height: '80%'}} />
-              </div>
-              <span>PIXEL COMPLIANT: OK</span>
-            </div>
+              {sessionCanvas && sessionCanvas.tracks.flatMap(t => t.nodes).length > 0 && (
+                <li className={`dir-action-item ${
+                  compiledGraph && compiledForAssetId === activeAsset?.id ? 'dir-action-complete' : 'dir-action-primary'
+                }`}>
+                  {compiledGraph && compiledForAssetId === activeAsset?.id
+                    ? `✓ تجميع مكتمل — ${compiledGraph.compilationId}`
+                    : canCompile
+                      ? '← صهر التجميع النهائي (اللوحة اليمنى — أسفل)'
+                      : '● الصهر يتطلب أصلاً حقيقياً في القماش'}
+                </li>
+              )}
+              {compiledGraph && compiledForAssetId === activeAsset?.id && (
+                <li className="dir-action-item dir-action-primary">
+                  ← رحِّل التجميع إلى مكمن الغاية (اللوحة اليمنى — أسفل)
+                </li>
+              )}
+            </ul>
           </div>
 
-          {/* Precision Cinematic Timeline */}
-          <div className="sovereign-timeline-panel neon-border">
-            <div className="timeline-ruler">
-              {[...Array(10)].map((_, i) => (
-                <span key={i} className="ruler-tick">00:0{i}:00</span>
-              ))}
+          {/* Last Direction Decision — live proof the runtime is active */}
+          {directionDecisionLog.length > 0 && (
+            <div className="director-last-decision neon-border">
+              <div className="neon-tag">آخر قرار توجيهي</div>
+              <p className="dir-decision-text">
+                {directionDecisionLog[0].mutation.actionType}
+                {' — '}
+                {directionDecisionLog[0].operator === 'automatic-director' ? 'المخرج الآلي' : 'المخرج اليدوي'}
+                {' — '}
+                {new Date(directionDecisionLog[0].issuedAtMs).toLocaleTimeString('ar-EG')}
+              </p>
             </div>
-            <div className="timeline-track">
-              <div 
-                className="timeline-playhead" 
-                style={{ right: `${timelineProgress}%` }}
-              />
-              <div className="timeline-block-filled">
-                {activeAsset ? activeAsset.title : 'لا يوجد أصل نشط'}
-              </div>
-            </div>
-          </div>
-
-          {/* Console Live Status bar */}
-          <div className="console-status-strip">
-            <div className="status-node">
-              <span className="pulse-dot gold" />
-              <span>الحالة التشغيلية: {renderStatus}</span>
-            </div>
-          </div>
+          )}
         </section>
 
         {/* ========================================= */}
@@ -1460,33 +1509,23 @@ export default function RasAmrChamber() {
             <p>حالة توجيه سيادية واحدة — المخرج اليدوي والمخرج الآلي يعملان معاً هنا، بلا غرفة مونتاج منفصلة وبلا ازدواج في البنية</p>
           </header>
 
-          <div className="mode-switcher-rack">
-            <button 
-              className={`mode-btn ${directingMode === 'smart' ? 'active-smart' : ''}`}
+          <div className="operator-switcher">
+            <button
+              className={`operator-btn ${directingMode === 'smart' ? 'operator-active' : ''}`}
               onClick={() => setDirectingMode('smart')}
+              aria-pressed={directingMode === 'smart'}
             >
-              🤖 إخراج ذكي آلي
+              <span className="operator-btn-label">المخرج الآلي</span>
+              <span className="operator-btn-desc">يحلل القماش ويصدر قرارات توجيهية بناءً على هدف الخالق المصرَّح به</span>
             </button>
-            <button 
-              className={`mode-btn ${directingMode === 'manual' ? 'active-manual' : ''}`}
+            <button
+              className={`operator-btn ${directingMode === 'manual' ? 'operator-active' : ''}`}
               onClick={() => setDirectingMode('manual')}
+              aria-pressed={directingMode === 'manual'}
             >
-              ✂️ إخراج يدوي محكم
+              <span className="operator-btn-label">المخرج اليدوي</span>
+              <span className="operator-btn-desc">الخالق يُصدر قرارات التوجيه مباشرةً — مكاني، بصري، زمني، صوتي</span>
             </button>
-          </div>
-
-          <div className="tools-rack-grid">
-            {hollywoodTools.map(tool => (
-              <button
-                key={tool.id}
-                className={`tool-console-button ${activeTool === tool.id ? 'tool-selected-neon' : ''} ${tool.category !== directingMode ? 'dimmed-tool' : ''}`}
-                onClick={() => setActiveTool(tool.id)}
-              >
-                <span className="tool-btn-icon">{tool.icon}</span>
-                <span className="tool-btn-label">{tool.label}</span>
-                <div className="tool-btn-light-corner" />
-              </button>
-            ))}
           </div>
 
           {sessionCanvas && (
@@ -1944,19 +1983,19 @@ export default function RasAmrChamber() {
 
       </div>
 
-      {/* ======================================================= */}
-      {/* 4. SOVEREIGN SUMMONING BRIDGE: HOLOGRAPHIC HUD DRAWER   */}
-      {/* ======================================================= */}
+      {/* ============================================= */}
+      {/* 4. SOVEREIGN SUMMONING BRIDGE: VAULT GATEWAY  */}
+      {/* ============================================= */}
       {isSummonOpen && (
         <div className="summon-hud-overlay">
           <div className="hud-window-container metallic-surface neon-border-heavy fade-in">
             <header className="hud-header">
               <div className="hud-title-block">
-                <span className="hud-badge">HUD SYSTEM INTERCONNECT</span>
-                <h2>بوابة الاستدعاء الهولوغرامية للأصول</h2>
-                <p>سحب وحقن الأصول حياً من الخزائن الملكية إلى غرفة المونتاج مباشرة</p>
+                <span className="hud-badge">الخزانة السيادية</span>
+                <h2>استدعِ أصلاً من الخزانة</h2>
+                <p>الأصول المُستدعاة تنضم إلى القماش السردي وتدخل تحت سلطة المخرج الإمبراطوري</p>
               </div>
-              <button className="hud-close-btn" onClick={() => setIsSummonOpen(false)}>✖ إلغاء الاستدعاء</button>
+              <button className="hud-close-btn" onClick={() => setIsSummonOpen(false)}>✖ إغلاق</button>
             </header>
 
             {/* PACKAGE XIX — MEDIA INGESTION LAYER: real Creator file upload — becomes a real VaultAsset, appears below like any other. */}
