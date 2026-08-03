@@ -105,12 +105,14 @@ function assembleSilentQuery(domain: DomainId, concepts: string[]): string {
   return `كيف يتفاعل ${concepts[0]} مع ${concepts[1]} و${concepts[2]} في المنظور ${domName}؟`;
 }
 
-// ── Chamber Voice — alive, not assistant ───────────────────────────
+// ── Chamber Voice — constitutional narrator, not assistant ──────────
+// Each message names the constitutional act the Empire is performing,
+// never the technical system (no provider, no Ministry, no API).
 const COMPANION_MSGS: Record<string, string> = {
-  receiving:    'الحجرة تستمع…',
-  collecting:   'الأدلة تتكشّف…',
-  classifying:  'الحجرة تزن…',
-  deliberating: 'الحجرة تفكر معك…',
+  receiving:    'الإمبراطورية تستقبل طلبك وتفهم مقصدك…',
+  collecting:   'الحجرة تحقق في عمق المعرفة…',
+  classifying:  'الأدلة تُوزن وتُصنَّف…',
+  deliberating: 'الإمبراطورية تبلور ما تعلمته…',
   silence:      'لحظة صمت.',
   complete:     'التحقيق اكتمل.',
   departure:    'تفكيرك الآن مختلف. هذا هو المقصود.',
@@ -754,6 +756,16 @@ export default function HujjahAlDamighah() {
 
   // ── Chamber Awakening Effect ──────────────────────────────────────
   useEffect(() => {
+    // Imperial Continuity: consume the InteractionSession the Foyer wrote
+    // before departing. If it resolved (RESOLVED), the first companion
+    // message acknowledges the journey instead of the default greeting.
+    const foyerRaw = typeof window !== 'undefined'
+      ? sessionStorage.getItem('azma.kernel.session') : null;
+    if (foyerRaw) sessionStorage.removeItem('azma.kernel.session');
+    const foyerResolved = foyerRaw
+      ? (() => { try { const s = JSON.parse(foyerRaw) as { status?: string }; return s?.status === 'RESOLVED'; } catch { return false; } })()
+      : false;
+
     const stored   = getStoredTongue();
     const mem      = readMemory();
     const quiet    = isQuietMode(mem);
@@ -766,7 +778,12 @@ export default function HujjahAlDamighah() {
       if (stored) {
         setTongue(stored);
         setChamberInit('active');
-        if (!quiet) setTimeout(() => showCompanion(greeting), greetDelay);
+        if (!quiet) {
+          const firstMsg = foyerResolved
+            ? 'الإمبراطورية أعدّت هذه الجلسة — حجرة المعرفة تنتظر سؤالك'
+            : greeting;
+          setTimeout(() => showCompanion(firstMsg), greetDelay);
+        }
         resetIdleTimer();
       } else {
         setChamberInit('tongue-sel');
@@ -1348,7 +1365,7 @@ export default function HujjahAlDamighah() {
               ))}
             </div>
             <div className="crown-nav">
-              <button className="sovereign-exit-btn" onClick={() => handleCinematicExit('/ras-amr')}>
+              <button className="sovereign-exit-btn" onClick={() => handleCinematicExit('/imperial-foyer')}>
                 ⮜ العودة
               </button>
             </div>
@@ -1455,10 +1472,10 @@ export default function HujjahAlDamighah() {
                       {isExamining ? (
                         <>
                           <span className="dialogue-stage-hint">
-                            {invStage === 'receiving'    ? 'تستمع…'
-                            : invStage === 'collecting'  ? 'تتكشّف…'
-                            : invStage === 'classifying' ? 'تزن…'
-                            : 'تفكّر…'}
+                            {invStage === 'receiving'    ? 'استقبال…'
+                            : invStage === 'collecting'  ? 'تحقيق…'
+                            : invStage === 'classifying' ? 'أدلة…'
+                            : 'معرفة…'}
                           </span>
                           <span className="dialogue-examining-pulse" aria-hidden="true" />
                         </>
@@ -1519,11 +1536,11 @@ export default function HujjahAlDamighah() {
                     <div className="court-deliberating" aria-live="polite" aria-atomic="true">
                       <div className="deliberation-ring" aria-hidden="true" />
                       <p className="deliberation-stage-label">
-                        {invStage === 'receiving'    && 'الحجرة تستمع…'}
-                        {invStage === 'collecting'   && 'الأدلة تتكشّف…'}
-                        {invStage === 'classifying'  && 'الحجرة تزن…'}
-                        {invStage === 'deliberating' && 'الحجرة تفكر معك…'}
-                        {invStage === 'idle'         && 'التفكير جارٍ'}
+                        {invStage === 'receiving'    && 'الإمبراطورية تستقبل طلبك وتفهم مقصدك…'}
+                        {invStage === 'collecting'   && 'الحجرة تحقق في عمق المعرفة…'}
+                        {invStage === 'classifying'  && 'الأدلة تُوزن وتُصنَّف…'}
+                        {invStage === 'deliberating' && 'الإمبراطورية تبلور ما تعلمته…'}
+                        {invStage === 'idle'         && 'الحجرة تعمل…'}
                       </p>
                       <p className="deliberation-inscription">المحكمة الإمبراطورية تعمل…</p>
                     </div>
@@ -1649,11 +1666,11 @@ export default function HujjahAlDamighah() {
                     <div className="writing-deliberating" aria-live="polite">
                       <div className="deliberation-ring" aria-hidden="true" />
                       <p className="deliberation-stage-label">
-                        {invStage === 'receiving'    && 'الحجرة تستمع…'}
-                        {invStage === 'collecting'   && 'الأدلة تتكشّف…'}
-                        {invStage === 'classifying'  && 'الحجرة تزن…'}
-                        {invStage === 'deliberating' && 'الحجرة تفكر معك…'}
-                        {invStage === 'idle'         && 'التفكير جارٍ'}
+                        {invStage === 'receiving'    && 'الإمبراطورية تستقبل طلبك وتفهم مقصدك…'}
+                        {invStage === 'collecting'   && 'الحجرة تحقق في عمق المعرفة…'}
+                        {invStage === 'classifying'  && 'الأدلة تُوزن وتُصنَّف…'}
+                        {invStage === 'deliberating' && 'الإمبراطورية تبلور ما تعلمته…'}
+                        {invStage === 'idle'         && 'الحجرة تعمل…'}
                       </p>
                     </div>
                   )}
@@ -1778,10 +1795,10 @@ export default function HujjahAlDamighah() {
                     <div className="silent-orb-ring" />
                   </div>
                   <p className="silent-stage-text">
-                    {invStage === 'receiving'    ? 'تستمع…'
-                    : invStage === 'collecting'  ? 'تتكشّف…'
-                    : invStage === 'classifying' ? 'تزن…'
-                    : 'تفكّر…'}
+                    {invStage === 'receiving'    ? 'استقبال…'
+                    : invStage === 'collecting'  ? 'تحقيق…'
+                    : invStage === 'classifying' ? 'أدلة…'
+                    : 'معرفة…'}
                   </p>
                 </div>
               )}
