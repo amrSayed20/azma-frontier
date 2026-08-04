@@ -37,7 +37,15 @@ import { resolveAvailableActions } from '@/src/button-engine';
 import type { ChamberState } from '@/src/button-engine';
 import { useInstallInvitation } from '@/src/install-experience';
 
-const EXAMPLE_PROMPT = 'A sovereign citadel at dawn, gold light over obsidian towers';
+const EXAMPLE_PROMPT = 'قلعة سيادية عند الفجر، أنوار ذهبية فوق أبراج من العقيق الأسود';
+
+const STYLE_AR: Record<string, string> = {
+  cinematic:   'سينمائي 35mm (ملحمي)',
+  documentary: 'وثائقي كلاسيكي (أرشيفي)',
+  hyper_real:  'واقعي فائق 8K',
+  scifi:       'خيال علمي سريالي',
+  animation:   'أنيميشن رقمي',
+};
 
 interface GenerationRecord {
   readonly recordId: string;
@@ -112,11 +120,11 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
         // trust — a Creator has just received something real — not at Arrival.
         triggerInvitation();
       } else {
-        setGenerationError(result.message ?? 'Generation failed.');
+        setGenerationError(result.message ?? 'التوليد لم ينجح.');
         setGenerationErrorReason(result.reason ?? null);
       }
     } catch {
-      setGenerationError('Could not reach the generation service. Please try again.');
+      setGenerationError('البوابة لا تستجيب. أعِد المحاولة.');
     } finally {
       setIsGenerating(false);
     }
@@ -184,7 +192,7 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
                 onChange={(e) => setPrompt(e.target.value)}
               />
               <div className="prompt-style-row control-group">
-                <label>نمط التوليد (Style)</label>
+                <label>نمط التوليد</label>
                 <select className="cyber-select" value={style} onChange={(e) => setStyle(e.target.value)}>
                   <option value="cinematic">سينمائي 35mm (ملحمي)</option>
                   <option value="documentary">وثائقي كلاسيكي (أرشيفي)</option>
@@ -227,7 +235,7 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
               <div className="master-badge">✨ الماستر السيادي المكتمل ✨</div>
               {generatedImageUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img className="master-preview" src={generatedImageUrl} alt="Generated master" />
+                <img className="master-preview" src={generatedImageUrl} alt="الماستر السيادي المُولَّد" />
               )}
 
               {/* Closing beat (Article IX, Mandate 7): the ritual gets an
@@ -258,7 +266,7 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
           treasury — visible across every state of the Chamber. */}
       {generations.length > 0 && (
         <div className="your-generations">
-          <h3>خزانتك السيادية — Your Generations</h3>
+          <h3>خزانتك السيادية</h3>
           <div className="generations-grid">
             {generations.map((g) => (
               <div className="generation-card" key={g.recordId}>
@@ -287,7 +295,7 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
               </div>
               <div className="bill-row">
                 <span>النمط</span>
-                <span>{style}</span>
+                <span>{STYLE_AR[style] ?? style}</span>
               </div>
             </div>
 

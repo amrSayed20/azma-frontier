@@ -16,31 +16,31 @@ export function InstallInvitation() {
   if (!visible) return null;
 
   return (
-    <div className="install-invitation" role="dialog" aria-label="Install AZMA OS">
+    <div className="install-invitation" role="dialog" aria-label="تثبيت الإمبراطورية">
       <div className="install-invitation-seal" aria-hidden="true">徵</div>
       <div className="install-invitation-body">
         {platform === 'ios-safari' ? (
           <>
-            <p className="install-invitation-title">Keep the Empire one tap away</p>
+            <p className="install-invitation-title">الإمبراطورية على بُعد نقرة واحدة</p>
             <p className="install-invitation-desc">
-              Tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.
+              اضغط <strong>مشاركة</strong>، ثم <strong>إضافة إلى الشاشة الرئيسية</strong>.
             </p>
           </>
         ) : (
           <>
-            <p className="install-invitation-title">Keep the Empire one tap away</p>
-            <p className="install-invitation-desc">Install AZMA OS for instant access, next time you create.</p>
+            <p className="install-invitation-title">الإمبراطورية على بُعد نقرة واحدة</p>
+            <p className="install-invitation-desc">ثبّت الإمبراطورية للوصول الفوري في كل مرة تبدع فيها.</p>
           </>
         )}
       </div>
       <div className="install-invitation-actions">
         {platform !== 'ios-safari' && (
           <button type="button" className="install-invitation-accept" onClick={() => void accept()}>
-            Install
+            تثبيت
           </button>
         )}
         <button type="button" className="install-invitation-dismiss" onClick={dismiss}>
-          {platform === 'ios-safari' ? 'Got it' : 'Not now'}
+          {platform === 'ios-safari' ? 'حسناً' : 'ليس الآن'}
         </button>
       </div>
     </div>

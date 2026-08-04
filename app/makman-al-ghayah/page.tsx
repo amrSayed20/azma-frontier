@@ -293,7 +293,7 @@ export default function MakmanAlGhayah() {
 
         {/* ── Constitutional Header ──────────────────────────────── */}
         <header className="makman-constitutional-header neon-border">
-          <div className="neon-tag">MAKMAN AL-GHAYAH — مكمن الغاية</div>
+          <div className="neon-tag">مكمن الغاية</div>
           <h1 className="makman-chamber-title">الغاية السيادية والأهداف الاستراتيجية</h1>
           <p className="makman-chamber-mandate">
             يُسجّل الخالق غايته — يُسجّل أهدافه — يُقيّم إنجازاته — يعرف فجواته — يُطلق تحقيقاته

@@ -1581,7 +1581,7 @@ export default function RasAmrChamber() {
         {/* ========================================= */}
         <aside className="control-panel tools-sidebar neon-border">
           <header className="panel-header">
-            <div className="neon-tag">REAL — DIRECTION WORKSPACE</div>
+            <div className="neon-tag">مساحة التوجيه</div>
             <h2>مساحة التوجيه السيادية</h2>
             <p>حالة توجيه سيادية واحدة — المخرج اليدوي والمخرج الآلي يعملان معاً هنا، بلا غرفة مونتاج منفصلة وبلا ازدواج في البنية</p>
           </header>
@@ -1608,7 +1608,7 @@ export default function RasAmrChamber() {
           {sessionCanvas && (
             <div className="spatial-adjust-panel">
               <header className="panel-header">
-                <div className="neon-tag">REAL — NARRATIVE CANVAS</div>
+                <div className="neon-tag">القماش السردي</div>
                 <h2>القماش السردي</h2>
                 <p>مساحة عمل سينمائية واحدة تتّسع لعدة أصول إنتاجية حقيقية — الترتيب الحقيقي والاتجاه الأساسي يُحكَمان الآن عبر العقد، بلا تنفيذ وبلا إيقاع أو انتقال مُختلَق</p>
               </header>
@@ -1616,7 +1616,7 @@ export default function RasAmrChamber() {
               {/* PACKAGE XXIII — DIRECTION DECISION MODEL: real, visible proof that every Manual Direction Decision above now produces a shared DirectionDecision, not just a raw mutation. */}
               {directionDecisionLog.length > 0 && (
                 <div className="direction-decision-log" data-testid="direction-decision-log">
-                  <span className="neon-tag">REAL — DIRECTION DECISION LOG</span>
+                  <span className="neon-tag">سجل القرارات التوجيهية</span>
                   <p className="direction-decision-latest">
                     آخر قرار توجيهي: {directionDecisionLog[0].mutation.actionType} — {directionDecisionLog[0].operator} — {new Date(directionDecisionLog[0].issuedAtMs).toLocaleTimeString('ar-EG')}
                   </p>
@@ -1809,7 +1809,7 @@ export default function RasAmrChamber() {
           {sessionCanvas && selectedNodeId && (
             <div className="spatial-adjust-panel">
               <header className="panel-header">
-                <div className="neon-tag">REAL — SPATIAL</div>
+                <div className="neon-tag">التوجيه المكاني</div>
                 <h2>تعديل مكاني حقيقي</h2>
                 <p>يُطبَّق فعلياً على القماش السيادي ويصل إلى الصهر النهائي</p>
               </header>
@@ -1871,7 +1871,7 @@ export default function RasAmrChamber() {
           {sessionCanvas && selectedNodeId && (
             <div className="spatial-adjust-panel">
               <header className="panel-header">
-                <div className="neon-tag">REAL — VISUAL</div>
+                <div className="neon-tag">التوجيه البصري</div>
                 <h2>تعديل بصري حقيقي</h2>
                 <p>يدعم: معالج البكسل + صهر اللون — خانة بصرية حقيقية واحدة يشتركان فيها</p>
               </header>
@@ -1913,7 +1913,7 @@ export default function RasAmrChamber() {
           {sessionCanvas && selectedNodeId && (
             <div className="spatial-adjust-panel">
               <header className="panel-header">
-                <div className="neon-tag">REAL — TEMPORAL</div>
+                <div className="neon-tag">التوجيه الزمني</div>
                 <h2>تعديل زمني حقيقي</h2>
                 <p>يدعم: المزامنة العصبية للصوت — توقيت حقيقي على الخط الزمني الرئيسي</p>
               </header>
@@ -1971,7 +1971,7 @@ export default function RasAmrChamber() {
           {sessionCanvas && directorDecision && (
             <div className="spatial-adjust-panel">
               <header className="panel-header">
-                <div className="neon-tag">REAL — DIRECTOR</div>
+                <div className="neon-tag">قرار المخرج الآلي</div>
                 <h2>قرار الإخراج السينمائي الحقيقي</h2>
                 <p>المخرج الذكي الآلي يقرر؛ لا يولّد محتوى — التنفيذ يبقى دائماً عبر محرك الحالة الحقيقي</p>
               </header>
