@@ -535,7 +535,7 @@ export default function ImperialFoyer() {
               <span className="vault-state-loading" aria-label="جارٍ التحميل">●</span>
             )}
             {vaultCount === 0 && (
-              <span className="vault-state-empty">أودع أول كنز</span>
+              <span className="vault-state-empty">تنتظر إبداعاتك</span>
             )}
             {vaultCount !== null && vaultCount > 0 && (
               <span className="vault-state-count">{vaultCount} كنز</span>
@@ -562,7 +562,13 @@ export default function ImperialFoyer() {
               <div className="chamber-identity">
                 <span className="chamber-name">{ch.nameAr}</span>
                 <span className="chamber-role">{ch.roleAr}</span>
-                <span className="chamber-action">{ch.actionAr}</span>
+                <span className="chamber-action">
+                  {ch.id === 'ras-amr'
+                    ? (presence?.qiyamah.creationCount ?? 0) > 0
+                      ? ch.actionAr
+                      : 'اكتشف مساحة التوجيه السيادي'
+                    : ch.actionAr}
+                </span>
                 {chamberPresence && (
                   <span
                     className={`chamber-presence-state ${ch.id === 'makman-al-ghayah' && presence?.makman.hasProcessingProduction ? 'presence-processing' : 'presence-active'}`}

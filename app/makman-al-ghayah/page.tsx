@@ -366,7 +366,7 @@ export default function MakmanAlGhayah() {
             <div className="makman-goals-empty">
               <p className="project-status">لا توجد أهداف مسجّلة بعد.</p>
               <p className="makman-capability-hint">
-                لتسجيل هدف استراتيجي، أكمل تجميعك السينمائي في رأس الأمر وأرسله إلى هذه الحجرة.
+                لتسجيل هدف استراتيجي، انطلق أولاً إلى حجرة رأس الأمر.
               </p>
             </div>
           )}
