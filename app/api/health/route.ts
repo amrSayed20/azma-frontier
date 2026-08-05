@@ -48,6 +48,31 @@ function uptimeHuman(seconds: number): string {
   return `${m}m ${Math.floor(seconds % 60)}s`;
 }
 
+// ── Imperial Success Criteria (Certification V) ───────────────────────────
+// These are the canonical thresholds for the Empire's operational health.
+// Runtime-measurable metrics are evaluated here. Lighthouse/wrk/k6 metrics
+// require post-deployment measurement — their thresholds are documented here
+// as reference constants.
+const IMPERIAL_THRESHOLDS = {
+  memory:  { warningPct: 70, criticalPct: 85 },
+  disk:    { warningPct: 75, criticalPct: 90 },
+  // Reference-only (not measurable at runtime — measured by Lighthouse)
+  fcp:     { targetMs: 800,  acceptableMs: 1500, warningMs: 2500, criticalMs: 2500 },
+  lcp:     { targetMs: 1200, acceptableMs: 2500, warningMs: 4000, criticalMs: 4000 },
+  tti:     { targetMs: 2000, acceptableMs: 3500, warningMs: 5000, criticalMs: 5000 },
+  // Reference-only (not measurable at runtime — measured by wrk/k6)
+  p95Ms:   { targetMs: 300,  acceptableMs: 500,  warningMs: 1000, criticalMs: 1000 },
+  errorRate: { targetPct: 0, acceptablePct: 0.1, warningPct: 1, criticalPct: 1 },
+} as const;
+
+type HealthTier = 'NORMAL' | 'WARNING' | 'CRITICAL';
+
+function evalTier(value: number, warningThreshold: number, criticalThreshold: number): HealthTier {
+  if (value >= criticalThreshold) return 'CRITICAL';
+  if (value >= warningThreshold)  return 'WARNING';
+  return 'NORMAL';
+}
+
 export async function GET(request: NextRequest) {
   // ── Founder-only gate ──────────────────────────────────────────────────
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
@@ -106,6 +131,23 @@ export async function GET(request: NextRequest) {
 
   // ── Memory ────────────────────────────────────────────────────────────
   const mem = process.memoryUsage();
+  const heapUtilizationNum = mem.heapTotal > 0 ? Math.round((mem.heapUsed / mem.heapTotal) * 100) : 0;
+  const diskUsedPctNum     = diskTotalBytes > 0 ? Math.round(((diskTotalBytes - diskFreeBytes) / diskTotalBytes) * 100) : -1;
+
+  // ── Threshold evaluation (Certification V) ────────────────────────────
+  const memoryTier: HealthTier = evalTier(
+    heapUtilizationNum,
+    IMPERIAL_THRESHOLDS.memory.warningPct,
+    IMPERIAL_THRESHOLDS.memory.criticalPct,
+  );
+  const diskTier: HealthTier = diskUsedPctNum >= 0
+    ? evalTier(diskUsedPctNum, IMPERIAL_THRESHOLDS.disk.warningPct, IMPERIAL_THRESHOLDS.disk.criticalPct)
+    : 'NORMAL';
+
+  const overallTier: HealthTier =
+    memoryTier === 'CRITICAL' || diskTier === 'CRITICAL' ? 'CRITICAL' :
+    memoryTier === 'WARNING'  || diskTier === 'WARNING'  ? 'WARNING'  :
+    'NORMAL';
 
   // ── Provider configuration (presence only — never expose key values) ───
   const providers = {
@@ -127,20 +169,22 @@ export async function GET(request: NextRequest) {
   // ── Overall status ─────────────────────────────────────────────────────
   type EmpireStatus = 'OPERATIONAL' | 'DEGRADED' | 'DOWN';
   const empireStatus: EmpireStatus =
-    dbHealth === 'DOWN'       ? 'DOWN'      :
-    !allProvidersReady        ? 'DEGRADED'  :
-                                'OPERATIONAL';
+    dbHealth === 'DOWN'        ? 'DOWN'      :
+    !allProvidersReady         ? 'DEGRADED'  :
+    overallTier === 'CRITICAL' ? 'DEGRADED'  :
+                                 'OPERATIONAL';
 
   return NextResponse.json({
     status: 'succeeded',
 
     empire: {
-      status:       empireStatus,
-      uptime:       uptimeHuman(Math.floor(process.uptime())),
-      uptimeSeconds: Math.floor(process.uptime()),
-      nodeVersion:  process.version,
-      environment:  process.env.NODE_ENV ?? 'unknown',
-      checkedAt:    new Date(now).toISOString(),
+      status:          empireStatus,
+      operationalTier: overallTier,
+      uptime:          uptimeHuman(Math.floor(process.uptime())),
+      uptimeSeconds:   Math.floor(process.uptime()),
+      nodeVersion:     process.version,
+      environment:     process.env.NODE_ENV ?? 'unknown',
+      checkedAt:       new Date(now).toISOString(),
     },
 
     database: {
@@ -179,5 +223,28 @@ export async function GET(request: NextRequest) {
     },
 
     providers,
+
+    thresholds: {
+      overall: overallTier,
+      memory: {
+        tier:               memoryTier,
+        heapUtilizationPct: heapUtilizationNum,
+        warningAt:          `${IMPERIAL_THRESHOLDS.memory.warningPct}%`,
+        criticalAt:         `${IMPERIAL_THRESHOLDS.memory.criticalPct}%`,
+      },
+      disk: {
+        tier:       diskTier,
+        usedPct:    diskUsedPctNum >= 0 ? diskUsedPctNum : null,
+        warningAt:  `${IMPERIAL_THRESHOLDS.disk.warningPct}%`,
+        criticalAt: `${IMPERIAL_THRESHOLDS.disk.criticalPct}%`,
+      },
+      referenceOnly: {
+        fcp:       'Target<800ms / Acceptable<1500ms / Warning<2500ms / Critical≥2500ms',
+        lcp:       'Target<1200ms / Acceptable<2500ms / Warning<4000ms / Critical≥4000ms',
+        tti:       'Target<2000ms / Acceptable<3500ms / Warning<5000ms / Critical≥5000ms',
+        p95:       'Target<300ms / Acceptable<500ms / Warning<1000ms / Critical≥1000ms',
+        errorRate: 'Target 0% / Acceptable<0.1% / Warning<1% / Critical≥1%',
+      },
+    },
   });
 }

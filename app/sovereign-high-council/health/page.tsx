@@ -11,10 +11,13 @@
 import { useState } from 'react';
 import '../council.css';
 
+type HealthTier = 'NORMAL' | 'WARNING' | 'CRITICAL';
+
 interface HealthReport {
   status: 'succeeded';
   empire: {
     status: 'OPERATIONAL' | 'DEGRADED' | 'DOWN';
+    operationalTier: HealthTier;
     uptime: string;
     uptimeSeconds: number;
     nodeVersion: string;
@@ -49,15 +52,24 @@ interface HealthReport {
     heapUtilizationPct: string;
   };
   providers: Record<string, string>;
+  thresholds: {
+    overall: HealthTier;
+    memory: { tier: HealthTier; heapUtilizationPct: number; warningAt: string; criticalAt: string };
+    disk:   { tier: HealthTier; usedPct: number | null;     warningAt: string; criticalAt: string };
+    referenceOnly: Record<string, string>;
+  };
 }
 
 const STATUS_COLORS: Record<string, string> = {
   OPERATIONAL:     '#4ade80',
   CONFIGURED:      '#4ade80',
+  NORMAL:          '#4ade80',
   DEGRADED:        '#facc15',
   NOT_CONFIGURED:  '#facc15',
+  WARNING:         '#facc15',
   DOWN:            '#f87171',
   MISSING:         '#f87171',
+  CRITICAL:        '#f87171',
 };
 
 function StatusPill({ value }: { value: string }) {
@@ -169,6 +181,7 @@ export default function ImperialHealthPage() {
           <>
             <Section title="الإمبراطورية">
               <Row label="الحالة" value={<StatusPill value={report.empire.status} />} />
+              <Row label="الطبقة التشغيلية" value={<StatusPill value={report.empire.operationalTier} />} />
               <Row label="وقت التشغيل" value={report.empire.uptime} />
               <Row label="البيئة" value={report.empire.environment} />
               <Row label="Node.js" value={report.empire.nodeVersion} />
@@ -209,6 +222,42 @@ export default function ImperialHealthPage() {
               {Object.entries(report.providers).map(([key, val]) => (
                 <Row key={key} label={key} value={<StatusPill value={val} />} />
               ))}
+            </Section>
+
+            <Section title="العتبات التشغيلية (شهادة V)">
+              <Row label="الحالة الكلية" value={<StatusPill value={report.thresholds.overall} />} />
+              <Row
+                label="الذاكرة"
+                value={
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <StatusPill value={report.thresholds.memory.tier} />
+                    <span style={{ color: '#64748b', fontSize: '12px' }}>
+                      {report.thresholds.memory.heapUtilizationPct}%
+                      {' '}(تحذير: {report.thresholds.memory.warningAt} / حرج: {report.thresholds.memory.criticalAt})
+                    </span>
+                  </span>
+                }
+              />
+              <Row
+                label="القرص"
+                value={
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <StatusPill value={report.thresholds.disk.tier} />
+                    <span style={{ color: '#64748b', fontSize: '12px' }}>
+                      {report.thresholds.disk.usedPct !== null ? `${report.thresholds.disk.usedPct}%` : 'غير متاح'}
+                      {' '}(تحذير: {report.thresholds.disk.warningAt} / حرج: {report.thresholds.disk.criticalAt})
+                    </span>
+                  </span>
+                }
+              />
+              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #1e293b' }}>
+                <div style={{ color: '#475569', fontSize: '11px', letterSpacing: '0.08em', marginBottom: '8px' }}>
+                  مرجع (تُقاس بعد النشر)
+                </div>
+                {Object.entries(report.thresholds.referenceOnly).map(([key, val]) => (
+                  <Row key={key} label={key} value={<span style={{ fontSize: '11px', color: '#64748b' }}>{val}</span>} />
+                ))}
+              </div>
             </Section>
           </>
         )}

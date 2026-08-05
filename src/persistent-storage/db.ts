@@ -75,6 +75,9 @@ export function createDatabase(path: string = DEFAULT_DB_PATH): DatabaseSync {
     mkdirSync(dirname(path), { recursive: true });
   }
   const db = new DatabaseSync(path);
+  if (path !== ':memory:') {
+    db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;');
+  }
   for (const statement of SCHEMA_STATEMENTS) {
     db.exec(statement);
   }
