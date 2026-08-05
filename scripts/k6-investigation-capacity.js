@@ -45,9 +45,8 @@ export default function () {
   };
 
   const start = Date.now();
-  const res = http.post(
+  const res = http.get(
     `${BASE}/api/sovereign/entry/creator-goal/${GOAL_ID}/knowledge-investigation`,
-    JSON.stringify({ query: 'العمارة الإسلامية في العصر العباسي', domain: 'cultural' }),
     { headers, timeout: '60s' }
   );
   investigationDuration.add(Date.now() - start);
