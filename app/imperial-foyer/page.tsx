@@ -260,7 +260,9 @@ function kernelReadyMessage(session: InteractionSession, chamberNameAr: string):
 export default function ImperialFoyer() {
   const router = useRouter();
 
-  const [tongue,          setTongue]          = useState<AzmaTongue>(() => readTongue());
+  // Start with 'conversation' on server and client to avoid hydration mismatch,
+  // then read the real localStorage value after mount.
+  const [tongue,          setTongue]          = useState<AzmaTongue>('conversation');
   const [vaultCount,      setVaultCount]      = useState<number | null>(null);
   const [presence,        setPresence]        = useState<SovereignPresence | null>(null);
   const [entered,         setEntered]         = useState(false);
@@ -292,6 +294,7 @@ export default function ImperialFoyer() {
   const isPreparingRef = useRef(false);
 
   useEffect(() => {
+    setTongue(readTongue());
     const raf = requestAnimationFrame(() => setEntered(true));
 
     // IMPERIAL JOURNEY CONTINUITY — Package D:
