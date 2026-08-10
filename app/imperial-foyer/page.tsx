@@ -274,7 +274,6 @@ export default function ImperialFoyer() {
   const [tongue,          setTongue]          = useState<AzmaTongue>('conversation');
   const [vaultCount,      setVaultCount]      = useState<number | null>(null);
   const [presence,        setPresence]        = useState<SovereignPresence | null>(null);
-  const [entered,         setEntered]         = useState(false);
   const [departing,       setDeparting]       = useState(false);
   const [kernelSession,   setKernelSession]   = useState<InteractionSession | null>(null);
   const [preparingId,     setPreparingId]     = useState<string | null>(null);
@@ -304,7 +303,6 @@ export default function ImperialFoyer() {
 
   useEffect(() => {
     setTongue(readTongue());
-    const raf = requestAnimationFrame(() => setEntered(true));
 
     // IMPERIAL JOURNEY CONTINUITY — Package D:
     // Consume the constitutional return context a chamber wrote before
@@ -370,8 +368,6 @@ export default function ImperialFoyer() {
         if (data?.purpose) setSovereignPurpose(data.purpose);
       })
       .catch(() => { /* purpose is enhancement — silence failures */ });
-
-    return () => cancelAnimationFrame(raf);
   }, []);
 
   // FIRST-VISIT REVELATION — Package H:
@@ -472,7 +468,7 @@ export default function ImperialFoyer() {
 
   return (
     <main
-      className={`foyer-viewport ${entered ? 'foyer-entered' : ''} ${departing ? 'foyer-departing' : ''}`}
+      className={`foyer-viewport ${departing ? 'foyer-departing' : ''}`}
       dir="rtl"
     >
       {/* Atmospheric background */}

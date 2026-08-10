@@ -765,7 +765,7 @@ export default function SovereignVaultPalace() {
                   the Foyer acknowledges the Creator's return from the Palace. */}
               <button className="palace-exit-btn" onClick={() => {
                 try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'sovereign-vault-palace', constitutionalAct: 'treasury' })); } catch { /* ignore */ }
-                router.push('/imperial-foyer');
+                window.location.href = '/imperial-foyer';
               }}>
                 ⮜ قلب الإمبراطورية
               </button>

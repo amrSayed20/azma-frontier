@@ -1202,7 +1202,13 @@ export default function HujjahAlDamighah() {
     }
     showCompanion(COMPANION_MSGS.departure);
     setIsExiting(true);
-    setTimeout(() => router.push(destination), 720);
+    setTimeout(() => {
+      if (destination === '/imperial-foyer') {
+        window.location.href = '/imperial-foyer';
+      } else {
+        router.push(destination);
+      }
+    }, 720);
   }
 
   // ── Continuation resume ───────────────────────────────────────────

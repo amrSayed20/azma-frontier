@@ -190,7 +190,7 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
           mount so it can acknowledge the Creator's return. */}
       <button className="sovereign-exit-btn" onClick={() => {
         try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'qiyamah-chamber', constitutionalAct: 'creation' })); } catch { /* ignore */ }
-        router.push('/imperial-foyer');
+        window.location.href = '/imperial-foyer';
       }}>
         ⮜ قلب الإمبراطورية
       </button>

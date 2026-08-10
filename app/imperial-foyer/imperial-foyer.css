@@ -20,21 +20,20 @@
   color:           #e8e4dc;
   font-family:     var(--azma-font-family);
 
-  /* Entry state: invisible until mounted */
-  opacity:         0;
-  transform:       translateY(6px);
-  transition:      opacity 0.55s ease, transform 0.55s ease;
+  /* Entry animation: CSS-driven — visible even if JS is slow or errors */
+  animation: foyer-enter 0.55s ease forwards;
 }
 
-.foyer-viewport.foyer-entered {
-  opacity:   1;
-  transform: translateY(0);
+@keyframes foyer-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
 }
 
 .foyer-viewport.foyer-departing {
   opacity:   0;
   transform: translateY(-6px);
-  transition-duration: 0.4s;
+  animation: none;
+  transition: opacity 0.4s ease, transform 0.4s ease;
 }
 
 /* ── Ambient Background ──────────────────────────────────────────── */

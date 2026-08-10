@@ -280,7 +280,7 @@ export default function MakmanAlGhayah() {
       {/* IMPERIAL JOURNEY CONTINUITY — Package D */}
       <button className="sovereign-exit-btn" onClick={() => {
         try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'makman-al-ghayah', constitutionalAct: 'distribution' })); } catch { /* ignore */ }
-        router.push('/imperial-foyer');
+        window.location.href = '/imperial-foyer';
       }}>
         ⮜ قلب الإمبراطورية
       </button>
