@@ -5,7 +5,7 @@ import { t } from '@/src/creator-language';
 import type { Dictionary, Locale } from '@/src/creator-language';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
 import { getArrivalRecord, useVisitorPresence } from '@/src/visitor-presence';
-import { applyVariation, setAtmosphere } from '@/src/design-system';
+import { applyVariation } from '@/src/design-system';
 import { useExperienceLifecycle } from '../../engine';
 import './signup-experience.css';
 
@@ -83,7 +83,6 @@ export function SignupExperience({ children, dict, locale }: Props) {
   const presence = useVisitorPresence();
 
   useEffect(() => {
-    setAtmosphere(rootRef.current, 'calm');
     applyVariation(rootRef.current, getArrivalRecord()?.arrivalCount ?? 0);
   }, []);
 

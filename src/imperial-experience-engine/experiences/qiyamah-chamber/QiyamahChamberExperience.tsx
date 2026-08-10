@@ -5,7 +5,7 @@ import { t } from '@/src/creator-language';
 import type { Dictionary, Locale } from '@/src/creator-language';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
 import { getArrivalRecord, useVisitorPresence } from '@/src/visitor-presence';
-import { applyVariation, setAtmosphere } from '@/src/design-system';
+import { applyVariation } from '@/src/design-system';
 import { useExperienceLifecycle } from '../../engine';
 import './qiyamah-chamber-experience.css';
 
@@ -102,7 +102,6 @@ export function QiyamahChamberExperience({ children, dict, locale }: Props) {
   }, []);
 
   useEffect(() => {
-    setAtmosphere(rootRef.current, 'creating');
     applyVariation(rootRef.current, getArrivalRecord()?.arrivalCount ?? 0);
   }, []);
 

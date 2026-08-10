@@ -3,7 +3,7 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
 import { getArrivalRecord, useVisitorPresence } from '@/src/visitor-presence';
-import { applyVariation, setAtmosphere } from '@/src/design-system';
+import { applyVariation } from '@/src/design-system';
 import { useExperienceLifecycle } from '../../engine';
 import './makman-experience.css';
 
@@ -77,7 +77,6 @@ export function MakmanExperience({ children }: Props) {
   }, []);
 
   useEffect(() => {
-    setAtmosphere(rootRef.current, 'victorious');
     applyVariation(rootRef.current, getArrivalRecord()?.arrivalCount ?? 0);
   }, []);
 

@@ -180,62 +180,90 @@ export interface SceneTransition {
 }
 
 export const SCENE_TRANSITIONS: Record<string, SceneTransition> = {
-  'palace-to-hujjah': {
+  // ── Chamber-to-Chamber transitions ────────────────────────────────────────
+  // Keys use the full constitutional chamber IDs that resolveSceneIdentity()
+  // returns — not short aliases, which were the prior bug causing all
+  // Chamber-to-Chamber transitions to silently fall back to 'default-arrival'
+  // (closed: audit debt item #7, 2026-08-11).
+  'sovereign-vault-palace-to-hujjah-al-damighah': {
     from:           'sovereign-vault-palace',
     to:             'hujjah-al-damighah',
     transitionType: 'descend',
     durationMs:     800,
     description:    'Treasure becomes subject of investigation — descend into scrutiny.',
   },
-  'hujjah-to-palace': {
+  'hujjah-al-damighah-to-sovereign-vault-palace': {
     from:           'hujjah-al-damighah',
     to:             'sovereign-vault-palace',
     transitionType: 'ascend',
     durationMs:     800,
     description:    'Investigation resolves — the artifact returns to the treasury.',
   },
-  'hujjah-to-qiyamah': {
+  'hujjah-al-damighah-to-qiyamah-chamber': {
     from:           'hujjah-al-damighah',
     to:             'qiyamah-chamber',
     transitionType: 'descend',
     durationMs:     1200,
     description:    'Investigation becomes creation — the deepest descent.',
   },
-  'qiyamah-to-hujjah': {
+  'qiyamah-chamber-to-hujjah-al-damighah': {
     from:           'qiyamah-chamber',
     to:             'hujjah-al-damighah',
     transitionType: 'ascend',
     durationMs:     1000,
     description:    'Creation complete — return to examination.',
   },
-  // RAS AL AMR CHAMBER RECONSTRUCTION (2026-07-25): the only two real,
-  // live-reachable edges touching Ras Al Amr — app/ras-amr/page.tsx's own
-  // "forward to Makman" button, and Makman's own exit button back to Ras
-  // Al Amr (app/makman-al-ghayah/page.tsx) — had no SCENE_TRANSITIONS
-  // entry and silently fell back to 'default-arrival'.
-  'ras-amr-to-makman': {
+  'ras-amr-to-makman-al-ghayah': {
     from:           'ras-amr',
     to:             'makman-al-ghayah',
     transitionType: 'descend',
     durationMs:     1000,
     description:    'A directed production moves onward — from authorship toward its audience.',
   },
-  'makman-to-ras-amr': {
+  'makman-al-ghayah-to-ras-amr': {
     from:           'makman-al-ghayah',
     to:             'ras-amr',
     transitionType: 'ascend',
     durationMs:     900,
     description:    'The Creator returns from strategy to direction — the production is not yet finished.',
   },
-  // MAKMAN AL GHAYAH CHAMBER RECONSTRUCTION (2026-07-25): the one other
-  // real edge found in app/makman-al-ghayah/page.tsx's own code —
-  // handleImportFromVault genuinely navigates to the Vault Palace.
-  'makman-to-vault-palace': {
+  'makman-al-ghayah-to-sovereign-vault-palace': {
     from:           'makman-al-ghayah',
     to:             'sovereign-vault-palace',
     transitionType: 'ascend',
     durationMs:     900,
     description:    'Reaching back to the treasury — an asset is fetched to complete the release.',
+  },
+  // ── 4 previously-missing edges found by live navigation audit ─────────────
+  // (audit 2026-07-25 §XII debt #7 — Vault Palace has 3 outbound buttons
+  //  beyond hujjah; Hujjah has 1 button into Ras Al Amr)
+  'sovereign-vault-palace-to-qiyamah-chamber': {
+    from:           'sovereign-vault-palace',
+    to:             'qiyamah-chamber',
+    transitionType: 'descend',
+    durationMs:     1000,
+    description:    'The Palace opens the way to creation — descending from custody toward origination.',
+  },
+  'sovereign-vault-palace-to-ras-amr': {
+    from:           'sovereign-vault-palace',
+    to:             'ras-amr',
+    transitionType: 'descend',
+    durationMs:     900,
+    description:    'Treasure summoned to the director\'s console — from safekeeping into authorship.',
+  },
+  'sovereign-vault-palace-to-makman-al-ghayah': {
+    from:           'sovereign-vault-palace',
+    to:             'makman-al-ghayah',
+    transitionType: 'descend',
+    durationMs:     900,
+    description:    'The Palace forwards its contents toward the world — from custody toward distribution.',
+  },
+  'hujjah-al-damighah-to-ras-amr': {
+    from:           'hujjah-al-damighah',
+    to:             'ras-amr',
+    transitionType: 'descend',
+    durationMs:     900,
+    description:    'Investigation informs direction — knowledge becomes editorial intent.',
   },
   'default-arrival': {
     from:           '*',

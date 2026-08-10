@@ -108,12 +108,16 @@ export default function SovereignVault() {
           {/* Top Row (3 Gates) */}
           <div className="gates-row top-row">
             {sovereignGates.slice(0, 3).map(gate => (
-              <div 
-                key={gate.id} 
+              <div
+                key={gate.id}
                 className="gate-card neon-border"
+                role="button"
+                tabIndex={0}
+                aria-label={`الدخول إلى ${gate.name}`}
                 onMouseEnter={() => setHoveredGate(gate.id)}
                 onMouseLeave={() => setHoveredGate(null)}
                 onClick={() => router.push(gate.path)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(gate.path); } }}
               >
                 <div className="gate-icon">{gate.icon}</div>
                 <h2 className="gate-name">{gate.name}</h2>
@@ -125,12 +129,16 @@ export default function SovereignVault() {
           {/* Bottom Row (2 Gates centered) */}
           <div className="gates-row bottom-row">
             {sovereignGates.slice(3, 5).map(gate => (
-              <div 
-                key={gate.id} 
+              <div
+                key={gate.id}
                 className="gate-card neon-border"
+                role="button"
+                tabIndex={0}
+                aria-label={`الدخول إلى ${gate.name}`}
                 onMouseEnter={() => setHoveredGate(gate.id)}
                 onMouseLeave={() => setHoveredGate(null)}
                 onClick={() => router.push(gate.path)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(gate.path); } }}
               >
                 <div className="gate-icon">{gate.icon}</div>
                 <h2 className="gate-name">{gate.name}</h2>

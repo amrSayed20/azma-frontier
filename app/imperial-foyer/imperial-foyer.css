@@ -337,6 +337,27 @@
   max-width:      460px;
 }
 
+.foyer-logout-btn {
+  margin-top:      0.4rem;
+  padding:         0.2rem 0.8rem;
+  background:      transparent;
+  border:          1px solid rgba(212, 185, 102, 0.2);
+  border-radius:   3px;
+  color:           rgba(212, 185, 102, 0.45);
+  font-size:       0.7rem;
+  letter-spacing:  0.08em;
+  cursor:          pointer;
+  transition:      color 200ms, border-color 200ms;
+}
+.foyer-logout-btn:hover:not(:disabled) {
+  color:           rgba(212, 185, 102, 0.75);
+  border-color:    rgba(212, 185, 102, 0.4);
+}
+.foyer-logout-btn:disabled {
+  cursor:          not-allowed;
+  opacity:         0.4;
+}
+
 /* ── Natural Next Chamber — Package G ────────────────────────────────── */
 /* The Empire's awareness of where the Creator's journey naturally
    continues. Subtle: brighter border and a gentle inner glow on one card.

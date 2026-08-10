@@ -287,6 +287,7 @@ export default function ImperialFoyer() {
   // blocking the Foyer's core functionality.
   const [creatorIdentity,  setCreatorIdentity]  = useState<CreatorIdentity | null>(null);
   const [sovereignPurpose, setSovereignPurpose] = useState<string | null>(null);
+  const [loggingOut,       setLoggingOut]       = useState(false);
   // IMPERIAL JOURNEY CONTINUITY — Package D:
   // Holds the constitutional return message for one beat after the Creator
   // returns from a chamber. Cleared when they choose an interaction mode
@@ -443,6 +444,15 @@ export default function ImperialFoyer() {
 
   const isPreparing = preparingId !== null;
 
+  const handleLogout = useCallback(async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch { /* redirect regardless of network outcome */ }
+    router.push('/');
+  }, [loggingOut, router]);
+
   // Priority order (highest → lowest):
   // 1. Kernel ready message — the Foyer is actively preparing departure
   // 2. Constitutional return message — the Creator just returned from a chamber
@@ -505,6 +515,14 @@ export default function ImperialFoyer() {
           {sovereignPurpose && (
             <span className="creator-purpose">&quot;{sovereignPurpose}&quot;</span>
           )}
+          <button
+            className="foyer-logout-btn"
+            onClick={handleLogout}
+            disabled={loggingOut || isPreparing}
+            aria-label="تسجيل الخروج من الإمبراطورية"
+          >
+            {loggingOut ? '…' : 'خروج'}
+          </button>
         </div>
       )}
 

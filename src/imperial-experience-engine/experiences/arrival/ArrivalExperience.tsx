@@ -16,7 +16,6 @@ import {
   endJourney,
   markEffectivePause,
   markInterruption,
-  setAtmosphere,
   type CinematicJourney,
 } from '@/src/design-system';
 import { useExperienceLifecycle } from '../../engine';
@@ -152,12 +151,6 @@ interface Props {
  *     crosses the threshold before the reveal settles, markEffective-
  *     Pause('arrival', elapsed) if they wait — real signals persisted
  *     into ACDE's own DirectionMemory for future pacing decisions.
- *   - Atmosphere Runtime: setAtmosphere(root, 'calm') is called for
- *     real. Deliberately NOT paired with the .azma-chamber class this
- *     package — doing so would pull in the Design System's own grid/
- *     depth visual layer, which is real redesign, not orchestration.
- *     The call still correctly, honestly classifies Arrival's mood in
- *     the platform's shared vocabulary.
  *   - Imperial Voice Layer: LivingCompanion already consumed it before
  *     this package (verified, not rebuilt) — no ChamberContext value
  *     exists for the Gate, so 'universal' (the default) is correct
@@ -240,7 +233,6 @@ export function ArrivalExperience({ title, actions, dict, locale }: Props) {
     node?.style.setProperty('--arrival-breath-scale', String(variation.breathScale));
     applyVariation(node, record.arrivalCount);
 
-    setAtmosphere(node, 'calm');
     journeyRef.current = beginJourney(node, 'arrival');
 
     return () => {
