@@ -112,4 +112,15 @@ export interface InteractionSession {
    * Null for NavigateIntent (no raw text) and unresolved sessions.
    */
   readonly constitutionalMotion: FirstConstitutionalMotion | null;
+  /**
+   * A compact summary of the Empire's accumulated wisdom at the moment the
+   * session was prepared. Reflects how many advisories the Sovereign Core has
+   * archived across all constitutional organs in this browser session.
+   * Always non-null — even when the Empire is brand new (all scores will be 0).
+   */
+  readonly wisdomContext: {
+    readonly totalMaturityScore: number;
+    readonly matureOrganCount: number;
+    readonly organCount: number;
+  };
 }

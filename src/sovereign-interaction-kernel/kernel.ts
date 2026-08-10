@@ -21,6 +21,7 @@ import { composeImperialVoice } from '../imperial-voice';
 import { establishFirstConstitutionalMotion } from '../first-constitutional-motion';
 import type { ImperialVoice } from '../imperial-voice';
 import type { FirstConstitutionalMotion } from '../first-constitutional-motion';
+import { computeBodyWisdomState } from '../sovereign-wisdom/body-wisdom';
 
 function generateSessionId(): string {
   // crypto.randomUUID() requires a secure context (HTTPS).
@@ -70,6 +71,9 @@ export function prepareInteractionSession(request: KernelRequest): InteractionSe
   const result = resolveCapability(request.intent);
   const preparedAt = new Date().toISOString();
 
+  const { totalMaturityScore, matureOrganCount, organCount } = computeBodyWisdomState();
+  const wisdomContext = { totalMaturityScore, matureOrganCount, organCount };
+
   if (result.status === 'RESOLVED') {
     const { match } = result;
     const { imperialVoice, constitutionalMotion } = buildImperialVoiceForSession(
@@ -89,6 +93,7 @@ export function prepareInteractionSession(request: KernelRequest): InteractionSe
       preparedAt,
       imperialVoice,
       constitutionalMotion,
+      wisdomContext,
     };
   }
 
@@ -106,6 +111,7 @@ export function prepareInteractionSession(request: KernelRequest): InteractionSe
       preparedAt,
       imperialVoice: null,
       constitutionalMotion: null,
+      wisdomContext,
     };
   }
 
@@ -122,5 +128,6 @@ export function prepareInteractionSession(request: KernelRequest): InteractionSe
     preparedAt,
     imperialVoice: null,
     constitutionalMotion: null,
+    wisdomContext,
   };
 }

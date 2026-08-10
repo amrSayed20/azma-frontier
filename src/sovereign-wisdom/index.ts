@@ -41,3 +41,7 @@ export {
 } from './certification';
 
 export { getConstitutionalWisdomCertificationReport } from './queries';
+
+export type { BodyWisdomState } from './body-wisdom';
+export { computeBodyWisdomState } from './body-wisdom';
+export { useWisdomState } from './use-wisdom-state';

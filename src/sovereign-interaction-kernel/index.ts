@@ -13,3 +13,4 @@ export type {
 
 export type { ImperialVoice } from '../imperial-voice';
 export type { FirstConstitutionalMotion } from '../first-constitutional-motion';
+export type { BodyWisdomState } from '../sovereign-wisdom';
