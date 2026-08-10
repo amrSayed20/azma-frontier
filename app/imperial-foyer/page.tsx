@@ -23,6 +23,8 @@ import { prepareInteractionSession } from '@/src/sovereign-interaction-kernel';
 import type { InteractionSession } from '@/src/sovereign-interaction-kernel';
 import type { ManifestChamberContext, ManifestInteractionMode } from '@/src/sovereign-chamber-manifest';
 import { useInstallInvitation } from '@/src/install-experience';
+import { getArrivalRecord, useVisitorPresence } from '@/src/visitor-presence';
+import { applyVariation } from '@/src/design-system';
 
 // ── Interaction Mode — Empire-level (promotes azma.tongue.style) ──────────
 // The three modes are canonical across the Empire; the key is shared
@@ -297,11 +299,14 @@ export default function ImperialFoyer() {
   const [revealMsg,       setRevealMsg]       = useState<string | null>(null);
   const [hoveredChamber,  setHoveredChamber]  = useState<string | null>(null);
 
+  const foyerRootRef = useRef<HTMLElement | null>(null);
   // Guard: prevents a second chamber from being launched while one is
   // already in the 600ms preparation window.
   const isPreparingRef = useRef(false);
+  const visitorPresence = useVisitorPresence();
 
   useEffect(() => {
+    applyVariation(foyerRootRef.current, getArrivalRecord()?.arrivalCount ?? 0);
     setTongue(readTongue());
 
     // IMPERIAL JOURNEY CONTINUITY — Package D:
@@ -379,14 +384,7 @@ export default function ImperialFoyer() {
     if (!presence) return;
     if (returnMsg) return;
 
-    const alreadyRevealed =
-      typeof window !== 'undefined' &&
-      localStorage.getItem('azma.foyer.revealed') === '1';
-    if (alreadyRevealed) return;
-
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('azma.foyer.revealed', '1');
-    }
+    if (getArrivalRecord()?.isReturning) return;
 
     const timers: ReturnType<typeof setTimeout>[] = [];
     FIRST_VISIT_REVELATION.forEach((msg, i) => {
@@ -470,6 +468,8 @@ export default function ImperialFoyer() {
     <main
       className={`foyer-viewport ${departing ? 'foyer-departing' : ''}`}
       dir="rtl"
+      data-presence={visitorPresence}
+      ref={foyerRootRef}
     >
       {/* Atmospheric background */}
       <div className="foyer-ambient" aria-hidden="true">

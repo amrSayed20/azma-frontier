@@ -123,4 +123,14 @@ export interface InteractionSession {
     readonly matureOrganCount: number;
     readonly organCount: number;
   };
+  /**
+   * The Creator's arrival history as recorded by the Visitor Presence engine.
+   * Derived from localStorage — always available on the client; returns zeros
+   * in server and test environments where localStorage does not exist.
+   * Used by chambers to distinguish a first-time Creator from a returning one.
+   */
+  readonly visitContext: {
+    readonly arrivalCount: number;
+    readonly isReturning: boolean;
+  };
 }

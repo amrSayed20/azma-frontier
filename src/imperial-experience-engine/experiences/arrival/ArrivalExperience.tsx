@@ -10,6 +10,7 @@ import { useInstallInvitation } from '@/src/install-experience';
 import { getArrivalRecord, recordArrival, useVisitorPresence } from '@/src/visitor-presence';
 import {
   getVariation,
+  applyVariation,
   beginJourney,
   advanceJourney,
   endJourney,
@@ -237,6 +238,7 @@ export function ArrivalExperience({ title, actions, dict, locale }: Props) {
     const record = recordArrival();
     const variation = getVariation(record.arrivalCount);
     node?.style.setProperty('--arrival-breath-scale', String(variation.breathScale));
+    applyVariation(node, record.arrivalCount);
 
     setAtmosphere(node, 'calm');
     journeyRef.current = beginJourney(node, 'arrival');

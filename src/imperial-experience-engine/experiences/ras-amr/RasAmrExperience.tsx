@@ -2,8 +2,8 @@
 
 import { type ReactNode, useEffect, useRef } from 'react';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
-import { useVisitorPresence } from '@/src/visitor-presence';
-import { setAtmosphere } from '@/src/design-system';
+import { getArrivalRecord, useVisitorPresence } from '@/src/visitor-presence';
+import { applyVariation, setAtmosphere } from '@/src/design-system';
 import { useExperienceLifecycle } from '../../engine';
 import './ras-amr-experience.css';
 
@@ -60,6 +60,7 @@ export function RasAmrExperience({ children }: Props) {
 
   useEffect(() => {
     setAtmosphere(rootRef.current, 'deliberating');
+    applyVariation(rootRef.current, getArrivalRecord()?.arrivalCount ?? 0);
   }, []);
 
   return (

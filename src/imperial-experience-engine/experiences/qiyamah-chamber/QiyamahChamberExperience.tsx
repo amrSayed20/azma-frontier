@@ -4,8 +4,8 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { t } from '@/src/creator-language';
 import type { Dictionary, Locale } from '@/src/creator-language';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
-import { useVisitorPresence } from '@/src/visitor-presence';
-import { setAtmosphere } from '@/src/design-system';
+import { getArrivalRecord, useVisitorPresence } from '@/src/visitor-presence';
+import { applyVariation, setAtmosphere } from '@/src/design-system';
 import { useExperienceLifecycle } from '../../engine';
 import './qiyamah-chamber-experience.css';
 
@@ -103,6 +103,7 @@ export function QiyamahChamberExperience({ children, dict, locale }: Props) {
 
   useEffect(() => {
     setAtmosphere(rootRef.current, 'creating');
+    applyVariation(rootRef.current, getArrivalRecord()?.arrivalCount ?? 0);
   }, []);
 
   return (
