@@ -13,6 +13,7 @@ import { ConsciousnessAwakening } from "@/src/sovereign-consciousness";
 import { MemoryAwakening } from "@/src/sovereign-memory";
 import { EvolutionAwakening } from "@/src/sovereign-evolution";
 import { OperationsAwakening } from "@/src/constitutional-operations";
+import { ReceptionAwakening } from "@/src/constitutional-reception";
 import { resolveRequestLocale } from "@/src/creator-language/resolve-request-locale";
 import { getLocaleDefinition } from "@/src/creator-language";
 import { InstallInvitationProvider, InstallInvitation, ServiceWorkerRegistrar } from "@/src/install-experience";
@@ -82,6 +83,7 @@ export default async function RootLayout({
         <MemoryAwakening />
         <EvolutionAwakening />
         <OperationsAwakening />
+        <ReceptionAwakening />
       </body>
     </html>
   );

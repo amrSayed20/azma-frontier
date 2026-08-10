@@ -41,3 +41,5 @@ export {
 } from './certification';
 
 export { getConstitutionalReceptionCertificationReport } from './queries';
+
+export { ReceptionAwakening } from './ReceptionAwakening';

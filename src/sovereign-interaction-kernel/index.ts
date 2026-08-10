@@ -10,3 +10,6 @@ export type {
   ResolvedCapability,
   InteractionSession,
 } from './types';
+
+export type { ImperialVoice } from '../imperial-voice';
+export type { FirstConstitutionalMotion } from '../first-constitutional-motion';

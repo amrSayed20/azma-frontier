@@ -24,3 +24,5 @@ export {
 } from './certification';
 
 export { getImperialVoiceCertificationReport } from './queries';
+
+export { useImperialVoice } from './use-imperial-voice';

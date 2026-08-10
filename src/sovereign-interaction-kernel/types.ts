@@ -25,6 +25,8 @@ import type {
   SovereignChamberCapability,
   SovereignChamberManifest,
 } from '../sovereign-chamber-manifest';
+import type { ImperialVoice } from '../imperial-voice';
+import type { FirstConstitutionalMotion } from '../first-constitutional-motion';
 
 // ── Kernel Intent ─────────────────────────────────────────────────────────
 // Three constitutional ways a Creator can signal what they want.
@@ -98,4 +100,16 @@ export interface InteractionSession {
   /** Conditions that must hold for the capability to succeed. */
   readonly preconditions: readonly string[];
   readonly preparedAt: string;
+  /**
+   * The Empire's voice for this session — composed from the resolved chamber
+   * context and the Creator's citizen profile. Null when the Kernel could not
+   * resolve a chamber (NEEDS_CLARIFICATION or NO_MATCHING_CAPABILITY).
+   */
+  readonly imperialVoice: ImperialVoice | null;
+  /**
+   * The full constitutional motion — only present for TextIntent and
+   * VoiceIntent sessions where the Creator's raw expression was available.
+   * Null for NavigateIntent (no raw text) and unresolved sessions.
+   */
+  readonly constitutionalMotion: FirstConstitutionalMotion | null;
 }

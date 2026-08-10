@@ -16,6 +16,11 @@ import type {
   ResolvedCapability,
 } from './types';
 import type { ManifestInteractionMode, ManifestOperatingMode } from '../sovereign-chamber-manifest';
+import type { ChamberContext } from '../core/tongue';
+import { composeImperialVoice } from '../imperial-voice';
+import { establishFirstConstitutionalMotion } from '../first-constitutional-motion';
+import type { ImperialVoice } from '../imperial-voice';
+import type { FirstConstitutionalMotion } from '../first-constitutional-motion';
 
 function generateSessionId(): string {
   // crypto.randomUUID() requires a secure context (HTTPS).
@@ -45,12 +50,32 @@ function determineOperatingMode(resolved: ResolvedCapability): ManifestOperating
   return resolved.capability.operatingModes[0];
 }
 
+function buildImperialVoiceForSession(
+  request: KernelRequest,
+  chamberId: string,
+): { imperialVoice: ImperialVoice; constitutionalMotion: FirstConstitutionalMotion | null } {
+  const context = chamberId as ChamberContext;
+  if (request.intent.kind === 'text') {
+    const motion = establishFirstConstitutionalMotion(request.intent.rawText, 'text', context);
+    return { imperialVoice: motion.voice, constitutionalMotion: motion };
+  }
+  if (request.intent.kind === 'voice') {
+    const motion = establishFirstConstitutionalMotion(request.intent.transcript, 'voice', context);
+    return { imperialVoice: motion.voice, constitutionalMotion: motion };
+  }
+  return { imperialVoice: composeImperialVoice(context), constitutionalMotion: null };
+}
+
 export function prepareInteractionSession(request: KernelRequest): InteractionSession {
   const result = resolveCapability(request.intent);
   const preparedAt = new Date().toISOString();
 
   if (result.status === 'RESOLVED') {
     const { match } = result;
+    const { imperialVoice, constitutionalMotion } = buildImperialVoiceForSession(
+      request,
+      match.chamberId,
+    );
     return {
       sessionId: generateSessionId(),
       status: 'RESOLVED',
@@ -62,6 +87,8 @@ export function prepareInteractionSession(request: KernelRequest): InteractionSe
       optionalInputs: match.capability.optionalInputs,
       preconditions: match.capability.preconditions,
       preparedAt,
+      imperialVoice,
+      constitutionalMotion,
     };
   }
 
@@ -77,6 +104,8 @@ export function prepareInteractionSession(request: KernelRequest): InteractionSe
       optionalInputs: [],
       preconditions: [],
       preparedAt,
+      imperialVoice: null,
+      constitutionalMotion: null,
     };
   }
 
@@ -91,5 +120,7 @@ export function prepareInteractionSession(request: KernelRequest): InteractionSe
     optionalInputs: [],
     preconditions: [],
     preparedAt,
+    imperialVoice: null,
+    constitutionalMotion: null,
   };
 }
