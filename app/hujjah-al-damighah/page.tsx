@@ -8,6 +8,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import './hujjah-al-damighah.css';
 import { runInvestigation, type InvestigationDTO, type EvidenceItemDTO } from './actions';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
@@ -607,6 +608,7 @@ function VerdictBlock({
 
 export default function HujjahAlDamighah() {
   const router = useRouter();
+  const { goTo } = useConstitutionalNavigation();
 
   // ── Chamber Init ─────────────────────────────────────────────────
   const [chamberInit, setChamberInit] = useState<ChamberInit>('awakening');
@@ -1202,13 +1204,7 @@ export default function HujjahAlDamighah() {
     }
     showCompanion(COMPANION_MSGS.departure);
     setIsExiting(true);
-    setTimeout(() => {
-      if (destination === '/imperial-foyer') {
-        window.location.href = '/imperial-foyer';
-      } else {
-        router.push(destination);
-      }
-    }, 720);
+    setTimeout(() => goTo(destination), 720);
   }
 
   // ── Continuation resume ───────────────────────────────────────────

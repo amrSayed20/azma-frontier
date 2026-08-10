@@ -30,6 +30,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import './qiyamah-chamber.css';
 import { t } from '@/src/creator-language';
 import type { Dictionary } from '@/src/creator-language';
@@ -57,6 +58,7 @@ interface GenerationRecord {
 
 export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
   const router = useRouter();
+  const { goTo } = useConstitutionalNavigation();
   const { triggerInvitation } = useInstallInvitation();
 
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -190,7 +192,7 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
           mount so it can acknowledge the Creator's return. */}
       <button className="sovereign-exit-btn" onClick={() => {
         try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'qiyamah-chamber', constitutionalAct: 'creation' })); } catch { /* ignore */ }
-        window.location.href = '/imperial-foyer';
+        goTo('/imperial-foyer');
       }}>
         ⮜ قلب الإمبراطورية
       </button>

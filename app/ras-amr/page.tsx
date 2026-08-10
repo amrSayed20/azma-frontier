@@ -408,6 +408,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import { RasAmrExperience } from '@/src/imperial-experience-engine';
 import type { VaultAsset, AssetFamily } from '@/src/vault/sovereign-vault-types';
 import { filterVoiceLibrary } from '@/src/vault/sovereign-vault-types';
@@ -538,6 +539,7 @@ const DIRECTION_NODE_ROLE_LABELS: Record<DirectionNodeRole, string> = {
 
 export default function RasAmrChamber() {
   const router = useRouter();
+  const { goTo } = useConstitutionalNavigation();
   
   // --- Core States ---
   const [queue, setQueue] = useState<QueueItem[]>(initialSmartQueue);
@@ -1397,7 +1399,7 @@ export default function RasAmrChamber() {
           so the Foyer can acknowledge the Creator's return from Ras Al Amr. */}
       <button className="sovereign-exit-btn" onClick={() => {
         try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'ras-amr', constitutionalAct: 'direction' })); } catch { /* ignore */ }
-        window.location.href = '/imperial-foyer';
+        goTo('/imperial-foyer');
       }}>
         ⮜ قلب الإمبراطورية
       </button>

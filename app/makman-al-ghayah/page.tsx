@@ -29,6 +29,7 @@
 
 import React, { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
+import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import { MakmanExperience } from '@/src/imperial-experience-engine';
 import { GoalPriority, PacingPreference, TransitionPreference } from '@/src/chambers/makman-al-ghayah/goal-contracts';
 import { DistributionTier } from '@/src/chambers/makman-al-ghayah/publication-contracts';
@@ -116,6 +117,7 @@ const VERDICT_AR: Record<string, string> = {
 
 export default function MakmanAlGhayah() {
   const router = useRouter();
+  const { goTo } = useConstitutionalNavigation();
   const realProduction = useSyncExternalStore(subscribeToNothing, getRealProductionSnapshot, getRealProductionServerSnapshot);
   const compiledGraph  = useSyncExternalStore(subscribeToNothing, getCompiledGraphSnapshot, getCompiledGraphServerSnapshot);
 
@@ -280,7 +282,7 @@ export default function MakmanAlGhayah() {
       {/* IMPERIAL JOURNEY CONTINUITY — Package D */}
       <button className="sovereign-exit-btn" onClick={() => {
         try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'makman-al-ghayah', constitutionalAct: 'distribution' })); } catch { /* ignore */ }
-        window.location.href = '/imperial-foyer';
+        goTo('/imperial-foyer');
       }}>
         ⮜ قلب الإمبراطورية
       </button>

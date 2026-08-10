@@ -22,6 +22,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import './sovereign-vault.css';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
 import { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
@@ -299,6 +300,7 @@ type AuthMethod  = 'pin' | 'face' | 'bio';
 
 export default function SovereignVaultPalace() {
   const router = useRouter();
+  const { goTo } = useConstitutionalNavigation();
 
   // Auth
   const [phase, setPhase]                       = useState<PalacePhase>('gate');
@@ -765,7 +767,7 @@ export default function SovereignVaultPalace() {
                   the Foyer acknowledges the Creator's return from the Palace. */}
               <button className="palace-exit-btn" onClick={() => {
                 try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'sovereign-vault-palace', constitutionalAct: 'treasury' })); } catch { /* ignore */ }
-                window.location.href = '/imperial-foyer';
+                goTo('/imperial-foyer');
               }}>
                 ⮜ قلب الإمبراطورية
               </button>
