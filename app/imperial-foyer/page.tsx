@@ -25,6 +25,8 @@ import type { ManifestChamberContext, ManifestInteractionMode } from '@/src/sove
 import { useInstallInvitation } from '@/src/install-experience';
 import { getArrivalRecord, useVisitorPresence } from '@/src/visitor-presence';
 import { applyVariation } from '@/src/design-system';
+import { getVisionDocument } from '@/src/chamber-vision';
+import type { ChamberId } from '@/src/chamber-identity';
 
 // ── Interaction Mode — Empire-level (promotes azma.tongue.style) ──────────
 // The three modes are canonical across the Empire; the key is shared
@@ -89,20 +91,18 @@ const FIRST_VISIT_REVELATION = [
 
 const REVELATION_INTERVAL = 2800; // ms per declaration
 
-// ── Chamber Revelation on Hover — Package H ──────────────────────────────
-// When the Creator rests on a chamber card, the Empire reveals the chamber's
-// role in the constitutional journey. One declarative sentence — what the
-// chamber IS, not a feature description. Only perceptible when no presence
-// message is already occupying the companion (first-time Creators or those
-// with no current constitutional urgency).
+// ── Chamber Revelation on Hover — Package H (chamber-vision wired) ──────────
+// When the Creator rests on a chamber card, the Empire speaks the chamber's
+// philosophical worldview — derived from src/chamber-vision/ (philosophyAr),
+// not a hardcoded object. What the chamber BELIEVES, not merely what it does.
 
-const CHAMBER_REVELATION: Record<string, string> = {
-  'hujjah-al-damighah':     'تبحث. تحقق. تبني الدليل.',
-  'qiyamah-chamber':        'تمنح الوجود لما تتخيّل.',
-  'ras-amr':                'تحكم ما خُلق وتُوجّهه.',
-  'makman-al-ghayah':       'تُحقق الغاية التي أعلنتها.',
-  'sovereign-vault-palace': 'تحمي ما يستحق البقاء.',
-};
+function getChamberPhilosophyAr(chamberId: string): string | null {
+  try {
+    return getVisionDocument(chamberId as ChamberId)?.philosophyAr ?? null;
+  } catch {
+    return null;
+  }
+}
 
 // ── Creator Identity — Package G ─────────────────────────────────────────
 // The Empire's certified knowledge of who the Creator is.
@@ -295,7 +295,7 @@ export default function ImperialFoyer() {
   // IMPERIAL REVELATION — Package H:
   // revealMsg: the cycling first-visit companion narrative (fires once per session).
   // hoveredChamber: the chamber card the Creator is currently resting on —
-  // drives hover revelation messages from CHAMBER_REVELATION.
+  // drives hover revelation messages from src/chamber-vision/ (philosophyAr).
   const [revealMsg,       setRevealMsg]       = useState<string | null>(null);
   const [hoveredChamber,  setHoveredChamber]  = useState<string | null>(null);
 
@@ -458,7 +458,7 @@ export default function ImperialFoyer() {
   // Hover revelation: what the Empire declares about a chamber when the Creator rests on it.
   // Lower priority than presenceMsg — the Empire's specific knowledge of the Creator's
   // current journey always outranks a generic chamber identity declaration.
-  const hoveredCompanion = hoveredChamber ? (CHAMBER_REVELATION[hoveredChamber] ?? null) : null;
+  const hoveredCompanion = hoveredChamber ? getChamberPhilosophyAr(hoveredChamber) : null;
   const companionMsg =
     kernelSession && isPreparing && preparingNameAr
       ? kernelReadyMessage(kernelSession, preparingNameAr)

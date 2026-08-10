@@ -33,4 +33,8 @@ export interface ImperialVisionDocument {
   readonly entryExitTransformation: string;
   /** Unique Chamber Value — what only this Chamber provides; why no other Chamber could substitute for it. */
   readonly uniqueValue: string;
+  /** Arabic rendering of the philosophy field — the one line the Empire speaks aloud
+      when a Creator rests on this Chamber's door. Sourced from the same worldview
+      as philosophy above; never a separate invention. */
+  readonly philosophyAr: string;
 }

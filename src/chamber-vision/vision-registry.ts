@@ -25,6 +25,7 @@ export const IMPERIAL_VISION_DOCUMENTS: Record<ChamberId, ImperialVisionDocument
     productionModes: null,
     entryExitTransformation: 'A Creator enters uncertain whether something is safe, and leaves either reassured with evidence, or told plainly that it is not yet durable — never leaves merely assuming.',
     uniqueValue: 'No other Chamber keeps anything. Creation, direction, investigation, and distribution all eventually need somewhere that simply holds — the Palace is the only Chamber whose entire purpose is custody, not action.',
+    philosophyAr: 'لا شيء ذو قيمة يجب أن يعتمد على التذكر الصحيح أول مرة — القصر السيادي يجعل النسيان آمناً.',
   },
 
   'hujjah-al-damighah': {
@@ -36,6 +37,7 @@ export const IMPERIAL_VISION_DOCUMENTS: Record<ChamberId, ImperialVisionDocument
     productionModes: null,
     entryExitTransformation: 'The Creator enters holding a claim; they leave holding either a verdict they can defend, or the honest knowledge that the evidence isn\'t there yet — the Chamber never lets them leave still merely assuming.',
     uniqueValue: 'Every other Chamber acts on the Creator\'s intent. Hujjah is the only one whose job is to question it first — the Empire\'s one Chamber built for doubt, not production.',
+    philosophyAr: 'الاستنتاج الذي جاء بسرعة ليس استنتاجاً — إنه تخمين يرتدي ثياب اليقين. حجة الدامغة وُجدت لتُبطئ تلك اللحظة حتى تُكسَب.',
   },
 
   'qiyamah-chamber': {
@@ -47,6 +49,7 @@ export const IMPERIAL_VISION_DOCUMENTS: Record<ChamberId, ImperialVisionDocument
     productionModes: null,
     entryExitTransformation: 'A Creator enters with only a description in their head and leaves with a real, saved image outside it — the one Chamber whose entire purpose is that specific crossing, from imagined to visible.',
     uniqueValue: 'No other Chamber originates anything new. Palace keeps, Hujjah tests, Ras Al Amr directs, Makman distributes — Qiyamah is the only Chamber that makes something exist that didn\'t before.',
+    philosophyAr: 'كل شيء حقيقي بدأ بخيال. القيامة لا تحكم على الفكرة قبل أن توجد — إنها وُجدت لتمنح الفكرة فرصة أن تصبح مرئية.',
   },
 
   'ras-amr': {
@@ -75,6 +78,7 @@ export const IMPERIAL_VISION_DOCUMENTS: Record<ChamberId, ImperialVisionDocument
     ],
     entryExitTransformation: 'Today: a Creator enters with gathered material and leaves having rehearsed a direction for it — not yet having delivered one. The transformation this Chamber is meant to complete (material in, locked production out) is real in its constitution but not yet in its runtime.',
     uniqueValue: 'No other Chamber assembles. Qiyamah makes single pieces, the Palace keeps them, Makman distributes a finished whole — Ras Al Amr is the only Chamber whose job is to turn many pieces into one authored production.',
+    philosophyAr: 'مجموعة من المواد الجيدة ليست إنتاجاً بعد — شخص يجب أن يقرر ما ستصبح. رأس الأمر وُجد ليمنح ذلك القرار مكاناً يحدث فيه بسلطة، لا بالصدفة.',
   },
 
   'makman-al-ghayah': {
@@ -86,5 +90,6 @@ export const IMPERIAL_VISION_DOCUMENTS: Record<ChamberId, ImperialVisionDocument
     productionModes: null,
     entryExitTransformation: 'Constitutionally: a Creator enters with a finished production and leaves knowing it has reached, or begun reaching, an audience. Today: neither half of that crossing is real yet from inside the Chamber itself.',
     uniqueValue: 'No other Chamber looks outward. Every other Chamber\'s work ends at the Creator; Makman is the only Chamber whose entire purpose begins where the Creator\'s own use of the work ends.',
+    philosophyAr: 'عمل اكتمل لكن لم يلتقِه أحد لم تنتهِ غايته بعد. مكمن الغاية وُجد لأن الإنتاج وحده لا يكفي — الوصول هو الجزء الذي يُنسى.',
   },
 };
