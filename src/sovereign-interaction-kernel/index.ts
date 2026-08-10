@@ -14,3 +14,5 @@ export type {
 export type { ImperialVoice } from '../imperial-voice';
 export type { FirstConstitutionalMotion } from '../first-constitutional-motion';
 export type { BodyWisdomState } from '../sovereign-wisdom';
+export type { ChamberIdentityProfileV2 } from '../chamber-identity';
+export type { ImperialVisionDocument } from '../chamber-vision';

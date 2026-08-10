@@ -23,6 +23,11 @@ import type { ImperialVoice } from '../imperial-voice';
 import type { FirstConstitutionalMotion } from '../first-constitutional-motion';
 import { computeBodyWisdomState } from '../sovereign-wisdom/body-wisdom';
 import { getArrivalRecord } from '../visitor-presence';
+import { getChamberIdentityProfileV2 } from '../chamber-identity';
+import type { ChamberIdentityProfileV2 } from '../chamber-identity';
+import { getVisionDocument } from '../chamber-vision';
+import type { ImperialVisionDocument } from '../chamber-vision';
+import type { ChamberId } from '../chamber-identity';
 
 function generateSessionId(): string {
   // crypto.randomUUID() requires a secure context (HTTPS).
@@ -87,6 +92,9 @@ export function prepareInteractionSession(request: KernelRequest): InteractionSe
       request,
       match.chamberId,
     );
+    const chamberIdAsChamberId = match.chamberId as ChamberId;
+    const chamberIdentity: ChamberIdentityProfileV2 = getChamberIdentityProfileV2(chamberIdAsChamberId);
+    const chamberVision: ImperialVisionDocument = getVisionDocument(chamberIdAsChamberId);
     return {
       sessionId: generateSessionId(),
       status: 'RESOLVED',
@@ -102,6 +110,8 @@ export function prepareInteractionSession(request: KernelRequest): InteractionSe
       constitutionalMotion,
       wisdomContext,
       visitContext,
+      chamberIdentity,
+      chamberVision,
     };
   }
 
@@ -121,6 +131,8 @@ export function prepareInteractionSession(request: KernelRequest): InteractionSe
       constitutionalMotion: null,
       wisdomContext,
       visitContext,
+      chamberIdentity: null,
+      chamberVision: null,
     };
   }
 
@@ -139,5 +151,7 @@ export function prepareInteractionSession(request: KernelRequest): InteractionSe
     constitutionalMotion: null,
     wisdomContext,
     visitContext,
+    chamberIdentity: null,
+    chamberVision: null,
   };
 }

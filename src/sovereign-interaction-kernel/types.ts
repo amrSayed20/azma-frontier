@@ -27,6 +27,8 @@ import type {
 } from '../sovereign-chamber-manifest';
 import type { ImperialVoice } from '../imperial-voice';
 import type { FirstConstitutionalMotion } from '../first-constitutional-motion';
+import type { ChamberIdentityProfileV2 } from '../chamber-identity';
+import type { ImperialVisionDocument } from '../chamber-vision';
 
 // ── Kernel Intent ─────────────────────────────────────────────────────────
 // Three constitutional ways a Creator can signal what they want.
@@ -133,4 +135,19 @@ export interface InteractionSession {
     readonly arrivalCount: number;
     readonly isReturning: boolean;
   };
+  /**
+   * The resolved chamber's V2 constitutional identity — who it is, why it
+   * exists, what it can do, when to enter, what the Creator leaves with,
+   * its constitutional boundaries, tone, relationships, and emotional
+   * experience. Derived from src/chamber-identity/ at session preparation
+   * time. Null when the Kernel could not resolve a chamber.
+   */
+  readonly chamberIdentity: ChamberIdentityProfileV2 | null;
+  /**
+   * The resolved chamber's philosophical vision — how it thinks, its
+   * personality, the Creator experience it aims for, and the transformation
+   * it is meant to produce. Derived from src/chamber-vision/ at session
+   * preparation time. Null when the Kernel could not resolve a chamber.
+   */
+  readonly chamberVision: ImperialVisionDocument | null;
 }
