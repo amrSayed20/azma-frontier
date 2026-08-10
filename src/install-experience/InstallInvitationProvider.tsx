@@ -62,6 +62,7 @@ export function InstallInvitationProvider({ children }: { readonly children: Rea
     setVisible(true);
   }, [platform]);
 
+
   const accept = useCallback(async () => {
     const deferred = deferredPromptRef.current;
     if (!deferred) {

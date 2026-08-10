@@ -24,10 +24,18 @@ function isIosSafari(): boolean {
   return isIos && isSafari;
 }
 
+function isChromiumBrowser(): boolean {
+  const ua = window.navigator.userAgent;
+  return /Chrome\//.test(ua) || /Edg\//.test(ua);
+}
+
 export function detectInstallPlatform(hasCapturedPrompt: boolean): InstallPlatform {
   if (typeof window === 'undefined') return 'unsupported';
   if (isStandaloneDisplayMode()) return 'already-installed';
   if (hasCapturedPrompt) return 'chromium';
   if (isIosSafari()) return 'ios-safari';
+  // Chromium on HTTP (or after the prompt was already used) — can still guide
+  // the Creator to install via the browser's own menu.
+  if (isChromiumBrowser()) return 'chromium-manual';
   return 'unsupported';
 }

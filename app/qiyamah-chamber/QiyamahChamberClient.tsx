@@ -28,7 +28,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import './qiyamah-chamber.css';
 import { t } from '@/src/creator-language';
@@ -65,6 +65,11 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState('cinematic');
 
+  const [isDragging,    setIsDragging]    = useState(false);
+  const [isUploading,   setIsUploading]   = useState(false);
+  const [uploadError,   setUploadError]   = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [showConfirm, setShowConfirm] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [masterReady, setMasterReady] = useState(false);
@@ -91,6 +96,26 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
       .catch(() => setDisplayName(null));
     fetchGenerations();
   }, []);
+
+  const uploadFile = async (file: File) => {
+    setUploadError(null);
+    setIsUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/vault/assets/upload', { method: 'POST', body: form });
+      const data = await res.json();
+      if (data.status === 'succeeded') {
+        fetchGenerations();
+      } else {
+        setUploadError(data.message ?? 'فشل الرفع — حاوِل مرة أخرى.');
+      }
+    } catch {
+      setUploadError('البوابة لا تستجيب — حاوِل مرة أخرى.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const fillExamplePrompt = () => setPrompt(EXAMPLE_PROMPT);
 
@@ -207,6 +232,47 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
               <button className="trigger-genesis-btn" onClick={handleTriggerGenesis} disabled={!prompt.trim()}>
                 بدء التوليد (القيامة) ⭍
               </button>
+
+              <div className="upload-divider"><span>أو أرفع ملفاً موجوداً</span></div>
+
+              <div
+                className={`upload-zone${isDragging ? ' upload-zone--dragging' : ''}${isUploading ? ' upload-zone--uploading' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  const file = e.dataTransfer.files[0];
+                  if (file) void uploadFile(file);
+                }}
+                onClick={() => !isUploading && fileInputRef.current?.click()}
+                role="button"
+                tabIndex={0}
+                aria-label="اسحب ملفاً أو انقر للاختيار"
+                onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*,audio/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void uploadFile(file);
+                    e.target.value = '';
+                  }}
+                />
+                {isUploading ? (
+                  <span className="upload-zone-label pulse-text">جارٍ الرفع...</span>
+                ) : (
+                  <>
+                    <span className="upload-zone-icon">⬆</span>
+                    <span className="upload-zone-label">اسحب هنا أو انقر للاختيار</span>
+                    <span className="upload-zone-hint">صورة · فيديو · صوت — حتى 50MB</span>
+                  </>
+                )}
+              </div>
+              {uploadError && <p className="upload-error">{uploadError}</p>}
             </div>
           )}
 

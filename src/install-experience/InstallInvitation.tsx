@@ -19,14 +19,23 @@ export function InstallInvitation() {
     <div className="install-invitation" role="dialog" aria-label="تثبيت الإمبراطورية">
       <div className="install-invitation-seal" aria-hidden="true">徵</div>
       <div className="install-invitation-body">
-        {platform === 'ios-safari' ? (
+        {platform === 'ios-safari' && (
           <>
             <p className="install-invitation-title">الإمبراطورية على بُعد نقرة واحدة</p>
             <p className="install-invitation-desc">
-              اضغط <strong>مشاركة</strong>، ثم <strong>إضافة إلى الشاشة الرئيسية</strong>.
+              اضغط <strong>مشاركة ⬆</strong>، ثم <strong>إضافة إلى الشاشة الرئيسية</strong>.
             </p>
           </>
-        ) : (
+        )}
+        {platform === 'chromium-manual' && (
+          <>
+            <p className="install-invitation-title">ثبّت الإمبراطورية كتطبيق</p>
+            <p className="install-invitation-desc">
+              افتح قائمة المتصفح <strong>⋮</strong>، ثم اختر <strong>تثبيت AZMA OS</strong> أو <strong>إضافة إلى الشاشة الرئيسية</strong>.
+            </p>
+          </>
+        )}
+        {platform === 'chromium' && (
           <>
             <p className="install-invitation-title">الإمبراطورية على بُعد نقرة واحدة</p>
             <p className="install-invitation-desc">ثبّت الإمبراطورية للوصول الفوري في كل مرة تبدع فيها.</p>
@@ -34,13 +43,13 @@ export function InstallInvitation() {
         )}
       </div>
       <div className="install-invitation-actions">
-        {platform !== 'ios-safari' && (
+        {platform === 'chromium' && (
           <button type="button" className="install-invitation-accept" onClick={() => void accept()}>
             تثبيت
           </button>
         )}
         <button type="button" className="install-invitation-dismiss" onClick={dismiss}>
-          {platform === 'ios-safari' ? 'حسناً' : 'ليس الآن'}
+          {platform === 'ios-safari' || platform === 'chromium-manual' ? 'حسناً' : 'ليس الآن'}
         </button>
       </div>
     </div>

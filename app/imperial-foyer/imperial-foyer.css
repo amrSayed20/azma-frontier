@@ -131,6 +131,27 @@
   font-size: 0.85rem;
 }
 
+.foyer-install-btn {
+  display:        flex;
+  align-items:    center;
+  gap:            0.5rem;
+  padding:        0.5rem 1.1rem;
+  border:         1px solid rgba(100, 180, 120, 0.2);
+  border-radius:  2rem;
+  background:     rgba(255, 255, 255, 0.02);
+  color:          rgba(150, 210, 160, 0.55);
+  cursor:         pointer;
+  font-size:      0.85rem;
+  letter-spacing: 0.04em;
+  transition:     background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.foyer-install-btn:hover {
+  background:    rgba(100, 180, 120, 0.09);
+  border-color:  rgba(100, 180, 120, 0.4);
+  color:         rgba(150, 210, 160, 0.9);
+}
+
 /* ── Vault Palace Card — center, prominent ───────────────────────── */
 
 .foyer-center {

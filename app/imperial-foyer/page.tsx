@@ -22,6 +22,7 @@ import { LivingCompanion } from '@/src/components/living-companion/LivingCompani
 import { prepareInteractionSession } from '@/src/sovereign-interaction-kernel';
 import type { InteractionSession } from '@/src/sovereign-interaction-kernel';
 import type { ManifestChamberContext, ManifestInteractionMode } from '@/src/sovereign-chamber-manifest';
+import { useInstallInvitation } from '@/src/install-experience';
 
 // ── Interaction Mode — Empire-level (promotes azma.tongue.style) ──────────
 // The three modes are canonical across the Empire; the key is shared
@@ -259,6 +260,9 @@ function kernelReadyMessage(session: InteractionSession, chamberNameAr: string):
 
 export default function ImperialFoyer() {
   const router = useRouter();
+
+  const { openManually, platform: installPlatform } = useInstallInvitation();
+  const showInstallBtn = installPlatform !== 'already-installed' && installPlatform !== 'unsupported';
 
   // Start with 'conversation' on server and client to avoid hydration mismatch,
   // then read the real localStorage value after mount.
@@ -516,6 +520,17 @@ export default function ImperialFoyer() {
             <span className="mode-name">{def.nameAr}</span>
           </button>
         ))}
+        {showInstallBtn && (
+          <button
+            className="foyer-install-btn"
+            onClick={openManually}
+            aria-label="تثبيت الإمبراطورية كتطبيق"
+            title="تثبيت الإمبراطورية"
+          >
+            <span className="mode-glyph" aria-hidden="true">⊕</span>
+            <span className="mode-name">تثبيت</span>
+          </button>
+        )}
       </div>
 
       {/* Sovereign Vault Palace — center of the Empire */}

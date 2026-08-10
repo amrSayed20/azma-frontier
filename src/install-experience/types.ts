@@ -10,4 +10,9 @@ export interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
 }
 
-export type InstallPlatform = 'chromium' | 'ios-safari' | 'unsupported' | 'already-installed';
+export type InstallPlatform =
+  | 'chromium'          // has captured beforeinstallprompt — can trigger real browser install
+  | 'chromium-manual'   // Chromium browser but no prompt (HTTP or already seen) — show browser-menu guide
+  | 'ios-safari'        // iOS Safari — show Share → Add to Home Screen guide
+  | 'unsupported'       // non-Chromium, non-iOS (e.g. desktop Firefox) — no install path
+  | 'already-installed';
