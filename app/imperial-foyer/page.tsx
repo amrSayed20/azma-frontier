@@ -262,7 +262,12 @@ export default function ImperialFoyer() {
   const router = useRouter();
 
   const { openManually, platform: installPlatform } = useInstallInvitation();
-  const showInstallBtn = installPlatform !== 'already-installed' && installPlatform !== 'unsupported';
+  // Defer to after mount — platform detection reads window.navigator which
+  // is unavailable during SSR; starting as false matches the server render
+  // and prevents a React hydration mismatch.
+  const [foyerMounted, setFoyerMounted] = useState(false);
+  useEffect(() => { setFoyerMounted(true); }, []);
+  const showInstallBtn = foyerMounted && installPlatform !== 'already-installed' && installPlatform !== 'unsupported';
 
   // Start with 'conversation' on server and client to avoid hydration mismatch,
   // then read the real localStorage value after mount.

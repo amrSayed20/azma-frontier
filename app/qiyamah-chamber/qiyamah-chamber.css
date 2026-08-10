@@ -54,12 +54,12 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color:
 .qiyamah-layout { display: flex; width: 100%; max-width: 1400px; height: calc(100vh - 100px); z-index: 10; gap: 40px; padding: 20px; align-items: center; justify-content: center; }
 
 /* The Central Canvas */
-.genesis-canvas { flex: 1; height: 100%; border: 2px dashed rgba(212, 175, 55, 0.2); border-radius: 20px; display: flex; align-items: center; justify-content: center; position: relative; transition: 0.4s; background: radial-gradient(circle, rgba(20, 5, 5, 0.6), rgba(0,0,0,0.8)); }
+.genesis-canvas { flex: 1; height: 100%; border: 2px dashed rgba(212, 175, 55, 0.2); border-radius: 20px; display: flex; align-items: center; justify-content: center; overflow-y: auto; position: relative; transition: 0.4s; background: radial-gradient(circle, rgba(20, 5, 5, 0.6), rgba(0,0,0,0.8)); }
 .empty-canvas:hover { border-color: var(--gold-neon); background: radial-gradient(circle, rgba(212, 175, 55, 0.05), rgba(0,0,0,0.8)); }
 .active-canvas { border-style: solid; border-color: var(--crimson-dim); box-shadow: inset 0 0 50px rgba(139, 0, 0, 0.2); }
 .generating-state { border-color: var(--crimson-neon); box-shadow: 0 0 40px rgba(255, 42, 42, 0.2), inset 0 0 100px rgba(139, 0, 0, 0.4); animation: pulse-border 2s infinite; }
 
-.empty-prompt { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; max-width: 480px; padding: 0 24px; }
+.empty-prompt { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; max-width: 480px; padding: 20px 24px; overflow-y: auto; }
 
 /* IMPERIAL FIRST CREATOR IMPLEMENTATION (Article IX, Mandate 5): a
    direct prompt input replaces the drag-drop asset system, whose
