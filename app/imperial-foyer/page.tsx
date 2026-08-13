@@ -288,6 +288,7 @@ export default function ImperialFoyer() {
   const [creatorIdentity,  setCreatorIdentity]  = useState<CreatorIdentity | null>(null);
   const [sovereignPurpose, setSovereignPurpose] = useState<string | null>(null);
   const [loggingOut,       setLoggingOut]       = useState(false);
+  const [entered,          setEntered]          = useState(false);
   // IMPERIAL JOURNEY CONTINUITY — Package D:
   // Holds the constitutional return message for one beat after the Creator
   // returns from a chamber. Cleared when they choose an interaction mode
@@ -305,6 +306,11 @@ export default function ImperialFoyer() {
   // already in the 600ms preparation window.
   const isPreparingRef = useRef(false);
   const visitorPresence = useVisitorPresence();
+
+  useEffect(() => {
+    const entryTimer = setTimeout(() => setEntered(true), 560);
+    return () => clearTimeout(entryTimer);
+  }, []);
 
   useEffect(() => {
     applyVariation(foyerRootRef.current, getArrivalRecord()?.arrivalCount ?? 0);
@@ -476,7 +482,7 @@ export default function ImperialFoyer() {
 
   return (
     <main
-      className={`foyer-viewport ${departing ? 'foyer-departing' : ''}`}
+      className={`foyer-viewport ${entered ? 'foyer-entered' : ''} ${departing ? 'foyer-departing' : ''}`}
       dir="rtl"
       data-presence={visitorPresence}
       ref={foyerRootRef}
