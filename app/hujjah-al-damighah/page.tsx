@@ -64,9 +64,9 @@ const TONGUE_DEFS: { id: AzmaTongue; glyph: string; nameAr: string; descAr: stri
 
 const CHAMBER_INITIATIONS: Record<AzmaTongue, string[]> = {
   conversation: [
-    'المحكمة مستعدة. ما الفكرة التي تريد اختبارها؟',
-    'الحجرة المعرفية تستيقظ. ما الذي يشغل ذهنك؟',
-    'ادخل إلى المحكمة. دعنا نبدأ من البداية.',
+    'حجرة المعرفة جاهزة. ما الموضوع الذي تريد استكشافه؟',
+    'حجرة المعرفة تستيقظ. ما الذي يشغل ذهنك؟',
+    'ابدأ استكشافك. الحجرة تنتظر سؤالك.',
   ],
   writing: [
     'الورقة أمامك. الحجرة ستقرأ أفكارك وتبني معك.',
@@ -244,12 +244,12 @@ function CompetingPositions({ supported, disputed, domain, onSelect }: Competing
       <div className="cp-header">
         <span className="cp-rule" aria-hidden="true" />
         <span className="cp-glyph" aria-hidden="true">⚖</span>
-        <span className="cp-title">المواقف المتنافسة</span>
+        <span className="cp-title">وجهات نظر مختلفة</span>
         <span className="cp-rule" aria-hidden="true" />
       </div>
       <div className="cp-layout">
         <div className="cp-side cp-supporting">
-          <div className="cp-side-label">الموقف المؤيد</div>
+          <div className="cp-side-label">المنظور الأول</div>
           {topS.map((ev) => {
             const layer = resolveKnowledgeLayer(ev.confidenceScore, ev.confidenceLevel, domain);
             return (
@@ -266,7 +266,7 @@ function CompetingPositions({ supported, disputed, domain, onSelect }: Competing
           <div className="cp-spine-line" />
         </div>
         <div className="cp-side cp-opposing">
-          <div className="cp-side-label">الموقف المعارض</div>
+          <div className="cp-side-label">المنظور الآخر</div>
           {topD.map((ev) => {
             const layer = resolveKnowledgeLayer(ev.confidenceScore, ev.confidenceLevel, domain);
             return (
@@ -418,13 +418,13 @@ function MinorityView({ disputed, domain, onSelect }: MinorityViewProps) {
     <div className="minority-view">
       <div className="mv-header">
         <span className="mv-glyph" aria-hidden="true">◑</span>
-        <span className="mv-title">الموقف الأقل شيوعاً — يستحق الاحترام</span>
+        <span className="mv-title">زاوية أخرى تستحق الاهتمام</span>
       </div>
       <button className="mv-ev-btn" onClick={() => onSelect(top)}>
         <span className={`mv-tier ctier-${getConstitutionalTier(layer.tier)}`}>{layer.labelAr}</span>
         <p className="mv-text">{top.extractedText.slice(0, 120)}…</p>
       </button>
-      <p className="mv-note">الحجرة لا تخفي الاعتراض الجوهري. اليقين لا يعني غياب الخلاف.</p>
+      <p className="mv-note">الحجرة لا تخفي وجهات النظر المختلفة.</p>
     </div>
   );
 }
@@ -520,7 +520,7 @@ function VerdictBlock({
       {isUncertain && (
         <div className="verdict-uncertainty" role="status">
           <span className="vu-sigil" aria-hidden="true">◌</span>
-          <p className="vu-text">الأدلة الحالية لا تكفي لحكم قاطع — هذه المسألة لا تزال قيد الفحص</p>
+          <p className="vu-text">الأدلة الحالية لا تكفي لنتيجة قاطعة — هذه المسألة لا تزال قيد الفحص</p>
         </div>
       )}
       {result.success && b && (
@@ -553,13 +553,13 @@ function VerdictBlock({
             <div className="evidence-taxonomy">
               <div className="taxonomy-header">
                 <span className="taxonomy-rule" />
-                <span className="taxonomy-title">السجل المصنَّف — انقر لفتح بوابة الدليل</span>
+                <span className="taxonomy-title">نتائج البحث — انقر للمزيد من التفاصيل</span>
                 <span className="taxonomy-rule" />
               </div>
-              <EvidenceCategory titleAr="الأدلة المؤيدة"             type="supported"  items={b.supported}  domain={activeDomain} onSelect={onEvidenceSelect} />
-              <EvidenceCategory titleAr="الروايات الداعمة"           type="narratives" items={b.narratives} domain={activeDomain} onSelect={onEvidenceSelect} />
-              <EvidenceCategory titleAr="الادعاءات المتنازع عليها"  type="disputed"   items={b.disputed}   domain={activeDomain} onSelect={onEvidenceSelect} />
-              <EvidenceCategory titleAr="البيانات غير المتحقق منها" type="unverified" items={b.unverified} domain={activeDomain} onSelect={onEvidenceSelect} />
+              <EvidenceCategory titleAr="أدلة وبيانات"        type="supported"  items={b.supported}  domain={activeDomain} onSelect={onEvidenceSelect} />
+              <EvidenceCategory titleAr="روايات وسياقات"       type="narratives" items={b.narratives} domain={activeDomain} onSelect={onEvidenceSelect} />
+              <EvidenceCategory titleAr="مواد تحتاج مراجعة"   type="disputed"   items={b.disputed}   domain={activeDomain} onSelect={onEvidenceSelect} />
+              <EvidenceCategory titleAr="بيانات أولية"         type="unverified" items={b.unverified} domain={activeDomain} onSelect={onEvidenceSelect} />
               {b.supported.length === 0 && (
                 <div className="open-questions">
                   <span className="oq-mark">?</span>
@@ -751,7 +751,7 @@ export default function HujjahAlDamighah() {
   const resetIdleTimer = useCallback(() => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     idleTimerRef.current = setTimeout(
-      () => showCompanion('المحكمة لا تزال تنتظر. الدليل لا يُستعجل.'),
+      () => showCompanion('حجرة المعرفة جاهزة. الاستكشاف لا يُستعجل.'),
       idleDelayRef.current,
     );
   }, [showCompanion]);
@@ -902,21 +902,11 @@ export default function HujjahAlDamighah() {
     setInvStage('idle');
     setResult(dto);
 
-    // Open the Hearing — citizen deliberates before verdict (Article I)
+    // Skip hearing phase — show results directly
     setPhase('hearing');
     phaseRef.current = 'hearing';
-    const qs = selectCourtQuestions(dto);
-    setCourtQuestionsState(qs);
-    setCitizenStance(null);
-    setShowCourtQuestions(false);
-    setTimeout(() => setShowCourtQuestions(true), 1_500);
-    showCompanion('المحكمة تفتح المداولة…');
-
-    // Auto-proceed after 14s if citizen does not act
-    if (hearingTimerRef.current) clearTimeout(hearingTimerRef.current);
-    hearingTimerRef.current = setTimeout(() => {
-      void proceedToVerdict(dto, trimmed, domain);
-    }, 14_000);
+    showCompanion('حجرة المعرفة تبلور النتائج…');
+    void proceedToVerdict(dto, trimmed, domain);
   }
 
   // ── Proceed to Verdict — called from citizen action or auto-timer ─
@@ -1158,7 +1148,7 @@ export default function HujjahAlDamighah() {
   // ── Appeal — Article VIII ─────────────────────────────────────────
   function handleAppeal() {
     if (!result || !query.trim()) return;
-    const appealQ = `استئناف ومراجعة: ${query.trim()}`;
+    const appealQ = `بحث معمّق في: ${query.trim()}`;
     setQuery(appealQ);
     setResult(null);
     setSavedToVault(false);
@@ -1176,7 +1166,7 @@ export default function HujjahAlDamighah() {
 
   function handleChallengeVerdict() {
     if (!result || !query.trim()) return;
-    const challengeQ = `دحض وتحدّ: ${query.trim()}`;
+    const challengeQ = `زاوية مختلفة في: ${query.trim()}`;
     setQuery(challengeQ);
     setResult(null);
     setSavedToVault(false);
@@ -1323,18 +1313,18 @@ export default function HujjahAlDamighah() {
       {chamberInit === 'awakening' && (
         <div className="chamber-awakening" aria-hidden="true">
           <div className="awakening-inner">
-            <div className="awakening-seal">⚖</div>
-            <p className="awakening-breath">الحجرة المعرفية تستيقظ</p>
+            <div className="awakening-seal">✦</div>
+            <p className="awakening-breath">حجرة المعرفة تستيقظ</p>
           </div>
         </div>
       )}
 
       {/* ── AZMA Tongue Selector ─────────────────────────────────── */}
       {chamberInit === 'tongue-sel' && (
-        <div className="tongue-selector" role="dialog" aria-label="اختر أسلوب التواصل مع المحكمة">
+        <div className="tongue-selector" role="dialog" aria-label="اختر أسلوب التواصل مع الحجرة">
           <div className="tongue-selector-inner">
             <div className="tongue-header">
-              <span className="tongue-crown-glyph" aria-hidden="true">⚖</span>
+              <span className="tongue-crown-glyph" aria-hidden="true">✦</span>
               <h2 className="tongue-title">كيف تريد أن نتواصل؟</h2>
               <p className="tongue-subtitle">الحجرة تتكيف معك — لا معك تتكيف معها</p>
             </div>
@@ -1462,9 +1452,9 @@ export default function HujjahAlDamighah() {
               <section className="court-space">
                 <div className="court-frieze">
                   <span className="frieze-rule" aria-hidden="true" />
-                  <span className="frieze-glyph" aria-hidden="true">⚖</span>
-                  <span className="frieze-title">المحكمة الإمبراطورية للمعرفة</span>
-                  <span className="frieze-glyph" aria-hidden="true">⚖</span>
+                  <span className="frieze-glyph" aria-hidden="true">✦</span>
+                  <span className="frieze-title">حجرة المعرفة السيادية</span>
+                  <span className="frieze-glyph" aria-hidden="true">✦</span>
                   <span className="frieze-rule" aria-hidden="true" />
                 </div>
 
@@ -1533,22 +1523,9 @@ export default function HujjahAlDamighah() {
                   {/* Chamber speaks first */}
                   {phase === 'idle' && !result && (
                     <div className="chamber-speaks-first">
-                      <div className="csf-sigil" aria-hidden="true">⚖</div>
+                      <div className="csf-sigil" aria-hidden="true">✦</div>
                       <p className="csf-utterance">{chamberGreeting}</p>
                     </div>
-                  )}
-
-                  {isHearing && result && (
-                    <HearingBlock
-                      result={result}
-                      domain={activeDomain}
-                      citizenStance={citizenStance}
-                      onStance={handleCitizenStance}
-                      onProceed={handleProceedToVerdict}
-                      courtQuestions={courtQuestionsState}
-                      showCourtQuestions={showCourtQuestions}
-                      onEvidenceSelect={handleEvidenceSelect}
-                    />
                   )}
 
                   {phase === 'examining' && (
@@ -1561,7 +1538,7 @@ export default function HujjahAlDamighah() {
                         {invStage === 'deliberating' && 'الإمبراطورية تبلور ما تعلمته…'}
                         {invStage === 'idle'         && 'الحجرة تعمل…'}
                       </p>
-                      <p className="deliberation-inscription">المحكمة الإمبراطورية تعمل…</p>
+                      <p className="deliberation-inscription">حجرة المعرفة تعمل…</p>
                     </div>
                   )}
 
@@ -1626,7 +1603,7 @@ export default function HujjahAlDamighah() {
                     const top = [...b.supported, ...b.narratives].slice(0, 5);
                     return top.length > 0 ? (
                       <div className="margin-evidence custom-scroll">
-                        <div className="margin-ev-label">أدلة الجلسة</div>
+                        <div className="margin-ev-label">أدلة البحث</div>
                         {top.map((ev) => {
                           const layer = resolveKnowledgeLayer(ev.confidenceScore, ev.confidenceLevel, activeDomain);
                           return (
@@ -1670,13 +1647,13 @@ export default function HujjahAlDamighah() {
                       </span>
                       {!isExamining && query.trim() && (
                         <button type="submit" className="writing-submit-btn">
-                          ⚖ استقصاء
+                          ✦ استكشاف
                         </button>
                       )}
                       {isExamining && (
                         <span className="writing-examining" aria-live="polite">
                           <span className="seal-spinner" aria-hidden="true" />
-                          المحكمة تعمل…
+                          الحجرة تعمل…
                         </span>
                       )}
                     </div>
@@ -1698,20 +1675,6 @@ export default function HujjahAlDamighah() {
                       <div className="truth-rule" />
                       <span className="truth-word">لحظة…</span>
                       <div className="truth-rule" />
-                    </div>
-                  )}
-                  {isHearing && result && (
-                    <div className="writing-verdict-area custom-scroll">
-                      <HearingBlock
-                        result={result}
-                        domain={activeDomain}
-                        citizenStance={citizenStance}
-                        onStance={handleCitizenStance}
-                        onProceed={handleProceedToVerdict}
-                        courtQuestions={courtQuestionsState}
-                        showCourtQuestions={showCourtQuestions}
-                        onEvidenceSelect={handleEvidenceSelect}
-                      />
                     </div>
                   )}
                   {hasVerdict && (
@@ -1828,22 +1791,6 @@ export default function HujjahAlDamighah() {
                   <div className="truth-rule" />
                   <span className="truth-word">لحظة…</span>
                   <div className="truth-rule" />
-                </div>
-              )}
-
-              {/* Hearing */}
-              {isHearing && result?.success && (
-                <div className="silent-verdict custom-scroll">
-                  <HearingBlock
-                    result={result}
-                    domain={activeDomain}
-                    citizenStance={citizenStance}
-                    onStance={handleCitizenStance}
-                    onProceed={handleProceedToVerdict}
-                    courtQuestions={courtQuestionsState}
-                    showCourtQuestions={showCourtQuestions}
-                    onEvidenceSelect={handleEvidenceSelect}
-                  />
                 </div>
               )}
 

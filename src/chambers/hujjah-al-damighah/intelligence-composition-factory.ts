@@ -8,7 +8,7 @@
  *
  * ─── MINISTRY → PROVIDER MAP (current) ──────────────────────────────────────
  *
- *   ministry-human-knowledge       → GutenbergProvider (real HTTP, Package XVI)
+ *   ministry-human-knowledge       → OpenLibraryProvider (real HTTP, 20M+ books)
  *   ministry-business-intelligence → GoogleTrendsProvider (real HTTP, Package XVII)
  *                                  → HackerNewsProvider (real HTTP, Ministry VI)
  *   ministry-media-intelligence    → RedditProvider (real HTTP, Package XVII)
@@ -24,7 +24,7 @@
  */
 
 import { IntelligenceEngine } from './core/intelligence-engine';
-import { GutenbergProvider } from './providers/gutenberg-provider';
+import { OpenLibraryProvider } from './providers/open-library-provider';
 import { GoogleTrendsProvider } from './providers/google-trends-provider';
 import { HackerNewsProvider } from './providers/hacker-news-provider';
 import { RedditProvider } from './providers/reddit-provider';
@@ -52,7 +52,7 @@ export class IntelligenceCompositionFactory {
     const registry = new MinistryRegistry();
 
     // 2. Attach launch providers to their Ministries
-    registry.attachProvider('ministry-human-knowledge', new GutenbergProvider());
+    registry.attachProvider('ministry-human-knowledge', new OpenLibraryProvider());
     registry.attachProvider('ministry-business-intelligence', new GoogleTrendsProvider());
     registry.attachProvider('ministry-business-intelligence', new HackerNewsProvider());
     registry.attachProvider('ministry-media-intelligence', new RedditProvider());

@@ -18,7 +18,7 @@ export function InvestigationFile({
   return (
     <div className="investigation-file">
       <div className="inv-file-crown">
-        <span className="inv-file-tag">ملف التحقيق</span>
+        <span className="inv-file-tag">خيارات البحث</span>
         <span className="inv-file-dot">●</span>
         <span className="inv-file-status">حي</span>
       </div>
@@ -31,10 +31,10 @@ export function InvestigationFile({
           توسيع الأدلة
         </button>
         <button className="inv-action inv-challenge" onClick={onChallenge}>
-          تحدّ الحكم
+          زاوية مختلفة
         </button>
         <button className="inv-action inv-appeal" onClick={onAppeal}>
-          طعن بأدلة جديدة
+          بحث معمّق
         </button>
         <button
           className={`inv-action inv-vault ${savedToVault ? 'inv-saved' : ''}`}

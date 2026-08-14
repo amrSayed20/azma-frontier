@@ -69,9 +69,9 @@ export function VerdictDocument({ dto, query, domain, outputFormat, onFormatChan
   return (
     <div className="verdict-document living-frame-verdict">
       <div className="vd-header">
-        <span className="vd-glyph" aria-hidden="true">⚖</span>
-        <span className="vd-title">وثيقة الحكم الإمبراطورية</span>
-        <span className="vd-glyph" aria-hidden="true">⚖</span>
+        <span className="vd-glyph" aria-hidden="true">✦</span>
+        <span className="vd-title">ملخص نتائج البحث</span>
+        <span className="vd-glyph" aria-hidden="true">✦</span>
       </div>
 
       <div className="vd-format-row" role="group" aria-label="حجم الحكم">
@@ -87,8 +87,8 @@ export function VerdictDocument({ dto, query, domain, outputFormat, onFormatChan
       </div>
 
       <div className="vd-fields">
-        <VField label="القضية"          value={query}    />
-        <VField label="الحكم"           value={vText}    large />
+        <VField label="الموضوع"         value={query}    />
+        <VField label="الملخص"          value={vText}    large />
         <div className="vd-row-pair">
           <VField label="درجة الثقة"  value={`${pct}%`}            mono />
           <VField label="عدد الأدلة"  value={`${dto.evidence.length}`} mono />
@@ -105,14 +105,14 @@ export function VerdictDocument({ dto, query, domain, outputFormat, onFormatChan
             ? `${buckets.unverified.length} عنصر غير محدد`
             : 'لا توجد'}
         />
-        <VField label="سبب الحكم"               value={explanation} large />
+        <VField label="تفسير النتائج"            value={explanation} large />
         <VField label="ما يزال مجهولاً"          value={unknowns}   italic />
         <VField label="التحقيق المقترح التالي"   value={nextInv}    italic />
       </div>
 
       <div className="vd-footer">
-        <span>جلسة: {sessionDate}</span>
-        <span>المحكمة الإمبراطورية للمعرفة</span>
+        <span>بحث: {sessionDate}</span>
+        <span>حجرة المعرفة السيادية</span>
       </div>
     </div>
   );
