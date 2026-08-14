@@ -78,13 +78,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Page navigations: network-first. Let the browser follow any server redirects
-  // directly (including auth redirects) — do not intercept the redirect chain.
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request).catch(() =>
-        caches.match('/').then((cached) => cached || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } }))
-      ),
-    );
-  }
+  // Page navigations: pass straight through to the browser.
+  // Intercepting navigate mode requests risks returning an opaque redirect
+  // response (when the server issues a 307 for auth) that some browser/OS
+  // combinations cannot follow, which manifests as "This page couldn't load."
+  // Auth-gated pages must let the browser own the redirect chain entirely.
+  if (request.mode === 'navigate') return;
 });
