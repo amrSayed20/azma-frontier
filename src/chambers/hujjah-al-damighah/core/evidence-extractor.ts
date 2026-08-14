@@ -69,7 +69,7 @@ export class EvidenceExtractor {
       claimId: claim.id,
       sourceId: document.id,
       sourceProvider: document.provider,
-      extractedText: `[Extracted context matching claim]: ${claim.normalizedStatement}`,
+      extractedText: safeContext,
       contextWindow: safeContext,
       confidenceScore,
       confidenceLevel

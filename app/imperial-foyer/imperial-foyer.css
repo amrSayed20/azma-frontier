@@ -429,22 +429,29 @@
 }
 
 /* ── Staged Entry Ceremony — Package H ──────────────────────────────
-   The Empire reveals itself in layers. Companion speaks first; chambers
-   last. Communicates depth before the Creator takes a single step.
-   Departure collapses all together (transition-delay reset to 0s).     */
+   CSS-animation driven — works on first mount AND on every return
+   navigation (Next.js router cache does not replay animations, but
+   animation-fill-mode:both keeps the final state, so elements stay
+   visible after the animation ends regardless of JS state).
+   JS foyer-entered class kept as belt+suspenders for instant settle
+   after 560ms if the animation completes early.                       */
 
-.foyer-companion,
-.foyer-modes,
-.foyer-center,
-.foyer-chambers {
-  opacity:   0;
-  transform: translateY(6px);
+.foyer-companion { animation: foyer-stage-in 0.4s ease 0s    both; }
+.foyer-modes     { animation: foyer-stage-in 0.4s ease 0.2s  both; }
+.foyer-center    { animation: foyer-stage-in 0.4s ease 0.38s both; }
+.foyer-chambers  { animation: foyer-stage-in 0.4s ease 0.55s both; }
+
+@keyframes foyer-stage-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
 }
 
-.foyer-companion { transition: opacity 0.4s ease 0s,    transform 0.4s ease 0s;    }
-.foyer-modes     { transition: opacity 0.4s ease 0.2s,  transform 0.4s ease 0.2s;  }
-.foyer-center    { transition: opacity 0.4s ease 0.38s, transform 0.4s ease 0.38s; }
-.foyer-chambers  { transition: opacity 0.4s ease 0.55s, transform 0.4s ease 0.55s; }
+@media (prefers-reduced-motion: reduce) {
+  .foyer-companion,
+  .foyer-modes,
+  .foyer-center,
+  .foyer-chambers { animation: none; opacity: 1; transform: none; }
+}
 
 .foyer-viewport.foyer-entered .foyer-companion,
 .foyer-viewport.foyer-entered .foyer-modes,
@@ -458,6 +465,7 @@
 .foyer-viewport.foyer-departing .foyer-modes,
 .foyer-viewport.foyer-departing .foyer-center,
 .foyer-viewport.foyer-departing .foyer-chambers {
+  animation:        none;
   transition-delay: 0s;
 }
 

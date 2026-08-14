@@ -29,6 +29,7 @@ import { GoogleTrendsProvider } from './providers/google-trends-provider';
 import { HackerNewsProvider } from './providers/hacker-news-provider';
 import { RedditProvider } from './providers/reddit-provider';
 import { WikipediaProvider } from './providers/wikipedia-provider';
+import { ArabicWikipediaProvider } from './providers/arabic-wikipedia-provider';
 import { MinistryRegistry } from './ministries/ministry-registry';
 
 export class IntelligenceCompositionFactory {
@@ -56,6 +57,7 @@ export class IntelligenceCompositionFactory {
     registry.attachProvider('ministry-business-intelligence', new HackerNewsProvider());
     registry.attachProvider('ministry-media-intelligence', new RedditProvider());
     registry.attachProvider('ministry-media-intelligence', new WikipediaProvider());
+    registry.attachProvider('ministry-media-intelligence', new ArabicWikipediaProvider());
 
     // 3. Build the RepositoryManager through the Ministry layer
     const repositoryManager = registry.buildRepositoryManager();

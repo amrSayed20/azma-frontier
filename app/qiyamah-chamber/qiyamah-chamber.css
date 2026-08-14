@@ -1,237 +1,558 @@
 /**
- * AZMA OS – Qiyamah Chamber (The Generative Genesis Forge)
- * Status: Final Build (Crimson Neon, Floating Panels, Live Accounting)
+ * AZMA OS – Qiyamah Chamber
+ * Imperial Reorganization: three named zones (Header / Workspace / Gallery)
+ * replacing the previous single-canvas layout.
  */
 
 :root {
-  --chamber-bg: #050202; /* Deepest Obsidian with a hint of red */
-  /* Qiyamah's crimson is a genuinely distinct hue, not imperial gold and
-     not PALETTE.semantic.conflict (#8B2525, a much deeper crimson used for
-     a different, narrower semantic purpose). Kept unchanged (zero visual
-     change) and registered through the constitutionally permitted
-     per-chamber override slot (EXTENSION.overridable, tokens.ts) as this
-     chamber's own character, per Constitutional Dossier Chapter III
-     Article V ("chamber personality vs platform identity"). */
-  --crimson-neon: #ff2a2a;
-  --crimson-dim: #8b0000;
-  --azma-accent: 255, 42, 42;
-  --azma-accent-color: #ff2a2a;
-  /* Sovereign Color System's own PALETTE.gold / --azma-gold-* */
-  --gold-neon: var(--azma-gold-6);
-  --gold-dim: var(--azma-gold-3);
-  --panel-glass: rgba(15, 5, 5, 0.7);
-  --text-main: #f0e6d2;
-  --text-muted: #a89f91;
+  --chamber-bg:    #050202;
+  --crimson-neon:  #ff2a2a;
+  --crimson-dim:   #8b0000;
+  --azma-accent:   255, 42, 42;
+  --gold-neon:     var(--azma-gold-6);
+  --gold-dim:      var(--azma-gold-3);
+  --panel-glass:   rgba(15, 5, 5, 0.72);
+  --text-main:     #f0e6d2;
+  --text-muted:    #a89f91;
 }
 
-body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--chamber-bg); overflow: hidden; }
+/* ─── Document ─────────────────────────────────────────────────────────── */
 
-.qiyamah-viewport { position: fixed; inset: 0; color: var(--text-main); font-family: var(--azma-font-family); direction: rtl; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-
-/* The Forge Background */
-.forge-background { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
-.crimson-nebula { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100vw; height: 100vh; background: radial-gradient(circle at center, rgba(139, 0, 0, 0.15) 0%, transparent 60%); z-index: 1; }
-.cyber-grid-red { position: absolute; inset: 0; background-image: linear-gradient(rgba(255, 42, 42, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 42, 42, 0.03) 1px, transparent 1px); background-size: 40px 40px; transform: perspective(1000px) rotateX(60deg) translateY(-100px) translateZ(-200px); animation: gridMove 15s linear infinite; }
-
-/* Navigation */
-.sovereign-exit-btn { position: absolute; top: 20px; right: 20px; z-index: 100; background: rgba(0, 0, 0, 0.8); border: 1px solid var(--gold-dim); color: var(--gold-neon); padding: 8px 16px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; transition: 0.3s; }
-.sovereign-exit-btn:hover { background: rgba(212, 175, 55, 0.1); border-color: var(--gold-neon); box-shadow: 0 0 15px rgba(212, 175, 55, 0.3); }
-
-/* Neon Borders */
-.neon-border-red { border: 1px solid var(--crimson-dim); box-shadow: 0 0 15px rgba(255, 42, 42, 0.2), inset 0 0 10px rgba(139, 0, 0, 0.5); }
-.neon-border-gold { border: 1px solid var(--gold-neon); box-shadow: 0 0 15px rgba(212, 175, 55, 0.2), inset 0 0 10px rgba(0,0,0,0.8); }
-
-/* Live Accounting HUD */
-/* IMPERIAL FIRST CREATOR IMPLEMENTATION: replaces the fictional "AZMA
-   Credits" accounting HUD (Article IX, Mandate 4 — no invented ledger
-   may be shown to a Creator) with a real acknowledgment of who is
-   standing in the Chamber. */
-.greeting-badge { position: absolute; top: 20px; left: 20px; z-index: 100; background: rgba(10, 0, 0, 0.9); padding: 10px 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; backdrop-filter: blur(10px); }
-.greeting-label { font-size: 11px; color: var(--text-muted); font-weight: bold; }
-.greeting-value { font-family: inherit; font-size: 16px; font-weight: 900; color: var(--gold-neon); text-shadow: 0 0 10px rgba(212, 175, 55, 0.4); }
-
-/* Layout Structure */
-.qiyamah-layout { display: flex; width: 100%; max-width: 1400px; height: calc(100vh - 100px); z-index: 10; gap: 40px; padding: 20px; align-items: center; justify-content: center; }
-
-/* The Central Canvas */
-.genesis-canvas { flex: 1; height: 100%; border: 2px dashed rgba(212, 175, 55, 0.2); border-radius: 20px; display: flex; align-items: center; justify-content: center; overflow-y: auto; position: relative; transition: 0.4s; background: radial-gradient(circle, rgba(20, 5, 5, 0.6), rgba(0,0,0,0.8)); }
-.empty-canvas:hover { border-color: var(--gold-neon); background: radial-gradient(circle, rgba(212, 175, 55, 0.05), rgba(0,0,0,0.8)); }
-.active-canvas { border-style: solid; border-color: var(--crimson-dim); box-shadow: inset 0 0 50px rgba(139, 0, 0, 0.2); }
-.generating-state { border-color: var(--crimson-neon); box-shadow: 0 0 40px rgba(255, 42, 42, 0.2), inset 0 0 100px rgba(139, 0, 0, 0.4); animation: pulse-border 2s infinite; }
-
-.empty-prompt { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; max-width: 480px; padding: 20px 24px; overflow-y: auto; }
-
-/* IMPERIAL FIRST CREATOR IMPLEMENTATION (Article IX, Mandate 5): a
-   direct prompt input replaces the drag-drop asset system, whose
-   video/audio/image targets only ever fed the simulated, non-real
-   generation path. Only the text prompt and style reach the real
-   Launch Provider — so only they are offered. */
-.prompt-textarea { width: 100%; min-height: 90px; background: rgba(0,0,0,0.6); border: 1px solid var(--gold-dim); color: var(--text-main); padding: 12px 14px; border-radius: 8px; font-family: inherit; font-size: 14px; resize: vertical; outline: none; }
-.prompt-textarea:focus { border-color: var(--gold-neon); box-shadow: 0 0 10px rgba(212, 175, 55, 0.2); }
-.prompt-style-row { width: 100%; }
-.pulse-core { width: 40px; height: 40px; background: var(--gold-dim); border-radius: 50%; box-shadow: 0 0 30px var(--gold-neon); animation: pulse-core 3s infinite; }
-.empty-prompt h2 { color: var(--gold-neon); margin: 0; font-size: 24px; letter-spacing: 2px; }
-.empty-prompt p { color: var(--text-muted); font-size: 14px; }
-.import-btn { background: rgba(0,0,0,0.5); color: var(--gold-neon); border: 1px solid var(--gold-dim); padding: 10px 20px; border-radius: 6px; cursor: pointer; transition: 0.3s; font-family: inherit; font-weight: bold; margin-top: 10px; }
-.import-btn:hover { background: rgba(212, 175, 55, 0.1); border-color: var(--gold-neon); }
-
-/* Asset Nodes */
-.asset-node { background: rgba(0,0,0,0.8); padding: 30px; border-radius: 12px; text-align: center; max-width: 400px; backdrop-filter: blur(10px); }
-.node-type-badge { font-family: monospace; font-size: 12px; color: var(--gold-neon); letter-spacing: 2px; margin-bottom: 15px; }
-.node-content { font-size: 16px; line-height: 1.6; color: var(--text-main); font-style: italic; }
-
-/* Generating Progress */
-.genesis-progress { display: flex; flex-direction: column; align-items: center; gap: 30px; }
-.progress-circle { width: 150px; height: 150px; border-radius: 50%; border: 4px solid var(--crimson-dim); border-top-color: var(--crimson-neon); display: flex; align-items: center; justify-content: center; animation: spin 2s linear infinite; box-shadow: 0 0 30px rgba(255, 42, 42, 0.3); }
-.progress-value { font-family: monospace; font-size: 32px; font-weight: bold; color: #fff; animation: spin-reverse 2s linear infinite; }
-.generating-text { color: var(--crimson-neon); font-size: 18px; letter-spacing: 1px; }
-
-/* Floating Glass Panels (Right Side) */
-.floating-panels-container { width: 350px; display: flex; flex-direction: column; gap: 20px; height: 100%; justify-content: center; z-index: 20; }
-.glass-panel { background: var(--panel-glass); backdrop-filter: blur(20px); border-radius: 12px; padding: 25px; }
-.panel-tag { font-family: monospace; font-size: 10px; color: var(--crimson-neon); letter-spacing: 2px; margin-bottom: 5px; }
-.glass-panel h3 { color: #fff; margin: 0 0 20px 0; font-size: 18px; }
-
-.control-group { margin-bottom: 20px; }
-.control-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; font-weight: bold; }
-.cyber-select { width: 100%; background: rgba(0,0,0,0.6); border: 1px solid var(--crimson-dim); color: var(--text-main); padding: 10px; border-radius: 6px; font-family: inherit; outline: none; transition: 0.3s; }
-.cyber-select:focus { border-color: var(--crimson-neon); box-shadow: 0 0 10px rgba(255, 42, 42, 0.2); }
-.cyber-slider { width: 100%; accent-color: var(--crimson-neon); cursor: pointer; }
-
-.trigger-genesis-btn { background: linear-gradient(135deg, var(--crimson-dim), var(--crimson-neon)); border: 1px solid #ff4d4d; color: #fff; font-weight: 900; font-size: 16px; padding: 20px; border-radius: 12px; cursor: pointer; transition: 0.3s; font-family: inherit; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 10px 20px rgba(139, 0, 0, 0.4); margin-top: 10px; }
-.trigger-genesis-btn:hover { background: linear-gradient(135deg, var(--crimson-neon), #ff6666); box-shadow: 0 0 30px rgba(255, 42, 42, 0.6); transform: scale(1.02); }
-
-/* IMPERIAL FIRST CREATOR IMPLEMENTATION (Article IX, Mandate 4): the
-   itemized cost/currency breakdown and fictional balance are gone —
-   this is now a plain, honest confirmation of what will actually be
-   generated, nothing invented displayed alongside it. */
-.bill-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-.execution-bill { background: #0a0505; padding: 40px; border-radius: 16px; width: 450px; box-shadow: 0 20px 50px rgba(0,0,0,1); }
-.bill-title { color: var(--gold-neon); text-align: center; border-bottom: 1px dashed var(--crimson-dim); padding-bottom: 15px; margin-top: 0; }
-.bill-details { display: flex; flex-direction: column; gap: 15px; margin: 25px 0; }
-.bill-row { display: flex; flex-direction: column; gap: 6px; color: var(--text-main); font-size: 14px; }
-.bill-row span:first-child { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
-.bill-actions { display: flex; gap: 15px; margin-top: 30px; }
-.cancel-btn { flex: 1; background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); padding: 12px; border-radius: 8px; cursor: pointer; font-family: inherit; transition: 0.3s; }
-.cancel-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
-.confirm-btn { flex: 2; background: rgba(20, 15, 5, 0.9); color: var(--gold-neon); font-weight: bold; padding: 12px; border-radius: 8px; cursor: pointer; font-family: inherit; transition: 0.3s; }
-.confirm-btn:hover { background: rgba(212, 175, 55, 0.2); box-shadow: 0 0 20px rgba(212, 175, 55, 0.3); }
-
-/* The Neon Vortex Routing (Final Master) */
-.final-master-node { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 40px; background: rgba(0,0,0,0.8); border-radius: 16px; }
-.master-badge { color: var(--gold-neon); font-size: 18px; font-weight: bold; letter-spacing: 1px; }
-.vortex-routing { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.vortex-routing p { color: var(--text-muted); margin-bottom: 10px; }
-.vault-path-btn { background: transparent; border: 1px solid rgba(212, 185, 102, 0.4); color: rgba(212, 185, 102, 0.8); font-size: 0.88rem; padding: 10px 24px; border-radius: 8px; cursor: pointer; transition: 0.25s; font-family: inherit; letter-spacing: 0.03em; }
-.vault-path-btn:hover { background: rgba(212, 185, 102, 0.08); border-color: rgba(212, 185, 102, 0.7); color: rgba(212, 185, 102, 1); }
-.vortex-orbits { display: flex; gap: 20px; }
-.orbit-btn { background: rgba(10, 10, 10, 0.8); border: 1px solid #444; border-radius: 50%; width: 100px; height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; color: #fff; cursor: pointer; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); font-family: inherit; position: relative; overflow: hidden; }
-.orbit-btn span { font-weight: bold; font-size: 12px; z-index: 2; }
-.orbit-btn small { font-size: 9px; color: var(--text-muted); z-index: 2; }
-.orbit-btn::before { content: ''; position: absolute; inset: 0; border-radius: 50%; opacity: 0; transition: 0.4s; z-index: 1; }
-
-.orbit-ras::before { box-shadow: inset 0 0 30px #00a8ff; }
-.orbit-ras:hover { border-color: #00a8ff; transform: scale(1.1); box-shadow: 0 0 20px rgba(0, 168, 255, 0.4); }
-.orbit-ras:hover::before { opacity: 1; }
-
-.orbit-vault::before { box-shadow: inset 0 0 30px var(--gold-neon); }
-.orbit-vault:hover { border-color: var(--gold-neon); transform: scale(1.1); box-shadow: 0 0 20px rgba(212, 175, 55, 0.4); }
-.orbit-vault:hover::before { opacity: 1; }
-
-.orbit-makman::before { box-shadow: inset 0 0 30px #ff9f43; }
-.orbit-makman:hover { border-color: #ff9f43; transform: scale(1.1); box-shadow: 0 0 20px rgba(255, 159, 67, 0.4); }
-.orbit-makman:hover::before { opacity: 1; }
-
-
-/* IMPERIAL FIRST CREATOR IMPLEMENTATION — Storage (Article III/IX, B6
-   minimum form): an honest record of what a Creator has generated, in
-   the Chamber's own visual register rather than a bare file listing. */
-.your-generations { width: 100%; max-width: 900px; margin-top: 30px; padding: 0 20px; }
-.your-generations h3 { color: var(--gold-neon); font-size: 14px; letter-spacing: 1px; margin: 0 0 14px; text-align: center; }
-.generations-grid { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 6px; }
-.generation-card { flex: none; width: 120px; background: rgba(0,0,0,0.6); border: 1px solid rgba(212, 175, 55, 0.18); border-radius: 10px; overflow: hidden; text-align: left; }
-.generation-thumb { width: 100%; height: 90px; object-fit: cover; display: block; }
-.generation-meta { padding: 8px 10px; }
-.generation-prompt { font-size: 11px; color: var(--text-main); line-height: 1.3; margin: 0 0 4px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.generation-date { font-size: 9px; color: var(--text-muted); }
-
-/* Closing beat (Article IX, Mandate 7) — the ritual gets an authored
-   ending proportionate to its opening, and acknowledges the Creator. */
-.closing-beat { color: var(--text-main); font-size: 15px; line-height: 1.6; max-width: 340px; }
-.closing-beat strong { color: var(--gold-neon); }
-
-/* Honest ritual state (Article IX, Mandate 4/5) — no fabricated
-   percentage; an indeterminate spinner truthfully represents "working,
-   unknown duration" rather than invented precision. */
-.ritual-glyph { font-size: 32px; color: var(--gold-neon); }
-
-/* Upload Zone */
-.upload-divider {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--text-muted);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  margin-top: 4px;
-}
-.upload-divider::before,
-.upload-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: rgba(212, 175, 55, 0.15);
+body, html {
+  margin: 0; padding: 0; width: 100%; min-height: 100%;
+  background-color: var(--chamber-bg);
+  overflow-y: auto;
 }
 
-.upload-zone {
-  width: 100%;
+/* ─── Viewport ─────────────────────────────────────────────────────────── */
+
+.qiyamah-viewport {
+  position: relative;
+  min-height: 100vh;
+  color: var(--text-main);
+  font-family: var(--azma-font-family);
+  direction: rtl;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 18px 20px;
-  border: 1px dashed rgba(212, 175, 55, 0.25);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.35);
+}
+
+/* ─── Background — fixed so it persists while content scrolls ─────────── */
+
+.forge-background {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 0;
+}
+.crimson-nebula {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100vw; height: 100vh;
+  background: radial-gradient(circle at center, rgba(139,0,0,0.15) 0%, transparent 60%);
+  z-index: 1;
+}
+.cyber-grid-red {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,42,42,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,42,42,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  transform: perspective(1000px) rotateX(60deg) translateY(-100px) translateZ(-200px);
+  animation: gridMove 15s linear infinite;
+}
+
+/* ─── Header Strip ─────────────────────────────────────────────────────── */
+
+.qiyamah-header {
+  position: sticky; top: 0; z-index: 100;
+  width: 100%; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 24px; gap: 16px;
+  background: rgba(5, 2, 2, 0.9);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(139, 0, 0, 0.35);
+}
+
+.sovereign-exit-btn {
+  background: rgba(0,0,0,0.7);
+  border: 1px solid var(--gold-dim);
+  color: var(--gold-neon);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: bold; font-size: 12px;
+  cursor: pointer; transition: 0.25s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.sovereign-exit-btn:hover {
+  background: rgba(212,175,55,0.1);
+  border-color: var(--gold-neon);
+  box-shadow: 0 0 14px rgba(212,175,55,0.3);
+}
+
+.qiyamah-identity {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  text-align: center; flex: 1;
+}
+.chamber-label {
+  display: block;
+  font-size: 10px; letter-spacing: 0.14em; font-weight: bold;
+  color: var(--crimson-neon);
+}
+.creator-name {
+  font-size: 15px; font-weight: 900;
+  color: var(--gold-neon);
+  text-shadow: 0 0 8px rgba(212,175,55,0.35);
+}
+
+.generation-status {
+  display: flex; align-items: center; gap: 7px;
+  white-space: nowrap;
+}
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text-muted);
+  transition: background 0.4s;
+}
+.generation-status.status-active .status-dot {
+  background: var(--crimson-neon);
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+.status-text {
+  font-size: 11px; color: var(--text-muted);
+}
+.generation-status.status-active .status-text {
+  color: var(--crimson-neon);
+}
+
+/* ─── Neon borders ─────────────────────────────────────────────────────── */
+
+.neon-border-red {
+  border: 1px solid var(--crimson-dim);
+  box-shadow: 0 0 15px rgba(255,42,42,0.2), inset 0 0 10px rgba(139,0,0,0.5);
+}
+.neon-border-gold {
+  border: 1px solid var(--gold-neon) !important;
+  box-shadow: 0 0 12px rgba(212,175,55,0.2), inset 0 0 8px rgba(0,0,0,0.8);
+}
+
+/* ─── Workspace grid ───────────────────────────────────────────────────── */
+
+.qiyamah-workspace {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 24px;
+  width: 100%; max-width: 1200px;
+  margin: 36px auto 0;
+  padding: 0 24px;
+  z-index: 10; position: relative;
+  box-sizing: border-box;
+}
+
+/* ─── Sections — shared base ───────────────────────────────────────────── */
+
+.genesis-section,
+.upload-section {
+  background: var(--panel-glass);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  padding: 28px;
+  border: 1px solid rgba(139,0,0,0.3);
+  position: relative;
+}
+
+.section-label {
+  display: block;
+  font-size: 10px; letter-spacing: 0.14em; font-weight: bold;
+  color: var(--crimson-neon);
+  margin-bottom: 20px;
+  text-transform: uppercase;
+}
+
+/* Upload section gets a gold accent instead */
+.upload-section { border-color: rgba(212,175,55,0.18); }
+.upload-section-label { color: var(--gold-neon); }
+
+/* ─── Genesis form (idle state) ────────────────────────────────────────── */
+
+.genesis-form {
+  display: flex; flex-direction: column; gap: 14px;
+  align-items: center;
+}
+
+.pulse-core {
+  width: 36px; height: 36px;
+  background: var(--gold-dim); border-radius: 50%;
+  box-shadow: 0 0 28px var(--gold-neon);
+  animation: pulse-core 3s infinite;
+  flex-shrink: 0;
+}
+
+.genesis-invitation {
+  color: var(--text-muted); font-size: 13px; line-height: 1.6;
+  margin: 0; text-align: center;
+}
+
+.prompt-textarea {
+  width: 100%; min-height: 100px;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid var(--gold-dim);
+  color: var(--text-main);
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-family: inherit; font-size: 14px;
+  resize: vertical; outline: none;
+  box-sizing: border-box;
+}
+.prompt-textarea:focus {
+  border-color: var(--gold-neon);
+  box-shadow: 0 0 10px rgba(212,175,55,0.2);
+}
+
+.style-group { width: 100%; }
+.style-label {
+  display: block;
+  font-size: 11px; color: var(--text-muted); margin-bottom: 8px; font-weight: bold;
+}
+
+.cyber-select {
+  width: 100%;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid var(--crimson-dim);
+  color: var(--text-main);
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-family: inherit; font-size: 13px;
+  outline: none; transition: 0.25s;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
+}
+.cyber-select:focus {
+  border-color: var(--crimson-neon);
+  box-shadow: 0 0 10px rgba(255,42,42,0.2);
+}
+
+.import-btn {
+  background: rgba(0,0,0,0.5);
+  color: var(--gold-neon);
+  padding: 9px 18px;
+  border-radius: 6px;
+  cursor: pointer; transition: 0.25s;
+  font-family: inherit; font-weight: bold; font-size: 13px;
+  width: 100%;
+}
+.import-btn:hover {
+  background: rgba(212,175,55,0.08);
+  border-color: var(--gold-neon) !important;
+}
+
+.trigger-genesis-btn {
+  background: linear-gradient(135deg, var(--crimson-dim), var(--crimson-neon));
+  border: 1px solid #ff4d4d;
+  color: #fff;
+  font-weight: 900; font-size: 15px;
+  padding: 16px;
+  border-radius: 10px;
+  cursor: pointer; transition: 0.25s;
+  font-family: inherit;
+  letter-spacing: 0.04em;
+  box-shadow: 0 8px 18px rgba(139,0,0,0.4);
+  width: 100%;
+  text-decoration: none;
+  display: block;
+  text-align: center;
+  box-sizing: border-box;
+}
+.trigger-genesis-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--crimson-neon), #ff6666);
+  box-shadow: 0 0 28px rgba(255,42,42,0.55);
+  transform: translateY(-1px);
+}
+.trigger-genesis-btn:disabled {
+  opacity: 0.4; cursor: not-allowed; transform: none;
+}
+.error-action-link { display: block; }
+
+/* ─── Generating state ─────────────────────────────────────────────────── */
+
+.genesis-progress {
+  display: flex; flex-direction: column; align-items: center; gap: 28px;
+  padding: 40px 0;
+}
+.progress-circle {
+  width: 120px; height: 120px; border-radius: 50%;
+  border: 4px solid var(--crimson-dim);
+  border-top-color: var(--crimson-neon);
+  display: flex; align-items: center; justify-content: center;
+  animation: spin 2s linear infinite;
+  box-shadow: 0 0 30px rgba(255,42,42,0.25);
+}
+.ritual-glyph {
+  font-size: 28px; color: var(--gold-neon);
+  animation: spin-reverse 2s linear infinite;
+}
+.generating-text {
+  color: var(--crimson-neon); font-size: 15px; letter-spacing: 0.04em;
+  text-align: center; margin: 0;
+}
+
+.pulse-text { animation: pulse-text 2s ease-in-out infinite; }
+
+/* ─── Error state ──────────────────────────────────────────────────────── */
+
+.error-state {
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  padding: 36px 16px; text-align: center;
+}
+.error-icon {
+  font-size: 36px; color: var(--crimson-neon);
+  filter: drop-shadow(0 0 8px rgba(255,42,42,0.5));
+}
+.error-message {
+  color: var(--text-main); font-size: 14px; line-height: 1.65;
+  margin: 0; max-width: 380px;
+}
+
+/* ─── Master result (generation success) ───────────────────────────────── */
+
+.master-result {
+  display: flex; flex-direction: column; align-items: center; gap: 20px;
+  text-align: center;
+}
+.master-badge {
+  color: var(--gold-neon); font-size: 16px; font-weight: bold;
+  letter-spacing: 0.04em;
+}
+.master-preview {
+  max-width: 100%; max-height: 420px;
+  border-radius: 10px;
+  border: 1px solid rgba(212,175,55,0.3);
+  box-shadow: 0 0 20px rgba(0,0,0,0.6);
+  object-fit: contain;
+}
+.closing-beat {
+  color: var(--text-main); font-size: 14px; line-height: 1.6;
+  margin: 0; max-width: 360px;
+}
+.closing-beat strong { color: var(--gold-neon); }
+
+.result-actions {
+  display: flex; flex-direction: column; gap: 10px;
+  width: 100%;
+}
+
+.vault-path-btn {
+  background: transparent;
+  border: 1px solid rgba(212,185,102,0.4);
+  color: rgba(212,185,102,0.85);
+  font-size: 13px; padding: 10px 20px;
+  border-radius: 8px; cursor: pointer; transition: 0.22s;
+  font-family: inherit; letter-spacing: 0.03em;
+  width: 100%;
+}
+.vault-path-btn:hover {
+  background: rgba(212,185,102,0.08);
+  border-color: rgba(212,185,102,0.7);
+  color: rgba(212,185,102,1);
+}
+
+/* ─── Upload section ───────────────────────────────────────────────────── */
+
+.upload-invitation {
+  color: var(--text-muted); font-size: 13px; line-height: 1.6;
+  margin: 0 0 18px;
+}
+
+.upload-zone {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 28px 20px;
+  border: 1px dashed rgba(212,175,55,0.28);
+  border-radius: 10px;
+  background: rgba(0,0,0,0.3);
+  cursor: pointer; transition: border-color 0.2s, background 0.2s;
   user-select: none;
 }
 .upload-zone:hover,
 .upload-zone--dragging {
-  border-color: rgba(212, 175, 55, 0.55);
-  background: rgba(212, 175, 55, 0.04);
+  border-color: rgba(212,175,55,0.6);
+  background: rgba(212,175,55,0.04);
 }
 .upload-zone--uploading {
-  cursor: wait;
-  opacity: 0.75;
+  cursor: wait; opacity: 0.75;
 }
-.upload-zone-icon {
-  font-size: 22px;
-  color: var(--gold-dim);
-  line-height: 1;
-}
-.upload-zone-label {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-.upload-zone-hint {
-  font-size: 11px;
-  color: rgba(168, 159, 145, 0.55);
-  letter-spacing: 0.04em;
-}
+.upload-zone-icon { font-size: 24px; color: var(--gold-dim); line-height: 1; }
+.upload-zone-label { font-size: 13px; color: var(--text-muted); }
+.upload-zone-hint { font-size: 11px; color: rgba(168,159,145,0.55); letter-spacing: 0.04em; }
 .upload-error {
-  color: var(--crimson-neon);
-  font-size: 12px;
-  margin: 0;
+  color: var(--crimson-neon); font-size: 12px; margin: 8px 0 0;
   text-align: center;
 }
 
-/* Animations */
-@keyframes gridMove { 0% { background-position: 0 0; } 100% { background-position: 0 40px; } }
-@keyframes pulse-core { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 50px var(--gold-neon); } }
-@keyframes pulse-text { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; text-shadow: 0 0 20px rgba(255, 42, 42, 0.8); } }
-@keyframes pulse-border { 0%, 100% { border-color: rgba(255, 42, 42, 0.5); } 50% { border-color: var(--crimson-neon); } }
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-@keyframes spin-reverse { 0% { transform: rotate(0deg); } 100% { transform: rotate(-360deg); } }
+.upload-success {
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  text-align: center;
+}
+.success-badge {
+  color: var(--gold-neon); font-size: 14px; font-weight: bold;
+}
+.uploaded-preview {
+  max-width: 100%; max-height: 200px;
+  border-radius: 8px;
+  border: 1px solid rgba(212,175,55,0.25);
+  object-fit: cover;
+}
+.upload-actions {
+  display: flex; flex-direction: column; gap: 10px; width: 100%;
+}
+.secondary-btn {
+  background: transparent;
+  border: 1px solid var(--text-muted);
+  color: var(--text-muted);
+  padding: 9px 16px;
+  border-radius: 8px; cursor: pointer; transition: 0.2s;
+  font-family: inherit; font-size: 13px;
+  width: 100%;
+}
+.secondary-btn:hover {
+  border-color: var(--gold-dim);
+  color: var(--text-main);
+}
+
+/* ─── Gallery ──────────────────────────────────────────────────────────── */
+
+.your-generations {
+  z-index: 10; position: relative;
+  width: 100%; max-width: 1200px;
+  margin: 32px auto 60px;
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+.your-generations h3 {
+  color: var(--gold-neon); font-size: 13px; letter-spacing: 0.08em;
+  margin: 0 0 16px; text-align: center;
+  border-bottom: 1px solid rgba(212,175,55,0.12);
+  padding-bottom: 12px;
+}
+
+.gallery-empty {
+  color: var(--text-muted); font-size: 13px;
+  text-align: center; padding: 28px;
+  border: 1px dashed rgba(212,175,55,0.12);
+  border-radius: 10px;
+  margin: 0;
+}
+
+.generations-grid {
+  display: flex; gap: 14px;
+  overflow-x: auto; padding-bottom: 8px;
+}
+.generation-card {
+  flex: none; width: 130px;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(212,175,55,0.18);
+  border-radius: 10px; overflow: hidden;
+}
+.generation-thumb {
+  width: 100%; height: 96px; object-fit: cover; display: block;
+}
+.generation-meta { padding: 8px 10px; }
+.generation-prompt {
+  font-size: 11px; color: var(--text-main); line-height: 1.3;
+  margin: 0 0 4px;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.generation-date { font-size: 9px; color: var(--text-muted); }
+
+/* ─── Confirmation Modal ───────────────────────────────────────────────── */
+
+.bill-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.88); backdrop-filter: blur(10px);
+  z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; box-sizing: border-box;
+}
+.execution-bill {
+  background: #0a0505; padding: 36px; border-radius: 16px;
+  width: 100%; max-width: 440px;
+  box-shadow: 0 20px 50px rgba(0,0,0,1);
+}
+.bill-title {
+  color: var(--gold-neon); text-align: center;
+  border-bottom: 1px dashed var(--crimson-dim);
+  padding-bottom: 14px; margin-top: 0;
+}
+.bill-details { display: flex; flex-direction: column; gap: 14px; margin: 22px 0; }
+.bill-row {
+  display: flex; flex-direction: column; gap: 5px;
+  color: var(--text-main); font-size: 14px;
+}
+.bill-row span:first-child {
+  color: var(--text-muted); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.bill-actions { display: flex; gap: 12px; margin-top: 28px; }
+.cancel-btn {
+  flex: 1; background: transparent;
+  border: 1px solid var(--text-muted); color: var(--text-muted);
+  padding: 12px; border-radius: 8px; cursor: pointer;
+  font-family: inherit; transition: 0.2s;
+}
+.cancel-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.confirm-btn {
+  flex: 2; background: rgba(20,15,5,0.9);
+  color: var(--gold-neon); font-weight: bold;
+  padding: 12px; border-radius: 8px; cursor: pointer;
+  font-family: inherit; transition: 0.2s;
+}
+.confirm-btn:hover {
+  background: rgba(212,175,55,0.18);
+  box-shadow: 0 0 20px rgba(212,175,55,0.3);
+}
+
+/* ─── Responsive ───────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .qiyamah-workspace { grid-template-columns: 1fr; }
+  .qiyamah-header { padding: 12px 16px; }
+  .creator-name { font-size: 13px; }
+}
+
+@media (max-width: 520px) {
+  .qiyamah-workspace { padding: 0 14px; margin-top: 24px; }
+  .your-generations  { padding: 0 14px; }
+  .genesis-section,
+  .upload-section    { padding: 20px 16px; }
+}
+
+/* ─── Animations ───────────────────────────────────────────────────────── */
+
+@keyframes gridMove {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 40px; }
+}
+@keyframes pulse-core {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50%       { transform: scale(1.18); opacity: 1; box-shadow: 0 0 46px var(--gold-neon); }
+}
+@keyframes pulse-text {
+  0%, 100% { opacity: 0.75; }
+  50%       { opacity: 1; text-shadow: 0 0 18px rgba(255,42,42,0.75); }
+}
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.4); opacity: 0.7; }
+}
+@keyframes spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes spin-reverse {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-core, .pulse-text, .pulse-dot,
+  .progress-circle, .ritual-glyph,
+  .cyber-grid-red { animation: none; }
+}
