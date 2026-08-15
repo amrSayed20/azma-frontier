@@ -15,4 +15,8 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
+  // Limit parallel workers to reduce simultaneous real-HTTP requests across
+  // test files hitting the same external APIs (Wikipedia, Reddit, Gutenberg),
+  // which causes rate-limiting (HTTP 429) when the full suite runs at once.
+  maxWorkers: 2,
 };

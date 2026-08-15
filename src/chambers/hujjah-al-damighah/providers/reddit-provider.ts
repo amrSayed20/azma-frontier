@@ -150,13 +150,19 @@ export class RedditProvider implements IRepositoryProvider {
     url.searchParams.set('limit', String(Math.min(limit, 10)));
     url.searchParams.set('t', 'year');
 
-    const response = await fetch(url.toString(), {
-      headers: {
-        'User-Agent': USER_AGENT,
-        'Accept': 'application/json',
-      },
-      signal: AbortSignal.timeout(10000),
-    });
+    let response: Response;
+    try {
+      response = await fetch(url.toString(), {
+        headers: {
+          'User-Agent': USER_AGENT,
+          'Accept': 'application/json',
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+    } catch {
+      console.warn('[RedditProvider] Search request failed (network error or timeout). Returning empty results.');
+      return [];
+    }
 
     if (response.status === 403 || response.status === 429) {
       // Reddit restricts unauthenticated API access in some environments.
