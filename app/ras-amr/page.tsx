@@ -407,7 +407,6 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import { RasAmrExperience } from '@/src/imperial-experience-engine';
 import type { VaultAsset, AssetFamily } from '@/src/vault/sovereign-vault-types';
@@ -538,7 +537,6 @@ const DIRECTION_NODE_ROLE_LABELS: Record<DirectionNodeRole, string> = {
 
 
 export default function RasAmrChamber() {
-  const router = useRouter();
   const { goTo } = useConstitutionalNavigation();
   
   // --- Core States ---
@@ -1329,7 +1327,7 @@ export default function RasAmrChamber() {
         }
       } catch { /* ignore — navigation still proceeds */ }
     }
-    router.push('/makman-al-ghayah');
+    goTo('/makman-al-ghayah');
   };
 
   // PACKAGE F — CONSTITUTIONAL CAPABILITY REVELATION

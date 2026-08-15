@@ -21,7 +21,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import './sovereign-vault.css';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
@@ -40,7 +39,7 @@ interface SovereignVaultDef {
 }
 
 const SOVEREIGN_VAULTS: SovereignVaultDef[] = [
-  { id: 'investigations', nameAr: 'خزنة التحقيقات',    descAr: 'أدلة ونتائج المحاكم المعرفية',         icon: '⚖',  personality: 'crimson', accentRgb: '180,40,40'  },
+  { id: 'investigations', nameAr: 'خزنة التحقيقات',    descAr: 'أدلة ونتائج بحوث حجرة المعرفة',         icon: '✦',  personality: 'crimson', accentRgb: '180,40,40'  },
   { id: 'creative',       nameAr: 'خزنة الإبداع',       descAr: 'المنتجات الإبداعية والأعمال الفنية',    icon: '✦',  personality: 'violet',  accentRgb: '120,40,200' },
   { id: 'characters',     nameAr: 'خزنة الشخصيات',     descAr: 'هويات الذكاء الاصطناعي والشخصيات',     icon: '◈',  personality: 'indigo',  accentRgb: '40,80,220'  },
   { id: 'audiovisual',    nameAr: 'خزنة الصوت والصورة', descAr: 'اللقطات والأصوات السيادية المنجزة',   icon: '◎',  personality: 'teal',    accentRgb: '20,140,140' },
@@ -179,12 +178,12 @@ function popIncomingTransfer(): SovereignTreasure | null {
       id:      `inv-${Date.now()}`,
       titleAr: d.query.slice(0, 80),
       vaultId: 'investigations',
-      origin:  'المحكمة الإمبراطورية للمعرفة',
+      origin:  'حجرة المعرفة السيادية',
       preview: `${d.evidenceCount ?? 0} أدلة · ثقة ${Math.round((d.averageScore ?? 0) * 100)}%`,
       status:  'living',
       addedAt: Date.now(),
       journey: [
-        { actionAr: 'تحقيق في المحكمة المعرفية', chamberAr: 'حجة الدامغة', at: d.timestamp ?? Date.now() },
+        { actionAr: 'بحث في حجرة المعرفة', chamberAr: 'حجة الدامغة', at: d.timestamp ?? Date.now() },
         { actionAr: 'إيداع في القصر السيادي',    chamberAr: 'القصر السيادي', at: Date.now() },
       ],
     };
@@ -299,7 +298,6 @@ type AuthMethod  = 'pin' | 'face' | 'bio';
 // ── Main Component ────────────────────────────────────────────────────────
 
 export default function SovereignVaultPalace() {
-  const router = useRouter();
   const { goTo } = useConstitutionalNavigation();
 
   // Auth
@@ -462,7 +460,7 @@ export default function SovereignVaultPalace() {
     setCompanionMsg(PALACE_COMPANION.departure);
     try { sessionStorage.setItem('azma.transfer.origin', 'palace'); } catch { /* ignore */ }
     setPhase('sealing');
-    setTimeout(() => router.push(destination), 950);
+    setTimeout(() => goTo(destination), 950);
   }
 
   function handleTreasureTransfer(t: SovereignTreasure, destination: string) {
@@ -478,7 +476,7 @@ export default function SovereignVaultPalace() {
     } catch { /* ignore */ }
     setCompanionMsg('الكنز يواصل رحلته.');
     setPhase('sealing');
-    setTimeout(() => router.push(destination), 950);
+    setTimeout(() => goTo(destination), 950);
   }
 
   // ── Actions on Treasure ───────────────────────────────────────────────────
@@ -724,7 +722,7 @@ export default function SovereignVaultPalace() {
         <div className="ceremony-overlay" aria-live="assertive">
           <div className="ceremony-interior">
             <div className="ceremony-arrival">
-              <span className="ceremony-glyph" aria-hidden="true">⚖</span>
+              <span className="ceremony-glyph" aria-hidden="true">✦</span>
               <h2 className="ceremony-origin">{incomingTreasure.origin}</h2>
             </div>
             <div className="ceremony-treasure">
@@ -860,7 +858,7 @@ export default function SovereignVaultPalace() {
 
                   {/* Connected Chambers — the Empire is one world */}
                   <div className="atrium-dispatch">
-                    <div className="atrium-section-label">المحاكم المتصلة</div>
+                    <div className="atrium-section-label">الحجرات المتصلة</div>
                     <div className="atrium-dispatch-row">
                       <button className="atrium-route-btn route-hujjah"  onClick={() => handleTransfer('/hujjah-al-damighah')}>حجة الدامغة</button>
                       <button className="atrium-route-btn route-qiyamah" onClick={() => handleTransfer('/qiyamah-chamber')}>القيامة</button>
@@ -973,10 +971,10 @@ export default function SovereignVaultPalace() {
                             className="journey-path path-hujjah"
                             onClick={() => handleTreasureTransfer(selectedTreasure, '/hujjah-al-damighah')}
                           >
-                            <span className="path-icon" aria-hidden="true">⚖</span>
+                            <span className="path-icon" aria-hidden="true">✦</span>
                             <div className="path-meta">
                               <span className="path-name">حجة الدامغة</span>
-                              <span className="path-desc">تحقيق معرفي</span>
+                              <span className="path-desc">بحث معرفي</span>
                             </div>
                           </button>
                           <button
