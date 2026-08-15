@@ -65,7 +65,8 @@ export function createSovereignAIIntegrationRuntime(
     new PromptDispatcher(),
     new ResponseNormalizer(costAnalyzer),
     new AIMemoryBridge(),
-    runtimeState
+    runtimeState,
+    healthMonitor
   );
 
   DEFAULT_CAPABILITIES.forEach((capability) => {

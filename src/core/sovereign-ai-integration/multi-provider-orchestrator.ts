@@ -5,11 +5,15 @@ import { ContextBuilder } from './context-builder';
 import { FallbackEngine } from './fallback-engine';
 import { LoadDistributionEngine } from './load-distribution-engine';
 import { PromptDispatcher } from './prompt-dispatcher';
+import { ProviderHealthMonitor } from './provider-health-monitor';
 import { ProviderRegistry } from './provider-registry';
 import { ProviderSelectionEngine } from './provider-selection-engine';
 import { ResponseNormalizer } from './response-normalizer';
 import { SovereignAIIntegrationRuntimeState } from './runtime-state';
 import { NormalizedAIResponse, SovereignAIRequest } from './provider-contracts';
+
+// EMA weight applied to each new dispatch sample (20% new, 80% prior history)
+const HEALTH_EMA_ALPHA = 0.2;
 
 export class MultiProviderOrchestrator {
   constructor(
@@ -23,7 +27,8 @@ export class MultiProviderOrchestrator {
     private readonly dispatcher: PromptDispatcher,
     private readonly normalizer: ResponseNormalizer,
     private readonly memoryBridge: AIMemoryBridge,
-    private readonly runtimeState: SovereignAIIntegrationRuntimeState
+    private readonly runtimeState: SovereignAIIntegrationRuntimeState,
+    private readonly healthMonitor: ProviderHealthMonitor
   ) {}
 
   public async execute(request: SovereignAIRequest): Promise<NormalizedAIResponse> {
@@ -52,11 +57,26 @@ export class MultiProviderOrchestrator {
 
       try {
         const raw = await this.dispatcher.dispatch(provider, { request, context, routing });
+        const prev = this.healthMonitor.get(provider.descriptor.providerId);
+        this.healthMonitor.record(provider.descriptor.providerId, {
+          status: 'available',
+          successRate: HEALTH_EMA_ALPHA + (1 - HEALTH_EMA_ALPHA) * (prev?.successRate ?? 1),
+          averageLatencyMs: HEALTH_EMA_ALPHA * raw.latencyMs + (1 - HEALTH_EMA_ALPHA) * (prev?.averageLatencyMs ?? 0),
+          availabilityScore: 1,
+          lastCheckedAt: new Date(),
+        });
         const response = this.normalizer.normalize(request, routing, raw, provider.descriptor);
         this.runtimeState.recordResponse(response);
         this.memoryBridge.store({ request, routing, response });
         return response;
       } catch {
+        const prev = this.healthMonitor.get(provider.descriptor.providerId);
+        this.healthMonitor.record(provider.descriptor.providerId, {
+          status: 'degraded',
+          successRate: (1 - HEALTH_EMA_ALPHA) * (prev?.successRate ?? 1),
+          availabilityScore: 0.5,
+          lastCheckedAt: new Date(),
+        });
         this.runtimeState.recordFallbackAttempt();
       }
     }

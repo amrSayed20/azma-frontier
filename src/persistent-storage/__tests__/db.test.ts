@@ -12,11 +12,11 @@ describe('Persistent Storage Foundation — database connection', () => {
   it('applies the full schema to a freshly created database', () => {
     const db = createDatabase(':memory:');
     const tables = db
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
       .all()
       .map((row) => row.name);
 
-    expect(tables).toEqual(['cinematic_ledger', 'creators', 'fulfillment_assessments', 'generation_records', 'goals', 'knowledge_investigations', 'observations', 'operation_ledger', 'sessions', 'sovereign_canvases', 'subscriptions', 'vault_assets']);
+    expect(tables).toEqual(['cinematic_ledger', 'consumption_records', 'creators', 'fulfillment_assessments', 'generation_records', 'goals', 'knowledge_investigations', 'observations', 'operation_ledger', 'sessions', 'sovereign_canvases', 'subscriptions', 'vault_assets']);
     db.close();
   });
 
