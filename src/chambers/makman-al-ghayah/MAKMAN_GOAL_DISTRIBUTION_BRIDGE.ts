@@ -120,6 +120,7 @@ export class MakmanGoalDistributionBridge {
     }
 
     const now = Date.now();
+    const isScheduledInFuture = intent.scheduledPublishAt !== undefined && intent.scheduledPublishAt > now;
     const publication: SovereignPublication = {
       publicationId: generatePublicationId(),
       sourceCompilationId: intent.compiledAssemblyGraph.compilationId,
@@ -128,8 +129,9 @@ export class MakmanGoalDistributionBridge {
       description: goal.description,
       coverArtUri: intent.coverArtUri,
       accessPolicy: intent.accessPolicy,
-      isPublished: true,
-      publishedAt: now,
+      isPublished: !isScheduledInFuture,
+      publishedAt: isScheduledInFuture ? undefined : now,
+      scheduledPublishAt: intent.scheduledPublishAt,
       createdAt: now,
       updatedAt: now,
     };

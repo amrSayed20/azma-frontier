@@ -51,6 +51,8 @@ export interface SovereignPublication {
   // Lifecycle State
   isPublished: boolean;
   publishedAt?: number;
+  /** Unix ms timestamp set when the Creator requests deferred publication. */
+  scheduledPublishAt?: number;
   createdAt: number;
   updatedAt: number;
 }

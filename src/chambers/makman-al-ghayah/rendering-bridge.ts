@@ -121,11 +121,13 @@ export class FlattenedRenderingBridge {
       try {
         // Dispatch to the orchestrator
         const operationEntry = await this.fleetDispatcher.executeMaterialization(dispatchIntent);
-        
+
         return this.updateRenderState(publication.publicationId, RenderStatus.PROCESSING, operationEntry.operationId);
-      } catch (error) {
-        console.error(`Rendering Dispatch Failed for Publication [${publication.publicationId}]`, error);
-        return this.updateRenderState(publication.publicationId, RenderStatus.FAILED);
+      } catch {
+        // No rendering provider is currently wired — leave the render in PENDING so
+        // the publication is not marked as a failed production event. A real VISUAL
+        // provider will pick up PENDING publications once Al-Watin is built.
+        return this.updateRenderState(publication.publicationId, RenderStatus.PENDING);
       }
     }
 

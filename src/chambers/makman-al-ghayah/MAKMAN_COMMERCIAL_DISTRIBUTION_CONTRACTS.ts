@@ -30,6 +30,8 @@ export interface MakmanCommercialIntent {
   readonly compiledAssemblyGraph: CompiledAssemblyGraph;
   readonly accessPolicy: AccessPolicy;
   readonly coverArtUri?: string;
+  /** Unix ms timestamp. When present and in the future, publication is created in scheduled (not yet published) state. */
+  readonly scheduledPublishAt?: number;
 }
 
 export interface GoalDistributionBridgeResult {

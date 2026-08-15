@@ -121,9 +121,10 @@ export default function MakmanAlGhayah() {
   const realProduction = useSyncExternalStore(subscribeToNothing, getRealProductionSnapshot, getRealProductionServerSnapshot);
   const compiledGraph  = useSyncExternalStore(subscribeToNothing, getCompiledGraphSnapshot, getCompiledGraphServerSnapshot);
 
-  const descriptionRef         = useRef<HTMLTextAreaElement>(null);
-  const pacingPreferenceRef    = useRef<HTMLSelectElement>(null);
+  const descriptionRef          = useRef<HTMLTextAreaElement>(null);
+  const pacingPreferenceRef     = useRef<HTMLSelectElement>(null);
   const transitionPreferenceRef = useRef<HTMLSelectElement>(null);
+  const scheduledPublishAtRef   = useRef<HTMLInputElement>(null);
 
   // ── Sovereign Purpose ───────────────────────────────────────────────
   const [sovereignPurpose,  setSovereignPurpose]  = useState<string | null>(null);
@@ -219,6 +220,9 @@ export default function MakmanAlGhayah() {
             publisherTenantId: compiledGraph.subscriberTenantId,
             compiledAssemblyGraph: compiledGraph,
             accessPolicy: { distributionTier: DistributionTier.PRIVATE, requiresAgeVerification: false },
+            ...(scheduledPublishAtRef.current?.value
+              ? { scheduledPublishAt: new Date(scheduledPublishAtRef.current.value).getTime() }
+              : {}),
           },
           ...(pacingPreferenceRef.current?.value
             ? { pacingPreference: pacingPreferenceRef.current.value as PacingPreference }
@@ -481,6 +485,15 @@ export default function MakmanAlGhayah() {
                   <option value={TransitionPreference.DIRECT}>مباشر</option>
                 </select>
               </div>
+              <div className="form-group">
+                <label>تاريخ النشر — فوري إذا تُرك فارغاً</label>
+                <input
+                  ref={scheduledPublishAtRef}
+                  type="datetime-local"
+                  className="cyber-input"
+                  min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
+                />
+              </div>
             </div>
 
             <div className="action-row">
@@ -501,6 +514,9 @@ export default function MakmanAlGhayah() {
               <>
                 <p className="project-status">
                   هدف مسجّل: {realDistributionResult.goal?.goalId} — منشور: {realDistributionResult.bridgeResult.publication.publicationId}
+                  {(realDistributionResult.bridgeResult.publication as { scheduledPublishAt?: number }).scheduledPublishAt
+                    ? ` — مجدول: ${new Date((realDistributionResult.bridgeResult.publication as { scheduledPublishAt: number }).scheduledPublishAt).toLocaleString('ar-EG')}`
+                    : ' — نُشر فوراً'}
                 </p>
                 <div className="action-row">
                   <button
