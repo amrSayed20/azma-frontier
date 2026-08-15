@@ -1,0 +1,150 @@
+import type { GoldenReferenceImageAsset } from './golden-asset-types';
+
+const V = '1.0.0';
+
+// Golden reference image assets for all image-editing benchmark specs.
+// Each asset links to an existing BenchmarkReferenceFixture via fixtureId.
+// Binary reference images are never stored in source; they must be acquired
+// per acquisitionGuidance before the benchmark can be run.
+// Status: 'ready' because the specification is complete.
+// Binary acquisition follows routine CC0 licensing — no special authorization required.
+
+export const IMAGE_EDITING_GOLDEN_ASSETS: readonly GoldenReferenceImageAsset[] = [
+  {
+    assetId: 'ga-img-edit-001',
+    assetVersion: V,
+    domain: 'image-editing',
+    testId: 'img-edit-001',
+    description: 'Reference image spec for object-removal inpainting evaluation (parked car on cobblestone street)',
+    intendedObjective: 'Measure inpainting quality: clean object mask, background reconstruction matching surrounding texture, and complete preservation of all unaffected scene elements.',
+    permittedUsage: 'benchmark-only',
+    status: 'ready',
+    assetType: 'reference-image',
+    fixtureId: 'ref-img-street-cobblestone-v1',
+    imageDescription: 'Daytime photograph of a narrow European cobblestone street. A single parked car occupies the foreground. Pedestrians visible mid-distance. Sky and building facades in background.',
+    requiredCharacteristics: [
+      'Single car clearly isolated in foreground with no other vehicles',
+      'Cobblestones visible beneath and around the car',
+      'Pedestrians or figures visible behind the car (must remain post-edit)',
+      'Even daylight illumination — no strong shadows from the car onto surrounding pavement',
+    ],
+    formatRequirements: { format: 'PNG or JPEG', minResolution: '1024x1024', colorSpace: 'sRGB', maxFileSizeMB: 10 },
+    editInstruction: 'Remove the parked car from the foreground of the street scene. Reconstruct the cobblestone pavement beneath and around where the car stood, matching the texture, color, and mortar pattern of the surrounding cobblestones. The rest of the scene — pedestrians, buildings, sky — must remain completely unchanged.',
+    mustChange: [
+      'The parked car: fully removed from the image',
+      'The pavement region previously hidden under and around the car: reconstructed as matching cobblestone',
+    ],
+    mustNotChange: [
+      'All pedestrians and background figures',
+      'Building facades and architectural elements',
+      'Sky and any clouds',
+      'Cobblestone texture, mortar color, and stone variation in all surrounding areas',
+      'Overall lighting direction and intensity',
+    ],
+    evaluationDimensions: ['quality', 'promptAdherence', 'detail', 'consistency', 'editingFidelity', 'usefulness'],
+    acquisitionGuidance: 'Use a CC0-licensed photograph of a European cobblestone street with a single parked car in the foreground. The car must be clearly isolated with visible cobblestones around it. Pedestrians or street activity must be visible behind the car. Minimum 1024x1024. No watermarks.',
+  },
+  {
+    assetId: 'ga-img-edit-002',
+    assetVersion: V,
+    domain: 'image-editing',
+    testId: 'img-edit-002',
+    description: 'Reference image spec for impressionist style-transfer evaluation (cityscape)',
+    intendedObjective: 'Measure balance between style application depth and compositional structure preservation: the skyline must remain fully recognizable after painterly transformation.',
+    permittedUsage: 'benchmark-only',
+    status: 'ready',
+    assetType: 'reference-image',
+    fixtureId: 'ref-img-cityscape-v1',
+    imageDescription: 'Daytime cityscape photograph. A recognizable skyline of tall buildings and/or towers occupies the upper frame. A river or waterway is visible in the foreground. No dominant foreground objects.',
+    requiredCharacteristics: [
+      'Skyline must include at least 5 distinct buildings at varying heights',
+      'River or waterway clearly visible in foreground',
+      'Daylight — no night or dusk lighting',
+      'No text overlays or watermarks on the image',
+      'Buildings must be geographically non-specific (no brand logos, no famous landmarks that carry legal constraints)',
+    ],
+    formatRequirements: { format: 'PNG or JPEG', minResolution: '1280x720', colorSpace: 'sRGB', maxFileSizeMB: 10 },
+    editInstruction: 'Apply an impressionist oil painting style to the cityscape image: visible directional brushstrokes, soft color blending, warm-shifted palette. Building positions, skyline silhouette, river location, and overall composition must remain clearly recognizable. Do not alter the scene layout.',
+    mustChange: [
+      'Photographic rendering converted to impressionist oil painting aesthetic',
+      'Palette shifted warm with visible color blending',
+      'Brushstroke texture applied throughout',
+    ],
+    mustNotChange: [
+      'Relative positions of buildings in the skyline',
+      'River location and approximate width',
+      'Overall compositional proportions (foreground/sky ratio)',
+      'Horizon line position',
+    ],
+    evaluationDimensions: ['quality', 'promptAdherence', 'detail', 'consistency', 'editingFidelity', 'usefulness'],
+    acquisitionGuidance: 'Use a CC0-licensed skyline photograph. Required: identifiable urban skyline (5+ buildings), river in foreground, no copyright watermarks, no legally restricted landmarks, minimum 1280x720.',
+  },
+  {
+    assetId: 'ga-img-edit-003',
+    assetVersion: V,
+    domain: 'image-editing',
+    testId: 'img-edit-003',
+    description: "Reference image spec for canvas-fill inpainting evaluation (artist's atelier)",
+    intendedObjective: "Measure contextually appropriate masked region fill: the inserted painting must respect the atelier's existing lighting, perspective, and aesthetic without overflowing the mask boundary.",
+    permittedUsage: 'benchmark-only',
+    status: 'ready',
+    assetType: 'reference-image',
+    fixtureId: 'ref-img-atelier-v1',
+    imageDescription: "An artist's studio (atelier) interior. An easel with a blank or near-blank white canvas is the primary foreground subject. Natural window light enters from the left side. Oil painting materials visible. Warm ambient tone.",
+    requiredCharacteristics: [
+      'Easel clearly upright in a stable position, canvas clearly visible and blank',
+      'Window light source visually identifiable from the left',
+      'Oil painting materials present (palette, brushes, or similar)',
+      'No person or figure in frame',
+      'Canvas edges cleanly defined against the atelier background',
+    ],
+    formatRequirements: { format: 'PNG or JPEG', minResolution: '1024x1024', colorSpace: 'sRGB', maxFileSizeMB: 10 },
+    editInstruction: "Replace the blank white canvas on the easel with a realistic mountain landscape oil painting. The inserted painting must look like it belongs in the atelier: warm oil-on-canvas texture, consistent directional lighting from the window on the left, small visible brushstrokes. The easel frame and surrounding room must remain unchanged.",
+    mustChange: [
+      'The blank canvas surface: replaced with a painted mountain landscape',
+    ],
+    mustNotChange: [
+      'The easel frame and legs',
+      'All atelier room elements: walls, floor, furniture, art materials',
+      'Window light source and ambient lighting direction',
+      'Any foreground objects not on the canvas',
+    ],
+    evaluationDimensions: ['quality', 'promptAdherence', 'detail', 'consistency', 'editingFidelity', 'usefulness'],
+    acquisitionGuidance: "Use a CC0-licensed interior photograph of an artist's studio. Canvas must be clearly visible on an easel and must be blank or nearly blank (white or light grey). Window must be the primary light source, visible from the left side. No person in frame. Minimum 1024x1024.",
+  },
+  {
+    assetId: 'ga-img-edit-004',
+    assetVersion: V,
+    domain: 'image-editing',
+    testId: 'img-edit-004',
+    description: 'Reference image spec for white-balance color-correction evaluation (cool interior)',
+    intendedObjective: 'Measure ability to apply a uniform global color temperature shift without altering structure, contrast, saturation, or introducing hue artifacts.',
+    permittedUsage: 'benchmark-only',
+    status: 'ready',
+    assetType: 'reference-image',
+    fixtureId: 'ref-img-cool-interior-v1',
+    imageDescription: 'A minimalist living room interior photographed in cool daylight. White or light grey walls, neutral furniture, natural textures. No strong colored objects that would resist a white-balance correction.',
+    requiredCharacteristics: [
+      'Color temperature measurably cool: approximately 4000–5000K',
+      'Minimalist composition with no strongly saturated accent objects',
+      'Fine structural detail visible: furniture edges, fabric texture, floor material',
+      'Even ambient lighting — no strong directional shadows or mixed light sources',
+      'No people or pets',
+    ],
+    formatRequirements: { format: 'PNG or JPEG', minResolution: '1024x1024', colorSpace: 'sRGB', maxFileSizeMB: 10 },
+    editInstruction: 'Shift the white balance to approximately 6500K (warm/tungsten). Apply the change uniformly across the entire image. Do not increase sharpness, do not boost contrast, do not crush shadows, do not alter saturation. All fine structural detail, shadow gradients, and furniture edges must remain identical to the source.',
+    mustChange: [
+      'Overall color temperature shifted warm to approximately 6500K',
+    ],
+    mustNotChange: [
+      'Sharpness: no change from source',
+      'Contrast: no change from source',
+      'Shadow detail: fully preserved, no crushing',
+      'Saturation: no change from source',
+      'All fine structural detail: furniture edges, fabric texture, floor material',
+      'Composition and framing: pixel-exact',
+    ],
+    evaluationDimensions: ['quality', 'promptAdherence', 'detail', 'consistency', 'editingFidelity', 'usefulness'],
+    acquisitionGuidance: 'Use a CC0-licensed interior photograph. Required: measurably cool color temperature (~4000–5000K), minimalist/neutral palette, fine detail visible in furniture, no people, minimum 1024x1024. Avoid images with bright colored accent objects as they make the shift result ambiguous.',
+  },
+];

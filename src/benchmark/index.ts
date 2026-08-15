@@ -1,4 +1,5 @@
 export * from './benchmark-version';
+export * from './golden-assets';
 export * from './benchmark-types';
 export * from './benchmark-scoring-engine';
 export * from './benchmark-runner';
