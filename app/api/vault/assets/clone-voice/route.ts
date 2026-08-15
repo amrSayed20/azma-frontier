@@ -7,6 +7,11 @@ import { SovereignVaultManager } from '../../../../../src/vault/sovereign-vault-
 import { AssetFamily, isVoiceAsset } from '../../../../../src/vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../../../../src/core/sovereign-orchestrator/qiyamah-intent-types';
 import { cloneVoiceViaProvider } from '../../../../../src/chambers/ras-al-amr/voice-cloning-provider';
+import { getDb } from '../../../../../src/persistent-storage';
+import { ConsumptionRepository } from '../../../../../src/persistent-storage/consumption-repository';
+import { OperationType } from '../../../../../src/consumption-ledger/consumption-ledger-contracts';
+import { estimateVoiceCloneCost, getCurrentMonthKey } from '../../../../../src/consumption-ledger/cost-estimator';
+import { checkConsumptionCap, BETA_USAGE_CAP } from '../../../../../src/consumption-ledger/consumption-cap-enforcer';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,6 +97,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // CONSUMPTION CAP: check before reading audio bytes or calling the provider.
+  if (session.role !== 'founder') {
+    const ledger = new ConsumptionRepository(getDb());
+    const usage = ledger.getMonthlyUsage(session.creatorId, getCurrentMonthKey());
+    const cap = checkConsumptionCap(usage, BETA_USAGE_CAP, OperationType.VOICE_CLONE, 1);
+    if (!cap.allowed) {
+      return NextResponse.json(
+        { status: 'failed', reason: 'usage-cap-reached', message: cap.reason },
+        { status: 429 },
+      );
+    }
+  }
+
   if (!isVoiceAsset(referenceAsset)) {
     return NextResponse.json(
       { status: 'failed', reason: 'not-a-voice', message: 'The selected asset is not a Voice Asset.' },
@@ -164,6 +182,21 @@ export async function POST(request: NextRequest) {
         providerId: 'voice-cloning-provider',
       },
     });
+
+    // Record consumption after confirmed deposit.
+    if (session.role !== 'founder') {
+      try {
+        const ledger = new ConsumptionRepository(getDb());
+        ledger.record({
+          creatorId: session.creatorId,
+          operationType: OperationType.VOICE_CLONE,
+          costUsdEstimate: estimateVoiceCloneCost(),
+          units: 1,
+          monthKey: getCurrentMonthKey(),
+          recordedAt: Date.now(),
+        });
+      } catch { /* non-fatal */ }
+    }
 
     return NextResponse.json({ status: 'succeeded', asset });
   } catch (error) {

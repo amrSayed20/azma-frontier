@@ -37,3 +37,5 @@ export { saveCanvas, loadCanvas, listCanvasesForTenant } from './canvas-reposito
 
 export type { CinematicProductionRecord } from './cinematic-ledger-repository';
 export { CinematicLedger } from './cinematic-ledger-repository';
+
+export { ConsumptionRepository } from './consumption-repository';

@@ -6,6 +6,11 @@ import { AssetFamily } from '../../../../../src/vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../../../../src/core/sovereign-orchestrator/qiyamah-intent-types';
 import { persistUploadedAsset } from '../../../../../src/vault/vault-asset-upload-storage';
 import { generateSpeechViaProvider, isTtsProviderVoice } from '../../../../../src/chambers/ras-al-amr/speech-provider';
+import { getDb } from '../../../../../src/persistent-storage';
+import { ConsumptionRepository } from '../../../../../src/persistent-storage/consumption-repository';
+import { OperationType } from '../../../../../src/consumption-ledger/consumption-ledger-contracts';
+import { estimateTtsCost, getCurrentMonthKey } from '../../../../../src/consumption-ledger/cost-estimator';
+import { checkConsumptionCap, BETA_USAGE_CAP } from '../../../../../src/consumption-ledger/consumption-cap-enforcer';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,6 +78,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'failed', reason: 'invalid-voice', message: 'A valid preset voice is required.' }, { status: 400 });
   }
 
+  // CONSUMPTION CAP: check before any provider call.
+  if (session.role !== 'founder') {
+    const ledger = new ConsumptionRepository(getDb());
+    const usage = ledger.getMonthlyUsage(session.creatorId, getCurrentMonthKey());
+    const charCount = (text as string).trim().length;
+    const cap = checkConsumptionCap(usage, BETA_USAGE_CAP, OperationType.TEXT_TO_SPEECH, charCount);
+    if (!cap.allowed) {
+      return NextResponse.json(
+        { status: 'failed', reason: 'usage-cap-reached', message: cap.reason },
+        { status: 429 },
+      );
+    }
+  }
+
   const voiceDisplayName =
     typeof voiceDisplayNameRaw === 'string' && voiceDisplayNameRaw.trim().length > 0
       ? voiceDisplayNameRaw.trim()
@@ -104,6 +123,22 @@ export async function POST(request: NextRequest) {
         voiceDisplayName,
       },
     });
+
+    // Record consumption after confirmed deposit.
+    if (session.role !== 'founder') {
+      try {
+        const ledger = new ConsumptionRepository(getDb());
+        const charCount = (text as string).trim().length;
+        ledger.record({
+          creatorId: session.creatorId,
+          operationType: OperationType.TEXT_TO_SPEECH,
+          costUsdEstimate: estimateTtsCost(charCount),
+          units: charCount,
+          monthKey: getCurrentMonthKey(),
+          recordedAt: Date.now(),
+        });
+      } catch { /* non-fatal */ }
+    }
 
     return NextResponse.json({ status: 'succeeded', asset });
   } catch (error) {

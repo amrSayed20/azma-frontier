@@ -196,6 +196,25 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`,
+  // CONSUMPTION LEDGER — durable record of every AI provider call made
+  // on behalf of a Creator. Used exclusively for cost-discovery during
+  // the Founder Beta phase. Founders read this table via the High Council
+  // consumption endpoint; Creators never see it.
+  //
+  // month_key ('YYYY-MM') is stored denormalized so monthly aggregation
+  // needs no date function on query — a plain WHERE month_key = ? scan
+  // on the composite index is enough.
+  //
+  // units is provider-meaningful: 1 per image/clone, character count for TTS.
+  `CREATE TABLE IF NOT EXISTS consumption_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    creator_id TEXT NOT NULL,
+    operation_type TEXT NOT NULL,
+    cost_usd_estimate REAL NOT NULL,
+    units INTEGER NOT NULL,
+    month_key TEXT NOT NULL,
+    recorded_at INTEGER NOT NULL
+  )`,
 ];
 
 /** Columns added to `cinematic_ledger` after its original creation — applied via ALTER TABLE for pre-existing databases. */
@@ -245,4 +264,8 @@ export const GOALS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly
 /** Run only after CREATORS_MIGRATION_COLUMNS has ensured the columns exist — SQLite cannot index a column that isn't there yet. */
 export const INDEX_STATEMENTS: readonly string[] = [
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_creators_email ON creators(email)',
+  // Composite index for the two most common consumption_records queries:
+  //   1. Monthly usage for one creator  → WHERE creator_id = ? AND month_key = ?
+  //   2. Founder dashboard all creators → WHERE month_key = ? (partial scan, acceptable)
+  'CREATE INDEX IF NOT EXISTS idx_consumption_creator_month ON consumption_records(creator_id, month_key)',
 ];
