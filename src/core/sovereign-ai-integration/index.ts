@@ -21,3 +21,5 @@ export * from './runtime-state';
 export * from './bootstrap';
 export * from './sovereign-ai-integration-runtime';
 export * from './sovereign-ai-integration-api';
+export * from './adapters';
+export * from './provider-bootstrap';

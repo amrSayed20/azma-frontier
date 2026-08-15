@@ -28,8 +28,8 @@
  * addition, not a new point of fragility in existing behavior.
  */
 
-import { generateImageViaProvider } from './image-provider';
 import { persistGeneratedImage } from './asset-storage';
+import { getGenerationOrchestrator } from '../core/sovereign-ai-integration/provider-bootstrap';
 import { isRateLimited, recordGeneration as recordRateLimitedGeneration } from './rate-limiter';
 import { getDb, recordGeneration as persistGenerationRecord } from '../persistent-storage';
 import { SovereignVaultManager } from '../vault/sovereign-vault-manager';
@@ -92,14 +92,40 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
 
   const style = request.style?.trim() || null;
 
-  let providerResult;
-  try {
-    providerResult = await generateImageViaProvider(request.prompt.trim(), style);
-  } catch (error) {
+  // Route through the sovereign orchestration path — provider selection,
+  // constitutional routing, and fallback are all handled by the existing
+  // DNAOrchestratorRuntime.  The adapter returns base64-encoded bytes in
+  // NormalizedAIResponse.content; we decode back to Buffer here.
+  const orchestrationResult = await getGenerationOrchestrator().orchestrate({
+    requestId: crypto.randomUUID(),
+    requestedBy: request.creatorId ?? 'azma-anonymous',
+    prompt: request.prompt.trim(),
+    taskHint: 'image',
+    chamberId: 'qiyamah',
+    purpose: 'Sovereign image generation for Creator',
+    metadata: style ? { style } : {},
+  });
+
+  if (orchestrationResult.response.finishReason !== 'completed') {
     return {
       status: 'failed',
       reason: 'provider-error',
-      message: error instanceof Error ? error.message : 'The Launch Provider failed to generate an image.',
+      message:
+        'No image generation provider was available. The capability may require an API credential to be configured.',
+    };
+  }
+
+  let providerResult: { bytes: Buffer; mimeType: string };
+  try {
+    providerResult = {
+      bytes: Buffer.from(orchestrationResult.response.content, 'base64'),
+      mimeType: 'image/png',
+    };
+  } catch {
+    return {
+      status: 'failed',
+      reason: 'provider-error',
+      message: 'The image generation response could not be decoded.',
     };
   }
 

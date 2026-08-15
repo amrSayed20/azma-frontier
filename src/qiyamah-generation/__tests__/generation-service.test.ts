@@ -111,9 +111,12 @@ describe('Qiyamah First Generation Path — Generation Service', () => {
   });
 
   it('reports an honest failure when the Launch Provider errors — never a fake success', async () => {
+    // The sovereign orchestrator normalizes provider-specific error messages.
+    // The observable guarantee is status:'failed', reason:'provider-error', and
+    // no persistence side-effects — not the raw provider message.
     mockGenerateImageViaProvider.mockRejectedValue(new Error('provider is down'));
     const result = await generateImage({ prompt: 'a sovereign vista' });
-    expect(result).toEqual(expect.objectContaining({ status: 'failed', reason: 'provider-error', message: 'provider is down' }));
+    expect(result).toEqual(expect.objectContaining({ status: 'failed', reason: 'provider-error' }));
     expect(mockPersistGeneratedImage).not.toHaveBeenCalled();
   });
 

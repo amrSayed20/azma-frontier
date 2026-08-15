@@ -5,7 +5,8 @@ import { SovereignVaultManager } from '../../../../../src/vault/sovereign-vault-
 import { AssetFamily } from '../../../../../src/vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../../../../src/core/sovereign-orchestrator/qiyamah-intent-types';
 import { persistUploadedAsset } from '../../../../../src/vault/vault-asset-upload-storage';
-import { generateSpeechViaProvider, isTtsProviderVoice } from '../../../../../src/chambers/ras-al-amr/speech-provider';
+import { isTtsProviderVoice } from '../../../../../src/chambers/ras-al-amr/speech-provider';
+import { getGenerationOrchestrator } from '../../../../../src/core/sovereign-ai-integration/provider-bootstrap';
 import { getDb } from '../../../../../src/persistent-storage';
 import { ConsumptionRepository } from '../../../../../src/persistent-storage/consumption-repository';
 import { OperationType } from '../../../../../src/consumption-ledger/consumption-ledger-contracts';
@@ -97,18 +98,44 @@ export async function POST(request: NextRequest) {
       ? voiceDisplayNameRaw.trim()
       : `TTS — ${voice}`;
 
-  let providerResult;
-  try {
-    providerResult = await generateSpeechViaProvider(text.trim(), voice);
-  } catch (error) {
+  // Route through the sovereign orchestration path — provider selection,
+  // constitutional routing, and fallback handled by DNAOrchestratorRuntime.
+  // The TTS adapter places base64-encoded audio bytes in
+  // NormalizedAIResponse.content; we decode back to Buffer here.
+  const speechOrchestration = await getGenerationOrchestrator().orchestrate({
+    requestId: crypto.randomUUID(),
+    requestedBy: session.creatorId,
+    prompt: text.trim(),
+    taskHint: 'audio',
+    chamberId: 'ras-al-amr',
+    purpose: 'Sovereign text-to-speech generation for Creator',
+    metadata: { voice },
+  });
+
+  if (speechOrchestration.response.finishReason !== 'completed') {
     return NextResponse.json(
-      { status: 'failed', reason: 'provider-error', message: error instanceof Error ? error.message : 'The Launch Provider failed to generate speech.' },
+      {
+        status: 'failed',
+        reason: 'provider-error',
+        message:
+          'No speech generation provider was available. The capability may require an API credential to be configured.',
+      },
+      { status: 502 },
+    );
+  }
+
+  let audioBytes: Buffer;
+  try {
+    audioBytes = Buffer.from(speechOrchestration.response.content, 'base64');
+  } catch {
+    return NextResponse.json(
+      { status: 'failed', reason: 'provider-error', message: 'The speech generation response could not be decoded.' },
       { status: 502 },
     );
   }
 
   try {
-    const persisted = await persistUploadedAsset(providerResult.bytes, '.mp3');
+    const persisted = await persistUploadedAsset(audioBytes, '.mp3');
     const asset = await vaultManager.depositAsset({
       operationId: persisted.assetId,
       subscriberTenantId: session.creatorId,
@@ -116,8 +143,8 @@ export async function POST(request: NextRequest) {
       assetFamily: AssetFamily.MEDIA,
       secureStorageUri: persisted.assetUrl,
       metadata: {
-        fileSizeBytes: providerResult.bytes.length,
-        providerId: 'openai-tts-1',
+        fileSizeBytes: audioBytes.length,
+        providerId: speechOrchestration.response.providerId ?? 'sovereign-provider',
         generationPrompt: text.trim(),
         isVoiceAsset: true,
         voiceDisplayName,
