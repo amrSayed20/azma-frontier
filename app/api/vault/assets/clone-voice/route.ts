@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { verifySession } from '../../../../../src/authentication';
-import { hasActiveEntitlement } from '../../../../../src/billing';
 import { SovereignVaultManager } from '../../../../../src/vault/sovereign-vault-manager';
 import { AssetFamily, isVoiceAsset } from '../../../../../src/vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../../../../src/core/sovereign-orchestrator/qiyamah-intent-types';
@@ -11,7 +11,10 @@ import { getDb } from '../../../../../src/persistent-storage';
 import { ConsumptionRepository } from '../../../../../src/persistent-storage/consumption-repository';
 import { OperationType } from '../../../../../src/consumption-ledger/consumption-ledger-contracts';
 import { estimateVoiceCloneCost, getCurrentMonthKey } from '../../../../../src/consumption-ledger/cost-estimator';
-import { checkConsumptionCap, BETA_USAGE_CAP } from '../../../../../src/consumption-ledger/consumption-cap-enforcer';
+import { CreatorCreditRepository } from '../../../../../src/economy/credit-ledger/credit-ledger-repository';
+import { AzmaUnitCostEngine } from '../../../../../src/economy/cost-engine/azma-cost-engine';
+import { InsufficientBalanceError } from '../../../../../src/economy/credit-ledger/credit-ledger-types';
+import { CostUnavailableError } from '../../../../../src/economy/cost-engine/cost-engine-types';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,11 +52,59 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!hasActiveEntitlement(session.creatorId, session.role)) {
-    return NextResponse.json(
-      { status: 'failed', reason: 'payment-required', message: 'An active subscription is required to clone a voice.' },
-      { status: 402 },
-    );
+  // CREDIT-FIRST GATE: Founders bypass. Creators require AZMA Units.
+  // Voice cloning cost is currently pending-discovery — blocks generation with clear message.
+  const db = getDb();
+  let reservationId: string | null = null;
+
+  if (session.role !== 'founder') {
+    const costEngine = new AzmaUnitCostEngine();
+    let costEstimate;
+    try {
+      costEstimate = costEngine.estimate('voice-cloning', 'openai');
+    } catch (err) {
+      if (err instanceof CostUnavailableError) {
+        return NextResponse.json(
+          { status: 'failed', reason: 'cost-unavailable', message: 'Voice cloning cost is not yet available. Generation blocked.' },
+          { status: 503 },
+        );
+      }
+      throw err;
+    }
+
+    const creditRepo = new CreatorCreditRepository(db);
+    const balance = creditRepo.getBalance(session.creatorId);
+
+    if (balance.availableUnits < costEstimate.estimatedAzmaUnits) {
+      return NextResponse.json(
+        {
+          status: 'failed',
+          reason: 'payment-required',
+          message: 'Insufficient AZMA Units. Purchase a credit pack to continue.',
+          estimatedCost: costEstimate.estimatedAzmaUnits,
+          availableUnits: balance.availableUnits,
+        },
+        { status: 402 },
+      );
+    }
+
+    try {
+      const reservation = creditRepo.reserve(
+        session.creatorId,
+        costEstimate.estimatedAzmaUnits,
+        `voice-clone:${randomUUID()}`,
+        { capability: 'voice-cloning', gatewayId: 'openai' },
+      );
+      reservationId = reservation.reservationId;
+    } catch (err) {
+      if (err instanceof InsufficientBalanceError) {
+        return NextResponse.json(
+          { status: 'failed', reason: 'payment-required', message: 'Insufficient AZMA Units.' },
+          { status: 402 },
+        );
+      }
+      throw err;
+    }
   }
 
   let body: unknown;
@@ -95,19 +146,6 @@ export async function POST(request: NextRequest) {
       },
       { status: 404 },
     );
-  }
-
-  // CONSUMPTION CAP: check before reading audio bytes or calling the provider.
-  if (session.role !== 'founder') {
-    const ledger = new ConsumptionRepository(getDb());
-    const usage = ledger.getMonthlyUsage(session.creatorId, getCurrentMonthKey());
-    const cap = checkConsumptionCap(usage, BETA_USAGE_CAP, OperationType.VOICE_CLONE, 1);
-    if (!cap.allowed) {
-      return NextResponse.json(
-        { status: 'failed', reason: 'usage-cap-reached', message: cap.reason },
-        { status: 429 },
-      );
-    }
   }
 
   if (!isVoiceAsset(referenceAsset)) {
@@ -154,6 +192,9 @@ export async function POST(request: NextRequest) {
   try {
     cloneResult = await cloneVoiceViaProvider(referenceAudioBytes, referenceFileName, voiceDisplayName);
   } catch (error) {
+    if (reservationId) {
+      try { new CreatorCreditRepository(db).release(reservationId, 'voice_clone_provider_error'); } catch { /* non-fatal */ }
+    }
     return NextResponse.json(
       {
         status: 'failed',
@@ -183,23 +224,33 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Record consumption after confirmed deposit.
-    if (session.role !== 'founder') {
+    // Settle reservation on success
+    if (reservationId) {
       try {
-        const ledger = new ConsumptionRepository(getDb());
-        ledger.record({
-          creatorId: session.creatorId,
-          operationType: OperationType.VOICE_CLONE,
-          costUsdEstimate: estimateVoiceCloneCost(),
-          units: 1,
-          monthKey: getCurrentMonthKey(),
-          recordedAt: Date.now(),
-        });
+        const costEngine = new AzmaUnitCostEngine();
+        const cost = costEngine.estimate('voice-cloning', 'openai').estimatedAzmaUnits;
+        new CreatorCreditRepository(db).settle(reservationId, cost);
       } catch { /* non-fatal */ }
     }
 
+    // Record consumption for cost discovery
+    try {
+      const ledger = new ConsumptionRepository(db);
+      ledger.record({
+        creatorId: session.creatorId,
+        operationType: OperationType.VOICE_CLONE,
+        costUsdEstimate: estimateVoiceCloneCost(),
+        units: 1,
+        monthKey: getCurrentMonthKey(),
+        recordedAt: Date.now(),
+      });
+    } catch { /* non-fatal */ }
+
     return NextResponse.json({ status: 'succeeded', asset });
   } catch (error) {
+    if (reservationId) {
+      try { new CreatorCreditRepository(db).release(reservationId, 'voice_clone_storage_error'); } catch { /* non-fatal */ }
+    }
     return NextResponse.json(
       {
         status: 'failed',

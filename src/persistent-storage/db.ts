@@ -25,6 +25,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { SCHEMA_STATEMENTS, CINEMATIC_LEDGER_MIGRATION_COLUMNS, CREATORS_MIGRATION_COLUMNS, GOALS_MIGRATION_COLUMNS, INDEX_STATEMENTS } from './schema';
+// Economy Foundation: no migration columns needed for new tables — they are
+// created fresh via CREATE TABLE IF NOT EXISTS in SCHEMA_STATEMENTS.
 
 const DEFAULT_DB_PATH = join(process.cwd(), 'data', 'azma-os.db');
 

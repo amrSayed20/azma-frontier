@@ -215,6 +215,62 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     month_key TEXT NOT NULL,
     recorded_at INTEGER NOT NULL
   )`,
+
+  // LAUNCH ECONOMY FOUNDATION — CREDIT LEDGER
+  // Append-only authoritative record of all AZMA Unit economic events.
+  // Never mutated after INSERT. Every credit/debit is one row.
+  // idempotency_key UNIQUE prevents duplicate processing of the same event.
+  // balance_after is a snapshot of available_units at the time of this
+  // transaction — enables full economic history reconstruction.
+  // metadata_json must NEVER contain provider credentials or API secrets.
+  `CREATE TABLE IF NOT EXISTS credit_ledger (
+    ledger_id TEXT PRIMARY KEY,
+    creator_id TEXT NOT NULL,
+    transaction_type TEXT NOT NULL,
+    direction TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    balance_after INTEGER NOT NULL,
+    reference_id TEXT,
+    idempotency_key TEXT UNIQUE,
+    status TEXT NOT NULL DEFAULT 'completed',
+    metadata_json TEXT,
+    created_at INTEGER NOT NULL
+  )`,
+
+  // LAUNCH ECONOMY FOUNDATION — CREATOR BALANCES
+  // Materialized balance view; always updated in the same transaction as
+  // credit_ledger. Never the sole source of truth — credit_ledger can
+  // reconstruct it. Enables O(1) balance reads without ledger scans.
+  // available_units = units that can be reserved right now.
+  // reserved_units = units locked in active pending reservations.
+  `CREATE TABLE IF NOT EXISTS creator_balances (
+    creator_id TEXT PRIMARY KEY,
+    available_units INTEGER NOT NULL DEFAULT 0,
+    reserved_units INTEGER NOT NULL DEFAULT 0,
+    total_purchased INTEGER NOT NULL DEFAULT 0,
+    total_spent INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL
+  )`,
+
+  // LAUNCH ECONOMY FOUNDATION — TRIAL ENTITLEMENTS
+  // One row per Creator. Tracks usage of the launch gift (3 free images +
+  // 1 free 4-second video). Trial usage must never reduce paid AZMA balance.
+  // credential_id / webauthn_public_key are for passkey-based verification;
+  // null until WebAuthn client integration is complete.
+  // claim_ip_hash is a hashed IP for abuse detection — never raw IP.
+  `CREATE TABLE IF NOT EXISTS trial_entitlements (
+    creator_id TEXT PRIMARY KEY,
+    images_used INTEGER NOT NULL DEFAULT 0,
+    images_granted INTEGER NOT NULL DEFAULT 3,
+    video_used INTEGER NOT NULL DEFAULT 0,
+    video_granted INTEGER NOT NULL DEFAULT 1,
+    claimed_at INTEGER,
+    claim_ip_hash TEXT,
+    credential_id TEXT,
+    webauthn_public_key TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
 ];
 
 /** Columns added to `cinematic_ledger` after its original creation — applied via ALTER TABLE for pre-existing databases. */
@@ -268,4 +324,8 @@ export const INDEX_STATEMENTS: readonly string[] = [
   //   1. Monthly usage for one creator  → WHERE creator_id = ? AND month_key = ?
   //   2. Founder dashboard all creators → WHERE month_key = ? (partial scan, acceptable)
   'CREATE INDEX IF NOT EXISTS idx_consumption_creator_month ON consumption_records(creator_id, month_key)',
+  // Credit ledger: fast lookup by creator and by reference_id (payment intent, reservation)
+  'CREATE INDEX IF NOT EXISTS idx_credit_ledger_creator ON credit_ledger(creator_id, created_at)',
+  'CREATE INDEX IF NOT EXISTS idx_credit_ledger_reference ON credit_ledger(reference_id)',
+  'CREATE INDEX IF NOT EXISTS idx_credit_ledger_status ON credit_ledger(creator_id, status)',
 ];
