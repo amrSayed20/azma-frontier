@@ -13,13 +13,18 @@ export type CostAvailability = 'available' | 'pending-discovery' | 'unavailable'
 
 // One entry in the provider cost catalog for a capability × gateway combination.
 export interface ProviderCostEntry {
-  readonly gatewayId: string;           // e.g. 'magic-hour'
+  readonly gatewayId: string;               // e.g. 'magic-hour'
   readonly capabilityTarget: CapabilityTarget;
-  readonly azmaUnitsPerUnit: number;    // AZMA Units per creation unit
-  readonly unitDescription: string;     // e.g. '1 image', '4-second video clip'
+  readonly azmaUnitsPerUnit: number;        // AZMA Units per creation unit
+  readonly unitDescription: string;         // e.g. '1 image', '4-second video clip'
   readonly availability: CostAvailability;
-  readonly catalogVersion: string;      // semver — bump whenever costs change
-  readonly effectiveFrom: number;       // Unix ms
+  readonly catalogVersion: string;          // semver — bump whenever costs change
+  readonly effectiveFrom: number;           // Unix ms
+  // Provider-internal credit cost (audit only — never exposed to Creator).
+  // For Magic Hour: Magic Hour credits per unit. Used to reconcile after completion.
+  // Null = not yet discovered.
+  readonly providerCreditCost?: number | null;
+  readonly providerCreditUnit?: string;     // e.g. 'magic-hour-credits', 'openai-usd'
   readonly notes?: string;
 }
 

@@ -21,6 +21,12 @@ import { DNAOrchestratorApi } from '../dna-orchestrator-runtime';
 import { OpenAIImageAdapter } from './adapters/openai-image-adapter';
 import { OpenAITtsAdapter } from './adapters/openai-tts-adapter';
 import { ElevenLabsVoiceAdapter } from './adapters/elevenlabs-voice-adapter';
+import {
+  MagicHourImageAdapter,
+  MagicHourVideoAdapter,
+  MagicHourTtsAdapter,
+  isMagicHourConfigured,
+} from './adapters/magic-hour-adapter';
 
 let _singleton: DNAOrchestratorApi | null = null;
 
@@ -30,6 +36,14 @@ export function getGenerationOrchestrator(): DNAOrchestratorApi {
     _singleton.registerProvider(new OpenAIImageAdapter());
     _singleton.registerProvider(new OpenAITtsAdapter());
     _singleton.registerProvider(new ElevenLabsVoiceAdapter());
+    // Magic Hour adapters: registered only if API key is present.
+    // Generation routes do NOT route to these adapters until the AZMA Unit
+    // cost catalog entries are updated from pending-discovery to available.
+    if (isMagicHourConfigured()) {
+      _singleton.registerProvider(new MagicHourImageAdapter());
+      _singleton.registerProvider(new MagicHourVideoAdapter());
+      _singleton.registerProvider(new MagicHourTtsAdapter());
+    }
   }
   return _singleton;
 }

@@ -8,22 +8,35 @@
 import type { ProviderCostCatalog } from './cost-engine-types';
 
 export const CURRENT_PROVIDER_COST_CATALOG: ProviderCostCatalog = {
-  catalogVersion: '0.1.0',
-  publishedAt: 1753574400000, // 2025-07-27 — initial catalog with pending-discovery entries
+  catalogVersion: '0.2.0',
+  publishedAt: 1753574400000, // 2026-07-27 — Magic Hour contract discovered; provider costs updated; AZMA conversion pending
   entries: [
     // ── MAGIC HOUR ────────────────────────────────────────────────────────────
-    // STATUS: PENDING-DISCOVERY — API contract not yet inspected.
-    // Do NOT set availability:'available' until costs are confirmed with the
-    // Chief Architect and the catalog version is bumped.
+    // STATUS: CONTRACT DISCOVERED — provider credit costs confirmed.
+    // BLOCKER: azmaUnitsPerUnit = 0 (pending-discovery) until the Chief Architect
+    // approves the MH credit → AZMA Unit conversion rate. Do NOT set
+    // availability:'available' until that conversion is approved and catalogVersion bumped.
+    //
+    // Confirmed MH credit costs (from official docs, 2026-07-30):
+    //   Image generation: ~5 MH credits/image (from quick-start example)
+    //   Image upscaling: 50–200 MH credits (resolution-dependent)
+    //   Text-to-video: variable — frames × per-frame cost (estimated at submission, final at completion)
+    //   TTS: 0.1 MH credits per character, rounded up
+    //   Voice cloning: 0.1 MH credits per character, rounded up
+    //   Image editing: not explicitly documented — estimated ~5–25 MH credits
+    //   Credits charged immediately for images; estimated-then-finalized for video.
+    //   MH auto-refunds credits on failure and cancellation.
     {
       gatewayId: 'magic-hour',
       capabilityTarget: 'image-generation',
       azmaUnitsPerUnit: 0,
       unitDescription: '1 generated image',
       availability: 'pending-discovery',
-      catalogVersion: '0.1.0',
+      catalogVersion: '0.2.0',
       effectiveFrom: 1753574400000,
-      notes: 'BLOCKED: Magic Hour API contract not inspected. Cost unknown.',
+      providerCreditCost: 5,
+      providerCreditUnit: 'magic-hour-credits',
+      notes: 'MH credit cost confirmed (~5/image). AZMA Unit conversion pending Chief Architect approval.',
     },
     {
       gatewayId: 'magic-hour',
@@ -31,49 +44,59 @@ export const CURRENT_PROVIDER_COST_CATALOG: ProviderCostCatalog = {
       azmaUnitsPerUnit: 0,
       unitDescription: '1 edited image',
       availability: 'pending-discovery',
-      catalogVersion: '0.1.0',
+      catalogVersion: '0.2.0',
       effectiveFrom: 1753574400000,
-      notes: 'BLOCKED: Magic Hour API contract not inspected. Cost unknown.',
+      providerCreditCost: null,
+      providerCreditUnit: 'magic-hour-credits',
+      notes: 'MH credit cost for image editing not explicitly documented. Requires empirical test. AZMA Unit conversion pending.',
     },
     {
       gatewayId: 'magic-hour',
       capabilityTarget: 'image-upscaling',
       azmaUnitsPerUnit: 0,
-      unitDescription: '1 upscaled image',
+      unitDescription: '1 upscaled image (resolution-dependent: 50–200 MH credits)',
       availability: 'pending-discovery',
-      catalogVersion: '0.1.0',
+      catalogVersion: '0.2.0',
       effectiveFrom: 1753574400000,
-      notes: 'BLOCKED: Magic Hour API contract not inspected. Cost unknown.',
+      providerCreditCost: 200,
+      providerCreditUnit: 'magic-hour-credits',
+      notes: 'MH cost: 50–200 credits depending on output resolution. Using ceiling (200) for conservative reservation. AZMA Unit conversion pending.',
     },
     {
       gatewayId: 'magic-hour',
       capabilityTarget: 'video-generation',
       azmaUnitsPerUnit: 0,
-      unitDescription: '1 video clip',
+      unitDescription: '1 video generation (variable: estimated at submission, finalized at completion)',
       availability: 'pending-discovery',
-      catalogVersion: '0.1.0',
+      catalogVersion: '0.2.0',
       effectiveFrom: 1753574400000,
-      notes: 'BLOCKED: Magic Hour API contract not inspected. Cost unknown.',
+      providerCreditCost: null,
+      providerCreditUnit: 'magic-hour-credits',
+      notes: 'MH video cost = frames × per-frame-rate. Estimated at submission based on end_seconds × assumed 30fps. Adjusted at completion. Per-frame credit cost not publicly documented. AZMA Unit conversion pending.',
     },
     {
       gatewayId: 'magic-hour',
       capabilityTarget: 'text-to-speech',
       azmaUnitsPerUnit: 0,
-      unitDescription: '1 TTS generation',
+      unitDescription: '1 TTS generation (0.1 MH credits/character, rounded up)',
       availability: 'pending-discovery',
-      catalogVersion: '0.1.0',
+      catalogVersion: '0.2.0',
       effectiveFrom: 1753574400000,
-      notes: 'BLOCKED: Magic Hour API contract not inspected. Cost unknown.',
+      providerCreditCost: null,
+      providerCreditUnit: 'magic-hour-credits',
+      notes: 'MH cost: 0.1 credits/character, ceil(). For a 4096-char max: 410 MH credits. AZMA Unit conversion pending.',
     },
     {
       gatewayId: 'magic-hour',
       capabilityTarget: 'voice-cloning',
       azmaUnitsPerUnit: 0,
-      unitDescription: '1 voice clone generation',
+      unitDescription: '1 voice clone generation (0.1 MH credits/character, rounded up)',
       availability: 'pending-discovery',
-      catalogVersion: '0.1.0',
+      catalogVersion: '0.2.0',
       effectiveFrom: 1753574400000,
-      notes: 'BLOCKED: Magic Hour API contract not inspected. Cost unknown.',
+      providerCreditCost: null,
+      providerCreditUnit: 'magic-hour-credits',
+      notes: 'MH cost: same as TTS — 0.1 credits/character, ceil(). AZMA Unit conversion pending.',
     },
     // ── OPENAI (image generation — existing Qiyamah pipeline) ─────────────────
     // OpenAI DALL-E 3 standard quality: ~$0.04/image = ~40 AZMA units at ~$0.001/unit
