@@ -401,7 +401,7 @@ body, html {
 /* ── Knowledge Archives — the left alcove ──────────────────────────── */
 
 .knowledge-archives {
-  width: 215px;
+  width: min(215px, 22vw);
   flex-shrink: 0;
   background: var(--archives-bg);
   border-left: 1px solid transparent; /* physical left = the separator from court */

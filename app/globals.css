@@ -83,7 +83,7 @@ body {
 }
 
 .gate-card{
-  width:420px;
+  width:min(420px, 90vw);
   border-radius:30px;
   padding:35px;
   background:rgba(0,0,0,.35);

@@ -589,7 +589,7 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
    ═══════════════════════════════════════════════════════════════ */
 
 .vault-corridor {
-  width: 230px;
+  width: min(230px, 22vw);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -1061,7 +1061,7 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
 /* ── Treasure Detail Panel ─────────────────────────────────────── */
 
 .treasure-detail {
-  width: 300px;
+  width: min(300px, 28vw);
   flex-shrink: 0;
   border-right: 1px solid rgba(212,175,55,.08);
   display: flex;

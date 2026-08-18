@@ -35,11 +35,11 @@ body, html {
 
 /* 1. The Forced Scroll Viewport */
 /* تم تحويلها لنافذة ثابتة بحجم الشاشة تفرض شريط التمرير الداخلي الخاص بها */
-.obour-viewport { 
-  position: fixed !important; 
-  inset: 0 !important; 
-  width: 100vw !important; 
-  height: 100vh !important; 
+.obour-viewport {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100vh !important;
   background-color: var(--chamber-bg); 
   color: var(--text-main);
   /* Sovereign Typography System's own font authority (SIO-007) */
