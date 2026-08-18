@@ -1,6 +1,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
+import OpenAI from 'openai';
 import { verifySession } from '@/src/authentication';
 import { receiveCitizenKnowledgeRequest } from '@/src/chambers/hujjah-al-damighah/reception-engine';
 import { understandKnowledgeReception } from '@/src/chambers/hujjah-al-damighah/understanding-engine';
@@ -36,6 +37,7 @@ export interface InvestigationDTO {
   evidence: EvidenceItemDTO[];
   totalSourcesScanned: number;
   averageEvidenceScore: number;
+  synthesizedAnswer?: string;
   error?: string;
 }
 
@@ -75,6 +77,42 @@ export async function runInvestigation(
       return { success: false, evidence: [], totalSourcesScanned: 0, averageEvidenceScore: 0, error: 'Evidence collection failed.' };
     }
 
+    // Stage 4b — Synthesis: compose a real Arabic answer from collected evidence
+    let synthesizedAnswer: string | undefined;
+    try {
+      const openaiApiKey = process.env['OPENAI_API_KEY'];
+      if (openaiApiKey && evidenceOutcome.collection.items.length > 0) {
+        const openai = new OpenAI({ apiKey: openaiApiKey });
+        const evidenceSummary = evidenceOutcome.collection.items
+          .slice(0, 5)
+          .map((item, i) => `[${i + 1}] ${item.evidence.extractedText}`)
+          .join('\n\n');
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: [
+                'أنت نظام معرفة سيادي. مهمتك تقديم إجابة عربية واضحة وموثوقة على سؤال المستخدم بناءً على الأدلة المقدمة.',
+                'اكتب 3 إلى 5 جمل متماسكة تجيب مباشرة على السؤال.',
+                'لا تذكر مصادر المعرفة أو أسماء قواعد البيانات أو المنصات.',
+                'قدّم المعلومة كحقيقة موثوقة وبأسلوب رسمي واضح.',
+              ].join(' '),
+            },
+            {
+              role: 'user',
+              content: `السؤال: ${query}\n\nالأدلة:\n${evidenceSummary}`,
+            },
+          ],
+          max_tokens: 600,
+          temperature: 0.3,
+        });
+        synthesizedAnswer = completion.choices[0]?.message?.content ?? undefined;
+      }
+    } catch {
+      // Synthesis is non-fatal — investigation still returns evidence
+    }
+
     // Stage 5 — Knowledge: declare the highest truthful conclusion
     const declaration = declareKnowledge(evidenceOutcome.collection);
 
@@ -109,6 +147,7 @@ export async function runInvestigation(
       })),
       totalSourcesScanned: collection.totalSourcesScanned,
       averageEvidenceScore,
+      synthesizedAnswer,
     };
   } catch (err) {
     hujjahPerception.report({

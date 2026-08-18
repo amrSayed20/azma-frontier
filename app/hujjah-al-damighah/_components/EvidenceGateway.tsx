@@ -14,15 +14,6 @@ interface Props {
   onSaveToVault:      (ev: EvidenceItemDTO) => void;
 }
 
-function StubAction({ label }: { label: string }) {
-  return (
-    <button className="gateway-action-stub" disabled aria-label={label}>
-      {label}
-      <span className="dormant-authority">◎</span>
-    </button>
-  );
-}
-
 export function EvidenceGateway({ evidence, domain, open, onClose, onNewInvestigation, onSaveToVault }: Props) {
   if (!evidence) return null;
   const layer = resolveKnowledgeLayer(evidence.confidenceScore, evidence.confidenceLevel, domain);
@@ -69,13 +60,7 @@ export function EvidenceGateway({ evidence, domain, open, onClose, onNewInvestig
             >
               ⚑ حفظ في الخزانة السيادية
             </button>
-            <StubAction label="الوثيقة الأصلية"    />
-            <StubAction label="صور تاريخية"         />
-            <StubAction label="أدلة داعمة"           />
-            <StubAction label="أدلة معارضة"          />
-            <StubAction label="توليد ملخص"           />
-            <StubAction label="مقارنة مع دليل"       />
-            <StubAction label="تصدير"                />
+
           </div>
         </div>
       </div>

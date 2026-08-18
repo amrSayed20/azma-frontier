@@ -88,7 +88,12 @@ export function VerdictDocument({ dto, query, domain, outputFormat, onFormatChan
 
       <div className="vd-fields">
         <VField label="الموضوع"         value={query}    />
-        <VField label="الملخص"          value={vText}    large />
+        {dto.synthesizedAnswer && (
+          <VField label="الإجابة"         value={dto.synthesizedAnswer} large />
+        )}
+        {!dto.synthesizedAnswer && (
+          <VField label="الملخص"          value={vText}    large />
+        )}
         <div className="vd-row-pair">
           <VField label="درجة الثقة"  value={`${pct}%`}            mono />
           <VField label="عدد الأدلة"  value={`${dto.evidence.length}`} mono />
