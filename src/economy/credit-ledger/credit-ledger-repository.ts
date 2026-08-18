@@ -84,7 +84,7 @@ export class CreatorCreditRepository implements ICreatorCreditRepository {
   getBalance(creatorId: string): CreatorBalance {
     const row = this.db
       .prepare('SELECT * FROM creator_balances WHERE creator_id = ?')
-      .get(creatorId) as BalanceRow | undefined;
+      .get(creatorId) as unknown as BalanceRow | undefined;
     return row ? toBalance(row) : ZERO_BALANCE(creatorId);
   }
 
@@ -238,19 +238,19 @@ export class CreatorCreditRepository implements ICreatorCreditRepository {
     // Find the pending reservation
     const reservation = this.db
       .prepare("SELECT * FROM credit_ledger WHERE ledger_id = ? AND status = 'pending' AND transaction_type = 'reservation'")
-      .get(reservationId) as LedgerRow | undefined;
+      .get(reservationId) as unknown as LedgerRow | undefined;
 
     if (!reservation) {
       // Check if already settled (idempotent return)
       const alreadySettled = this.db
         .prepare("SELECT * FROM credit_ledger WHERE reference_id = ? AND transaction_type = 'settlement' AND status = 'completed'")
-        .get(reservationId) as LedgerRow | undefined;
+        .get(reservationId) as unknown as LedgerRow | undefined;
       if (alreadySettled) {
-        const bal = this.getBalance(reservation?.creator_id ?? '');
+        const bal = this.getBalance(alreadySettled.creator_id);
         return {
           settlementLedgerId: alreadySettled.ledger_id,
           settledUnits: alreadySettled.amount,
-          releasedUnits: reservation?.amount ? reservation.amount - alreadySettled.amount : 0,
+          releasedUnits: 0,
           availableAfter: bal.availableUnits,
         };
       }
@@ -336,7 +336,7 @@ export class CreatorCreditRepository implements ICreatorCreditRepository {
   release(reservationId: string, reason?: string): void {
     const reservation = this.db
       .prepare("SELECT * FROM credit_ledger WHERE ledger_id = ? AND transaction_type = 'reservation'")
-      .get(reservationId) as LedgerRow | undefined;
+      .get(reservationId) as unknown as LedgerRow | undefined;
 
     if (!reservation) return; // unknown reservation — no-op
     if (reservation.status !== 'pending') return; // already settled or released — idempotent no-op
@@ -396,7 +396,7 @@ export class CreatorCreditRepository implements ICreatorCreditRepository {
       .prepare(
         'SELECT * FROM credit_ledger WHERE creator_id = ? ORDER BY created_at DESC LIMIT ?',
       )
-      .all(creatorId, limit) as LedgerRow[];
+      .all(creatorId, limit) as unknown as LedgerRow[];
     return rows.map(toEntry);
   }
 }

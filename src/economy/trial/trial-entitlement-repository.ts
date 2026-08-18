@@ -37,7 +37,7 @@ export class TrialEntitlementRepository {
   getOrCreate(creatorId: string): TrialEntitlement {
     const existing = this.db
       .prepare('SELECT * FROM trial_entitlements WHERE creator_id = ?')
-      .get(creatorId) as TrialRow | undefined;
+      .get(creatorId) as unknown as TrialRow | undefined;
 
     if (existing) return toEntitlement(existing);
 

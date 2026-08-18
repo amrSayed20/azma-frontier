@@ -29,7 +29,7 @@ export class StripePaymentGateway implements IPaymentGateway {
   private readonly webhookSecret: string;
 
   constructor(secretKey: string, webhookSecret: string) {
-    this.stripe = new Stripe(secretKey, { apiVersion: '2025-06-30.basil' });
+    this.stripe = new Stripe(secretKey, { apiVersion: '2026-06-24.dahlia' });
     this.webhookSecret = webhookSecret;
 
     if (!STRIPE_SUPPORTED_CURRENCIES.includes(EGP_CURRENCY_CODE as never)) {
