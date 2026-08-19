@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import type { ExperiencePhase } from './types';
 
 export interface UseExperienceLifecycleOptions {
@@ -25,7 +24,6 @@ export interface ExperienceLifecycle {
  * model (see CONSTITUTIONAL_CONTRACT.ts, Extension Rules).
  */
 export function useExperienceLifecycle({ revealDurationMs, handoffDurationMs }: UseExperienceLifecycleOptions): ExperienceLifecycle {
-  const router = useRouter();
   const [phase, setPhase] = useState<ExperiencePhase>('entering');
 
   useEffect(() => {
@@ -35,8 +33,10 @@ export function useExperienceLifecycle({ revealDurationMs, handoffDurationMs }: 
 
   const beginHandoff = useCallback((destinationHref: string) => {
     setPhase('exiting');
-    setTimeout(() => router.replace(destinationHref), handoffDurationMs);
-  }, [handoffDurationMs, router]);
+    setTimeout(() => {
+      window.location.assign(destinationHref);
+    }, handoffDurationMs);
+  }, [handoffDurationMs]);
 
   return { phase, beginHandoff };
 }
