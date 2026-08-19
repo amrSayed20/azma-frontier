@@ -16,7 +16,6 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import './imperial-foyer.css';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
 import { prepareInteractionSession } from '@/src/sovereign-interaction-kernel';
@@ -261,8 +260,6 @@ function kernelReadyMessage(session: InteractionSession, chamberNameAr: string):
 // ── Main Component ────────────────────────────────────────────────────────
 
 export default function ImperialFoyer() {
-  const router = useRouter();
-
   const { openManually, platform: installPlatform } = useInstallInvitation();
   // Defer to after mount — platform detection reads window.navigator which
   // is unavailable during SSR; starting as false matches the server render
@@ -419,7 +416,7 @@ export default function ImperialFoyer() {
   //      via the LivingCompanion message and the preparing card glow
   //   3. Session is written to sessionStorage for the entering chamber
   //   4. Foyer departs (420ms fade-out)
-  //   5. router.push to the chamber
+  //   5. window.location.assign to the chamber (hard navigation — avoids RSC/Cloudflare failure)
 
   const launchChamber = useCallback((
     chamberId: ManifestChamberContext,
@@ -444,9 +441,9 @@ export default function ImperialFoyer() {
       setPreparingId(null);
       setPreparingNameAr(null);
       setDeparting(true);
-      setTimeout(() => router.push(route), 420);
+      setTimeout(() => window.location.assign(route), 420);
     }, 600);
-  }, [router]);
+  }, []);
 
   const isPreparing = preparingId !== null;
 
@@ -456,8 +453,8 @@ export default function ImperialFoyer() {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
     } catch { /* redirect regardless of network outcome */ }
-    router.push('/');
-  }, [loggingOut, router]);
+    window.location.assign('/');
+  }, [loggingOut]);
 
   // Priority order (highest → lowest):
   // 1. Kernel ready message — the Foyer is actively preparing departure
