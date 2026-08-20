@@ -24,7 +24,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import './sovereign-vault.css';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
-import { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
+import { mapVaultAssetToTreasure } from '@/src/vault/vault-palace-presentation';
+import type { AssetMediaType } from '@/src/vault/vault-palace-presentation';
 import type { VaultAsset } from '@/src/vault/sovereign-vault-types';
 
 // ── Constitutional Vault Catalogue ────────────────────────────────────────
@@ -70,6 +71,11 @@ interface SovereignTreasure {
       archive/dispose/duplicate backing yet — those actions are disabled,
       not silently non-functional, for exactly this reason. */
   isRealAsset?: boolean;
+  /** Phase 3B Package I — N-1: actual asset URL for media preview.
+      Undefined means the asset has no displayable URI (unavailable). */
+  mediaUrl?: string;
+  /** Phase 3B Package I — N-1: media element type to render in detail panel. */
+  mediaType?: AssetMediaType;
 }
 
 // ── Palace Storage ────────────────────────────────────────────────────────
@@ -101,38 +107,29 @@ function depositToVault(treasure: SovereignTreasure) {
 // Qiyamah generation. localStorage above remains, unmodified, for the
 // separate Hujjah incoming-transfer ceremony this Package does not touch.
 
-/** capabilityTarget has no real 1:1 SOVEREIGN_VAULTS category — this is
-    a principled, disclosed mapping from the real taxonomy onto the
-    nearest fitting existing vault, not an invented one. */
-function capabilityTargetToVaultId(target: CapabilityTarget): string {
-  switch (target) {
-    case CapabilityTarget.VISUAL:
-    case CapabilityTarget.MOTION:
-    case CapabilityTarget.AUDIO:
-      return 'audiovisual';
-    case CapabilityTarget.WRITING:
-    case CapabilityTarget.DIRECTORIAL:
-      return 'documents';
-    default:
-      return 'creative';
-  }
-}
-
+/** Phase 3B Package I — N-1: delegates to the testable presentation
+    module, then wraps the result into a full SovereignTreasure. The
+    mediaUrl and mediaType survive the chain so the detail panel can
+    render the actual asset rather than metadata text. */
 function vaultAssetToTreasure(asset: VaultAsset): SovereignTreasure {
-  const prompt = typeof asset.metadata.generationPrompt === 'string' ? asset.metadata.generationPrompt : null;
-  const style = typeof asset.metadata.generationStyle === 'string' ? asset.metadata.generationStyle : null;
+  const mapping = mapVaultAssetToTreasure(asset);
+  const isUpload = asset.metadata.providerId === 'creator-upload';
   return {
-    id:      asset.assetId,
-    titleAr: prompt ? prompt.slice(0, 80) : 'أصل مُولَّد',
-    vaultId: capabilityTargetToVaultId(asset.capabilityTarget),
-    origin:  'حجرة القيامة',
-    preview: style ?? 'أصل حقيقي من القيامة',
-    status:  'living',
-    addedAt: asset.createdAt,
+    id:        asset.assetId,
+    titleAr:   mapping.titleAr,
+    vaultId:   mapping.vaultId,
+    origin:    mapping.origin,
+    preview:   mapping.preview,
+    status:    'living',
+    addedAt:   asset.createdAt,
     journey: [
-      { actionAr: 'تولَّد في حجرة القيامة', chamberAr: 'القيامة', at: asset.createdAt },
+      isUpload
+        ? { actionAr: 'رُفع إلى الخزانة السيادية', chamberAr: 'القيامة', at: asset.createdAt }
+        : { actionAr: 'تولَّد في حجرة القيامة',     chamberAr: 'القيامة', at: asset.createdAt },
     ],
     isRealAsset: true,
+    mediaUrl:    mapping.mediaUrl,
+    mediaType:   mapping.mediaType,
   };
 }
 
@@ -529,6 +526,28 @@ export default function SovereignVaultPalace() {
 
   function handleDownload(t: SovereignTreasure) {
     if (typeof window === 'undefined') return;
+
+    // Phase 3B Package I — N-2: real assets download the actual file.
+    // All current assets use local paths (/generated-assets/... or
+    // /uploads/...) so same-origin download works without a proxy route.
+    if (t.isRealAsset && t.mediaUrl) {
+      const a    = document.createElement('a');
+      a.href     = t.mediaUrl;
+      a.download = t.mediaUrl.split('/').pop() ?? t.titleAr.slice(0, 40);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setCompanionMsg('الكنز يتجه نحو الجهاز.');
+      return;
+    }
+
+    // Real asset with no retrievable URI — truthful unavailable notice.
+    if (t.isRealAsset && !t.mediaUrl) {
+      setCompanionMsg('الكنز غير متاح للتحميل في الوقت الحالي.');
+      return;
+    }
+
+    // Local-only (localStorage) treasures: export as JSON catalogue record.
     const payload = JSON.stringify({
       titleAr:   t.titleAr,
       preview:   t.preview,
@@ -928,6 +947,36 @@ export default function SovereignVaultPalace() {
                         <div className="detail-title">{selectedTreasure.titleAr}</div>
                         {selectedTreasure.preview && (
                           <div className="detail-preview">{selectedTreasure.preview}</div>
+                        )}
+
+                        {/* Phase 3B Package I — N-1: real asset visual preview */}
+                        {selectedTreasure.isRealAsset && selectedTreasure.mediaUrl && selectedTreasure.mediaType === 'image' && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            className="detail-asset-preview"
+                            src={selectedTreasure.mediaUrl}
+                            alt={selectedTreasure.titleAr}
+                            loading="lazy"
+                          />
+                        )}
+                        {selectedTreasure.isRealAsset && selectedTreasure.mediaUrl && selectedTreasure.mediaType === 'video' && (
+                          <video
+                            className="detail-asset-preview-video"
+                            src={selectedTreasure.mediaUrl}
+                            controls
+                            preload="metadata"
+                          />
+                        )}
+                        {selectedTreasure.isRealAsset && selectedTreasure.mediaUrl && selectedTreasure.mediaType === 'audio' && (
+                          <audio
+                            className="detail-asset-preview-audio"
+                            src={selectedTreasure.mediaUrl}
+                            controls
+                            preload="metadata"
+                          />
+                        )}
+                        {selectedTreasure.isRealAsset && !selectedTreasure.mediaUrl && (
+                          <div className="detail-asset-unavailable">الأصل غير متاح للعرض</div>
                         )}
 
                         {/* Journey Timeline */}

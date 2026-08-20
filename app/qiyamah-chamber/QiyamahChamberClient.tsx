@@ -43,20 +43,34 @@ interface GenerationRecord {
   readonly generatedAt: number;
 }
 
+// Phase 3B Package I — N-3: uploaded assets tracked separately from
+// generation_records so the gallery shows both without corrupting the
+// data model. capabilityTarget comes back as a plain string from the
+// API JSON ('VISUAL'|'MOTION'|'AUDIO') — never cast to the enum.
+interface UploadedItem {
+  readonly assetId:          string;
+  readonly url:              string;
+  readonly capabilityTarget: string;
+  readonly uploadedAt:       number;
+}
+
 export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
   const { goTo } = useConstitutionalNavigation();
   const { triggerInvitation } = useInstallInvitation();
 
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [generations, setGenerations] = useState<readonly GenerationRecord[]>([]);
+  // Phase 3B Package I — N-3: uploaded items in parallel to generations.
+  const [uploadedItems, setUploadedItems] = useState<readonly UploadedItem[]>([]);
 
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState('cinematic');
 
-  const [isDragging,       setIsDragging]       = useState(false);
-  const [isUploading,      setIsUploading]      = useState(false);
-  const [uploadError,      setUploadError]      = useState<string | null>(null);
-  const [uploadedAssetUrl, setUploadedAssetUrl] = useState<string | null>(null);
+  const [isDragging,    setIsDragging]    = useState(false);
+  const [isUploading,   setIsUploading]   = useState(false);
+  const [uploadError,   setUploadError]   = useState<string | null>(null);
+  // Tracks the most-recently uploaded asset for immediate in-chamber preview.
+  const [uploadedAsset, setUploadedAsset] = useState<UploadedItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [showConfirm,          setShowConfirm]          = useState(false);
@@ -73,12 +87,34 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
       .catch(() => { /* silent — gallery is an enhancement, not a gate */ });
   };
 
+  // Phase 3B Package I — N-3: load previously uploaded assets from Vault.
+  // Filters to providerId='creator-upload' so generated images (already
+  // shown via generation_records) are not duplicated in the gallery.
+  const fetchUploadedItems = () => {
+    fetch('/api/vault/assets')
+      .then((r) => r.json())
+      .then((result) => {
+        if (result.status !== 'succeeded' || !Array.isArray(result.assets)) return;
+        const items: UploadedItem[] = result.assets
+          .filter((a: { metadata?: { providerId?: string } }) => a.metadata?.providerId === 'creator-upload')
+          .map((a: { assetId: string; secureStorageUri: string; capabilityTarget: string; createdAt: number }) => ({
+            assetId:          a.assetId,
+            url:              a.secureStorageUri ?? '',
+            capabilityTarget: a.capabilityTarget ?? '',
+            uploadedAt:       a.createdAt,
+          }));
+        setUploadedItems(items);
+      })
+      .catch(() => { /* silent */ });
+  };
+
   useEffect(() => {
     fetch('/api/auth/me')
       .then((r) => r.json())
       .then((data) => setDisplayName(data?.displayName ?? null))
       .catch(() => setDisplayName(null));
     fetchGenerations();
+    fetchUploadedItems();
   }, []);
 
   const uploadFile = async (file: File) => {
@@ -89,9 +125,22 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
       form.append('file', file);
       const res  = await fetch('/api/vault/assets/upload', { method: 'POST', body: form });
       const data = await res.json();
-      if (data.status === 'succeeded') {
-        setUploadedAssetUrl(data.asset?.secureStorageUri ?? null);
-        fetchGenerations();
+      if (data.status === 'succeeded' && data.asset) {
+        // Phase 3B Package I — N-3: build an UploadedItem from the
+        // real asset the API just persisted, so it appears in the gallery
+        // immediately without a separate fetch or writing to generation_records.
+        const newItem: UploadedItem = {
+          assetId:          data.asset.assetId ?? '',
+          url:              data.asset.secureStorageUri ?? '',
+          capabilityTarget: data.asset.capabilityTarget ?? '',
+          uploadedAt:       data.asset.createdAt ?? Date.now(),
+        };
+        setUploadedAsset(newItem);
+        setUploadedItems((prev) => {
+          // Prevent duplicate if the item was already loaded from /api/vault/assets
+          const without = prev.filter((u) => u.assetId !== newItem.assetId);
+          return [newItem, ...without];
+        });
       } else {
         setUploadError(data.message ?? 'فشل الرفع — حاوِل مرة أخرى.');
       }
@@ -312,7 +361,7 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
             ارفع ملفاً من جهازك وسيُودَع مباشرة في خزانتك السيادية.
           </p>
 
-          {!uploadedAssetUrl ? (
+          {!uploadedAsset ? (
             <>
               <div
                 className={`upload-zone${isDragging ? ' upload-zone--dragging' : ''}${isUploading ? ' upload-zone--uploading' : ''}`}
@@ -356,14 +405,34 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
           ) : (
             <div className="upload-success">
               <div className="success-badge">✓ وصل الأصل إلى خزانتك السيادية</div>
-              {/\.(jpe?g|png|gif|webp|svg)$/i.test(uploadedAssetUrl) && (
+
+              {/* Phase 3B Package I — N-3: render actual media based on
+                  capabilityTarget; no longer relies on a URL extension regex */}
+              {uploadedAsset.capabilityTarget === 'VISUAL' && uploadedAsset.url && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   className="uploaded-preview"
-                  src={uploadedAssetUrl}
+                  src={uploadedAsset.url}
                   alt="الأصل المرفوع"
                 />
               )}
+              {uploadedAsset.capabilityTarget === 'MOTION' && uploadedAsset.url && (
+                <video
+                  className="uploaded-preview uploaded-preview-video"
+                  src={uploadedAsset.url}
+                  controls
+                  preload="metadata"
+                />
+              )}
+              {uploadedAsset.capabilityTarget === 'AUDIO' && uploadedAsset.url && (
+                <audio
+                  className="uploaded-preview-audio"
+                  src={uploadedAsset.url}
+                  controls
+                  preload="metadata"
+                />
+              )}
+
               <div className="upload-actions">
                 <button
                   className="vault-path-btn"
@@ -373,7 +442,7 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
                 </button>
                 <button
                   className="secondary-btn"
-                  onClick={() => setUploadedAssetUrl(null)}
+                  onClick={() => setUploadedAsset(null)}
                 >
                   رفع أصل آخر
                 </button>
@@ -385,12 +454,17 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
       </div>
 
       {/* ── Gallery — always visible ───────────────────────────────────── */}
+      {/* Phase 3B Package I — N-3: unified gallery for generated AND uploaded
+          assets. Generated items read from generation_records (unchanged).
+          Uploaded items read from vault_assets (separate, non-overlapping). */}
       <section className="your-generations" aria-label="الإرث السيادي">
         <h3>إرثك السيادي</h3>
-        {generations.length > 0 ? (
+        {(generations.length > 0 || uploadedItems.length > 0) ? (
           <div className="generations-grid">
+
             {generations.map((g) => (
               <div className="generation-card" key={g.recordId}>
+                <span className="gallery-type-badge badge-generated">مُولَّد</span>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img className="generation-thumb" src={g.assetUrl} alt={g.prompt} />
                 <div className="generation-meta">
@@ -401,6 +475,40 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
                 </div>
               </div>
             ))}
+
+            {uploadedItems.map((u) => (
+              <div className="generation-card" key={u.assetId}>
+                <span className="gallery-type-badge badge-uploaded">مرفوع</span>
+                {u.capabilityTarget === 'VISUAL' && u.url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="generation-thumb" src={u.url} alt="أصل مرفوع" />
+                )}
+                {u.capabilityTarget === 'MOTION' && u.url && (
+                  <video
+                    className="generation-thumb"
+                    src={u.url}
+                    muted
+                    preload="metadata"
+                    aria-label="معاينة الفيديو المرفوع"
+                  />
+                )}
+                {u.capabilityTarget === 'AUDIO' && u.url && (
+                  <audio
+                    className="gallery-audio-thumb"
+                    src={u.url}
+                    controls
+                    preload="metadata"
+                  />
+                )}
+                <div className="generation-meta">
+                  <p className="generation-prompt">أصل مرفوع</p>
+                  <span className="generation-date">
+                    {new Date(u.uploadedAt).toLocaleDateString('ar-SA')}
+                  </span>
+                </div>
+              </div>
+            ))}
+
           </div>
         ) : (
           <p className="gallery-empty">لم يتم التوليد بعد — ابدأ رحلتك من هنا.</p>
