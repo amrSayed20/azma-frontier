@@ -17,7 +17,6 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import './qiyamah-chamber.css';
 import { t } from '@/src/creator-language';
@@ -45,7 +44,6 @@ interface GenerationRecord {
 }
 
 export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
-  const router = useRouter();
   const { goTo } = useConstitutionalNavigation();
   const { triggerInvitation } = useInstallInvitation();
 
@@ -298,7 +296,7 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
                 )}
                 <button
                   className="vault-path-btn"
-                  onClick={() => router.push('/sovereign-vault-palace')}
+                  onClick={() => window.location.assign('/sovereign-vault-palace')}
                 >
                   📥 عرض في القصر السيادي
                 </button>
@@ -369,7 +367,7 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
               <div className="upload-actions">
                 <button
                   className="vault-path-btn"
-                  onClick={() => router.push('/sovereign-vault-palace')}
+                  onClick={() => window.location.assign('/sovereign-vault-palace')}
                 >
                   📥 عرض في القصر السيادي
                 </button>

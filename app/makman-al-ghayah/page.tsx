@@ -28,7 +28,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useSyncExternalStore } from 'react';
-import { useRouter } from 'next/navigation';
 import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import { MakmanExperience } from '@/src/imperial-experience-engine';
 import { GoalPriority, PacingPreference, TransitionPreference } from '@/src/chambers/makman-al-ghayah/goal-contracts';
@@ -116,7 +115,6 @@ const VERDICT_AR: Record<string, string> = {
 };
 
 export default function MakmanAlGhayah() {
-  const router = useRouter();
   const { goTo } = useConstitutionalNavigation();
   const realProduction = useSyncExternalStore(subscribeToNothing, getRealProductionSnapshot, getRealProductionServerSnapshot);
   const compiledGraph  = useSyncExternalStore(subscribeToNothing, getCompiledGraphSnapshot, getCompiledGraphServerSnapshot);
@@ -548,7 +546,7 @@ export default function MakmanAlGhayah() {
 
         {/* ── Import from Vault ──────────────────────────────────── */}
         <div className="makman-vault-link">
-          <button className="import-btn" onClick={() => router.push('/sovereign-vault-palace')}>
+          <button className="import-btn" onClick={() => window.location.assign('/sovereign-vault-palace')}>
             📥 استيراد من القصر السيادي
           </button>
         </div>

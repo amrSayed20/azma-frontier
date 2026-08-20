@@ -6,7 +6,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import './sovereign-vault.css';
 
 // The 5 Sovereign Gates of AZMA OS
@@ -54,7 +53,6 @@ const sovereignGates = [
 ];
 
 export default function SovereignVault() {
-  const router = useRouter();
   const [currentTime, setCurrentTime] = useState('');
   const [hoveredGate, setHoveredGate] = useState<string | null>(null);
 
@@ -116,8 +114,8 @@ export default function SovereignVault() {
                 aria-label={`الدخول إلى ${gate.name}`}
                 onMouseEnter={() => setHoveredGate(gate.id)}
                 onMouseLeave={() => setHoveredGate(null)}
-                onClick={() => router.push(gate.path)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(gate.path); } }}
+                onClick={() => window.location.assign(gate.path)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.location.assign(gate.path); } }}
               >
                 <div className="gate-icon">{gate.icon}</div>
                 <h2 className="gate-name">{gate.name}</h2>
@@ -137,8 +135,8 @@ export default function SovereignVault() {
                 aria-label={`الدخول إلى ${gate.name}`}
                 onMouseEnter={() => setHoveredGate(gate.id)}
                 onMouseLeave={() => setHoveredGate(null)}
-                onClick={() => router.push(gate.path)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(gate.path); } }}
+                onClick={() => window.location.assign(gate.path)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.location.assign(gate.path); } }}
               >
                 <div className="gate-icon">{gate.icon}</div>
                 <h2 className="gate-name">{gate.name}</h2>

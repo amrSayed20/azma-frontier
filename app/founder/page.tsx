@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import '../creator-access.css';
 
 /**
@@ -13,7 +12,6 @@ import '../creator-access.css';
  * Founder before proceeding toward the Command Bridge.
  */
 export default function FounderGatewayPage() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +40,7 @@ export default function FounderGatewayPage() {
         return;
       }
 
-      router.push('/sovereign-high-council');
+      window.location.assign('/sovereign-high-council');
     } catch {
       setError('Could not reach the server. Please try again.');
     } finally {
