@@ -244,6 +244,45 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
 .pin-key-enter  { color: var(--ig-7); font-size: 20px; }
 .pin-key:disabled { opacity: 0.30; cursor: not-allowed; }
 
+/* PIN error and verifying states — Phase 3B Package II N-5 */
+.pin-error {
+  margin: 6px 0 2px;
+  font-size: 11px;
+  color: rgba(220, 80, 80, 0.90);
+  text-align: center;
+  letter-spacing: 0.01em;
+  min-height: 16px;
+}
+.pin-verifying-label {
+  margin: 6px 0 0;
+  font-size: 10px;
+  color: var(--text-ghost, rgba(255,255,255,.28));
+  text-align: center;
+  letter-spacing: 0.04em;
+  animation: pinVerifyPulse 1.2s ease-in-out infinite;
+}
+@keyframes pinVerifyPulse {
+  0%, 100% { opacity: 0.45; }
+  50%       { opacity: 0.90; }
+}
+.pin-jewel.jewel-verifying {
+  animation: jewelVerify 1.2s ease-in-out infinite;
+}
+@keyframes jewelVerify {
+  0%, 100% { opacity: 0.45; }
+  50%       { opacity: 1.00; }
+}
+/* PIN Setup phase — subtitle variant */
+.pin-setup-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+.palace-pin-setup {
+  /* inherits .palace-gate layout; no additional overrides needed */
+}
+
 /* Biometric Interface */
 
 .gate-biometric-zone {

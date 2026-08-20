@@ -24,6 +24,7 @@ import type { Dictionary } from '@/src/creator-language';
 import { resolveAvailableActions } from '@/src/button-engine';
 import type { ChamberState } from '@/src/button-engine';
 import { useInstallInvitation } from '@/src/install-experience';
+import type { ImperialVisionDocument } from '@/src/chamber-vision';
 
 const EXAMPLE_PROMPT = 'قلعة سيادية عند الفجر، أنوار ذهبية فوق أبراج من العقيق الأسود';
 
@@ -54,7 +55,13 @@ interface UploadedItem {
   readonly uploadedAt:       number;
 }
 
-export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
+interface QiyamahChamberClientProps {
+  readonly dict: Dictionary;
+  readonly chamberVision?: ImperialVisionDocument;
+  readonly generationAvailable?: boolean;
+}
+
+export function QiyamahChamberClient({ dict, chamberVision, generationAvailable = true }: QiyamahChamberClientProps) {
   const { goTo } = useConstitutionalNavigation();
   const { triggerInvitation } = useInstallInvitation();
 
@@ -228,6 +235,14 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
 
         <div className="qiyamah-identity">
           <span className="chamber-label">حجرة القيامة</span>
+          {chamberVision && (
+            <span className="chamber-vision-ar" title={chamberVision.philosophy}>
+              {chamberVision.philosophyAr}
+            </span>
+          )}
+          <span className="chamber-vision-en">
+            Enter with a description — leave with a real, saved image
+          </span>
           <span className="creator-name">
             {displayName ? `أهلاً، ${displayName}` : 'أهلاً بك'}
           </span>
@@ -246,8 +261,17 @@ export function QiyamahChamberClient({ dict }: { readonly dict: Dictionary }) {
         <section className="genesis-section">
           <span className="section-label">بؤرة التوليد</span>
 
+          {/* ── Provider unavailable — truthful blocked state ─────── */}
+          {!generationAvailable && !isGenerating && !masterReady && !generationError && (
+            <div className="provider-unavailable" role="status">
+              <span className="unavailable-icon" aria-hidden="true">◎</span>
+              <p className="unavailable-title">بؤرة التوليد في انتظار مزود</p>
+              <p className="unavailable-sub">Image generation requires a provider credential to be configured on this server.</p>
+            </div>
+          )}
+
           {/* ── Idle: input form ─────────────────────────────────────── */}
-          {!isGenerating && !masterReady && !generationError && (
+          {generationAvailable && !isGenerating && !masterReady && !generationError && (
             <div className="genesis-form">
               <div className="pulse-core" />
               <p className="genesis-invitation">

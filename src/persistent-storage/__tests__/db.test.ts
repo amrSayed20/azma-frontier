@@ -82,7 +82,7 @@ describe('Persistent Storage Foundation — database connection', () => {
     // Opening it through createDatabase() must migrate it in place, not throw "no such column: email".
     const migrated = createDatabase(path);
     const columns = (migrated.prepare('PRAGMA table_info(creators)').all() as { name: string }[]).map((row) => row.name);
-    expect(columns).toEqual(expect.arrayContaining(['creator_id', 'display_name', 'created_at', 'email', 'password_hash', 'role', 'sovereign_purpose', 'sovereign_purpose_created_at', 'sovereign_purpose_updated_at']));
+    expect(columns).toEqual(expect.arrayContaining(['creator_id', 'display_name', 'created_at', 'email', 'password_hash', 'role', 'sovereign_purpose', 'sovereign_purpose_created_at', 'sovereign_purpose_updated_at', 'vault_pin_hash']));
 
     const legacyRow = migrated.prepare('SELECT * FROM creators WHERE creator_id = ?').get('legacy-1');
     expect(legacyRow?.display_name).toBe('Legacy Row');

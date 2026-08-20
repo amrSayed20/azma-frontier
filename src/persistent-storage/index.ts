@@ -14,7 +14,7 @@
 export { createDatabase, getDb, resetDbSingletonForTests } from './db';
 
 export type { CreatorRecord, NewCreator, CreatorRole } from './creator-repository';
-export { createCreator, getCreator, getCreatorByEmail, updateCreatorPreferredLocale } from './creator-repository';
+export { createCreator, getCreator, getCreatorByEmail, updateCreatorPreferredLocale, setVaultPinHash, getVaultPinHash } from './creator-repository';
 
 export type { SessionRecord } from './session-repository';
 export { createSession, getActiveSession, deleteSession } from './session-repository';

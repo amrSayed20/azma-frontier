@@ -76,6 +76,7 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     role TEXT NOT NULL DEFAULT 'creator',
     display_name TEXT,
     preferred_locale TEXT,
+    vault_pin_hash TEXT,
     created_at INTEGER NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS sessions (
@@ -324,6 +325,10 @@ export const CREATORS_MIGRATION_COLUMNS: readonly { readonly name: string; reado
   { name: 'sovereign_purpose', ddl: 'sovereign_purpose TEXT' },
   { name: 'sovereign_purpose_created_at', ddl: 'sovereign_purpose_created_at INTEGER' },
   { name: 'sovereign_purpose_updated_at', ddl: 'sovereign_purpose_updated_at INTEGER' },
+  // PHASE 3B — REAL VAULT PIN AUTHENTICATION: per-Creator scrypt PIN hash.
+  // NULL until the Creator completes the one-time PIN setup flow.
+  // NEVER store a plaintext PIN — only the scrypt output lands here.
+  { name: 'vault_pin_hash', ddl: 'vault_pin_hash TEXT' },
 ];
 
 /**

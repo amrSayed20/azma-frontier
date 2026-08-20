@@ -77,3 +77,24 @@ export function getCreatorByEmail(db: DatabaseSync, email: string): CreatorRecor
 export function updateCreatorPreferredLocale(db: DatabaseSync, creatorId: string, locale: string): void {
   db.prepare('UPDATE creators SET preferred_locale = ? WHERE creator_id = ?').run(locale, creatorId);
 }
+
+/**
+ * Stores a scrypt-derived PIN hash for a Creator's Vault gate.
+ * The raw PIN must NEVER be passed here — callers hash it first via hashPassword().
+ * Intentionally NOT part of CreatorRecord — the hash must never appear
+ * in general-purpose creator data objects or API responses.
+ */
+export function setVaultPinHash(db: DatabaseSync, creatorId: string, pinHash: string): void {
+  db.prepare('UPDATE creators SET vault_pin_hash = ? WHERE creator_id = ?').run(pinHash, creatorId);
+}
+
+/**
+ * Returns the stored scrypt PIN hash for a Creator, or null if no PIN has been set.
+ * Only the PIN verification route handler should call this.
+ */
+export function getVaultPinHash(db: DatabaseSync, creatorId: string): string | null {
+  const row = db.prepare('SELECT vault_pin_hash FROM creators WHERE creator_id = ?').get(creatorId) as
+    | { vault_pin_hash: string | null }
+    | undefined;
+  return row?.vault_pin_hash ?? null;
+}

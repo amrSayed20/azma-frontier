@@ -289,7 +289,7 @@ const PALACE_COMPANION = {
 
 // ── Phase + Auth ──────────────────────────────────────────────────────────
 
-type PalacePhase = 'gate' | 'opening' | 'palace' | 'ceremony' | 'sealing';
+type PalacePhase = 'gate' | 'opening' | 'palace' | 'ceremony' | 'sealing' | 'setup';
 type AuthMethod  = 'pin' | 'face' | 'bio';
 
 // ── Main Component ────────────────────────────────────────────────────────
@@ -302,6 +302,13 @@ export default function SovereignVaultPalace() {
   const [authMethod, setAuthMethod]             = useState<AuthMethod>('pin');
   const [pin, setPin]                           = useState('');
   const [pinShake, setPinShake]                 = useState(false);
+  const [pinError, setPinError]                 = useState<string | null>(null);
+  const [isVerifyingPin, setIsVerifyingPin]     = useState(false);
+  // PIN setup flow (phase === 'setup')
+  const [setupStep, setSetupStep]               = useState<'enter' | 'confirm'>('enter');
+  const [setupFirstPin, setSetupFirstPin]       = useState('');
+  const [setupError, setSetupError]             = useState<string | null>(null);
+  const [isSettingUp, setIsSettingUp]           = useState(false);
 
   // Palace state
   const [treasures, setTreasures]               = useState<Record<string, SovereignTreasure[]>>({});
@@ -396,16 +403,116 @@ export default function SovereignVaultPalace() {
     }, 900);
   }, []);
 
-  function handlePinDigit(digit: string) {
-    if (pin.length >= 4) return;
-    const next = pin + digit;
-    setPin(next);
-    if (next.length === 4) {
-      setTimeout(() => enterPalace(), 180);
+  // Phase 3B Package II — N-5: real server-side PIN verification.
+  async function verifyPin(submittedPin: string) {
+    setIsVerifyingPin(true);
+    setPinError(null);
+    try {
+      const res = await fetch('/api/vault/pin/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: submittedPin }),
+      });
+      const data = await res.json() as { status: string; message?: string };
+      switch (data.status) {
+        case 'authenticated':
+          enterPalace();
+          break;
+        case 'no-pin':
+          setPin('');
+          setSetupStep('enter');
+          setSetupFirstPin('');
+          setSetupError(null);
+          setPhase('setup');
+          break;
+        case 'incorrect':
+          setPin('');
+          setPinShake(true);
+          setPinError(data.message ?? 'PIN غير صحيح');
+          setTimeout(() => setPinShake(false), 500);
+          break;
+        case 'blocked':
+          setPin('');
+          setPinError('محاولات كثيرة — انتظر 15 دقيقة');
+          break;
+        default:
+          setPin('');
+          setPinError('خطأ في التحقق — حاول مرة أخرى');
+      }
+    } catch {
+      setPin('');
+      setPinError('البوابة لا تستجيب — حاول مرة أخرى');
+    } finally {
+      setIsVerifyingPin(false);
     }
   }
 
-  function handlePinClear() { setPin(''); setPinShake(false); }
+  function handlePinDigit(digit: string) {
+    if (pin.length >= 4 || isVerifyingPin) return;
+    const next = pin + digit;
+    setPin(next);
+    if (next.length === 4) {
+      setTimeout(() => verifyPin(next), 180);
+    }
+  }
+
+  function handlePinClear() { setPin(''); setPinShake(false); setPinError(null); }
+
+  // PIN setup flow — re-uses `pin` state for digit entry (phases are mutually exclusive).
+  async function submitSetupPin(confirmedPin: string) {
+    setIsSettingUp(true);
+    setSetupError(null);
+    try {
+      const res = await fetch('/api/vault/pin/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: confirmedPin }),
+      });
+      const data = await res.json() as { status: string; message?: string };
+      if (data.status === 'succeeded') {
+        setPin('');
+        setSetupFirstPin('');
+        setSetupStep('enter');
+        enterPalace();
+      } else {
+        setSetupError(data.message ?? 'فشل إعداد PIN');
+        setSetupStep('enter');
+        setPin('');
+      }
+    } catch {
+      setSetupError('البوابة لا تستجيب — حاول مرة أخرى');
+      setSetupStep('enter');
+      setPin('');
+    } finally {
+      setIsSettingUp(false);
+    }
+  }
+
+  function handleSetupDigit(digit: string) {
+    if (pin.length >= 4 || isSettingUp) return;
+    const next = pin + digit;
+    setPin(next);
+    if (next.length === 4) {
+      setTimeout(() => {
+        if (setupStep === 'enter') {
+          setSetupFirstPin(next);
+          setSetupStep('confirm');
+          setPin('');
+        } else {
+          if (next === setupFirstPin) {
+            submitSetupPin(next);
+          } else {
+            setSetupError('الرمزان لا يتطابقان — ابدأ من جديد');
+            setSetupStep('enter');
+            setSetupFirstPin('');
+            setPin('');
+          }
+        }
+      }, 180);
+    }
+  }
+
+  function handleSetupClear() { setPin(''); }
 
   async function handleBiometric() {
     try {
@@ -672,19 +779,21 @@ export default function SovereignVaultPalace() {
             <div className={`gate-pin-zone ${pinShake ? 'pin-shake' : ''}`}>
               <div className="pin-seal-display" aria-label={`${pin.length} أرقام مُدخلة من 4`}>
                 {[0, 1, 2, 3].map((i) => (
-                  <div key={i} className={`pin-jewel ${i < pin.length ? 'jewel-filled' : ''}`} />
+                  <div key={i} className={`pin-jewel ${i < pin.length ? 'jewel-filled' : ''} ${isVerifyingPin ? 'jewel-verifying' : ''}`} />
                 ))}
               </div>
+              {pinError && <p className="pin-error" role="alert">{pinError}</p>}
               <div className="pin-keypad" role="group" aria-label="لوحة المفاتيح">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-                  <button key={n} className="pin-key" onClick={() => handlePinDigit(String(n))}>
+                  <button key={n} className="pin-key" onClick={() => handlePinDigit(String(n))} disabled={isVerifyingPin}>
                     {n}
                   </button>
                 ))}
-                <button className="pin-key pin-key-clear" onClick={handlePinClear}>✕</button>
-                <button className="pin-key" onClick={() => handlePinDigit('0')}>0</button>
-                <button className="pin-key pin-key-enter" onClick={() => pin.length >= 4 && enterPalace()} disabled={pin.length < 4}>↵</button>
+                <button className="pin-key pin-key-clear" onClick={handlePinClear} disabled={isVerifyingPin}>✕</button>
+                <button className="pin-key" onClick={() => handlePinDigit('0')} disabled={isVerifyingPin}>0</button>
+                <button className="pin-key pin-key-enter" onClick={() => pin.length >= 4 && verifyPin(pin)} disabled={pin.length < 4 || isVerifyingPin}>↵</button>
               </div>
+              {isVerifyingPin && <p className="pin-verifying-label" aria-live="polite">جارٍ التحقق…</p>}
             </div>
           )}
 
@@ -718,6 +827,42 @@ export default function SovereignVaultPalace() {
               <p className="biometric-label">ضع إصبعك</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* PIN SETUP — first-time Creators         */}
+      {/* ═══════════════════════════════════════ */}
+      {phase === 'setup' && (
+        <div className="palace-gate palace-pin-setup">
+          <div className="gate-seal" aria-hidden="true">⬡</div>
+          <h1 className="gate-title">
+            {setupStep === 'enter' ? 'أنشئ رمز القصر السيادي' : 'أكّد الرمز السري'}
+          </h1>
+          <p className="gate-subtitle pin-setup-subtitle">
+            {setupStep === 'enter'
+              ? 'أدخل 4 أرقام — ستُحفظ محمية في الخزانة'
+              : 'أعد إدخال الأرقام الأربعة للتأكيد'}
+          </p>
+          <div className={`gate-pin-zone ${isSettingUp ? 'pin-zone-loading' : ''}`}>
+            <div className="pin-seal-display" aria-label={`${pin.length} أرقام مُدخلة من 4`}>
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className={`pin-jewel ${i < pin.length ? 'jewel-filled' : ''} ${isSettingUp ? 'jewel-verifying' : ''}`} />
+              ))}
+            </div>
+            {setupError && <p className="pin-error" role="alert">{setupError}</p>}
+            <div className="pin-keypad" role="group" aria-label="لوحة إعداد الرمز السري">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                <button key={n} className="pin-key" onClick={() => handleSetupDigit(String(n))} disabled={isSettingUp}>
+                  {n}
+                </button>
+              ))}
+              <button className="pin-key pin-key-clear" onClick={handleSetupClear} disabled={isSettingUp}>✕</button>
+              <button className="pin-key" onClick={() => handleSetupDigit('0')} disabled={isSettingUp}>0</button>
+              <button className="pin-key pin-key-enter" disabled>↵</button>
+            </div>
+            {isSettingUp && <p className="pin-verifying-label" aria-live="polite">جارٍ الحفظ…</p>}
+          </div>
         </div>
       )}
 
