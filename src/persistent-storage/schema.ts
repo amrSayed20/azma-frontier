@@ -271,6 +271,31 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`,
+
+  // PHASE 2A — PAYMOB PAYMENT INTEGRATION
+  // Reconciliation record created when a checkout session starts and
+  // updated on webhook delivery. Required because Paymob does not support
+  // arbitrary metadata on payment objects (unlike Stripe payment_intent.metadata).
+  // idempotency_key = our merchant_order_id sent to Paymob on order creation —
+  // the webhook carries it back as obj.order.merchant_order_id so we can look up
+  // creator_id / pack_id / azma_units without trusting client-supplied data.
+  // provider_transaction_id is the Paymob transaction obj.id, set on webhook receipt.
+  // status lifecycle: initiated → pending → successful | failed | cancelled
+  `CREATE TABLE IF NOT EXISTS payment_transactions (
+    transaction_id TEXT PRIMARY KEY,
+    creator_id TEXT NOT NULL,
+    pack_id TEXT NOT NULL,
+    azma_units INTEGER NOT NULL,
+    amount_egp INTEGER NOT NULL,
+    idempotency_key TEXT UNIQUE NOT NULL,
+    provider_id TEXT NOT NULL,
+    provider_order_id TEXT,
+    provider_reference TEXT,
+    provider_transaction_id TEXT,
+    status TEXT NOT NULL DEFAULT 'initiated',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
 ];
 
 /** Columns added to `cinematic_ledger` after its original creation — applied via ALTER TABLE for pre-existing databases. */
@@ -328,4 +353,7 @@ export const INDEX_STATEMENTS: readonly string[] = [
   'CREATE INDEX IF NOT EXISTS idx_credit_ledger_creator ON credit_ledger(creator_id, created_at)',
   'CREATE INDEX IF NOT EXISTS idx_credit_ledger_reference ON credit_ledger(reference_id)',
   'CREATE INDEX IF NOT EXISTS idx_credit_ledger_status ON credit_ledger(creator_id, status)',
+  // Payment transactions: reconciliation lookups by creator and by provider order
+  'CREATE INDEX IF NOT EXISTS idx_payment_transactions_creator ON payment_transactions(creator_id, created_at)',
+  'CREATE INDEX IF NOT EXISTS idx_payment_transactions_provider_order ON payment_transactions(provider_order_id)',
 ];

@@ -29,8 +29,14 @@ export async function handlePaymentWebhook(
     throw err;
   }
 
-  // Only process successful payment events
-  const relevantTypes = new Set(['checkout.session.completed', 'payment_intent.succeeded']);
+  // Only process successful payment events.
+  // 'checkout.session.completed' / 'payment_intent.succeeded' = Stripe (legacy).
+  // 'transaction.success' = Paymob (launch payment path).
+  const relevantTypes = new Set([
+    'checkout.session.completed',
+    'payment_intent.succeeded',
+    'transaction.success',
+  ]);
   if (!relevantTypes.has(event.eventType)) {
     return { processed: false, reason: `ignored_event_type:${event.eventType}` };
   }
