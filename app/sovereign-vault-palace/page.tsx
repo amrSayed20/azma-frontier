@@ -334,6 +334,15 @@ export default function SovereignVaultPalace() {
   // Camera ref
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // ── Auth Gate — redirect unauthenticated visitors to login ──────────────
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((data: { authenticated?: boolean }) => { if (!data.authenticated) goTo('/creator-access'); })
+      .catch(() => goTo('/creator-access'));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Camera for Face Auth ─────────────────────────────────────────────────
 
   useEffect(() => {

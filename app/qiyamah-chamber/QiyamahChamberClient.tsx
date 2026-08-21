@@ -118,10 +118,14 @@ export function QiyamahChamberClient({ dict, chamberVision, generationAvailable 
   useEffect(() => {
     fetch('/api/auth/me')
       .then((r) => r.json())
-      .then((data) => setDisplayName(data?.displayName ?? null))
-      .catch(() => setDisplayName(null));
-    fetchGenerations();
-    fetchUploadedItems();
+      .then((data: { authenticated?: boolean; displayName?: string | null }) => {
+        if (!data.authenticated) { goTo('/creator-access'); return; }
+        setDisplayName(data.displayName ?? null);
+        fetchGenerations();
+        fetchUploadedItems();
+      })
+      .catch(() => goTo('/creator-access'));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const uploadFile = async (file: File) => {

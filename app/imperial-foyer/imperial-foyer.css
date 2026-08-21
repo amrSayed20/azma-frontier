@@ -571,7 +571,32 @@
   .chamber-role { color: rgba(26, 23, 16, 0.45); }
   .vault-card-role { color: rgba(26, 23, 16, 0.5); }
   .vault-card-seal { color: rgba(120, 90, 16, 0.8); }
+
+  .foyer-logout-btn {
+    border-color: rgba(100, 80, 20, 0.3);
+    color:        rgba(26, 23, 16, 0.55);
+  }
+  .foyer-logout-btn:hover:not(:disabled) {
+    color:        rgba(26, 23, 16, 0.85);
+    border-color: rgba(100, 80, 20, 0.55);
+  }
+
+  .foyer-install-btn {
+    background:   rgba(0, 0, 0, 0.03);
+    border-color: rgba(40, 100, 60, 0.3);
+    color:        rgba(30, 80, 45, 0.75);
+  }
+  .foyer-install-btn:hover {
+    background:   rgba(40, 100, 60, 0.08);
+    border-color: rgba(40, 100, 60, 0.55);
+    color:        rgba(30, 80, 45, 1);
+  }
 }
 
-:root[data-theme='light'] .foyer-viewport { background: #f7f4ef; color: #1a1710; }
-:root[data-theme='dark']  .foyer-viewport { background: #08090c; color: #e8e4dc; }
+:root[data-theme='light'] .foyer-viewport   { background: #f7f4ef; color: #1a1710; }
+:root[data-theme='dark']  .foyer-viewport   { background: #08090c; color: #e8e4dc; }
+
+:root[data-theme='light'] .foyer-logout-btn { border-color: rgba(100, 80, 20, 0.3); color: rgba(26, 23, 16, 0.55); }
+:root[data-theme='light'] .foyer-logout-btn:hover:not(:disabled) { color: rgba(26, 23, 16, 0.85); border-color: rgba(100, 80, 20, 0.55); }
+:root[data-theme='light'] .foyer-install-btn { background: rgba(0, 0, 0, 0.03); border-color: rgba(40, 100, 60, 0.3); color: rgba(30, 80, 45, 0.75); }
+:root[data-theme='light'] .foyer-install-btn:hover { background: rgba(40, 100, 60, 0.08); border-color: rgba(40, 100, 60, 0.55); color: rgba(30, 80, 45, 1); }
