@@ -23,7 +23,7 @@ import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 
-const UPLOADED_ASSETS_DIR = join(process.cwd(), 'public', 'uploads');
+const UPLOADED_ASSETS_DIR = process.env.UPLOADS_DIR ?? join(process.cwd(), 'public', 'uploads');
 
 /** Only a short, alphanumeric extension is honored — anything else (including path-traversal attempts hidden in a Creator-supplied filename) is dropped rather than trusted. */
 const SAFE_EXTENSION_PATTERN = /^\.[a-zA-Z0-9]{1,10}$/;

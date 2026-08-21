@@ -509,7 +509,9 @@ export function QiyamahChamberClient({ dict, chamberVision, generationAvailable 
                 <span className="gallery-type-badge badge-uploaded">مرفوع</span>
                 {u.capabilityTarget === 'VISUAL' && u.url && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img className="generation-thumb" src={u.url} alt="أصل مرفوع" />
+                  <img className="generation-thumb" src={u.url} alt="أصل مرفوع"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
                 )}
                 {u.capabilityTarget === 'MOTION' && u.url && (
                   <video
