@@ -533,6 +533,7 @@ body, html {
   border-radius: 8px;
   border: 1px solid rgba(212, 175, 55, 0.25);
   display: block;
+  color-scheme: dark;
 }
 .uploaded-preview-audio {
   width: 100%;

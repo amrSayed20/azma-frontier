@@ -39,7 +39,7 @@
 
 /* ── Reset ─────────────────────────────────────────────────────── */
 
-body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--palace-bg); }
+body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--palace-bg); }
 
 /* ═══════════════════════════════════════════════════════════════
    VIEWPORT + ATMOSPHERE
@@ -1191,6 +1191,7 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
   display: block;
   background: rgba(0, 0, 0, 0.55);
   border-bottom: 1px solid rgba(212, 175, 55, 0.07);
+  color-scheme: dark;
 }
 
 .detail-asset-preview-audio {
@@ -1200,6 +1201,7 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
   box-sizing: border-box;
   background: rgba(0, 0, 0, 0.35);
   border-bottom: 1px solid rgba(212, 175, 55, 0.07);
+  color-scheme: dark;
 }
 
 .detail-asset-unavailable {
@@ -1302,6 +1304,127 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
 .custom-scroll::-webkit-scrollbar       { width: 3px; }
 .custom-scroll::-webkit-scrollbar-track  { background: transparent; }
 .custom-scroll::-webkit-scrollbar-thumb  { background: var(--ig-2); border-radius: 10px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   LIVING COMPANION — Crown Bar
+   Defined here because sovereign-vault.css is the only CSS
+   imported in this page; companion classes have no styles
+   otherwise when the palace is loaded directly.
+   ═══════════════════════════════════════════════════════════════ */
+
+.companion-mode-cluster {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.companion-mode-btn {
+  background: transparent;
+  border: 1px solid rgba(212,175,55,0.28);
+  color: var(--text-muted);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.22s, color 0.22s, background 0.22s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-family: inherit;
+}
+
+.companion-mode-btn:hover { border-color: var(--ig-5); color: var(--ig-5); }
+
+.companion-mode-btn.mode-active {
+  border-color: var(--ig-5);
+  color: var(--text-sacred);
+  background: var(--ig-glow);
+}
+
+.companion-voice-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-right: 1px solid rgba(212,175,55,0.18);
+  padding-right: 10px;
+  flex-shrink: 0;
+}
+
+.voice-listen-btn {
+  background: transparent;
+  border: 1px solid rgba(212,175,55,0.28);
+  color: var(--ig-5);
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.voice-listen-btn:hover:not(:disabled) { background: var(--ig-glow); }
+.voice-listen-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.voice-permission-denied {
+  font-size: 10px;
+  color: rgba(220,80,80,0.85);
+  font-style: italic;
+  white-space: nowrap;
+}
+
+.voice-listening-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--ig-5);
+  font-style: italic;
+}
+
+@keyframes palaceVoicePulse {
+  0%, 100% { transform: scale(1); opacity: 0.80; }
+  50%       { transform: scale(1.35); opacity: 1.00; }
+}
+
+.voice-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(220,80,80,0.85);
+  animation: palaceVoicePulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.companion-message-zone {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.companion-message-zone.companion-visible { opacity: 1; }
+.companion-message-zone.companion-hidden  { opacity: 0; pointer-events: none; }
+
+.companion-sigil { color: var(--ig-4); font-size: 10px; flex-shrink: 0; opacity: 0.65; }
+
+.companion-text {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 0.3s ease;
+}
+
+.companion-text.is-swapping { opacity: 0; }
 
 /* ═══════════════════════════════════════════════════════════════
    RESPONSIVE
