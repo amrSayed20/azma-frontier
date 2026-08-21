@@ -59,11 +59,10 @@ async function depositGeneratedAssetIntoVault(params: {
         ...(params.style ? { generationStyle: params.style } : {}),
       },
     });
-  } catch {
-    // Honest degrade, per this Package's own scope: a Vault deposit
-    // failure must never turn an already-successful generation into a
-    // reported failure. The Creator's real asset and gallery entry
-    // (generation_records) are already durably persisted regardless.
+  } catch (err) {
+    // Honest degrade — a Vault deposit failure must never turn an
+    // already-successful generation into a reported failure.
+    console.error('[VaultDeposit] deposit failed:', err instanceof Error ? err.message : String(err));
   }
 }
 
