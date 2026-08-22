@@ -16,7 +16,13 @@ import { TrialExhaustedError } from '../../../../src/economy/trial/trial-entitle
 export const dynamic = 'force-dynamic';
 
 const SESSION_COOKIE = 'azma_session';
-const GATEWAY_ID = 'openai';
+// 'magic-hour' matches the cost-catalog gatewayId (provider-cost-catalog.ts).
+// Note: the Magic Hour adapter's own providerId is 'magic-hour-image' — that is
+// the orchestrator-internal ID used for provider selection, not the cost-accounting key.
+// For non-Founders: costEngine.estimate() throws CostUnavailableError (pending-discovery)
+// until the Chief Architect approves the MH→AZMA Unit conversion rate — correctly
+// returns 503. For the Founder: cost gate is bypassed entirely; generation proceeds.
+const GATEWAY_ID = 'magic-hour';
 
 export async function POST(request: NextRequest) {
   let body: unknown;

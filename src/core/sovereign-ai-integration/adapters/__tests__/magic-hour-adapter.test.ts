@@ -57,7 +57,7 @@ function makeDispatchInput(prompt: string, meta: Record<string, unknown> = {}): 
   };
 }
 
-function mockFetchSequence(responses: Array<{ ok: boolean; body: unknown; status?: number }>) {
+function mockFetchSequence(responses: Array<{ ok: boolean; body?: unknown; status?: number }>) {
   let callIndex = 0;
   mockFetch.mockImplementation(() => {
     const r = responses[callIndex] ?? responses[responses.length - 1];
@@ -73,9 +73,16 @@ function mockFetchSequence(responses: Array<{ ok: boolean; body: unknown; status
       ok: true,
       status: 200,
       json: () => Promise.resolve(r.body),
+      arrayBuffer: () => Promise.resolve(FAKE_IMAGE_BYTES.buffer as ArrayBuffer),
     });
   });
 }
+
+// Fake bytes returned by the mocked image download URL fetch.
+// Using a fresh Uint8Array (own ArrayBuffer, not pooled) so Buffer.from(arrayBuffer)
+// returns exactly these 4 bytes regardless of Node's internal pool layout.
+const FAKE_IMAGE_BYTES = new Uint8Array([70, 65, 75, 69]); // ASCII 'FAKE'
+const FAKE_IMAGE_B64 = Buffer.from(FAKE_IMAGE_BYTES).toString('base64');
 
 const QUEUED = { id: 'mh-job-001', status: 'queued', credits_charged: 5, downloads: [] };
 const RENDERING = { id: 'mh-job-001', status: 'rendering', credits_charged: 5, downloads: [] };
@@ -119,18 +126,23 @@ describe('MagicHourImageAdapter — descriptor', () => {
 // ─── SUCCESSFUL IMAGE GENERATION ─────────────────────────────────────────────
 
 describe('MagicHourImageAdapter — dispatch', () => {
-  it('submits job and polls until complete, returning download URL', async () => {
+  it('submits job, polls until complete, then fetches image bytes from download URL', async () => {
     mockFetchSequence([
-      { ok: true, body: QUEUED },       // POST submission
-      { ok: true, body: RENDERING },    // GET poll 1
+      { ok: true, body: QUEUED },         // POST submission
+      { ok: true, body: RENDERING },      // GET poll 1
       { ok: true, body: COMPLETE_IMAGE }, // GET poll 2 — complete
+      { ok: true },                       // GET download URL → image bytes
     ]);
 
     const adapter = new MagicHourImageAdapter();
     const result = await adapter.dispatch(makeDispatchInput('a serene lake at sunrise'));
 
     expect(result.finishReason).toBe('completed');
-    expect(result.content).toBe('https://cdn.magichour.test/img/out.jpg');
+    // content is now base64-encoded image bytes, not the download URL
+    expect(result.content).toBe(FAKE_IMAGE_B64);
+    expect(result.metadata['downloadUrl']).toBe('https://cdn.magichour.test/img/out.jpg');
+    expect(result.metadata['mimeType']).toBe('image/png');
+    expect(result.metadata['encoding']).toBe('base64');
     expect(result.providerId).toBe(MAGIC_HOUR_IMAGE_PROVIDER_ID);
     expect(result.metadata['magicHourCreditsCharged']).toBe(5);
     expect(result.metadata['magicHourRefunded']).toBe(false);
@@ -141,6 +153,7 @@ describe('MagicHourImageAdapter — dispatch', () => {
     mockFetchSequence([
       { ok: true, body: QUEUED },
       { ok: true, body: COMPLETE_IMAGE },
+      { ok: true }, // GET download URL → image bytes
     ]);
 
     const adapter = new MagicHourImageAdapter();
@@ -371,11 +384,12 @@ describe('Duplicate completion / idempotent polling', () => {
     mockFetchSequence([
       { ok: true, body: QUEUED },
       { ok: true, body: COMPLETE_IMAGE },
+      { ok: true }, // GET download URL → image bytes
     ]);
 
     const adapter = new MagicHourImageAdapter();
     const result = await adapter.dispatch(makeDispatchInput('test prompt'));
     expect(result.finishReason).toBe('completed');
-    expect(mockFetch).toHaveBeenCalledTimes(2); // 1 submit + 1 poll
+    expect(mockFetch).toHaveBeenCalledTimes(3); // 1 submit + 1 poll + 1 image download
   });
 });

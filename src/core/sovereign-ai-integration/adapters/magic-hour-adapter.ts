@@ -238,13 +238,38 @@ export class MagicHourImageAdapter implements AIProviderAdapter {
     // Poll until done (images complete quickly — usually < 30 seconds)
     const job = await client.pollUntilDone(`/v1/image-projects/${submission.id}`);
 
-    return buildRawResponse(
+    const baseResponse = buildRawResponse(
       MAGIC_HOUR_IMAGE_PROVIDER_ID,
       MAGIC_HOUR_IMAGE_MODEL_ID,
       job,
       startedAt,
       { aspectRatio, resolution },
     );
+
+    // The generation-service contract requires content to be base64-encoded binary.
+    // Magic Hour returns a download URL (expires in 24h) — we fetch the bytes here,
+    // inside the adapter, so the rest of the pipeline is unchanged.
+    // Video/TTS adapters are NOT changed: their callers handle URL content differently.
+    const downloadUrl = baseResponse.metadata['downloadUrl'] as string | null;
+    if (baseResponse.finishReason !== 'completed' || !downloadUrl) {
+      return baseResponse;
+    }
+
+    const imageResponse = await fetch(downloadUrl);
+    if (!imageResponse.ok) {
+      throw new Error(`Magic Hour image download failed: HTTP ${imageResponse.status}`);
+    }
+    const imageBytes = Buffer.from(await imageResponse.arrayBuffer());
+
+    return {
+      ...baseResponse,
+      content: imageBytes.toString('base64'),
+      metadata: {
+        ...baseResponse.metadata,
+        mimeType: 'image/png',
+        encoding: 'base64',
+      },
+    };
   }
 }
 
