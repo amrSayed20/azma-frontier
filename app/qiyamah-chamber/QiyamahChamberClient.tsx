@@ -1,17 +1,21 @@
 /**
  * AZMA OS – Qiyamah Chamber (The Generative Genesis Forge)
  * Native Name: حجرة القيامة
- * Status: Imperial Reorganization — Ministry of Clarity
  *
- * REDESIGN RATIONALE: The original single-canvas layout placed generation,
- * upload, and state feedback in one undifferentiated column with no visual
- * hierarchy. This reorganization separates concerns into three named zones:
- *   1. Header strip — identity + navigation, always stable
- *   2. Workspace grid — generation section (2/3) + upload section (1/3)
- *   3. Gallery — always visible, honest empty state if nothing yet
+ * PHASE 3B — QIYAMAH EXPERIENCE CLARITY
  *
- * Error state now always renders an action: falls back to "حاوِل مرة أخرى"
- * if the Button Engine returns nothing, so the Creator is never stranded.
+ * Replaces the old single-stage raw-prompt model with a three-stage
+ * creation journey:
+ *   1. IDEA — Creator enters a plain-language idea + picks visual style
+ *   2. REVIEW — Constructed sovereign prompt displayed and editable
+ *   3. VISUAL — Image generation → persisted asset → Vault deposit
+ *
+ * The Creator does not need to know prompt engineering. Qiyamah builds
+ * the production-ready prompt from the idea. The confirmation modal
+ * (raw-prompt review) is removed — the new Review stage replaces it.
+ *
+ * Gallery hidden until the Creator has actual content, so the chamber
+ * opens as a creation space rather than a results page.
  */
 
 'use client';
@@ -26,7 +30,7 @@ import type { ChamberState } from '@/src/button-engine';
 import { useInstallInvitation } from '@/src/install-experience';
 import type { ImperialVisionDocument } from '@/src/chamber-vision';
 
-const EXAMPLE_PROMPT = 'قلعة سيادية عند الفجر، أنوار ذهبية فوق أبراج من العقيق الأسود';
+const EXAMPLE_IDEA = 'سيارة فاخرة تسير في القاهرة ليلًا';
 
 const STYLE_AR: Record<string, string> = {
   cinematic:   'سينمائي 35mm (ملحمي)',
@@ -36,18 +40,22 @@ const STYLE_AR: Record<string, string> = {
   animation:   'أنيميشن رقمي',
 };
 
+type JourneyStage =
+  | 'idea'
+  | 'constructing'
+  | 'review'
+  | 'generating'
+  | 'result'
+  | 'error';
+
 interface GenerationRecord {
-  readonly recordId: string;
-  readonly prompt: string;
-  readonly style: string | null;
-  readonly assetUrl: string;
+  readonly recordId:    string;
+  readonly prompt:      string;
+  readonly style:       string | null;
+  readonly assetUrl:    string;
   readonly generatedAt: number;
 }
 
-// Phase 3B Package I — N-3: uploaded assets tracked separately from
-// generation_records so the gallery shows both without corrupting the
-// data model. capabilityTarget comes back as a plain string from the
-// API JSON ('VISUAL'|'MOTION'|'AUDIO') — never cast to the enum.
 interface UploadedItem {
   readonly assetId:          string;
   readonly url:              string;
@@ -56,47 +64,51 @@ interface UploadedItem {
 }
 
 interface QiyamahChamberClientProps {
-  readonly dict: Dictionary;
-  readonly chamberVision?: ImperialVisionDocument;
+  readonly dict:                Dictionary;
+  readonly chamberVision?:      ImperialVisionDocument;
   readonly generationAvailable?: boolean;
 }
 
-export function QiyamahChamberClient({ dict, chamberVision, generationAvailable = true }: QiyamahChamberClientProps) {
+export function QiyamahChamberClient({
+  dict,
+  chamberVision,
+  generationAvailable = true,
+}: QiyamahChamberClientProps) {
   const { goTo } = useConstitutionalNavigation();
   const { triggerInvitation } = useInstallInvitation();
 
+  // ── Identity ────────────────────────────────────────────────────────────────
   const [displayName, setDisplayName] = useState<string | null>(null);
-  const [generations, setGenerations] = useState<readonly GenerationRecord[]>([]);
-  // Phase 3B Package I — N-3: uploaded items in parallel to generations.
+
+  // ── Gallery data ────────────────────────────────────────────────────────────
+  const [generations,   setGenerations]   = useState<readonly GenerationRecord[]>([]);
   const [uploadedItems, setUploadedItems] = useState<readonly UploadedItem[]>([]);
 
-  const [prompt, setPrompt] = useState('');
-  const [style, setStyle] = useState('cinematic');
+  // ── Journey state machine ───────────────────────────────────────────────────
+  const [stage,              setStage]              = useState<JourneyStage>('idea');
+  const [idea,               setIdea]               = useState('');
+  const [style,              setStyle]              = useState('cinematic');
+  const [constructedPrompt,  setConstructedPrompt]  = useState('');
+  const [constructionError,  setConstructionError]  = useState<string | null>(null);
+  const [generatedImageUrl,  setGeneratedImageUrl]  = useState<string | null>(null);
+  const [generationError,    setGenerationError]    = useState<string | null>(null);
+  const [generationErrorReason, setGenerationErrorReason] = useState<string | null>(null);
 
+  // ── Upload ──────────────────────────────────────────────────────────────────
   const [isDragging,    setIsDragging]    = useState(false);
   const [isUploading,   setIsUploading]   = useState(false);
   const [uploadError,   setUploadError]   = useState<string | null>(null);
-  // Tracks the most-recently uploaded asset for immediate in-chamber preview.
   const [uploadedAsset, setUploadedAsset] = useState<UploadedItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [showConfirm,          setShowConfirm]          = useState(false);
-  const [isGenerating,         setIsGenerating]         = useState(false);
-  const [masterReady,          setMasterReady]          = useState(false);
-  const [generatedImageUrl,    setGeneratedImageUrl]    = useState<string | null>(null);
-  const [generationError,      setGenerationError]      = useState<string | null>(null);
-  const [generationErrorReason, setGenerationErrorReason] = useState<string | null>(null);
-
+  // ── Data fetchers ───────────────────────────────────────────────────────────
   const fetchGenerations = () => {
     fetch('/api/qiyamah/generations')
       .then((r) => r.json())
       .then((result) => { if (result.status === 'succeeded') setGenerations(result.generations); })
-      .catch(() => { /* silent — gallery is an enhancement, not a gate */ });
+      .catch(() => { /* gallery is an enhancement, not a gate */ });
   };
 
-  // Phase 3B Package I — N-3: load previously uploaded assets from Vault.
-  // Filters to providerId='creator-upload' so generated images (already
-  // shown via generation_records) are not duplicated in the gallery.
   const fetchUploadedItems = () => {
     fetch('/api/vault/assets')
       .then((r) => r.json())
@@ -128,6 +140,7 @@ export function QiyamahChamberClient({ dict, chamberVision, generationAvailable 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Upload handler ──────────────────────────────────────────────────────────
   const uploadFile = async (file: File) => {
     setUploadError(null);
     setIsUploading(true);
@@ -137,9 +150,6 @@ export function QiyamahChamberClient({ dict, chamberVision, generationAvailable 
       const res  = await fetch('/api/vault/assets/upload', { method: 'POST', body: form });
       const data = await res.json();
       if (data.status === 'succeeded' && data.asset) {
-        // Phase 3B Package I — N-3: build an UploadedItem from the
-        // real asset the API just persisted, so it appears in the gallery
-        // immediately without a separate fetch or writing to generation_records.
         const newItem: UploadedItem = {
           assetId:          data.asset.assetId ?? '',
           url:              data.asset.secureStorageUri ?? '',
@@ -148,7 +158,6 @@ export function QiyamahChamberClient({ dict, chamberVision, generationAvailable 
         };
         setUploadedAsset(newItem);
         setUploadedItems((prev) => {
-          // Prevent duplicate if the item was already loaded from /api/vault/assets
           const without = prev.filter((u) => u.assetId !== newItem.assetId);
           return [newItem, ...without];
         });
@@ -162,46 +171,69 @@ export function QiyamahChamberClient({ dict, chamberVision, generationAvailable 
     }
   };
 
-  const fillExamplePrompt = () => setPrompt(EXAMPLE_PROMPT);
+  // ── Stage: IDEA → CONSTRUCTING ──────────────────────────────────────────────
+  const handleBuildScene = async () => {
+    if (!idea.trim()) return;
+    setStage('constructing');
+    setConstructionError(null);
+    try {
+      const res = await fetch('/api/qiyamah/expand', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ idea: idea.trim(), style }),
+      });
+      const data = await res.json();
+      if (data.status === 'succeeded' && typeof data.prompt === 'string') {
+        setConstructedPrompt(data.prompt);
+        setStage('review');
+      } else {
+        setConstructionError(data.message ?? 'فشل بناء المشهد — حاوِل مرة أخرى.');
+        setStage('idea');
+      }
+    } catch {
+      setConstructionError('البوابة لا تستجيب — حاوِل مرة أخرى.');
+      setStage('idea');
+    }
+  };
 
-  const handleTriggerGenesis = () => { if (prompt.trim()) setShowConfirm(true); };
-
-  const confirmAndGenerate = async () => {
-    setShowConfirm(false);
-    setIsGenerating(true);
+  // ── Stage: REVIEW → GENERATING ──────────────────────────────────────────────
+  const handleEmbodyScene = async () => {
+    if (!constructedPrompt.trim()) return;
+    setStage('generating');
     setGenerationError(null);
     setGenerationErrorReason(null);
-
     try {
       const response = await fetch('/api/qiyamah/generate', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, style }),
+        body:    JSON.stringify({ prompt: constructedPrompt.trim(), style }),
       });
       const result = await response.json();
-
       if (result.status === 'succeeded') {
         setGeneratedImageUrl(result.asset.assetUrl);
-        setMasterReady(true);
+        setStage('result');
         fetchGenerations();
         triggerInvitation();
       } else {
         setGenerationError(result.message ?? 'التوليد لم ينجح.');
         setGenerationErrorReason(result.reason ?? null);
+        setStage('error');
       }
     } catch {
       setGenerationError('البوابة لا تستجيب. أعِد المحاولة.');
-    } finally {
-      setIsGenerating(false);
+      setStage('error');
     }
   };
 
-  const generateAnother = () => {
-    setPrompt('');
+  // ── Reset: return to idea stage ─────────────────────────────────────────────
+  const resetJourney = () => {
+    setIdea('');
+    setConstructedPrompt('');
+    setConstructionError(null);
     setGeneratedImageUrl(null);
     setGenerationError(null);
     setGenerationErrorReason(null);
-    setMasterReady(false);
+    setStage('idea');
   };
 
   const handleExit = () => {
@@ -214,13 +246,46 @@ export function QiyamahChamberClient({ dict, chamberVision, generationAvailable 
     goTo('/imperial-foyer');
   };
 
+  // ── Derived values ──────────────────────────────────────────────────────────
+  const activeIndicatorStage: 'thought' | 'prompt' | 'visual' =
+    stage === 'idea' || stage === 'constructing' ? 'thought'
+    : stage === 'review'                          ? 'prompt'
+    : 'visual';
+
+  const isActivelyGenerating = stage === 'generating';
+
   const errorChamberState: ChamberState =
     generationErrorReason === 'unauthorized'       ? 'unauthorized'
     : generationErrorReason === 'payment-required' ? 'payment-required'
     : 'error';
 
-  const [errorAction]    = generationError ? resolveAvailableActions({ threshold: 'chamber', chamberState: errorChamberState }) : [];
-  const [completeAction] = masterReady     ? resolveAvailableActions({ threshold: 'chamber', chamberState: 'complete' })       : [];
+  const [errorAction]    = (stage === 'error' && generationError)
+    ? resolveAvailableActions({ threshold: 'chamber', chamberState: errorChamberState })
+    : [];
+  const [completeAction] = (stage === 'result')
+    ? resolveAvailableActions({ threshold: 'chamber', chamberState: 'complete' })
+    : [];
+
+  const hasGalleryContent = generations.length > 0 || uploadedItems.length > 0;
+
+  const StyleSelect = ({ id, disabled }: { id: string; disabled?: boolean }) => (
+    <div className="style-group">
+      <label className="style-label" htmlFor={id}>نمط التوليد</label>
+      <select
+        id={id}
+        className="cyber-select"
+        value={style}
+        onChange={(e) => setStyle(e.target.value)}
+        disabled={disabled}
+      >
+        <option value="cinematic">سينمائي 35mm (ملحمي)</option>
+        <option value="documentary">وثائقي كلاسيكي (أرشيفي)</option>
+        <option value="hyper_real">واقعي فائق 8K</option>
+        <option value="scifi">خيال علمي سريالي</option>
+        <option value="animation">أنيميشن رقمي</option>
+      </select>
+    </div>
+  );
 
   return (
     <main className="qiyamah-viewport">
@@ -245,18 +310,33 @@ export function QiyamahChamberClient({ dict, chamberVision, generationAvailable 
             </span>
           )}
           <span className="chamber-vision-en">
-            Enter with a description — leave with a real, saved image
+            Enter with an idea — leave with a real, saved image
           </span>
           <span className="creator-name">
             {displayName ? `أهلاً، ${displayName}` : 'أهلاً بك'}
           </span>
         </div>
 
-        <div className={`generation-status${isGenerating ? ' status-active' : ''}`}>
+        <div className={`generation-status${isActivelyGenerating ? ' status-active' : ''}`}>
           <span className="status-dot" />
-          <span className="status-text">{isGenerating ? 'قيد التوليد' : 'جاهزة'}</span>
+          <span className="status-text">{isActivelyGenerating ? 'قيد التوليد' : 'جاهزة'}</span>
         </div>
       </header>
+
+      {/* ── Journey Indicator ──────────────────────────────────────────── */}
+      <nav className="stage-indicator" aria-label="مراحل القيامة">
+        <span className={`stage-step${activeIndicatorStage === 'thought' ? ' is-active' : ''}`}>
+          الفكرة
+        </span>
+        <span className="stage-arrow" aria-hidden="true">→</span>
+        <span className={`stage-step${activeIndicatorStage === 'prompt' ? ' is-active' : ''}`}>
+          المشهد
+        </span>
+        <span className="stage-arrow" aria-hidden="true">→</span>
+        <span className={`stage-step${activeIndicatorStage === 'visual' ? ' is-active' : ''}`}>
+          التجسيد
+        </span>
+      </nav>
 
       {/* ── Main Workspace ─────────────────────────────────────────────── */}
       <div className="qiyamah-workspace">
@@ -265,68 +345,123 @@ export function QiyamahChamberClient({ dict, chamberVision, generationAvailable 
         <section className="genesis-section">
           <span className="section-label">بؤرة التوليد</span>
 
-          {/* ── Provider unavailable — truthful blocked state ─────── */}
-          {!generationAvailable && !isGenerating && !masterReady && !generationError && (
+          {/* Provider unavailable — truthful blocked state */}
+          {!generationAvailable &&
+            stage !== 'generating' &&
+            stage !== 'result' &&
+            stage !== 'error' && (
             <div className="provider-unavailable" role="status">
               <span className="unavailable-icon" aria-hidden="true">◎</span>
               <p className="unavailable-title">بؤرة التوليد في انتظار مزود</p>
-              <p className="unavailable-sub">Image generation requires a provider credential to be configured on this server.</p>
+              <p className="unavailable-sub">
+                Image generation requires a provider credential to be configured on this server.
+              </p>
             </div>
           )}
 
-          {/* ── Idle: input form ─────────────────────────────────────── */}
-          {generationAvailable && !isGenerating && !masterReady && !generationError && (
+          {/* ── STAGE: IDEA / CONSTRUCTING ─────────────────────────────── */}
+          {generationAvailable &&
+            (stage === 'idea' || stage === 'constructing') && (
             <div className="genesis-form">
               <div className="pulse-core" />
               <p className="genesis-invitation">
-                صف ما تريد أن تبعثه، والقيامة تتولى الباقي.
+                أعطِ القيامة فكرتك — وهي تحوّلها إلى مشهد سيادي.
               </p>
-              <textarea
-                className="prompt-textarea"
-                placeholder="صِف ما تريد أن تبعثه…"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                rows={4}
-              />
-              <div className="style-group">
-                <label className="style-label">نمط التوليد</label>
-                <select
-                  className="cyber-select"
-                  value={style}
-                  onChange={(e) => setStyle(e.target.value)}
-                >
-                  <option value="cinematic">سينمائي 35mm (ملحمي)</option>
-                  <option value="documentary">وثائقي كلاسيكي (أرشيفي)</option>
-                  <option value="hyper_real">واقعي فائق 8K</option>
-                  <option value="scifi">خيال علمي سريالي</option>
-                  <option value="animation">أنيميشن رقمي</option>
-                </select>
+
+              <div className="idea-field-group">
+                <label className="idea-field-label" htmlFor="qiyamah-idea">
+                  فكرتك
+                </label>
+                <textarea
+                  id="qiyamah-idea"
+                  className="idea-textarea"
+                  placeholder="أي فكرة بسيطة — في جملة أو جملتين…"
+                  value={idea}
+                  onChange={(e) => setIdea(e.target.value)}
+                  rows={3}
+                  disabled={stage === 'constructing'}
+                />
               </div>
-              <button className="import-btn neon-border-gold" onClick={fillExamplePrompt}>
+
+              <StyleSelect id="qiyamah-style-idea" disabled={stage === 'constructing'} />
+
+              {constructionError && (
+                <p className="construction-error" role="alert">{constructionError}</p>
+              )}
+
+              <button
+                className="import-btn neon-border-gold"
+                onClick={() => setIdea(EXAMPLE_IDEA)}
+                disabled={stage === 'constructing'}
+              >
                 جرّب مثالاً ⮞
               </button>
+
+              {stage === 'constructing' ? (
+                <div className="construction-progress">
+                  <div className="construction-spinner" aria-hidden="true" />
+                  <p className="construction-text pulse-text">
+                    القيامة تبني المشهد السيادي…
+                  </p>
+                </div>
+              ) : (
+                <button
+                  className="trigger-genesis-btn"
+                  onClick={handleBuildScene}
+                  disabled={!idea.trim()}
+                >
+                  بناء المشهد ⭍
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ── STAGE: REVIEW ──────────────────────────────────────────── */}
+          {stage === 'review' && (
+            <div className="genesis-form review-form">
+              <div className="review-header">
+                <span className="review-badge">✦ المشهد السيادي</span>
+                <p className="review-hint">يمكنك تعديل المشهد قبل التجسيد</p>
+              </div>
+
+              <textarea
+                className="constructed-prompt-display"
+                value={constructedPrompt}
+                onChange={(e) => setConstructedPrompt(e.target.value)}
+                rows={5}
+                aria-label="المشهد السيادي — قابل للتعديل"
+              />
+
+              <StyleSelect id="qiyamah-style-review" />
+
               <button
                 className="trigger-genesis-btn"
-                onClick={handleTriggerGenesis}
-                disabled={!prompt.trim()}
+                onClick={handleEmbodyScene}
+                disabled={!constructedPrompt.trim()}
               >
-                بدء التوليد (القيامة) ⭍
+                تجسيد المشهد ⭍
+              </button>
+
+              <button className="back-idea-btn" onClick={() => setStage('idea')}>
+                ← تعديل الفكرة
               </button>
             </div>
           )}
 
-          {/* ── Generating: spinner ──────────────────────────────────── */}
-          {isGenerating && (
+          {/* ── STAGE: GENERATING ──────────────────────────────────────── */}
+          {stage === 'generating' && (
             <div className="genesis-progress">
               <div className="progress-circle">
                 <span className="ritual-glyph">✦</span>
               </div>
-              <p className="generating-text pulse-text">تتم الآن عملية النفخ والبعث الرقمي...</p>
+              <p className="generating-text pulse-text">
+                تتم الآن عملية النفخ والبعث الرقمي...
+              </p>
             </div>
           )}
 
-          {/* ── Error state — always offers an action ────────────────── */}
-          {generationError && !isGenerating && (
+          {/* ── STAGE: ERROR ───────────────────────────────────────────── */}
+          {stage === 'error' && generationError && (
             <div className="error-state">
               <div className="error-icon">⚠</div>
               <p className="error-message">{generationError}</p>
@@ -336,20 +471,20 @@ export function QiyamahChamberClient({ dict, chamberVision, generationAvailable 
                     {t(dict, errorAction.labelKey)}
                   </a>
                 ) : (
-                  <button className="trigger-genesis-btn" onClick={() => setGenerationError(null)}>
+                  <button className="trigger-genesis-btn" onClick={resetJourney}>
                     {t(dict, errorAction.labelKey)}
                   </button>
                 )
               ) : (
-                <button className="trigger-genesis-btn" onClick={generateAnother}>
+                <button className="trigger-genesis-btn" onClick={resetJourney}>
                   حاوِل مرة أخرى
                 </button>
               )}
             </div>
           )}
 
-          {/* ── Master ready: image + next actions ───────────────────── */}
-          {masterReady && (
+          {/* ── STAGE: RESULT ──────────────────────────────────────────── */}
+          {stage === 'result' && (
             <div className="master-result">
               <div className="master-badge">✨ الماستر السيادي المكتمل ✨</div>
               {generatedImageUrl && (
@@ -367,7 +502,7 @@ export function QiyamahChamberClient({ dict, chamberVision, generationAvailable 
               </p>
               <div className="result-actions">
                 {completeAction && (
-                  <button className="trigger-genesis-btn" onClick={generateAnother}>
+                  <button className="trigger-genesis-btn" onClick={resetJourney}>
                     {t(dict, completeAction.labelKey)}
                   </button>
                 )}
@@ -382,7 +517,7 @@ export function QiyamahChamberClient({ dict, chamberVision, generationAvailable 
           )}
         </section>
 
-        {/* Upload Section */}
+        {/* ── Upload Section (secondary) ────────────────────────────────── */}
         <section className="upload-section">
           <span className="section-label upload-section-label">رفع أصل سيادي</span>
           <p className="upload-invitation">
@@ -434,15 +569,9 @@ export function QiyamahChamberClient({ dict, chamberVision, generationAvailable 
             <div className="upload-success">
               <div className="success-badge">✓ وصل الأصل إلى خزانتك السيادية</div>
 
-              {/* Phase 3B Package I — N-3: render actual media based on
-                  capabilityTarget; no longer relies on a URL extension regex */}
               {uploadedAsset.capabilityTarget === 'VISUAL' && uploadedAsset.url && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  className="uploaded-preview"
-                  src={uploadedAsset.url}
-                  alt="الأصل المرفوع"
-                />
+                <img className="uploaded-preview" src={uploadedAsset.url} alt="الأصل المرفوع" />
               )}
               {uploadedAsset.capabilityTarget === 'MOTION' && uploadedAsset.url && (
                 <video
@@ -468,10 +597,7 @@ export function QiyamahChamberClient({ dict, chamberVision, generationAvailable 
                 >
                   📥 عرض في القصر السيادي
                 </button>
-                <button
-                  className="secondary-btn"
-                  onClick={() => setUploadedAsset(null)}
-                >
+                <button className="secondary-btn" onClick={() => setUploadedAsset(null)}>
                   رفع أصل آخر
                 </button>
               </div>
@@ -481,13 +607,10 @@ export function QiyamahChamberClient({ dict, chamberVision, generationAvailable 
 
       </div>
 
-      {/* ── Gallery — always visible ───────────────────────────────────── */}
-      {/* Phase 3B Package I — N-3: unified gallery for generated AND uploaded
-          assets. Generated items read from generation_records (unchanged).
-          Uploaded items read from vault_assets (separate, non-overlapping). */}
-      <section className="your-generations" aria-label="الإرث السيادي">
-        <h3>إرثك السيادي</h3>
-        {(generations.length > 0 || uploadedItems.length > 0) ? (
+      {/* ── Gallery — only when the Creator has real content ───────────── */}
+      {hasGalleryContent && (
+        <section className="your-generations" aria-label="الإرث السيادي">
+          <h3>إرثك السيادي</h3>
           <div className="generations-grid">
 
             {generations.map((g) => (
@@ -509,7 +632,10 @@ export function QiyamahChamberClient({ dict, chamberVision, generationAvailable 
                 <span className="gallery-type-badge badge-uploaded">مرفوع</span>
                 {u.capabilityTarget === 'VISUAL' && u.url && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img className="generation-thumb" src={u.url} alt="أصل مرفوع"
+                  <img
+                    className="generation-thumb"
+                    src={u.url}
+                    alt="أصل مرفوع"
                     onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                   />
                 )}
@@ -540,37 +666,9 @@ export function QiyamahChamberClient({ dict, chamberVision, generationAvailable 
             ))}
 
           </div>
-        ) : (
-          <p className="gallery-empty">لم يتم التوليد بعد — ابدأ رحلتك من هنا.</p>
-        )}
-      </section>
-
-      {/* ── Confirmation Modal ─────────────────────────────────────────── */}
-      {showConfirm && (
-        <div className="bill-modal-overlay">
-          <div className="execution-bill neon-border-red">
-            <h2 className="bill-title">تأكيد التخليق</h2>
-            <div className="bill-details">
-              <div className="bill-row">
-                <span>الوصف</span>
-                <span>{prompt}</span>
-              </div>
-              <div className="bill-row">
-                <span>النمط</span>
-                <span>{STYLE_AR[style] ?? style}</span>
-              </div>
-            </div>
-            <div className="bill-actions">
-              <button className="cancel-btn" onClick={() => setShowConfirm(false)}>
-                إلغاء وتعديل
-              </button>
-              <button className="confirm-btn neon-border-gold" onClick={confirmAndGenerate}>
-                اعتماد سيادي وبدء النفخ
-              </button>
-            </div>
-          </div>
-        </div>
+        </section>
       )}
+
     </main>
   );
 }
