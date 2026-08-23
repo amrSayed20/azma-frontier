@@ -18,7 +18,11 @@ import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 
-const GENERATED_ASSETS_DIR = join(process.cwd(), 'public', 'generated-assets');
+// In production UPLOADS_DIR=/var/www/azma-uploads (Nginx-served, www-data accessible).
+// In development fallback: public/generated-assets (Next.js static, dev only).
+const GENERATED_ASSETS_DIR = process.env['UPLOADS_DIR']
+  ? join(process.env['UPLOADS_DIR'], 'generated-assets')
+  : join(process.cwd(), 'public', 'generated-assets');
 
 export interface PersistedAsset {
   readonly assetId: string;

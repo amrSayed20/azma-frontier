@@ -6,6 +6,7 @@ export type AICapabilityType =
   | 'embedding'
   | 'image-generation'
   | 'image-editing'
+  | 'video-generation'
   | 'audio-transcription'
   | 'audio-generation'
   | 'vision-analysis'

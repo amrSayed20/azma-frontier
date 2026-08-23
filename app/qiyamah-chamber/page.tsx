@@ -14,14 +14,14 @@ import { getVisionDocument } from '@/src/chamber-vision';
  *
  * Phase 3B Package II — N-4: chamberVision (static data, safe to pass as
  * server component prop) and generationAvailable (truthful capability check,
- * OPENAI_API_KEY presence only — the boolean never exposes the key itself)
+ * MAGIC_HOUR_API_KEY presence — the boolean never exposes the key itself)
  * are passed to the client so the interface can state what it actually does.
  */
 export default async function QiyamahChamberPage() {
   const locale = await resolveRequestLocale();
   const dict = getDictionary(locale);
   const chamberVision = getVisionDocument('qiyamah-chamber');
-  const generationAvailable = !!process.env.OPENAI_API_KEY;
+  const generationAvailable = !!process.env.MAGIC_HOUR_API_KEY;
   return (
     <QiyamahChamberExperience dict={dict} locale={locale}>
       <QiyamahChamberClient

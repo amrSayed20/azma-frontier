@@ -37,6 +37,22 @@ import { AssetFamily } from '../vault/sovereign-vault-types';
 import { CapabilityTarget } from '../core/sovereign-orchestrator/qiyamah-intent-types';
 import type { GenerationRequest, GenerationResult } from './types';
 
+// ─── PNG INTEGRITY GATE ───────────────────────────────────────────────────────
+
+// ISO/IEC 15948 §5.2 — PNG file signature (8 bytes).
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+// Minimum physically-possible PNG: signature(8) + IHDR(25) + IDAT(≥13) + IEND(12) = 58 bytes.
+// Gate at 67 — any real generated image is orders of magnitude larger; sub-67 is always corrupt.
+const MIN_VALID_PNG_BYTES = 67;
+
+function hasValidPngSignature(buf: Buffer): boolean {
+  if (buf.length < MIN_VALID_PNG_BYTES) return false;
+  for (let i = 0; i < PNG_SIGNATURE.length; i++) {
+    if (buf[i] !== PNG_SIGNATURE[i]) return false;
+  }
+  return true;
+}
+
 const vaultManager = new SovereignVaultManager();
 
 async function depositGeneratedAssetIntoVault(params: {
@@ -54,7 +70,7 @@ async function depositGeneratedAssetIntoVault(params: {
       assetFamily: AssetFamily.MEDIA,
       secureStorageUri: params.assetUrl,
       metadata: {
-        providerId: 'openai-gpt-image-1',
+        providerId: 'magic-hour-image',
         generationPrompt: params.prompt,
         ...(params.style ? { generationStyle: params.style } : {}),
       },
@@ -95,15 +111,25 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
   // constitutional routing, and fallback are all handled by the existing
   // DNAOrchestratorRuntime.  The adapter returns base64-encoded bytes in
   // NormalizedAIResponse.content; we decode back to Buffer here.
-  const orchestrationResult = await getGenerationOrchestrator().orchestrate({
-    requestId: crypto.randomUUID(),
-    requestedBy: request.creatorId ?? 'azma-anonymous',
-    prompt: request.prompt.trim(),
-    taskHint: 'image',
-    chamberId: 'qiyamah',
-    purpose: 'Sovereign image generation for Creator',
-    metadata: style ? { style } : {},
-  });
+  let orchestrationResult: Awaited<ReturnType<ReturnType<typeof getGenerationOrchestrator>['orchestrate']>>;
+  try {
+    orchestrationResult = await getGenerationOrchestrator().orchestrate({
+      requestId: crypto.randomUUID(),
+      requestedBy: request.creatorId ?? 'azma-anonymous',
+      prompt: request.prompt.trim(),
+      taskHint: 'image',
+      chamberId: 'qiyamah',
+      purpose: 'Sovereign image generation for Creator',
+      metadata: style ? { style } : {},
+    });
+  } catch {
+    return {
+      status: 'failed',
+      reason: 'provider-error',
+      message:
+        'No image generation provider was available. The capability may require an API credential to be configured.',
+    };
+  }
 
   if (orchestrationResult.response.finishReason !== 'completed') {
     return {
@@ -125,6 +151,16 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
       status: 'failed',
       reason: 'provider-error',
       message: 'The image generation response could not be decoded.',
+    };
+  }
+
+  // Integrity gate: reject URL-as-bytes corruption, empty content, and non-PNG payloads.
+  // Catches MagicHourVideoAdapter misrouting (video URL decoded as base64 = 56 bytes of garbage).
+  if (!hasValidPngSignature(providerResult.bytes)) {
+    return {
+      status: 'failed',
+      reason: 'provider-error',
+      message: 'The provider returned invalid or corrupted image data.',
     };
   }
 

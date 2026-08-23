@@ -282,7 +282,7 @@ const MH_VIDEO_DESCRIPTOR: AIProviderDescriptor = {
   providerId: MAGIC_HOUR_VIDEO_PROVIDER_ID,
   displayName: 'Magic Hour Text-to-Video',
   providerFamily: 'magic-hour',
-  capabilities: ['image-generation'], // mapped to nearest contract capability; video is a generation
+  capabilities: ['video-generation'], // text-to-video — must NOT claim image-generation; no consumer route yet
   modelIds: [MAGIC_HOUR_VIDEO_MODEL_ID],
   maxConcurrentRequests: 3,
   costProfile: { inputUnitCost: 0, outputUnitCost: 0, currency: 'magic-hour-credits' },
