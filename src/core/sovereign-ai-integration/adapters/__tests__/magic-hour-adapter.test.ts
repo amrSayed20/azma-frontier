@@ -29,6 +29,7 @@ import {
   MAGIC_HOUR_IMAGE_PROVIDER_ID,
   MAGIC_HOUR_VIDEO_PROVIDER_ID,
   MAGIC_HOUR_TTS_PROVIDER_ID,
+  MAGIC_HOUR_IMAGE_FREE_LAUNCH_MODEL,
 } from '../magic-hour-adapter';
 import type { AIProviderDispatchInput } from '../../provider-contracts';
 
@@ -146,6 +147,24 @@ describe('MagicHourImageAdapter — dispatch', () => {
     expect(result.providerId).toBe(MAGIC_HOUR_IMAGE_PROVIDER_ID);
     expect(result.metadata['magicHourCreditsCharged']).toBe(5);
     expect(result.metadata['magicHourRefunded']).toBe(false);
+  });
+
+  // FREE-LAUNCH MODEL LOCK — Chief Architect authorization 2026-08-23
+  it('sends model: flux-schnell in every outbound image POST body', async () => {
+    mockFetchSequence([
+      { ok: true, body: QUEUED },
+      { ok: true, body: COMPLETE_IMAGE },
+      { ok: true }, // image download
+    ]);
+
+    const adapter = new MagicHourImageAdapter();
+    await adapter.dispatch(makeDispatchInput('any prompt'));
+
+    // First fetch call is the POST /v1/ai-image-generator submission
+    const [, submitOptions] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(submitOptions.body as string) as Record<string, unknown>;
+    expect(body['model']).toBe(MAGIC_HOUR_IMAGE_FREE_LAUNCH_MODEL);
+    expect(body['model']).toBe('flux-schnell');
   });
 
   // SECURITY: API key must never appear in response metadata

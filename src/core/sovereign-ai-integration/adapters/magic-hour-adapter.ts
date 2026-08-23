@@ -204,6 +204,8 @@ function buildRawResponse(
 
 export const MAGIC_HOUR_IMAGE_PROVIDER_ID = 'magic-hour-image' as const;
 export const MAGIC_HOUR_IMAGE_MODEL_ID = 'magic-hour-ai-image-generator' as const;
+// Authorized free-launch model — Chief Architect approval 2026-08-23. Never changed without a new authorization.
+export const MAGIC_HOUR_IMAGE_FREE_LAUNCH_MODEL = 'flux-schnell' as const;
 
 const MH_IMAGE_DESCRIPTOR: AIProviderDescriptor = {
   providerId: MAGIC_HOUR_IMAGE_PROVIDER_ID,
@@ -227,12 +229,13 @@ export class MagicHourImageAdapter implements AIProviderAdapter {
     const aspectRatio = (input.request.context.metadata['aspectRatio'] as string | undefined) ?? '16:9';
     const resolution = (input.request.context.metadata['resolution'] as string | undefined) ?? '1k';
 
-    // Submit image generation job
+    // Submit image generation job — model locked to free-launch authorization
     const submission = await client.post<MagicHourJobResponse>('/v1/ai-image-generator', {
       image_count: 1,
       aspect_ratio: aspectRatio,
       resolution,
       style: { prompt: input.request.prompt },
+      model: MAGIC_HOUR_IMAGE_FREE_LAUNCH_MODEL,
     });
 
     // Poll until done (images complete quickly — usually < 30 seconds)
