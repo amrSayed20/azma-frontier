@@ -204,4 +204,60 @@ describe('Qiyamah First Generation Path — Generation Service', () => {
 
     expect(result).toEqual(expect.objectContaining({ status: 'failed', reason: 'storage-error', message: 'disk is full' }));
   });
+
+  // ── Clarity Package: originalIdea ────────────────────────────────────────────
+
+  it('A+B: the constructed prompt (not the Creator\'s original idea) is what the orchestrator receives', async () => {
+    successOrchestration();
+    mockPersistGeneratedImage.mockResolvedValue({ assetId: 'abc-ab', assetUrl: '/generated-assets/ab.png' });
+
+    const constructedPrompt = 'مشهد سينمائي بكاميرا 35mm، سيارة في القاهرة ليلًا، إضاءة درامية';
+    const originalIdea = 'سيارة في القاهرة ليلًا';
+
+    await generateImage({ prompt: constructedPrompt, originalIdea, creatorId: 'creator-ab' });
+
+    const orchestrateCall = mockOrchestrate.mock.calls[0][0];
+    // B: constructed prompt is what the orchestrator (and provider) receives
+    expect(orchestrateCall.prompt).toBe(constructedPrompt);
+    // A: the original idea is NOT what is sent to the provider
+    expect(orchestrateCall.prompt).not.toBe(originalIdea);
+  });
+
+  it('C+D: originalIdea is persisted separately; the asset result carries both for downstream use', async () => {
+    successOrchestration();
+    mockPersistGeneratedImage.mockResolvedValue({ assetId: 'abc-cd', assetUrl: '/generated-assets/cd.png' });
+
+    const constructedPrompt = 'مشهد سينمائي بكاميرا 35mm، فكرة بسيطة، إضاءة درامية سينمائية';
+    const originalIdea = 'فكرة بسيطة';
+
+    const result = await generateImage({ prompt: constructedPrompt, originalIdea });
+
+    // D: originalIdea stored in the durable record
+    expect(mockPersistGenerationRecord).toHaveBeenCalledWith('fake-db-handle', expect.objectContaining({
+      prompt: constructedPrompt,
+      originalIdea,
+    }));
+
+    // C: the asset result separates creator-facing text from engineering prompt
+    if (result.status === 'succeeded') {
+      expect(result.asset.originalIdea).toBe(originalIdea);
+      expect(result.asset.prompt).toBe(constructedPrompt);
+      expect(result.asset.prompt).not.toBe(result.asset.originalIdea);
+    }
+  });
+
+  it('originalIdea defaults to null when not provided — anonymous or legacy calls unaffected', async () => {
+    successOrchestration();
+    mockPersistGeneratedImage.mockResolvedValue({ assetId: 'abc-null', assetUrl: '/generated-assets/null.png' });
+
+    const result = await generateImage({ prompt: 'a sovereign vista' });
+
+    expect(mockPersistGenerationRecord).toHaveBeenCalledWith('fake-db-handle', expect.objectContaining({
+      originalIdea: null,
+    }));
+
+    if (result.status === 'succeeded') {
+      expect(result.asset.originalIdea).toBeNull();
+    }
+  });
 });

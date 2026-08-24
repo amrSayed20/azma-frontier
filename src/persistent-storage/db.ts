@@ -24,7 +24,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
-import { SCHEMA_STATEMENTS, CINEMATIC_LEDGER_MIGRATION_COLUMNS, CREATORS_MIGRATION_COLUMNS, GOALS_MIGRATION_COLUMNS, INDEX_STATEMENTS } from './schema';
+import { SCHEMA_STATEMENTS, GENERATION_RECORDS_MIGRATION_COLUMNS, CINEMATIC_LEDGER_MIGRATION_COLUMNS, CREATORS_MIGRATION_COLUMNS, GOALS_MIGRATION_COLUMNS, INDEX_STATEMENTS } from './schema';
 // Economy Foundation: no migration columns needed for new tables — they are
 // created fresh via CREATE TABLE IF NOT EXISTS in SCHEMA_STATEMENTS.
 
@@ -72,6 +72,17 @@ function migrateGoalsTable(db: DatabaseSync): void {
   }
 }
 
+function migrateGenerationRecordsTable(db: DatabaseSync): void {
+  const existingColumns = new Set(
+    (db.prepare('PRAGMA table_info(generation_records)').all() as { name: string }[]).map((row) => row.name),
+  );
+  for (const column of GENERATION_RECORDS_MIGRATION_COLUMNS) {
+    if (!existingColumns.has(column.name)) {
+      db.exec(`ALTER TABLE generation_records ADD COLUMN ${column.ddl}`);
+    }
+  }
+}
+
 export function createDatabase(path: string = DEFAULT_DB_PATH): DatabaseSync {
   if (path !== ':memory:') {
     mkdirSync(dirname(path), { recursive: true });
@@ -86,6 +97,7 @@ export function createDatabase(path: string = DEFAULT_DB_PATH): DatabaseSync {
   migrateCinematicLedgerTable(db);
   migrateCreatorsTable(db);
   migrateGoalsTable(db);
+  migrateGenerationRecordsTable(db);
   for (const statement of INDEX_STATEMENTS) {
     db.exec(statement);
   }

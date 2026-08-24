@@ -27,32 +27,42 @@ export const dynamic = 'force-dynamic';
 const SESSION_COOKIE = 'azma_session';
 
 // ─── Style vocabulary ─────────────────────────────────────────────────────────
+// AVAILABLE styles — fully operational, accepted by this route.
 // Each entry adds an opening visual context (prefix) and a closing technical
 // parameter string (suffix) that together produce a production-ready prompt
 // from the Creator's plain-language idea.
 
-const STYLE_VOCABULARY: Record<string, { prefix: string; suffix: string }> = {
+export const STYLE_VOCABULARY: Record<string, { prefix: string; suffix: string }> = {
   cinematic: {
-    prefix:   'مشهد سينمائي بكاميرا 35mm، ',
-    suffix:   '، إضاءة درامية سينمائية، بؤرة عميقة، إطار ملحمي، ألوان سينمائية غنية',
+    prefix: 'مشهد سينمائي بكاميرا 35mm، ',
+    suffix: '، إضاءة درامية سينمائية، بؤرة عميقة، إطار ملحمي، ألوان سينمائية غنية',
+  },
+  realistic: {
+    prefix: 'تصوير فوتوغرافي فائق الدقة 8K، ',
+    suffix: '، تفاصيل مذهلة، إضاءة احترافية، واقعية مطبعية، جودة إنتاج عالية',
+  },
+  advertising: {
+    prefix: 'تصوير إعلاني احترافي، ',
+    suffix: '، إضاءة استوديو سينمائية، تكوين تجاري فاخر، جودة طباعية عالية',
   },
   documentary: {
-    prefix:   'توثيق بصري أصيل، ',
-    suffix:   '، ضوء طبيعي، رصد واقعي، تكوين كلاسيكي، أرشيفي',
+    prefix: 'توثيق بصري أصيل، ',
+    suffix: '، ضوء طبيعي، رصد واقعي، تكوين كلاسيكي، أرشيفي',
   },
-  hyper_real: {
-    prefix:   'تصوير فوتوغرافي فائق الدقة 8K، ',
-    suffix:   '، تفاصيل مذهلة، إضاءة احترافية، واقعية مطبعية، جودة إنتاج عالية',
-  },
-  scifi: {
-    prefix:   'عالم خيال علمي سريالي، ',
-    suffix:   '، تقنية المستقبل، أجواء كونية، إضاءة نيون، بصريات سريالية متقدمة',
-  },
-  animation: {
-    prefix:   'أنيميشن رقمي احترافي، ',
-    suffix:   '، ألوان نابضة بالحياة، أسلوب فني مميز، إتقان بصري رقمي',
+  creative: {
+    prefix: 'تعبير فني إبداعي، ',
+    suffix: '، أسلوب بصري مميز، ألوان جريئة، تكوين مبتكر، طاقة فنية عالية',
   },
 };
+
+// LOCKED styles — visible in the UI as "قريبًا" but must never enter
+// the construction or generation pipeline. Any submission of a locked
+// style is rejected here, not silently fallen back to cinematic, so
+// the server is an honest last line of defense matching the UI's state.
+export const LOCKED_STYLES = new Set([
+  'scifi', 'animation', 'fantasy', 'portrait', 'fashion',
+  'architecture', 'historical', 'abstract',
+]);
 
 function buildSovereignPrompt(idea: string, style: string): string {
   const vocab = STYLE_VOCABULARY[style] ?? STYLE_VOCABULARY['cinematic'];
@@ -92,6 +102,13 @@ export async function POST(request: NextRequest) {
   if (idea.trim().length > 500) {
     return NextResponse.json(
       { status: 'failed', reason: 'invalid-input', message: 'Idea exceeds the maximum length of 500 characters.' },
+      { status: 400 },
+    );
+  }
+
+  if (typeof style === 'string' && LOCKED_STYLES.has(style)) {
+    return NextResponse.json(
+      { status: 'failed', reason: 'locked-style', message: 'هذا الأسلوب غير متاح حاليًا.' },
       { status: 400 },
     );
   }

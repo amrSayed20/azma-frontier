@@ -14,6 +14,8 @@ export interface GenerationRequest {
   readonly style?: string;
   /** Optional today: no real Authentication exists yet. When omitted, the resulting record is honestly anonymous. */
   readonly creatorId?: string;
+  /** The Creator's verbatim idea, stored separately from the constructed production prompt. */
+  readonly originalIdea?: string | null;
 }
 
 export interface GeneratedAsset {
@@ -22,6 +24,8 @@ export interface GeneratedAsset {
   readonly prompt: string;
   readonly style: string | null;
   readonly generatedAt: string;
+  /** The Creator's original idea as entered. Null for assets generated before this field was added. */
+  readonly originalIdea: string | null;
 }
 
 export type GenerationErrorReason =

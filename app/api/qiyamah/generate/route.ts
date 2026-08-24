@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
 
   const prompt = (body as { prompt?: unknown })?.prompt;
   const style = (body as { style?: unknown })?.style;
+  const idea = (body as { idea?: unknown })?.idea;
 
   if (typeof prompt !== 'string') {
     return NextResponse.json({ status: 'failed', reason: 'invalid-prompt', message: 'A string prompt is required.' }, { status: 400 });
@@ -136,6 +137,7 @@ export async function POST(request: NextRequest) {
     prompt,
     style: typeof style === 'string' ? style : undefined,
     creatorId: session.creatorId,
+    originalIdea: typeof idea === 'string' && idea.trim().length > 0 ? idea.trim() : null,
   });
 
   if (result.status === 'failed') {

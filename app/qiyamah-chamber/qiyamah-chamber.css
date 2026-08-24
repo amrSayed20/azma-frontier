@@ -162,13 +162,13 @@ body, html {
   box-shadow: 0 0 12px rgba(212,175,55,0.2), inset 0 0 8px rgba(0,0,0,0.8);
 }
 
-/* ─── Workspace grid ───────────────────────────────────────────────────── */
+/* ─── Workspace — single column: generation primary, upload secondary ────── */
 
 .qiyamah-workspace {
-  display: grid;
-  grid-template-columns: 1fr 360px;
+  display: flex;
+  flex-direction: column;
   gap: 24px;
-  width: 100%; max-width: 1200px;
+  width: 100%; max-width: 760px;
   margin: 36px auto 0;
   padding: 0 24px;
   z-index: 10; position: relative;
@@ -198,6 +198,18 @@ body, html {
 /* Upload section gets a gold accent instead */
 .upload-section { border-color: rgba(212,175,55,0.18); }
 .upload-section-label { color: var(--gold-neon); }
+
+/* Secondary state: visually reduced so generation remains the clear primary */
+.upload-section--secondary {
+  padding: 18px 24px;
+  border-color: rgba(212,175,55,0.10);
+  opacity: 0.82;
+  transition: opacity 0.2s;
+}
+.upload-section--secondary:hover,
+.upload-section--secondary:focus-within {
+  opacity: 1;
+}
 
 /* ─── Genesis form (idle state) ────────────────────────────────────────── */
 
@@ -254,27 +266,49 @@ body, html {
   box-shadow: 0 0 10px rgba(212,175,55,0.2);
 }
 
-.style-group { width: 100%; }
-.style-label {
-  display: block;
-  font-size: 11px; color: var(--text-muted); margin-bottom: 8px; font-weight: bold;
-}
+/* ─── Sovereign Style Registry ─────────────────────────────────────────── */
 
-.cyber-select {
-  width: 100%;
-  background: rgba(0,0,0,0.6);
-  border: 1px solid var(--crimson-dim);
-  color: var(--text-main);
-  padding: 10px 12px;
-  border-radius: 6px;
-  font-family: inherit; font-size: 13px;
-  outline: none; transition: 0.25s;
-  cursor: pointer;
+.style-registry { width: 100%; }
+.style-registry-label {
+  font-size: 11px; color: var(--text-muted); margin: 0 0 10px;
+  font-weight: 700; display: block;
 }
-.cyber-select:focus {
-  border-color: var(--crimson-neon);
-  box-shadow: 0 0 10px rgba(255,42,42,0.2);
+.style-registry-available {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;
 }
+.style-registry-locked {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.style-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 14px;
+  background: rgba(0,0,0,0.45);
+  border: 1px solid rgba(139,0,0,0.3);
+  border-radius: 8px;
+  cursor: pointer; transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  font-family: inherit;
+  min-width: 78px;
+}
+.style-tile:hover:not(:disabled) {
+  border-color: var(--crimson-dim);
+  background: rgba(139,0,0,0.12);
+}
+.style-tile--selected {
+  border-color: var(--crimson-neon) !important;
+  background: rgba(139,0,0,0.18) !important;
+  box-shadow: 0 0 12px rgba(255,42,42,0.22);
+}
+.style-tile--locked {
+  opacity: 0.38;
+  cursor: not-allowed;
+  border-color: rgba(255,255,255,0.08);
+  border-style: dashed;
+  pointer-events: none;
+}
+.style-tile:disabled { cursor: not-allowed; opacity: 0.5; }
+.style-tile-name { font-size: 12px; font-weight: 700; color: var(--text-main); white-space: nowrap; }
+.style-tile-tagline { font-size: 10px; color: var(--text-muted); }
+.style-tile-soon { font-size: 9px; color: var(--text-muted); letter-spacing: 0.08em; }
 
 .import-btn {
   background: rgba(0,0,0,0.5);
@@ -551,52 +585,6 @@ body, html {
   color-scheme: dark;
 }
 
-/* ─── Confirmation Modal ───────────────────────────────────────────────── */
-
-.bill-modal-overlay {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.88); backdrop-filter: blur(10px);
-  z-index: 1000;
-  display: flex; align-items: center; justify-content: center;
-  padding: 20px; box-sizing: border-box;
-}
-.execution-bill {
-  background: #0a0505; padding: 36px; border-radius: 16px;
-  width: 100%; max-width: 440px;
-  box-shadow: 0 20px 50px rgba(0,0,0,1);
-}
-.bill-title {
-  color: var(--gold-neon); text-align: center;
-  border-bottom: 1px dashed var(--crimson-dim);
-  padding-bottom: 14px; margin-top: 0;
-}
-.bill-details { display: flex; flex-direction: column; gap: 14px; margin: 22px 0; }
-.bill-row {
-  display: flex; flex-direction: column; gap: 5px;
-  color: var(--text-main); font-size: 14px;
-}
-.bill-row span:first-child {
-  color: var(--text-muted); font-size: 10px;
-  text-transform: uppercase; letter-spacing: 0.08em;
-}
-.bill-actions { display: flex; gap: 12px; margin-top: 28px; }
-.cancel-btn {
-  flex: 1; background: transparent;
-  border: 1px solid var(--text-muted); color: var(--text-muted);
-  padding: 12px; border-radius: 8px; cursor: pointer;
-  font-family: inherit; transition: 0.2s;
-}
-.cancel-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
-.confirm-btn {
-  flex: 2; background: rgba(20,15,5,0.9);
-  color: var(--gold-neon); font-weight: bold;
-  padding: 12px; border-radius: 8px; cursor: pointer;
-  font-family: inherit; transition: 0.2s;
-}
-.confirm-btn:hover {
-  background: rgba(212,175,55,0.18);
-  box-shadow: 0 0 20px rgba(212,175,55,0.3);
-}
 
 /* ─── Stage Indicator ──────────────────────────────────────────────────── */
 
@@ -713,55 +701,36 @@ body, html {
   width: 100%;
 }
 
-/* ─── Review Stage ──────────────────────────────────────────────────────── */
+/* ─── Review Stage — Scene-Ready Confirmation Card ──────────────────────── */
 
-.review-form {
-  gap: 16px;
-}
+.review-form { gap: 16px; }
 
-.review-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
+.scene-ready-card {
   width: 100%;
-}
-
-.review-badge {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--gold-neon);
-  letter-spacing: 0.06em;
+  background: rgba(0,0,0,0.45);
+  border: 1px solid rgba(212,175,55,0.28);
+  box-shadow: 0 0 24px rgba(212,175,55,0.07);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
   text-align: center;
-}
-
-.review-hint {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin: 0;
-  text-align: center;
-}
-
-.constructed-prompt-display {
-  width: 100%;
-  min-height: 110px;
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px solid var(--gold-neon);
-  box-shadow: 0 0 14px rgba(212, 175, 55, 0.12);
-  color: var(--text-main);
-  padding: 14px;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 1.7;
-  resize: vertical;
-  outline: none;
   box-sizing: border-box;
-  transition: box-shadow 0.25s;
 }
-
-.constructed-prompt-display:focus {
-  box-shadow: 0 0 20px rgba(212, 175, 55, 0.28);
+.scene-ready-glyph {
+  font-size: 26px; color: var(--gold-neon); line-height: 1;
+  filter: drop-shadow(0 0 10px rgba(212,175,55,0.5));
+}
+.scene-ready-title {
+  font-size: 13px; font-weight: 700; color: var(--gold-neon);
+  letter-spacing: 0.1em; margin: 0;
+}
+.scene-ready-idea {
+  font-size: 16px; color: var(--text-main); line-height: 1.65;
+  margin: 0; max-width: 420px;
+}
+.scene-ready-style {
+  font-size: 11px; color: var(--crimson-neon);
+  letter-spacing: 0.08em; font-weight: 700; margin: 0;
 }
 
 .back-idea-btn {
@@ -785,7 +754,6 @@ body, html {
 /* ─── Responsive ───────────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {
-  .qiyamah-workspace { grid-template-columns: 1fr; }
   .qiyamah-header { padding: 12px 16px; }
   .creator-name { font-size: 13px; }
 }

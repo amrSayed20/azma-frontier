@@ -172,6 +172,7 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
       prompt: request.prompt.trim(),
       style,
       assetUrl: persisted.assetUrl,
+      originalIdea: request.originalIdea ?? null,
     });
     if (request.creatorId) {
       await depositGeneratedAssetIntoVault({
@@ -190,6 +191,7 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
         prompt: request.prompt.trim(),
         style,
         generatedAt: new Date().toISOString(),
+        originalIdea: request.originalIdea ?? null,
       },
     };
   } catch (error) {

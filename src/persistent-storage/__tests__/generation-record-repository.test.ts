@@ -39,4 +39,47 @@ describe('Persistent Storage Foundation — Qiyamah generation records', () => {
     recordGeneration(db, { creatorId: 'creator-b', prompt: 'b-only', style: null, assetUrl: '/generated-assets/b.png' });
     expect(listGenerationsForCreator(db, 'creator-a').map((r) => r.prompt)).toEqual(['a-only']);
   });
+
+  // ── D: originalIdea ─────────────────────────────────────────────────────────
+
+  it('D: stores the original Creator idea separately from the engineered production prompt', () => {
+    const constructedPrompt = 'مشهد سينمائي بكاميرا 35mm، سيارة في القاهرة ليلًا، إضاءة درامية سينمائية';
+    const originalIdea = 'سيارة في القاهرة ليلًا';
+    const record = recordGeneration(db, {
+      creatorId: 'creator-d',
+      prompt: constructedPrompt,
+      style: 'cinematic',
+      assetUrl: '/generated-assets/d.png',
+      originalIdea,
+    });
+    expect(record.originalIdea).toBe(originalIdea);
+    expect(record.prompt).toBe(constructedPrompt);
+    expect(record.prompt).not.toBe(record.originalIdea);
+  });
+
+  // ── E: gallery shows originalIdea ───────────────────────────────────────────
+
+  it('E: gallery listing returns originalIdea so Creators see their own words, not the engineered prompt', () => {
+    recordGeneration(db, {
+      creatorId: 'creator-e',
+      prompt: 'مشهد سينمائي بكاميرا 35mm، فكرة بسيطة، إضاءة درامية سينمائية',
+      style: 'cinematic',
+      assetUrl: '/generated-assets/e.png',
+      originalIdea: 'فكرة بسيطة',
+    });
+    const records = listGenerationsForCreator(db, 'creator-e');
+    expect(records[0].originalIdea).toBe('فكرة بسيطة');
+    expect(records[0].prompt).not.toBe(records[0].originalIdea);
+  });
+
+  it('historical records with null originalIdea remain fully readable — backward-compatible migration', () => {
+    // Simulate a pre-migration row: direct SQL without original_idea column
+    db.prepare(
+      'INSERT INTO generation_records (record_id, creator_id, prompt, style, asset_url, generated_at) VALUES (?, ?, ?, ?, ?, ?)',
+    ).run('legacy-id', 'creator-legacy', 'legacy engineering prompt', null, '/generated-assets/legacy.png', Date.now());
+    const records = listGenerationsForCreator(db, 'creator-legacy');
+    expect(records.length).toBe(1);
+    expect(records[0].originalIdea).toBeNull();
+    expect(records[0].prompt).toBe('legacy engineering prompt');
+  });
 });

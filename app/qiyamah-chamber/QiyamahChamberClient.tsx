@@ -32,13 +32,25 @@ import type { ImperialVisionDocument } from '@/src/chamber-vision';
 
 const EXAMPLE_IDEA = 'سيارة فاخرة تسير في القاهرة ليلًا';
 
-const STYLE_AR: Record<string, string> = {
-  cinematic:   'سينمائي 35mm (ملحمي)',
-  documentary: 'وثائقي كلاسيكي (أرشيفي)',
-  hyper_real:  'واقعي فائق 8K',
-  scifi:       'خيال علمي سريالي',
-  animation:   'أنيميشن رقمي',
-};
+// Sovereign Style Registry — AVAILABLE (operational) + LOCKED (visible, not selectable)
+const AVAILABLE_STYLES: Array<{ id: string; nameAr: string; tagline: string }> = [
+  { id: 'cinematic',   nameAr: 'سينمائي',      tagline: 'ملحمي 35mm' },
+  { id: 'realistic',   nameAr: 'واقعي',         tagline: 'دقة فائقة 8K' },
+  { id: 'advertising', nameAr: 'إعلاني',        tagline: 'استوديو فاخر' },
+  { id: 'documentary', nameAr: 'وثائقي',        tagline: 'أصيل وأرشيفي' },
+  { id: 'creative',    nameAr: 'فني / إبداعي',  tagline: 'تعبير حر' },
+];
+
+const LOCKED_STYLES_UI: Array<{ nameAr: string }> = [
+  { nameAr: 'خيال علمي' },
+  { nameAr: 'أنيميشن' },
+  { nameAr: 'فانتازيا' },
+  { nameAr: 'بورتريه' },
+  { nameAr: 'أزياء' },
+  { nameAr: 'معماري' },
+  { nameAr: 'تاريخي' },
+  { nameAr: 'تجريدي' },
+];
 
 type JourneyStage =
   | 'idea'
@@ -54,6 +66,7 @@ interface GenerationRecord {
   readonly style:       string | null;
   readonly assetUrl:    string;
   readonly generatedAt: number;
+  readonly originalIdea?: string | null;
 }
 
 interface UploadedItem {
@@ -206,7 +219,7 @@ export function QiyamahChamberClient({
       const response = await fetch('/api/qiyamah/generate', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ prompt: constructedPrompt.trim(), style }),
+        body:    JSON.stringify({ prompt: constructedPrompt.trim(), style, idea: idea.trim() }),
       });
       const result = await response.json();
       if (result.status === 'succeeded') {
@@ -268,22 +281,33 @@ export function QiyamahChamberClient({
 
   const hasGalleryContent = generations.length > 0 || uploadedItems.length > 0;
 
-  const StyleSelect = ({ id, disabled }: { id: string; disabled?: boolean }) => (
-    <div className="style-group">
-      <label className="style-label" htmlFor={id}>نمط التوليد</label>
-      <select
-        id={id}
-        className="cyber-select"
-        value={style}
-        onChange={(e) => setStyle(e.target.value)}
-        disabled={disabled}
-      >
-        <option value="cinematic">سينمائي 35mm (ملحمي)</option>
-        <option value="documentary">وثائقي كلاسيكي (أرشيفي)</option>
-        <option value="hyper_real">واقعي فائق 8K</option>
-        <option value="scifi">خيال علمي سريالي</option>
-        <option value="animation">أنيميشن رقمي</option>
-      </select>
+  const StyleRegistry = ({ disabled }: { disabled?: boolean }) => (
+    <div className="style-registry" role="radiogroup" aria-label="نمط التجسيد">
+      <p className="style-registry-label">نمط التجسيد</p>
+      <div className="style-registry-available">
+        {AVAILABLE_STYLES.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            role="radio"
+            aria-checked={style === s.id}
+            className={`style-tile${style === s.id ? ' style-tile--selected' : ''}`}
+            onClick={() => !disabled && setStyle(s.id)}
+            disabled={disabled}
+          >
+            <span className="style-tile-name">{s.nameAr}</span>
+            <span className="style-tile-tagline">{s.tagline}</span>
+          </button>
+        ))}
+      </div>
+      <div className="style-registry-locked">
+        {LOCKED_STYLES_UI.map((s) => (
+          <div key={s.nameAr} className="style-tile style-tile--locked" aria-disabled="true">
+            <span className="style-tile-name">{s.nameAr}</span>
+            <span className="style-tile-soon">قريبًا</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 
@@ -383,7 +407,7 @@ export function QiyamahChamberClient({
                 />
               </div>
 
-              <StyleSelect id="qiyamah-style-idea" disabled={stage === 'constructing'} />
+              <StyleRegistry disabled={stage === 'constructing'} />
 
               {constructionError && (
                 <p className="construction-error" role="alert">{constructionError}</p>
@@ -419,27 +443,17 @@ export function QiyamahChamberClient({
           {/* ── STAGE: REVIEW ──────────────────────────────────────────── */}
           {stage === 'review' && (
             <div className="genesis-form review-form">
-              <div className="review-header">
-                <span className="review-badge">✦ المشهد السيادي</span>
-                <p className="review-hint">يمكنك تعديل المشهد قبل التجسيد</p>
+              <div className="scene-ready-card">
+                <div className="scene-ready-glyph" aria-hidden="true">✦</div>
+                <p className="scene-ready-title">المشهد جاهز للتجسيد</p>
+                <p className="scene-ready-idea">{idea}</p>
+                <p className="scene-ready-style">
+                  {AVAILABLE_STYLES.find((s) => s.id === style)?.nameAr ?? style}
+                </p>
               </div>
 
-              <textarea
-                className="constructed-prompt-display"
-                value={constructedPrompt}
-                onChange={(e) => setConstructedPrompt(e.target.value)}
-                rows={5}
-                aria-label="المشهد السيادي — قابل للتعديل"
-              />
-
-              <StyleSelect id="qiyamah-style-review" />
-
-              <button
-                className="trigger-genesis-btn"
-                onClick={handleEmbodyScene}
-                disabled={!constructedPrompt.trim()}
-              >
-                تجسيد المشهد ⭍
+              <button className="trigger-genesis-btn" onClick={handleEmbodyScene}>
+                جسّد الفكرة ⭍
               </button>
 
               <button className="back-idea-btn" onClick={() => setStage('idea')}>
@@ -517,8 +531,8 @@ export function QiyamahChamberClient({
           )}
         </section>
 
-        {/* ── Upload Section (secondary) ────────────────────────────────── */}
-        <section className="upload-section">
+        {/* ── Upload Section (secondary — below generation, visually reduced) */}
+        <section className="upload-section upload-section--secondary">
           <span className="section-label upload-section-label">رفع أصل سيادي</span>
           <p className="upload-invitation">
             ارفع ملفاً من جهازك وسيُودَع مباشرة في خزانتك السيادية.
@@ -619,7 +633,7 @@ export function QiyamahChamberClient({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img className="generation-thumb" src={g.assetUrl} alt={g.prompt} />
                 <div className="generation-meta">
-                  <p className="generation-prompt">{g.prompt}</p>
+                  <p className="generation-prompt">{g.originalIdea ?? g.prompt}</p>
                   <span className="generation-date">
                     {new Date(g.generatedAt).toLocaleDateString('ar-SA')}
                   </span>

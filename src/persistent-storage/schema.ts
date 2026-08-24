@@ -299,6 +299,16 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   )`,
 ];
 
+/**
+ * Columns added to `generation_records` after its original creation.
+ * original_idea stores the Creator's verbatim input before Qiyamah transforms
+ * it into the internal production prompt — these are two distinct things and must
+ * be stored separately. Nullable so existing rows are unaffected.
+ */
+export const GENERATION_RECORDS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
+  { name: 'original_idea', ddl: 'original_idea TEXT' },
+];
+
 /** Columns added to `cinematic_ledger` after its original creation — applied via ALTER TABLE for pre-existing databases. */
 export const CINEMATIC_LEDGER_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
   { name: 'operation_id', ddl: 'operation_id TEXT' },
