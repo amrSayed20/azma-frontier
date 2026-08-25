@@ -22,8 +22,6 @@ import type { ChamberState } from '@/src/button-engine';
 import { useInstallInvitation } from '@/src/install-experience';
 import type { ImperialVisionDocument } from '@/src/chamber-vision';
 
-const EXAMPLE_IDEA = 'سيارة فاخرة تسير في القاهرة ليلًا';
-
 // All 13 styles — operational, none locked
 const ALL_STYLES: Array<{ id: string; nameAr: string; tagline: string }> = [
   { id: 'cinematic',    nameAr: 'سينمائي',      tagline: 'ملحمي 35mm' },
@@ -98,6 +96,8 @@ export function QiyamahChamberClient({
   const [qiyamahReading,     setQiyamahReading]     = useState('');
   const [style,              setStyle]              = useState('cinematic');
   const [constructedPrompt,  setConstructedPrompt]  = useState('');
+  // Tracks the initial Qiyamah expansion so the Creator can restore it after editing
+  const [originalConstructedPrompt, setOriginalConstructedPrompt] = useState('');
   const [constructionError,  setConstructionError]  = useState<string | null>(null);
   const [generatedImageUrl,  setGeneratedImageUrl]  = useState<string | null>(null);
   const [generationError,    setGenerationError]    = useState<string | null>(null);
@@ -209,9 +209,11 @@ export function QiyamahChamberClient({
       if (data.status === 'succeeded') {
         if (inputMode === 'idea') {
           setConstructedPrompt(data.prompt);
+          setOriginalConstructedPrompt(data.prompt);
         } else {
           setQiyamahReading(data.qiyamahReading);
           setConstructedPrompt(data.qiyamahReading);
+          setOriginalConstructedPrompt(data.qiyamahReading);
         }
         setStage('review');
       } else {
@@ -284,6 +286,7 @@ export function QiyamahChamberClient({
     setExternalPrompt('');
     setQiyamahReading('');
     setConstructedPrompt('');
+    setOriginalConstructedPrompt('');
     setConstructionError(null);
     setGeneratedImageUrl(null);
     setGenerationError(null);
@@ -386,7 +389,7 @@ export function QiyamahChamberClient({
       {/* ── Journey Indicator ──────────────────────────────────────────── */}
       <nav className="stage-indicator" aria-label="مراحل القيامة">
         <span className={`stage-step${activeIndicatorStage === 'thought' ? ' is-active' : ''}`}>
-          {inputMode === 'idea' ? 'الفكرة' : 'المحث'}
+          الفكرة
         </span>
         <span className="stage-arrow" aria-hidden="true">→</span>
         <span className={`stage-step${activeIndicatorStage === 'prompt' ? ' is-active' : ''}`}>
@@ -496,16 +499,6 @@ export function QiyamahChamberClient({
                 <p className="construction-error" role="alert">{constructionError}</p>
               )}
 
-              {inputMode === 'idea' && (
-                <button
-                  className="import-btn neon-border-gold"
-                  onClick={() => setIdea(EXAMPLE_IDEA)}
-                  disabled={stage === 'constructing'}
-                >
-                  جرّب مثالاً ⮞
-                </button>
-              )}
-
               {stage === 'constructing' ? (
                 <div className="construction-progress">
                   <div className="construction-spinner" aria-hidden="true" />
@@ -528,16 +521,54 @@ export function QiyamahChamberClient({
           {/* ── STAGE: REVIEW ──────────────────────────────────────────── */}
           {stage === 'review' && inputMode === 'idea' && (
             <div className="genesis-form review-form">
-              <div className="scene-ready-card">
-                <div className="scene-ready-glyph" aria-hidden="true">✦</div>
-                <p className="scene-ready-title">المشهد جاهز للتجسيد</p>
-                <p className="scene-ready-idea">{idea}</p>
-                <p className="scene-ready-style">
-                  {ALL_STYLES.find((s) => s.id === style)?.nameAr ?? style}
-                </p>
+              {/* Two-panel: original idea (read-only) + Qiyamah scene (editable) */}
+              <div className="external-comparison">
+                <div className="comparison-panel">
+                  <p className="comparison-label">فكرتك الأصلية</p>
+                  <p className="comparison-text">{idea}</p>
+                  <p className="comparison-style-tag">
+                    {ALL_STYLES.find((s) => s.id === style)?.nameAr ?? style}
+                  </p>
+                </div>
+                <div className="comparison-divider" aria-hidden="true">→</div>
+                <div className="comparison-panel comparison-panel--reading">
+                  <p className="comparison-label">المشهد الذي فهمته القيامة</p>
+                  <p className="comparison-text">{originalConstructedPrompt}</p>
+                </div>
               </div>
 
-              <button className="trigger-genesis-btn" onClick={handleEmbodyScene}>
+              <div className="external-prompt-choice">
+                <p className="external-choice-label">المشهد النهائي للتجسيد — عدّله إن شئت</p>
+                <textarea
+                  className="idea-textarea"
+                  value={constructedPrompt}
+                  onChange={(e) => setConstructedPrompt(e.target.value)}
+                  rows={4}
+                  aria-label="المشهد النهائي — قابل للتعديل"
+                />
+                <div className="choice-shortcuts">
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={() => setConstructedPrompt(idea)}
+                  >
+                    أبقِ فكرتي كما هي
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={() => setConstructedPrompt(originalConstructedPrompt)}
+                  >
+                    استعِد فهم القيامة
+                  </button>
+                </div>
+              </div>
+
+              <button
+                className="trigger-genesis-btn"
+                onClick={handleEmbodyScene}
+                disabled={!constructedPrompt.trim()}
+              >
                 جسّد الفكرة ⭍
               </button>
 
@@ -554,20 +585,21 @@ export function QiyamahChamberClient({
                   <p className="comparison-label">محثك الأصلي</p>
                   <p className="comparison-text">{externalPrompt}</p>
                 </div>
-                <div className="comparison-divider" aria-hidden="true">⟺</div>
+                <div className="comparison-divider" aria-hidden="true">→</div>
                 <div className="comparison-panel comparison-panel--reading">
-                  <p className="comparison-label">قراءة القيامة</p>
+                  <p className="comparison-label">المشهد الذي فهمته القيامة</p>
                   <p className="comparison-text">{qiyamahReading}</p>
                 </div>
               </div>
 
               <div className="external-prompt-choice">
-                <p className="external-choice-label">المحث النهائي للتجسيد</p>
+                <p className="external-choice-label">المشهد النهائي للتجسيد — عدّله إن شئت</p>
                 <textarea
                   className="idea-textarea"
                   value={constructedPrompt}
                   onChange={(e) => setConstructedPrompt(e.target.value)}
                   rows={4}
+                  aria-label="المشهد النهائي — قابل للتعديل"
                 />
                 <div className="choice-shortcuts">
                   <button
@@ -580,9 +612,9 @@ export function QiyamahChamberClient({
                   <button
                     type="button"
                     className="secondary-btn"
-                    onClick={() => setConstructedPrompt(qiyamahReading)}
+                    onClick={() => setConstructedPrompt(originalConstructedPrompt)}
                   >
-                    استعِد قراءة القيامة
+                    استعِد فهم القيامة
                   </button>
                 </div>
               </div>
@@ -592,7 +624,7 @@ export function QiyamahChamberClient({
                 onClick={handleEmbodyScene}
                 disabled={!constructedPrompt.trim()}
               >
-                جسّد ⭍
+                جسّد الفكرة ⭍
               </button>
 
               <button className="back-idea-btn" onClick={() => setStage('idea')}>

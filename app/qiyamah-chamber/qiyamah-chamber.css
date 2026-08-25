@@ -835,6 +835,16 @@ body, html {
   word-break: break-word;
 }
 
+.comparison-style-tag {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--crimson-neon);
+  text-transform: uppercase;
+}
+
 .comparison-divider {
   text-align: center;
   font-size: 18px;
@@ -1012,10 +1022,42 @@ body, html {
 }
 
 @media (max-width: 520px) {
-  .qiyamah-workspace { padding: 0 14px; margin-top: 24px; }
-  .your-generations  { padding: 0 14px; }
+  .qiyamah-workspace { padding: 0 12px; margin-top: 20px; }
+  .your-generations  { padding: 0 12px; }
   .genesis-section,
-  .upload-section    { padding: 20px 16px; }
+  .upload-section    { padding: 18px 14px; }
+
+  /* Stage indicator — smaller text so all three labels fit on one line */
+  .stage-step   { font-size: 10px; }
+  .stage-arrow  { font-size: 9px; }
+
+  /* Make primary action buttons taller for touch */
+  .trigger-genesis-btn { padding: 18px 12px; font-size: 14px; }
+
+  /* Choice shortcuts: stack on very narrow screens */
+  .choice-shortcuts { flex-direction: column; }
+  .choice-shortcuts .secondary-btn { min-width: 0; width: 100%; }
+
+  /* Mode tabs: ensure full width, prevent clipping */
+  .mode-tab-switcher { flex-wrap: nowrap; }
+  .mode-tab { font-size: 11px; padding: 8px 8px; }
+
+  /* Style registry: tighter tiles on mobile */
+  .style-tile { min-width: 68px; padding: 7px 10px; }
+
+  /* Back button: bigger tap area */
+  .back-idea-btn { padding: 10px 0; font-size: 13px; }
+
+  /* Gallery cards: keep horizontal scroll within the gallery row */
+  .generations-grid { padding-bottom: 12px; }
+
+  /* Ensure comparison panels don't overflow */
+  .comparison-panel { word-break: break-word; overflow-wrap: break-word; }
+  .comparison-text  { font-size: 12px; }
+  .external-prompt-choice .idea-textarea { font-size: 14px; }
+
+  /* Upload zone: minimum height so it's tappable */
+  .upload-zone { padding: 22px 14px; }
 }
 
 /* ─── Animations ───────────────────────────────────────────────────────── */
