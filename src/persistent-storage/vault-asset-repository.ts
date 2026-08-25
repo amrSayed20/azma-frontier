@@ -81,6 +81,10 @@ export function listVaultAssetsForTenant(db: DatabaseSync, subscriberTenantId: s
   return rows.map(rowToVaultAsset);
 }
 
+export function deleteVaultAssetByStorageUri(db: DatabaseSync, secureStorageUri: string, subscriberTenantId: string): void {
+  db.prepare('DELETE FROM vault_assets WHERE secure_storage_uri = ? AND subscriber_tenant_id = ?').run(secureStorageUri, subscriberTenantId);
+}
+
 function rowToVaultAsset(row: Record<string, unknown>): VaultAsset {
   return {
     assetId: row.asset_id as string,

@@ -751,6 +751,232 @@ body, html {
   color: var(--text-main);
 }
 
+/* ─── Mode Tab Switcher ─────────────────────────────────────────────────── */
+
+.mode-tab-switcher {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(139, 0, 0, 0.2);
+  border-radius: 10px;
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+.mode-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 8px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.mode-tab:hover:not(:disabled) {
+  color: var(--text-main);
+  background: rgba(139, 0, 0, 0.1);
+}
+
+.mode-tab--active {
+  background: rgba(139, 0, 0, 0.22) !important;
+  color: var(--crimson-neon) !important;
+  box-shadow: 0 0 10px rgba(255, 42, 42, 0.15);
+}
+
+.mode-tab:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ─── External Prompt Comparison ────────────────────────────────────────── */
+
+.external-comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.comparison-panel {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(139, 0, 0, 0.28);
+  border-radius: 10px;
+  padding: 14px 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.comparison-panel--reading {
+  border-color: rgba(212, 175, 55, 0.28);
+}
+
+.comparison-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 8px;
+}
+
+.comparison-panel--reading .comparison-label {
+  color: var(--gold-dim);
+}
+
+.comparison-text {
+  font-size: 13px;
+  color: var(--text-main);
+  line-height: 1.65;
+  margin: 0;
+  word-break: break-word;
+}
+
+.comparison-divider {
+  text-align: center;
+  font-size: 18px;
+  color: rgba(168, 159, 145, 0.3);
+  line-height: 1;
+}
+
+/* ─── External prompt choice ────────────────────────────────────────────── */
+
+.external-prompt-choice {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.external-choice-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--crimson-neon);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.choice-shortcuts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.choice-shortcuts .secondary-btn {
+  flex: 1;
+  min-width: 120px;
+  font-size: 11px;
+  padding: 7px 10px;
+}
+
+/* ─── Download button ───────────────────────────────────────────────────── */
+
+.download-btn {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  text-decoration: none;
+  background: rgba(212, 175, 55, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: var(--gold-neon);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 11px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.download-btn:hover {
+  background: rgba(212, 175, 55, 0.16);
+  border-color: var(--gold-neon);
+}
+
+/* ─── Gallery card actions + delete ────────────────────────────────────── */
+
+.generation-card-actions {
+  padding: 4px 8px 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.delete-btn {
+  background: transparent;
+  border: none;
+  color: rgba(168, 159, 145, 0.4);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+  line-height: 1;
+  font-family: inherit;
+}
+
+.delete-btn:hover {
+  color: var(--crimson-neon);
+  background: rgba(139, 0, 0, 0.12);
+}
+
+.delete-confirm {
+  width: 100%;
+}
+
+.delete-confirm-text {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin: 0 0 6px;
+  text-align: center;
+}
+
+.delete-confirm-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.delete-confirm-yes {
+  flex: 1;
+  background: rgba(139, 0, 0, 0.3);
+  border: 1px solid var(--crimson-dim);
+  color: var(--crimson-neon);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 5px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.delete-confirm-yes:hover {
+  background: rgba(139, 0, 0, 0.5);
+}
+
+.delete-confirm-cancel {
+  flex: 1;
+  background: transparent;
+  border: 1px solid rgba(168, 159, 145, 0.25);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 10px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.delete-confirm-cancel:hover {
+  border-color: var(--text-muted);
+  color: var(--text-main);
+}
+
 /* ─── Responsive ───────────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {

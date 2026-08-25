@@ -1,22 +1,25 @@
 /**
  * AZMA OS — QIYAMAH: IDEA-TO-PROMPT CONSTRUCTION
  *
- * Receives the Creator's simple idea and the chosen visual style, then
- * returns a structured, production-ready sovereign prompt.
+ * Supports two input modes:
  *
- * CONSTRUCTION MODE — "draft":
- * This endpoint uses a deterministic, style-aware construction function.
- * No AI provider is called here. The response always carries
- * constructionMode: 'draft' so the client can label it honestly.
+ *   mode: 'idea'     (default) — Creator provides a plain-language idea.
+ *                               Qiyamah builds a production prompt from it.
+ *                               Returns: { prompt, constructionMode: 'draft' }
  *
- * Per the Chief Architect's Provider Truth Rule: this must never claim
- * AI reasoning. The label "صياغة أولية" (initial draft) is correct and
- * honest.
+ *   mode: 'external' — Creator brings their own prompt verbatim.
+ *                      Qiyamah presents a sovereign interpretation (reading).
+ *                      Creator retains full choice of which prompt to generate.
+ *                      Returns: { externalPrompt, qiyamahReading, constructionMode: 'interpretation' }
+ *
+ * All 13 styles are now operational. No style is locked or rejected.
+ *
+ * CONSTRUCTION MODE: this endpoint is deterministic — no AI provider is called.
+ * The label 'draft' / 'interpretation' is honest about the construction method.
  *
  * PROVIDER NEUTRALITY: when a text-generation provider is added to the
  * orchestrator in a future Ministry, this route is the ONLY entry point
- * that needs to change — the client contract (idea + style → prompt) is
- * stable regardless of construction method.
+ * that needs to change — the client contract is stable regardless of method.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -26,11 +29,7 @@ export const dynamic = 'force-dynamic';
 
 const SESSION_COOKIE = 'azma_session';
 
-// ─── Style vocabulary ─────────────────────────────────────────────────────────
-// AVAILABLE styles — fully operational, accepted by this route.
-// Each entry adds an opening visual context (prefix) and a closing technical
-// parameter string (suffix) that together produce a production-ready prompt
-// from the Creator's plain-language idea.
+// ─── Style vocabulary (all 13 styles) ─────────────────────────────────────────
 
 export const STYLE_VOCABULARY: Record<string, { prefix: string; suffix: string }> = {
   cinematic: {
@@ -53,20 +52,43 @@ export const STYLE_VOCABULARY: Record<string, { prefix: string; suffix: string }
     prefix: 'تعبير فني إبداعي، ',
     suffix: '، أسلوب بصري مميز، ألوان جريئة، تكوين مبتكر، طاقة فنية عالية',
   },
+  scifi: {
+    prefix: 'مشهد خيال علمي مستقبلي، ',
+    suffix: '، جوّ تكنولوجي متقدم، إضاءة نيون، ألوان كونية، تفاصيل مستقبلية دقيقة',
+  },
+  animation: {
+    prefix: 'أسلوب أنيميشن احترافي، ',
+    suffix: '، ألوان زاهية، خطوط واضحة، أسلوب فني متميز، جودة إنتاجية عالية',
+  },
+  fantasy: {
+    prefix: 'عالم خيالي أسطوري، ',
+    suffix: '، سحر وجمال بصري، ألوان ساحرة، تفاصيل خيالية، إضاءة درامية',
+  },
+  portrait: {
+    prefix: 'بورتريه احترافي، ',
+    suffix: '، إضاءة ناعمة، تركيز على التعبير الإنساني، جودة فوتوغرافية عالية',
+  },
+  fashion: {
+    prefix: 'تصوير أزياء احترافي، ',
+    suffix: '، إضاءة موضة راقية، تكوين بصري أنيق، جودة مجلة فاخرة',
+  },
+  architecture: {
+    prefix: 'تصوير معماري احترافي، ',
+    suffix: '، تكوين هندسي دقيق، إضاءة طبيعية، تفاصيل معمارية واضحة، جودة تقنية',
+  },
+  historical: {
+    prefix: 'توثيق تاريخي بصري، ',
+    suffix: '، نمط فني كلاسيكي، ألوان دافئة، تفاصيل حقبة زمنية، طابع أرشيفي',
+  },
+  abstract: {
+    prefix: 'تعبير تجريدي بصري، ',
+    suffix: '، أشكال هندسية ولونية حرة، إيقاع بصري، تكوين فني مبتكر، طاقة إبداعية',
+  },
 };
 
-// LOCKED styles — visible in the UI as "قريبًا" but must never enter
-// the construction or generation pipeline. Any submission of a locked
-// style is rejected here, not silently fallen back to cinematic, so
-// the server is an honest last line of defense matching the UI's state.
-export const LOCKED_STYLES = new Set([
-  'scifi', 'animation', 'fantasy', 'portrait', 'fashion',
-  'architecture', 'historical', 'abstract',
-]);
-
-function buildSovereignPrompt(idea: string, style: string): string {
+function buildSovereignPrompt(input: string, style: string): string {
   const vocab = STYLE_VOCABULARY[style] ?? STYLE_VOCABULARY['cinematic'];
-  return `${vocab.prefix}${idea.trim()}${vocab.suffix}`;
+  return `${vocab.prefix}${input.trim()}${vocab.suffix}`;
 }
 
 export async function POST(request: NextRequest) {
@@ -89,16 +111,43 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const idea  = (body as { idea?: unknown })?.idea;
+  const rawMode = (body as { mode?: unknown })?.mode;
+  const mode: 'idea' | 'external' = rawMode === 'external' ? 'external' : 'idea';
   const style = (body as { style?: unknown })?.style;
+  const resolvedStyle = typeof style === 'string' && style in STYLE_VOCABULARY ? style : 'cinematic';
 
+  // ── External prompt mode ────────────────────────────────────────────────────
+  if (mode === 'external') {
+    const externalPrompt = (body as { externalPrompt?: unknown })?.externalPrompt;
+    if (typeof externalPrompt !== 'string' || externalPrompt.trim().length === 0) {
+      return NextResponse.json(
+        { status: 'failed', reason: 'invalid-input', message: 'A non-empty externalPrompt is required.' },
+        { status: 400 },
+      );
+    }
+    if (externalPrompt.trim().length > 2000) {
+      return NextResponse.json(
+        { status: 'failed', reason: 'invalid-input', message: 'External prompt exceeds the maximum length of 2000 characters.' },
+        { status: 400 },
+      );
+    }
+    const qiyamahReading = buildSovereignPrompt(externalPrompt.trim(), resolvedStyle);
+    return NextResponse.json({
+      status: 'succeeded',
+      externalPrompt: externalPrompt.trim(),
+      qiyamahReading,
+      constructionMode: 'interpretation',
+    });
+  }
+
+  // ── Idea mode (default) ─────────────────────────────────────────────────────
+  const idea = (body as { idea?: unknown })?.idea;
   if (typeof idea !== 'string' || idea.trim().length === 0) {
     return NextResponse.json(
       { status: 'failed', reason: 'invalid-input', message: 'A non-empty idea is required.' },
       { status: 400 },
     );
   }
-
   if (idea.trim().length > 500) {
     return NextResponse.json(
       { status: 'failed', reason: 'invalid-input', message: 'Idea exceeds the maximum length of 500 characters.' },
@@ -106,16 +155,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (typeof style === 'string' && LOCKED_STYLES.has(style)) {
-    return NextResponse.json(
-      { status: 'failed', reason: 'locked-style', message: 'هذا الأسلوب غير متاح حاليًا.' },
-      { status: 400 },
-    );
-  }
-
-  const resolvedStyle = typeof style === 'string' && style in STYLE_VOCABULARY ? style : 'cinematic';
-  const prompt = buildSovereignPrompt(idea, resolvedStyle);
-
+  const prompt = buildSovereignPrompt(idea.trim(), resolvedStyle);
   return NextResponse.json({
     status: 'succeeded',
     prompt,

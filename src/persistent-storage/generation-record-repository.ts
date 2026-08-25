@@ -43,6 +43,26 @@ export function recordGeneration(db: DatabaseSync, record: NewGenerationRecord):
   return { recordId, creatorId: record.creatorId, prompt: record.prompt, style: record.style, assetUrl: record.assetUrl, generatedAt, originalIdea };
 }
 
+export function getGenerationRecord(db: DatabaseSync, recordId: string, creatorId: string): GenerationRecord | null {
+  const row = db
+    .prepare('SELECT record_id, creator_id, prompt, style, asset_url, generated_at, original_idea FROM generation_records WHERE record_id = ? AND creator_id = ?')
+    .get(recordId, creatorId);
+  if (!row) return null;
+  return {
+    recordId: row.record_id as string,
+    creatorId: row.creator_id as string | null,
+    prompt: row.prompt as string,
+    style: (row.style as string | null) ?? null,
+    assetUrl: row.asset_url as string,
+    generatedAt: row.generated_at as number,
+    originalIdea: (row.original_idea as string | null) ?? null,
+  };
+}
+
+export function deleteGenerationRecord(db: DatabaseSync, recordId: string, creatorId: string): void {
+  db.prepare('DELETE FROM generation_records WHERE record_id = ? AND creator_id = ?').run(recordId, creatorId);
+}
+
 export function listGenerationsForCreator(db: DatabaseSync, creatorId: string): readonly GenerationRecord[] {
   // Ordered by rowid as a tiebreaker: two records inserted within the same
   // millisecond would otherwise have no deterministic order.

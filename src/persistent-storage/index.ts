@@ -20,9 +20,9 @@ export type { SessionRecord } from './session-repository';
 export { createSession, getActiveSession, deleteSession } from './session-repository';
 
 export type { GenerationRecord, NewGenerationRecord } from './generation-record-repository';
-export { recordGeneration, listGenerationsForCreator } from './generation-record-repository';
+export { recordGeneration, getGenerationRecord, deleteGenerationRecord, listGenerationsForCreator } from './generation-record-repository';
 
-export { insertVaultAsset, getVaultAsset, listVaultAssetsForTenant, linkGoalToVaultAsset } from './vault-asset-repository';
+export { insertVaultAsset, getVaultAsset, listVaultAssetsForTenant, linkGoalToVaultAsset, deleteVaultAssetByStorageUri } from './vault-asset-repository';
 
 export type { SubscriptionRecord, NewSubscription, SubscriptionPatch, SubscriptionStatus } from './subscription-repository';
 export {

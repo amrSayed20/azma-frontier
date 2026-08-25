@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { createDatabase } from '../db';
-import { insertVaultAsset, getVaultAsset, listVaultAssetsForTenant, linkGoalToVaultAsset } from '../vault-asset-repository';
+import { insertVaultAsset, getVaultAsset, listVaultAssetsForTenant, linkGoalToVaultAsset, deleteVaultAssetByStorageUri } from '../vault-asset-repository';
 import { AssetFamily } from '../../vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 import type { VaultAsset } from '../../vault/sovereign-vault-types';
@@ -65,6 +65,46 @@ describe('Persistent Storage Foundation — Vault asset metadata', () => {
 
     it('returns an empty list for a tenant with no assets', () => {
       expect(listVaultAssetsForTenant(db, 'nobody')).toEqual([]);
+    });
+  });
+
+  describe('Sovereign Embodiment Contract — deleteVaultAssetByStorageUri', () => {
+    it('removes the vault entry matching the storage URI and tenant', () => {
+      const asset: VaultAsset = {
+        assetId: 'del-asset-1',
+        subscriberTenantId: 'tenant-del',
+        originatingOperationId: 'op-del',
+        capabilityTarget: CapabilityTarget.VISUAL,
+        assetFamily: AssetFamily.MEDIA,
+        secureStorageUri: '/generated-assets/del.png',
+        metadata: {},
+        createdAt: 1_000,
+        updatedAt: 1_000,
+      };
+      insertVaultAsset(db, asset);
+      deleteVaultAssetByStorageUri(db, '/generated-assets/del.png', 'tenant-del');
+      expect(getVaultAsset(db, 'del-asset-1')).toBeNull();
+    });
+
+    it('does not delete an asset belonging to a different tenant even if the URI matches', () => {
+      const asset: VaultAsset = {
+        assetId: 'protected-asset',
+        subscriberTenantId: 'real-owner',
+        originatingOperationId: 'op-p',
+        capabilityTarget: CapabilityTarget.VISUAL,
+        assetFamily: AssetFamily.MEDIA,
+        secureStorageUri: '/generated-assets/protected.png',
+        metadata: {},
+        createdAt: 1_000,
+        updatedAt: 1_000,
+      };
+      insertVaultAsset(db, asset);
+      deleteVaultAssetByStorageUri(db, '/generated-assets/protected.png', 'intruder');
+      expect(getVaultAsset(db, 'protected-asset')).not.toBeNull();
+    });
+
+    it('is idempotent — deleting a non-existent URI does not throw', () => {
+      expect(() => deleteVaultAssetByStorageUri(db, '/no-such-file.png', 'anyone')).not.toThrow();
     });
   });
 

@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { createDatabase } from '../db';
-import { recordGeneration, listGenerationsForCreator } from '../generation-record-repository';
+import { recordGeneration, listGenerationsForCreator, getGenerationRecord, deleteGenerationRecord } from '../generation-record-repository';
 
 describe('Persistent Storage Foundation — Qiyamah generation records', () => {
   let db: DatabaseSync;
@@ -70,6 +70,46 @@ describe('Persistent Storage Foundation — Qiyamah generation records', () => {
     const records = listGenerationsForCreator(db, 'creator-e');
     expect(records[0].originalIdea).toBe('فكرة بسيطة');
     expect(records[0].prompt).not.toBe(records[0].originalIdea);
+  });
+
+  // ── getGenerationRecord ──────────────────────────────────────────────────────
+
+  it('getGenerationRecord returns the record when both recordId and creatorId match', () => {
+    const created = recordGeneration(db, { creatorId: 'creator-get', prompt: 'test', style: 'cinematic', assetUrl: '/a.png' });
+    const found = getGenerationRecord(db, created.recordId, 'creator-get');
+    expect(found).not.toBeNull();
+    expect(found?.recordId).toBe(created.recordId);
+    expect(found?.prompt).toBe('test');
+  });
+
+  it('getGenerationRecord returns null when the recordId exists but belongs to another Creator', () => {
+    const created = recordGeneration(db, { creatorId: 'owner', prompt: 'private', style: null, assetUrl: '/p.png' });
+    const result = getGenerationRecord(db, created.recordId, 'intruder');
+    expect(result).toBeNull();
+  });
+
+  it('getGenerationRecord returns null for a non-existent recordId', () => {
+    expect(getGenerationRecord(db, 'no-such-id', 'creator-x')).toBeNull();
+  });
+
+  // ── deleteGenerationRecord ───────────────────────────────────────────────────
+
+  it('deleteGenerationRecord removes the record from the database', () => {
+    const created = recordGeneration(db, { creatorId: 'creator-del', prompt: 'to delete', style: null, assetUrl: '/del.png' });
+    deleteGenerationRecord(db, created.recordId, 'creator-del');
+    const after = listGenerationsForCreator(db, 'creator-del');
+    expect(after).toHaveLength(0);
+  });
+
+  it('deleteGenerationRecord with wrong creatorId does not delete the record — ownership enforced in SQL', () => {
+    const created = recordGeneration(db, { creatorId: 'real-owner', prompt: 'protected', style: null, assetUrl: '/prot.png' });
+    deleteGenerationRecord(db, created.recordId, 'wrong-creator');
+    const after = listGenerationsForCreator(db, 'real-owner');
+    expect(after).toHaveLength(1);
+  });
+
+  it('deleteGenerationRecord is idempotent — deleting a non-existent record does not throw', () => {
+    expect(() => deleteGenerationRecord(db, 'ghost-id', 'creator-x')).not.toThrow();
   });
 
   it('historical records with null originalIdea remain fully readable — backward-compatible migration', () => {
