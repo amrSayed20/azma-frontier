@@ -907,6 +907,33 @@ body, html {
   justify-content: flex-end;
 }
 
+.card-action-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gallery-download-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgba(168, 159, 145, 0.4);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.gallery-download-btn:hover {
+  color: var(--gold-dim);
+  background: rgba(212, 175, 55, 0.08);
+}
+
 .delete-btn {
   background: transparent;
   border: none;

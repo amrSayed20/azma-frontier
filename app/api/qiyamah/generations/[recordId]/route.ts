@@ -56,9 +56,11 @@ export async function DELETE(
     );
   }
 
-  // Delete physical file — basename prevents path traversal
-  const filename = path.basename(record.assetUrl);
-  const filePath = path.join(UPLOADS_DIR, filename);
+  // Delete physical file.
+  // Generated images are stored at UPLOADS_DIR/generated-assets/uuid.png.
+  // path.join('/var/www/azma-uploads', '/generated-assets/uuid.png')
+  //   = '/var/www/azma-uploads/generated-assets/uuid.png' (Node.js joins, not resolves).
+  const filePath = path.join(UPLOADS_DIR, record.assetUrl);
   try { unlinkSync(filePath); } catch { /* file may already be absent */ }
 
   // Remove vault entry (by storage URI + tenant — no orphaned asset)

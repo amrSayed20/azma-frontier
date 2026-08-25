@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { createDatabase } from '../db';
-import { insertVaultAsset, getVaultAsset, listVaultAssetsForTenant, linkGoalToVaultAsset, deleteVaultAssetByStorageUri } from '../vault-asset-repository';
+import { insertVaultAsset, getVaultAsset, listVaultAssetsForTenant, linkGoalToVaultAsset, deleteVaultAssetByStorageUri, deleteVaultAssetById } from '../vault-asset-repository';
 import { AssetFamily } from '../../vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 import type { VaultAsset } from '../../vault/sovereign-vault-types';
@@ -65,6 +65,56 @@ describe('Persistent Storage Foundation — Vault asset metadata', () => {
 
     it('returns an empty list for a tenant with no assets', () => {
       expect(listVaultAssetsForTenant(db, 'nobody')).toEqual([]);
+    });
+  });
+
+  describe('Production Repair — deleteVaultAssetById', () => {
+    it('deletes the asset and returns it when the assetId and tenantId match', () => {
+      const asset: VaultAsset = {
+        assetId: 'del-by-id-1',
+        subscriberTenantId: 'tenant-owner',
+        originatingOperationId: 'op-del-id',
+        capabilityTarget: CapabilityTarget.VISUAL,
+        assetFamily: AssetFamily.MEDIA,
+        secureStorageUri: '/uploads/del-by-id-1.jpg',
+        metadata: { providerId: 'creator-upload' },
+        createdAt: 1_000,
+        updatedAt: 1_000,
+      };
+      insertVaultAsset(db, asset);
+
+      const deleted = deleteVaultAssetById(db, 'del-by-id-1', 'tenant-owner');
+
+      expect(deleted).not.toBeNull();
+      expect(deleted?.assetId).toBe('del-by-id-1');
+      expect(deleted?.secureStorageUri).toBe('/uploads/del-by-id-1.jpg');
+      // Record must be gone
+      expect(getVaultAsset(db, 'del-by-id-1')).toBeNull();
+    });
+
+    it('returns null and does NOT delete when the tenantId does not match — ownership enforced', () => {
+      const asset: VaultAsset = {
+        assetId: 'protected-by-id',
+        subscriberTenantId: 'real-owner',
+        originatingOperationId: 'op-p',
+        capabilityTarget: CapabilityTarget.VISUAL,
+        assetFamily: AssetFamily.MEDIA,
+        secureStorageUri: '/uploads/protected.jpg',
+        metadata: {},
+        createdAt: 1_000,
+        updatedAt: 1_000,
+      };
+      insertVaultAsset(db, asset);
+
+      const result = deleteVaultAssetById(db, 'protected-by-id', 'intruder');
+
+      expect(result).toBeNull();
+      // Record must still exist
+      expect(getVaultAsset(db, 'protected-by-id')).not.toBeNull();
+    });
+
+    it('returns null for a non-existent assetId — does not throw', () => {
+      expect(deleteVaultAssetById(db, 'ghost-asset-id', 'anyone')).toBeNull();
     });
   });
 

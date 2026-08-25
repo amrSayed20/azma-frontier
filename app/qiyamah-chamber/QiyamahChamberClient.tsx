@@ -254,13 +254,25 @@ export function QiyamahChamberClient({
     }
   };
 
-  // ── Delete generation ───────────────────────────────────────────────────────
+  // ── Delete generation (from generation_records + vault_assets + disk) ──────
   const handleDeleteGeneration = async (recordId: string) => {
     try {
       const res = await fetch(`/api/qiyamah/generations/${recordId}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.status === 'succeeded') {
         setGenerations((prev) => prev.filter((g) => g.recordId !== recordId));
+        setDeleteConfirmId(null);
+      }
+    } catch { /* silent — gallery is enhancement */ }
+  };
+
+  // ── Delete uploaded vault asset ─────────────────────────────────────────────
+  const handleDeleteUpload = async (assetId: string) => {
+    try {
+      const res = await fetch(`/api/vault/assets/${assetId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.status === 'succeeded') {
+        setUploadedItems((prev) => prev.filter((u) => u.assetId !== assetId));
         setDeleteConfirmId(null);
       }
     } catch { /* silent — gallery is enhancement */ }
@@ -794,13 +806,23 @@ export function QiyamahChamberClient({
                       </div>
                     </div>
                   ) : (
-                    <button
-                      className="delete-btn"
-                      aria-label="حذف هذا التوليد"
-                      onClick={() => setDeleteConfirmId(g.recordId)}
-                    >
-                      ✕
-                    </button>
+                    <div className="card-action-row">
+                      <a
+                        className="gallery-download-btn"
+                        href={g.assetUrl}
+                        download
+                        aria-label="تحميل هذه الصورة"
+                      >
+                        ↓
+                      </a>
+                      <button
+                        className="delete-btn"
+                        aria-label="حذف هذا التوليد"
+                        onClick={() => setDeleteConfirmId(g.recordId)}
+                      >
+                        ✕
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -840,6 +862,47 @@ export function QiyamahChamberClient({
                   <span className="generation-date">
                     {new Date(u.uploadedAt).toLocaleDateString('ar-SA')}
                   </span>
+                </div>
+                <div className="generation-card-actions">
+                  {deleteConfirmId === u.assetId ? (
+                    <div className="delete-confirm">
+                      <p className="delete-confirm-text">حذف هذا الأصل نهائيًا؟</p>
+                      <div className="delete-confirm-btns">
+                        <button
+                          className="delete-confirm-yes"
+                          onClick={() => void handleDeleteUpload(u.assetId)}
+                        >
+                          نعم، احذف
+                        </button>
+                        <button
+                          className="delete-confirm-cancel"
+                          onClick={() => setDeleteConfirmId(null)}
+                        >
+                          إلغاء
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="card-action-row">
+                      {u.url && (
+                        <a
+                          className="gallery-download-btn"
+                          href={u.url}
+                          download
+                          aria-label="تحميل هذا الأصل"
+                        >
+                          ↓
+                        </a>
+                      )}
+                      <button
+                        className="delete-btn"
+                        aria-label="حذف هذا الأصل"
+                        onClick={() => setDeleteConfirmId(u.assetId)}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

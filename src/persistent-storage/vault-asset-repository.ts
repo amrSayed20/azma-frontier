@@ -85,6 +85,18 @@ export function deleteVaultAssetByStorageUri(db: DatabaseSync, secureStorageUri:
   db.prepare('DELETE FROM vault_assets WHERE secure_storage_uri = ? AND subscriber_tenant_id = ?').run(secureStorageUri, subscriberTenantId);
 }
 
+/**
+ * Deletes a vault asset by its assetId, verifying ownership first.
+ * Returns the deleted asset (for its secureStorageUri) or null when not
+ * found or when the assetId belongs to a different tenant.
+ */
+export function deleteVaultAssetById(db: DatabaseSync, assetId: string, subscriberTenantId: string): VaultAsset | null {
+  const existing = getVaultAsset(db, assetId);
+  if (!existing || existing.subscriberTenantId !== subscriberTenantId) return null;
+  db.prepare('DELETE FROM vault_assets WHERE asset_id = ? AND subscriber_tenant_id = ?').run(assetId, subscriberTenantId);
+  return existing;
+}
+
 function rowToVaultAsset(row: Record<string, unknown>): VaultAsset {
   return {
     assetId: row.asset_id as string,
