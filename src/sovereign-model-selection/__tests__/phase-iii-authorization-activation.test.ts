@@ -160,9 +160,9 @@ describe('Point 2 — Production registry exposes authorized models', () => {
     expect(registry.size()).toBe(10);
   });
 
-  it('findProductionAuthorized("image") returns all 5 active authorized image models', () => {
+  it('findProductionAuthorized("image") returns 4 active authorized image models (seedream-4-5 inactive: invalid providerModelId)', () => {
     const authorized = getProductionRegistry().findProductionAuthorized('image');
-    expect(authorized).toHaveLength(5);
+    expect(authorized).toHaveLength(4);
     for (const m of authorized) {
       expect(m.productionAuthorized).toBe(true);
       expect(m.active).toBe(true);

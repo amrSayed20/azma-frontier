@@ -123,6 +123,28 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
   const creationIntent = buildImageCreationIntent(request.prompt.trim(), style);
   const selectionResult = getProductionSelector().select(creationIntent);
 
+  // Production observability — internal only, never Creator-facing
+  console.log(
+    '[SovereignGeneration] model-selection',
+    JSON.stringify(
+      selectionResult.selected
+        ? {
+            selected: true,
+            providerId: selectionResult.selection.providerId,
+            modelId: selectionResult.selection.modelId,
+            providerModelId: selectionResult.selection.providerModelId,
+            qualityTier: selectionResult.selection.qualityTier,
+            aspectRatio: selectionResult.selection.aspectRatio,
+            resolution: selectionResult.selection.resolution,
+          }
+        : {
+            selected: false,
+            reason: selectionResult.reason,
+            detail: selectionResult.detail,
+          },
+    ),
+  );
+
   let preferredProviderId: string | undefined;
   let preferredModelId: string | undefined;
   const orchestrationMetadata: Record<string, unknown> = style ? { style } : {};
@@ -173,6 +195,18 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
     };
   }
 
+  // Log orchestration result for post-test audit (job ID + credits logged by adapter)
+  console.log(
+    '[SovereignGeneration] orchestration-result',
+    JSON.stringify({
+      finishReason: orchestrationResult.response.finishReason,
+      providerId: orchestrationResult.response.providerId,
+      selectedProviderId: orchestrationResult.selection?.selectedProviderId,
+      selectedModelId: orchestrationResult.selection?.selectedModelId,
+      latencyMs: orchestrationResult.response.latencyMs,
+    }),
+  );
+
   if (orchestrationResult.response.finishReason !== 'completed') {
     return {
       status: 'failed',
@@ -216,6 +250,17 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
       assetUrl: persisted.assetUrl,
       originalIdea: request.originalIdea ?? null,
     });
+    console.log(
+      '[SovereignGeneration] generation-record',
+      JSON.stringify({
+        status: 'succeeded',
+        creatorId: request.creatorId ?? null,
+        assetId: persisted.assetId,
+        assetUrl: persisted.assetUrl,
+        style,
+        prompt: request.prompt.trim().slice(0, 80),
+      }),
+    );
     if (request.creatorId) {
       // Use the actual provider ID from the orchestration response when available;
       // fall back to the legacy Magic Hour image provider ID.

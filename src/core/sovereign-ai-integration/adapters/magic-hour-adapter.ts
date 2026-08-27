@@ -236,6 +236,12 @@ export class MagicHourImageAdapter implements AIProviderAdapter {
       input.request.context.metadata['providerModelId'] as string | undefined;
     const modelToUse = selectedProviderModelId ?? MAGIC_HOUR_IMAGE_FREE_LAUNCH_MODEL;
 
+    // Production observability — internal only, never Creator-facing
+    console.log(
+      '[MagicHourImageAdapter] dispatch',
+      JSON.stringify({ model: modelToUse, aspectRatio, resolution, requestId: input.request.requestId }),
+    );
+
     // Submit image generation job
     const submission = await client.post<MagicHourJobResponse>('/v1/ai-image-generator', {
       image_count: 1,
@@ -245,8 +251,15 @@ export class MagicHourImageAdapter implements AIProviderAdapter {
       model: modelToUse,
     });
 
+    console.log('[MagicHourImageAdapter] job-submitted', JSON.stringify({ jobId: submission.id, model: modelToUse }));
+
     // Poll until done (images complete quickly — usually < 30 seconds)
     const job = await client.pollUntilDone(`/v1/image-projects/${submission.id}`);
+
+    console.log(
+      '[MagicHourImageAdapter] job-complete',
+      JSON.stringify({ jobId: job.id, status: job.status, creditsCharged: job.credits_charged, latencyMs: Date.now() - startedAt }),
+    );
 
     const baseResponse = buildRawResponse(
       MAGIC_HOUR_IMAGE_PROVIDER_ID,

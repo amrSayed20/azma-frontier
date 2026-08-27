@@ -96,7 +96,7 @@ export const IMAGE_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
     modelId: 'seedream-4-5',
     providerId: MAGIC_HOUR_IMAGE_PROVIDER_ID,
     gatewayId: 'magic-hour',
-    providerModelId: 'seedream-v4.5',            // VERIFIED: Magic Hour platform model list 2026-08-27
+    providerModelId: 'seedream-v4.5',            // INVALID: not in Magic Hour /v1/ai-image-generator enum (verified 2026-08-27)
     displayName: 'Seedream 4.5',
     mediaType: 'image',
     capabilities: ['image-generation'],
@@ -112,11 +112,13 @@ export const IMAGE_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
     },
     verificationStatus: 'production-authorized',
     productionAuthorized: true,
-    active: true,
+    active: false,
     internalNotes:
       'Production authorized by Chief Architect 2026-08-27 (Phase III). ' +
-      'All capability data requires real-world verification. ' +
-      'providerModelId verified as "seedream-v4.5" per Magic Hour platform model list 2026-08-27.',
+      'DEACTIVATED 2026-08-27: providerModelId "seedream-v4.5" is not a valid Magic Hour API enum value. ' +
+      'The closest candidate in the official enum is "seedream-v5-pro" but the mapping is unconfirmed. ' +
+      'active: false prevents selection until the correct providerModelId is identified and authorized by the Chief Architect. ' +
+      'Architectural identity preserved for audit continuity.',
   },
   {
     modelId: 'nano-banana-pro',

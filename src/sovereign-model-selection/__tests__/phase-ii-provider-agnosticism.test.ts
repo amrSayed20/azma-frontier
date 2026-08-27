@@ -262,7 +262,7 @@ describe('Phase II Test 22 — Fallback discipline and fleet authorization state
     expect(all).toHaveLength(10);
 
     const authorizedImages = registry.findProductionAuthorized('image');
-    expect(authorizedImages.length).toBe(5); // all 5 image models active + authorized
+    expect(authorizedImages.length).toBe(4); // 4 active authorized image models (seedream-4-5 inactive: invalid providerModelId)
   });
 
   it('image and video fleets each contain exactly 5 entries', () => {
