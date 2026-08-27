@@ -42,12 +42,13 @@ export class TrialEntitlementRepository {
     if (existing) return toEntitlement(existing);
 
     const now = Date.now();
+    // Chief Architect entitlement: 5 free images, 0 free videos (authorized 2026-08-27).
     this.db
       .prepare(
         `INSERT INTO trial_entitlements
            (creator_id, images_used, images_granted, video_used, video_granted,
             claimed_at, created_at, updated_at)
-         VALUES (?, 0, 3, 0, 1, NULL, ?, ?)`,
+         VALUES (?, 0, 5, 0, 0, NULL, ?, ?)`,
       )
       .run(creatorId, now, now);
 

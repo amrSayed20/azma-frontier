@@ -229,13 +229,20 @@ export class MagicHourImageAdapter implements AIProviderAdapter {
     const aspectRatio = (input.request.context.metadata['aspectRatio'] as string | undefined) ?? '16:9';
     const resolution = (input.request.context.metadata['resolution'] as string | undefined) ?? '1k';
 
-    // Submit image generation job — model locked to free-launch authorization
+    // Model selection: use providerModelId from SovereignModelSelector when available.
+    // Falls back to MAGIC_HOUR_IMAGE_FREE_LAUNCH_MODEL (flux-schnell) for legacy
+    // requests and while approved candidates await production authorization.
+    const selectedProviderModelId =
+      input.request.context.metadata['providerModelId'] as string | undefined;
+    const modelToUse = selectedProviderModelId ?? MAGIC_HOUR_IMAGE_FREE_LAUNCH_MODEL;
+
+    // Submit image generation job
     const submission = await client.post<MagicHourJobResponse>('/v1/ai-image-generator', {
       image_count: 1,
       aspect_ratio: aspectRatio,
       resolution,
       style: { prompt: input.request.prompt },
-      model: MAGIC_HOUR_IMAGE_FREE_LAUNCH_MODEL,
+      model: modelToUse,
     });
 
     // Poll until done (images complete quickly — usually < 30 seconds)
@@ -303,6 +310,11 @@ export class MagicHourVideoAdapter implements AIProviderAdapter {
     const aspectRatio = (input.request.context.metadata['aspectRatio'] as string | undefined) ?? '16:9';
     const resolution = (input.request.context.metadata['resolution'] as string | undefined) ?? '720p';
 
+    // Model selection: use providerModelId from SovereignModelSelector when available.
+    // When no model is specified, the Magic Hour API uses its default model.
+    const selectedProviderModelId =
+      input.request.context.metadata['providerModelId'] as string | undefined;
+
     // Submit text-to-video job
     // credits_charged at submission = ESTIMATE based on end_seconds × assumed 30fps
     const submission = await client.post<MagicHourJobResponse>('/v1/text-to-video', {
@@ -310,6 +322,7 @@ export class MagicHourVideoAdapter implements AIProviderAdapter {
       aspect_ratio: aspectRatio,
       resolution,
       style: { prompt: input.request.prompt },
+      ...(selectedProviderModelId ? { model: selectedProviderModelId } : {}),
     });
 
     const estimatedCredits = submission.credits_charged;

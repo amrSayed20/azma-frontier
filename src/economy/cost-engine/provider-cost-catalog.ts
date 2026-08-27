@@ -98,6 +98,141 @@ export const CURRENT_PROVIDER_COST_CATALOG: ProviderCostCatalog = {
       providerCreditUnit: 'magic-hour-credits',
       notes: 'MH cost: same as TTS — 0.1 credits/character, ceil(). AZMA Unit conversion pending.',
     },
+    // ── MAGIC HOUR — MODEL-LEVEL IMAGE ENTRIES ────────────────────────────────
+    // One entry per Chief Architect-approved image candidate.
+    // All pending-discovery: AZMA Unit conversion not yet approved.
+    // providerCreditCost is unknown until verification against actual Magic Hour API.
+    {
+      gatewayId: 'magic-hour',
+      capabilityTarget: 'image-generation',
+      modelId: 'z-image-turbo',
+      azmaUnitsPerUnit: 0,
+      unitDescription: '1 generated image (Z-Image Turbo)',
+      availability: 'pending-discovery',
+      catalogVersion: '0.3.0',
+      effectiveFrom: 1756310400000, // 2026-08-27
+      providerCreditCost: null,
+      providerCreditUnit: 'magic-hour-credits',
+      notes: 'Approved candidate. providerCreditCost and AZMA Unit rate require verification.',
+    },
+    {
+      gatewayId: 'magic-hour',
+      capabilityTarget: 'image-generation',
+      modelId: 'seedream-4',
+      azmaUnitsPerUnit: 0,
+      unitDescription: '1 generated image (Seedream 4)',
+      availability: 'pending-discovery',
+      catalogVersion: '0.3.0',
+      effectiveFrom: 1756310400000,
+      providerCreditCost: null,
+      providerCreditUnit: 'magic-hour-credits',
+      notes: 'Approved candidate. providerCreditCost and AZMA Unit rate require verification.',
+    },
+    {
+      gatewayId: 'magic-hour',
+      capabilityTarget: 'image-generation',
+      modelId: 'nano-banana-2',
+      azmaUnitsPerUnit: 0,
+      unitDescription: '1 generated image (Nano Banana 2)',
+      availability: 'pending-discovery',
+      catalogVersion: '0.3.0',
+      effectiveFrom: 1756310400000,
+      providerCreditCost: null,
+      providerCreditUnit: 'magic-hour-credits',
+      notes: 'Approved candidate. providerCreditCost and AZMA Unit rate require verification.',
+    },
+    {
+      gatewayId: 'magic-hour',
+      capabilityTarget: 'image-generation',
+      modelId: 'seedream-4-5',
+      azmaUnitsPerUnit: 0,
+      unitDescription: '1 generated image (Seedream 4.5)',
+      availability: 'pending-discovery',
+      catalogVersion: '0.3.0',
+      effectiveFrom: 1756310400000,
+      providerCreditCost: null,
+      providerCreditUnit: 'magic-hour-credits',
+      notes: 'Approved candidate. providerCreditCost and AZMA Unit rate require verification.',
+    },
+    {
+      gatewayId: 'magic-hour',
+      capabilityTarget: 'image-generation',
+      modelId: 'nano-banana-pro',
+      azmaUnitsPerUnit: 0,
+      unitDescription: '1 generated image (Nano Banana Pro)',
+      availability: 'pending-discovery',
+      catalogVersion: '0.3.0',
+      effectiveFrom: 1756310400000,
+      providerCreditCost: null,
+      providerCreditUnit: 'magic-hour-credits',
+      notes: 'Approved candidate. providerCreditCost and AZMA Unit rate require verification.',
+    },
+    // ── MAGIC HOUR — MODEL-LEVEL VIDEO ENTRIES ────────────────────────────────
+    {
+      gatewayId: 'magic-hour',
+      capabilityTarget: 'video-generation',
+      modelId: 'ltx-2-3',
+      azmaUnitsPerUnit: 0,
+      unitDescription: '1 video generation (LTX 2.3, variable duration)',
+      availability: 'pending-discovery',
+      catalogVersion: '0.3.0',
+      effectiveFrom: 1756310400000,
+      providerCreditCost: null,
+      providerCreditUnit: 'magic-hour-credits',
+      notes: 'Approved candidate. Variable credit cost (frames × per-frame rate). Verification required.',
+    },
+    {
+      gatewayId: 'magic-hour',
+      capabilityTarget: 'video-generation',
+      modelId: 'kling-3-0',
+      azmaUnitsPerUnit: 0,
+      unitDescription: '1 video generation (Kling 3.0, variable duration)',
+      availability: 'pending-discovery',
+      catalogVersion: '0.3.0',
+      effectiveFrom: 1756310400000,
+      providerCreditCost: null,
+      providerCreditUnit: 'magic-hour-credits',
+      notes: 'Approved candidate. Variable credit cost. Verification required.',
+    },
+    {
+      gatewayId: 'magic-hour',
+      capabilityTarget: 'video-generation',
+      modelId: 'seedance-2-0',
+      azmaUnitsPerUnit: 0,
+      unitDescription: '1 video generation (Seedance 2.0, variable duration)',
+      availability: 'pending-discovery',
+      catalogVersion: '0.3.0',
+      effectiveFrom: 1756310400000,
+      providerCreditCost: null,
+      providerCreditUnit: 'magic-hour-credits',
+      notes: 'Approved candidate. Variable credit cost. Verification required.',
+    },
+    {
+      gatewayId: 'google-veo',
+      capabilityTarget: 'video-generation',
+      modelId: 'veo-3-1',
+      azmaUnitsPerUnit: 0,
+      unitDescription: '1 video generation (Veo 3.1)',
+      availability: 'pending-discovery',
+      catalogVersion: '0.3.0',
+      effectiveFrom: 1756310400000,
+      providerCreditCost: null,
+      providerCreditUnit: 'google-credits',
+      notes: 'Approved candidate. No Google provider adapter. Pricing unknown. Verification required.',
+    },
+    {
+      gatewayId: 'openai-video',
+      capabilityTarget: 'video-generation',
+      modelId: 'sora-2',
+      azmaUnitsPerUnit: 0,
+      unitDescription: '1 video generation (Sora 2)',
+      availability: 'pending-discovery',
+      catalogVersion: '0.3.0',
+      effectiveFrom: 1756310400000,
+      providerCreditCost: null,
+      providerCreditUnit: 'openai-usd',
+      notes: 'Approved candidate. No OpenAI video adapter. Pricing unknown. Verification required.',
+    },
     // ── OPENAI (image generation — existing Qiyamah pipeline) ─────────────────
     // OpenAI DALL-E 3 standard quality: ~$0.04/image = ~40 AZMA units at ~$0.001/unit
     // exchange rate: START pack 800 units / 99 EGP ≈ 8.08 units/EGP ≈ $0.001/unit (at 50 EGP/USD)
@@ -137,12 +272,29 @@ export const CURRENT_PROVIDER_COST_CATALOG: ProviderCostCatalog = {
   ],
 };
 
+// Model-aware lookup: tries exact (gatewayId + capabilityTarget + modelId) first,
+// then falls back to the coarse (gatewayId + capabilityTarget) entry.
+// All existing callers pass no modelId and continue to receive the coarse entry.
 export function getCatalogEntry(
   gatewayId: string,
   capabilityTarget: string,
   catalog: ProviderCostCatalog = CURRENT_PROVIDER_COST_CATALOG,
+  modelId?: string,
 ) {
+  if (modelId) {
+    const modelEntry = catalog.entries.find(
+      (e) =>
+        e.gatewayId === gatewayId &&
+        e.capabilityTarget === capabilityTarget &&
+        e.modelId === modelId,
+    );
+    if (modelEntry) return modelEntry;
+  }
+  // Coarse fallback: entry with no modelId discriminator.
   return catalog.entries.find(
-    (e) => e.gatewayId === gatewayId && e.capabilityTarget === capabilityTarget,
+    (e) =>
+      e.gatewayId === gatewayId &&
+      e.capabilityTarget === capabilityTarget &&
+      !e.modelId,
   );
 }

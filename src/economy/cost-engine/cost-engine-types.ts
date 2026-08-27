@@ -11,10 +11,14 @@ export type CapabilityTarget =
 
 export type CostAvailability = 'available' | 'pending-discovery' | 'unavailable';
 
-// One entry in the provider cost catalog for a capability × gateway combination.
+// One entry in the provider cost catalog for a capability × gateway [× model] combination.
+// When modelId is present, this entry takes precedence over the coarse entry
+// (same gatewayId + capabilityTarget, no modelId) for that specific model.
+// All existing coarse entries remain valid — backward-compatible.
 export interface ProviderCostEntry {
   readonly gatewayId: string;               // e.g. 'magic-hour'
   readonly capabilityTarget: CapabilityTarget;
+  readonly modelId?: string;               // optional — discriminates model-level pricing
   readonly azmaUnitsPerUnit: number;        // AZMA Units per creation unit
   readonly unitDescription: string;         // e.g. '1 image', '4-second video clip'
   readonly availability: CostAvailability;

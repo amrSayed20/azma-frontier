@@ -17,10 +17,12 @@ export class AzmaUnitCostEngine {
   ) {}
 
   // Returns the AZMA Unit cost for a capability via a gateway.
+  // When modelId is provided, tries the model-specific entry first, then the
+  // coarse gateway entry — backward-compatible for all existing callers.
   // Throws GatewayNotFoundError if no catalog entry exists.
   // Throws CostUnavailableError if availability is not 'available'.
-  estimate(capabilityTarget: CapabilityTarget, gatewayId: string): CostEstimate {
-    const entry = getCatalogEntry(gatewayId, capabilityTarget, this.catalog);
+  estimate(capabilityTarget: CapabilityTarget, gatewayId: string, modelId?: string): CostEstimate {
+    const entry = getCatalogEntry(gatewayId, capabilityTarget, this.catalog, modelId);
 
     if (!entry) {
       throw new GatewayNotFoundError(gatewayId, capabilityTarget);
@@ -46,8 +48,9 @@ export class AzmaUnitCostEngine {
     capabilityTarget: CapabilityTarget,
     gatewayId: string,
     balance: CreatorBalance,
+    modelId?: string,
   ): ReservableEstimate {
-    const entry = getCatalogEntry(gatewayId, capabilityTarget, this.catalog);
+    const entry = getCatalogEntry(gatewayId, capabilityTarget, this.catalog, modelId);
 
     if (!entry) {
       return {

@@ -22,12 +22,13 @@ afterEach(() => {
 });
 
 // SCENARIO 32: First Creation Gift — trial is granted for new Creators
+// Chief Architect entitlement (authorized 2026-08-27): 5 free images, 0 free videos.
 describe('Trial Entitlement — initial state', () => {
-  it('new Creator receives 3 image and 1 video trial entitlements', () => {
+  it('new Creator receives 5 image and 0 video trial entitlements (Chief Architect authorized)', () => {
     const e = repo.getOrCreate(CREATOR);
-    expect(e.imagesGranted).toBe(3);
+    expect(e.imagesGranted).toBe(5);
     expect(e.imagesUsed).toBe(0);
-    expect(e.videoGranted).toBe(1);
+    expect(e.videoGranted).toBe(0);
     expect(e.videoUsed).toBe(0);
     expect(e.claimedAt).toBeNull();
   });
@@ -44,42 +45,36 @@ describe('Trial Entitlement — claim()', () => {
   it('claims an image trial usage successfully', () => {
     const result = repo.claim(CREATOR, 'image');
     expect(result.claimed).toBe(true);
-    expect(result.remainingImages).toBe(2);
-    expect(result.remainingVideos).toBe(1);
+    expect(result.remainingImages).toBe(4); // 5 - 1
+    expect(result.remainingVideos).toBe(0);  // no free video
   });
 
-  it('claims up to 3 image trial usages', () => {
-    repo.claim(CREATOR, 'image');
-    repo.claim(CREATOR, 'image');
-    repo.claim(CREATOR, 'image');
+  it('claims up to 5 image trial usages (Chief Architect authorized)', () => {
+    for (let i = 0; i < 5; i++) repo.claim(CREATOR, 'image');
     const e = repo.getOrCreate(CREATOR);
-    expect(e.imagesUsed).toBe(3);
+    expect(e.imagesUsed).toBe(5);
   });
 
-  it('throws TrialExhaustedError after all image trials are used', () => {
-    repo.claim(CREATOR, 'image');
-    repo.claim(CREATOR, 'image');
-    repo.claim(CREATOR, 'image');
+  it('throws TrialExhaustedError after all 5 image trials are used', () => {
+    for (let i = 0; i < 5; i++) repo.claim(CREATOR, 'image');
     expect(() => repo.claim(CREATOR, 'image')).toThrow(TrialExhaustedError);
   });
 
-  it('claims 1 video trial usage successfully', () => {
-    const result = repo.claim(CREATOR, 'video');
-    expect(result.claimed).toBe(true);
-    expect(result.remainingVideos).toBe(0);
-  });
-
-  it('throws TrialExhaustedError after video trial is used', () => {
-    repo.claim(CREATOR, 'video');
+  it('throws TrialExhaustedError immediately on video claim — zero video entitlement', () => {
+    // No free video generation at launch (Chief Architect authorized 2026-08-27)
     expect(() => repo.claim(CREATOR, 'video')).toThrow(TrialExhaustedError);
   });
 
-  it('image and video trials are independent — exhausting images does not affect videos', () => {
-    repo.claim(CREATOR, 'image');
-    repo.claim(CREATOR, 'image');
-    repo.claim(CREATOR, 'image');
-    // video still available
-    expect(() => repo.claim(CREATOR, 'video')).not.toThrow();
+  it('video entitlement is zero — hasRemainingTrial returns false from the start', () => {
+    expect(repo.hasRemainingTrial(CREATOR, 'video')).toBe(false);
+  });
+
+  it('image and video entitlements are independent counters — exhausting images does not reset video counter', () => {
+    // Video is 0 granted. Exhausting image does not change video counter.
+    for (let i = 0; i < 5; i++) repo.claim(CREATOR, 'image');
+    const e = repo.getOrCreate(CREATOR);
+    expect(e.videoGranted).toBe(0); // still 0 — not reset or incremented
+    expect(e.videoUsed).toBe(0);
   });
 
   it('sets claimedAt on first usage', () => {
@@ -113,17 +108,17 @@ describe('Trial Entitlement — tenant isolation', () => {
 });
 
 describe('TrialEntitlementService', () => {
-  it('getTrialStatus returns correct counts', () => {
+  it('getTrialStatus returns correct counts after one image claim', () => {
     service.claimTrial(CREATOR, 'image');
     const status = service.getTrialStatus(CREATOR);
-    expect(status.remainingImages).toBe(2);
-    expect(status.remainingVideos).toBe(1);
+    expect(status.remainingImages).toBe(4); // 5 - 1
+    expect(status.remainingVideos).toBe(0);  // no free video
     expect(status.hasTrialImages).toBe(true);
-    expect(status.hasTrialVideos).toBe(true);
+    expect(status.hasTrialVideos).toBe(false); // zero video entitlement
   });
 
-  it('hasRemainingTrial returns false when quota exhausted', () => {
-    service.claimTrial(CREATOR, 'video');
-    expect(service.hasRemainingTrial(CREATOR, 'video')).toBe(false);
+  it('hasRemainingTrial returns false when image quota exhausted', () => {
+    for (let i = 0; i < 5; i++) service.claimTrial(CREATOR, 'image');
+    expect(service.hasRemainingTrial(CREATOR, 'image')).toBe(false);
   });
 });

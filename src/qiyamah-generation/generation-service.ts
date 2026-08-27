@@ -35,6 +35,7 @@ import { getDb, recordGeneration as persistGenerationRecord } from '../persisten
 import { SovereignVaultManager } from '../vault/sovereign-vault-manager';
 import { AssetFamily } from '../vault/sovereign-vault-types';
 import { CapabilityTarget } from '../core/sovereign-orchestrator/qiyamah-intent-types';
+import { buildImageCreationIntent, getProductionSelector } from '../sovereign-model-selection';
 import type { GenerationRequest, GenerationResult } from './types';
 
 // ─── PNG INTEGRITY GATE ───────────────────────────────────────────────────────
@@ -61,6 +62,7 @@ async function depositGeneratedAssetIntoVault(params: {
   readonly assetUrl: string;
   readonly prompt: string;
   readonly style: string | null;
+  readonly resolvedProviderId: string;
 }): Promise<void> {
   try {
     await vaultManager.depositAsset({
@@ -70,7 +72,7 @@ async function depositGeneratedAssetIntoVault(params: {
       assetFamily: AssetFamily.MEDIA,
       secureStorageUri: params.assetUrl,
       metadata: {
-        providerId: 'magic-hour-image',
+        providerId: params.resolvedProviderId,
         generationPrompt: params.prompt,
         ...(params.style ? { generationStyle: params.style } : {}),
       },
@@ -107,6 +109,44 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
 
   const style = request.style?.trim() || null;
 
+  // ── Sovereign Model Selection ─────────────────────────────────────────────
+  // Build a creation intent from the request and ask the selector for the
+  // optimal model. When no production-authorized model is available (all
+  // candidates are approved-candidate, awaiting verification), the selector
+  // returns 'all-candidates-unverified' and we fall through to the legacy
+  // orchestration path (no preferredProviderId/modelId — the orchestrator
+  // uses whatever registered adapter is available, currently flux-schnell).
+  //
+  // Hard requirement failures (quality-unavailable, resolution-unavailable,
+  // duration-unavailable) are surfaced as provider-error — AZMA never
+  // silently downgrades a Creator requirement.
+  const creationIntent = buildImageCreationIntent(request.prompt.trim(), style);
+  const selectionResult = getProductionSelector().select(creationIntent);
+
+  let preferredProviderId: string | undefined;
+  let preferredModelId: string | undefined;
+  const orchestrationMetadata: Record<string, unknown> = style ? { style } : {};
+
+  if (selectionResult.selected) {
+    preferredProviderId = selectionResult.selection.providerId;
+    preferredModelId = selectionResult.selection.modelId;
+    orchestrationMetadata['aspectRatio'] = selectionResult.selection.aspectRatio;
+    orchestrationMetadata['resolution'] = selectionResult.selection.resolution;
+    orchestrationMetadata['providerModelId'] = selectionResult.selection.providerModelId;
+  } else if (selectionResult.reason !== 'all-candidates-unverified') {
+    // Hard requirement not satisfiable — quality or resolution cannot be met.
+    // Do NOT silently fall back to a lower-quality model.
+    return {
+      status: 'failed',
+      reason: 'provider-error',
+      message:
+        'The requested quality or resolution is not currently available. ' +
+        'Please try a different style or check back later.',
+    };
+  }
+  // 'all-candidates-unverified': fall through without model preference (legacy path).
+
+  // ── Orchestration ─────────────────────────────────────────────────────────
   // Route through the sovereign orchestration path — provider selection,
   // constitutional routing, and fallback are all handled by the existing
   // DNAOrchestratorRuntime.  The adapter returns base64-encoded bytes in
@@ -120,7 +160,9 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
       taskHint: 'image',
       chamberId: 'qiyamah',
       purpose: 'Sovereign image generation for Creator',
-      metadata: style ? { style } : {},
+      preferredProviderId,
+      preferredModelId,
+      metadata: orchestrationMetadata,
     });
   } catch {
     return {
@@ -175,12 +217,17 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
       originalIdea: request.originalIdea ?? null,
     });
     if (request.creatorId) {
+      // Use the actual provider ID from the orchestration response when available;
+      // fall back to the legacy Magic Hour image provider ID.
+      const resolvedProviderId =
+        orchestrationResult.response.providerId ?? 'magic-hour-image';
       await depositGeneratedAssetIntoVault({
         assetId: persisted.assetId,
         creatorId: request.creatorId,
         assetUrl: persisted.assetUrl,
         prompt: request.prompt.trim(),
         style,
+        resolvedProviderId,
       });
     }
     return {

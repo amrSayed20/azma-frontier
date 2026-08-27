@@ -10,7 +10,7 @@ type TaskRule = {
 
 const TASK_RULES: readonly TaskRule[] = [
   { taskType: 'image', modality: 'image', capability: 'image-generation', keywords: ['image', 'illustration', 'render', 'photo', 'picture', 'logo', 'visual'] },
-  { taskType: 'video', modality: 'video', capability: 'text-generation', keywords: ['video', 'film', 'clip', 'animation', 'storyboard', 'scene'] },
+  { taskType: 'video', modality: 'video', capability: 'video-generation', keywords: ['video', 'film', 'clip', 'animation', 'storyboard', 'scene'] },
   { taskType: 'audio', modality: 'audio', capability: 'audio-generation', keywords: ['audio', 'voice', 'speech', 'sound', 'music', 'transcribe'] },
   { taskType: 'code', modality: 'code', capability: 'text-generation', keywords: ['code', 'typescript', 'javascript', 'python', 'bug', 'compile', 'function', 'class'] },
   { taskType: 'reasoning', modality: 'text', capability: 'reasoning', keywords: ['reason', 'analyze', 'decide', 'plan', 'strategy', 'why'] },
