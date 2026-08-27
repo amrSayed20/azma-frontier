@@ -211,6 +211,14 @@ export default function SovereignHighCouncilPage() {
           <p className="text-gray-400">
             Exclusive supervisory interface for platform ownership and governance
           </p>
+          <div className="mt-3 flex items-center gap-4">
+            <a href="/sovereign-high-council/consumption" className="text-xs text-amber-400/60 hover:text-amber-300 transition-colors">
+              استهلاك المنصة ↗
+            </a>
+            <a href="/sovereign-high-council/health" className="text-xs text-amber-400/60 hover:text-amber-300 transition-colors">
+              Imperial Health ↗
+            </a>
+          </div>
         </div>
       </header>
 
