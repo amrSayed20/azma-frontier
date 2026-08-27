@@ -640,7 +640,8 @@ describe('Point 17 — Magic Hour selected model routing is explicit', () => {
     const fleet = IMAGE_MODEL_FLEET.find((m) => m.modelId === 'seedream-4');
     expect(fleet).toBeDefined();
     // The providerModelId on the fleet entry is what gets sent to Magic Hour
-    expect(fleet!.providerModelId).toBe('seedream-4');
+    // Corrected 2026-08-27: official Magic Hour API enum is 'seedream-v4', not 'seedream-4'
+    expect(fleet!.providerModelId).toBe('seedream-v4');
   });
 
   it('production selector populates providerModelId on selection from fleet entry', () => {
