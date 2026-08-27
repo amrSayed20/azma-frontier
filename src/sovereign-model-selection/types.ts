@@ -175,3 +175,17 @@ export type MasterAssetAdaptability =
   | 'direct-reuse'
   | 'crop-adapt'
   | 'regenerate-required';
+
+/**
+ * Formal decision record for a single platform adaptation evaluation.
+ *
+ * When requiresRegenerationApproval is true the caller MUST obtain Creator
+ * cost approval before dispatching a new provider generation (Section X +
+ * Section XIX of Construction Order). AZMA never silently regenerates.
+ */
+export interface AdaptationDecision {
+  readonly adaptability: MasterAssetAdaptability;
+  readonly targetPlatform: string;
+  readonly targetDimensions: PlatformDimensions;
+  readonly requiresRegenerationApproval: boolean;
+}

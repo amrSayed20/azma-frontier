@@ -1,4 +1,4 @@
-import type { MasterAssetAdaptability, PlatformDimensions } from './types';
+import type { AdaptationDecision, MasterAssetAdaptability, PlatformDimensions } from './types';
 
 // Known platform → canonical dimensions.
 // The Creator selects a platform name; AZMA resolves the technical dimensions.
@@ -55,6 +55,34 @@ export function assessMasterAdaptability(
   // Orientation mismatch (landscape ↔ portrait, or either ↔ square) requires
   // regeneration to preserve compositional integrity.
   return 'regenerate-required';
+}
+
+/**
+ * Produces an AdaptationDecision for a given master aspect-ratio and platform target.
+ *
+ * Returns null when the platform is unknown — the caller must treat unknown
+ * platforms as requiring regeneration with Creator approval.
+ *
+ * When the result has requiresRegenerationApproval === true, the caller MUST:
+ *   1. Calculate the regeneration cost.
+ *   2. Present the cost to the Creator via a GenerationCostProposal.
+ *   3. Await explicit approval before dispatching the new generation.
+ */
+export function buildAdaptationDecision(
+  masterAspectRatio: string,
+  targetPlatform: string,
+): AdaptationDecision | null {
+  const targetDimensions = resolvePlatformDimensions(targetPlatform);
+  if (!targetDimensions) return null;
+
+  const adaptability = assessMasterAdaptability(masterAspectRatio, targetDimensions.aspectRatio);
+
+  return {
+    adaptability,
+    targetPlatform,
+    targetDimensions,
+    requiresRegenerationApproval: adaptability === 'regenerate-required',
+  };
 }
 
 function getOrientation(aspectRatio: string): 'landscape' | 'portrait' | 'square' {

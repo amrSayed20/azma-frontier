@@ -12,6 +12,7 @@ export type {
   ModelSelectionFailure,
   PlatformDimensions,
   MasterAssetAdaptability,
+  AdaptationDecision,
 } from './types';
 
 export {
@@ -27,7 +28,13 @@ export {
   resolvePlatformDimensions,
   assessMasterAdaptability,
   getDefaultAspectRatio,
+  buildAdaptationDecision,
 } from './platform-adapter';
+export type { GenerationCostProposal } from './cost-approval-gate';
+export {
+  buildCostProposal,
+  verifyCostApproval,
+} from './cost-approval-gate';
 export {
   buildImageCreationIntent,
   buildVideoCreationIntent,

@@ -142,14 +142,50 @@ export class SovereignModelSelector {
       durationEligible = withDuration;
     }
 
+    // ── Step 4.5: filter by special characteristics (hard requirements) ─────────
+    // Only hard-filters on boolean=true intent fields. Unknown capabilities
+    // (undefined) are treated as NOT supported — AZMA never assumes unverified
+    // capability (Section XIV of Construction Order).
+    let characteristicsEligible = durationEligible;
+    if (intent.characterConsistencyRequired === true) {
+      const withCC = characteristicsEligible.filter(
+        (m) => m.supportsCharacterConsistency === true,
+      );
+      if (withCC.length === 0) {
+        return {
+          selected: false,
+          reason: 'capability-unavailable',
+          detail:
+            'No authorized model supports character consistency. ' +
+            'The requirement cannot be silently dropped.',
+        };
+      }
+      characteristicsEligible = withCC;
+    }
+    if (intent.audioRequired === true) {
+      const withAudio = characteristicsEligible.filter(
+        (m) => m.supportsAudio === true,
+      );
+      if (withAudio.length === 0) {
+        return {
+          selected: false,
+          reason: 'capability-unavailable',
+          detail:
+            'No authorized model supports audio generation. ' +
+            'The requirement cannot be silently dropped.',
+        };
+      }
+      characteristicsEligible = withAudio;
+    }
+
     // ── Step 5: prefer exact quality tier match (cost-efficiency preference) ──
     // Models that exactly match the required tier are preferred over over-qualified
     // models — prevents paying for unnecessary ultra quality when high suffices.
     // If no exact match, use the full eligible set (requirement is still satisfied).
-    const exactTierPool = durationEligible.filter(
+    const exactTierPool = characteristicsEligible.filter(
       (m) => m.qualityTier === intent.qualityRequirement,
     );
-    const scoringPool = exactTierPool.length > 0 ? exactTierPool : durationEligible;
+    const scoringPool = exactTierPool.length > 0 ? exactTierPool : characteristicsEligible;
 
     // ── Step 6: score by provider health ──────────────────────────────────────
     const scored = scoringPool
