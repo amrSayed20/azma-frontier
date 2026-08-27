@@ -2,20 +2,17 @@ import { MAGIC_HOUR_IMAGE_PROVIDER_ID } from '../core/sovereign-ai-integration/a
 import type { SovereignMediaModelDescriptor } from './types';
 
 /**
- * Chief Architect-approved image model candidates.
- * Authorization date: 2026-08-27.
+ * Chief Architect-approved and production-authorized image model fleet.
+ * Approval date: 2026-08-27. Production authorization: 2026-08-27 (Phase III).
  *
- * ALL entries carry verificationStatus: 'approved-candidate' and
- * productionAuthorized: false. No model in this fleet dispatches a real
- * provider call or consumes provider credits until:
- *   1. Capability data is verified against the actual Magic Hour API.
- *   2. The Chief Architect explicitly sets productionAuthorized: true.
+ * ALL entries carry verificationStatus: 'production-authorized' and
+ * productionAuthorized: true per explicit Chief Architect Phase III order.
  *
- * providerModelId: assumed to match the Chief Architect's approved name as
- * the Magic Hour API model string. REQUIRES_VERIFICATION for every entry.
- *
- * qualityTier / maxImageResolution: conservative placeholder values.
- * REQUIRES_VERIFICATION for every entry before production authorization.
+ * providerModelId: assumed to match Magic Hour API model strings.
+ * REQUIRES_VERIFICATION: real-world API verification of model strings,
+ * qualityTier, maxImageResolution, and supportedAspectRatios is still
+ * pending. Authorization precedes API verification — the Chief Architect
+ * will perform real-world model tests after Phase III deployment.
  */
 export const IMAGE_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
   {
@@ -36,12 +33,13 @@ export const IMAGE_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
       capabilityTarget: 'image-generation',
       modelId: 'z-image-turbo',
     },
-    verificationStatus: 'approved-candidate',
-    productionAuthorized: false,
+    verificationStatus: 'production-authorized',
+    productionAuthorized: true,
     active: true,
     internalNotes:
-      'Approved candidate 2026-08-27. providerModelId, qualityTier, maxImageResolution, ' +
-      'and supportedAspectRatios all require verification against the Magic Hour API.',
+      'Production authorized by Chief Architect 2026-08-27 (Phase III). ' +
+      'providerModelId, qualityTier, maxImageResolution, and supportedAspectRatios ' +
+      'require real-world verification against the Magic Hour API.',
   },
   {
     modelId: 'seedream-4',
@@ -61,11 +59,12 @@ export const IMAGE_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
       capabilityTarget: 'image-generation',
       modelId: 'seedream-4',
     },
-    verificationStatus: 'approved-candidate',
-    productionAuthorized: false,
+    verificationStatus: 'production-authorized',
+    productionAuthorized: true,
     active: true,
     internalNotes:
-      'Approved candidate 2026-08-27. All capability data requires verification.',
+      'Production authorized by Chief Architect 2026-08-27 (Phase III). ' +
+      'All capability data requires real-world verification.',
   },
   {
     modelId: 'nano-banana-2',
@@ -85,11 +84,12 @@ export const IMAGE_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
       capabilityTarget: 'image-generation',
       modelId: 'nano-banana-2',
     },
-    verificationStatus: 'approved-candidate',
-    productionAuthorized: false,
+    verificationStatus: 'production-authorized',
+    productionAuthorized: true,
     active: true,
     internalNotes:
-      'Approved candidate 2026-08-27. All capability data requires verification.',
+      'Production authorized by Chief Architect 2026-08-27 (Phase III). ' +
+      'All capability data requires real-world verification.',
   },
   {
     // AZMA internal ID uses hyphen; providerModelId may use dot notation.
@@ -110,11 +110,12 @@ export const IMAGE_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
       capabilityTarget: 'image-generation',
       modelId: 'seedream-4-5',
     },
-    verificationStatus: 'approved-candidate',
-    productionAuthorized: false,
+    verificationStatus: 'production-authorized',
+    productionAuthorized: true,
     active: true,
     internalNotes:
-      'Approved candidate 2026-08-27. All capability data requires verification. ' +
+      'Production authorized by Chief Architect 2026-08-27 (Phase III). ' +
+      'All capability data requires real-world verification. ' +
       'providerModelId may be "seedream-4.5" or differ — confirm with Magic Hour API.',
   },
   {
@@ -135,10 +136,11 @@ export const IMAGE_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
       capabilityTarget: 'image-generation',
       modelId: 'nano-banana-pro',
     },
-    verificationStatus: 'approved-candidate',
-    productionAuthorized: false,
+    verificationStatus: 'production-authorized',
+    productionAuthorized: true,
     active: true,
     internalNotes:
-      'Approved candidate 2026-08-27. All capability data requires verification.',
+      'Production authorized by Chief Architect 2026-08-27 (Phase III). ' +
+      'All capability data requires real-world verification.',
   },
 ];

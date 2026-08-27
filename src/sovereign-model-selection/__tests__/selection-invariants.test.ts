@@ -296,7 +296,7 @@ describe('Point 14: Unknown/unverified model capability cannot be silently assum
     if (!result.selected) expect(result.reason).toBe('all-candidates-unverified');
   });
 
-  it('all 10 fleet models are approved-candidate (not production-authorized) by default', () => {
+  it('Phase III: all 10 fleet models are production-authorized', () => {
     const { getProductionRegistry } = require('../production-registry');
     const { resetProductionRegistryForTests } = require('../production-registry');
     resetProductionRegistryForTests();
@@ -305,8 +305,8 @@ describe('Point 14: Unknown/unverified model capability cannot be silently assum
     const allModels = registry.list();
     expect(allModels.length).toBe(10);
     for (const model of allModels) {
-      expect(model.productionAuthorized).toBe(false);
-      expect(model.verificationStatus).toBe('approved-candidate');
+      expect(model.productionAuthorized).toBe(true);
+      expect(model.verificationStatus).toBe('production-authorized');
     }
   });
 });

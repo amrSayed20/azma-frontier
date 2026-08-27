@@ -197,35 +197,19 @@ describe('Phase II Test 21 — Future provider enters through adapter boundary',
     const intent = buildImageCreationIntent('test', 'cinematic');
 
     const before = productionSelector.select(intent);
-    expect(before.selected).toBe(false); // all-candidates-unverified: no authorized model
+    // Phase III: authorized image models are active — selection succeeds
+    expect(before.selected).toBe(true);
 
     // Creating a separate test registry with a future provider does not affect production
     makeRegistry(makeImageModel({ providerId: 'future-intruder' }));
 
     const after = productionSelector.select(intent);
-    expect(after.selected).toBe(false); // still no authorized model in production fleet
-    if (!after.selected) {
-      expect(after.reason).toBe('all-candidates-unverified');
-    }
+    // Production registry is still intact — authorized models still selected
+    expect(after.selected).toBe(true);
   });
 });
 
-describe('Phase II Test 22 — Existing flux-schnell fallback remains intact', () => {
-  it('production selector returns all-candidates-unverified — zero models are authorized', () => {
-    resetProductionRegistryForTests();
-    const selector = getProductionSelector();
-    const intent = buildImageCreationIntent('test', 'cinematic');
-
-    const result = selector.select(intent);
-
-    expect(result.selected).toBe(false);
-    if (!result.selected) {
-      // 'all-candidates-unverified' is the exact signal the generation service uses
-      // to fall through to the legacy flux-schnell orchestration path.
-      expect(result.reason).toBe('all-candidates-unverified');
-    }
-  });
-
+describe('Phase II Test 22 — Fallback discipline and fleet authorization state (Phase III)', () => {
   it('all-candidates-unverified is semantically distinct from hard-failure reasons', () => {
     // Hard failures (quality/resolution/duration unavailable) cause the generation
     // service to return an error. 'all-candidates-unverified' causes it to continue
@@ -241,31 +225,34 @@ describe('Phase II Test 22 — Existing flux-schnell fallback remains intact', (
     expect(hardFailureReasons).not.toContain('all-candidates-unverified');
   });
 
-  it('no model in the image fleet is production-authorized', () => {
+  it('Phase III: all 5 image fleet models are production-authorized', () => {
     expect(IMAGE_MODEL_FLEET.length).toBe(5);
     for (const model of IMAGE_MODEL_FLEET) {
-      expect(model.productionAuthorized).toBe(false);
-      expect(model.verificationStatus).toBe('approved-candidate');
+      expect(model.productionAuthorized).toBe(true);
+      expect(model.verificationStatus).toBe('production-authorized');
     }
   });
 
-  it('no model in the video fleet is production-authorized', () => {
+  it('Phase III: all 5 video fleet models are production-authorized (veo+sora remain active:false)', () => {
     expect(VIDEO_MODEL_FLEET.length).toBe(5);
     for (const model of VIDEO_MODEL_FLEET) {
-      expect(model.productionAuthorized).toBe(false);
-      expect(model.verificationStatus).toBe('approved-candidate');
+      expect(model.productionAuthorized).toBe(true);
+      expect(model.verificationStatus).toBe('production-authorized');
     }
+    // veo and sora are authorized but have no adapter — active:false prevents selection
+    const inactive = VIDEO_MODEL_FLEET.filter((m) => !m.active);
+    expect(inactive.map((m) => m.modelId).sort()).toEqual(['sora-2', 'veo-3-1']);
   });
 
-  it('all ten fleet models combined are all unauthorized', () => {
+  it('Phase III: all ten fleet models are production-authorized', () => {
     const allModels = [...IMAGE_MODEL_FLEET, ...VIDEO_MODEL_FLEET];
     expect(allModels).toHaveLength(10);
 
     const authorizedCount = allModels.filter((m) => m.productionAuthorized).length;
-    expect(authorizedCount).toBe(0); // ZERO authorized — authorization gate is closed
+    expect(authorizedCount).toBe(10); // ALL authorized per Phase III order
   });
 
-  it('production registry holds exactly 10 fleet models and none are authorized', () => {
+  it('Phase III: production registry exposes 5 active authorized image models', () => {
     resetProductionRegistryForTests();
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { getProductionRegistry } = require('../production-registry');
@@ -274,12 +261,11 @@ describe('Phase II Test 22 — Existing flux-schnell fallback remains intact', (
     const all = registry.list();
     expect(all).toHaveLength(10);
 
-    for (const model of all) {
-      expect(model.productionAuthorized).toBe(false);
-    }
+    const authorizedImages = registry.findProductionAuthorized('image');
+    expect(authorizedImages.length).toBe(5); // all 5 image models active + authorized
   });
 
-  it('image and video models each have exactly 5 approved-candidate entries', () => {
+  it('image and video fleets each contain exactly 5 entries', () => {
     const imageModels = IMAGE_MODEL_FLEET.filter((m) => m.mediaType === 'image');
     const videoModels = VIDEO_MODEL_FLEET.filter((m) => m.mediaType === 'video');
 
@@ -287,15 +273,15 @@ describe('Phase II Test 22 — Existing flux-schnell fallback remains intact', (
     expect(videoModels).toHaveLength(5);
   });
 
-  it('all-candidates-unverified result contains detail text describing the waiting state', () => {
+  it('Phase III: production selector selects an authorized model for a standard image intent', () => {
     resetProductionRegistryForTests();
     const selector = getProductionSelector();
     const result = selector.select(buildImageCreationIntent('test', 'abstract'));
 
-    expect(result.selected).toBe(false);
-    if (!result.selected) {
-      expect(result.reason).toBe('all-candidates-unverified');
-      expect(result.detail).toContain('5'); // 5 image candidates registered
+    // abstract → standard quality → z-image-turbo or nano-banana-2 eligible
+    expect(result.selected).toBe(true);
+    if (result.selected) {
+      expect(result.selection.verificationStatus).toBe('production-authorized');
     }
   });
 });

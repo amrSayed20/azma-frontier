@@ -2,28 +2,26 @@ import { MAGIC_HOUR_VIDEO_PROVIDER_ID } from '../core/sovereign-ai-integration/a
 import type { SovereignMediaModelDescriptor } from './types';
 
 /**
- * Chief Architect-approved video model candidates.
- * Authorization date: 2026-08-27.
+ * Chief Architect-approved and production-authorized video model fleet.
+ * Approval date: 2026-08-27. Production authorization: 2026-08-27 (Phase III).
  *
- * ALL entries carry verificationStatus: 'approved-candidate' and
- * productionAuthorized: false. No model in this fleet dispatches a real
- * provider call or consumes provider credits.
+ * ALL entries carry verificationStatus: 'production-authorized' and
+ * productionAuthorized: true per explicit Chief Architect Phase III order.
  *
  * Provider assignment notes:
  *   LTX 2.3, Kling 3.0, Seedance 2.0:
- *     Tentatively assigned to Magic Hour (MH is known to host these models).
- *     REQUIRES_VERIFICATION: whether the MH /v1/text-to-video endpoint accepts
- *     a model parameter and what model strings to pass.
+ *     Assigned to Magic Hour. active: true — selectable at runtime.
+ *     REQUIRES_VERIFICATION: model strings, duration ranges, resolutions.
  *
  *   Veo 3.1:
- *     Google's video model. No provider adapter exists in AZMA OS.
- *     active: false — not selectable until a Google video adapter is built
- *     and registered.
+ *     Google's video model. Production-authorized but active: false.
+ *     No AZMA provider adapter exists — cannot dispatch until a Google
+ *     video adapter is built and registered.
  *
  *   Sora 2:
- *     OpenAI's video model. No provider adapter exists in AZMA OS.
- *     active: false — not selectable until an OpenAI video adapter is built
- *     and registered.
+ *     OpenAI's video model. Production-authorized but active: false.
+ *     No AZMA provider adapter exists — cannot dispatch until an OpenAI
+ *     video adapter is built and registered.
  */
 export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
   {
@@ -50,12 +48,12 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
       capabilityTarget: 'video-generation',
       modelId: 'ltx-2-3',
     },
-    verificationStatus: 'approved-candidate',
-    productionAuthorized: false,
+    verificationStatus: 'production-authorized',
+    productionAuthorized: true,
     active: true,
     internalNotes:
-      'Approved candidate 2026-08-27. Likely Magic Hour-hosted. All capabilities, ' +
-      'providerModelId, duration range, and resolution require verification.',
+      'Production authorized by Chief Architect 2026-08-27 (Phase III). Magic Hour-hosted. ' +
+      'All capabilities, providerModelId, duration range, and resolution require real-world verification.',
   },
   {
     modelId: 'kling-3-0',
@@ -81,11 +79,12 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
       capabilityTarget: 'video-generation',
       modelId: 'kling-3-0',
     },
-    verificationStatus: 'approved-candidate',
-    productionAuthorized: false,
+    verificationStatus: 'production-authorized',
+    productionAuthorized: true,
     active: true,
     internalNotes:
-      'Approved candidate 2026-08-27. Likely Magic Hour-hosted. All capabilities require verification.',
+      'Production authorized by Chief Architect 2026-08-27 (Phase III). Magic Hour-hosted. ' +
+      'All capabilities require real-world verification.',
   },
   {
     modelId: 'seedance-2-0',
@@ -111,11 +110,12 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
       capabilityTarget: 'video-generation',
       modelId: 'seedance-2-0',
     },
-    verificationStatus: 'approved-candidate',
-    productionAuthorized: false,
+    verificationStatus: 'production-authorized',
+    productionAuthorized: true,
     active: true,
     internalNotes:
-      'Approved candidate 2026-08-27. Likely Magic Hour-hosted. All capabilities require verification.',
+      'Production authorized by Chief Architect 2026-08-27 (Phase III). Magic Hour-hosted. ' +
+      'All capabilities require real-world verification.',
   },
   {
     // Veo 3.1 is Google's video model. No AZMA provider adapter exists.
@@ -144,13 +144,13 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
       capabilityTarget: 'video-generation',
       modelId: 'veo-3-1',
     },
-    verificationStatus: 'approved-candidate',
-    productionAuthorized: false,
-    active: false,  // No provider adapter — cannot dispatch
+    verificationStatus: 'production-authorized',
+    productionAuthorized: true,
+    active: false,  // No provider adapter — production-authorized but not yet dispatchable
     internalNotes:
-      'Approved candidate 2026-08-27. Google model. No AZMA adapter exists. ' +
-      'Requires: (1) Google video provider adapter, (2) capability verification, ' +
-      '(3) Chief Architect production authorization.',
+      'Production authorized by Chief Architect 2026-08-27 (Phase III). Google model. ' +
+      'No AZMA Google video adapter exists. active: false prevents runtime selection until ' +
+      'a Google video provider adapter is built and registered.',
   },
   {
     // Sora 2 is OpenAI's video model. No AZMA provider adapter exists for video.
@@ -178,12 +178,12 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
       capabilityTarget: 'video-generation',
       modelId: 'sora-2',
     },
-    verificationStatus: 'approved-candidate',
-    productionAuthorized: false,
-    active: false,  // No provider adapter — cannot dispatch
+    verificationStatus: 'production-authorized',
+    productionAuthorized: true,
+    active: false,  // No provider adapter — production-authorized but not yet dispatchable
     internalNotes:
-      'Approved candidate 2026-08-27. OpenAI model. No AZMA video adapter exists. ' +
-      'Requires: (1) OpenAI video provider adapter, (2) capability verification, ' +
-      '(3) Chief Architect production authorization.',
+      'Production authorized by Chief Architect 2026-08-27 (Phase III). OpenAI model. ' +
+      'No AZMA OpenAI video adapter exists. active: false prevents runtime selection until ' +
+      'an OpenAI video provider adapter is built and registered.',
   },
 ];

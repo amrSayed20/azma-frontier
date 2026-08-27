@@ -164,21 +164,20 @@ describe('Point 3+4: Cost decision invariants', () => {
 });
 
 describe('Point 8: Paid generation cannot execute before cost approval', () => {
-  it('generation-service returns all-candidates-unverified path when no model is authorized', () => {
-    // This test proves that with all fleet models as approved-candidate (not production-authorized),
-    // the selector falls through — generation service uses legacy path, no new model selected.
-    // The cost approval gate (Creator sees cost, approves) is enforced upstream in the billing layer;
-    // the selector layer's role is: if no authorized model → legacy path → existing gate unchanged.
+  it('Phase III: production selector selects an authorized model — no longer falls through to legacy path', () => {
+    // Phase III authorized all 10 fleet models. The production selector now resolves
+    // a real selection for standard intents. The all-candidates-unverified fallback
+    // only fires when no authorized+active model meets the Creator's specific requirements.
     const { getProductionSelector, resetProductionRegistryForTests } = require('../production-registry');
     resetProductionRegistryForTests();
 
     const intent = buildImageCreationIntent('test', 'cinematic');
     const result = getProductionSelector().select(intent);
 
-    // All 10 fleet models are approved-candidate → not production-authorized → all-candidates-unverified
-    expect(result.selected).toBe(false);
-    if (!result.selected) {
-      expect(result.reason).toBe('all-candidates-unverified');
+    // Phase III: authorized models exist → selection succeeds
+    expect(result.selected).toBe(true);
+    if (result.selected) {
+      expect(result.selection.verificationStatus).toBe('production-authorized');
     }
   });
 
