@@ -98,6 +98,7 @@ interface GutendexResponse {
 const GUTENDEX_SEARCH = 'https://gutendex.com/books/';
 const GUTENBERG_CACHE = 'https://www.gutenberg.org/cache/epub';
 const EVIDENCE_WINDOW_BYTES = 10240; // 10 KB — sufficient for EvidenceExtractor keyword scoring
+const FETCH_TIMEOUT_MS = 8_000; // Gutenberg CDN can be slow; abort rather than stall the investigation
 
 function buildBookSnippet(book: GutendexBook): string {
   const authorNames = book.authors
@@ -144,7 +145,14 @@ export class GutenbergProvider implements IRepositoryProvider {
     url.searchParams.set('search', query);
     url.searchParams.set('languages', 'en');
 
-    const response = await fetch(url.toString());
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await fetch(url.toString(), { signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
     if (!response.ok) {
       throw new Error(
         `[GutenbergProvider] Gutendex search failed: HTTP ${response.status}`,
@@ -178,9 +186,17 @@ export class GutenbergProvider implements IRepositoryProvider {
 
     console.log(`[Gutenberg Provider] Fetching book ${numericId} (first ${EVIDENCE_WINDOW_BYTES} bytes)`);
 
-    const response = await fetch(url, {
-      headers: { Range: `bytes=0-${EVIDENCE_WINDOW_BYTES - 1}` },
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        headers: { Range: `bytes=0-${EVIDENCE_WINDOW_BYTES - 1}` },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
 
     if (response.status !== 200 && response.status !== 206) {
       throw new Error(

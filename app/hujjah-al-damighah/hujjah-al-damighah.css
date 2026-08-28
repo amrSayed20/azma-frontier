@@ -12,10 +12,10 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --chamber-bg:    #020201;
-  --archives-bg:   #050401;
-  --court-bg:      #030302;
-  --panel-bg:      rgba(8, 7, 2, 0.94);
+  --chamber-bg:    #060504;
+  --archives-bg:   #0a0805;
+  --court-bg:      #070605;
+  --panel-bg:      rgba(14, 12, 6, 0.94);
 
   /* Six forged tones — the Imperial Gold System.
      Values are the Sovereign Color System's own (src/design-system/tokens.ts
@@ -33,9 +33,9 @@
   --ig-8:   var(--azma-gold-8);   /* specular highlight */
 
   /* Glows */
-  --ig-glow-deep:   rgba(139, 101, 8, 0.12);
-  --ig-glow-mid:    rgba(212, 175, 55, 0.18);
-  --ig-glow-bright: rgba(212, 175, 55, 0.30);
+  --ig-glow-deep:   rgba(139, 101, 8, 0.16);
+  --ig-glow-mid:    rgba(212, 175, 55, 0.22);
+  --ig-glow-bright: rgba(212, 175, 55, 0.34);
 
   /* Text — the Sovereign Color System's own text hierarchy
      (PALETTE.text / --azma-text-*). Same consumption principle as above. */
@@ -67,9 +67,9 @@ body, html {
    ═══════════════════════════════════════════════════════════════════════ */
 
 @keyframes atmosphericBreath {
-  0%, 100% { filter: brightness(1.000) contrast(1.000); }
-  33%       { filter: brightness(0.975) contrast(1.002); }
-  66%       { filter: brightness(0.988) contrast(0.999); }
+  0%, 100% { filter: brightness(1.06) contrast(1.000); }
+  33%       { filter: brightness(1.03) contrast(1.002); }
+  66%       { filter: brightness(1.05) contrast(0.999); }
 }
 
 .breathing { animation: atmosphericBreath 90s ease-in-out infinite; }
@@ -98,8 +98,8 @@ body, html {
 .hujjah-viewport .cyber-grid          { transition: opacity 2s ease; }
 .hujjah-viewport .ambient-depth-gradient { transition: filter 2s ease; }
 
-.mood-idle .cyber-grid                { opacity: 0.55; }
-.mood-idle .ambient-depth-gradient    { filter: brightness(0.80); }
+.mood-idle .cyber-grid                { opacity: 0.60; }
+.mood-idle .ambient-depth-gradient    { filter: brightness(0.92); }
 
 .mood-preparing .cyber-grid           { opacity: 0.72; }
 .mood-preparing .ambient-depth-gradient { filter: brightness(0.95); }
@@ -1972,6 +1972,16 @@ body, html {
   margin: 0;
 }
 
+.tongue-mandate {
+  font-size: 13px;
+  color: var(--ig-4);
+  margin: 14px 0 0;
+  max-width: 420px;
+  text-align: center;
+  line-height: 1.65;
+  opacity: 0.80;
+}
+
 .tongue-options {
   display: flex;
   gap: 16px;
@@ -2099,7 +2109,9 @@ body, html {
 }
 
 .dialogue-input::placeholder {
-  color: transparent;
+  color: var(--ig-2);
+  opacity: 0.55;
+  font-style: italic;
 }
 
 .dialogue-input:focus {

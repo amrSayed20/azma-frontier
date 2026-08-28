@@ -67,6 +67,7 @@ const CHAMBER_INITIATIONS: Record<AzmaTongue, string[]> = {
     'حجرة المعرفة جاهزة. ما الموضوع الذي تريد استكشافه؟',
     'حجرة المعرفة تستيقظ. ما الذي يشغل ذهنك؟',
     'ابدأ استكشافك. الحجرة تنتظر سؤالك.',
+    'حجرة المعرفة جاهزة — اسألني عن العلم، التاريخ، الطب، الثقافة، أو أي مجال يشغلك.',
   ],
   writing: [
     'الورقة أمامك. الحجرة ستقرأ أفكارك وتبني معك.',
@@ -1327,6 +1328,7 @@ export default function HujjahAlDamighah() {
               <span className="tongue-crown-glyph" aria-hidden="true">✦</span>
               <h2 className="tongue-title">كيف تريد أن نتواصل؟</h2>
               <p className="tongue-subtitle">الحجرة تتكيف معك — لا معك تتكيف معها</p>
+              <p className="tongue-mandate">اطرح سؤالاً في أي مجال — علمي، تاريخي، طبي، ثقافي — وستجري الحجرة تحقيقاً حقيقياً مدعوماً بأدلة</p>
             </div>
             <div className="tongue-options">
               {TONGUE_DEFS.map((def) => (
@@ -1474,6 +1476,7 @@ export default function HujjahAlDamighah() {
                         }
                       }}
                       disabled={isExamining}
+                      placeholder="اسألني عن أي موضوع — علمي، تاريخي، طبي، ثقافي، فلسفي…"
                       aria-label="حوار المحكمة"
                       rows={2}
                     />

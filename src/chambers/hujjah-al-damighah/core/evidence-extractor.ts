@@ -38,30 +38,17 @@ export class EvidenceExtractor {
    */
   public static extract(document: SourceDocument, claim: SovereignClaim): Evidence[] {
     if (!document || !document.content || document.content.trim().length === 0) {
-      return []; // Return empty array to allow the engine to safely continue
+      return [];
     }
 
-    // ---------------------------------------------------------
-    // FUTURE INTEGRATION POINT: AI / LLM SEMANTIC EXTRACTION
-    // Here, an AI model will evaluate `document.content` against
-    // `claim.normalizedStatement` to perform deep semantic extraction.
-    // ---------------------------------------------------------
+    // Find the passage in the document most relevant to the claim, rather than
+    // blindly taking the first characters. This is especially valuable for
+    // document-rich sources like GutenbergProvider, which returns 10 KB of
+    // actual book text: the relevant passage may be anywhere inside it.
+    const relevantPassage = EvidenceExtractor.findRelevantPassage(document.content, claim);
 
-    // Extract a brief context window safely
-    const snippetLength = Math.min(document.content.length, 250);
-    const safeContext = document.content.substring(0, snippetLength) + '...';
-
-    // REAL SCORING (replaces the previous hardcoded 0.85/HIGH baseline):
-    // EvidenceScoringEngine.score() already existed, fully built, with zero
-    // callers anywhere in the codebase — a genuine keyword-overlap heuristic
-    // sitting unused right next to the stub it was meant to replace. Scored
-    // against safeContext (the document's own real content), not
-    // extractedText below (which echoes the claim itself and would always
-    // match its own keywords trivially). Still a pre-LLM heuristic, and the
-    // underlying document content remains provider-supplied (simulated for
-    // GutenbergProvider today) — this makes the SCORING mechanism real and
-    // query-dependent, not the underlying source content.
-    const { confidenceScore } = EvidenceScoringEngine.score(safeContext, claim);
+    // Score the relevant passage (not an arbitrary opening slice) against claim keywords.
+    const { confidenceScore } = EvidenceScoringEngine.score(relevantPassage, claim);
     const confidenceLevel = EvidenceExtractor.classifyConfidence(confidenceScore);
 
     const scoredEvidence: Evidence = {
@@ -69,13 +56,69 @@ export class EvidenceExtractor {
       claimId: claim.id,
       sourceId: document.id,
       sourceProvider: document.provider,
-      extractedText: safeContext,
-      contextWindow: safeContext,
+      extractedText: relevantPassage,
+      contextWindow: relevantPassage,
       confidenceScore,
-      confidenceLevel
+      confidenceLevel,
     };
 
     return [scoredEvidence];
+  }
+
+  /**
+   * Finds the most keyword-relevant passage in a document.
+   *
+   * Splits the document into sentence-level units, scores each against
+   * the claim's keywords, and returns the highest-scoring passage plus
+   * surrounding sentences for readability context. Falls back to the
+   * document opening when no keyword match exists.
+   *
+   * This replaces the original first-250-chars extraction and works within
+   * the existing keyword-overlap scoring architecture — no external calls.
+   */
+  public static findRelevantPassage(content: string, claim: SovereignClaim): string {
+    const MAX_LENGTH = 420;
+    const keywords = (claim.keywords ?? []).map((k) => k.toLowerCase());
+
+    if (keywords.length === 0 || content.length <= MAX_LENGTH) {
+      const raw = content.substring(0, MAX_LENGTH);
+      return content.length > MAX_LENGTH ? raw + '...' : raw;
+    }
+
+    // Split into sentence-like units at sentence-ending punctuation.
+    // Filter out very short fragments (table of contents entries, headers).
+    const sentences = content
+      .split(/(?<=[.?!؟])\s+|\n{2,}/)
+      .map((s) => s.trim())
+      .filter((s) => s.length >= 20);
+
+    if (sentences.length === 0) {
+      const raw = content.substring(0, MAX_LENGTH);
+      return content.length > MAX_LENGTH ? raw + '...' : raw;
+    }
+
+    // Score each sentence by keyword density (number of distinct keyword hits).
+    let bestScore = -1;
+    let bestIdx = 0;
+
+    for (let i = 0; i < sentences.length; i++) {
+      const lower = sentences[i].toLowerCase();
+      const score = keywords.filter((kw) => lower.includes(kw)).length;
+      if (score > bestScore) {
+        bestScore = score;
+        bestIdx = i;
+      }
+    }
+
+    // Include one sentence before and two after for context.
+    const startIdx = Math.max(0, bestIdx - 1);
+    const endIdx   = Math.min(sentences.length, bestIdx + 3);
+    const passage  = sentences.slice(startIdx, endIdx).join(' ').trim();
+
+    if (passage.length > MAX_LENGTH) {
+      return passage.substring(0, MAX_LENGTH) + '...';
+    }
+    return passage;
   }
 
   /**

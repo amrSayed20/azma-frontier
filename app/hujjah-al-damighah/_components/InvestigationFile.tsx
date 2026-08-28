@@ -46,14 +46,6 @@ export function InvestigationFile({
         <button className="inv-action inv-qiyamah" onClick={onTransferQiyamah}>
           انتقال إلى القيامة
         </button>
-        <button className="inv-action inv-stub" disabled>
-          توليد تقرير
-          <span className="dormant-authority">◎</span>
-        </button>
-        <button className="inv-action inv-stub" disabled>
-          توليد وثيقة
-          <span className="dormant-authority">◎</span>
-        </button>
       </div>
     </div>
   );

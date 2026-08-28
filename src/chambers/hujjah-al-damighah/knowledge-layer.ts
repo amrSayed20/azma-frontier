@@ -25,8 +25,8 @@
  *
  * REUSE AUDIT:
  *   evaluateVerdict() — IMPORTED from verdict/verdict-engine.ts; invoked
- *     with { confidence, hasConflict: false }. hasConflict detection requires
- *     multi-provider disagreement, deferred to Knowledge Ministries Foundation.
+ *     with { confidence, hasConflict } where hasConflict is derived by
+ *     detectEvidenceConflict() using a conservative spread heuristic.
  *     Only VerdictState.id is extracted; VerdictState UI and delivery fields
  *     are constitutional debt, not carried into KnowledgeDeclaration.
  *   evaluateConfidence() — NOT imported. Requires sourceStrength/agreementLevel/
@@ -46,6 +46,26 @@
 import { evaluateVerdict } from './verdict/verdict-engine';
 import type { EvidenceCollection } from './evidence-contracts';
 import type { KnowledgeDeclaration, KnowledgeConfidenceLevel } from './knowledge-contracts';
+
+/**
+ * Conservative conflict detection using the existing keyword-overlap evidence model.
+ *
+ * Signals conflict only when the evidence collection contains both strongly
+ * matching items (score ≥ 0.75) and near-zero matching items (score ≤ 0.10)
+ * with a spread ≥ 0.65 across at least 3 items. This conservative threshold
+ * avoids false positives from normal relevance variance: a low score means
+ * "few query keywords found in this document," which is not the same as
+ * "this document contradicts the claim." The threshold fires only when the
+ * heterogeneity is extreme enough to suggest sources are genuinely about
+ * different subjects.
+ */
+function detectEvidenceConflict(collection: EvidenceCollection): boolean {
+  const scores = collection.items.map((item) => item.evidence.confidenceScore);
+  if (scores.length < 3) return false;
+  const maxScore = Math.max(...scores);
+  const minScore = Math.min(...scores);
+  return maxScore >= 0.75 && minScore <= 0.10 && (maxScore - minScore) >= 0.65;
+}
 
 let declarationSequence = 0;
 
@@ -115,7 +135,8 @@ export function declareKnowledge(collection: EvidenceCollection): KnowledgeDecla
 
   // Reuse verdict/verdict-engine.ts — extract only VerdictState.id (VerdictType)
   // VerdictState UI/delivery fields are constitutional debt, not carried here
-  const verdictState = evaluateVerdict({ confidence: confidenceScore, hasConflict: false });
+  const hasConflict = detectEvidenceConflict(collection);
+  const verdictState = evaluateVerdict({ confidence: confidenceScore, hasConflict });
   const verdictId = verdictState.id;
 
   const isDefinitive = verdictId === 'accepted';
