@@ -307,6 +307,10 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
  */
 export const GENERATION_RECORDS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
   { name: 'original_idea', ddl: 'original_idea TEXT' },
+  // VIDEO CREATION WIRING: distinguishes image vs. video records so the gallery
+  // can render <video> elements correctly. DEFAULT 'image' keeps all pre-existing
+  // rows valid without data migration.
+  { name: 'media_type', ddl: "media_type TEXT NOT NULL DEFAULT 'image'" },
 ];
 
 /** Columns added to `cinematic_ledger` after its original creation — applied via ALTER TABLE for pre-existing databases. */

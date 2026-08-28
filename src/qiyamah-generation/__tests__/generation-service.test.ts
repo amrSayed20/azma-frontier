@@ -1,6 +1,7 @@
 // ─── MOCKS (must be declared before any imports) ─────────────────────────────
 
 const mockOrchestrate = jest.fn();
+const mockInsertVaultAssetVideo = jest.fn();
 
 jest.mock('../../core/sovereign-ai-integration/provider-bootstrap', () => ({
   getGenerationOrchestrator: () => ({ orchestrate: mockOrchestrate }),
@@ -17,7 +18,7 @@ jest.mock('../../persistent-storage', () => ({
 import { persistGeneratedImage } from '../asset-storage';
 import { resetRateLimiterForTests, recordGeneration } from '../rate-limiter';
 import { recordGeneration as persistGenerationRecord, insertVaultAsset } from '../../persistent-storage';
-import { generateImage } from '../generation-service';
+import { generateImage, generateVideo } from '../generation-service';
 import { AssetFamily } from '../../vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 
@@ -302,5 +303,167 @@ describe('Qiyamah First Generation Path — Generation Service', () => {
     if (result.status === 'succeeded') {
       expect(result.asset.originalIdea).toBeNull();
     }
+  });
+});
+
+// ─── VIDEO GENERATION SUITE ───────────────────────────────────────────────────
+
+const VIDEO_URL = 'https://cdn.magichour.ai/cmt5gsbae00kvkh013ovj7w4w/video.mp4';
+
+function successVideoOrchestration(content = VIDEO_URL) {
+  mockOrchestrate.mockResolvedValue({
+    response: { finishReason: 'completed', content, providerId: 'magic-hour-video' },
+  });
+}
+
+describe('Qiyamah Video Generation Path — generateVideo()', () => {
+  beforeEach(() => {
+    mockOrchestrate.mockReset();
+    mockPersistGeneratedImage.mockReset();
+    mockPersistGenerationRecord.mockReset();
+    mockInsertVaultAsset.mockReset();
+    mockInsertVaultAssetVideo.mockReset();
+  });
+
+  // ── Validation ────────────────────────────────────────────────────────────
+
+  it('rejects an empty prompt without calling the provider', async () => {
+    const result = await generateVideo({ prompt: '   ', durationSeconds: 6 });
+    expect(result).toEqual(expect.objectContaining({ status: 'failed', reason: 'invalid-prompt' }));
+    expect(mockOrchestrate).not.toHaveBeenCalled();
+  });
+
+  it('rejects a prompt exceeding the maximum length', async () => {
+    const result = await generateVideo({ prompt: 'x'.repeat(1001), durationSeconds: 6 });
+    expect(result).toEqual(expect.objectContaining({ status: 'failed', reason: 'invalid-prompt' }));
+    expect(mockOrchestrate).not.toHaveBeenCalled();
+  });
+
+  // ── Orchestration contract ────────────────────────────────────────────────
+
+  it('orchestrates with taskHint: video — never taskHint: image', async () => {
+    successVideoOrchestration();
+
+    await generateVideo({ prompt: 'a sovereign scene', durationSeconds: 6, creatorId: 'creator-v1' });
+
+    const call = mockOrchestrate.mock.calls[0][0];
+    expect(call.taskHint).toBe('video');
+    expect(call.taskHint).not.toBe('image');
+  });
+
+  it('passes durationSeconds to orchestration metadata', async () => {
+    successVideoOrchestration();
+
+    await generateVideo({ prompt: 'a sovereign scene', durationSeconds: 8, creatorId: 'creator-v2' });
+
+    const call = mockOrchestrate.mock.calls[0][0];
+    expect(call.metadata).toMatchObject({ durationSeconds: 8 });
+  });
+
+  // ── URL contract — NOT base64 ─────────────────────────────────────────────
+
+  it('takes the video URL directly from content — never calls Buffer.from(content, base64)', async () => {
+    successVideoOrchestration();
+
+    const result = await generateVideo({ prompt: 'a sovereign scene', durationSeconds: 6, creatorId: 'creator-v3' });
+
+    expect(result.status).toBe('succeeded');
+    if (result.status === 'succeeded') {
+      expect(result.asset.assetUrl).toBe(VIDEO_URL);
+    }
+    // persistGeneratedImage is the file-writer — must NOT be called for video
+    expect(mockPersistGeneratedImage).not.toHaveBeenCalled();
+  });
+
+  it('rejects an empty content string — no URL returned from provider', async () => {
+    mockOrchestrate.mockResolvedValue({ response: { finishReason: 'completed', content: '' } });
+
+    const result = await generateVideo({ prompt: 'a sovereign scene', durationSeconds: 6 });
+
+    expect(result).toEqual(expect.objectContaining({ status: 'failed', reason: 'provider-error' }));
+    expect(mockPersistGenerationRecord).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-HTTP content string', async () => {
+    mockOrchestrate.mockResolvedValue({ response: { finishReason: 'completed', content: 'not-a-url' } });
+
+    const result = await generateVideo({ prompt: 'a sovereign scene', durationSeconds: 6 });
+
+    expect(result).toEqual(expect.objectContaining({ status: 'failed', reason: 'provider-error' }));
+  });
+
+  // ── Persistence and Vault ─────────────────────────────────────────────────
+
+  it('stores the video URL in generation_records with mediaType video', async () => {
+    successVideoOrchestration();
+
+    await generateVideo({ prompt: 'a sovereign scene', durationSeconds: 6, creatorId: 'creator-v4' });
+
+    expect(mockPersistGenerationRecord).toHaveBeenCalledWith('fake-db-handle', expect.objectContaining({
+      assetUrl: VIDEO_URL,
+      mediaType: 'video',
+      creatorId: 'creator-v4',
+    }));
+  });
+
+  it('deposits into Vault with CapabilityTarget.MOTION — never VISUAL', async () => {
+    successVideoOrchestration();
+
+    await generateVideo({ prompt: 'a sovereign scene', durationSeconds: 6, creatorId: 'creator-v5' });
+
+    expect(mockInsertVaultAsset).toHaveBeenCalledWith('fake-db-handle', expect.objectContaining({
+      capabilityTarget: CapabilityTarget.MOTION,
+      assetFamily: AssetFamily.MEDIA,
+      secureStorageUri: VIDEO_URL,
+      subscriberTenantId: 'creator-v5',
+    }));
+  });
+
+  it('does NOT deposit into Vault when no creatorId — no orphaned Vault assets', async () => {
+    successVideoOrchestration();
+
+    await generateVideo({ prompt: 'a sovereign scene', durationSeconds: 6 });
+
+    expect(mockInsertVaultAsset).not.toHaveBeenCalled();
+  });
+
+  it('returns succeeded with durationSeconds in the asset', async () => {
+    successVideoOrchestration();
+
+    const result = await generateVideo({ prompt: 'a sovereign scene', durationSeconds: 8, creatorId: 'creator-v6' });
+
+    expect(result.status).toBe('succeeded');
+    if (result.status === 'succeeded') {
+      expect(result.asset.durationSeconds).toBe(8);
+      expect(result.asset.assetUrl).toBe(VIDEO_URL);
+    }
+  });
+
+  // ── Provider failures ─────────────────────────────────────────────────────
+
+  it('reports an honest provider-error when the orchestrator throws', async () => {
+    mockOrchestrate.mockRejectedValue(new Error('provider is down'));
+
+    const result = await generateVideo({ prompt: 'a sovereign scene', durationSeconds: 6 });
+
+    expect(result).toEqual(expect.objectContaining({ status: 'failed', reason: 'provider-error' }));
+    expect(mockPersistGenerationRecord).not.toHaveBeenCalled();
+  });
+
+  it('reports an honest provider-error when finishReason is not completed', async () => {
+    mockOrchestrate.mockResolvedValue({ response: { finishReason: 'blocked', content: '' } });
+
+    const result = await generateVideo({ prompt: 'a sovereign scene', durationSeconds: 6 });
+
+    expect(result).toEqual(expect.objectContaining({ status: 'failed', reason: 'provider-error' }));
+  });
+
+  it('a Vault deposit failure never turns an already-successful video generation into a failure', async () => {
+    successVideoOrchestration();
+    mockInsertVaultAsset.mockImplementation(() => { throw new Error('vault is unreachable'); });
+
+    const result = await generateVideo({ prompt: 'a sovereign scene', durationSeconds: 6, creatorId: 'creator-v7' });
+
+    expect(result.status).toBe('succeeded');
   });
 });

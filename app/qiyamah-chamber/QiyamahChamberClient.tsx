@@ -56,6 +56,7 @@ interface GenerationRecord {
   readonly assetUrl:    string;
   readonly generatedAt: number;
   readonly originalIdea?: string | null;
+  readonly mediaType?:  string;
 }
 
 interface UploadedItem {
@@ -95,11 +96,14 @@ export function QiyamahChamberClient({
   const [externalPrompt,     setExternalPrompt]     = useState('');
   const [qiyamahReading,     setQiyamahReading]     = useState('');
   const [style,              setStyle]              = useState('cinematic');
+  const [mediaType,          setMediaType]          = useState<'image' | 'video'>('image');
+  const [durationSeconds,    setDurationSeconds]    = useState<number>(6);
   const [constructedPrompt,  setConstructedPrompt]  = useState('');
   // Tracks the initial Qiyamah expansion so the Creator can restore it after editing
   const [originalConstructedPrompt, setOriginalConstructedPrompt] = useState('');
   const [constructionError,  setConstructionError]  = useState<string | null>(null);
-  const [generatedImageUrl,  setGeneratedImageUrl]  = useState<string | null>(null);
+  const [generatedAssetUrl,  setGeneratedAssetUrl]  = useState<string | null>(null);
+  const [generatedAssetType, setGeneratedAssetType] = useState<'image' | 'video' | null>(null);
   const [generationError,    setGenerationError]    = useState<string | null>(null);
   const [generationErrorReason, setGenerationErrorReason] = useState<string | null>(null);
 
@@ -234,10 +238,19 @@ export function QiyamahChamberClient({
     setGenerationErrorReason(null);
     try {
       const ideaForRecord = inputMode === 'idea' ? idea.trim() : externalPrompt.trim();
+      const requestBody: Record<string, unknown> = {
+        prompt: constructedPrompt.trim(),
+        style,
+        idea: ideaForRecord,
+        mediaType,
+      };
+      if (mediaType === 'video') {
+        requestBody['durationSeconds'] = durationSeconds;
+      }
       const response = await fetch('/api/qiyamah/generate', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ prompt: constructedPrompt.trim(), style, idea: ideaForRecord }),
+        body:    JSON.stringify(requestBody),
       });
       // Guard: Cloudflare may return HTML (not JSON) on gateway timeout or 5xx intercept.
       // If the response is not JSON, surface the generic gateway error instead of
@@ -251,7 +264,8 @@ export function QiyamahChamberClient({
       }
       const result = await response.json();
       if (result.status === 'succeeded') {
-        setGeneratedImageUrl(result.asset.assetUrl);
+        setGeneratedAssetUrl(result.asset.assetUrl);
+        setGeneratedAssetType(mediaType);
         setStage('result');
         fetchGenerations();
         triggerInvitation();
@@ -298,7 +312,10 @@ export function QiyamahChamberClient({
     setConstructedPrompt('');
     setOriginalConstructedPrompt('');
     setConstructionError(null);
-    setGeneratedImageUrl(null);
+    setGeneratedAssetUrl(null);
+    setGeneratedAssetType(null);
+    setMediaType('image');
+    setDurationSeconds(6);
     setGenerationError(null);
     setGenerationErrorReason(null);
     setStage('idea');
@@ -505,6 +522,47 @@ export function QiyamahChamberClient({
 
               <StyleRegistry disabled={stage === 'constructing'} />
 
+              {/* Media type toggle — صورة / فيديو */}
+              <div className="media-type-toggle" role="radiogroup" aria-label="نوع المحتوى">
+                <button
+                  role="radio"
+                  aria-checked={mediaType === 'image'}
+                  className={`media-type-btn${mediaType === 'image' ? ' media-type-btn--active' : ''}`}
+                  onClick={() => setMediaType('image')}
+                  disabled={stage === 'constructing'}
+                >
+                  صورة
+                </button>
+                <button
+                  role="radio"
+                  aria-checked={mediaType === 'video'}
+                  className={`media-type-btn${mediaType === 'video' ? ' media-type-btn--active' : ''}`}
+                  onClick={() => setMediaType('video')}
+                  disabled={stage === 'constructing'}
+                >
+                  فيديو
+                </button>
+              </div>
+
+              {mediaType === 'video' && (
+                <div className="duration-picker" role="group" aria-label="مدة الفيديو">
+                  <p className="duration-label">مدة الفيديو</p>
+                  <div className="duration-options">
+                    {([4, 6, 8] as const).map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        className={`duration-btn${durationSeconds === d ? ' duration-btn--active' : ''}`}
+                        onClick={() => setDurationSeconds(d)}
+                        disabled={stage === 'constructing'}
+                      >
+                        {d}ث
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {constructionError && (
                 <p className="construction-error" role="alert">{constructionError}</p>
               )}
@@ -650,7 +708,9 @@ export function QiyamahChamberClient({
                 <span className="ritual-glyph">✦</span>
               </div>
               <p className="generating-text pulse-text">
-                تتم الآن عملية النفخ والبعث الرقمي...
+                {mediaType === 'video'
+                  ? 'يتم الآن توليد الفيديو السيادي...'
+                  : 'تتم الآن عملية النفخ والبعث الرقمي...'}
               </p>
             </div>
           )}
@@ -681,12 +741,25 @@ export function QiyamahChamberClient({
           {/* ── STAGE: RESULT ──────────────────────────────────────────── */}
           {stage === 'result' && (
             <div className="master-result">
-              <div className="master-badge">✨ الماستر السيادي المكتمل ✨</div>
-              {generatedImageUrl && (
+              <div className="master-badge">
+                {generatedAssetType === 'video' ? '✨ الفيديو السيادي المكتمل ✨' : '✨ الماستر السيادي المكتمل ✨'}
+              </div>
+              {generatedAssetType === 'video' && generatedAssetUrl && (
+                <video
+                  className="master-preview-video"
+                  src={generatedAssetUrl}
+                  controls
+                  autoPlay
+                  loop
+                  muted
+                  aria-label="الفيديو السيادي المُولَّد"
+                />
+              )}
+              {generatedAssetType !== 'video' && generatedAssetUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   className="master-preview"
-                  src={generatedImageUrl}
+                  src={generatedAssetUrl}
                   alt="الماستر السيادي المُولَّد"
                 />
               )}
@@ -696,13 +769,13 @@ export function QiyamahChamberClient({
                   : <>تم التخليق. هذا الآن جزء من إرثك السيادي.</>}
               </p>
               <div className="result-actions">
-                {generatedImageUrl && (
+                {generatedAssetUrl && (
                   <a
                     className="download-btn"
-                    href={generatedImageUrl}
+                    href={generatedAssetUrl}
                     download
                   >
-                    تحميل الصورة ↓
+                    {generatedAssetType === 'video' ? 'تحميل الفيديو ↓' : 'تحميل الصورة ↓'}
                   </a>
                 )}
                 {completeAction && (
@@ -820,8 +893,25 @@ export function QiyamahChamberClient({
             {generations.map((g) => (
               <div className="generation-card" key={g.recordId}>
                 <span className="gallery-type-badge badge-generated">مُولَّد</span>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img className="generation-thumb" src={g.assetUrl} alt={g.prompt} />
+                {g.mediaType === 'video' ? (
+                  g.assetUrl ? (
+                    <video
+                      className="generation-thumb generation-thumb-video"
+                      src={g.assetUrl}
+                      muted
+                      preload="metadata"
+                      aria-label="معاينة الفيديو المُولَّد"
+                    />
+                  ) : (
+                    <div className="gallery-video-placeholder">
+                      <span className="gallery-video-placeholder-icon">▶</span>
+                      <span className="gallery-video-placeholder-text">فيديو</span>
+                    </div>
+                  )
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="generation-thumb" src={g.assetUrl} alt={g.prompt} />
+                )}
                 <div className="generation-meta">
                   <p className="generation-prompt">{g.originalIdea ?? g.prompt}</p>
                   <span className="generation-date">
@@ -853,7 +943,7 @@ export function QiyamahChamberClient({
                         className="gallery-download-btn"
                         href={g.assetUrl}
                         download
-                        aria-label="تحميل هذه الصورة"
+                        aria-label={g.mediaType === 'video' ? 'تحميل هذا الفيديو' : 'تحميل هذه الصورة'}
                       >
                         ↓
                       </a>

@@ -16,8 +16,12 @@ export type {
   GenerationSuccess,
   GenerationFailure,
   GenerationErrorReason,
+  VideoGenerationRequest,
+  VideoGeneratedAsset,
+  VideoGenerationResult,
+  VideoGenerationSuccess,
 } from './types';
 
-export { generateImage } from './generation-service';
+export { generateImage, generateVideo } from './generation-service';
 export { isRateLimited, recordGeneration, resetRateLimiterForTests } from './rate-limiter';
 export { resetProviderClientForTests } from './image-provider';

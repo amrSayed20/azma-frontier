@@ -46,3 +46,31 @@ export interface GenerationSuccess {
 }
 
 export type GenerationResult = GenerationSuccess | GenerationFailure;
+
+// ─── VIDEO ───────────────────────────────────────────────────────────────────
+
+export interface VideoGenerationRequest {
+  readonly prompt: string;
+  readonly style?: string;
+  readonly durationSeconds: number;
+  readonly creatorId?: string;
+  readonly originalIdea?: string | null;
+}
+
+export interface VideoGeneratedAsset {
+  readonly assetId: string;
+  /** CDN download URL from the video provider. May expire after ~24 hours. */
+  readonly assetUrl: string;
+  readonly prompt: string;
+  readonly style: string | null;
+  readonly durationSeconds: number;
+  readonly generatedAt: string;
+  readonly originalIdea: string | null;
+}
+
+export interface VideoGenerationSuccess {
+  readonly status: 'succeeded';
+  readonly asset: VideoGeneratedAsset;
+}
+
+export type VideoGenerationResult = VideoGenerationSuccess | GenerationFailure;

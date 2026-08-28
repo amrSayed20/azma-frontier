@@ -28,6 +28,7 @@
  * addition, not a new point of fragility in existing behavior.
  */
 
+import { randomUUID } from 'crypto';
 import { persistGeneratedImage } from './asset-storage';
 import { getGenerationOrchestrator } from '../core/sovereign-ai-integration/provider-bootstrap';
 import { isRateLimited, recordGeneration as recordRateLimitedGeneration } from './rate-limiter';
@@ -35,8 +36,8 @@ import { getDb, recordGeneration as persistGenerationRecord } from '../persisten
 import { SovereignVaultManager } from '../vault/sovereign-vault-manager';
 import { AssetFamily } from '../vault/sovereign-vault-types';
 import { CapabilityTarget } from '../core/sovereign-orchestrator/qiyamah-intent-types';
-import { buildImageCreationIntent, getProductionSelector } from '../sovereign-model-selection';
-import type { GenerationRequest, GenerationResult } from './types';
+import { buildImageCreationIntent, buildVideoCreationIntent, getProductionSelector } from '../sovereign-model-selection';
+import type { GenerationRequest, GenerationResult, VideoGenerationRequest, VideoGenerationResult } from './types';
 
 // ─── IMAGE FORMAT INTEGRITY GATE ─────────────────────────────────────────────
 
@@ -85,6 +86,34 @@ async function depositGeneratedAssetIntoVault(params: {
     // Honest degrade — a Vault deposit failure must never turn an
     // already-successful generation into a reported failure.
     console.error('[VaultDeposit] deposit failed:', err instanceof Error ? err.message : String(err));
+  }
+}
+
+async function depositVideoAssetIntoVault(params: {
+  readonly assetId: string;
+  readonly creatorId: string;
+  readonly assetUrl: string;
+  readonly prompt: string;
+  readonly style: string | null;
+  readonly durationSeconds: number;
+  readonly resolvedProviderId: string;
+}): Promise<void> {
+  try {
+    await vaultManager.depositAsset({
+      operationId: params.assetId,
+      subscriberTenantId: params.creatorId,
+      capabilityTarget: CapabilityTarget.MOTION,
+      assetFamily: AssetFamily.MEDIA,
+      secureStorageUri: params.assetUrl,
+      metadata: {
+        providerId: params.resolvedProviderId,
+        generationPrompt: params.prompt,
+        durationSeconds: params.durationSeconds,
+        ...(params.style ? { generationStyle: params.style } : {}),
+      },
+    });
+  } catch (err) {
+    console.error('[VaultDeposit] video deposit failed:', err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -296,6 +325,163 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
       status: 'failed',
       reason: 'storage-error',
       message: error instanceof Error ? error.message : 'Failed to persist the generated image.',
+    };
+  }
+}
+
+// ─── VIDEO GENERATION ─────────────────────────────────────────────────────────
+
+export async function generateVideo(request: VideoGenerationRequest): Promise<VideoGenerationResult> {
+  const trimmedPrompt = request.prompt.trim();
+  if (!trimmedPrompt) {
+    return { status: 'failed', reason: 'invalid-prompt', message: 'A prompt is required to generate a video.' };
+  }
+  if (trimmedPrompt.length > MAX_PROMPT_LENGTH) {
+    return { status: 'failed', reason: 'invalid-prompt', message: `Prompt exceeds the maximum length of ${MAX_PROMPT_LENGTH} characters.` };
+  }
+
+  const style = request.style?.trim() || null;
+
+  const creationIntent = buildVideoCreationIntent(trimmedPrompt, style, request.durationSeconds);
+  const selectionResult = getProductionSelector().select(creationIntent);
+
+  console.log(
+    '[SovereignGeneration] video-model-selection',
+    JSON.stringify(
+      selectionResult.selected
+        ? {
+            selected: true,
+            providerId: selectionResult.selection.providerId,
+            modelId: selectionResult.selection.modelId,
+            providerModelId: selectionResult.selection.providerModelId,
+          }
+        : { selected: false, reason: selectionResult.reason, detail: selectionResult.detail },
+    ),
+  );
+
+  let preferredProviderId: string | undefined;
+  let preferredModelId: string | undefined;
+  const orchestrationMetadata: Record<string, unknown> = {
+    ...(style ? { style } : {}),
+    durationSeconds: request.durationSeconds,
+  };
+
+  if (selectionResult.selected) {
+    preferredProviderId = selectionResult.selection.providerId;
+    preferredModelId = selectionResult.selection.modelId;
+    orchestrationMetadata['providerModelId'] = selectionResult.selection.providerModelId;
+  } else if (selectionResult.reason !== 'all-candidates-unverified') {
+    return {
+      status: 'failed',
+      reason: 'provider-error',
+      message: 'The requested video quality or duration is not currently available. Please try a different duration.',
+    };
+  }
+
+  let orchestrationResult: Awaited<ReturnType<ReturnType<typeof getGenerationOrchestrator>['orchestrate']>>;
+  try {
+    orchestrationResult = await getGenerationOrchestrator().orchestrate({
+      requestId: crypto.randomUUID(),
+      requestedBy: request.creatorId ?? 'azma-anonymous',
+      prompt: trimmedPrompt,
+      taskHint: 'video',
+      chamberId: 'qiyamah',
+      purpose: 'Sovereign video generation for Creator',
+      preferredProviderId,
+      preferredModelId,
+      metadata: orchestrationMetadata,
+    });
+  } catch {
+    return {
+      status: 'failed',
+      reason: 'provider-error',
+      message: 'No video generation provider was available. The capability may require an API credential to be configured.',
+    };
+  }
+
+  console.log(
+    '[SovereignGeneration] video-orchestration-result',
+    JSON.stringify({
+      finishReason: orchestrationResult.response.finishReason,
+      providerId: orchestrationResult.response.providerId,
+      selectedProviderId: orchestrationResult.selection?.selectedProviderId,
+      latencyMs: orchestrationResult.response.latencyMs,
+    }),
+  );
+
+  if (orchestrationResult.response.finishReason !== 'completed') {
+    return {
+      status: 'failed',
+      reason: 'provider-error',
+      message: 'No video generation provider was available. The capability may require an API credential to be configured.',
+    };
+  }
+
+  // VIDEO CONTRACT: The MagicHourVideoAdapter returns the CDN download URL directly in
+  // content — NOT base64-encoded bytes. Never call Buffer.from(content, 'base64') here.
+  const videoUrl = orchestrationResult.response.content;
+  if (!videoUrl || !videoUrl.startsWith('http')) {
+    return {
+      status: 'failed',
+      reason: 'provider-error',
+      message: 'The provider returned an invalid video URL.',
+    };
+  }
+
+  const assetId = randomUUID();
+
+  try {
+    persistGenerationRecord(getDb(), {
+      creatorId: request.creatorId ?? null,
+      prompt: trimmedPrompt,
+      style,
+      assetUrl: videoUrl,
+      originalIdea: request.originalIdea ?? null,
+      mediaType: 'video',
+    });
+
+    console.log(
+      '[SovereignGeneration] video-generation-record',
+      JSON.stringify({
+        status: 'succeeded',
+        creatorId: request.creatorId ?? null,
+        assetId,
+        assetUrl: videoUrl.slice(0, 80),
+        style,
+        durationSeconds: request.durationSeconds,
+      }),
+    );
+
+    if (request.creatorId) {
+      const resolvedProviderId = orchestrationResult.response.providerId ?? 'magic-hour-video';
+      await depositVideoAssetIntoVault({
+        assetId,
+        creatorId: request.creatorId,
+        assetUrl: videoUrl,
+        prompt: trimmedPrompt,
+        style,
+        durationSeconds: request.durationSeconds,
+        resolvedProviderId,
+      });
+    }
+
+    return {
+      status: 'succeeded',
+      asset: {
+        assetId,
+        assetUrl: videoUrl,
+        prompt: trimmedPrompt,
+        style,
+        durationSeconds: request.durationSeconds,
+        generatedAt: new Date().toISOString(),
+        originalIdea: request.originalIdea ?? null,
+      },
+    };
+  } catch (error) {
+    return {
+      status: 'failed',
+      reason: 'storage-error',
+      message: error instanceof Error ? error.message : 'Failed to record the generated video.',
     };
   }
 }

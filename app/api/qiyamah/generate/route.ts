@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { generateImage } from '../../../../src/qiyamah-generation';
+import { generateImage, generateVideo } from '../../../../src/qiyamah-generation';
 import { verifySession } from '../../../../src/authentication';
 import { getDb } from '../../../../src/persistent-storage';
 import { ConsumptionRepository } from '../../../../src/persistent-storage/consumption-repository';
@@ -33,6 +33,8 @@ export async function POST(request: NextRequest) {
   const prompt = (body as { prompt?: unknown })?.prompt;
   const style = (body as { style?: unknown })?.style;
   const idea = (body as { idea?: unknown })?.idea;
+  const mediaType = (body as { mediaType?: unknown })?.mediaType;
+  const durationSeconds = (body as { durationSeconds?: unknown })?.durationSeconds;
 
   if (typeof prompt !== 'string') {
     return NextResponse.json({ status: 'failed', reason: 'invalid-prompt', message: 'A string prompt is required.' }, { status: 400 });
@@ -50,6 +52,95 @@ export async function POST(request: NextRequest) {
   const costEngine = new AzmaUnitCostEngine();
   const trialService = new TrialEntitlementService(db);
 
+  // ─── VIDEO PATH ─────────────────────────────────────────────────────────────
+  if (mediaType === 'video') {
+    let videoReservationId: string | null = null;
+    let videoResolvedCostEstimate: CostEstimate | null = null;
+
+    if (session.role !== 'founder') {
+      // No free video trial (videoGranted = 0). Go directly to paid path.
+      try {
+        videoResolvedCostEstimate = costEngine.estimate('video-generation', GATEWAY_ID);
+      } catch (err) {
+        if (err instanceof CostUnavailableError) {
+          return NextResponse.json(
+            {
+              status: 'failed',
+              reason: 'cost-unavailable',
+              message: 'Video generation requires a subscription plan. Paid video is coming soon — pricing is being finalized.',
+            },
+            { status: 503 },
+          );
+        }
+        throw err;
+      }
+
+      const balance = creditRepo.getBalance(session.creatorId);
+      if (balance.availableUnits < videoResolvedCostEstimate.estimatedAzmaUnits) {
+        return NextResponse.json(
+          {
+            status: 'failed',
+            reason: 'payment-required',
+            message: 'Insufficient AZMA Units for video generation. Purchase a credit pack to continue.',
+            estimatedCost: videoResolvedCostEstimate.estimatedAzmaUnits,
+            availableUnits: balance.availableUnits,
+          },
+          { status: 402 },
+        );
+      }
+
+      try {
+        const reservation = creditRepo.reserve(
+          session.creatorId,
+          videoResolvedCostEstimate.estimatedAzmaUnits,
+          `qiyamah:video:${randomUUID()}`,
+          { capability: 'video-generation', gatewayId: GATEWAY_ID },
+        );
+        videoReservationId = reservation.reservationId;
+      } catch (err) {
+        if (err instanceof InsufficientBalanceError) {
+          return NextResponse.json(
+            { status: 'failed', reason: 'payment-required', message: 'Insufficient AZMA Units.' },
+            { status: 402 },
+          );
+        }
+        throw err;
+      }
+    }
+
+    const duration =
+      typeof durationSeconds === 'number' && durationSeconds > 0 && durationSeconds <= 60
+        ? Math.round(durationSeconds)
+        : 6;
+
+    const videoResult = await generateVideo({
+      prompt,
+      style: typeof style === 'string' ? style : undefined,
+      creatorId: session.creatorId,
+      durationSeconds: duration,
+      originalIdea: typeof idea === 'string' && idea.trim().length > 0 ? idea.trim() : null,
+    });
+
+    if (videoResult.status === 'failed') {
+      if (videoReservationId) {
+        try { creditRepo.release(videoReservationId, 'generation_failed'); } catch { /* non-fatal */ }
+      }
+      const httpStatus =
+        videoResult.reason === 'invalid-prompt' ? 400 :
+        videoResult.reason === 'rate-limited'   ? 429 :
+        videoResult.reason === 'provider-error' ? 422 :
+        502;
+      return NextResponse.json(videoResult, { status: httpStatus });
+    }
+
+    if (videoReservationId && videoResolvedCostEstimate) {
+      try { creditRepo.settle(videoReservationId, videoResolvedCostEstimate.estimatedAzmaUnits); } catch { /* non-fatal */ }
+    }
+
+    return NextResponse.json(videoResult, { status: 200 });
+  }
+
+  // ─── IMAGE PATH ─────────────────────────────────────────────────────────────
   // CREDIT-FIRST GATE — ordered by entitlement type:
   //
   //   1. Founders bypass all economic checks entirely.
