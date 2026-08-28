@@ -58,7 +58,7 @@ function makeDispatchInput(prompt: string, meta: Record<string, unknown> = {}): 
   };
 }
 
-function mockFetchSequence(responses: Array<{ ok: boolean; body?: unknown; status?: number }>) {
+function mockFetchSequence(responses: Array<{ ok: boolean; body?: unknown; status?: number; contentType?: string }>) {
   let callIndex = 0;
   mockFetch.mockImplementation(() => {
     const r = responses[callIndex] ?? responses[responses.length - 1];
@@ -68,6 +68,7 @@ function mockFetchSequence(responses: Array<{ ok: boolean; body?: unknown; statu
         ok: false,
         status: r.status ?? 500,
         text: () => Promise.resolve(JSON.stringify(r.body)),
+        headers: { get: () => null },
       });
     }
     return Promise.resolve({
@@ -75,6 +76,7 @@ function mockFetchSequence(responses: Array<{ ok: boolean; body?: unknown; statu
       status: 200,
       json: () => Promise.resolve(r.body),
       arrayBuffer: () => Promise.resolve(FAKE_IMAGE_BYTES.buffer as ArrayBuffer),
+      headers: { get: (name: string) => name === 'content-type' ? (r.contentType ?? null) : null },
     });
   });
 }
@@ -132,7 +134,7 @@ describe('MagicHourImageAdapter — dispatch', () => {
       { ok: true, body: QUEUED },         // POST submission
       { ok: true, body: RENDERING },      // GET poll 1
       { ok: true, body: COMPLETE_IMAGE }, // GET poll 2 — complete
-      { ok: true },                       // GET download URL → image bytes
+      { ok: true, contentType: 'image/jpeg' }, // GET download URL → image bytes
     ]);
 
     const adapter = new MagicHourImageAdapter();
@@ -142,7 +144,8 @@ describe('MagicHourImageAdapter — dispatch', () => {
     // content is now base64-encoded image bytes, not the download URL
     expect(result.content).toBe(FAKE_IMAGE_B64);
     expect(result.metadata['downloadUrl']).toBe('https://cdn.magichour.test/img/out.jpg');
-    expect(result.metadata['mimeType']).toBe('image/png');
+    // mimeType is read from CDN Content-Type header, not hardcoded
+    expect(result.metadata['mimeType']).toBe('image/jpeg');
     expect(result.metadata['encoding']).toBe('base64');
     expect(result.providerId).toBe(MAGIC_HOUR_IMAGE_PROVIDER_ID);
     expect(result.metadata['magicHourCreditsCharged']).toBe(5);
@@ -154,7 +157,7 @@ describe('MagicHourImageAdapter — dispatch', () => {
     mockFetchSequence([
       { ok: true, body: QUEUED },
       { ok: true, body: COMPLETE_IMAGE },
-      { ok: true }, // image download
+      { ok: true, contentType: 'image/jpeg' }, // image download
     ]);
 
     const adapter = new MagicHourImageAdapter();
@@ -172,7 +175,7 @@ describe('MagicHourImageAdapter — dispatch', () => {
     mockFetchSequence([
       { ok: true, body: QUEUED },
       { ok: true, body: COMPLETE_IMAGE },
-      { ok: true }, // GET download URL → image bytes
+      { ok: true, contentType: 'image/jpeg' }, // GET download URL → image bytes
     ]);
 
     const adapter = new MagicHourImageAdapter();
@@ -240,6 +243,46 @@ describe('MagicHourImageAdapter — dispatch', () => {
     await expect(adapter.dispatch(makeDispatchInput('test prompt'))).rejects.toThrow(
       MagicHourApiError,
     );
+  });
+
+  // CDN CONTENT-TYPE PROPAGATION — FIX 1
+  it('propagates PNG content-type from CDN into metadata', async () => {
+    mockFetchSequence([
+      { ok: true, body: QUEUED },
+      { ok: true, body: COMPLETE_IMAGE },
+      { ok: true, contentType: 'image/png' },
+    ]);
+
+    const adapter = new MagicHourImageAdapter();
+    const result = await adapter.dispatch(makeDispatchInput('test prompt'));
+
+    expect(result.metadata['mimeType']).toBe('image/png');
+  });
+
+  it('propagates WebP content-type from CDN into metadata', async () => {
+    mockFetchSequence([
+      { ok: true, body: QUEUED },
+      { ok: true, body: COMPLETE_IMAGE },
+      { ok: true, contentType: 'image/webp' },
+    ]);
+
+    const adapter = new MagicHourImageAdapter();
+    const result = await adapter.dispatch(makeDispatchInput('test prompt'));
+
+    expect(result.metadata['mimeType']).toBe('image/webp');
+  });
+
+  it('falls back to application/octet-stream when CDN omits content-type', async () => {
+    mockFetchSequence([
+      { ok: true, body: QUEUED },
+      { ok: true, body: COMPLETE_IMAGE },
+      { ok: true }, // no contentType → headers.get returns null
+    ]);
+
+    const adapter = new MagicHourImageAdapter();
+    const result = await adapter.dispatch(makeDispatchInput('test prompt'));
+
+    expect(result.metadata['mimeType']).toBe('application/octet-stream');
   });
 });
 
@@ -403,7 +446,7 @@ describe('Duplicate completion / idempotent polling', () => {
     mockFetchSequence([
       { ok: true, body: QUEUED },
       { ok: true, body: COMPLETE_IMAGE },
-      { ok: true }, // GET download URL → image bytes
+      { ok: true, contentType: 'image/jpeg' }, // GET download URL → image bytes
     ]);
 
     const adapter = new MagicHourImageAdapter();

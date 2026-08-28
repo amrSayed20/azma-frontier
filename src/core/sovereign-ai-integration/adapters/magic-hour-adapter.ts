@@ -283,13 +283,19 @@ export class MagicHourImageAdapter implements AIProviderAdapter {
       throw new Error(`Magic Hour image download failed: HTTP ${imageResponse.status}`);
     }
     const imageBytes = Buffer.from(await imageResponse.arrayBuffer());
+    // Read the actual content-type declared by the CDN — do not assume PNG.
+    // The generation service performs its own byte-level format validation
+    // independently; this value is informational metadata only.
+    const mimeType =
+      imageResponse.headers.get('content-type')?.split(';')[0]?.trim() ??
+      'application/octet-stream';
 
     return {
       ...baseResponse,
       content: imageBytes.toString('base64'),
       metadata: {
         ...baseResponse.metadata,
-        mimeType: 'image/png',
+        mimeType,
         encoding: 'base64',
       },
     };

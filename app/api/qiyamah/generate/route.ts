@@ -152,7 +152,12 @@ export async function POST(request: NextRequest) {
     if (reservationId) {
       try { creditRepo.release(reservationId, 'generation_failed'); } catch { /* non-fatal */ }
     }
-    const httpStatus = result.reason === 'invalid-prompt' ? 400 : result.reason === 'rate-limited' ? 429 : 502;
+    // provider-error → 422 (4xx, not intercepted by Cloudflare); storage-error/unknown → 502
+    const httpStatus =
+      result.reason === 'invalid-prompt'  ? 400 :
+      result.reason === 'rate-limited'    ? 429 :
+      result.reason === 'provider-error'  ? 422 :
+      502;
     return NextResponse.json(result, { status: httpStatus });
   }
 

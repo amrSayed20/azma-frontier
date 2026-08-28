@@ -27,13 +27,27 @@ const mockInsertVaultAsset = insertVaultAsset as jest.Mock;
 
 // ─── TEST HELPERS ─────────────────────────────────────────────────────────────
 
-// 8-byte PNG magic + padding to 67 bytes — passes the integrity gate.
-// persistGeneratedImage is mocked, so the bytes never touch the filesystem.
+// Image format fixtures — each passes the multi-format integrity gate.
+// persistGeneratedImage is mocked, so bytes never touch the filesystem.
 const PNG_HEADER = Buffer.concat([
   Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-  Buffer.alloc(67 - 8, 0x00),
+  Buffer.alloc(67 - 8, 0x00), // 67 bytes total (well above the 12-byte minimum)
 ]);
 const PNG_HEADER_B64 = PNG_HEADER.toString('base64');
+
+const JPEG_HEADER = Buffer.concat([
+  Buffer.from([0xff, 0xd8, 0xff, 0xe0]), // JPEG SOI + APP0 marker
+  Buffer.alloc(12, 0x00),               // padding to clear the 12-byte minimum
+]);
+const JPEG_HEADER_B64 = JPEG_HEADER.toString('base64');
+
+// WebP RIFF container header — exactly the 12 bytes needed to pass the gate.
+const WEBP_HEADER = Buffer.concat([
+  Buffer.from([0x52, 0x49, 0x46, 0x46]), // RIFF
+  Buffer.alloc(4, 0x00),                  // file size (don't care)
+  Buffer.from([0x57, 0x45, 0x42, 0x50]), // WEBP
+]);
+const WEBP_HEADER_B64 = WEBP_HEADER.toString('base64');
 
 function successOrchestration(content = PNG_HEADER_B64) {
   mockOrchestrate.mockResolvedValue({
@@ -162,8 +176,8 @@ describe('Qiyamah First Generation Path — Generation Service', () => {
     expect(mockPersistGeneratedImage).not.toHaveBeenCalled();
   });
 
-  it('integrity gate: rejects non-PNG binary content (e.g. MP4 bytes) — never persists', async () => {
-    // MP4 ftyp box magic: 00 00 00 18 66 74 79 70 (not PNG)
+  it('integrity gate: rejects unrecognized binary format (e.g. MP4 bytes) — never persists', async () => {
+    // MP4 ftyp box magic: 00 00 00 18 66 74 79 70 — not PNG, JPEG, or WebP
     const mp4Bytes = Buffer.concat([
       Buffer.from([0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70]),
       Buffer.alloc(100, 0x00),
@@ -174,6 +188,35 @@ describe('Qiyamah First Generation Path — Generation Service', () => {
 
     expect(result).toEqual(expect.objectContaining({ status: 'failed', reason: 'provider-error' }));
     expect(mockPersistGeneratedImage).not.toHaveBeenCalled();
+  });
+
+  it('integrity gate: accepts valid JPEG content and calls persist with image/jpeg mimeType', async () => {
+    mockOrchestrate.mockResolvedValue({ response: { finishReason: 'completed', content: JPEG_HEADER_B64 } });
+    mockPersistGeneratedImage.mockResolvedValue({ assetId: 'jpeg-001', assetUrl: '/generated-assets/jpeg-001.jpg' });
+
+    const result = await generateImage({ prompt: 'a sovereign vista' });
+
+    expect(result.status).toBe('succeeded');
+    expect(mockPersistGeneratedImage).toHaveBeenCalledWith(expect.any(Buffer), 'image/jpeg');
+  });
+
+  it('integrity gate: accepts valid WebP content and calls persist with image/webp mimeType', async () => {
+    mockOrchestrate.mockResolvedValue({ response: { finishReason: 'completed', content: WEBP_HEADER_B64 } });
+    mockPersistGeneratedImage.mockResolvedValue({ assetId: 'webp-001', assetUrl: '/generated-assets/webp-001.webp' });
+
+    const result = await generateImage({ prompt: 'a sovereign vista' });
+
+    expect(result.status).toBe('succeeded');
+    expect(mockPersistGeneratedImage).toHaveBeenCalledWith(expect.any(Buffer), 'image/webp');
+  });
+
+  it('integrity gate: accepts valid PNG content and calls persist with image/png mimeType', async () => {
+    successOrchestration();
+    mockPersistGeneratedImage.mockResolvedValue({ assetId: 'png-001', assetUrl: '/generated-assets/png-001.png' });
+
+    await generateImage({ prompt: 'a sovereign vista' });
+
+    expect(mockPersistGeneratedImage).toHaveBeenCalledWith(expect.any(Buffer), 'image/png');
   });
 
   // ── Provider / orchestrator failures ─────────────────────────────────────────

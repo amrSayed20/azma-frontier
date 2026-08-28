@@ -29,9 +29,19 @@ export interface PersistedAsset {
   readonly assetUrl: string;
 }
 
-export async function persistGeneratedImage(bytes: Buffer): Promise<PersistedAsset> {
+const MIME_TO_EXT: Record<string, string> = {
+  'image/png':  'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+};
+
+export async function persistGeneratedImage(
+  bytes: Buffer,
+  mimeType: string = 'image/png',
+): Promise<PersistedAsset> {
   const assetId = randomUUID();
-  const fileName = `${assetId}.png`;
+  const ext = MIME_TO_EXT[mimeType] ?? 'png';
+  const fileName = `${assetId}.${ext}`;
 
   await mkdir(GENERATED_ASSETS_DIR, { recursive: true });
   await writeFile(join(GENERATED_ASSETS_DIR, fileName), bytes);

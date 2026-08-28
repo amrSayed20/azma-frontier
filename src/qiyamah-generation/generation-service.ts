@@ -38,20 +38,24 @@ import { CapabilityTarget } from '../core/sovereign-orchestrator/qiyamah-intent-
 import { buildImageCreationIntent, getProductionSelector } from '../sovereign-model-selection';
 import type { GenerationRequest, GenerationResult } from './types';
 
-// ─── PNG INTEGRITY GATE ───────────────────────────────────────────────────────
+// ─── IMAGE FORMAT INTEGRITY GATE ─────────────────────────────────────────────
 
-// ISO/IEC 15948 §5.2 — PNG file signature (8 bytes).
-const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-// Minimum physically-possible PNG: signature(8) + IHDR(25) + IDAT(≥13) + IEND(12) = 58 bytes.
-// Gate at 67 — any real generated image is orders of magnitude larger; sub-67 is always corrupt.
-const MIN_VALID_PNG_BYTES = 67;
+// Minimum bytes required to read the WebP container header (the widest check below).
+const MIN_VALID_IMAGE_BYTES = 12;
 
-function hasValidPngSignature(buf: Buffer): boolean {
-  if (buf.length < MIN_VALID_PNG_BYTES) return false;
-  for (let i = 0; i < PNG_SIGNATURE.length; i++) {
-    if (buf[i] !== PNG_SIGNATURE[i]) return false;
-  }
-  return true;
+// Returns the detected MIME type from binary magic bytes, or null if unrecognized.
+// Supports the three CDN formats Magic Hour may return: PNG, JPEG, WebP.
+function detectImageFormat(buf: Buffer): 'image/png' | 'image/jpeg' | 'image/webp' | null {
+  if (buf.length < MIN_VALID_IMAGE_BYTES) return null;
+  // PNG: ISO/IEC 15948 §5.2 — 8-byte signature
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47 &&
+      buf[4] === 0x0d && buf[5] === 0x0a && buf[6] === 0x1a && buf[7] === 0x0a) return 'image/png';
+  // JPEG: SOI marker
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
+  // WebP: RIFF....WEBP container (RFC 6386)
+  if (buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
+      buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50) return 'image/webp';
+  return null;
 }
 
 const vaultManager = new SovereignVaultManager();
@@ -216,12 +220,9 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
     };
   }
 
-  let providerResult: { bytes: Buffer; mimeType: string };
+  let rawBytes: Buffer;
   try {
-    providerResult = {
-      bytes: Buffer.from(orchestrationResult.response.content, 'base64'),
-      mimeType: 'image/png',
-    };
+    rawBytes = Buffer.from(orchestrationResult.response.content, 'base64');
   } catch {
     return {
       status: 'failed',
@@ -230,9 +231,11 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
     };
   }
 
-  // Integrity gate: reject URL-as-bytes corruption, empty content, and non-PNG payloads.
-  // Catches MagicHourVideoAdapter misrouting (video URL decoded as base64 = 56 bytes of garbage).
-  if (!hasValidPngSignature(providerResult.bytes)) {
+  // Integrity gate: reject URL-as-bytes corruption, empty content, and unrecognized formats.
+  // Accepts PNG, JPEG, and WebP — the formats Magic Hour CDN may return.
+  // Catches MagicHourVideoAdapter misrouting (video URL decoded as base64 = small garbage buffer).
+  const detectedFormat = detectImageFormat(rawBytes);
+  if (!detectedFormat) {
     return {
       status: 'failed',
       reason: 'provider-error',
@@ -240,8 +243,10 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
     };
   }
 
+  const providerResult = { bytes: rawBytes, mimeType: detectedFormat };
+
   try {
-    const persisted = await persistGeneratedImage(providerResult.bytes);
+    const persisted = await persistGeneratedImage(providerResult.bytes, providerResult.mimeType);
     recordRateLimitedGeneration();
     persistGenerationRecord(getDb(), {
       creatorId: request.creatorId ?? null,

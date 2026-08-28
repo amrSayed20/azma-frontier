@@ -239,6 +239,16 @@ export function QiyamahChamberClient({
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ prompt: constructedPrompt.trim(), style, idea: ideaForRecord }),
       });
+      // Guard: Cloudflare may return HTML (not JSON) on gateway timeout or 5xx intercept.
+      // If the response is not JSON, surface the generic gateway error instead of
+      // letting response.json() throw and losing the distinction between
+      // a real provider failure (now 422, JSON) and a gateway timeout (non-JSON).
+      const ct = response.headers.get('content-type') ?? '';
+      if (!ct.includes('application/json')) {
+        setGenerationError('البوابة لا تستجيب. أعِد المحاولة.');
+        setStage('error');
+        return;
+      }
       const result = await response.json();
       if (result.status === 'succeeded') {
         setGeneratedImageUrl(result.asset.assetUrl);
