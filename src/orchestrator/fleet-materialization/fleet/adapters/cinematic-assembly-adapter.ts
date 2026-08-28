@@ -2,23 +2,26 @@
  * AZMA OS — Fleet Materialization Architecture
  * File: src/orchestrator/fleet-materialization/fleet/adapters/cinematic-assembly-adapter.ts
  *
- * MINISTRY VII — REAL FLEET INFRASTRUCTURE
- *
  * The Cinematic Assembly Adapter.
- * Handles CapabilityTarget.VISUAL — cinematic timeline render jobs dispatched
+ * Handles CapabilityTarget.MOTION — CINEMATIC timeline render jobs dispatched
  * by FlattenedRenderingBridge when a CINEMATIC canvas is published.
  *
- * What "execution" means here: the CompiledAssemblyGraph (the full sovereign
- * direction state — nodes, mix plan, subtitle plan, timing) is carried inside
- * the OperationLedgerEntry's sourceIntent (serialized as JSON). The moment
- * OperationLedgerManager.createEntry() succeeds, the plan is durably stored.
- * This adapter's job is to acknowledge that durable storage and make the job
- * immediately queryable for resolution.
+ * MOTION (not VISUAL) is the constitutionally correct target for video output:
+ * CapabilityTarget.MOTION = "materialize kinetic and temporal behavior".
+ * CapabilityTarget.VISUAL = "materialize static visual representation" (images only).
  *
- * Completion: checkOperationStatus() always returns isComplete:true — the
- * assembly plan is the output. Resolution deposits a sovereign internal
- * reference (sovereign://cinematic-assembly/<jobId>) into the Vault, where
- * downstream consumption logic can retrieve the full plan via the ledger.
+ * Execution flow:
+ *   executeVendorDispatch() — extracts the CompiledAssemblyGraph from the dispatch
+ *   payload, calls spawnEncoding() to start the system FFmpeg process, and returns
+ *   ACCEPTED immediately. Encoding runs asynchronously.
+ *
+ *   checkOperationStatus() — called by the polling resolution path:
+ *     • If encoding failed:  returns isError:true so the dispatcher marks FAILED.
+ *     • If encoding is done: returns isComplete:true with the real MP4 asset URL.
+ *     • If still running:    throws "not complete" — caught by
+ *       AsynchronousResolutionGateway.checkAndResolveOperation() to return null
+ *       (→ { status: 'processing' } to the Creator), preserving the polling loop
+ *       without marking the ledger FAILED.
  */
 
 import { BaseProviderAdapter } from './base-provider-adapter';
@@ -26,13 +29,18 @@ import type { HydratedAssetContext } from '../secure-context-hydrator';
 import type { ProviderCapabilities, ProviderDispatchResponse, ProviderResolutionResponse } from '../fleet-types';
 import type { OperationLedgerEntry } from '../../ledger/operation-ledger-types';
 import { CapabilityTarget } from '../../../../core/sovereign-orchestrator/qiyamah-intent-types';
+import type { CompiledAssemblyGraph } from '../../../../chambers/ras-al-amr/pre-publishing-boundary';
+import {
+  spawnEncoding,
+  isEncodingComplete,
+  getEncodingError,
+} from './cinematic-ffmpeg-encoder';
 
 export class CinematicAssemblyAdapter extends BaseProviderAdapter {
   public readonly providerId = 'azma-cinematic-assembly-v1';
 
-  /** Canonical capability declaration — used by registerAdapterSync() in fleet-factory.ts. */
   public static readonly CAPABILITIES: ProviderCapabilities = {
-    supportedTargets: [CapabilityTarget.VISUAL],
+    supportedTargets: [CapabilityTarget.MOTION],
     maxConcurrentOperations: 100,
     unitCostMultiplier: 5.0,
     averageLatencyMs: 0,
@@ -47,15 +55,30 @@ export class CinematicAssemblyAdapter extends BaseProviderAdapter {
     ledgerEntry: OperationLedgerEntry,
     _hydratedContext: HydratedAssetContext[],
   ): Promise<ProviderDispatchResponse> {
-    if (ledgerEntry.capabilityTarget !== CapabilityTarget.VISUAL) {
+    if (ledgerEntry.capabilityTarget !== CapabilityTarget.MOTION) {
       throw new Error(
         `Execution Error: Adapter [${this.providerId}] cannot process target [${ledgerEntry.capabilityTarget}]`,
       );
     }
 
-    // The CompiledAssemblyGraph is already durably stored as part of
-    // sourceIntent in the operation_ledger row created by createEntry().
-    // The external job ID IS the operation ID — sovereign-internal execution.
+    // The rendering bridge embeds the CompiledAssemblyGraph as `structuralGraphPayload`
+    // in the dispatch intent (cast as `any` at the bridge boundary — see rendering-bridge.ts).
+    // It is stored verbatim in operation_ledger.source_intent_json and deserialized here.
+    const graph = (ledgerEntry.sourceIntent as unknown as { structuralGraphPayload?: CompiledAssemblyGraph })
+      .structuralGraphPayload;
+
+    if (!graph) {
+      throw new Error(
+        `Execution Error: CINEMATIC dispatch for operation [${ledgerEntry.operationId}] is missing ` +
+          `structuralGraphPayload. The rendering bridge must attach the CompiledAssemblyGraph.`,
+      );
+    }
+
+    // Start encoding asynchronously. spawnEncoding() returns immediately.
+    // If the graph is invalid (no image nodes, missing assets), the error is stored
+    // in the encoder's job-state map and surfaced via checkOperationStatus().
+    spawnEncoding(ledgerEntry.operationId, graph);
+
     return {
       externalJobId: ledgerEntry.operationId,
       status: 'ACCEPTED',
@@ -63,15 +86,35 @@ export class CinematicAssemblyAdapter extends BaseProviderAdapter {
   }
 
   public async checkOperationStatus(externalJobId: string): Promise<ProviderResolutionResponse> {
-    return {
-      externalJobId,
-      isComplete: true,
-      isError: false,
-      assetUrl: `sovereign://cinematic-assembly/${externalJobId}`,
-      rawMetadata: {
-        assemblyFormat: 'AZMA_CINEMATIC_ASSEMBLY_JSON',
-        providerId: this.providerId,
-      },
-    };
+    // 1. Encoding failed — surface the real error so the dispatcher marks FAILED.
+    const encodingError = getEncodingError(externalJobId);
+    if (encodingError) {
+      return {
+        externalJobId,
+        isComplete: true,
+        isError: true,
+        errorMessage: `CINEMATIC encoding failed: ${encodingError.message}`,
+      };
+    }
+
+    // 2. Encoding complete — return the real MP4 asset URL.
+    if (isEncodingComplete(externalJobId)) {
+      return {
+        externalJobId,
+        isComplete: true,
+        isError: false,
+        assetUrl: `/renders/${externalJobId}.mp4`,
+        rawMetadata: {
+          encoderProviderId: this.providerId,
+          outputFormat: 'H.264/AAC MP4',
+          outputWidth: 1920,
+          outputHeight: 1080,
+        },
+      };
+    }
+
+    // 3. Still encoding — throw so AsynchronousResolutionGateway catches "not complete"
+    //    and returns null (→ { status: 'processing' }) without marking FAILED.
+    throw new Error(`CINEMATIC encoding not complete for operation [${externalJobId}]`);
   }
 }

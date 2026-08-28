@@ -109,13 +109,13 @@ export class FlattenedRenderingBridge {
       const dispatchIntent = {
         operationId: operationId,
         subscriberTenantId: publication.publisherTenantId,
-        capabilityTarget: CapabilityTarget.VISUAL, // Represents a master timeline render
+        capabilityTarget: CapabilityTarget.MOTION, // CINEMATIC = kinetic/temporal artifact (MP4)
         projectContainerId: publication.publicationId,
-        contextReferences: [], 
-        
-        // Advanced Routing Context: Passing the raw structural graph to Al-Watin
-        // so the FFMPEG/Sora adapter knows exactly what timeline to burn.
-        structuralGraphPayload: masterGraph 
+        contextReferences: [],
+
+        // Carries the full CompiledAssemblyGraph to the CinematicAssemblyAdapter,
+        // which extracts it from sourceIntent.structuralGraphPayload for FFmpeg encoding.
+        structuralGraphPayload: masterGraph
       } as any; // Cast as 'any' safely here to bridge the polymorphic intent boundary
 
       try {
