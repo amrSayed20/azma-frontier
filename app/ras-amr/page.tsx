@@ -430,11 +430,13 @@ import type {
   SetNodeActivePayload,
   SetNodeEmphasisPayload,
   SetNodeLockPayload,
+  SetTrackVolumePayload,
   VisualFilterDirective,
   StructuralLogicDirective,
   AudioMixingDirective,
   VoiceAssignmentDirective,
 } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
+import type { SubtitleDirective } from '@/src/chambers/ras-al-amr/subtitle-directive';
 import { decideMultiNodeCinematicDirection } from '@/src/chambers/ras-al-amr/automatic-director';
 import { validateNarrativeIntegrity } from '@/src/chambers/ras-al-amr/automatic-director-constitution';
 import type { FormalGoalContractView } from '@/src/chambers/ras-al-amr/automatic-director-constitution';
@@ -1016,6 +1018,101 @@ export default function RasAmrChamber() {
       setTtsError('بوابة الصوت لا تستجيب.');
     } finally {
       setIsGeneratingSpeech(false);
+    }
+  };
+
+  // MINISTRY III — VOICE CLONING ENGINE: clone a real voice from the Voice Library.
+  const [cloneSourceVoiceId, setCloneSourceVoiceId] = useState<string>('');
+  const [cloneVoiceNameInput, setCloneVoiceNameInput] = useState<string>('');
+  const [isVoiceCloning, setIsVoiceCloning] = useState<boolean>(false);
+  const [voiceCloneError, setVoiceCloneError] = useState<string | null>(null);
+
+  const handleCloneVoice = async () => {
+    if (!cloneSourceVoiceId) return;
+    setIsVoiceCloning(true);
+    setVoiceCloneError(null);
+    try {
+      const response = await fetch('/api/vault/assets/clone-voice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          referenceAssetId: cloneSourceVoiceId,
+          ...(cloneVoiceNameInput.trim() ? { voiceDisplayName: cloneVoiceNameInput.trim() } : {}),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || result.status !== 'succeeded') {
+        setVoiceCloneError(result.message ?? 'الاستنساخ لم يكتمل.');
+        return;
+      }
+      setVaultAssets((prev) => [...prev, result.asset]);
+      setCloneSourceVoiceId('');
+      setCloneVoiceNameInput('');
+    } catch {
+      setVoiceCloneError('بوابة الاستنساخ لا تستجيب.');
+    } finally {
+      setIsVoiceCloning(false);
+    }
+  };
+
+  // MINISTRY IV — SOVEREIGN MIXING ENGINE: track-level volume via SET_TRACK_VOLUME.
+  const handleSetTrackVolume = (trackId: string, volumeDb: number) => {
+    if (!sessionCanvas) return;
+    const mutation: SetTrackVolumePayload = {
+      actionType: CanvasActionType.SET_TRACK_VOLUME,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: trackId,
+      volumeDb,
+    };
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
+  };
+
+  // MINISTRY V — SOVEREIGN SUBTITLE SYSTEM: import SRT/VTT for a Direction Node.
+  // One hidden file input shared across all nodes — the target node ID is set
+  // into state when the Creator clicks the per-node import button.
+  const subtitleInputRef = useRef<HTMLInputElement>(null);
+  const [subtitleTargetNodeId, setSubtitleTargetNodeId] = useState<string | null>(null);
+  const [subtitleImportBusy, setSubtitleImportBusy] = useState<boolean>(false);
+  const [subtitleImportError, setSubtitleImportError] = useState<string | null>(null);
+
+  const handleSubtitleFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !subtitleTargetNodeId || !sessionCanvas) return;
+    const nodeId = subtitleTargetNodeId;
+    setSubtitleImportBusy(true);
+    setSubtitleImportError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/api/vault/assets/import-subtitles', {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await response.json();
+      if (!response.ok || result.status !== 'succeeded') {
+        setSubtitleImportError(result.message ?? 'فشل استيراد الترجمة.');
+        return;
+      }
+      const track = sessionCanvas.tracks.find((t) => t.nodes.some((n) => n.nodeId === nodeId));
+      if (!track) return;
+      const mutation: UpdateNodeAdvancedPayload = {
+        actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE,
+        canvasId: sessionCanvas.canvasId,
+        subscriberTenantId: sessionCanvas.subscriberTenantId,
+        targetTrackId: track.trackId,
+        targetNodeId: nodeId,
+        directiveKey: 'subtitles',
+        directivePayload: result.directive as SubtitleDirective,
+      };
+      setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
+      setSubtitleImportError(null);
+    } catch {
+      setSubtitleImportError('بوابة الاستيراد لا تستجيب.');
+    } finally {
+      setSubtitleImportBusy(false);
+      setSubtitleTargetNodeId(null);
+      if (subtitleInputRef.current) subtitleInputRef.current.value = '';
     }
   };
 
@@ -1655,12 +1752,38 @@ export default function RasAmrChamber() {
                 ➕ أضف الأصل النشط إلى المجموعة المحددة
               </button>
 
+              {/* MINISTRY V — hidden file input shared by all per-node subtitle import buttons */}
+              <input
+                type="file"
+                ref={subtitleInputRef}
+                accept=".srt,.vtt,text/plain"
+                style={{ display: 'none' }}
+                onChange={handleSubtitleFileChosen}
+              />
+              {subtitleImportError && (
+                <p className="spatial-current-state narrative-integrity-violation">{subtitleImportError}</p>
+              )}
+
               {sessionCanvas.tracks.every((t) => t.nodes.length === 0) ? (
                 <p className="spatial-current-state">القماش فارغ — أضف أصلاً حقيقياً ليبدأ التكوين السردي</p>
               ) : (
                 sessionCanvas.tracks.map((track) => (
                   <div key={track.trackId} className="narrative-canvas-group">
                     <h3 className="narrative-canvas-group-name">{track.trackName}</h3>
+                    {/* MINISTRY IV — track-level volume fader */}
+                    <div className="track-volume-row">
+                      <span className="track-volume-label">🔊 {track.trackVolumeDb ?? 0} dB</span>
+                      <input
+                        type="range"
+                        className="track-volume-slider"
+                        min={-60}
+                        max={12}
+                        step={1}
+                        value={track.trackVolumeDb ?? 0}
+                        onChange={(e) => handleSetTrackVolume(track.trackId, Number(e.target.value))}
+                        aria-label={`مستوى صوت مجموعة ${track.trackName}`}
+                      />
+                    </div>
                     {track.nodes.length === 0 ? (
                       <p className="spatial-current-state">هذه المجموعة فارغة</p>
                     ) : (
@@ -1730,6 +1853,27 @@ export default function RasAmrChamber() {
                                 </option>
                               ))}
                             </select>
+                            {/* MINISTRY V — SOVEREIGN SUBTITLE SYSTEM: import SRT/VTT for this node. */}
+                            {(() => {
+                              const nodeSubs = node.customDirectives?.subtitles as SubtitleDirective | undefined;
+                              const cueCount = nodeSubs?.cues?.length ?? 0;
+                              return (
+                                <button
+                                  className="narrative-node-toggle"
+                                  onClick={() => {
+                                    setSubtitleTargetNodeId(node.nodeId);
+                                    subtitleInputRef.current?.click();
+                                  }}
+                                  disabled={node.isLocked || (subtitleImportBusy && subtitleTargetNodeId === node.nodeId)}
+                                  aria-label="استيراد ترجمات للعقدة"
+                                  title={cueCount > 0 ? `ترجمات مُحمَّلة — ${cueCount} إدخال` : 'استيراد ترجمات SRT/VTT'}
+                                >
+                                  {subtitleImportBusy && subtitleTargetNodeId === node.nodeId
+                                    ? '⏳'
+                                    : cueCount > 0 ? `💬 ${cueCount}` : '💬'}
+                                </button>
+                              );
+                            })()}
                             {/* PACKAGE XXII — MANUAL DIRECTION ENGINE: Promote/Demote Node reuse the real REORDER_NODE mutation (Package XX). */}
                             <button
                               className="narrative-node-reorder"
@@ -2198,6 +2342,44 @@ export default function RasAmrChamber() {
               </div>
               {ttsError && <p className="spatial-current-state narrative-integrity-violation">{ttsError}</p>}
             </div>
+
+            {/* MINISTRY III — VOICE CLONING ENGINE: clone an existing Voice Library entry using a real Launch Provider. */}
+            {voiceLibrary.length > 0 && (
+              <div className="hud-tts-row">
+                <select
+                  className="hud-tts-voice-select"
+                  value={cloneSourceVoiceId}
+                  onChange={(e) => setCloneSourceVoiceId(e.target.value)}
+                  disabled={isVoiceCloning}
+                  aria-label="الصوت المرجعي للاستنساخ"
+                >
+                  <option value="">اختر صوتاً مرجعياً للاستنساخ…</option>
+                  {voiceLibrary.map((voice) => (
+                    <option key={voice.assetId} value={voice.assetId}>
+                      {String(voice.metadata.voiceDisplayName ?? voice.assetId)}
+                    </option>
+                  ))}
+                </select>
+                <div className="hud-tts-controls">
+                  <input
+                    type="text"
+                    className="hud-voice-name-input"
+                    placeholder="اسم الصوت المستنسَخ (اختياري)"
+                    value={cloneVoiceNameInput}
+                    onChange={(e) => setCloneVoiceNameInput(e.target.value)}
+                    disabled={isVoiceCloning}
+                  />
+                  <button
+                    className="action-trigger-btn"
+                    onClick={handleCloneVoice}
+                    disabled={isVoiceCloning || !cloneSourceVoiceId}
+                  >
+                    {isVoiceCloning ? '⏳ الاستنساخ جارٍ…' : '🔮 استنسخ صوتاً حقيقياً'}
+                  </button>
+                </div>
+                {voiceCloneError && <p className="spatial-current-state narrative-integrity-violation">{voiceCloneError}</p>}
+              </div>
+            )}
 
             {vaultAssetsLoaded && realVaultCategories.length === 0 ? (
               <div className="hud-empty-state">
