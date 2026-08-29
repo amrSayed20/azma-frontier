@@ -565,6 +565,11 @@ export default function RasAmrChamber() {
   // Spatial/Visual/Temporal panels (manual) and the REAL — DIRECTOR panel
   // (automatic) already below, both always visible regardless of mode.
   const [directingMode, setDirectingMode] = useState<'smart' | 'manual'>('smart');
+  // CREATOR OUTPUT COMPLETION PACKAGE — Part II: the canvas type the Creator
+  // selects before the first asset is added. Defaults to CINEMATIC (FFmpeg
+  // MP4 production path). NARRATIVE and DIRECTORIAL produce real structural
+  // graphs — not media files. Changing after the canvas is seeded resets it.
+  const [selectedCanvasType, setSelectedCanvasType] = useState<CanvasType>(CanvasType.CINEMATIC);
   const [isRendering, setIsRendering] = useState<boolean>(false);
   const [renderStatus, setRenderStatus] = useState<string>('في وضع الاستعداد الإخراجي');
   // THE CORRIDOR PACKAGE: the real compiled graph from the most recent
@@ -636,7 +641,7 @@ export default function RasAmrChamber() {
       // at compile time regardless of what's carried here — see the
       // compile route's own note.
       subscriberTenantId: 'pending-server-verification',
-      canvasType: CanvasType.CINEMATIC,
+      canvasType: selectedCanvasType,
       title: 'القماش السردي',
       tracks: [
         {
@@ -1700,6 +1705,34 @@ export default function RasAmrChamber() {
               <span className="operator-btn-label">المخرج اليدوي</span>
               <span className="operator-btn-desc">الخالق يُصدر قرارات التوجيه مباشرةً — مكاني، بصري، زمني، صوتي</span>
             </button>
+          </div>
+
+          {/* Canvas Mode Selection — choose before adding the first asset.   */}
+          {/* Changing mode after the canvas is seeded resets it entirely.   */}
+          <div className="canvas-mode-selector">
+            <div className="neon-tag">نوع القماش</div>
+            <select
+              className="canvas-type-select"
+              value={selectedCanvasType}
+              onChange={(e) => {
+                const newType = e.target.value as CanvasType;
+                setSelectedCanvasType(newType);
+                if (sessionCanvas) {
+                  setSessionCanvas(null);
+                  setSelectedNodeId(null);
+                  setCompiledGraph(null);
+                  setCompiledForAssetId(null);
+                }
+              }}
+              aria-label="نوع القماش السردي"
+            >
+              <option value={CanvasType.CINEMATIC}>سينمائي — ملف MP4 حقيقي عبر مشفّر FFmpeg</option>
+              <option value={CanvasType.NARRATIVE}>سردي — بنية تجميع ديناميكية (ليس ملف وسائط)</option>
+              <option value={CanvasType.DIRECTORIAL}>توجيهي — بنية حالة توجيه (ليس ملف وسائط)</option>
+            </select>
+            {sessionCanvas && (
+              <p className="canvas-mode-reset-note">⚠ تغيير النوع يُعيد تهيئة القماش الحالي</p>
+            )}
           </div>
 
           {sessionCanvas && (

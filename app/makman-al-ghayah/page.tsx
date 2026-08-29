@@ -143,6 +143,14 @@ export default function MakmanAlGhayah() {
   const [isCheckingConsumption,  setIsCheckingConsumption]  = useState(false);
   const [consumptionResult,      setConsumptionResult]      = useState<ConsumptionResponse | null>(null);
 
+  // ── CINEMATIC Result Polling ─────────────────────────────────────────
+  // Polls /api/ras-amr/resolution/[operationId] until the FFmpeg encoder
+  // deposits the real MP4 into the Vault. Only activated for CINEMATIC
+  // canvases (NARRATIVE/DIRECTORIAL produce DYNAMIC results with no opId).
+  const [renderOperationId,   setRenderOperationId]   = useState<string | null>(null);
+  const [renderPollingStatus, setRenderPollingStatus] = useState<'idle' | 'polling' | 'succeeded' | 'failed'>('idle');
+  const [renderVaultAssetId,  setRenderVaultAssetId]  = useState<string | null>(null);
+
   // ── Fulfillment + Gap + Investigation (per selected goal) ──────────
   const [fulfillmentResult,   setFulfillmentResult]   = useState<Record<string, unknown> | null>(null);
   const [gapResult,           setGapResult]           = useState<Record<string, unknown> | null>(null);
@@ -153,6 +161,27 @@ export default function MakmanAlGhayah() {
     void fetchPurpose();
     void fetchGoals();
   }, []);
+
+  useEffect(() => {
+    if (!renderOperationId || renderPollingStatus !== 'polling') return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const r = await fetch(`/api/ras-amr/resolution/${encodeURIComponent(renderOperationId)}`);
+        if (cancelled) return;
+        const data = await r.json() as { status: string; vaultAssetId?: string };
+        if (data.status === 'succeeded') {
+          setRenderPollingStatus('succeeded');
+          if (data.vaultAssetId) setRenderVaultAssetId(data.vaultAssetId);
+        } else if (data.status === 'failed') {
+          setRenderPollingStatus('failed');
+        }
+      } catch { /* network glitch — next tick retries */ }
+    };
+    void poll();
+    const id = setInterval(() => { void poll(); }, 3000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [renderOperationId, renderPollingStatus]);
 
   const fetchPurpose = async () => {
     try {
@@ -235,7 +264,13 @@ export default function MakmanAlGhayah() {
         setRealDistributionError(result.message ?? result.error ?? 'حدث ما لم يُتوقَّع.');
         return;
       }
-      setRealDistributionResult(result as MakmanFirstCustomerJourneyResult);
+      const journey = result as MakmanFirstCustomerJourneyResult;
+      setRealDistributionResult(journey);
+      const opId = journey.bridgeResult.renderState.activeOperationId;
+      if (opId) {
+        setRenderOperationId(opId);
+        setRenderPollingStatus('polling');
+      }
       void fetchGoals(); // refresh goals list after a new goal is registered
     } catch {
       setRealDistributionError('بوابة التوزيع لا تستجيب.');
@@ -536,6 +571,49 @@ export default function MakmanAlGhayah() {
             )}
             {realDistributionError && (
               <p className="project-status narrative-integrity-violation">{realDistributionError}</p>
+            )}
+
+            {/* ── CINEMATIC Encoding Result ──────────────────────────── */}
+            {/* Polls until the real MP4 is deposited in the Vault.       */}
+            {/* Shown only when the canvas type was CINEMATIC (opId set). */}
+            {realDistributionResult && renderPollingStatus === 'polling' && (
+              <div className="cinematic-result-panel neon-border">
+                <p className="project-status">⏳ الترميز السينمائي جارٍ — يتم بناء ملف MP4 الحقيقي…</p>
+                <p className="makman-capability-hint">ستظهر النتيجة هنا فور اكتمال الترميز — لا حاجة لإعادة التحميل</p>
+              </div>
+            )}
+
+            {realDistributionResult && renderPollingStatus === 'succeeded' && (
+              <div className="cinematic-result-panel neon-border-gold">
+                <p className="project-status">✅ الإنتاج السينمائي مكتمل — ملف MP4 حقيقي مودَع في الخزانة السيادية</p>
+                {renderVaultAssetId && (
+                  <p className="project-status">رقم الأصل: {renderVaultAssetId}</p>
+                )}
+                <div className="action-row">
+                  <button
+                    className="sovereign-deploy-btn"
+                    onClick={() => window.location.assign('/sovereign-vault-palace')}
+                  >
+                    🎬 انتقل إلى القصر السيادي لمشاهدة الفيلم الحقيقي
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {realDistributionResult && renderPollingStatus === 'failed' && (
+              <p className="project-status narrative-integrity-violation">
+                ⚠ فشل الترميز السينمائي — تحقق من سجلات الخادم أو أعد إنتاج التجميع
+              </p>
+            )}
+
+            {/* When canvas type is NARRATIVE or DIRECTORIAL, renderState.status = DYNAMIC  */}
+            {/* — no encoding operation is created, so renderOperationId stays null.         */}
+            {realDistributionResult && renderPollingStatus === 'idle' && !renderOperationId && (
+              <div className="cinematic-result-panel neon-border">
+                <p className="project-status">
+                  ⚡ التجميع مكتمل — هذا مخرج بنيوي ديناميكي يُستهلَك مباشرةً. لا يُنتَج ملف وسائط لهذا النوع من القماش.
+                </p>
+              </div>
             )}
           </section>
         ) : (

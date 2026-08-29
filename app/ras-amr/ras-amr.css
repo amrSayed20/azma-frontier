@@ -509,6 +509,42 @@ body, html {
 }
 
 /* ========================================= */
+/* CANVAS MODE SELECTOR                      */
+/* ========================================= */
+.canvas-mode-selector {
+  padding: 12px 15px;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.canvas-type-select {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--neon-gold-dim);
+  border-radius: 8px;
+  color: var(--text-main);
+  font-family: monospace;
+  font-size: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.canvas-type-select:focus {
+  outline: none;
+  border-color: var(--neon-gold-bright);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.2);
+}
+
+.canvas-mode-reset-note {
+  margin: 0;
+  font-size: 9px;
+  color: rgba(255, 180, 50, 0.7);
+  font-family: monospace;
+}
+
+/* ========================================= */
 /* CONSTITUTIONAL OPERATOR SWITCHER          */
 /* ========================================= */
 .operator-switcher { display: flex; flex-direction: column; padding: 15px; gap: 10px; background: rgba(0,0,0,0.3); }

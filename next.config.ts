@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   experimental: {
     workerThreads: false,
   },
+  outputFileTracingExcludes: {
+    '*': ['./public/renders/**'],
+  },
   async redirects() {
     return [
       // Cloudflare Mobile Redirect sends mobile visitors to /m which has no

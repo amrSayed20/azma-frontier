@@ -97,6 +97,8 @@ export function spawnEncoding(operationId: string, graph: CompiledAssemblyGraph)
   let stderr = '';
   proc.stderr.on('data', (chunk: Buffer) => {
     stderr += chunk.toString();
+    // Cap to avoid RangeError on long-running encodes with verbose FFmpeg output
+    if (stderr.length > 50000) stderr = stderr.slice(-50000);
   });
 
   proc.on('close', (code: number | null) => {
