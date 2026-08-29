@@ -27,6 +27,7 @@ jest.mock('../../../../chambers/ras-al-amr/speech-provider', () => ({
 
 jest.mock('../../../../chambers/ras-al-amr/voice-cloning-provider', () => ({
   cloneVoiceViaProvider: jest.fn(),
+  synthesizeSpeechWithClonedVoice: jest.fn(),
 }));
 
 jest.mock('../../provider-bootstrap', () => ({

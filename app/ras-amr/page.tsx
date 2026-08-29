@@ -990,6 +990,16 @@ export default function RasAmrChamber() {
   // the Creator explicitly marked as a voice, reusing the already-fetched
   // vaultAssets list (no new fetch, no new storage).
   const voiceLibrary = useMemo(() => filterVoiceLibrary(vaultAssets), [vaultAssets]);
+  // Cloned voice identities (STRUCTURAL — provider-backed, not playable audio).
+  const clonedVoiceIdentities = useMemo(
+    () => voiceLibrary.filter((v) => v.metadata.isClonedVoice === true),
+    [voiceLibrary],
+  );
+  // Real audio voices — uploaded or TTS-generated — assignable to Direction Nodes.
+  const audioVoiceAssets = useMemo(
+    () => voiceLibrary.filter((v) => v.metadata.isClonedVoice !== true),
+    [voiceLibrary],
+  );
 
   const [ttsText, setTtsText] = useState<string>('');
   const [ttsVoice, setTtsVoice] = useState<string>(TTS_VOICE_OPTIONS[0]);
@@ -1029,11 +1039,17 @@ export default function RasAmrChamber() {
   // MINISTRY III — VOICE CLONING ENGINE: clone a real voice from the Voice Library.
   const [cloneSourceVoiceId, setCloneSourceVoiceId] = useState<string>('');
   const [cloneVoiceNameInput, setCloneVoiceNameInput] = useState<string>('');
+  const [cloneConsentConfirmed, setCloneConsentConfirmed] = useState<boolean>(false);
   const [isVoiceCloning, setIsVoiceCloning] = useState<boolean>(false);
   const [voiceCloneError, setVoiceCloneError] = useState<string | null>(null);
+  // MINISTRY III — SYNTHESIS: generate new speech using a cloned voice identity.
+  const [clonedVoiceSynthTarget, setClonedVoiceSynthTarget] = useState<string>('');
+  const [clonedVoiceSynthText, setClonedVoiceSynthText] = useState<string>('');
+  const [isGeneratingClonedSpeech, setIsGeneratingClonedSpeech] = useState<boolean>(false);
+  const [clonedSpeechError, setClonedSpeechError] = useState<string | null>(null);
 
   const handleCloneVoice = async () => {
-    if (!cloneSourceVoiceId) return;
+    if (!cloneSourceVoiceId || !cloneConsentConfirmed) return;
     setIsVoiceCloning(true);
     setVoiceCloneError(null);
     try {
@@ -1042,6 +1058,7 @@ export default function RasAmrChamber() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           referenceAssetId: cloneSourceVoiceId,
+          consentConfirmed: true,
           ...(cloneVoiceNameInput.trim() ? { voiceDisplayName: cloneVoiceNameInput.trim() } : {}),
         }),
       });
@@ -1053,10 +1070,38 @@ export default function RasAmrChamber() {
       setVaultAssets((prev) => [...prev, result.asset]);
       setCloneSourceVoiceId('');
       setCloneVoiceNameInput('');
+      setCloneConsentConfirmed(false);
     } catch {
       setVoiceCloneError('بوابة الاستنساخ لا تستجيب.');
     } finally {
       setIsVoiceCloning(false);
+    }
+  };
+
+  const handleGenerateClonedSpeech = async () => {
+    if (!clonedVoiceSynthTarget || !clonedVoiceSynthText.trim()) return;
+    setIsGeneratingClonedSpeech(true);
+    setClonedSpeechError(null);
+    try {
+      const response = await fetch('/api/vault/assets/generate-cloned-speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clonedVoiceAssetId: clonedVoiceSynthTarget,
+          text: clonedVoiceSynthText.trim(),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || result.status !== 'succeeded') {
+        setClonedSpeechError(result.message ?? 'فشل توليد الكلام بالصوت المستنسَخ.');
+        return;
+      }
+      setVaultAssets((prev) => [...prev, result.asset]);
+      setClonedVoiceSynthText('');
+    } catch {
+      setClonedSpeechError('بوابة التوليد لا تستجيب.');
+    } finally {
+      setIsGeneratingClonedSpeech(false);
     }
   };
 
@@ -1876,11 +1921,11 @@ export default function RasAmrChamber() {
                               className="narrative-node-voice"
                               value={(node.customDirectives?.voice as VoiceAssignmentDirective | undefined)?.vaultAssetId ?? ''}
                               onChange={(e) => handleAssignVoiceToNode(node.nodeId, e.target.value)}
-                              disabled={node.isLocked || voiceLibrary.length === 0}
+                              disabled={node.isLocked || audioVoiceAssets.length === 0}
                               aria-label="الصوت المُسنَد لهذه العقدة"
                             >
                               <option value="">بلا صوت مُسنَد</option>
-                              {voiceLibrary.map((voice) => (
+                              {audioVoiceAssets.map((voice) => (
                                 <option key={voice.assetId} value={voice.assetId}>
                                   {voice.metadata.voiceDisplayName ?? voice.assetId}
                                 </option>
@@ -2376,8 +2421,8 @@ export default function RasAmrChamber() {
               {ttsError && <p className="spatial-current-state narrative-integrity-violation">{ttsError}</p>}
             </div>
 
-            {/* MINISTRY III — VOICE CLONING ENGINE: clone an existing Voice Library entry using a real Launch Provider. */}
-            {voiceLibrary.length > 0 && (
+            {/* MINISTRY III — VOICE CLONING ENGINE: clone an existing real audio voice. Only real audio voices (not cloned identities) are eligible as reference sources. */}
+            {audioVoiceAssets.length > 0 && (
               <div className="hud-tts-row">
                 <select
                   className="hud-tts-voice-select"
@@ -2387,7 +2432,7 @@ export default function RasAmrChamber() {
                   aria-label="الصوت المرجعي للاستنساخ"
                 >
                   <option value="">اختر صوتاً مرجعياً للاستنساخ…</option>
-                  {voiceLibrary.map((voice) => (
+                  {audioVoiceAssets.map((voice) => (
                     <option key={voice.assetId} value={voice.assetId}>
                       {String(voice.metadata.voiceDisplayName ?? voice.assetId)}
                     </option>
@@ -2397,20 +2442,67 @@ export default function RasAmrChamber() {
                   <input
                     type="text"
                     className="hud-voice-name-input"
-                    placeholder="اسم الصوت المستنسَخ (اختياري)"
+                    placeholder="اسم الهوية المستنسَخة (اختياري)"
                     value={cloneVoiceNameInput}
                     onChange={(e) => setCloneVoiceNameInput(e.target.value)}
                     disabled={isVoiceCloning}
                   />
+                  <label className="hud-consent-label" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.4rem', opacity: isVoiceCloning ? 0.5 : 1 }}>
+                    <input
+                      type="checkbox"
+                      checked={cloneConsentConfirmed}
+                      onChange={(e) => setCloneConsentConfirmed(e.target.checked)}
+                      disabled={isVoiceCloning}
+                    />
+                    أؤكد أن لديّ إذناً بإنشاء هوية صوتية من هذا التسجيل
+                  </label>
                   <button
                     className="action-trigger-btn"
                     onClick={handleCloneVoice}
-                    disabled={isVoiceCloning || !cloneSourceVoiceId}
+                    disabled={isVoiceCloning || !cloneSourceVoiceId || !cloneConsentConfirmed}
                   >
                     {isVoiceCloning ? '⏳ الاستنساخ جارٍ…' : '🔮 استنسخ صوتاً حقيقياً'}
                   </button>
                 </div>
                 {voiceCloneError && <p className="spatial-current-state narrative-integrity-violation">{voiceCloneError}</p>}
+              </div>
+            )}
+
+            {/* MINISTRY III — SYNTHESIS: generate new speech using a cloned voice identity. The cloned identity appears here, not in the node assignment dropdown. */}
+            {clonedVoiceIdentities.length > 0 && (
+              <div className="hud-tts-row">
+                <select
+                  className="hud-tts-voice-select"
+                  value={clonedVoiceSynthTarget}
+                  onChange={(e) => setClonedVoiceSynthTarget(e.target.value)}
+                  disabled={isGeneratingClonedSpeech}
+                  aria-label="الهوية الصوتية المستنسَخة للتوليد"
+                >
+                  <option value="">اختر هوية صوتية مستنسَخة…</option>
+                  {clonedVoiceIdentities.map((v) => (
+                    <option key={v.assetId} value={v.assetId}>
+                      {String(v.metadata.voiceDisplayName ?? v.assetId)} — هوية مستنسَخة
+                    </option>
+                  ))}
+                </select>
+                <div className="hud-tts-controls">
+                  <textarea
+                    className="hud-tts-text-input"
+                    placeholder="النص الجديد المراد توليده بالصوت المستنسَخ…"
+                    value={clonedVoiceSynthText}
+                    onChange={(e) => setClonedVoiceSynthText(e.target.value)}
+                    disabled={isGeneratingClonedSpeech}
+                    rows={2}
+                  />
+                  <button
+                    className="action-trigger-btn"
+                    onClick={handleGenerateClonedSpeech}
+                    disabled={isGeneratingClonedSpeech || !clonedVoiceSynthTarget || !clonedVoiceSynthText.trim()}
+                  >
+                    {isGeneratingClonedSpeech ? '⏳ الكلام يُولَّد…' : '🗣 توليد كلام بالهوية المستنسَخة'}
+                  </button>
+                </div>
+                {clonedSpeechError && <p className="spatial-current-state narrative-integrity-violation">{clonedSpeechError}</p>}
               </div>
             )}
 

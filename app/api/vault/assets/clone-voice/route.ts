@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     const costEngine = new AzmaUnitCostEngine();
     let costEstimate;
     try {
-      costEstimate = costEngine.estimate('voice-cloning', 'openai');
+      costEstimate = costEngine.estimate('voice-cloning', 'elevenlabs');
     } catch (err) {
       if (err instanceof CostUnavailableError) {
         return NextResponse.json(
@@ -119,6 +119,14 @@ export async function POST(request: NextRequest) {
 
   const referenceAssetId = (body as { referenceAssetId?: unknown })?.referenceAssetId;
   const voiceDisplayNameRaw = (body as { voiceDisplayName?: unknown })?.voiceDisplayName;
+  const consentConfirmed = (body as { consentConfirmed?: unknown })?.consentConfirmed;
+
+  if (consentConfirmed !== true) {
+    return NextResponse.json(
+      { status: 'failed', reason: 'consent-required', message: 'You must confirm that you are authorized to clone this voice.' },
+      { status: 400 },
+    );
+  }
 
   if (typeof referenceAssetId !== 'string' || referenceAssetId.trim().length === 0) {
     return NextResponse.json(
@@ -209,12 +217,17 @@ export async function POST(request: NextRequest) {
   // SovereignVaultManager.depositAsset() boundary every other real asset
   // (Qiyamah generations, Creator uploads, Ministry II TTS) goes through.
   try {
+    // A cloned voice identity is NOT an audio file — it is a provider-backed
+    // voice profile. Depositing it as STRUCTURAL with a semantic provider URI
+    // (not the reference audio path) prevents the encoder from treating it as
+    // playable audio. The Creator generates real speech separately via
+    // POST /api/vault/assets/generate-cloned-speech.
     const asset = await vaultManager.depositAsset({
       operationId: referenceAsset.assetId,
       subscriberTenantId: session.creatorId,
       capabilityTarget: CapabilityTarget.AUDIO,
-      assetFamily: AssetFamily.MEDIA,
-      secureStorageUri: referenceAsset.secureStorageUri,
+      assetFamily: AssetFamily.STRUCTURAL,
+      secureStorageUri: `provider://elevenlabs-voice-clone/${cloneResult.voiceProviderId}`,
       metadata: {
         isVoiceAsset: true,
         isClonedVoice: true,
@@ -228,7 +241,7 @@ export async function POST(request: NextRequest) {
     if (reservationId) {
       try {
         const costEngine = new AzmaUnitCostEngine();
-        const cost = costEngine.estimate('voice-cloning', 'openai').estimatedAzmaUnits;
+        const cost = costEngine.estimate('voice-cloning', 'elevenlabs').estimatedAzmaUnits;
         new CreatorCreditRepository(db).settle(reservationId, cost);
       } catch { /* non-fatal */ }
     }

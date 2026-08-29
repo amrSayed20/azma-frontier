@@ -9,7 +9,7 @@
 const mockFetch = jest.fn();
 global.fetch = mockFetch as typeof fetch;
 
-import { cloneVoiceViaProvider } from '../voice-cloning-provider';
+import { cloneVoiceViaProvider, synthesizeSpeechWithClonedVoice } from '../voice-cloning-provider';
 
 describe('Ministry III — Voice Cloning: Launch Provider wrapper', () => {
   const originalApiKey = process.env.VOICE_CLONING_API_KEY;
@@ -89,5 +89,97 @@ describe('Ministry III — Voice Cloning: Launch Provider wrapper', () => {
     const [, options] = mockFetch.mock.calls[0] as [string, RequestInit];
     const form = options.body as FormData;
     expect(form.get('name')).toBe('Imperial Commander');
+  });
+});
+
+// ─── SYNTHESIS ────────────────────────────────────────────────────────────────
+
+describe('Ministry III — Voice Cloning: synthesizeSpeechWithClonedVoice', () => {
+  const originalApiKey = process.env.VOICE_CLONING_API_KEY;
+
+  beforeEach(() => {
+    mockFetch.mockReset();
+    process.env.VOICE_CLONING_API_KEY = 'test-cloning-key';
+  });
+
+  afterAll(() => {
+    process.env.VOICE_CLONING_API_KEY = originalApiKey;
+  });
+
+  it('throws clearly when VOICE_CLONING_API_KEY is absent', async () => {
+    delete process.env.VOICE_CLONING_API_KEY;
+    await expect(
+      synthesizeSpeechWithClonedVoice('Hello world', 'voice-id-123'),
+    ).rejects.toThrow(/VOICE_CLONING_API_KEY/);
+  });
+
+  it('calls /v1/text-to-speech/{voice_id} with the API key and returns audio bytes', async () => {
+    const fakeContent = 'MP3_AUDIO_BYTES';
+    // Use a fresh ArrayBuffer (not a Buffer's .buffer slice) to avoid Node.js
+    // shared-pool padding, ensuring the round-trip assertion is exact.
+    const fakeArrayBuffer = new TextEncoder().encode(fakeContent).buffer;
+    const fakeAudio = Buffer.from(fakeArrayBuffer);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => fakeArrayBuffer,
+      text: async () => '',
+    });
+
+    const result = await synthesizeSpeechWithClonedVoice(
+      'المملكة السيادية تتكلم بصوت جديد',
+      'pNInz6obpgDQGcFmaJgB',
+    );
+
+    expect(result.bytes).toEqual(fakeAudio);
+    expect(result.mimeType).toBe('audio/mpeg');
+
+    const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
+    expect(url).toContain('/v1/text-to-speech/pNInz6obpgDQGcFmaJgB');
+    expect(options.method).toBe('POST');
+    expect(options.headers['xi-api-key']).toBe('test-cloning-key');
+    expect(options.headers['Content-Type']).toBe('application/json');
+
+    const body = JSON.parse(options.body as string);
+    expect(body.text).toBe('المملكة السيادية تتكلم بصوت جديد');
+    expect(body.model_id).toBe('eleven_multilingual_v2');
+  });
+
+  it('URL-encodes the voice_id in the endpoint path', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => Buffer.from('audio').buffer,
+      text: async () => '',
+    });
+
+    await synthesizeSpeechWithClonedVoice('text', 'voice/with/slashes');
+
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).not.toContain('voice/with/slashes');
+    expect(url).toContain('voice%2Fwith%2Fslashes');
+  });
+
+  it('throws on provider HTTP error with status code in message', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 404,
+      text: async () => 'voice not found',
+      arrayBuffer: async () => new ArrayBuffer(0),
+    });
+
+    await expect(
+      synthesizeSpeechWithClonedVoice('text', 'nonexistent-voice'),
+    ).rejects.toThrow(/404/);
+  });
+
+  it('throws when provider returns empty audio bytes', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(0),
+      text: async () => '',
+    });
+
+    await expect(
+      synthesizeSpeechWithClonedVoice('text', 'voice-id'),
+    ).rejects.toThrow(/no audio data/);
   });
 });

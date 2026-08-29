@@ -23,6 +23,11 @@ export interface ProviderVoiceCloneResult {
   readonly voiceProviderId: string;
 }
 
+export interface ProviderSpeechFromCloneResult {
+  readonly bytes: Buffer;
+  readonly mimeType: string;
+}
+
 /**
  * Sends a reference audio sample to the Launch Provider and returns the
  * provider-issued voice identity for the resulting clone. The caller is
@@ -65,4 +70,50 @@ export async function cloneVoiceViaProvider(
   }
 
   return { voiceProviderId: data.voice_id };
+}
+
+/**
+ * Calls ElevenLabs /v1/text-to-speech/{voice_id} to synthesize new speech
+ * using a previously cloned voice identity. The same VOICE_CLONING_API_KEY
+ * is used for both cloning and synthesis — no additional credential required.
+ *
+ * The resulting audio is NOT the reference recording replayed. ElevenLabs
+ * synthesizes new speech in the timbre and prosody of the cloned voice,
+ * speaking whatever text the Creator provides.
+ */
+export async function synthesizeSpeechWithClonedVoice(
+  text: string,
+  voiceId: string,
+): Promise<ProviderSpeechFromCloneResult> {
+  const apiKey = process.env.VOICE_CLONING_API_KEY;
+  if (!apiKey) {
+    throw new Error('VOICE_CLONING_API_KEY is not configured — the Launch Provider cannot be reached.');
+  }
+
+  const response = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`,
+    {
+      method: 'POST',
+      headers: {
+        'xi-api-key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text, model_id: 'eleven_multilingual_v2' }),
+    },
+  );
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw new Error(
+      `The Launch Provider returned an error (${response.status}): ${detail || 'unknown error'}`,
+    );
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  const bytes = Buffer.from(arrayBuffer);
+  if (bytes.length === 0) {
+    throw new Error('The Launch Provider returned no audio data.');
+  }
+
+  return { bytes, mimeType: 'audio/mpeg' };
 }

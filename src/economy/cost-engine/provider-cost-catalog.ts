@@ -257,17 +257,31 @@ export const CURRENT_PROVIDER_COST_CATALOG: ProviderCostCatalog = {
       catalogVersion: '0.1.0',
       effectiveFrom: 1753574400000,
     },
-    // ── OPENAI VOICE CLONING ───────────────────────────────────────────────────
-    // Voice cloning via OpenAI not yet integrated in production pipeline.
+    // ── ELEVENLABS — VOICE CLONING ────────────────────────────────────────────
+    // Real provider: ElevenLabs /v1/voices/add (VOICE_CLONING_API_KEY).
+    // Creates a voice identity. Cost pending confirmation against ElevenLabs plan.
     {
-      gatewayId: 'openai',
+      gatewayId: 'elevenlabs',
       capabilityTarget: 'voice-cloning',
       azmaUnitsPerUnit: 0,
-      unitDescription: '1 voice clone generation',
+      unitDescription: '1 voice clone identity creation',
       availability: 'pending-discovery',
-      catalogVersion: '0.1.0',
+      catalogVersion: '0.2.0',
       effectiveFrom: 1753574400000,
-      notes: 'Voice cloning provider not yet integrated. Cost pending confirmation.',
+      notes: 'ElevenLabs /v1/voices/add. Cost varies by plan. AZMA Unit conversion pending.',
+    },
+    // ── ELEVENLABS — CLONED VOICE SYNTHESIS (TTS with cloned voice_id) ────────
+    // Real provider: ElevenLabs /v1/text-to-speech/{voice_id} (same VOICE_CLONING_API_KEY).
+    // Generates new speech in the cloned voice's timbre. Cost ~$0.30/1000 chars.
+    {
+      gatewayId: 'elevenlabs',
+      capabilityTarget: 'text-to-speech',
+      azmaUnitsPerUnit: 0,
+      unitDescription: '1 cloned voice speech generation (up to 4096 characters)',
+      availability: 'pending-discovery',
+      catalogVersion: '0.2.0',
+      effectiveFrom: 1753574400000,
+      notes: 'ElevenLabs /v1/text-to-speech/{voice_id}. ~$0.30/1000 chars on Creator tier. AZMA Unit conversion pending.',
     },
   ],
 };
