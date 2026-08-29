@@ -18,7 +18,11 @@
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { CompiledAssemblyGraph } from '../../../../chambers/ras-al-amr/pre-publishing-boundary';
+import type {
+  CompiledAssemblyGraph,
+  CompiledNodeMix,
+  CompiledTrackMix,
+} from '../../../../chambers/ras-al-amr/pre-publishing-boundary';
 import type { HydratedAssemblyTrack } from '../../../../chambers/ras-al-amr/vault-rehydration-bridge';
 
 // ==========================================
@@ -136,10 +140,13 @@ export function spawnEncoding(
 interface NodeEntry {
   path: string;
   kind: 'image' | 'audio';
-  duration: number;
-  startSec: number;
+  duration: number;            // playDurationSeconds (declared slot on timeline)
+  startSec: number;            // globalStartTimeSeconds
   nodeId: string;
   trackId: string;
+  trimStart: number;           // VI-B: effective trim start in source media (seconds)
+  trimEnd: number;             // VI-B: effective trim end in source media (seconds)
+  effectiveDuration: number;   // VI-B: trimEnd - trimStart (always ≥ 0.001)
 }
 
 function buildFfmpegArgs(
@@ -178,10 +185,13 @@ function buildFfmpegArgs(
       const duration = node.temporal?.playDurationSeconds ?? 5;
       const startSec = node.temporal?.globalStartTimeSeconds ?? 0;
 
+      // VI-B: compute safe trim bounds from TemporalDirective
+      const { trimStart, trimEnd, effectiveDuration } = computeTrimBounds(node.temporal, duration);
+
       if (isImageUri(uri)) {
-        imageInputs.push({ path: assetPath, kind: 'image', duration, startSec, nodeId: node.nodeId, trackId: track.trackId });
+        imageInputs.push({ path: assetPath, kind: 'image', duration, startSec, nodeId: node.nodeId, trackId: track.trackId, trimStart, trimEnd, effectiveDuration });
       } else if (isAudioUri(uri)) {
-        audioInputs.push({ path: assetPath, kind: 'audio', duration, startSec, nodeId: node.nodeId, trackId: track.trackId });
+        audioInputs.push({ path: assetPath, kind: 'audio', duration, startSec, nodeId: node.nodeId, trackId: track.trackId, trimStart, trimEnd, effectiveDuration });
       }
       // Text/structural nodes (TXT etc.) carry no media — silently skipped
     }
@@ -210,6 +220,9 @@ function buildFfmpegArgs(
       startSec: imgEntry.startSec,
       nodeId: imgEntry.nodeId,
       trackId: imgEntry.trackId,
+      trimStart: imgEntry.trimStart,
+      trimEnd: imgEntry.trimEnd,
+      effectiveDuration: imgEntry.effectiveDuration,
     });
   }
 
@@ -223,12 +236,12 @@ function buildFfmpegArgs(
   // Sort image inputs by their position on the master timeline
   imageInputs.sort((a, b) => a.startSec - b.startSec);
 
-  // Total duration: prefer compiled metadata; fall back to max node end time
+  // Total duration: prefer compiled metadata; fall back to max effective node end time (VI-B)
   const totalDuration =
     graph.metadata.estimatedDurationSeconds ??
     Math.max(
-      ...imageInputs.map((n) => n.startSec + n.duration),
-      ...audioInputs.map((n) => n.startSec + n.duration),
+      ...imageInputs.map((n) => n.startSec + n.effectiveDuration),
+      ...audioInputs.map((n) => n.startSec + n.effectiveDuration),
       1,
     );
 
@@ -243,9 +256,9 @@ function buildFfmpegArgs(
 
   // --- INPUTS ---
 
-  // Still-image inputs: loop each frame for exactly its playDurationSeconds
-  imageInputs.forEach(({ path, duration }) => {
-    args.push('-loop', '1', '-t', String(duration), '-i', path);
+  // Still-image inputs: loop each frame for exactly its effectiveDuration (VI-B: respects trim)
+  imageInputs.forEach(({ path, effectiveDuration }) => {
+    args.push('-loop', '1', '-t', String(effectiveDuration), '-i', path);
   });
 
   // Audio inputs: standard file read
@@ -282,7 +295,7 @@ function buildFfmpegArgs(
     filterParts.push('[vraw]copy[vout]');
   }
 
-  // Audio chain
+  // Audio chain — VI-B: trim, fade, pan now consumed via buildAudioNodeFilter()
   let finalAudioLabel: string;
   if (audioInputs.length === 0) {
     // No audio nodes — generate silent stereo audio for the full duration
@@ -292,27 +305,18 @@ function buildFfmpegArgs(
     const inp = audioInputs[0];
     const nodeMix = graph.mixPlan.nodeMixes.find((m) => m.nodeId === inp.nodeId);
     const trackMix = graph.mixPlan.trackMixes.find((m) => m.trackId === inp.trackId);
-    const volDb = (nodeMix?.isMuted ? -120 : (nodeMix?.volumeDb ?? 0)) +
-                  (trackMix?.isMuted ? -120 : (trackMix?.trackVolumeDb ?? 0));
-    const volLinear = Math.pow(10, Math.max(volDb, -120) / 20);
-    const startMs = Math.round(inp.startSec * 1000);
     filterParts.push(
-      `[${audioInputStart}:a]adelay=${startMs}|${startMs},` +
-        `volume=${volLinear.toFixed(6)},atrim=0:${totalDuration},asetpts=PTS-STARTPTS[aout]`,
+      buildAudioNodeFilter(inp, audioInputStart, totalDuration, nodeMix, trackMix) + '[aout]',
     );
     finalAudioLabel = '[aout]';
   } else {
-    // Multiple audio inputs — delay + volume per node, then amix
+    // Multiple audio inputs — each gets full VI-B fidelity treatment, then amix
     audioInputs.forEach((inp, i) => {
       const nodeIdx = audioInputStart + i;
       const nodeMix = graph.mixPlan.nodeMixes.find((m) => m.nodeId === inp.nodeId);
       const trackMix = graph.mixPlan.trackMixes.find((m) => m.trackId === inp.trackId);
-      const volDb = (nodeMix?.isMuted ? -120 : (nodeMix?.volumeDb ?? 0)) +
-                    (trackMix?.isMuted ? -120 : (trackMix?.trackVolumeDb ?? 0));
-      const volLinear = Math.pow(10, Math.max(volDb, -120) / 20);
-      const startMs = Math.round(inp.startSec * 1000);
       filterParts.push(
-        `[${nodeIdx}:a]adelay=${startMs}|${startMs},volume=${volLinear.toFixed(6)}[a${i}]`,
+        buildAudioNodeFilter(inp, nodeIdx, totalDuration, nodeMix, trackMix) + `[a${i}]`,
       );
     });
     const amixRefs = audioInputs.map((_, i) => `[a${i}]`).join('');
@@ -346,7 +350,103 @@ function buildFfmpegArgs(
 }
 
 // ==========================================
-// 6. SRT FILE WRITER
+// 6. VI-B TEMPORAL & AUDIO FIDELITY HELPERS
+// ==========================================
+
+/**
+ * Computes safe trim bounds from a TemporalDirective.
+ * Clamps to [0, playDurationSeconds] and guarantees effectiveDuration ≥ 0.001.
+ * When trimStartSeconds/trimEndSeconds are absent, returns the full slot duration.
+ */
+function computeTrimBounds(
+  temporal: { trimStartSeconds?: number; trimEndSeconds?: number } | undefined,
+  playDurationSeconds: number,
+): { trimStart: number; trimEnd: number; effectiveDuration: number } {
+  const trimStart = Math.max(0, temporal?.trimStartSeconds ?? 0);
+  const rawTrimEnd = temporal?.trimEndSeconds ?? playDurationSeconds;
+  const trimEnd = Math.max(trimStart + 0.001, Math.min(rawTrimEnd, playDurationSeconds));
+  return { trimStart, trimEnd, effectiveDuration: trimEnd - trimStart };
+}
+
+/**
+ * Builds the FFmpeg filter-complex expression for one audio input.
+ * Consumes VI-B directives in order: trim → fade-in → fade-out → delay → volume → pan → safety-trim.
+ * Returns the string starting with `[inputIdx:a]` and ending before the output label.
+ * Caller appends the label: `[aout]` or `[a0]` etc.
+ *
+ * Safe defaults when directives are absent:
+ *   trim: full range (trimStart=0, trimEnd=effectiveDuration) — no-op
+ *   fade: 0 → no afade filter inserted
+ *   pan: 0 → no pan filter inserted
+ *   volume: 0 dB → 1.000000 (unity)
+ */
+function buildAudioNodeFilter(
+  inp: NodeEntry,
+  inputIdx: number,
+  totalDuration: number,
+  nodeMix: CompiledNodeMix | undefined,
+  trackMix: CompiledTrackMix | undefined,
+): string {
+  // Volume (unchanged from pre-VI-B)
+  const volDb =
+    (nodeMix?.isMuted ? -120 : (nodeMix?.volumeDb ?? 0)) +
+    (trackMix?.isMuted ? -120 : (trackMix?.trackVolumeDb ?? 0));
+  const volLinear = Math.pow(10, Math.max(volDb, -120) / 20);
+  const startMs = Math.round(inp.startSec * 1000);
+
+  // VI-B: Pan — stereo balance; skip filter entirely when neutral
+  const panCenter = nodeMix?.panCenter ?? 0;
+
+  // VI-B: Fades — clamp so fadeIn + fadeOut ≤ effectiveDuration (prevents silence gap)
+  const rawFadeIn = Math.max(0, nodeMix?.fadeInSeconds ?? 0);
+  const rawFadeOut = Math.max(0, nodeMix?.fadeOutSeconds ?? 0);
+  const totalFadeRequest = rawFadeIn + rawFadeOut;
+  const fadeScale =
+    totalFadeRequest > 0 && totalFadeRequest > inp.effectiveDuration
+      ? inp.effectiveDuration / totalFadeRequest
+      : 1;
+  const fadeIn = rawFadeIn * fadeScale;
+  const fadeOut = rawFadeOut * fadeScale;
+
+  const parts: string[] = [];
+
+  // Step 1: Trim source to [trimStart, trimEnd] and reset timestamps
+  parts.push(`atrim=${inp.trimStart}:${inp.trimEnd},asetpts=PTS-STARTPTS`);
+
+  // Step 2: Fade-in from the trimmed content start
+  if (fadeIn > 0.0001) {
+    parts.push(`afade=t=in:st=0:d=${fadeIn.toFixed(6)}`);
+  }
+
+  // Step 3: Fade-out ending at the trimmed content end
+  if (fadeOut > 0.0001) {
+    const fadeOutStart = Math.max(0, inp.effectiveDuration - fadeOut);
+    parts.push(`afade=t=out:st=${fadeOutStart.toFixed(6)}:d=${fadeOut.toFixed(6)}`);
+  }
+
+  // Step 4: Position on the global timeline (unchanged VI-A behavior)
+  parts.push(`adelay=${startMs}|${startMs}`);
+
+  // Step 5: Volume (unchanged VI-A behavior)
+  parts.push(`volume=${volLinear.toFixed(6)}`);
+
+  // Step 6: Stereo pan — normalise to stereo first so mono sources work safely
+  if (Math.abs(panCenter) > 0.001) {
+    const leftGain = (panCenter <= 0 ? 1.0 : 1.0 - panCenter).toFixed(6);
+    const rightGain = (panCenter >= 0 ? 1.0 : 1.0 + panCenter).toFixed(6);
+    parts.push(
+      `aformat=channel_layouts=stereo,pan=stereo|c0=${leftGain}*c0|c1=${rightGain}*c1`,
+    );
+  }
+
+  // Step 7: Safety trim and re-sync (unchanged VI-A behavior)
+  parts.push(`atrim=0:${totalDuration},asetpts=PTS-STARTPTS`);
+
+  return `[${inputIdx}:a]${parts.join(',')}`;
+}
+
+// ==========================================
+// 7. SRT FILE WRITER
 // ==========================================
 
 function writeSrtFile(operationId: string, graph: CompiledAssemblyGraph): string {

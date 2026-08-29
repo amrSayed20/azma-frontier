@@ -52,6 +52,8 @@ function makeImageGraph(overrides: {
   imageUri?: string;
   startSec?: number;
   durationSec?: number;
+  trimStartSeconds?: number;  // VI-B
+  trimEndSeconds?: number;    // VI-B
   mixPlan?: CompiledAssemblyGraph['mixPlan'];
 } = {}): CompiledAssemblyGraph {
   const nodeId = overrides.nodeId ?? 'img-1';
@@ -59,6 +61,8 @@ function makeImageGraph(overrides: {
   const imageUri = overrides.imageUri ?? '/generated-assets/img.png';
   const startSec = overrides.startSec ?? 0;
   const durationSec = overrides.durationSec ?? 5;
+  const trimStartSeconds = overrides.trimStartSeconds ?? 0;         // VI-B
+  const trimEndSeconds = overrides.trimEndSeconds ?? durationSec;   // VI-B
 
   return {
     compilationId: 'comp-enc-1',
@@ -87,8 +91,8 @@ function makeImageGraph(overrides: {
               temporal: {
                 globalStartTimeSeconds: startSec,
                 playDurationSeconds: durationSec,
-                trimStartSeconds: 0,
-                trimEndSeconds: durationSec,
+                trimStartSeconds,    // VI-B: configurable via overrides
+                trimEndSeconds,      // VI-B: configurable via overrides
               },
               spatial: { positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: 0 },
               runtimeAsset: {
@@ -228,5 +232,153 @@ describe('VI-A — voice paths reach FFmpeg -i arguments', () => {
     const filterStr = ffmpegArgs[filterIdx + 1];
     // Linear volume for -6 dB ≈ 0.501187 — the encoder computes this
     expect(filterStr).toMatch(/volume=0\.50/);
+  });
+});
+
+// ============================================================
+// VI-B — Temporal & Audio Fidelity
+// ============================================================
+
+// Helper: extract filter_complex string from mocked FFmpeg args
+function getFilterComplex(args: string[]): string {
+  const idx = args.indexOf('-filter_complex');
+  return idx >= 0 ? (args[idx + 1] ?? '') : '';
+}
+
+// Helper: find the -t value for the image loop input (the -t that precedes the first -i)
+function getImageLoopDuration(args: string[]): string | undefined {
+  const iIdx = args.indexOf('-i');
+  if (iIdx < 0) return undefined;
+  // Search backward from the -i for the nearest -t
+  for (let j = iIdx - 1; j >= 0; j--) {
+    if (args[j] === '-t') return args[j + 1];
+  }
+  return undefined;
+}
+
+describe('VI-B — Temporal & Audio Fidelity', () => {
+  it('A — trimStartSeconds=2 on a 5s slot → image loop duration is 3s (effectiveDuration)', () => {
+    const graph = makeImageGraph({ nodeId: 'img-a', durationSec: 5, trimStartSeconds: 2, trimEndSeconds: 5 });
+    spawnEncoding('op-vib-a', graph);
+    const args = mockSpawn.mock.calls[0][1] as string[];
+    expect(getImageLoopDuration(args)).toBe('3');
+  });
+
+  it('B — trimEndSeconds=3 on a 5s slot → image loop duration is 3s (effectiveDuration)', () => {
+    const graph = makeImageGraph({ nodeId: 'img-b', durationSec: 5, trimStartSeconds: 0, trimEndSeconds: 3 });
+    spawnEncoding('op-vib-b', graph);
+    const args = mockSpawn.mock.calls[0][1] as string[];
+    expect(getImageLoopDuration(args)).toBe('3');
+  });
+
+  it('C — panCenter=0.5 produces pan filter with correct left/right gains in filter_complex', () => {
+    const nodeId = 'img-c';
+    const graph = makeImageGraph({
+      nodeId,
+      mixPlan: {
+        nodeMixes: [{ nodeId, trackId: 'track-1', volumeDb: 0, panCenter: 0.5, isMuted: false }],
+        trackMixes: [{ trackId: 'track-1', trackVolumeDb: 0, isMuted: false }],
+      },
+    });
+    const voicePaths = new Map([[nodeId, '/uploads/voice-c.mp3']]);
+    spawnEncoding('op-vib-c', graph, voicePaths);
+    const fc = getFilterComplex(mockSpawn.mock.calls[0][1] as string[]);
+    // panCenter=0.5 → leftGain = 1 - 0.5 = 0.5, rightGain = 1.0
+    expect(fc).toContain('aformat=channel_layouts=stereo');
+    expect(fc).toContain('pan=stereo|c0=0.500000*c0|c1=1.000000*c1');
+  });
+
+  it('D — fadeInSeconds=1 produces afade=t=in:st=0:d=1.000000 in audio filter chain', () => {
+    const nodeId = 'img-d';
+    const graph = makeImageGraph({
+      nodeId,
+      mixPlan: {
+        nodeMixes: [{ nodeId, trackId: 'track-1', volumeDb: 0, panCenter: 0, isMuted: false, fadeInSeconds: 1 }],
+        trackMixes: [{ trackId: 'track-1', trackVolumeDb: 0, isMuted: false }],
+      },
+    });
+    const voicePaths = new Map([[nodeId, '/uploads/voice-d.mp3']]);
+    spawnEncoding('op-vib-d', graph, voicePaths);
+    const fc = getFilterComplex(mockSpawn.mock.calls[0][1] as string[]);
+    expect(fc).toContain('afade=t=in:st=0:d=1.000000');
+  });
+
+  it('E — fadeOutSeconds=1 on 5s clip → afade=t=out:st=4.000000:d=1.000000', () => {
+    const nodeId = 'img-e';
+    const graph = makeImageGraph({
+      nodeId,
+      durationSec: 5,
+      mixPlan: {
+        nodeMixes: [{ nodeId, trackId: 'track-1', volumeDb: 0, panCenter: 0, isMuted: false, fadeOutSeconds: 1 }],
+        trackMixes: [{ trackId: 'track-1', trackVolumeDb: 0, isMuted: false }],
+      },
+    });
+    const voicePaths = new Map([[nodeId, '/uploads/voice-e.mp3']]);
+    spawnEncoding('op-vib-e', graph, voicePaths);
+    const fc = getFilterComplex(mockSpawn.mock.calls[0][1] as string[]);
+    // effectiveDuration=5, fadeOutStart = 5 - 1 = 4
+    expect(fc).toContain('afade=t=out:st=4.000000:d=1.000000');
+  });
+
+  it('F — undefined trim/fade/pan: no afade or pan filter; image -t unchanged; silent audio generated', () => {
+    const graph = makeImageGraph({ nodeId: 'img-f' });
+    spawnEncoding('op-vib-f', graph);
+    const args = mockSpawn.mock.calls[0][1] as string[];
+    const fc = getFilterComplex(args);
+    expect(fc).not.toContain('afade');
+    expect(fc).not.toContain('pan=stereo');
+    // Still generates silent audio when no audio input
+    expect(fc).toContain('aevalsrc=0:c=stereo');
+    // Image duration unchanged (default: effectiveDuration = durationSec = 5)
+    expect(getImageLoopDuration(args)).toBe('5');
+  });
+
+  it('G — fadeIn(10)+fadeOut(10) on 5s clip → each proportionally clamped to 2.5s', () => {
+    const nodeId = 'img-g';
+    const graph = makeImageGraph({
+      nodeId,
+      durationSec: 5,
+      mixPlan: {
+        nodeMixes: [{ nodeId, trackId: 'track-1', volumeDb: 0, panCenter: 0, isMuted: false, fadeInSeconds: 10, fadeOutSeconds: 10 }],
+        trackMixes: [{ trackId: 'track-1', trackVolumeDb: 0, isMuted: false }],
+      },
+    });
+    const voicePaths = new Map([[nodeId, '/uploads/voice-g.mp3']]);
+    spawnEncoding('op-vib-g', graph, voicePaths);
+    const fc = getFilterComplex(mockSpawn.mock.calls[0][1] as string[]);
+    // fadeScale = 5/20 = 0.25; clampedFade = 10 * 0.25 = 2.5
+    expect(fc).toContain('afade=t=in:st=0:d=2.500000');
+    expect(fc).toContain('afade=t=out:st=2.500000:d=2.500000');
+    // Sanity: no NaN or Infinity values in filter
+    expect(fc).not.toMatch(/NaN|Infinity/);
+  });
+
+  it('H — VI-A voice reaches FFmpeg -i AND VI-B fade pipeline is applied to that voice', () => {
+    const nodeId = 'img-h';
+    const voiceUri = '/uploads/voice-h.mp3';
+    const graph = makeImageGraph({
+      nodeId,
+      durationSec: 5,
+      mixPlan: {
+        nodeMixes: [{ nodeId, trackId: 'track-1', volumeDb: 0, panCenter: 0, isMuted: false, fadeInSeconds: 0.5 }],
+        trackMixes: [{ trackId: 'track-1', trackVolumeDb: 0, isMuted: false }],
+      },
+    });
+    const voicePaths = new Map([[nodeId, voiceUri]]);
+    spawnEncoding('op-vib-h', graph, voicePaths);
+    const args = mockSpawn.mock.calls[0][1] as string[];
+    const fc = getFilterComplex(args);
+
+    // VI-A: voice file appears as an FFmpeg input
+    expect(args).toContain(join(process.cwd(), 'public', 'uploads/voice-h.mp3'));
+
+    // VI-B: fade-in applied to the voice audio
+    expect(fc).toContain('afade=t=in:st=0:d=0.500000');
+
+    // Safety trim still present
+    expect(fc).toContain('atrim=0:');
+
+    // Source trim present (trimStart=0, trimEnd=5 for default temporal)
+    expect(fc).toContain('atrim=0:5,asetpts=PTS-STARTPTS');
   });
 });
