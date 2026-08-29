@@ -137,6 +137,8 @@ export function spawnEncoding(
 // 5. FFMPEG COMMAND BUILDER
 // ==========================================
 
+type BlendMode = 'NORMAL' | 'MULTIPLY' | 'SCREEN' | 'OVERLAY';
+
 interface NodeEntry {
   path: string;
   kind: 'image' | 'audio';
@@ -147,6 +149,15 @@ interface NodeEntry {
   trimStart: number;           // VI-B: effective trim start in source media (seconds)
   trimEnd: number;             // VI-B: effective trim end in source media (seconds)
   effectiveDuration: number;   // VI-B: trimEnd - trimStart (always ≥ 0.001)
+  // VI-C: spatial composition (image nodes only; audio nodes use identity defaults)
+  positionX: number;
+  positionY: number;
+  scaleX: number;
+  scaleY: number;
+  rotationDegrees: number;
+  zIndex: number;
+  opacity: number;             // VI-C: 0.0–1.0 alpha (VisualFilterDirective)
+  blendMode: BlendMode;        // VI-C: composition blend mode
 }
 
 function buildFfmpegArgs(
@@ -188,10 +199,33 @@ function buildFfmpegArgs(
       // VI-B: compute safe trim bounds from TemporalDirective
       const { trimStart, trimEnd, effectiveDuration } = computeTrimBounds(node.temporal, duration);
 
+      // VI-C: read spatial and visual directives (image nodes only; audio uses identity defaults)
+      const positionX = node.spatial?.positionX ?? 0;
+      const positionY = node.spatial?.positionY ?? 0;
+      const scaleX = Math.max(0.001, node.spatial?.scaleX ?? 1);
+      const scaleY = Math.max(0.001, node.spatial?.scaleY ?? 1);
+      const rotationDegrees = node.spatial?.rotationDegrees ?? 0;
+      const zIndex = node.spatial?.zIndex ?? 0;
+      const visualDir = (node.customDirectives as Record<string, unknown> | undefined)
+        ?.['visual'] as { opacity?: number; blendMode?: string } | undefined;
+      const opacity = Math.max(0, Math.min(1, visualDir?.opacity ?? 1));
+      const rawBlend = visualDir?.blendMode ?? 'NORMAL';
+      const blendMode: BlendMode = (['NORMAL', 'MULTIPLY', 'SCREEN', 'OVERLAY'] as const).includes(rawBlend as BlendMode)
+        ? (rawBlend as BlendMode) : 'NORMAL';
+
       if (isImageUri(uri)) {
-        imageInputs.push({ path: assetPath, kind: 'image', duration, startSec, nodeId: node.nodeId, trackId: track.trackId, trimStart, trimEnd, effectiveDuration });
+        imageInputs.push({
+          path: assetPath, kind: 'image', duration, startSec, nodeId: node.nodeId, trackId: track.trackId,
+          trimStart, trimEnd, effectiveDuration,
+          positionX, positionY, scaleX, scaleY, rotationDegrees, zIndex, opacity, blendMode,
+        });
       } else if (isAudioUri(uri)) {
-        audioInputs.push({ path: assetPath, kind: 'audio', duration, startSec, nodeId: node.nodeId, trackId: track.trackId, trimStart, trimEnd, effectiveDuration });
+        audioInputs.push({
+          path: assetPath, kind: 'audio', duration, startSec, nodeId: node.nodeId, trackId: track.trackId,
+          trimStart, trimEnd, effectiveDuration,
+          positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: 0,
+          opacity: 1, blendMode: 'NORMAL',
+        });
       }
       // Text/structural nodes (TXT etc.) carry no media — silently skipped
     }
@@ -223,6 +257,8 @@ function buildFfmpegArgs(
       trimStart: imgEntry.trimStart,
       trimEnd: imgEntry.trimEnd,
       effectiveDuration: imgEntry.effectiveDuration,
+      positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: 0,
+      opacity: 1, blendMode: 'NORMAL',
     });
   }
 
@@ -233,8 +269,11 @@ function buildFfmpegArgs(
     );
   }
 
-  // Sort image inputs by their position on the master timeline
-  imageInputs.sort((a, b) => a.startSec - b.startSec);
+  // VI-C: Sort by zIndex ascending (lower zIndex = below) then nodeId for deterministic tie-breaking.
+  // Lower zIndex nodes are overlaid first and appear beneath higher zIndex nodes.
+  imageInputs.sort((a, b) =>
+    a.zIndex !== b.zIndex ? a.zIndex - b.zIndex : a.nodeId.localeCompare(b.nodeId),
+  );
 
   // Total duration: prefer compiled metadata; fall back to max effective node end time (VI-B)
   const totalDuration =
@@ -270,17 +309,10 @@ function buildFfmpegArgs(
   // --- FILTER_COMPLEX ---
   const filterParts: string[] = [];
 
-  // Scale + letterbox each image to OUTPUT_WIDTH × OUTPUT_HEIGHT
-  imageInputs.forEach((_, idx) => {
-    filterParts.push(
-      `[${idx}:v]scale=${OUTPUT_WIDTH}:${OUTPUT_HEIGHT}:force_original_aspect_ratio=decrease,` +
-        `pad=${OUTPUT_WIDTH}:${OUTPUT_HEIGHT}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=25[img${idx}]`,
-    );
-  });
-
-  // Concat all scaled images into a single video stream
-  const imgRefs = imageInputs.map((_, idx) => `[img${idx}]`).join('');
-  filterParts.push(`${imgRefs}concat=n=${imageInputs.length}:v=1:a=0[vraw]`);
+  // VI-C: Full overlay composition pipeline (replaces concat-based sequential architecture).
+  // Visual nodes are layered onto a 1920×1080 black canvas in zIndex order; each node is
+  // temporally activated via enable='between(t,S,E)' so simultaneous overlay is real.
+  buildVideoCompositionFilters(imageInputs, totalDuration).forEach((f) => filterParts.push(f));
 
   // Subtitle burning
   const hasSubs = graph.subtitlePlan.absoluteCues.length > 0;
@@ -350,7 +382,116 @@ function buildFfmpegArgs(
 }
 
 // ==========================================
-// 6. VI-B TEMPORAL & AUDIO FIDELITY HELPERS
+// 6. VI-C VIDEO COMPOSITION HELPER
+// ==========================================
+
+/**
+ * Builds all filter_complex filter strings for the visual overlay composition pipeline.
+ * imageInputs must be sorted by zIndex ascending (lower zIndex = below in z-order).
+ *
+ * NORMAL: scale → [rotate] → format=rgba → [colorchannelmixer=aa] → overlay with enable
+ * Non-NORMAL (MULTIPLY/SCREEN/OVERLAY): scale → [rotate] onto an identity-color canvas →
+ *   blend with main canvas. Identity color ensures the blend is a no-op outside the active
+ *   temporal window so no split+crop complexity is needed.
+ *
+ * Identity colors (value that makes the blend formula equal to the base):
+ *   MULTIPLY → white (A×1=A)
+ *   SCREEN   → black (A+0−A×0=A)
+ *   OVERLAY  → gray 0x808080 (maps to A for both halves of the piecewise formula)
+ *
+ * Emits [vraw] as the final named output label consumed by the subtitle/copy step.
+ */
+function buildVideoCompositionFilters(imageInputs: NodeEntry[], totalDuration: number): string[] {
+  const filters: string[] = [];
+
+  if (imageInputs.length === 0) {
+    filters.push(
+      `color=c=black:size=${OUTPUT_WIDTH}x${OUTPUT_HEIGHT}:rate=25:d=${totalDuration}[vraw]`,
+    );
+    return filters;
+  }
+
+  // Base black canvas — all visual nodes are layered on top of this
+  filters.push(
+    `color=c=black:size=${OUTPUT_WIDTH}x${OUTPUT_HEIGHT}:rate=25:d=${totalDuration}[canvas0]`,
+  );
+
+  imageInputs.forEach((node, idx) => {
+    const targetW = Math.max(1, Math.round(OUTPUT_WIDTH * node.scaleX));
+    const targetH = Math.max(1, Math.round(OUTPUT_HEIGHT * node.scaleY));
+    const rotRad = (node.rotationDegrees * Math.PI) / 180;
+    const startSec = node.startSec;
+    const endSec = node.startSec + node.effectiveDuration;
+    const canvasIn = `[canvas${idx}]`;
+    // Last node writes directly to [vraw] so the subtitle/copy step can pick it up
+    const canvasOut = idx < imageInputs.length - 1 ? `[canvas${idx + 1}]` : '[vraw]';
+    const hasRotation = Math.abs(node.rotationDegrees) > 0.001;
+
+    if (node.blendMode === 'NORMAL') {
+      // RGBA alpha overlay pipeline: scale → [rotate] → rgba → [opacity] → overlay
+      const parts: string[] = [`scale=${targetW}:${targetH}`];
+      if (hasRotation) {
+        // Transparent fill so rotated corners don't bleed into the overlay
+        parts.push(`rotate=${rotRad.toFixed(6)}:fillcolor=0x00000000`);
+      }
+      parts.push('format=rgba');
+      if (node.opacity < 0.9999) {
+        parts.push(`colorchannelmixer=aa=${node.opacity.toFixed(6)}`);
+      }
+      filters.push(`[${idx}:v]${parts.join(',')}[vn${idx}]`);
+      filters.push(
+        `${canvasIn}[vn${idx}]overlay=x=${node.positionX}:y=${node.positionY}` +
+          `:format=auto:enable='between(t,${startSec},${endSec})'${canvasOut}`,
+      );
+    } else {
+      // Non-NORMAL blend via identity-canvas trick.
+      // An identity-color full-size canvas is generated; the actual layer is overlaid
+      // onto it only during its active window. Outside that window the identity color
+      // makes the subsequent blend filter a mathematical no-op against the main canvas.
+      const ffBlend = node.blendMode.toLowerCase(); // 'multiply' | 'screen' | 'overlay'
+      const identityColor =
+        node.blendMode === 'MULTIPLY'
+          ? 'white'
+          : node.blendMode === 'SCREEN'
+            ? 'black'
+            : '0x808080'; // OVERLAY: neutral gray
+      const rotFillcolor =
+        node.blendMode === 'MULTIPLY'
+          ? '0xffffff'
+          : node.blendMode === 'SCREEN'
+            ? '0x000000'
+            : '0x808080';
+
+      // Full-duration identity canvas (produces no-op blend outside active region)
+      filters.push(
+        `color=c=${identityColor}:size=${OUTPUT_WIDTH}x${OUTPUT_HEIGHT}:rate=25:d=${totalDuration}[id${idx}]`,
+      );
+
+      // Prepare layer: scale [→ rotate] — fill with identity color so rotation corners are no-ops
+      const layerParts: string[] = [`scale=${targetW}:${targetH}`];
+      if (hasRotation) {
+        layerParts.push(`rotate=${rotRad.toFixed(6)}:fillcolor=${rotFillcolor}`);
+      }
+      filters.push(`[${idx}:v]${layerParts.join(',')}[vl${idx}]`);
+
+      // Overlay actual content onto identity canvas only during active temporal window
+      filters.push(
+        `[id${idx}][vl${idx}]overlay=x=${node.positionX}:y=${node.positionY}` +
+          `:enable='between(t,${startSec},${endSec})'[nm${idx}]`,
+      );
+
+      // Blend identity+content composite with main canvas
+      filters.push(
+        `${canvasIn}[nm${idx}]blend=all_mode=${ffBlend}:all_opacity=${node.opacity.toFixed(6)}${canvasOut}`,
+      );
+    }
+  });
+
+  return filters;
+}
+
+// ==========================================
+// 7. VI-B TEMPORAL & AUDIO FIDELITY HELPERS
 // ==========================================
 
 /**

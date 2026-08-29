@@ -353,7 +353,7 @@ describe('VI-B — Temporal & Audio Fidelity', () => {
     expect(fc).not.toMatch(/NaN|Infinity/);
   });
 
-  it('H — VI-A voice reaches FFmpeg -i AND VI-B fade pipeline is applied to that voice', () => {
+  it('H — VI-A voice reaches -i AND VI-B fade is applied to that voice', () => {
     const nodeId = 'img-h';
     const voiceUri = '/uploads/voice-h.mp3';
     const graph = makeImageGraph({
@@ -380,5 +380,214 @@ describe('VI-B — Temporal & Audio Fidelity', () => {
 
     // Source trim present (trimStart=0, trimEnd=5 for default temporal)
     expect(fc).toContain('atrim=0:5,asetpts=PTS-STARTPTS');
+  });
+});
+
+// ============================================================
+// VI-C — Full Cinematic Overlay Composition
+// ============================================================
+
+/**
+ * Multi-node graph builder for VI-C composition tests.
+ * Each node entry becomes one active VISUAL image node in a single track.
+ * Supports all spatial (positionX/Y, scaleX/Y, rotationDegrees, zIndex) and
+ * visual (opacity, blendMode) directives required by VI-C.
+ */
+function makeMultiNodeGraph(
+  nodes: Array<{
+    nodeId: string;
+    imageUri?: string;
+    startSec?: number;
+    durationSec?: number;
+    positionX?: number;
+    positionY?: number;
+    scaleX?: number;
+    scaleY?: number;
+    rotationDegrees?: number;
+    zIndex?: number;
+    opacity?: number;
+    blendMode?: string;
+  }>,
+): CompiledAssemblyGraph {
+  const trackId = 'track-multi';
+  const maxEnd = Math.max(...nodes.map((n) => (n.startSec ?? 0) + (n.durationSec ?? 5)));
+  return {
+    compilationId: 'comp-multi',
+    sourceCanvasId: 'canvas-multi',
+    subscriberTenantId: 'tenant-1',
+    canvasType: CanvasType.CINEMATIC,
+    hydratedCanvas: {
+      canvasId: 'canvas-multi',
+      subscriberTenantId: 'tenant-1',
+      canvasType: CanvasType.CINEMATIC,
+      title: 'Multi-Node VI-C Test',
+      tracks: [
+        {
+          trackId,
+          trackName: 'Multi Track',
+          isMuted: false,
+          isHidden: false,
+          nodes: nodes.map((n) => ({
+            nodeId: n.nodeId,
+            assetId: `asset-${n.nodeId}`,
+            assetFamily: 'MEDIA',
+            capabilityOrigin: 'VISUAL',
+            isActive: true,
+            isLocked: false,
+            temporal: {
+              globalStartTimeSeconds: n.startSec ?? 0,
+              playDurationSeconds: n.durationSec ?? 5,
+              trimStartSeconds: 0,
+              trimEndSeconds: n.durationSec ?? 5,
+            },
+            spatial: {
+              positionX: n.positionX ?? 0,
+              positionY: n.positionY ?? 0,
+              scaleX: n.scaleX ?? 1,
+              scaleY: n.scaleY ?? 1,
+              rotationDegrees: n.rotationDegrees ?? 0,
+              zIndex: n.zIndex ?? 0,
+            },
+            customDirectives:
+              n.blendMode !== undefined || n.opacity !== undefined
+                ? { visual: { opacity: n.opacity ?? 1, blendMode: n.blendMode ?? 'NORMAL' } }
+                : {},
+            runtimeAsset: {
+              assetId: `asset-${n.nodeId}`,
+              subscriberTenantId: 'tenant-1',
+              originatingOperationId: 'op-multi',
+              capabilityTarget: 'VISUAL' as any,
+              assetFamily: 'MEDIA' as any,
+              secureStorageUri: n.imageUri ?? '/generated-assets/img.png',
+              metadata: {},
+              createdAt: 0,
+              updatedAt: 0,
+            },
+          })) as any[],
+        },
+      ],
+      createdAt: 0,
+      updatedAt: 0,
+    },
+    metadata: {
+      totalTracks: 1,
+      totalNodes: nodes.length,
+      estimatedDurationSeconds: maxEnd,
+      aggregatedAssetFamilies: ['MEDIA'],
+    },
+    mixPlan: {
+      nodeMixes: nodes.map((n) => ({
+        nodeId: n.nodeId,
+        trackId,
+        volumeDb: 0,
+        panCenter: 0,
+        isMuted: false,
+      })),
+      trackMixes: [{ trackId, trackVolumeDb: 0, isMuted: false }],
+    },
+    subtitlePlan: { absoluteCues: [] },
+    compiledAt: 0,
+  };
+}
+
+describe('VI-C — Full Cinematic Overlay Composition', () => {
+  it('A — positionX/positionY propagate to overlay=x=<posX>:y=<posY> in filter_complex', () => {
+    const graph = makeMultiNodeGraph([{ nodeId: 'n-a', positionX: 100, positionY: 200 }]);
+    spawnEncoding('op-vic-a', graph);
+    const fc = getFilterComplex(mockSpawn.mock.calls[0][1] as string[]);
+    expect(fc).toContain('overlay=x=100:y=200');
+  });
+
+  it('B — scaleX=0.5, scaleY=0.5 → scale=960:540 (half of 1920×1080) in filter_complex', () => {
+    const graph = makeMultiNodeGraph([{ nodeId: 'n-b', scaleX: 0.5, scaleY: 0.5 }]);
+    spawnEncoding('op-vic-b', graph);
+    const fc = getFilterComplex(mockSpawn.mock.calls[0][1] as string[]);
+    // targetW = round(1920 * 0.5) = 960, targetH = round(1080 * 0.5) = 540
+    expect(fc).toContain('scale=960:540');
+  });
+
+  it('C — rotationDegrees=90 → rotate=1.570796 (π/2 radians) in filter_complex', () => {
+    const graph = makeMultiNodeGraph([{ nodeId: 'n-c', rotationDegrees: 90 }]);
+    spawnEncoding('op-vic-c', graph);
+    const fc = getFilterComplex(mockSpawn.mock.calls[0][1] as string[]);
+    expect(fc).toContain('rotate=1.570796');
+  });
+
+  it('D — opacity=0.5 with NORMAL blend → colorchannelmixer=aa=0.500000 in filter_complex', () => {
+    const graph = makeMultiNodeGraph([{ nodeId: 'n-d', opacity: 0.5, blendMode: 'NORMAL' }]);
+    spawnEncoding('op-vic-d', graph);
+    const fc = getFilterComplex(mockSpawn.mock.calls[0][1] as string[]);
+    expect(fc).toContain('colorchannelmixer=aa=0.500000');
+  });
+
+  it('E — lower zIndex node is overlaid first (earlier position in filter chain)', () => {
+    // n-high (zIndex=2) must appear AFTER n-low (zIndex=1) in filter_complex.
+    // Encoder sorts ascending: zIndex=1 → FFmpeg input 0 → [vn0]; zIndex=2 → input 1 → [vn1].
+    const graph = makeMultiNodeGraph([
+      { nodeId: 'n-high', zIndex: 2, imageUri: '/generated-assets/high.png' },
+      { nodeId: 'n-low',  zIndex: 1, imageUri: '/generated-assets/low.png' },
+    ]);
+    spawnEncoding('op-vic-e', graph);
+    const fc = getFilterComplex(mockSpawn.mock.calls[0][1] as string[]);
+    // Both NORMAL nodes get [vn0] and [vn1] overlay labels in z-order
+    expect(fc).toContain('[vn0]');
+    expect(fc).toContain('[vn1]');
+    // [canvas0][vn0] overlay must precede [canvas1][vn1] overlay in the filter string
+    const idxFirst  = fc.indexOf('[canvas0][vn0]');
+    const idxSecond = fc.indexOf('[canvas1][vn1]');
+    expect(idxFirst).toBeGreaterThanOrEqual(0);
+    expect(idxSecond).toBeGreaterThan(idxFirst);
+  });
+
+  it('F — blendMode=MULTIPLY → blend=all_mode=multiply and white identity canvas in filter_complex', () => {
+    const graph = makeMultiNodeGraph([{ nodeId: 'n-f', blendMode: 'MULTIPLY', opacity: 1 }]);
+    spawnEncoding('op-vic-f', graph);
+    const fc = getFilterComplex(mockSpawn.mock.calls[0][1] as string[]);
+    expect(fc).toContain('blend=all_mode=multiply');
+    expect(fc).toContain('color=c=white');
+  });
+
+  it('G — temporal overlap: two active-window enable expressions both present in filter_complex', () => {
+    // n-g0: [0,3), n-g1: [2,5) — windows overlap
+    const graph = makeMultiNodeGraph([
+      { nodeId: 'n-g0', startSec: 0, durationSec: 3 },
+      { nodeId: 'n-g1', startSec: 2, durationSec: 3 },
+    ]);
+    spawnEncoding('op-vic-g', graph);
+    const fc = getFilterComplex(mockSpawn.mock.calls[0][1] as string[]);
+    expect(fc).toContain("enable='between(t,0,3)'");
+    expect(fc).toContain("enable='between(t,2,5)'");
+  });
+
+  it('H — VI-A regression: voice path still reaches FFmpeg -i args under VI-C encoder', () => {
+    const nodeId = 'n-h';
+    const voiceUri = '/uploads/voice-vic-h.mp3';
+    const graph = makeMultiNodeGraph([{ nodeId }]);
+    const voicePaths = new Map([[nodeId, voiceUri]]);
+    spawnEncoding('op-vic-h', graph, voicePaths);
+    const args = mockSpawn.mock.calls[0][1] as string[];
+    expect(args).toContain(join(process.cwd(), 'public', 'uploads/voice-vic-h.mp3'));
+  });
+
+  it('I — VI-B regression: trim and fade-in still applied to audio chain under VI-C encoder', () => {
+    // Uses makeImageGraph (which supports trimStartSeconds/trimEndSeconds overrides)
+    // to verify VI-B directives remain intact after VI-C changes.
+    const graph = makeImageGraph({
+      nodeId: 'n-i',
+      durationSec: 7,
+      trimStartSeconds: 2,
+      trimEndSeconds: 5,
+      mixPlan: {
+        nodeMixes: [{ nodeId: 'n-i', trackId: 'track-1', volumeDb: 0, panCenter: 0, isMuted: false, fadeInSeconds: 1 }],
+        trackMixes: [{ trackId: 'track-1', trackVolumeDb: 0, isMuted: false }],
+      },
+    });
+    const voicePaths = new Map([['n-i', '/uploads/voice-vic-i.mp3']]);
+    spawnEncoding('op-vic-i', graph, voicePaths);
+    const fc = getFilterComplex(mockSpawn.mock.calls[0][1] as string[]);
+    // VI-B trim: source trimmed to [2s, 5s]
+    expect(fc).toContain('atrim=2:5,asetpts=PTS-STARTPTS');
+    // VI-B fade-in: 1 second fade from silence
+    expect(fc).toContain('afade=t=in:st=0:d=1.000000');
   });
 });
