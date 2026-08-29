@@ -58,4 +58,17 @@ export class SecureContextHydrator {
 
     return hydratedContexts;
   }
-} 
+
+  /**
+   * Non-throwing single-asset lookup — returns null when the asset is not found
+   * or the tenant does not own it. Used by CinematicAssemblyAdapter to resolve
+   * VoiceAssignmentDirectives without aborting the encode on a missing voice asset.
+   */
+  public async resolveAsset(assetId: string, tenantId: string): Promise<VaultAsset | null> {
+    try {
+      return await this.vaultManager.getAsset(assetId, tenantId);
+    } catch {
+      return null;
+    }
+  }
+}

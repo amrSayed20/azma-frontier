@@ -97,10 +97,72 @@ function makeGraph(overrides: Partial<CompiledAssemblyGraph> = {}): CompiledAsse
   };
 }
 
+/** Graph with one active image node that carries a VoiceAssignmentDirective. */
+function makeGraphWithVoiceNode(
+  tenantId: string,
+  nodeId: string,
+  voiceAssetId: string,
+): CompiledAssemblyGraph {
+  return makeGraph({
+    subscriberTenantId: tenantId,
+    hydratedCanvas: {
+      canvasId: 'canvas-voice',
+      subscriberTenantId: tenantId,
+      canvasType: CanvasType.CINEMATIC,
+      title: 'Voice Test',
+      tracks: [
+        {
+          trackId: 'track-1',
+          trackName: 'Track',
+          isMuted: false,
+          isHidden: false,
+          nodes: [
+            {
+              nodeId,
+              assetId: 'img-asset-1',
+              assetFamily: 'MEDIA',
+              capabilityOrigin: 'VISUAL',
+              isActive: true,
+              isLocked: false,
+              customDirectives: { voice: { vaultAssetId: voiceAssetId } },
+              runtimeAsset: {
+                assetId: 'img-asset-1',
+                subscriberTenantId: tenantId,
+                originatingOperationId: 'op-img',
+                capabilityTarget: 'VISUAL' as any,
+                assetFamily: 'MEDIA' as any,
+                secureStorageUri: '/generated-assets/img.png',
+                metadata: {},
+                createdAt: 0,
+                updatedAt: 0,
+              },
+            } as any,
+          ],
+        },
+      ],
+      createdAt: 0,
+      updatedAt: 0,
+    },
+  });
+}
+
+const stubVoiceAsset = {
+  assetId: 'voice-asset-1',
+  subscriberTenantId: 'tenant-1',
+  originatingOperationId: 'op-voice',
+  capabilityTarget: 'AUDIO' as any,
+  assetFamily: 'MEDIA' as any,
+  secureStorageUri: '/uploads/test-voice.mp3',
+  metadata: {},
+  createdAt: 0,
+  updatedAt: 0,
+};
+
 beforeEach(() => {
   mockSpawnEncoding.mockClear();
   mockIsEncodingComplete.mockReturnValue(false);
   mockGetEncodingError.mockReturnValue(null);
+  (stubVaultManager.getAsset as jest.Mock).mockReset();
 });
 
 // ============================================================
@@ -439,5 +501,117 @@ describe('Ministry VII — end-to-end CINEMATIC dispatch via FlattenedRenderingB
     expect((directorialGraph as any).assetUrl).toBeUndefined();
 
     db.close();
+  });
+});
+
+// ============================================================
+// VI-A — VoiceAssignmentDirective resolution
+// ============================================================
+
+describe('VI-A — CinematicAssemblyAdapter voice resolution', () => {
+  let db: ReturnType<typeof createDatabase>;
+  let dispatcher: FleetDispatcher;
+
+  beforeEach(() => {
+    db = createDatabase(':memory:');
+    const ledger = new OperationLedgerManager(db);
+    const hydrator = new SecureContextHydrator(stubVaultManager);
+    const registry = new FleetRegistry();
+    registry.registerAdapterSync(new CinematicAssemblyAdapter(hydrator), CinematicAssemblyAdapter.CAPABILITIES);
+    dispatcher = new FleetDispatcher(registry, ledger, stubVaultManager);
+  });
+
+  afterEach(() => {
+    db.close();
+    mockSpawnEncoding.mockClear();
+  });
+
+  it('voice directive causes Vault resolution — getAsset is called with the voice assetId', async () => {
+    (stubVaultManager.getAsset as jest.Mock).mockResolvedValueOnce(stubVoiceAsset);
+
+    const graph = makeGraphWithVoiceNode('tenant-1', 'img-node-1', 'voice-asset-1');
+    const intent = { ...makeMotionIntent('op-voice-resolve'), structuralGraphPayload: graph } as any;
+
+    await dispatcher.executeMaterialization(intent);
+
+    expect(stubVaultManager.getAsset).toHaveBeenCalledWith('voice-asset-1', 'tenant-1');
+  });
+
+  it('resolved voice secureStorageUri reaches spawnEncoding() as the third argument', async () => {
+    (stubVaultManager.getAsset as jest.Mock).mockResolvedValueOnce(stubVoiceAsset);
+
+    const graph = makeGraphWithVoiceNode('tenant-1', 'img-node-1', 'voice-asset-1');
+    const intent = { ...makeMotionIntent('op-voice-uri'), structuralGraphPayload: graph } as any;
+
+    await dispatcher.executeMaterialization(intent);
+
+    expect(mockSpawnEncoding).toHaveBeenCalledTimes(1);
+    const voiceMap = mockSpawnEncoding.mock.calls[0][2] as Map<string, string>;
+    expect(voiceMap).toBeInstanceOf(Map);
+    expect(voiceMap.get('img-node-1')).toBe('/uploads/test-voice.mp3');
+  });
+
+  it('missing voice asset does not crash the render — spawnEncoding is called with empty map', async () => {
+    (stubVaultManager.getAsset as jest.Mock).mockRejectedValueOnce(new Error('Vault Error: Asset not found'));
+
+    const graph = makeGraphWithVoiceNode('tenant-1', 'img-node-1', 'nonexistent-asset');
+    const intent = { ...makeMotionIntent('op-voice-missing'), structuralGraphPayload: graph } as any;
+
+    const entry = await dispatcher.executeMaterialization(intent);
+
+    expect(entry.currentState).toBe(OperationState.DISPATCHED);
+    const voiceMap = mockSpawnEncoding.mock.calls[0][2] as Map<string, string>;
+    expect(voiceMap.size).toBe(0);
+  });
+
+  it('node without voice directive is not looked up in Vault', async () => {
+    // Standard graph with no voice directive on any node
+    const intent = makeMotionIntent('op-no-voice');
+
+    await dispatcher.executeMaterialization(intent);
+
+    expect(stubVaultManager.getAsset).not.toHaveBeenCalled();
+    const voiceMap = mockSpawnEncoding.mock.calls[0][2] as Map<string, string>;
+    expect(voiceMap.size).toBe(0);
+  });
+
+  it('muted track nodes are skipped — voice directive on muted track is not resolved', async () => {
+    const graph = makeGraph({
+      hydratedCanvas: {
+        canvasId: 'canvas-muted',
+        subscriberTenantId: 'tenant-1',
+        canvasType: CanvasType.CINEMATIC,
+        title: 'Muted',
+        tracks: [
+          {
+            trackId: 'track-muted',
+            trackName: 'Muted Track',
+            isMuted: true,
+            isHidden: false,
+            nodes: [
+              {
+                nodeId: 'img-muted',
+                assetId: 'img-1',
+                assetFamily: 'MEDIA',
+                capabilityOrigin: 'VISUAL',
+                isActive: true,
+                isLocked: false,
+                customDirectives: { voice: { vaultAssetId: 'voice-asset-on-muted' } },
+                runtimeAsset: { assetId: 'img-1', subscriberTenantId: 'tenant-1', originatingOperationId: 'op-x', capabilityTarget: 'VISUAL' as any, assetFamily: 'MEDIA' as any, secureStorageUri: '/generated-assets/img.png', metadata: {}, createdAt: 0, updatedAt: 0 },
+              } as any,
+            ],
+          },
+        ],
+        createdAt: 0,
+        updatedAt: 0,
+      },
+    });
+
+    const intent = { ...makeMotionIntent('op-muted-voice'), structuralGraphPayload: graph } as any;
+    await dispatcher.executeMaterialization(intent);
+
+    expect(stubVaultManager.getAsset).not.toHaveBeenCalled();
+    const voiceMap = mockSpawnEncoding.mock.calls[0][2] as Map<string, string>;
+    expect(voiceMap.size).toBe(0);
   });
 });

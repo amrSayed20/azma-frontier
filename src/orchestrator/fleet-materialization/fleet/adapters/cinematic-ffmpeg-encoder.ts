@@ -77,12 +77,16 @@ export function getEncodingError(operationId: string): Error | null {
 // 4. SPAWN ENTRY POINT
 // ==========================================
 
-export function spawnEncoding(operationId: string, graph: CompiledAssemblyGraph): void {
+export function spawnEncoding(
+  operationId: string,
+  graph: CompiledAssemblyGraph,
+  resolvedVoicePaths: ReadonlyMap<string, string> = new Map(),
+): void {
   mkdirSync(RENDERS_DIR, { recursive: true });
 
   let args: string[];
   try {
-    args = buildFfmpegArgs(graph, operationId);
+    args = buildFfmpegArgs(graph, operationId, resolvedVoicePaths);
   } catch (err) {
     // Graph validation or asset resolution failed before spawn.
     // Store the error so checkOperationStatus() can surface it honestly.
@@ -138,7 +142,11 @@ interface NodeEntry {
   trackId: string;
 }
 
-function buildFfmpegArgs(graph: CompiledAssemblyGraph, operationId: string): string[] {
+function buildFfmpegArgs(
+  graph: CompiledAssemblyGraph,
+  operationId: string,
+  resolvedVoicePaths: ReadonlyMap<string, string> = new Map(),
+): string[] {
   const outputPath = getOutputPath(operationId);
   const imageInputs: NodeEntry[] = [];
   const audioInputs: NodeEntry[] = [];
@@ -177,6 +185,32 @@ function buildFfmpegArgs(graph: CompiledAssemblyGraph, operationId: string): str
       }
       // Text/structural nodes (TXT etc.) carry no media — silently skipped
     }
+  }
+
+  // VI-A: Add voice-assigned audio entries.
+  // For each image node that has a resolved voice secureStorageUri, add an audio
+  // input that starts at the same globalStartTimeSeconds as the image node.
+  // The voice entry inherits the image node's nodeId/trackId so it picks up the
+  // same volumeDb/isMuted mix settings from mixPlan. Missing files are skipped
+  // gracefully — they never throw or abort the encode.
+  for (const imgEntry of imageInputs) {
+    const voiceUri = resolvedVoicePaths.get(imgEntry.nodeId);
+    if (!voiceUri) continue;
+    const voicePath = resolveAssetPath(voiceUri);
+    if (!existsSync(voicePath)) {
+      console.warn(
+        `[CinematicEncoder] voice file missing at [${voicePath}] for node [${imgEntry.nodeId}] — skipping`,
+      );
+      continue;
+    }
+    audioInputs.push({
+      path: voicePath,
+      kind: 'audio',
+      duration: imgEntry.duration,
+      startSec: imgEntry.startSec,
+      nodeId: imgEntry.nodeId,
+      trackId: imgEntry.trackId,
+    });
   }
 
   if (imageInputs.length === 0) {

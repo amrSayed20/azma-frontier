@@ -12,8 +12,9 @@
  *
  * Execution flow:
  *   executeVendorDispatch() — extracts the CompiledAssemblyGraph from the dispatch
- *   payload, calls spawnEncoding() to start the system FFmpeg process, and returns
- *   ACCEPTED immediately. Encoding runs asynchronously.
+ *   payload, resolves VoiceAssignmentDirectives via the Vault, calls spawnEncoding()
+ *   to start the system FFmpeg process, and returns ACCEPTED immediately.
+ *   Encoding runs asynchronously.
  *
  *   checkOperationStatus() — called by the polling resolution path:
  *     • If encoding failed:  returns isError:true so the dispatcher marks FAILED.
@@ -22,6 +23,13 @@
  *       AsynchronousResolutionGateway.checkAndResolveOperation() to return null
  *       (→ { status: 'processing' } to the Creator), preserving the polling loop
  *       without marking the ledger FAILED.
+ *
+ * VI-A — VOICE ASSIGNMENT CLOSURE:
+ *   Before spawning, walks the compiled graph and resolves any VoiceAssignmentDirective
+ *   (node.customDirectives.voice.vaultAssetId) via the existing Vault boundary.
+ *   Resolved paths are passed to spawnEncoding() so the encoder can mix them as
+ *   temporally-aligned audio inputs. A missing or inaccessible voice asset is skipped
+ *   gracefully — it never aborts the render.
  */
 
 import { BaseProviderAdapter } from './base-provider-adapter';
@@ -30,6 +38,7 @@ import type { ProviderCapabilities, ProviderDispatchResponse, ProviderResolution
 import type { OperationLedgerEntry } from '../../ledger/operation-ledger-types';
 import { CapabilityTarget } from '../../../../core/sovereign-orchestrator/qiyamah-intent-types';
 import type { CompiledAssemblyGraph } from '../../../../chambers/ras-al-amr/pre-publishing-boundary';
+import type { HydratedAssemblyNode } from '../../../../chambers/ras-al-amr/vault-rehydration-bridge';
 import {
   spawnEncoding,
   isEncodingComplete,
@@ -74,10 +83,16 @@ export class CinematicAssemblyAdapter extends BaseProviderAdapter {
       );
     }
 
+    // VI-A: Resolve VoiceAssignmentDirectives before encoding.
+    // For each active image node with a voice directive, look up the assigned Vault
+    // audio asset and collect its secureStorageUri. The encoder resolves the full
+    // filesystem path and handles missing files gracefully (skip + log).
+    const resolvedVoicePaths = await this.resolveVoiceDirectives(graph, ledgerEntry.subscriberTenantId);
+
     // Start encoding asynchronously. spawnEncoding() returns immediately.
     // If the graph is invalid (no image nodes, missing assets), the error is stored
     // in the encoder's job-state map and surfaced via checkOperationStatus().
-    spawnEncoding(ledgerEntry.operationId, graph);
+    spawnEncoding(ledgerEntry.operationId, graph, resolvedVoicePaths);
 
     return {
       externalJobId: ledgerEntry.operationId,
@@ -116,5 +131,40 @@ export class CinematicAssemblyAdapter extends BaseProviderAdapter {
     // 3. Still encoding — throw so AsynchronousResolutionGateway catches "not complete"
     //    and returns null (→ { status: 'processing' }) without marking FAILED.
     throw new Error(`CINEMATIC encoding not complete for operation [${externalJobId}]`);
+  }
+
+  /**
+   * Walks the compiled graph and resolves VoiceAssignmentDirectives to Vault
+   * secureStorageUris. Returns a Map<nodeId, secureStorageUri>.
+   * Missing or inaccessible assets are silently skipped — they never abort the encode.
+   */
+  private async resolveVoiceDirectives(
+    graph: CompiledAssemblyGraph,
+    tenantId: string,
+  ): Promise<Map<string, string>> {
+    const resolvedVoicePaths = new Map<string, string>();
+
+    for (const track of graph.hydratedCanvas.tracks) {
+      if (track.isMuted || track.isHidden) continue;
+      for (const node of track.nodes as HydratedAssemblyNode[]) {
+        if (node.isActive === false) continue;
+        const voiceDirective = (node.customDirectives as Record<string, unknown> | undefined)
+          ?.['voice'] as { vaultAssetId?: string } | undefined;
+        if (!voiceDirective?.vaultAssetId) continue;
+
+        const voiceAsset = await this.hydrator.resolveAsset(voiceDirective.vaultAssetId, tenantId);
+        if (!voiceAsset) {
+          console.warn(
+            `[CinematicAdapter] voice asset [${voiceDirective.vaultAssetId}] ` +
+              `for node [${node.nodeId}] could not be resolved — skipping`,
+          );
+          continue;
+        }
+
+        resolvedVoicePaths.set(node.nodeId, voiceAsset.secureStorageUri);
+      }
+    }
+
+    return resolvedVoicePaths;
   }
 }
