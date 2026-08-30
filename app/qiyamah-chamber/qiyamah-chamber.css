@@ -17,12 +17,8 @@
 }
 
 /* ─── Document ─────────────────────────────────────────────────────────── */
-
-body, html {
-  margin: 0; padding: 0; width: 100%; min-height: 100%;
-  background-color: var(--chamber-bg);
-  overflow-y: auto;
-}
+/* body/html removed — .forge-background (position:fixed;inset:0) paints the
+   chamber surface; body rules bleed across SPA navigation */
 
 /* ─── Viewport ─────────────────────────────────────────────────────────── */
 

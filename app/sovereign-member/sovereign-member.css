@@ -26,15 +26,8 @@
   box-sizing:border-box;
 }
 
-html,
-body{
-  width:100%;
-  height:100%;
-  overflow:hidden;
-  background:#000;
-  color:var(--text-main);
-  font-family:var(--azma-font-family);
-}
+/* html/body removed — .identity-hall handles chamber surface;
+   body rules bleed across SPA navigation */
 
 button,
 input,

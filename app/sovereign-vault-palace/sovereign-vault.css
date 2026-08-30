@@ -38,8 +38,7 @@
 }
 
 /* ── Reset ─────────────────────────────────────────────────────── */
-
-body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--palace-bg); }
+/* body/html removed — .palace-viewport (position:fixed;inset:0) handles confinement */
 
 /* ═══════════════════════════════════════════════════════════════
    VIEWPORT + ATMOSPHERE

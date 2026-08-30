@@ -32,14 +32,8 @@
 /* ========================================= */
 /* STRICT STAGE CONFINEMENT                  */
 /* ========================================= */
-body, html {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background-color: var(--chamber-bg);
-}
+/* body/html rules removed — .ras-amr-viewport (position:fixed;inset:0)
+   handles full-screen confinement; body rules bleed across SPA navigation */
 
 .ras-amr-viewport {
   position: fixed;
@@ -160,7 +154,7 @@ body, html {
 }
 
 @media (max-width: 680px) {
-  body, html { overflow-y: auto; }
+  .ras-amr-viewport { overflow-y: auto; }
   .chamber-grid-layout {
     grid-template-columns: 1fr;
     height: auto;
