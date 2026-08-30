@@ -1489,7 +1489,7 @@ export default function RasAmrChamber() {
       const r = await fetch('/api/ras-amr/canvas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sessionCanvas),
+        body: JSON.stringify({ canvas: sessionCanvas }),
       });
       if (r.ok) {
         setSaveCanvasStatus('القماش السردي محفوظ ✔');
