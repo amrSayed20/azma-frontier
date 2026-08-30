@@ -1774,6 +1774,9 @@ export default function RasAmrChamber() {
             )}
           </div>
 
+          {/* ── SCROLLABLE ZONE: all canvas + direction panels ── */}
+          <div className="tools-sidebar-scroll">
+
           {sessionCanvas && (
             <div className="spatial-adjust-panel">
               <header className="panel-header">
@@ -2023,7 +2026,7 @@ export default function RasAmrChamber() {
           )}
 
           {sessionCanvas && selectedNodeId && (
-            <div className="spatial-adjust-panel">
+            <div className="spatial-adjust-panel panel-manual-spatial">
               <header className="panel-header">
                 <div className="neon-tag">التوجيه المكاني</div>
                 <h2>تعديل مكاني حقيقي</h2>
@@ -2085,7 +2088,7 @@ export default function RasAmrChamber() {
           )}
 
           {sessionCanvas && selectedNodeId && (
-            <div className="spatial-adjust-panel">
+            <div className="spatial-adjust-panel panel-manual-visual">
               <header className="panel-header">
                 <div className="neon-tag">التوجيه البصري</div>
                 <h2>تعديل بصري حقيقي</h2>
@@ -2127,7 +2130,7 @@ export default function RasAmrChamber() {
           )}
 
           {sessionCanvas && selectedNodeId && (
-            <div className="spatial-adjust-panel">
+            <div className="spatial-adjust-panel panel-manual-temporal">
               <header className="panel-header">
                 <div className="neon-tag">التوجيه الزمني</div>
                 <h2>تعديل زمني حقيقي</h2>
@@ -2185,7 +2188,7 @@ export default function RasAmrChamber() {
           )}
 
           {sessionCanvas && directorDecision && (
-            <div className="spatial-adjust-panel">
+            <div className="spatial-adjust-panel panel-auto-director">
               <header className="panel-header">
                 <div className="neon-tag">قرار المخرج الآلي</div>
                 <h2>قرار الإخراج السينمائي الحقيقي</h2>
@@ -2249,6 +2252,8 @@ export default function RasAmrChamber() {
               )}
             </div>
           )}
+
+          </div>{/* end tools-sidebar-scroll */}
 
           <div className="executive-actions-panel">
             <button
