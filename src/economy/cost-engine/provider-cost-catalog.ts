@@ -270,18 +270,19 @@ export const CURRENT_PROVIDER_COST_CATALOG: ProviderCostCatalog = {
       effectiveFrom: 1753574400000,
       notes: 'ElevenLabs /v1/voices/add. Cost varies by plan. AZMA Unit conversion pending.',
     },
-    // ── ELEVENLABS — CLONED VOICE SYNTHESIS (TTS with cloned voice_id) ────────
-    // Real provider: ElevenLabs /v1/text-to-speech/{voice_id} (same VOICE_CLONING_API_KEY).
-    // Generates new speech in the cloned voice's timbre. Cost ~$0.30/1000 chars.
+    // ── ELEVENLABS — TTS (preset voices + cloned voice synthesis) ────────────
+    // Real provider: ElevenLabs /v1/text-to-speech/{voice_id} (VOICE_CLONING_API_KEY).
+    // Covers both Ministry II (preset voices) and Ministry III (cloned voice synthesis).
+    // ~$0.22/1000 chars on Creator plan → 30 AZMA units ≈ $0.03/generation (calibrated estimate).
     {
       gatewayId: 'elevenlabs',
       capabilityTarget: 'text-to-speech',
-      azmaUnitsPerUnit: 0,
-      unitDescription: '1 cloned voice speech generation (up to 4096 characters)',
-      availability: 'pending-discovery',
-      catalogVersion: '0.2.0',
+      azmaUnitsPerUnit: 30,
+      unitDescription: '1 TTS generation (up to 4096 characters, preset or cloned voice)',
+      availability: 'available',
+      catalogVersion: '0.3.0',
       effectiveFrom: 1753574400000,
-      notes: 'ElevenLabs /v1/text-to-speech/{voice_id}. ~$0.30/1000 chars on Creator tier. AZMA Unit conversion pending.',
+      notes: 'ElevenLabs /v1/text-to-speech/{voice_id}. 30 units ≈ $0.03/generation. Covers Ministry II and III.',
     },
   ],
 };

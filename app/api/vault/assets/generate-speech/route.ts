@@ -5,8 +5,7 @@ import { SovereignVaultManager } from '../../../../../src/vault/sovereign-vault-
 import { AssetFamily } from '../../../../../src/vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../../../../src/core/sovereign-orchestrator/qiyamah-intent-types';
 import { persistUploadedAsset } from '../../../../../src/vault/vault-asset-upload-storage';
-import { isTtsProviderVoice } from '../../../../../src/chambers/ras-al-amr/speech-provider';
-import { getGenerationOrchestrator } from '../../../../../src/core/sovereign-ai-integration/provider-bootstrap';
+import { synthesizeSpeechWithClonedVoice } from '../../../../../src/chambers/ras-al-amr/voice-cloning-provider';
 import { getDb } from '../../../../../src/persistent-storage';
 import { ConsumptionRepository } from '../../../../../src/persistent-storage/consumption-repository';
 import { OperationType } from '../../../../../src/consumption-ledger/consumption-ledger-contracts';
@@ -21,41 +20,52 @@ export const dynamic = 'force-dynamic';
 const SESSION_COOKIE = 'azma_session';
 const vaultManager = new SovereignVaultManager();
 
-// OpenAI's own real, documented TTS input limit (openai/resources/audio/speech.d.ts:
-// "The text to generate audio for. The maximum length is 4096 characters.") — not an
-// invented platform limit.
+// ElevenLabs input limit matches the platform max (same as the previous OpenAI limit).
 const MAX_TEXT_LENGTH = 4096;
 
+// Curated preset voice whitelist — only these ElevenLabs voice IDs are accepted.
+// Must stay in sync with ELEVENLABS_PRESET_VOICES in app/ras-amr/page.tsx.
+const VALID_PRESET_VOICE_IDS = new Set([
+  'pNInz6obpgDQGcFmaJgB', // Adam
+  '21m00Tcm4TlvDq8ikWAM', // Rachel
+  'TxGEqnHWrfWFTfGW9XjX', // Josh
+  'EXAVITQu4vr4xnSDxMaL', // Bella
+  'ErXwobaYiN019PkySvjV',  // Antoni
+  'ThT5KcBeYPX3keUQqHPh',  // Dorothy
+  'IKne3meq5aSn9XLyUdCD',  // Charlie
+  'N2lVS1w4EtoT3dr4eOWO',  // Callum
+]);
+
 /**
- * MINISTRY II — TEXT TO SPEECH ENGINE: the Creator writes text, chooses one
- * of the Empire's own closed set of preset voices, and receives a real
- * generated Voice Asset — deposited through the exact same
- * SovereignVaultManager.depositAsset() boundary every other real asset
- * (Qiyamah generations, Creator uploads) already goes through, and tagged
- * with the same isVoiceAsset/voiceDisplayName metadata Ministry I already
- * established, so imported and generated voices coexist in one
- * constitutional Voice Library — no second library, no duplicated
- * pipeline. This route performs no cinematic direction, rendering, or
- * export — its responsibility ends the moment the Voice Asset exists.
+ * MINISTRY II — TEXT TO SPEECH ENGINE (ElevenLabs):
+ * The Creator writes text, picks one of the Empire's curated preset voices,
+ * and receives a real generated Voice Asset via ElevenLabs. The result is
+ * deposited through SovereignVaultManager exactly like every other real
+ * asset, tagged isVoiceAsset so it is immediately visible in Ministry I's
+ * Voice Library and assignable to any Direction Node.
  *
- * Gated behind the same billing entitlement every other real AI
- * generation capability requires (Billing Foundation) — TTS consumes the
- * same paid Launch Provider, so it must not be a free, unmetered
- * bypass of that gate.
+ * The same VOICE_CLONING_API_KEY used by Ministry III (cloning + synthesis)
+ * is used here — no additional credential required.
  */
 export async function POST(request: NextRequest) {
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   const session = sessionId ? verifySession(sessionId) : null;
 
   if (!session) {
-    return NextResponse.json({ status: 'failed', reason: 'unauthorized', message: 'Sign in to generate speech.' }, { status: 401 });
+    return NextResponse.json(
+      { status: 'failed', reason: 'unauthorized', message: 'Sign in to generate speech.' },
+      { status: 401 },
+    );
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ status: 'failed', reason: 'invalid-request', message: 'Request body must be valid JSON.' }, { status: 400 });
+    return NextResponse.json(
+      { status: 'failed', reason: 'invalid-request', message: 'Request body must be valid JSON.' },
+      { status: 400 },
+    );
   }
 
   const text = (body as { text?: unknown })?.text;
@@ -63,7 +73,10 @@ export async function POST(request: NextRequest) {
   const voiceDisplayNameRaw = (body as { voiceDisplayName?: unknown })?.voiceDisplayName;
 
   if (typeof text !== 'string' || text.trim().length === 0) {
-    return NextResponse.json({ status: 'failed', reason: 'invalid-text', message: 'Text to speak is required.' }, { status: 400 });
+    return NextResponse.json(
+      { status: 'failed', reason: 'invalid-text', message: 'Text to speak is required.' },
+      { status: 400 },
+    );
   }
   if (text.length > MAX_TEXT_LENGTH) {
     return NextResponse.json(
@@ -71,12 +84,14 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  if (typeof voice !== 'string' || !isTtsProviderVoice(voice)) {
-    return NextResponse.json({ status: 'failed', reason: 'invalid-voice', message: 'A valid preset voice is required.' }, { status: 400 });
+  if (typeof voice !== 'string' || !VALID_PRESET_VOICE_IDS.has(voice)) {
+    return NextResponse.json(
+      { status: 'failed', reason: 'invalid-voice', message: 'A valid preset voice is required.' },
+      { status: 400 },
+    );
   }
 
   // CREDIT-FIRST GATE: Founders bypass. Creators require AZMA Units.
-  // Pre-flight cost check before any provider call — NO COST WITHOUT PRIOR KNOWLEDGE.
   const db = getDb();
   let reservationId: string | null = null;
 
@@ -84,7 +99,7 @@ export async function POST(request: NextRequest) {
     const costEngine = new AzmaUnitCostEngine();
     let costEstimate;
     try {
-      costEstimate = costEngine.estimate('text-to-speech', 'openai');
+      costEstimate = costEngine.estimate('text-to-speech', 'elevenlabs');
     } catch (err) {
       if (err instanceof CostUnavailableError) {
         return NextResponse.json(
@@ -116,7 +131,7 @@ export async function POST(request: NextRequest) {
         session.creatorId,
         costEstimate.estimatedAzmaUnits,
         `tts:gen:${randomUUID()}`,
-        { capability: 'text-to-speech', gatewayId: 'openai' },
+        { capability: 'text-to-speech', gatewayId: 'elevenlabs' },
       );
       reservationId = reservation.reservationId;
     } catch (err) {
@@ -133,43 +148,22 @@ export async function POST(request: NextRequest) {
   const voiceDisplayName =
     typeof voiceDisplayNameRaw === 'string' && voiceDisplayNameRaw.trim().length > 0
       ? voiceDisplayNameRaw.trim()
-      : `TTS — ${voice}`;
+      : `TTS — ElevenLabs`;
 
-  // Route through the sovereign orchestration path — provider selection,
-  // constitutional routing, and fallback handled by DNAOrchestratorRuntime.
-  // The TTS adapter places base64-encoded audio bytes in
-  // NormalizedAIResponse.content; we decode back to Buffer here.
-  const speechOrchestration = await getGenerationOrchestrator().orchestrate({
-    requestId: crypto.randomUUID(),
-    requestedBy: session.creatorId,
-    prompt: text.trim(),
-    taskHint: 'audio',
-    chamberId: 'ras-al-amr',
-    purpose: 'Sovereign text-to-speech generation for Creator',
-    metadata: { voice },
-  });
-
-  if (speechOrchestration.response.finishReason !== 'completed') {
+  let audioBytes: Buffer;
+  try {
+    const result = await synthesizeSpeechWithClonedVoice(text.trim(), voice);
+    audioBytes = result.bytes;
+  } catch (err) {
     if (reservationId) {
-      try { new CreatorCreditRepository(db).release(reservationId, 'tts_provider_unavailable'); } catch { /* non-fatal */ }
+      try { new CreatorCreditRepository(db).release(reservationId, 'tts_provider_error'); } catch { /* non-fatal */ }
     }
     return NextResponse.json(
       {
         status: 'failed',
         reason: 'provider-error',
-        message:
-          'No speech generation provider was available. The capability may require an API credential to be configured.',
+        message: err instanceof Error ? err.message : 'Speech generation provider returned an error.',
       },
-      { status: 502 },
-    );
-  }
-
-  let audioBytes: Buffer;
-  try {
-    audioBytes = Buffer.from(speechOrchestration.response.content, 'base64');
-  } catch {
-    return NextResponse.json(
-      { status: 'failed', reason: 'provider-error', message: 'The speech generation response could not be decoded.' },
       { status: 502 },
     );
   }
@@ -184,26 +178,24 @@ export async function POST(request: NextRequest) {
       secureStorageUri: persisted.assetUrl,
       metadata: {
         fileSizeBytes: audioBytes.length,
-        providerId: speechOrchestration.response.providerId ?? 'sovereign-provider',
+        providerId: 'elevenlabs',
         generationPrompt: text.trim(),
         isVoiceAsset: true,
         voiceDisplayName,
       },
     });
 
-    // Settle reservation on success
     if (reservationId) {
       try {
         const costEngine = new AzmaUnitCostEngine();
-        const cost = costEngine.estimate('text-to-speech', 'openai').estimatedAzmaUnits;
+        const cost = costEngine.estimate('text-to-speech', 'elevenlabs').estimatedAzmaUnits;
         new CreatorCreditRepository(db).settle(reservationId, cost);
       } catch { /* non-fatal */ }
     }
 
-    // Record consumption for cost discovery (Founders and all Creators)
     try {
       const ledger = new ConsumptionRepository(db);
-      const charCount = (text as string).trim().length;
+      const charCount = text.trim().length;
       ledger.record({
         creatorId: session.creatorId,
         operationType: OperationType.TEXT_TO_SPEECH,
@@ -220,7 +212,11 @@ export async function POST(request: NextRequest) {
       try { new CreatorCreditRepository(db).release(reservationId, 'tts_storage_error'); } catch { /* non-fatal */ }
     }
     return NextResponse.json(
-      { status: 'failed', reason: 'storage-error', message: error instanceof Error ? error.message : 'Failed to persist the generated Voice Asset.' },
+      {
+        status: 'failed',
+        reason: 'storage-error',
+        message: error instanceof Error ? error.message : 'Failed to persist the generated Voice Asset.',
+      },
       { status: 500 },
     );
   }

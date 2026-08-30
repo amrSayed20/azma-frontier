@@ -480,6 +480,19 @@ function typeLabelForCapability(target: string): string {
   }
 }
 
+// MINISTRY II — ElevenLabs curated preset voices (popular + distinctive).
+// Must stay in sync with VALID_PRESET_VOICE_IDS in app/api/vault/assets/generate-speech/route.ts.
+const ELEVENLABS_PRESET_VOICES = [
+  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam',    label: 'Adam — عميق وواثق'      },
+  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel',  label: 'Rachel — هادئ وطبيعي'   },
+  { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh',    label: 'Josh — قوي وذكوري'      },
+  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella',   label: 'Bella — ناعم وواضح'     },
+  { id: 'ErXwobaYiN019PkySvjV',  name: 'Antoni',  label: 'Antoni — متوازن ورسمي'  },
+  { id: 'ThT5KcBeYPX3keUQqHPh',  name: 'Dorothy', label: 'Dorothy — بريطاني وهادئ' },
+  { id: 'IKne3meq5aSn9XLyUdCD',  name: 'Charlie', label: 'Charlie — أسترالي ومميّز' },
+  { id: 'N2lVS1w4EtoT3dr4eOWO',  name: 'Callum',  label: 'Callum — مكثّف وبارز'   },
+] as const;
+
 interface QueueItem {
   id: string;
   title: string;
@@ -978,6 +991,44 @@ export default function RasAmrChamber() {
     () => voiceLibrary.filter((v) => v.metadata.isClonedVoice !== true),
     [voiceLibrary],
   );
+
+  // MINISTRY II — TEXT TO SPEECH ENGINE (ElevenLabs preset voices).
+  const [ttsText, setTtsText] = useState<string>('');
+  const [ttsPresetVoiceId, setTtsPresetVoiceId] = useState<string>(ELEVENLABS_PRESET_VOICES[0].id);
+  const [ttsDisplayNameInput, setTtsDisplayNameInput] = useState<string>('');
+  const [isGeneratingSpeech, setIsGeneratingSpeech] = useState<boolean>(false);
+  const [ttsError, setTtsError] = useState<string | null>(null);
+
+  const handleGenerateSpeech = async () => {
+    if (!ttsText.trim()) return;
+    setIsGeneratingSpeech(true);
+    setTtsError(null);
+    try {
+      const chosenVoice = ELEVENLABS_PRESET_VOICES.find((v) => v.id === ttsPresetVoiceId);
+      const voiceDisplayName = ttsDisplayNameInput.trim() || chosenVoice?.name || 'TTS Voice';
+      const response = await fetch('/api/vault/assets/generate-speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: ttsText.trim(),
+          voice: ttsPresetVoiceId,
+          voiceDisplayName,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || result.status !== 'succeeded') {
+        setTtsError(result.message ?? 'الصوت لم يُولَّد.');
+        return;
+      }
+      setVaultAssets((prev) => [...prev, result.asset]);
+      setTtsText('');
+      setTtsDisplayNameInput('');
+    } catch {
+      setTtsError('بوابة الصوت لا تستجيب.');
+    } finally {
+      setIsGeneratingSpeech(false);
+    }
+  };
 
   // MINISTRY III — VOICE CLONING ENGINE: clone a real voice from the Voice Library.
   const [cloneSourceVoiceId, setCloneSourceVoiceId] = useState<string>('');
@@ -2321,6 +2372,47 @@ export default function RasAmrChamber() {
                   disabled={isUploadingAsset}
                 />
               )}
+            </div>
+
+            {/* MINISTRY II — TEXT TO SPEECH ENGINE: ElevenLabs preset voices — result becomes a real Voice Asset in the Voice Library. */}
+            <div className="hud-tts-row">
+              <textarea
+                className="hud-tts-text-input"
+                placeholder="اكتب نصًا لتحويله إلى كلام حقيقي..."
+                value={ttsText}
+                onChange={(e) => setTtsText(e.target.value)}
+                disabled={isGeneratingSpeech}
+                rows={2}
+              />
+              <div className="hud-tts-controls">
+                <select
+                  className="hud-tts-voice-select"
+                  value={ttsPresetVoiceId}
+                  onChange={(e) => setTtsPresetVoiceId(e.target.value)}
+                  disabled={isGeneratingSpeech}
+                  aria-label="الصوت الجاهز المُستخدَم في التوليد"
+                >
+                  {ELEVENLABS_PRESET_VOICES.map((voice) => (
+                    <option key={voice.id} value={voice.id}>{voice.label}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  className="hud-voice-name-input"
+                  placeholder="اسم هوية الصوت الناتج (اختياري)"
+                  value={ttsDisplayNameInput}
+                  onChange={(e) => setTtsDisplayNameInput(e.target.value)}
+                  disabled={isGeneratingSpeech}
+                />
+                <button
+                  className="action-trigger-btn"
+                  onClick={handleGenerateSpeech}
+                  disabled={isGeneratingSpeech || !ttsText.trim()}
+                >
+                  {isGeneratingSpeech ? '⏳ الصوت يُولَّد…' : '🗣 توليد كلام حقيقي'}
+                </button>
+              </div>
+              {ttsError && <p className="spatial-current-state narrative-integrity-violation">{ttsError}</p>}
             </div>
 
             {/* MINISTRY III — VOICE CLONING ENGINE: clone an existing real audio voice. Only real audio voices (not cloned identities) are eligible as reference sources. */}
