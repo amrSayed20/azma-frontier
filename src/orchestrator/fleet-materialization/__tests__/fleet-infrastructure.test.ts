@@ -53,6 +53,7 @@ import {
   isEncodingComplete,
   getEncodingError,
 } from '../fleet/adapters/cinematic-ffmpeg-encoder';
+import { AsynchronousResolutionGateway } from '../fleet/asynchronous-resolution-gateway';
 
 const mockSpawnEncoding = spawnEncoding as jest.Mock;
 const mockIsEncodingComplete = isEncodingComplete as jest.Mock;
@@ -293,11 +294,12 @@ describe('Ministry VII — FleetRegistry.registerAdapterSync()', () => {
 
 describe('Ministry VII — CinematicAssemblyAdapter', () => {
   let db: DatabaseSync;
+  let ledger: OperationLedgerManager;
   let dispatcher: FleetDispatcher;
 
   beforeEach(() => {
     db = createDatabase(':memory:');
-    const ledger = new OperationLedgerManager(db);
+    ledger = new OperationLedgerManager(db);
     const hydrator = new SecureContextHydrator(stubVaultManager);
     const registry = new FleetRegistry();
     registry.registerAdapterSync(new CinematicAssemblyAdapter(hydrator), CinematicAssemblyAdapter.CAPABILITIES);
@@ -362,6 +364,19 @@ describe('Ministry VII — CinematicAssemblyAdapter', () => {
     expect(resolution.isComplete).toBe(true);
     expect(resolution.isError).toBe(true);
     expect(resolution.errorMessage).toContain('FFmpeg exited with code 1');
+  });
+
+  it('Repair C — spawnEncoding throwing causes FAILED state, not false DISPATCHED (phantom ACCEPTED eliminated)', async () => {
+    mockSpawnEncoding.mockImplementationOnce(() => {
+      throw new Error('CINEMATIC encoder: no active image nodes found for operation [op-phantom-prev]');
+    });
+
+    await expect(
+      dispatcher.executeMaterialization(makeMotionIntent('op-phantom-prev')),
+    ).rejects.toThrow();
+
+    const entry = await ledger.getEntry('op-phantom-prev');
+    expect(entry.currentState).toBe(OperationState.FAILED);
   });
 });
 
@@ -613,5 +628,78 @@ describe('VI-A — CinematicAssemblyAdapter voice resolution', () => {
     expect(stubVaultManager.getAsset).not.toHaveBeenCalled();
     const voiceMap = mockSpawnEncoding.mock.calls[0][2] as Map<string, string>;
     expect(voiceMap.size).toBe(0);
+  });
+});
+
+// ============================================================
+// Repair A — AsynchronousResolutionGateway: FAILED terminal truth
+// ============================================================
+
+describe('Repair A — AsynchronousResolutionGateway: FAILED never returns null', () => {
+  let db: DatabaseSync;
+  let gatewayLedger: OperationLedgerManager;
+  let gatewayDispatcher: FleetDispatcher;
+  let gateway: AsynchronousResolutionGateway;
+
+  beforeEach(() => {
+    db = createDatabase(':memory:');
+    gatewayLedger = new OperationLedgerManager(db);
+    const hydrator = new SecureContextHydrator(stubVaultManager);
+    const registry = new FleetRegistry();
+    registry.registerAdapterSync(new CinematicAssemblyAdapter(hydrator), CinematicAssemblyAdapter.CAPABILITIES);
+    gatewayDispatcher = new FleetDispatcher(registry, gatewayLedger, stubVaultManager);
+    gateway = new AsynchronousResolutionGateway(gatewayDispatcher, gatewayLedger);
+  });
+
+  afterEach(() => {
+    db.close();
+  });
+
+  async function createFailedOp(operationId: string): Promise<void> {
+    await gatewayLedger.createEntry(makeMotionIntent(operationId));
+    await gatewayLedger.updateState(operationId, OperationState.AUTHORIZED);
+    await gatewayLedger.updateState(operationId, OperationState.DISPATCHED, {
+      allocatedProviderId: 'azma-cinematic-assembly-v1',
+      externalJobId: operationId,
+    });
+    await gatewayLedger.updateState(operationId, OperationState.FAILED);
+  }
+
+  it('FAILED operation throws terminal error — never returns null (MAG-LF-001A)', async () => {
+    await createFailedOp('op-fail-truth-1');
+
+    await expect(
+      gateway.checkAndResolveOperation('op-fail-truth-1', 'tenant-1'),
+    ).rejects.toThrow('failed during materialization');
+  });
+
+  it('Poll #1 and Poll #2 after FAILED both throw — no state regression to processing', async () => {
+    await createFailedOp('op-fail-repeated');
+
+    // Poll 1
+    await expect(
+      gateway.checkAndResolveOperation('op-fail-repeated', 'tenant-1'),
+    ).rejects.toThrow('failed during materialization');
+
+    // Poll 2 — same terminal result, no regression
+    await expect(
+      gateway.checkAndResolveOperation('op-fail-repeated', 'tenant-1'),
+    ).rejects.toThrow('failed during materialization');
+  });
+
+  it('DISPATCHED operation returns null (still processing) — valid polling path not broken', async () => {
+    // Still running: getEncodingError=null, isEncodingComplete=false → "not complete" → null
+    mockGetEncodingError.mockReturnValue(null);
+    mockIsEncodingComplete.mockReturnValue(false);
+
+    await gatewayLedger.createEntry(makeMotionIntent('op-dispatched-still'));
+    await gatewayLedger.updateState('op-dispatched-still', OperationState.AUTHORIZED);
+    await gatewayLedger.updateState('op-dispatched-still', OperationState.DISPATCHED, {
+      allocatedProviderId: 'azma-cinematic-assembly-v1',
+      externalJobId: 'op-dispatched-still',
+    });
+
+    const result = await gateway.checkAndResolveOperation('op-dispatched-still', 'tenant-1');
+    expect(result).toBeNull();
   });
 });

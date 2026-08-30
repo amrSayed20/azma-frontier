@@ -591,3 +591,148 @@ describe('VI-C — Full Cinematic Overlay Composition', () => {
     expect(fc).toContain('afade=t=in:st=0:d=1.000000');
   });
 });
+
+// ============================================================
+// Storage Root Resolution — UPLOADS_DIR aware (Phase II repair)
+// ============================================================
+
+describe('Storage Root Resolution — UPLOADS_DIR aware', () => {
+  let savedUploadsDir: string | undefined;
+
+  beforeEach(() => {
+    savedUploadsDir = process.env.UPLOADS_DIR;
+  });
+
+  afterEach(() => {
+    if (savedUploadsDir === undefined) delete process.env.UPLOADS_DIR;
+    else process.env.UPLOADS_DIR = savedUploadsDir;
+  });
+
+  it('Test 1 — /uploads/ URI resolves against UPLOADS_DIR root when UPLOADS_DIR is set', () => {
+    process.env.UPLOADS_DIR = '/var/www/azma-uploads';
+    const graph = makeImageGraph({ imageUri: '/uploads/fresh-upload.jpg' });
+
+    expect(() => spawnEncoding('op-uploads-dir', graph)).not.toThrow();
+    expect(mockSpawn).toHaveBeenCalledTimes(1);
+    const ffmpegArgs = mockSpawn.mock.calls[0][1] as string[];
+    // Path must be UPLOADS_DIR/fresh-upload.jpg — not {cwd}/public/uploads/fresh-upload.jpg
+    expect(ffmpegArgs).toContain(join('/var/www/azma-uploads', 'fresh-upload.jpg'));
+  });
+
+  it('Test 2 — /generated-assets/ URI resolves against UPLOADS_DIR/generated-assets when UPLOADS_DIR is set', () => {
+    process.env.UPLOADS_DIR = '/var/www/azma-uploads';
+    const graph = makeImageGraph({ imageUri: '/generated-assets/fresh-gen.png' });
+
+    expect(() => spawnEncoding('op-generated-dir', graph)).not.toThrow();
+    expect(mockSpawn).toHaveBeenCalledTimes(1);
+    const ffmpegArgs = mockSpawn.mock.calls[0][1] as string[];
+    expect(ffmpegArgs).toContain(join('/var/www/azma-uploads', 'generated-assets', 'fresh-gen.png'));
+  });
+
+  it('Test 3 — asset present at UPLOADS_DIR but absent from public/ is found; missing altogether is honest failure', () => {
+    process.env.UPLOADS_DIR = '/var/www/azma-uploads';
+    const graph = makeImageGraph({ imageUri: '/uploads/new-upload.jpg' });
+    // File exists only at UPLOADS_DIR path (not at public/uploads/)
+    mockExistsSync.mockImplementation((p: string) =>
+      p === join('/var/www/azma-uploads', 'new-upload.jpg'),
+    );
+
+    // Must NOT throw — the encoder resolves to UPLOADS_DIR and the file is there
+    expect(() => spawnEncoding('op-found-in-uploads-dir', graph)).not.toThrow();
+    expect(mockSpawn).toHaveBeenCalledTimes(1);
+
+    jest.clearAllMocks();
+    mockSpawn.mockReturnValue(makeProcess());
+
+    // Completely missing file still produces an honest failure
+    mockExistsSync.mockReturnValue(false);
+    expect(() => spawnEncoding('op-missing-uploads-dir', graph)).toThrow('not found at');
+    expect(mockSpawn).not.toHaveBeenCalled();
+  });
+
+  it('Test 4 — full pipeline: both upload and generated-asset URIs resolve through UPLOADS_DIR in one encode', () => {
+    process.env.UPLOADS_DIR = '/var/www/azma-uploads';
+    const graph = makeMultiNodeGraph([
+      { nodeId: 'n-upload',    imageUri: '/uploads/fresh-uuid.jpg',              startSec: 0, durationSec: 5 },
+      { nodeId: 'n-generated', imageUri: '/generated-assets/fresh-qiyamah.png',  startSec: 5, durationSec: 5 },
+    ]);
+
+    expect(() => spawnEncoding('op-full-uploads-dir', graph)).not.toThrow();
+    expect(mockSpawn).toHaveBeenCalledTimes(1);
+    const ffmpegArgs = mockSpawn.mock.calls[0][1] as string[];
+    expect(ffmpegArgs).toContain(join('/var/www/azma-uploads', 'fresh-uuid.jpg'));
+    expect(ffmpegArgs).toContain(join('/var/www/azma-uploads', 'generated-assets', 'fresh-qiyamah.png'));
+  });
+
+  it('legacy path preserved — /uploads/ and /generated-assets/ fall back to public/ when UPLOADS_DIR is absent', () => {
+    delete process.env.UPLOADS_DIR;
+
+    const graphUpload = makeImageGraph({ imageUri: '/uploads/legacy.jpg' });
+    expect(() => spawnEncoding('op-legacy-upload', graphUpload)).not.toThrow();
+    expect(mockSpawn.mock.calls[0][1]).toContain(join(process.cwd(), 'public', 'uploads', 'legacy.jpg'));
+
+    jest.clearAllMocks();
+    mockSpawn.mockReturnValue(makeProcess());
+
+    const graphGen = makeImageGraph({ imageUri: '/generated-assets/legacy-gen.png' });
+    expect(() => spawnEncoding('op-legacy-gen', graphGen)).not.toThrow();
+    expect(mockSpawn.mock.calls[0][1]).toContain(join(process.cwd(), 'public', 'generated-assets', 'legacy-gen.png'));
+  });
+});
+
+// ============================================================
+// Repair C — pre-spawn validation throws synchronously (MAG-LF-001C)
+// ============================================================
+
+describe('Repair C — spawnEncoding throws synchronously on invalid graph', () => {
+  it('throws when graph has no active image nodes — FFmpeg is never spawned', () => {
+    const emptyGraph: CompiledAssemblyGraph = {
+      compilationId: 'comp-empty',
+      sourceCanvasId: 'canvas-empty',
+      subscriberTenantId: 'tenant-1',
+      canvasType: CanvasType.CINEMATIC,
+      hydratedCanvas: {
+        canvasId: 'canvas-empty',
+        subscriberTenantId: 'tenant-1',
+        canvasType: CanvasType.CINEMATIC,
+        title: 'Empty',
+        tracks: [],
+        createdAt: 0,
+        updatedAt: 0,
+      },
+      metadata: { totalTracks: 0, totalNodes: 0, aggregatedAssetFamilies: [] },
+      mixPlan: { nodeMixes: [], trackMixes: [] },
+      subtitlePlan: { absoluteCues: [] },
+      compiledAt: 0,
+    };
+
+    expect(() => spawnEncoding('op-empty-nodes', emptyGraph)).toThrow('no active image nodes');
+    expect(mockSpawn).not.toHaveBeenCalled();
+  });
+
+  it('throws when active node has no secureStorageUri — FFmpeg is never spawned', () => {
+    const graph = makeImageGraph({ nodeId: 'no-uri-node' });
+    // Strip secureStorageUri to simulate an un-hydrated graph
+    (graph.hydratedCanvas.tracks[0].nodes[0] as any).runtimeAsset.secureStorageUri = undefined;
+
+    expect(() => spawnEncoding('op-no-uri', graph)).toThrow('has no secureStorageUri');
+    expect(mockSpawn).not.toHaveBeenCalled();
+  });
+
+  it('throws when asset file does not exist on disk — FFmpeg is never spawned', () => {
+    const graph = makeImageGraph({ nodeId: 'missing-asset', imageUri: '/vault/missing-proof.png' });
+    // Image file does not exist
+    mockExistsSync.mockImplementation((p: string) => !p.includes('missing-proof.png'));
+
+    expect(() => spawnEncoding('op-missing-file', graph)).toThrow('not found at');
+    expect(mockSpawn).not.toHaveBeenCalled();
+  });
+
+  it('valid graph still spawns FFmpeg — repair does not break the happy path', () => {
+    const graph = makeImageGraph({ nodeId: 'valid-node' });
+    // existsSync returns true by default in beforeEach
+
+    expect(() => spawnEncoding('op-valid', graph)).not.toThrow();
+    expect(mockSpawn).toHaveBeenCalledTimes(1);
+  });
+});

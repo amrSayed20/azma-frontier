@@ -35,6 +35,15 @@ import { SecureContextHydrator } from '../../../orchestrator/fleet-materializati
 import { CinematicAssemblyAdapter } from '../../../orchestrator/fleet-materialization/fleet/adapters/cinematic-assembly-adapter';
 import { createDatabase } from '../../../persistent-storage/db';
 
+// Mock the FFmpeg encoder so tests never spawn a real process.
+// Mirrors the approach already used in fleet-infrastructure.test.ts.
+jest.mock('../../../orchestrator/fleet-materialization/fleet/adapters/cinematic-ffmpeg-encoder', () => ({
+  spawnEncoding: jest.fn(),
+  isEncodingComplete: jest.fn(() => false),
+  getEncodingError: jest.fn(() => null),
+  getOutputPath: jest.fn((id: string) => `/renders/${id}.mp4`),
+}));
+
 function makeCompiledGraph(overrides: Partial<CompiledAssemblyGraph> = {}): CompiledAssemblyGraph {
   return {
     compilationId: 'comp-1',
@@ -113,6 +122,34 @@ describe('Package XXVII — Sovereign Export Engine: FlattenedRenderingBridge', 
     expect(state.status).toBe(RenderStatus.PROCESSING);
     expect(state.activeOperationId).toBeDefined();
     expect(bridge.getRenderState('pub-2')?.status).toBe(RenderStatus.PROCESSING);
+  });
+
+  it('Repair B — dispatch failure propagates as throw, silent PENDING never returned (MAG-LF-001B)', async () => {
+    const throwingDispatcher = {
+      executeMaterialization: jest.fn().mockRejectedValue(
+        new Error('Provider Dispatch Error: Adapter Execution Error [azma-cinematic-assembly-v1]: CINEMATIC encoder: no active image nodes'),
+      ),
+    } as unknown as FleetDispatcher;
+
+    const bridge = new FlattenedRenderingBridge(throwingDispatcher);
+    const publication: SovereignPublication = {
+      publicationId: 'pub-repairb',
+      sourceCompilationId: 'comp-repairb',
+      publisherTenantId: 'tenant-1',
+      title: 'X',
+      description: 'Y',
+      accessPolicy: { distributionTier: DistributionTier.PUBLIC_FREE, requiresAgeVerification: false },
+      isPublished: true,
+      createdAt: 0,
+      updatedAt: 0,
+    };
+
+    // Must throw — dispatch failure propagates rather than being absorbed as PENDING.
+    // Before Repair B: the catch block returned PENDING (no activeOperationId),
+    // so the caller could not distinguish "dispatching" from "failed to dispatch."
+    await expect(
+      bridge.evaluateAndDispatchRender(publication, makeCompiledGraph({ canvasType: CanvasType.CINEMATIC, compilationId: 'comp-repairb' })),
+    ).rejects.toThrow('Provider Dispatch Error');
   });
 });
 

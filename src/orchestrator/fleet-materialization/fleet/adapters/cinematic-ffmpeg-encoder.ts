@@ -44,6 +44,21 @@ const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
 const AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac']);
 
 function resolveAssetPath(secureStorageUri: string): string {
+  // Mirror the write paths in vault-asset-upload-storage.ts and
+  // qiyamah-generation/asset-storage.ts so the encoder always reads from
+  // the same root that wrote the file.
+  const uploadsDir = process.env.UPLOADS_DIR;
+  const uploadsBase = uploadsDir ?? join(process.cwd(), 'public', 'uploads');
+  const generatedBase = uploadsDir
+    ? join(uploadsDir, 'generated-assets')
+    : join(process.cwd(), 'public', 'generated-assets');
+  if (secureStorageUri.startsWith('/uploads/')) {
+    return join(uploadsBase, secureStorageUri.slice('/uploads/'.length));
+  }
+  if (secureStorageUri.startsWith('/generated-assets/')) {
+    return join(generatedBase, secureStorageUri.slice('/generated-assets/'.length));
+  }
+  // Unknown URI scheme — legacy fallback.
   return join(process.cwd(), 'public', secureStorageUri.replace(/^\//, ''));
 }
 
@@ -88,15 +103,11 @@ export function spawnEncoding(
 ): void {
   mkdirSync(RENDERS_DIR, { recursive: true });
 
-  let args: string[];
-  try {
-    args = buildFfmpegArgs(graph, operationId, resolvedVoicePaths);
-  } catch (err) {
-    // Graph validation or asset resolution failed before spawn.
-    // Store the error so checkOperationStatus() can surface it honestly.
-    jobs.set(operationId, err instanceof Error ? err : new Error(String(err)));
-    return;
-  }
+  // MAG-LF-001C fix: buildFfmpegArgs() throws synchronously on graph validation
+  // failure (missing secureStorageUri, asset not on disk, no active image nodes,
+  // zero duration). The throw propagates to the adapter caller so the dispatcher
+  // marks FAILED immediately — no phantom ACCEPTED, no false DISPATCHED state.
+  const args = buildFfmpegArgs(graph, operationId, resolvedVoicePaths);
 
   jobs.set(operationId, 'running');
 

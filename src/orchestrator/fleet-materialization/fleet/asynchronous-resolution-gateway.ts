@@ -65,12 +65,19 @@ export class AsynchronousResolutionGateway {
       throw new Error(`Operation [${operationId}] has already been completed and secured in the Sovereign Vault.`);
     }
 
+    // MAG-LF-001A fix: FAILED is a sealed terminal state. It must never return null
+    // (which the resolution route maps to { status:'processing' }). Throw so the
+    // route's catch block delivers an honest terminal failure to the Creator.
+    if (ledgerEntry.currentState === OperationState.FAILED) {
+      throw new Error(`Operation [${operationId}] failed during materialization.`);
+    }
+
     if (
-      ledgerEntry.currentState !== OperationState.DISPATCHED && 
+      ledgerEntry.currentState !== OperationState.DISPATCHED &&
       ledgerEntry.currentState !== OperationState.MATERIALIZING
     ) {
       // Operation is still pending authorization or routing; not ready for provider resolution.
-      return null; 
+      return null;
     }
 
     // 4. Validate routing metadata presence

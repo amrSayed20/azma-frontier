@@ -123,11 +123,11 @@ export class FlattenedRenderingBridge {
         const operationEntry = await this.fleetDispatcher.executeMaterialization(dispatchIntent);
 
         return this.updateRenderState(publication.publicationId, RenderStatus.PROCESSING, operationEntry.operationId);
-      } catch {
-        // No rendering provider is currently wired — leave the render in PENDING so
-        // the publication is not marked as a failed production event. A real VISUAL
-        // provider will pick up PENDING publications once Al-Watin is built.
-        return this.updateRenderState(publication.publicationId, RenderStatus.PENDING);
+      } catch (err) {
+        // MAG-LF-001B fix: dispatch failures must propagate to the outer boundary.
+        // Absorbing them as PENDING hides the real error and leaves no activeOperationId,
+        // so polling never starts and the Creator sees no terminal signal.
+        throw err;
       }
     }
 

@@ -89,9 +89,12 @@ export class CinematicAssemblyAdapter extends BaseProviderAdapter {
     // filesystem path and handles missing files gracefully (skip + log).
     const resolvedVoicePaths = await this.resolveVoiceDirectives(graph, ledgerEntry.subscriberTenantId);
 
-    // Start encoding asynchronously. spawnEncoding() returns immediately.
-    // If the graph is invalid (no image nodes, missing assets), the error is stored
-    // in the encoder's job-state map and surfaced via checkOperationStatus().
+    // Start encoding. spawnEncoding() throws synchronously on graph validation
+    // failure (missing secureStorageUri, missing asset file, no image nodes).
+    // The throw propagates here → dispatchOperation() catches → FAILED status →
+    // dispatcher marks ledger FAILED. No phantom ACCEPTED. (MAG-LF-001C)
+    // Post-spawn FFmpeg errors are tracked asynchronously via the jobs Map and
+    // surfaced through checkOperationStatus().
     spawnEncoding(ledgerEntry.operationId, graph, resolvedVoicePaths);
 
     return {
