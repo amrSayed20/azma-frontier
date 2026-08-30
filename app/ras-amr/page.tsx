@@ -396,7 +396,7 @@ import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import { RasAmrExperience } from '@/src/imperial-experience-engine';
 import type { VaultAsset, AssetFamily } from '@/src/vault/sovereign-vault-types';
 import { filterVoiceLibrary } from '@/src/vault/sovereign-vault-types';
-import type { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
+import { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
 import { CanvasType, DirectionNodeRole } from '@/src/chambers/ras-al-amr/assembly-contracts';
 import type { SovereignCanvas, SpatialDirective, TemporalDirective } from '@/src/chambers/ras-al-amr/assembly-contracts';
 import type { CompiledAssemblyGraph } from '@/src/chambers/ras-al-amr/pre-publishing-boundary';
@@ -1596,125 +1596,208 @@ export default function RasAmrChamber() {
         </aside>
 
         {/* =========================================== */}
-        {/* 2. CENTER: IMPERIAL DIRECTOR IDENTITY       */}
+        {/* 2. CENTER: CINEMATIC DIRECTION WORKSPACE   */}
         {/* =========================================== */}
-        <section className="main-director-core director-identity-surface">
+        <section className="main-director-core">
 
-          {/* Imperial Continuity — acknowledges the journey origin */}
-          {kernelContinuity && (
-            <div className="director-continuity-banner">
-              {kernelContinuity === 'palace-treasure'
-                ? 'أصل قادم من القصر — المخرج الإمبراطوري على استعداد'
-                : 'الإمبراطورية أعدّت هذه الجلسة — المخرج الإمبراطوري يستقبلك'}
+          {/* ZONE 1 — CINEMATIC VIEWPORT
+              Real data only. Image: <img> via secureStorageUri (Makman pattern).
+              Audio: waveform shape indicator — type signal, not fake data.
+              Video: cinematic frame indicator. Empty: chamber identity. */}
+          <div className={`cinema-viewport neon-border-heavy ${!activeAsset ? 'viewport-empty-state' : activeAsset.isRealAsset ? 'viewport-real' : 'viewport-demo'}`}>
+            <div className="viewport-scanlines" aria-hidden="true" />
+
+            {kernelContinuity && (
+              <div className="viewport-continuity-ribbon" role="status">
+                {kernelContinuity === 'palace-treasure'
+                  ? 'أصل قادم من القصر — المخرج الإمبراطوري على استعداد'
+                  : 'الإمبراطورية أعدّت هذه الجلسة — المخرج الإمبراطوري يستقبلك'}
+              </div>
+            )}
+
+            <div className="viewport-main-content">
+              {!activeAsset ? (
+                <div className="viewport-chamber-identity">
+                  <div className="viewport-sigil" aria-hidden="true">✦</div>
+                  <h2 className="viewport-chamber-name">رأس الأمر</h2>
+                  <p className="viewport-chamber-mandate">
+                    الجهة الدستورية لتوجيه الإنتاج السيادي — مكانية، بصرية، زمنية، وصوتية
+                  </p>
+                  <p className="viewport-summon-cue">← استدعِ أصلاً من الخزانة للبدء</p>
+                </div>
+              ) : activeAsset.isRealAsset && activeAsset.capabilityOrigin === CapabilityTarget.VISUAL && activeAsset.secureStorageUri ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  className="viewport-asset-image"
+                  src={activeAsset.secureStorageUri}
+                  alt={activeAsset.title}
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                />
+              ) : activeAsset.isRealAsset && activeAsset.capabilityOrigin === CapabilityTarget.AUDIO ? (
+                <div className="viewport-audio-identity">
+                  <div className="viewport-waveform" aria-hidden="true">
+                    {[65, 40, 85, 55, 90, 45, 75, 60, 80, 50, 70, 35, 88, 42, 68].map((h, i) => (
+                      <span key={i} className="viewport-wave-bar" style={{ height: `${h}%` }} />
+                    ))}
+                  </div>
+                  <p className="viewport-audio-label">{activeAsset.title}</p>
+                </div>
+              ) : activeAsset.isRealAsset && activeAsset.capabilityOrigin === CapabilityTarget.MOTION ? (
+                <div className="viewport-video-identity">
+                  <div className="viewport-video-frame" aria-hidden="true">🎬</div>
+                  <p className="viewport-video-label">{activeAsset.title}</p>
+                </div>
+              ) : (
+                <div className="viewport-generic-identity">
+                  <div className="viewport-sigil viewport-sigil-dim" aria-hidden="true">✦</div>
+                  <p className="viewport-generic-label">{activeAsset.title}</p>
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Chamber Identity */}
-          <div className="director-chamber-identity neon-border">
-            <div className="neon-tag">المخرج الإمبراطوري</div>
-            <h2 className="dir-chamber-name">رأس الأمر</h2>
-            <p className="dir-chamber-mandate">
-              الجهة الدستورية لتوجيه الإنتاج السيادي — كل أصل يدخل القماش السردي تحت سلطة توجيهية حقيقية: مكانية، بصرية، زمنية، وصوتية
-            </p>
+            <div className="viewport-meta-strip">
+              {activeAsset ? (
+                <>
+                  <span className={`viewport-real-badge ${activeAsset.isRealAsset ? 'badge-real' : 'badge-demo'}`}>
+                    {activeAsset.isRealAsset ? '● حقيقي' : '◌ تجريبي'}
+                  </span>
+                  <span className="viewport-asset-type">{activeAsset.type}</span>
+                  <span className="viewport-asset-source">{activeAsset.source}</span>
+                </>
+              ) : (
+                <span className="viewport-idle">في وضع الاستعداد الإخراجي</span>
+              )}
+              <span className="viewport-id-tag">المخرج الإمبراطوري</span>
+            </div>
           </div>
 
-          {/* Active Asset */}
-          {activeAsset ? (
-            <div className={`director-active-asset neon-border ${activeAsset.isRealAsset ? 'asset-real' : 'asset-demo'}`}>
-              <div className="neon-tag">{activeAsset.isRealAsset ? 'أصل حقيقي نشط' : 'عنصر تجريبي'}</div>
-              <h3 className="active-asset-title">{activeAsset.title}</h3>
-              <p className="active-asset-meta">{activeAsset.type} — {activeAsset.source}</p>
-            </div>
-          ) : (
-            <div className="director-active-asset neon-border asset-empty">
-              <p className="dir-empty-hint">لا يوجد أصل نشط — استدعِ أصلاً حقيقياً من الخزانة السيادية للبدء</p>
-            </div>
-          )}
-
-          {/* Constitutional State */}
-          <div className="director-state-surface neon-border">
-            <div className="neon-tag">الحالة الدستورية</div>
-            <div className="dir-state-grid">
-              <div className="dir-state-row">
-                <span className="dir-state-label">المخرج النشط</span>
-                <span className="dir-state-value">
-                  {directingMode === 'smart' ? 'المخرج الآلي' : 'المخرج اليدوي'}
-                </span>
+          {/* ZONE 2 — SOVEREIGN CANVAS TIMELINE
+              Pure visualization of sessionCanvas.tracks[].nodes[].
+              Node positions derived from real temporal directives.
+              Clicking a node reuses existing setSelectedNodeId setter.
+              No playback. No fake playhead. No animation simulating time. */}
+          <div className="sovereign-timeline-panel neon-border">
+            <div className="neon-tag">القماش السردي — الخط الزمني</div>
+            {!sessionCanvas || sessionCanvas.tracks.flatMap(t => t.nodes).length === 0 ? (
+              <p className="timeline-empty-hint">
+                {!sessionCanvas ? 'القماش في انتظار أصل حقيقي' : 'القماش مفتوح — لم يُضَف أي أصل بعد'}
+              </p>
+            ) : (
+              <div className="timeline-tracks-container">
+                {(() => {
+                  const allNodes = sessionCanvas.tracks.flatMap(t => t.nodes);
+                  const totalDuration = Math.max(
+                    ...allNodes.map(n => (n.temporal?.globalStartTimeSeconds ?? 0) + (n.temporal?.playDurationSeconds ?? 5)),
+                    5
+                  );
+                  return sessionCanvas.tracks.filter(t => t.nodes.length > 0).map((track) => (
+                    <div key={track.trackId} className={`timeline-track-row${track.isMuted ? ' track-muted' : ''}`}>
+                      <span className="timeline-track-label" title={track.trackName}>
+                        {track.trackName.slice(0, 8)}
+                      </span>
+                      <div className="timeline-nodes-bar">
+                        {track.nodes.map((node, idx) => {
+                          const start = node.temporal?.globalStartTimeSeconds ?? 0;
+                          const dur = node.temporal?.playDurationSeconds ?? 5;
+                          const isSelected = selectedNodeId === node.nodeId;
+                          const isCurrentAsset = activeAsset?.id === node.assetId;
+                          return (
+                            <div
+                              key={node.nodeId}
+                              className={`timeline-node-block${isSelected ? ' node-block-selected' : ''}${isCurrentAsset ? ' node-block-active' : ''}${node.isLocked ? ' node-block-locked' : ''}${node.isActive === false ? ' node-block-inactive' : ''}`}
+                              style={{
+                                left: `${(start / totalDuration) * 100}%`,
+                                width: `${Math.max((dur / totalDuration) * 100, 4)}%`,
+                              }}
+                              onClick={() => setSelectedNodeId(node.nodeId)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedNodeId(node.nodeId); }}
+                              aria-label={`عقدة ${idx + 1}: من ${start}ث إلى ${start + dur}ث`}
+                              aria-pressed={isSelected}
+                              title={`${start}s → ${start + dur}s`}
+                            >
+                              <span className="timeline-node-index">{idx + 1}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ));
+                })()}
               </div>
-              <div className="dir-state-row">
-                <span className="dir-state-label">القماش السردي</span>
-                <span className="dir-state-value">
-                  {sessionCanvas
-                    ? `${sessionCanvas.tracks.flatMap(t => t.nodes).length} عقدة — ${sessionCanvas.tracks.length} مجموعة`
-                    : 'لم يُفتَح بعد'}
-                </span>
-              </div>
-              <div className="dir-state-row">
-                <span className="dir-state-label">الصهر</span>
-                <span className="dir-state-value">
-                  {isRendering ? 'جارٍ...'
-                    : compiledGraph && compiledForAssetId === activeAsset?.id
-                      ? `مكتمل — ${compiledGraph.metadata.totalNodes} عقدة`
-                      : 'لم يُصهر بعد'}
-                </span>
-              </div>
-            </div>
-            {renderStatus !== 'في وضع الاستعداد الإخراجي' && (
-              <p className="dir-render-status">{renderStatus}</p>
             )}
           </div>
 
-          {/* Available Paths — derived from constitutional state */}
-          <div className="director-available-actions neon-border">
-            <div className="neon-tag">المسارات المتاحة الآن</div>
-            <ul className="dir-actions-list">
-              <li className={`dir-action-item ${activeAsset?.isRealAsset ? 'dir-action-complete' : 'dir-action-primary'}`}>
-                {activeAsset?.isRealAsset
-                  ? `✓ أصل نشط: ${activeAsset.title.slice(0, 45)}`
-                  : '← استدعِ أصلاً حقيقياً من الخزانة السيادية (اللوحة اليسرى)'}
-              </li>
-              {activeAsset?.isRealAsset && (
-                <li className={`dir-action-item ${
-                  sessionCanvas?.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id)
-                    ? 'dir-action-complete' : 'dir-action-primary'
-                }`}>
-                  {sessionCanvas?.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id)
-                    ? '✓ الأصل في القماش السردي'
-                    : '← أضفه إلى القماش السردي (اللوحة اليمنى — القماش السردي → أضف الأصل النشط)'}
-                </li>
-              )}
-              {sessionCanvas && sessionCanvas.tracks.flatMap(t => t.nodes).length > 0 && (
-                <li className={`dir-action-item ${
-                  compiledGraph && compiledForAssetId === activeAsset?.id ? 'dir-action-complete' : 'dir-action-primary'
-                }`}>
-                  {compiledGraph && compiledForAssetId === activeAsset?.id
-                    ? `✓ تجميع مكتمل — ${compiledGraph.compilationId}`
-                    : canCompile
-                      ? '← صهر التجميع النهائي (اللوحة اليمنى — أسفل)'
-                      : '● الصهر يتطلب أصلاً حقيقياً في القماش'}
-                </li>
-              )}
-              {compiledGraph && compiledForAssetId === activeAsset?.id && (
-                <li className="dir-action-item dir-action-primary">
-                  ← رحِّل التجميع إلى مكمن الغاية (اللوحة اليمنى — أسفل)
-                </li>
-              )}
-            </ul>
+          {/* ZONE 3 — DIRECTOR STATUS STRIP
+              Three live cells: active operator, canvas summary, render state. */}
+          <div className="director-status-strip neon-border">
+            <div className="strip-cell strip-operator">
+              <span className={`strip-pulse${isRendering ? ' strip-pulse-active' : ''}`} aria-hidden="true" />
+              <span>{directingMode === 'smart' ? 'المخرج الآلي' : 'المخرج اليدوي'}</span>
+            </div>
+            <div className="strip-cell strip-canvas">
+              {sessionCanvas
+                ? `${sessionCanvas.tracks.flatMap(t => t.nodes).length} عقدة`
+                : 'القماش فارغ'}
+            </div>
+            <div className="strip-cell strip-render">
+              {renderStatus !== 'في وضع الاستعداد الإخراجي' ? renderStatus : '◉ جاهز'}
+            </div>
           </div>
 
-          {/* Last Direction Decision — live proof the runtime is active */}
-          {directionDecisionLog.length > 0 && (
-            <div className="director-last-decision neon-border">
-              <div className="neon-tag">آخر قرار توجيهي</div>
-              <p className="dir-decision-text">
-                {directionDecisionLog[0].mutation.actionType}
-                {' — '}
-                {directionDecisionLog[0].operator === 'automatic-director' ? 'المخرج الآلي' : 'المخرج اليدوي'}
-                {' — '}
-                {new Date(directionDecisionLog[0].issuedAtMs).toLocaleTimeString('ar-EG')}
-              </p>
+          {/* ZONE 4 — LOWER ZONE: available paths + decision log (scrollable) */}
+          <div className="director-lower-zone">
+            <div className="director-available-actions neon-border">
+              <div className="neon-tag">المسارات المتاحة الآن</div>
+              <ul className="dir-actions-list">
+                <li className={`dir-action-item ${activeAsset?.isRealAsset ? 'dir-action-complete' : 'dir-action-primary'}`}>
+                  {activeAsset?.isRealAsset
+                    ? `✓ أصل نشط: ${activeAsset.title.slice(0, 45)}`
+                    : '← استدعِ أصلاً حقيقياً من الخزانة السيادية (اللوحة اليسرى)'}
+                </li>
+                {activeAsset?.isRealAsset && (
+                  <li className={`dir-action-item ${
+                    sessionCanvas?.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id)
+                      ? 'dir-action-complete' : 'dir-action-primary'
+                  }`}>
+                    {sessionCanvas?.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id)
+                      ? '✓ الأصل في القماش السردي'
+                      : '← أضفه إلى القماش السردي (اللوحة اليمنى — القماش السردي → أضف الأصل النشط)'}
+                  </li>
+                )}
+                {sessionCanvas && sessionCanvas.tracks.flatMap(t => t.nodes).length > 0 && (
+                  <li className={`dir-action-item ${
+                    compiledGraph && compiledForAssetId === activeAsset?.id ? 'dir-action-complete' : 'dir-action-primary'
+                  }`}>
+                    {compiledGraph && compiledForAssetId === activeAsset?.id
+                      ? `✓ تجميع مكتمل — ${compiledGraph.compilationId}`
+                      : canCompile
+                        ? '← صهر التجميع النهائي (اللوحة اليمنى — أسفل)'
+                        : '● الصهر يتطلب أصلاً حقيقياً في القماش'}
+                  </li>
+                )}
+                {compiledGraph && compiledForAssetId === activeAsset?.id && (
+                  <li className="dir-action-item dir-action-primary">
+                    ← رحِّل التجميع إلى مكمن الغاية (اللوحة اليمنى — أسفل)
+                  </li>
+                )}
+              </ul>
             </div>
-          )}
+
+            {directionDecisionLog.length > 0 && (
+              <div className="director-last-decision neon-border">
+                <div className="neon-tag">آخر قرار توجيهي</div>
+                <p className="dir-decision-text">
+                  {directionDecisionLog[0].mutation.actionType}
+                  {' — '}
+                  {directionDecisionLog[0].operator === 'automatic-director' ? 'المخرج الآلي' : 'المخرج اليدوي'}
+                  {' — '}
+                  {new Date(directionDecisionLog[0].issuedAtMs).toLocaleTimeString('ar-EG')}
+                </p>
+              </div>
+            )}
+          </div>
         </section>
 
         {/* ========================================= */}
