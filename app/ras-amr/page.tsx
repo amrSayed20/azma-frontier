@@ -1744,58 +1744,6 @@ export default function RasAmrChamber() {
             </div>
           </div>
 
-          {/* ZONE 4 — LOWER ZONE: available paths + decision log (scrollable) */}
-          <div className="director-lower-zone">
-            <div className="director-available-actions neon-border">
-              <div className="neon-tag">المسارات المتاحة الآن</div>
-              <ul className="dir-actions-list">
-                <li className={`dir-action-item ${activeAsset?.isRealAsset ? 'dir-action-complete' : 'dir-action-primary'}`}>
-                  {activeAsset?.isRealAsset
-                    ? `✓ أصل نشط: ${activeAsset.title.slice(0, 45)}`
-                    : '← استدعِ أصلاً حقيقياً من الخزانة السيادية (اللوحة اليسرى)'}
-                </li>
-                {activeAsset?.isRealAsset && (
-                  <li className={`dir-action-item ${
-                    sessionCanvas?.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id)
-                      ? 'dir-action-complete' : 'dir-action-primary'
-                  }`}>
-                    {sessionCanvas?.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id)
-                      ? '✓ الأصل في المشهد'
-                      : '← أضف الأصل إلى المشهد (اللوحة اليسرى ← مشهد الإخراج)'}
-                  </li>
-                )}
-                {sessionCanvas && sessionCanvas.tracks.flatMap(t => t.nodes).length > 0 && (
-                  <li className={`dir-action-item ${
-                    compiledGraph && compiledForAssetId === activeAsset?.id ? 'dir-action-complete' : 'dir-action-primary'
-                  }`}>
-                    {compiledGraph && compiledForAssetId === activeAsset?.id
-                      ? `✓ تجميع مكتمل — ${compiledGraph.compilationId}`
-                      : canCompile
-                        ? '← صهر التجميع النهائي (اللوحة اليمنى — أسفل)'
-                        : '● الصهر يتطلب أصلاً حقيقياً في المشهد'}
-                  </li>
-                )}
-                {compiledGraph && compiledForAssetId === activeAsset?.id && (
-                  <li className="dir-action-item dir-action-primary">
-                    ← رحِّل التجميع إلى مكمن الغاية (اللوحة اليمنى — أسفل)
-                  </li>
-                )}
-              </ul>
-            </div>
-
-            {directionDecisionLog.length > 0 && (
-              <div className="director-last-decision neon-border">
-                <div className="neon-tag">آخر قرار توجيهي</div>
-                <p className="dir-decision-text">
-                  {directionDecisionLog[0].mutation.actionType}
-                  {' — '}
-                  {directionDecisionLog[0].operator === 'automatic-director' ? 'المخرج الآلي' : 'المخرج اليدوي'}
-                  {' — '}
-                  {new Date(directionDecisionLog[0].issuedAtMs).toLocaleTimeString('ar-EG')}
-                </p>
-              </div>
-            )}
-          </div>
         </section>
 
         {/* ========================================= */}
