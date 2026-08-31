@@ -149,7 +149,7 @@
   padding: 52px 8px 6px 8px;
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: min(190px, 15vw) 1fr min(200px, 16vw);
+  grid-template-columns: min(220px, 17vw) 1fr min(220px, 17vw);
   grid-template-rows: 1fr 118px;
   gap: 6px;
   overflow: hidden;
@@ -195,7 +195,7 @@
 }
 
 .panel-header {
-  padding: 10px 12px;
+  padding: 12px 16px;
   border-bottom: 1px solid rgba(255, 215, 0, 0.08);
   background: linear-gradient(180deg, rgba(0,0,0,0.4), transparent);
   flex-shrink: 0;
@@ -211,15 +211,15 @@
 }
 
 .panel-header h2 {
-  margin: 0 0 2px 0;
-  font-size: 1rem;
+  margin: 0 0 3px 0;
+  font-size: 1.1rem;
   font-weight: 800;
   color: var(--text-main);
 }
 
 .panel-header p {
   margin: 0;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
@@ -265,7 +265,7 @@
 /* ========================================= */
 .queue-container {
   flex: 1;
-  padding: 6px 8px;
+  padding: 10px 10px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -308,7 +308,7 @@
   border: 1px solid rgba(255, 215, 0, 0.2);
 }
 
-.item-source { font-size: 10px; color: var(--text-muted); }
+.item-source { font-size: 11px; color: var(--text-muted); }
 
 .item-title {
   margin: 0 0 10px 0;
@@ -325,7 +325,7 @@
 .item-footer {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   border-top: 1px solid rgba(255,255,255,0.03);
   padding-top: 8px;
@@ -522,11 +522,11 @@
 /* CANVAS MODE SELECTOR                      */
 /* ========================================= */
 .canvas-mode-selector {
-  padding: 5px 8px;
+  padding: 10px 10px;
   background: rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
@@ -537,8 +537,8 @@
   border-radius: 8px;
   color: var(--text-main);
   font-family: monospace;
-  font-size: 10px;
-  padding: 8px 10px;
+  font-size: 12px;
+  padding: 9px 10px;
   cursor: pointer;
 }
 
@@ -550,7 +550,7 @@
 
 .canvas-mode-reset-note {
   margin: 0;
-  font-size: 9px;
+  font-size: 11px;
   color: rgba(255, 180, 50, 0.7);
   font-family: monospace;
 }
@@ -582,12 +582,12 @@
 /* ========================================= */
 /* CONSTITUTIONAL OPERATOR SWITCHER          */
 /* ========================================= */
-.operator-switcher { display: flex; flex-direction: column; padding: 6px 8px; gap: 4px; background: rgba(0,0,0,0.3); flex-shrink: 0; }
+.operator-switcher { display: flex; flex-direction: column; padding: 10px 10px; gap: 6px; background: rgba(0,0,0,0.3); flex-shrink: 0; }
 
 .operator-btn {
   width: 100%;
-  padding: 6px 10px;
-  font-size: 10px;
+  padding: 10px 12px;
+  font-size: 11px;
   border-radius: 8px;
   border: 1px solid rgba(255, 215, 0, 0.1);
   background: var(--os-surface-elevated);
@@ -603,12 +603,12 @@
 
 .operator-btn-label {
   font-weight: 700;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-main);
 }
 
 .operator-btn-desc {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--text-muted);
   line-height: 1.3;
 }
@@ -674,20 +674,20 @@
 
 /* EXECUTIVE COMMAND PANEL */
 .executive-actions-panel {
-  padding: 6px 8px;
+  padding: 10px 10px;
   border-top: 1px solid rgba(255, 215, 0, 0.08);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   background: rgba(0,0,0,0.4);
   flex-shrink: 0;
 }
 
 .action-trigger-btn {
   width: 100%;
-  padding: 6px 10px;
+  padding: 10px 12px;
   border-radius: 8px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 900;
   cursor: pointer;
   font-family: inherit;
