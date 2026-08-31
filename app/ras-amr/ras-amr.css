@@ -1333,7 +1333,7 @@
 /* RESTORED CINEMATIC VIEWPORT — real asset display   */
 /* ================================================== */
 .cinema-viewport {
-  height: 300px;
+  height: clamp(200px, 38vh, 300px);
   flex-shrink: 0;
   border-radius: 18px;
   background: #000;

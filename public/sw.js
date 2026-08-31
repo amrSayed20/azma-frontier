@@ -1,11 +1,11 @@
 /**
  * AZMA OS — THE IMPERIAL INSTALL EXPERIENCE
- * DIAGNOSTIC BUILD — all fetch events pass through the browser natively.
- * No caching, no interception. Purpose: isolate whether the Service Worker
- * is the root cause of "This page couldn't load" on /imperial-foyer navigation.
+ * TRANSPARENT BUILD v4 — all fetch events pass through the browser natively.
+ * No caching, no interception. All caches cleared on activation.
+ * Served with Cache-Control: no-store so browsers always fetch the latest version.
  */
 
-const CACHE_NAME = 'azma-os-shell-v3';
+const CACHE_NAME = 'azma-os-shell-v4';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
