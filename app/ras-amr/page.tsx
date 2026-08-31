@@ -1672,6 +1672,61 @@ export default function RasAmrChamber() {
             </div>
           </div>
 
+          {/* ZONE 2.5 — CREATOR QUICK ACTIONS
+              Primary operational bar — surfaces the exact next action
+              the Creator should take without requiring sidebar navigation. */}
+          {activeAsset && (
+            <div className="creator-quick-actions">
+
+              {/* Audio playback — Creator hears the asset immediately */}
+              {activeAsset.isRealAsset && activeAsset.capabilityOrigin === CapabilityTarget.AUDIO && activeAsset.secureStorageUri && (
+                // eslint-disable-next-line jsx-a11y/media-has-caption
+                <audio controls src={activeAsset.secureStorageUri} className="creator-audio-player" />
+              )}
+
+              {/* Add to scene — primary action when asset not yet in the scene */}
+              {activeAsset.isRealAsset && sessionCanvas &&
+                !sessionCanvas.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id) && (
+                <button
+                  className="creator-action-btn creator-action-primary"
+                  onClick={handleAddActiveAssetToCanvas}
+                >
+                  ➕ أضف إلى مشهد الإخراج
+                </button>
+              )}
+
+              {/* No canvas yet — show initialize cue */}
+              {activeAsset.isRealAsset && !sessionCanvas && (
+                <button
+                  className="creator-action-btn creator-action-primary"
+                  onClick={handleAddActiveAssetToCanvas}
+                >
+                  ➕ ابدأ مشهد الإخراج بهذا الأصل
+                </button>
+              )}
+
+              {/* Render to MP4 — shows when scene is ready */}
+              {canCompile && (
+                <button
+                  className={`creator-action-btn ${isRendering ? 'creator-action-secondary' : 'creator-action-primary'}`}
+                  onClick={triggerMasterRender}
+                  disabled={isRendering}
+                >
+                  {isRendering ? '⏳ جارٍ الصهر…' : '🎬 صهر وتصدير MP4'}
+                </button>
+              )}
+
+              {/* Asset already in scene confirmation */}
+              {activeAsset.isRealAsset && sessionCanvas &&
+                sessionCanvas.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id) &&
+                !canCompile && (
+                <span style={{ fontSize: '11px', color: 'var(--neon-gold-dim)' }}>
+                  ✓ الأصل في المشهد — أضف أصولاً إضافية أو اصهر للتصدير
+                </span>
+              )}
+            </div>
+          )}
+
           {/* ZONE 3 — DIRECTOR STATUS STRIP
               Three live cells: active operator, canvas summary, render state. */}
           <div className="director-status-strip neon-border">
