@@ -145,12 +145,12 @@
   position: relative;
   z-index: 10;
   width: 100%;
-  height: 100vh;
+  height: 100dvh;
   padding: 52px 8px 6px 8px;
   box-sizing: border-box;
   display: grid;
   grid-template-columns: min(220px, 17vw) 1fr min(220px, 17vw);
-  grid-template-rows: 1fr 118px;
+  grid-template-rows: 1fr 130px;
   gap: 6px;
   overflow: hidden;
 }

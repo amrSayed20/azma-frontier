@@ -1643,11 +1643,15 @@ export default function RasAmrChamber() {
                   </div>
                   <p className="viewport-audio-label">{activeAsset.title}</p>
                 </div>
-              ) : activeAsset.isRealAsset && activeAsset.capabilityOrigin === CapabilityTarget.MOTION ? (
-                <div className="viewport-video-identity">
-                  <div className="viewport-video-frame" aria-hidden="true">🎬</div>
-                  <p className="viewport-video-label">{activeAsset.title}</p>
-                </div>
+              ) : activeAsset.isRealAsset && activeAsset.capabilityOrigin === CapabilityTarget.MOTION && activeAsset.secureStorageUri ? (
+                // eslint-disable-next-line jsx-a11y/media-has-caption
+                <video
+                  className="viewport-asset-image"
+                  src={activeAsset.secureStorageUri}
+                  controls
+                  playsInline
+                  style={{ background: '#000', objectFit: 'contain' }}
+                />
               ) : (
                 <div className="viewport-generic-identity">
                   <div className="viewport-sigil viewport-sigil-dim" aria-hidden="true">✦</div>
@@ -1753,7 +1757,7 @@ export default function RasAmrChamber() {
           <header className="panel-header">
             <div className="neon-tag">مساحة التوجيه</div>
             <h2>مساحة التوجيه السيادية</h2>
-            <p>حالة توجيه سيادية واحدة — المخرج اليدوي والمخرج الآلي يعملان معاً هنا، بلا غرفة مونتاج منفصلة وبلا ازدواج في البنية</p>
+            <p>الخالق يوجّه — الذكاء ينفّذ</p>
           </header>
 
           <div className="operator-switcher">
@@ -1763,7 +1767,7 @@ export default function RasAmrChamber() {
               aria-pressed={directingMode === 'smart'}
             >
               <span className="operator-btn-label">المخرج الآلي</span>
-              <span className="operator-btn-desc">يحلل المشهد ويصدر قرارات توجيهية بناءً على هدف الخالق المصرَّح به</span>
+              <span className="operator-btn-desc">قرارات توجيهية آلية بناءً على الهدف</span>
             </button>
             <button
               className={`operator-btn ${directingMode === 'manual' ? 'operator-active' : ''}`}
@@ -1771,7 +1775,7 @@ export default function RasAmrChamber() {
               aria-pressed={directingMode === 'manual'}
             >
               <span className="operator-btn-label">المخرج اليدوي</span>
-              <span className="operator-btn-desc">الخالق يُصدر قرارات التوجيه مباشرةً — مكاني، بصري، زمني، صوتي</span>
+              <span className="operator-btn-desc">مكاني، بصري، زمني، صوتي</span>
             </button>
           </div>
 
@@ -2435,7 +2439,7 @@ export default function RasAmrChamber() {
                 className={`hud-top-tab ${hudActiveTab === 'create' ? 'hud-top-tab-active' : ''}`}
                 onClick={() => setHudActiveTab('create')}
               >
-                ＋ إنشاء أصل جديد
+                ⬆ رفع ملف | توليد صوت
               </button>
             </div>
 
@@ -2468,9 +2472,12 @@ export default function RasAmrChamber() {
                       {activeVaultCategory?.assets.map((asset) => {
                         const prompt = typeof asset.metadata.generationPrompt === 'string' && asset.metadata.generationPrompt ? asset.metadata.generationPrompt : null;
                         const voiceName = typeof asset.metadata.voiceDisplayName === 'string' && asset.metadata.voiceDisplayName ? asset.metadata.voiceDisplayName : null;
-                        const filename = asset.secureStorageUri.split('/').pop()?.split('.')[0]?.slice(0, 8) ?? '';
-                        const label = prompt ? prompt.slice(0, 50) : voiceName ?? (filename ? `أصل — ${filename}` : asset.assetId.slice(0, 12));
+                        const TYPE_ICONS: Record<string, string> = { VISUAL: '🖼', MOTION: '🎬', AUDIO: '🎙', WRITING: '📄' };
+                        const typeIcon = TYPE_ICONS[asset.capabilityTarget] ?? '◆';
+                        const dateStr = asset.createdAt ? new Date(asset.createdAt).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+                        const label = prompt ? prompt.slice(0, 45) : voiceName ?? `${typeIcon} ${dateStr || asset.assetId.slice(0, 10)}`;
                         const isImage = asset.assetFamily === 'MEDIA' && /\.(jpg|jpeg|png|webp)$/i.test(asset.secureStorageUri);
+                        const isVideo = asset.capabilityTarget === 'MOTION' && asset.secureStorageUri;
                         return (
                           <div key={asset.assetId} className="hud-asset-item-chip glassmorphism">
                             {isImage ? (
@@ -2479,8 +2486,17 @@ export default function RasAmrChamber() {
                                 alt={label}
                                 className="hud-item-thumbnail"
                               />
+                            ) : isVideo ? (
+                              // eslint-disable-next-line jsx-a11y/media-has-caption
+                              <video
+                                src={asset.secureStorageUri}
+                                className="hud-item-thumbnail"
+                                preload="metadata"
+                                muted
+                                playsInline
+                              />
                             ) : (
-                              <div className="hud-item-graphic">✧</div>
+                              <div className="hud-item-graphic" style={{ fontSize: '28px' }}>{typeIcon}</div>
                             )}
                             <span className="hud-item-name">{label}</span>
                             <button
