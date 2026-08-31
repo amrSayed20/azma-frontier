@@ -913,6 +913,7 @@ export default function RasAmrChamber() {
   const [isSummonOpen, setIsSummonOpen] = useState<boolean>(false);
   const [selectedVault, setSelectedVault] = useState<string>('');
   const [injectionFlash, setInjectionFlash] = useState<boolean>(false);
+  const [hudActiveTab, setHudActiveTab] = useState<'vault' | 'create'>('vault');
 
   // --- Real Sovereign Vault assets — the Summoning Bridge's real source ---
   const [vaultAssets, setVaultAssets] = useState<VaultAsset[]>([]);
@@ -2421,217 +2422,244 @@ export default function RasAmrChamber() {
               <button className="hud-close-btn" onClick={() => setIsSummonOpen(false)}>✖ إغلاق</button>
             </header>
 
-            {/* PACKAGE XIX — MEDIA INGESTION LAYER: real Creator file upload — becomes a real VaultAsset, appears below like any other. */}
-            <div className="hud-upload-row">
-              <input
-                ref={uploadFileInputRef}
-                type="file"
-                id="ras-amr-media-upload"
-                className="hud-upload-input"
-                disabled={isUploadingAsset}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void handleUploadAsset(file);
-                }}
-              />
-              <label htmlFor="ras-amr-media-upload" className="action-trigger-btn hud-upload-label">
-                {isUploadingAsset ? '⏳ الرفع إلى الخزانة جارٍ…' : '⬆ رفع ملف حقيقي من الجهاز إلى الخزانة'}
-              </label>
-              {uploadError && <p className="spatial-current-state narrative-integrity-violation">{uploadError}</p>}
-            </div>
-            {/* MINISTRY I — VOICE ECOSYSTEM: real, Creator-declared voice identity, set before choosing the file above. */}
-            <div className="hud-voice-upload-row">
-              <label className="hud-voice-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={isVoiceUpload}
-                  onChange={(e) => setIsVoiceUpload(e.target.checked)}
-                  disabled={isUploadingAsset}
-                />
-                هذا الملف صوت (Voice)
-              </label>
-              {isVoiceUpload && (
-                <input
-                  type="text"
-                  className="hud-voice-name-input"
-                  placeholder="اسم هوية الصوت (اختياري)"
-                  value={voiceDisplayNameInput}
-                  onChange={(e) => setVoiceDisplayNameInput(e.target.value)}
-                  disabled={isUploadingAsset}
-                />
-              )}
+            {/* ── HUD TOP-LEVEL TAB SWITCHER ────────────────────────────────── */}
+            <div className="hud-tab-switcher">
+              <button
+                className={`hud-top-tab ${hudActiveTab === 'vault' ? 'hud-top-tab-active' : ''}`}
+                onClick={() => setHudActiveTab('vault')}
+              >
+                ◆ من الخزانة السيادية
+              </button>
+              <button
+                className={`hud-top-tab ${hudActiveTab === 'create' ? 'hud-top-tab-active' : ''}`}
+                onClick={() => setHudActiveTab('create')}
+              >
+                ＋ إنشاء أصل جديد
+              </button>
             </div>
 
-            {/* MINISTRY II — TEXT TO SPEECH ENGINE: ElevenLabs preset voices — result becomes a real Voice Asset in the Voice Library. */}
-            <div className="hud-tts-row">
-              <textarea
-                className="hud-tts-text-input"
-                placeholder="اكتب نصًا لتحويله إلى كلام حقيقي..."
-                value={ttsText}
-                onChange={(e) => setTtsText(e.target.value)}
-                disabled={isGeneratingSpeech}
-                rows={2}
-              />
-              <div className="hud-tts-controls">
-                <select
-                  className="hud-tts-voice-select"
-                  value={ttsPresetVoiceId}
-                  onChange={(e) => setTtsPresetVoiceId(e.target.value)}
-                  disabled={isGeneratingSpeech}
-                  aria-label="الصوت الجاهز المُستخدَم في التوليد"
-                >
-                  {ELEVENLABS_PRESET_VOICES.map((voice) => (
-                    <option key={voice.id} value={voice.id}>{voice.label}</option>
-                  ))}
-                </select>
-                <input
-                  type="text"
-                  className="hud-voice-name-input"
-                  placeholder="اسم هوية الصوت الناتج (اختياري)"
-                  value={ttsDisplayNameInput}
-                  onChange={(e) => setTtsDisplayNameInput(e.target.value)}
-                  disabled={isGeneratingSpeech}
-                />
-                <button
-                  className="action-trigger-btn"
-                  onClick={handleGenerateSpeech}
-                  disabled={isGeneratingSpeech || !ttsText.trim()}
-                >
-                  {isGeneratingSpeech ? '⏳ الصوت يُولَّد…' : '🗣 توليد كلام حقيقي'}
-                </button>
-              </div>
-              {ttsError && <p className="spatial-current-state narrative-integrity-violation">{ttsError}</p>}
-            </div>
+            {/* ── TAB: VAULT BROWSER — existing real assets (default, first) ── */}
+            {hudActiveTab === 'vault' && (
+              vaultAssetsLoaded && realVaultCategories.length === 0 ? (
+                <div className="hud-empty-state">
+                  <p>لا توجد أصول في الخزانة السيادية بعد.</p>
+                  <p>انتقل إلى تبويب «إنشاء أصل جديد» لرفع ملف أو توليد صوت، أو أنشئ صورة في حجرة القيامة.</p>
+                </div>
+              ) : (
+                <div className="hud-body-layout">
+                  <aside className="hud-vaults-picker custom-scroll">
+                    {realVaultCategories.map(v => (
+                      <button
+                        key={v.id}
+                        className={`hud-vault-tab ${activeVaultCategory?.id === v.id ? 'active-hud-tab' : ''}`}
+                        onClick={() => setSelectedVault(v.id)}
+                      >
+                        <span className="hud-tab-icon">{v.icon}</span>
+                        <span className="hud-tab-name">{v.name}</span>
+                      </button>
+                    ))}
+                  </aside>
+                  <main className="hud-items-viewer custom-scroll">
+                    <h3 className="viewer-title-context">
+                      محتويات {activeVaultCategory?.name} المتاحة للاستدعاء الفوري:
+                    </h3>
+                    <div className="hud-items-grid">
+                      {activeVaultCategory?.assets.map((asset) => {
+                        const prompt = typeof asset.metadata.generationPrompt === 'string' ? asset.metadata.generationPrompt : null;
+                        const isImage = asset.assetFamily === 'MEDIA' && (asset.secureStorageUri.endsWith('.jpg') || asset.secureStorageUri.endsWith('.jpeg') || asset.secureStorageUri.endsWith('.png') || asset.secureStorageUri.endsWith('.webp'));
+                        return (
+                          <div key={asset.assetId} className="hud-asset-item-chip glassmorphism">
+                            {isImage ? (
+                              <img
+                                src={asset.secureStorageUri}
+                                alt={prompt ?? asset.assetId}
+                                className="hud-item-thumbnail"
+                              />
+                            ) : (
+                              <div className="hud-item-graphic">✧</div>
+                            )}
+                            <span className="hud-item-name">{prompt ? prompt.slice(0, 60) : asset.assetId.slice(0, 20)}</span>
+                            <button
+                              className="hud-inject-btn"
+                              onClick={() => handleInjectAsset(asset)}
+                            >
+                              ⚡ حقن في العمليات الجارية
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </main>
+                </div>
+              )
+            )}
 
-            {/* MINISTRY III — VOICE CLONING ENGINE: clone an existing real audio voice. Only real audio voices (not cloned identities) are eligible as reference sources. */}
-            {audioVoiceAssets.length > 0 && (
-              <div className="hud-tts-row">
-                <select
-                  className="hud-tts-voice-select"
-                  value={cloneSourceVoiceId}
-                  onChange={(e) => setCloneSourceVoiceId(e.target.value)}
-                  disabled={isVoiceCloning}
-                  aria-label="الصوت المرجعي للاستنساخ"
-                >
-                  <option value="">اختر صوتاً مرجعياً للاستنساخ…</option>
-                  {audioVoiceAssets.map((voice) => (
-                    <option key={voice.assetId} value={voice.assetId}>
-                      {String(voice.metadata.voiceDisplayName ?? voice.assetId)}
-                    </option>
-                  ))}
-                </select>
-                <div className="hud-tts-controls">
+            {/* ── TAB: CREATE NEW ASSET — upload / TTS / voice cloning ─────── */}
+            {hudActiveTab === 'create' && (
+              <div className="hud-create-tab-scroll custom-scroll">
+                {/* PACKAGE XIX — file upload */}
+                <div className="hud-upload-row">
                   <input
-                    type="text"
-                    className="hud-voice-name-input"
-                    placeholder="اسم الهوية المستنسَخة (اختياري)"
-                    value={cloneVoiceNameInput}
-                    onChange={(e) => setCloneVoiceNameInput(e.target.value)}
-                    disabled={isVoiceCloning}
+                    ref={uploadFileInputRef}
+                    type="file"
+                    id="ras-amr-media-upload"
+                    className="hud-upload-input"
+                    disabled={isUploadingAsset}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void handleUploadAsset(file);
+                    }}
                   />
-                  <label className="hud-consent-label" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.4rem', opacity: isVoiceCloning ? 0.5 : 1 }}>
+                  <label htmlFor="ras-amr-media-upload" className="action-trigger-btn hud-upload-label">
+                    {isUploadingAsset ? '⏳ الرفع إلى الخزانة جارٍ…' : '⬆ رفع ملف حقيقي من الجهاز إلى الخزانة'}
+                  </label>
+                  {uploadError && <p className="spatial-current-state narrative-integrity-violation">{uploadError}</p>}
+                </div>
+                {/* MINISTRY I — voice flag */}
+                <div className="hud-voice-upload-row">
+                  <label className="hud-voice-checkbox-label">
                     <input
                       type="checkbox"
-                      checked={cloneConsentConfirmed}
-                      onChange={(e) => setCloneConsentConfirmed(e.target.checked)}
-                      disabled={isVoiceCloning}
+                      checked={isVoiceUpload}
+                      onChange={(e) => setIsVoiceUpload(e.target.checked)}
+                      disabled={isUploadingAsset}
                     />
-                    أؤكد أن لديّ إذناً بإنشاء هوية صوتية من هذا التسجيل
+                    هذا الملف صوت (Voice)
                   </label>
-                  <button
-                    className="action-trigger-btn"
-                    onClick={handleCloneVoice}
-                    disabled={isVoiceCloning || !cloneSourceVoiceId || !cloneConsentConfirmed}
-                  >
-                    {isVoiceCloning ? '⏳ الاستنساخ جارٍ…' : '🔮 استنسخ صوتاً حقيقياً'}
-                  </button>
+                  {isVoiceUpload && (
+                    <input
+                      type="text"
+                      className="hud-voice-name-input"
+                      placeholder="اسم هوية الصوت (اختياري)"
+                      value={voiceDisplayNameInput}
+                      onChange={(e) => setVoiceDisplayNameInput(e.target.value)}
+                      disabled={isUploadingAsset}
+                    />
+                  )}
                 </div>
-                {voiceCloneError && <p className="spatial-current-state narrative-integrity-violation">{voiceCloneError}</p>}
-              </div>
-            )}
-
-            {/* MINISTRY III — SYNTHESIS: generate new speech using a cloned voice identity. The cloned identity appears here, not in the node assignment dropdown. */}
-            {clonedVoiceIdentities.length > 0 && (
-              <div className="hud-tts-row">
-                <select
-                  className="hud-tts-voice-select"
-                  value={clonedVoiceSynthTarget}
-                  onChange={(e) => setClonedVoiceSynthTarget(e.target.value)}
-                  disabled={isGeneratingClonedSpeech}
-                  aria-label="الهوية الصوتية المستنسَخة للتوليد"
-                >
-                  <option value="">اختر هوية صوتية مستنسَخة…</option>
-                  {clonedVoiceIdentities.map((v) => (
-                    <option key={v.assetId} value={v.assetId}>
-                      {String(v.metadata.voiceDisplayName ?? v.assetId)} — هوية مستنسَخة
-                    </option>
-                  ))}
-                </select>
-                <div className="hud-tts-controls">
+                {/* MINISTRY II — TTS */}
+                <div className="hud-tts-row">
                   <textarea
                     className="hud-tts-text-input"
-                    placeholder="النص الجديد المراد توليده بالصوت المستنسَخ…"
-                    value={clonedVoiceSynthText}
-                    onChange={(e) => setClonedVoiceSynthText(e.target.value)}
-                    disabled={isGeneratingClonedSpeech}
+                    placeholder="اكتب نصًا لتحويله إلى كلام حقيقي..."
+                    value={ttsText}
+                    onChange={(e) => setTtsText(e.target.value)}
+                    disabled={isGeneratingSpeech}
                     rows={2}
                   />
-                  <button
-                    className="action-trigger-btn"
-                    onClick={handleGenerateClonedSpeech}
-                    disabled={isGeneratingClonedSpeech || !clonedVoiceSynthTarget || !clonedVoiceSynthText.trim()}
-                  >
-                    {isGeneratingClonedSpeech ? '⏳ الكلام يُولَّد…' : '🗣 توليد كلام بالهوية المستنسَخة'}
-                  </button>
-                </div>
-                {clonedSpeechError && <p className="spatial-current-state narrative-integrity-violation">{clonedSpeechError}</p>}
-              </div>
-            )}
-
-            {vaultAssetsLoaded && realVaultCategories.length === 0 ? (
-              <div className="hud-empty-state">
-                <p>لا توجد أصول محفوظة بعد في الخزانة السيادية.</p>
-                <p>أنشئ عملاً في حجرة القيامة أولاً، ثم عد لاستدعائه هنا.</p>
-              </div>
-            ) : (
-              <div className="hud-body-layout">
-                {/* Mini Vault Tabs Side — real categories, derived from the Creator's real assets */}
-                <aside className="hud-vaults-picker custom-scroll">
-                  {realVaultCategories.map(v => (
-                    <button
-                      key={v.id}
-                      className={`hud-vault-tab ${activeVaultCategory?.id === v.id ? 'active-hud-tab' : ''}`}
-                      onClick={() => setSelectedVault(v.id)}
+                  <div className="hud-tts-controls">
+                    <select
+                      className="hud-tts-voice-select"
+                      value={ttsPresetVoiceId}
+                      onChange={(e) => setTtsPresetVoiceId(e.target.value)}
+                      disabled={isGeneratingSpeech}
+                      aria-label="الصوت الجاهز المُستخدَم في التوليد"
                     >
-                      <span className="hud-tab-icon">{v.icon}</span>
-                      <span className="hud-tab-name">{v.name}</span>
+                      {ELEVENLABS_PRESET_VOICES.map((voice) => (
+                        <option key={voice.id} value={voice.id}>{voice.label}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      className="hud-voice-name-input"
+                      placeholder="اسم هوية الصوت الناتج (اختياري)"
+                      value={ttsDisplayNameInput}
+                      onChange={(e) => setTtsDisplayNameInput(e.target.value)}
+                      disabled={isGeneratingSpeech}
+                    />
+                    <button
+                      className="action-trigger-btn"
+                      onClick={handleGenerateSpeech}
+                      disabled={isGeneratingSpeech || !ttsText.trim()}
+                    >
+                      {isGeneratingSpeech ? '⏳ الصوت يُولَّد…' : '🗣 توليد كلام حقيقي'}
                     </button>
-                  ))}
-                </aside>
-
-                {/* Vault Internal Content View — real assets */}
-                <main className="hud-items-viewer custom-scroll">
-                  <h3 className="viewer-title-context">
-                    محتويات {activeVaultCategory?.name} المتاحة للاستدعاء الفوري:
-                  </h3>
-                  <div className="hud-items-grid">
-                    {activeVaultCategory?.assets.map((asset) => {
-                      const prompt = typeof asset.metadata.generationPrompt === 'string' ? asset.metadata.generationPrompt : null;
-                      return (
-                        <div key={asset.assetId} className="hud-asset-item-chip glassmorphism">
-                          <div className="hud-item-graphic">✧</div>
-                          <span className="hud-item-name">{prompt ? prompt.slice(0, 60) : asset.assetId}</span>
-                          <button
-                            className="hud-inject-btn"
-                            onClick={() => handleInjectAsset(asset)}
-                          >
-                            ⚡ حقن في العمليات الجارية
-                          </button>
-                        </div>
-                      );
-                    })}
                   </div>
-                </main>
+                  {ttsError && <p className="spatial-current-state narrative-integrity-violation">{ttsError}</p>}
+                </div>
+                {/* MINISTRY III — voice cloning */}
+                {audioVoiceAssets.length > 0 && (
+                  <div className="hud-tts-row">
+                    <select
+                      className="hud-tts-voice-select"
+                      value={cloneSourceVoiceId}
+                      onChange={(e) => setCloneSourceVoiceId(e.target.value)}
+                      disabled={isVoiceCloning}
+                      aria-label="الصوت المرجعي للاستنساخ"
+                    >
+                      <option value="">اختر صوتاً مرجعياً للاستنساخ…</option>
+                      {audioVoiceAssets.map((voice) => (
+                        <option key={voice.assetId} value={voice.assetId}>
+                          {String(voice.metadata.voiceDisplayName ?? voice.assetId)}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="hud-tts-controls">
+                      <input
+                        type="text"
+                        className="hud-voice-name-input"
+                        placeholder="اسم الهوية المستنسَخة (اختياري)"
+                        value={cloneVoiceNameInput}
+                        onChange={(e) => setCloneVoiceNameInput(e.target.value)}
+                        disabled={isVoiceCloning}
+                      />
+                      <label className="hud-consent-label" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.4rem', opacity: isVoiceCloning ? 0.5 : 1 }}>
+                        <input
+                          type="checkbox"
+                          checked={cloneConsentConfirmed}
+                          onChange={(e) => setCloneConsentConfirmed(e.target.checked)}
+                          disabled={isVoiceCloning}
+                        />
+                        أؤكد أن لديّ إذناً بإنشاء هوية صوتية من هذا التسجيل
+                      </label>
+                      <button
+                        className="action-trigger-btn"
+                        onClick={handleCloneVoice}
+                        disabled={isVoiceCloning || !cloneSourceVoiceId || !cloneConsentConfirmed}
+                      >
+                        {isVoiceCloning ? '⏳ الاستنساخ جارٍ…' : '🔮 استنسخ صوتاً حقيقياً'}
+                      </button>
+                    </div>
+                    {voiceCloneError && <p className="spatial-current-state narrative-integrity-violation">{voiceCloneError}</p>}
+                  </div>
+                )}
+                {/* MINISTRY III — cloned voice synthesis */}
+                {clonedVoiceIdentities.length > 0 && (
+                  <div className="hud-tts-row">
+                    <select
+                      className="hud-tts-voice-select"
+                      value={clonedVoiceSynthTarget}
+                      onChange={(e) => setClonedVoiceSynthTarget(e.target.value)}
+                      disabled={isGeneratingClonedSpeech}
+                      aria-label="الهوية الصوتية المستنسَخة للتوليد"
+                    >
+                      <option value="">اختر هوية صوتية مستنسَخة…</option>
+                      {clonedVoiceIdentities.map((v) => (
+                        <option key={v.assetId} value={v.assetId}>
+                          {String(v.metadata.voiceDisplayName ?? v.assetId)} — هوية مستنسَخة
+                        </option>
+                      ))}
+                    </select>
+                    <div className="hud-tts-controls">
+                      <textarea
+                        className="hud-tts-text-input"
+                        placeholder="النص الجديد المراد توليده بالصوت المستنسَخ…"
+                        value={clonedVoiceSynthText}
+                        onChange={(e) => setClonedVoiceSynthText(e.target.value)}
+                        disabled={isGeneratingClonedSpeech}
+                        rows={2}
+                      />
+                      <button
+                        className="action-trigger-btn"
+                        onClick={handleGenerateClonedSpeech}
+                        disabled={isGeneratingClonedSpeech || !clonedVoiceSynthTarget || !clonedVoiceSynthText.trim()}
+                      >
+                        {isGeneratingClonedSpeech ? '⏳ الكلام يُولَّد…' : '🗣 توليد كلام بالهوية المستنسَخة'}
+                      </button>
+                    </div>
+                    {clonedSpeechError && <p className="spatial-current-state narrative-integrity-violation">{clonedSpeechError}</p>}
+                  </div>
+                )}
               </div>
             )}
           </div>

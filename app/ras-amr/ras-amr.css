@@ -1018,6 +1018,55 @@
 /* ======================================================== */
 /* 4. SOVEREIGN SUMMONING BRIDGE: HOLOGRAPHIC HUD OVERLAY   */
 /* ======================================================== */
+
+/* Top-level tab switcher — vault (default) vs. create new */
+.hud-tab-switcher {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.12);
+  background: rgba(0, 0, 0, 0.35);
+}
+.hud-top-tab {
+  flex: 1;
+  padding: 13px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  letter-spacing: 0.03em;
+}
+.hud-top-tab:hover {
+  background: rgba(255, 215, 0, 0.04);
+  color: var(--text-main);
+}
+.hud-top-tab-active {
+  color: var(--neon-gold-primary) !important;
+  border-bottom-color: var(--neon-gold-primary) !important;
+  background: rgba(212, 175, 55, 0.06) !important;
+}
+
+/* Create-tab scrollable wrapper — lets upload/TTS content scroll on short screens */
+.hud-create-tab-scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Asset thumbnail inside vault browser chip */
+.hud-item-thumbnail {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+  margin-bottom: 6px;
+}
+
 .summon-hud-overlay {
   position: fixed;
   inset: 0;
