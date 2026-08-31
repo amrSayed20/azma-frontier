@@ -45,6 +45,9 @@ yarn-error.log*
 # Claude Code project-local tooling config — permissions/settings, not application code
 /.claude/
 
+# Visual acceptance gate screenshots — proof artifacts, not source
+/screenshots_pkg30/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
