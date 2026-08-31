@@ -1028,12 +1028,12 @@
 }
 .hud-top-tab {
   flex: 1;
-  padding: 13px 20px;
+  padding: 8px 12px;
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
@@ -1060,42 +1060,43 @@
 /* Asset thumbnail inside vault browser chip */
 .hud-item-thumbnail {
   width: 100%;
-  height: 120px;
+  height: 72px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 6px;
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
 }
 
 .summon-hud-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(20px);
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(16px);
   z-index: 200;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 10px;
   box-sizing: border-box;
 }
 
 .hud-window-container {
   width: 100%;
-  max-width: 960px;
-  height: calc(100vh - 120px);
-  border-radius: 24px;
+  max-width: 900px;
+  height: calc(100vh - 20px);
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
 .hud-header {
-  padding: 25px 30px;
+  padding: 10px 16px;
   border-bottom: 1px solid rgba(255, 215, 0, 0.15);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
   background: rgba(0, 0, 0, 0.4);
 }
 
@@ -1106,23 +1107,23 @@
   color: var(--neon-gold-bright);
   background: rgba(255, 215, 0, 0.12);
   border: 1px solid rgba(255, 215, 0, 0.3);
-  padding: 2px 8px;
+  padding: 1px 6px;
   border-radius: 4px;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
   letter-spacing: 1px;
 }
 
 .hud-title-block h2 {
-  margin: 0 0 4px 0;
-  font-size: 1.4rem;
+  margin: 0 0 2px 0;
+  font-size: 0.95rem;
   color: #fff;
   font-weight: 800;
-  text-shadow: 0 0 15px var(--neon-gold-shadow);
+  text-shadow: 0 0 10px var(--neon-gold-shadow);
 }
 
 .hud-title-block p {
   margin: 0;
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
 }
 
@@ -1265,27 +1266,27 @@
 .hud-vaults-picker {
   background: rgba(0, 0, 0, 0.3);
   border-left: 1px solid rgba(255, 215, 0, 0.08);
-  padding: 20px 15px;
+  padding: 8px 6px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 4px;
   overflow-y: auto;
 }
 
 .hud-vault-tab {
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 10px;
-  padding: 14px;
+  border-radius: 8px;
+  padding: 8px 10px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   color: var(--text-muted);
   cursor: pointer;
   text-align: right;
   font-family: inherit;
-  font-size: 13px;
-  transition: all 0.3s ease;
+  font-size: 12px;
+  transition: all 0.2s ease;
 }
 
 .hud-vault-tab:hover {
@@ -1300,39 +1301,39 @@
   text-shadow: 0 0 10px var(--neon-gold-shadow);
 }
 
-.hud-tab-icon { font-size: 18px; }
+.hud-tab-icon { font-size: 14px; }
 
 /* Grid Viewer for items inside HUD */
 .hud-items-viewer {
-  padding: 30px;
+  padding: 10px 12px;
   overflow-y: auto;
   background: rgba(5, 5, 5, 0.2);
 }
 
 .viewer-title-context {
-  margin: 0 0 20px 0;
-  font-size: 13px;
+  margin: 0 0 8px 0;
+  font-size: 11px;
   color: var(--neon-gold-primary);
   font-weight: 600;
 }
 
 .hud-items-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
 }
 
 .hud-asset-item-chip {
   background: linear-gradient(145deg, rgba(20,20,20,0.8), rgba(10,10,10,0.95));
   border: 1px solid rgba(255, 215, 0, 0.05);
-  border-radius: 14px;
-  padding: 20px;
+  border-radius: 10px;
+  padding: 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 12px;
-  transition: all 0.3s;
+  gap: 5px;
+  transition: all 0.2s;
 }
 
 .hud-asset-item-chip:hover {
@@ -1342,7 +1343,7 @@
 }
 
 .hud-item-graphic {
-  font-size: 24px;
+  font-size: 18px;
   color: var(--neon-gold-dim);
 }
 
@@ -1352,9 +1353,11 @@
 }
 
 .hud-item-name {
-  font-size: 13px;
-  font-weight: bold;
-  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  color: #ccc;
+  word-break: break-word;
+  line-height: 1.3;
 }
 
 .hud-inject-btn {
@@ -1362,9 +1365,9 @@
   background: rgba(0,0,0,0.5);
   border: 1px solid var(--neon-gold-dim);
   color: var(--neon-gold-primary);
-  padding: 8px;
-  border-radius: 6px;
-  font-size: 11px;
+  padding: 5px 4px;
+  border-radius: 5px;
+  font-size: 10px;
   font-weight: bold;
   cursor: pointer;
   font-family: inherit;

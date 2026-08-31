@@ -2465,25 +2465,28 @@ export default function RasAmrChamber() {
                     </h3>
                     <div className="hud-items-grid">
                       {activeVaultCategory?.assets.map((asset) => {
-                        const prompt = typeof asset.metadata.generationPrompt === 'string' ? asset.metadata.generationPrompt : null;
-                        const isImage = asset.assetFamily === 'MEDIA' && (asset.secureStorageUri.endsWith('.jpg') || asset.secureStorageUri.endsWith('.jpeg') || asset.secureStorageUri.endsWith('.png') || asset.secureStorageUri.endsWith('.webp'));
+                        const prompt = typeof asset.metadata.generationPrompt === 'string' && asset.metadata.generationPrompt ? asset.metadata.generationPrompt : null;
+                        const voiceName = typeof asset.metadata.voiceDisplayName === 'string' && asset.metadata.voiceDisplayName ? asset.metadata.voiceDisplayName : null;
+                        const filename = asset.secureStorageUri.split('/').pop()?.split('.')[0]?.slice(0, 8) ?? '';
+                        const label = prompt ? prompt.slice(0, 50) : voiceName ?? (filename ? `أصل — ${filename}` : asset.assetId.slice(0, 12));
+                        const isImage = asset.assetFamily === 'MEDIA' && /\.(jpg|jpeg|png|webp)$/i.test(asset.secureStorageUri);
                         return (
                           <div key={asset.assetId} className="hud-asset-item-chip glassmorphism">
                             {isImage ? (
                               <img
                                 src={asset.secureStorageUri}
-                                alt={prompt ?? asset.assetId}
+                                alt={label}
                                 className="hud-item-thumbnail"
                               />
                             ) : (
                               <div className="hud-item-graphic">✧</div>
                             )}
-                            <span className="hud-item-name">{prompt ? prompt.slice(0, 60) : asset.assetId.slice(0, 20)}</span>
+                            <span className="hud-item-name">{label}</span>
                             <button
                               className="hud-inject-btn"
                               onClick={() => handleInjectAsset(asset)}
                             >
-                              ⚡ حقن في العمليات الجارية
+                              ⚡ حقن
                             </button>
                           </div>
                         );
