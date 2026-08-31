@@ -146,17 +146,19 @@
   z-index: 10;
   width: 100%;
   height: 100vh;
-  padding: 60px 25px 20px 25px;
+  padding: 52px 10px 8px 10px;
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: min(310px, 25vw) 1fr min(340px, 27vw);
-  gap: 20px;
+  grid-template-columns: min(200px, 16vw) 1fr min(210px, 17vw);
+  grid-template-rows: 1fr 148px;
+  gap: 8px;
 }
 
 @media (max-width: 680px) {
   .ras-amr-viewport { overflow-y: auto; }
   .chamber-grid-layout {
     grid-template-columns: 1fr;
+    grid-template-rows: none;
     height: auto;
     min-height: 100vh;
     overflow-y: auto;
@@ -169,6 +171,15 @@
     min-height: 60vh;
     overflow-y: auto;
   }
+  .cinema-viewport {
+    flex: none;
+    height: clamp(240px, 45vw, 360px);
+  }
+  .timeline-full-width {
+    grid-column: 1;
+    grid-row: auto;
+    min-height: 140px;
+  }
 }
 
 .control-panel {
@@ -178,7 +189,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  height: calc(100vh - 100px);
+  height: 100%;
+  min-height: 0;
 }
 
 .panel-header {
@@ -325,8 +337,9 @@
 .main-director-core {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  height: calc(100vh - 100px);
+  gap: 6px;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -1385,8 +1398,8 @@
 /* RESTORED CINEMATIC VIEWPORT — real asset display   */
 /* ================================================== */
 .cinema-viewport {
-  height: clamp(200px, 38vh, 300px);
-  flex-shrink: 0;
+  flex: 1;
+  min-height: 0;
   border-radius: 18px;
   background: #000;
   position: relative;
@@ -1621,16 +1634,26 @@
 .viewport-demo .viewport-main-content { opacity: 0.6; }
 
 /* ================================================== */
-/* RESTORED REAL SOVEREIGN CANVAS TIMELINE            */
+/* SOVEREIGN EDITING TIMELINE — full-width bottom row */
 /* ================================================== */
 .sovereign-timeline-panel {
   border-radius: 12px;
-  background: rgba(4, 4, 4, 0.9);
-  padding: 10px 14px;
-  flex-shrink: 0;
+  background: rgba(4, 4, 4, 0.92);
+  padding: 8px 14px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* When placed as a grid child spanning all 3 columns */
+.timeline-full-width {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  border-radius: 12px;
+  background: rgba(3, 3, 3, 0.95);
+  border-top: 1px solid rgba(255, 215, 0, 0.18);
 }
 
 .timeline-empty-hint {

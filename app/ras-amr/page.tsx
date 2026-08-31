@@ -633,7 +633,7 @@ export default function RasAmrChamber() {
       // compile route's own note.
       subscriberTenantId: 'pending-server-verification',
       canvasType: selectedCanvasType,
-      title: 'القماش السردي',
+      title: 'مشهد الإخراج',
       tracks: [
         {
           trackId: 'track-1',
@@ -1493,10 +1493,10 @@ export default function RasAmrChamber() {
         body: JSON.stringify({ canvas: sessionCanvas }),
       });
       if (r.ok) {
-        setSaveCanvasStatus('القماش السردي محفوظ ✔');
+        setSaveCanvasStatus('المشهد محفوظ ✔');
       } else {
         const d = await r.json() as { error?: string };
-        setSaveCanvasStatus(d.error ?? 'القماش السردي لم يُحفظ.');
+        setSaveCanvasStatus(d.error ?? 'لم يُحفظ المشهد.');
       }
     } catch {
       setSaveCanvasStatus('بوابة الحفظ لا تستجيب.');
@@ -1526,7 +1526,7 @@ export default function RasAmrChamber() {
         if (d.status === 'succeeded') {
           setSessionCanvas(d.canvas);
           setShowCanvasLoad(false);
-          setSaveCanvasStatus('القماش السردي مُستعاد ✔');
+          setSaveCanvasStatus('المشهد مُستعاد ✔');
         }
       }
     } catch { /* silent */ }
@@ -1560,7 +1560,7 @@ export default function RasAmrChamber() {
           <header className="panel-header">
             <div className="neon-tag">الأصول</div>
             <h2>أصول الإنتاج</h2>
-            <p>الأصول المستدعاة من الخزانة السيادية — تُضاف إلى القماش السردي</p>
+            <p>الأصول المستدعاة من الخزانة السيادية — تُضاف إلى المشهد</p>
 
             <button
               className="summon-bridge-trigger-btn"
@@ -1672,64 +1672,6 @@ export default function RasAmrChamber() {
             </div>
           </div>
 
-          {/* ZONE 2 — SOVEREIGN CANVAS TIMELINE
-              Pure visualization of sessionCanvas.tracks[].nodes[].
-              Node positions derived from real temporal directives.
-              Clicking a node reuses existing setSelectedNodeId setter.
-              No playback. No fake playhead. No animation simulating time. */}
-          <div className="sovereign-timeline-panel neon-border">
-            <div className="neon-tag">القماش السردي — الخط الزمني</div>
-            {!sessionCanvas || sessionCanvas.tracks.flatMap(t => t.nodes).length === 0 ? (
-              <p className="timeline-empty-hint">
-                {!sessionCanvas ? 'القماش في انتظار أصل حقيقي' : 'القماش مفتوح — لم يُضَف أي أصل بعد'}
-              </p>
-            ) : (
-              <div className="timeline-tracks-container">
-                {(() => {
-                  const allNodes = sessionCanvas.tracks.flatMap(t => t.nodes);
-                  const totalDuration = Math.max(
-                    ...allNodes.map(n => (n.temporal?.globalStartTimeSeconds ?? 0) + (n.temporal?.playDurationSeconds ?? 5)),
-                    5
-                  );
-                  return sessionCanvas.tracks.filter(t => t.nodes.length > 0).map((track) => (
-                    <div key={track.trackId} className={`timeline-track-row${track.isMuted ? ' track-muted' : ''}`}>
-                      <span className="timeline-track-label" title={track.trackName}>
-                        {track.trackName.slice(0, 8)}
-                      </span>
-                      <div className="timeline-nodes-bar">
-                        {track.nodes.map((node, idx) => {
-                          const start = node.temporal?.globalStartTimeSeconds ?? 0;
-                          const dur = node.temporal?.playDurationSeconds ?? 5;
-                          const isSelected = selectedNodeId === node.nodeId;
-                          const isCurrentAsset = activeAsset?.id === node.assetId;
-                          return (
-                            <div
-                              key={node.nodeId}
-                              className={`timeline-node-block${isSelected ? ' node-block-selected' : ''}${isCurrentAsset ? ' node-block-active' : ''}${node.isLocked ? ' node-block-locked' : ''}${node.isActive === false ? ' node-block-inactive' : ''}`}
-                              style={{
-                                left: `${(start / totalDuration) * 100}%`,
-                                width: `${Math.max((dur / totalDuration) * 100, 4)}%`,
-                              }}
-                              onClick={() => setSelectedNodeId(node.nodeId)}
-                              role="button"
-                              tabIndex={0}
-                              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedNodeId(node.nodeId); }}
-                              aria-label={`عقدة ${idx + 1}: من ${start}ث إلى ${start + dur}ث`}
-                              aria-pressed={isSelected}
-                              title={`${start}s → ${start + dur}s`}
-                            >
-                              <span className="timeline-node-index">{idx + 1}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ));
-                })()}
-              </div>
-            )}
-          </div>
-
           {/* ZONE 3 — DIRECTOR STATUS STRIP
               Three live cells: active operator, canvas summary, render state. */}
           <div className="director-status-strip neon-border">
@@ -1739,8 +1681,8 @@ export default function RasAmrChamber() {
             </div>
             <div className="strip-cell strip-canvas">
               {sessionCanvas
-                ? `${sessionCanvas.tracks.flatMap(t => t.nodes).length} عقدة`
-                : 'القماش فارغ'}
+                ? `${sessionCanvas.tracks.flatMap(t => t.nodes).length} عنصر`
+                : 'لا يوجد مشهد'}
             </div>
             <div className="strip-cell strip-render">
               {renderStatus !== 'في وضع الاستعداد الإخراجي' ? renderStatus : '◉ جاهز'}
@@ -1763,8 +1705,8 @@ export default function RasAmrChamber() {
                       ? 'dir-action-complete' : 'dir-action-primary'
                   }`}>
                     {sessionCanvas?.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id)
-                      ? '✓ الأصل في القماش السردي'
-                      : '← أضفه إلى القماش السردي (اللوحة اليمنى — القماش السردي → أضف الأصل النشط)'}
+                      ? '✓ الأصل في المشهد'
+                      : '← أضف الأصل إلى المشهد (اللوحة اليسرى ← مشهد الإخراج)'}
                   </li>
                 )}
                 {sessionCanvas && sessionCanvas.tracks.flatMap(t => t.nodes).length > 0 && (
@@ -1775,7 +1717,7 @@ export default function RasAmrChamber() {
                       ? `✓ تجميع مكتمل — ${compiledGraph.compilationId}`
                       : canCompile
                         ? '← صهر التجميع النهائي (اللوحة اليمنى — أسفل)'
-                        : '● الصهر يتطلب أصلاً حقيقياً في القماش'}
+                        : '● الصهر يتطلب أصلاً حقيقياً في المشهد'}
                   </li>
                 )}
                 {compiledGraph && compiledForAssetId === activeAsset?.id && (
@@ -1818,7 +1760,7 @@ export default function RasAmrChamber() {
               aria-pressed={directingMode === 'smart'}
             >
               <span className="operator-btn-label">المخرج الآلي</span>
-              <span className="operator-btn-desc">يحلل القماش ويصدر قرارات توجيهية بناءً على هدف الخالق المصرَّح به</span>
+              <span className="operator-btn-desc">يحلل المشهد ويصدر قرارات توجيهية بناءً على هدف الخالق المصرَّح به</span>
             </button>
             <button
               className={`operator-btn ${directingMode === 'manual' ? 'operator-active' : ''}`}
@@ -1833,7 +1775,7 @@ export default function RasAmrChamber() {
           {/* Canvas Mode Selection — choose before adding the first asset.   */}
           {/* Changing mode after the canvas is seeded resets it entirely.   */}
           <div className="canvas-mode-selector">
-            <div className="neon-tag">نوع القماش</div>
+            <div className="neon-tag">نوع الإخراج</div>
             <select
               className="canvas-type-select"
               value={selectedCanvasType}
@@ -1847,14 +1789,14 @@ export default function RasAmrChamber() {
                   setCompiledForAssetId(null);
                 }
               }}
-              aria-label="نوع القماش السردي"
+              aria-label="نوع الإخراج"
             >
               <option value={CanvasType.CINEMATIC}>سينمائي — ملف MP4 حقيقي عبر مشفّر FFmpeg</option>
               <option value={CanvasType.NARRATIVE}>سردي — بنية تجميع ديناميكية (ليس ملف وسائط)</option>
               <option value={CanvasType.DIRECTORIAL}>توجيهي — بنية حالة توجيه (ليس ملف وسائط)</option>
             </select>
             {sessionCanvas && (
-              <p className="canvas-mode-reset-note">⚠ تغيير النوع يُعيد تهيئة القماش الحالي</p>
+              <p className="canvas-mode-reset-note">⚠ تغيير النوع يُعيد تهيئة المشهد الحالي</p>
             )}
           </div>
 
@@ -1864,9 +1806,9 @@ export default function RasAmrChamber() {
           {sessionCanvas && (
             <div className="spatial-adjust-panel">
               <header className="panel-header">
-                <div className="neon-tag">القماش السردي</div>
-                <h2>القماش السردي</h2>
-                <p>مساحة عمل سينمائية واحدة تتّسع لعدة أصول إنتاجية حقيقية — الترتيب الحقيقي والاتجاه الأساسي يُحكَمان الآن عبر العقد، بلا تنفيذ وبلا إيقاع أو انتقال مُختلَق</p>
+                <div className="neon-tag">مشهد الإخراج</div>
+                <h2>مشهد الإخراج</h2>
+                <p>مساحة عمل سينمائية واحدة تتّسع لعدة أصول إنتاجية — الترتيب والاتجاه يُحكَمان عبر العناصر</p>
               </header>
 
               {/* PACKAGE XXIII — DIRECTION DECISION MODEL: real, visible proof that every Manual Direction Decision above now produces a shared DirectionDecision, not just a raw mutation. */}
@@ -1924,7 +1866,7 @@ export default function RasAmrChamber() {
               )}
 
               {sessionCanvas.tracks.every((t) => t.nodes.length === 0) ? (
-                <p className="spatial-current-state">القماش فارغ — أضف أصلاً حقيقياً ليبدأ التكوين السردي</p>
+                <p className="spatial-current-state">المشهد فارغ — أضف أصلاً حقيقياً للبدء</p>
               ) : (
                 sessionCanvas.tracks.map((track) => (
                   <div key={track.trackId} className="narrative-canvas-group">
@@ -2083,7 +2025,7 @@ export default function RasAmrChamber() {
                             <button
                               className="narrative-node-remove"
                               onClick={() => handleRemoveNodeFromCanvas(node.nodeId)}
-                              aria-label="إزالة من القماش"
+                              aria-label="إزالة من المشهد"
                             >
                               ✕
                             </button>
@@ -2114,7 +2056,7 @@ export default function RasAmrChamber() {
               <header className="panel-header">
                 <div className="neon-tag">التوجيه المكاني</div>
                 <h2>تعديل مكاني حقيقي</h2>
-                <p>يُطبَّق فعلياً على القماش السيادي ويصل إلى الصهر النهائي</p>
+                <p>يُطبَّق فعلياً على المشهد ويصل إلى الصهر النهائي</p>
               </header>
               <div className="spatial-input-grid">
                 <label>
@@ -2287,7 +2229,7 @@ export default function RasAmrChamber() {
                     {' '}({directorDecision.temporalBasis === 'real-evidence' ? 'من بيانات الأصل الحقيقية' : 'قيمة افتراضية — لا بيانات مدة حقيقية'})
                   </p>
                   <p className="spatial-current-state">
-                    الترتيب السردي: الموضع {directorDecision.structural?.executionOrderIndex} (الموضع الحقيقي ضمن القماش)
+                    الترتيب السردي: الموضع {directorDecision.structural?.executionOrderIndex} (الموضع الحقيقي ضمن المشهد)
                   </p>
                   {directorDecision.audio && (
                     <p className="spatial-current-state">الصوت: مستوى={directorDecision.audio.volumeDb}dB، توازن={directorDecision.audio.panCenter}</p>
@@ -2369,7 +2311,7 @@ export default function RasAmrChamber() {
                 onClick={() => void handleSaveCanvas()}
                 disabled={isSavingCanvas}
               >
-                {isSavingCanvas ? 'القماش يُحفظ…' : '💾 حفظ القماش السردي'}
+                {isSavingCanvas ? 'المشهد يُحفظ…' : '💾 حفظ المشهد'}
               </button>
             )}
 
@@ -2377,7 +2319,7 @@ export default function RasAmrChamber() {
               className="action-trigger-btn canvas-load-btn"
               onClick={() => void handleLoadCanvases()}
             >
-              📂 استعادة قماش محفوظ
+              📂 استعادة مشهد محفوظ
             </button>
 
             {saveCanvasStatus && (
@@ -2405,10 +2347,66 @@ export default function RasAmrChamber() {
           </div>
         </aside>
 
+        {/* =========================================== */}
+        {/* 4. EDITING TIMELINE — full-width bottom row */}
+        {/* =========================================== */}
+        <div className="sovereign-timeline-panel timeline-full-width neon-border">
+          <div className="neon-tag">مشهد الإخراج — الخط الزمني</div>
+          {!sessionCanvas || sessionCanvas.tracks.flatMap(t => t.nodes).length === 0 ? (
+            <p className="timeline-empty-hint">
+              {!sessionCanvas ? 'أضف أصلاً لبدء الإخراج' : 'المشهد جاهز — أضف أصلك'}
+            </p>
+          ) : (
+            <div className="timeline-tracks-container">
+              {(() => {
+                const allNodes = sessionCanvas.tracks.flatMap(t => t.nodes);
+                const totalDuration = Math.max(
+                  ...allNodes.map(n => (n.temporal?.globalStartTimeSeconds ?? 0) + (n.temporal?.playDurationSeconds ?? 5)),
+                  5
+                );
+                return sessionCanvas.tracks.filter(t => t.nodes.length > 0).map((track) => (
+                  <div key={track.trackId} className={`timeline-track-row${track.isMuted ? ' track-muted' : ''}`}>
+                    <span className="timeline-track-label" title={track.trackName}>
+                      {track.trackName.slice(0, 8)}
+                    </span>
+                    <div className="timeline-nodes-bar">
+                      {track.nodes.map((node, idx) => {
+                        const start = node.temporal?.globalStartTimeSeconds ?? 0;
+                        const dur = node.temporal?.playDurationSeconds ?? 5;
+                        const isSelected = selectedNodeId === node.nodeId;
+                        const isCurrentAsset = activeAsset?.id === node.assetId;
+                        return (
+                          <div
+                            key={node.nodeId}
+                            className={`timeline-node-block${isSelected ? ' node-block-selected' : ''}${isCurrentAsset ? ' node-block-active' : ''}${node.isLocked ? ' node-block-locked' : ''}${node.isActive === false ? ' node-block-inactive' : ''}`}
+                            style={{
+                              left: `${(start / totalDuration) * 100}%`,
+                              width: `${Math.max((dur / totalDuration) * 100, 4)}%`,
+                            }}
+                            onClick={() => setSelectedNodeId(node.nodeId)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedNodeId(node.nodeId); }}
+                            aria-label={`عقدة ${idx + 1}: من ${start}ث إلى ${start + dur}ث`}
+                            aria-pressed={isSelected}
+                            title={`${start}s → ${start + dur}s`}
+                          >
+                            <span className="timeline-node-index">{idx + 1}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+          )}
+        </div>
+
       </div>
 
       {/* ============================================= */}
-      {/* 4. SOVEREIGN SUMMONING BRIDGE: VAULT GATEWAY  */}
+      {/* 5. SOVEREIGN SUMMONING BRIDGE: VAULT GATEWAY  */}
       {/* ============================================= */}
       {isSummonOpen && (
         <div className="summon-hud-overlay">
@@ -2417,7 +2415,7 @@ export default function RasAmrChamber() {
               <div className="hud-title-block">
                 <span className="hud-badge">الخزانة السيادية</span>
                 <h2>استدعِ أصلاً من الخزانة</h2>
-                <p>الأصول المُستدعاة تنضم إلى القماش السردي وتدخل تحت سلطة المخرج الإمبراطوري</p>
+                <p>الأصول المُستدعاة تنضم إلى المشهد وتدخل تحت سلطة المخرج الإمبراطوري</p>
               </div>
               <button className="hud-close-btn" onClick={() => setIsSummonOpen(false)}>✖ إغلاق</button>
             </header>
