@@ -302,11 +302,18 @@ export default function ImperialFoyer() {
   // Guard: prevents a second chamber from being launched while one is
   // already in the 600ms preparation window.
   const isPreparingRef = useRef(false);
+  // Recovery: if navigation doesn't complete within 4 seconds after departure
+  // begins (network failure, mobile gesture timeout, etc.), reset the Foyer so
+  // the Creator is never permanently trapped on a black screen.
+  const recoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const visitorPresence = useVisitorPresence();
 
   useEffect(() => {
     const entryTimer = setTimeout(() => setEntered(true), 560);
-    return () => clearTimeout(entryTimer);
+    return () => {
+      clearTimeout(entryTimer);
+      if (recoveryTimerRef.current !== null) clearTimeout(recoveryTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -435,12 +442,23 @@ export default function ImperialFoyer() {
     setPreparingNameAr(nameAr);
 
     setTimeout(() => {
-      if (typeof window !== 'undefined') {
+      try {
         sessionStorage.setItem('azma.kernel.session', JSON.stringify(session));
-      }
+      } catch { /* private/restricted context — skip, chamber receives null session */ }
       setPreparingId(null);
       setPreparingNameAr(null);
       setDeparting(true);
+
+      // Recovery: if navigation doesn't complete within 4 s, un-black the
+      // screen so the Creator can retry. Covers mobile gesture-timeout blocks
+      // and any other silent navigation failures.
+      if (recoveryTimerRef.current !== null) clearTimeout(recoveryTimerRef.current);
+      recoveryTimerRef.current = setTimeout(() => {
+        setDeparting(false);
+        isPreparingRef.current = false;
+        recoveryTimerRef.current = null;
+      }, 4000);
+
       setTimeout(() => window.location.assign(route), 420);
     }, 600);
   }, []);

@@ -209,7 +209,14 @@ export function DirectorStage() {
       setPhase('stable');
     }, pacedDurationMs + 32);
 
-    timeoutsRef.current = [settleTimeout];
+    // Hard failsafe: if the overlay hasn't settled after 3 s (any race
+    // condition, browser throttle, etc.) force it to stable so the Creator
+    // is never permanently trapped behind a black overlay.
+    const failsafeTimeout = setTimeout(() => {
+      setPhase('stable');
+    }, 3000);
+
+    timeoutsRef.current = [settleTimeout, failsafeTimeout];
     fromContextRef.current = toContext;
   }, [pathname]);
 
