@@ -310,8 +310,32 @@ export default function ImperialFoyer() {
 
   useEffect(() => {
     const entryTimer = setTimeout(() => setEntered(true), 560);
+
+    // BF cache (back/forward cache) restoration: Chrome 120+ may restore a
+    // page from bfcache even when Cache-Control: no-store is set. If the Foyer
+    // was saved mid-departure (departing=true, opacity 0), the restored page
+    // would show a permanent black screen. The pageshow event fires on bfcache
+    // restoration (event.persisted === true) — reset all departure state so the
+    // Creator sees a fully functional Foyer, not a black void.
+    function handlePageShow(event: PageTransitionEvent) {
+      if (event.persisted) {
+        setDeparting(false);
+        setPreparingId(null);
+        setPreparingNameAr(null);
+        setKernelSession(null);
+        isPreparingRef.current = false;
+        if (recoveryTimerRef.current !== null) {
+          clearTimeout(recoveryTimerRef.current);
+          recoveryTimerRef.current = null;
+        }
+        setEntered(true);
+      }
+    }
+    window.addEventListener('pageshow', handlePageShow);
+
     return () => {
       clearTimeout(entryTimer);
+      window.removeEventListener('pageshow', handlePageShow);
       if (recoveryTimerRef.current !== null) clearTimeout(recoveryTimerRef.current);
     };
   }, []);
