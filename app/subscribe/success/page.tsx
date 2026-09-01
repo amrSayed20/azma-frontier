@@ -3,7 +3,6 @@ import { verifySession } from '@/src/authentication';
 import { getDb, getCreator } from '@/src/persistent-storage';
 import { resolveRequestLocale } from '@/src/creator-language/resolve-request-locale';
 import { getDictionary, t } from '@/src/creator-language';
-import { ConstitutionalLink } from '@/src/constitutional-navigation';
 import '../../creator-access.css';
 
 const SESSION_COOKIE = 'azma_session';
@@ -34,9 +33,9 @@ export default async function SubscribeSuccessPage() {
         <p className="creator-access-kicker">{t(dict, 'subscribeSuccess.kicker')}</p>
         <h1 className="creator-access-title">{t(dict, 'subscribeSuccess.title')}</h1>
         <p className="creator-access-subtitle">{subtitle}</p>
-        <ConstitutionalLink to="/imperial-foyer" replace className="creator-access-submit" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+        <a href="/imperial-foyer" className="creator-access-submit" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
           {t(dict, 'subscribeSuccess.enterButton')}
-        </ConstitutionalLink>
+        </a>
       </div>
     </main>
   );
