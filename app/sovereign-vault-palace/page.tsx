@@ -343,6 +343,17 @@ export default function SovereignVaultPalace() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // BF cache recovery: if Chrome restores this page from bfcache while
+  // phase='sealing' (palaceSeal opacity 0), the Creator sees a black screen.
+  // Reset to 'palace' so the vault is visible again after back-navigation.
+  useEffect(() => {
+    function handlePageShow(e: PageTransitionEvent) {
+      if (e.persisted) setPhase('palace');
+    }
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
+
   // ── Camera for Face Auth ─────────────────────────────────────────────────
 
   useEffect(() => {

@@ -814,6 +814,17 @@ export default function HujjahAlDamighah() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // BF cache recovery: if Chrome restores this page from bfcache while
+  // isExiting=true (chamber-sealing opacity 0), the Creator sees a permanent
+  // black screen. Reset exit state on restoration so the chamber is visible.
+  useEffect(() => {
+    function handlePageShow(e: PageTransitionEvent) {
+      if (e.persisted) setIsExiting(false);
+    }
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
+
   // ── Silent Mode Auto-Submit ───────────────────────────────────────
   useEffect(() => {
     if (silentConcepts.length < 2 || tongue !== 'silent') return;
