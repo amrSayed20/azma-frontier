@@ -227,6 +227,28 @@ export function DirectorStage() {
     };
   }, []);
 
+  // BF cache recovery: when Chrome restores a page from bfcache, React effects
+  // do NOT re-run and all browser timers (settleTimeout, failsafeTimeout) have
+  // been cleared. If the page was cached while phase='dissolving' (opacity 1,
+  // transition:none), the black overlay is permanent — no timer survives to
+  // call setPhase('stable'). The pageshow event is the only reliable hook:
+  // reset to stable so the overlay never outlives a bfcache restoration.
+  useEffect(() => {
+    function handlePageShow(e: PageTransitionEvent) {
+      if (e.persisted) {
+        timeoutsRef.current.forEach(clearTimeout);
+        timeoutsRef.current = [];
+        if (frameRef.current !== null) {
+          cancelAnimationFrame(frameRef.current);
+          frameRef.current = null;
+        }
+        setPhase('stable');
+      }
+    }
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
+
   const style = { '--stage-duration': `${durationMs}ms` } as CSSProperties;
 
   return (
