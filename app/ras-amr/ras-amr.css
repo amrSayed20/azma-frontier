@@ -30,23 +30,433 @@
 }
 
 /* ========================================= */
-/* STRICT STAGE CONFINEMENT                  */
+/* PHASE A: ROOT SCROLL ARCHITECTURE         */
 /* ========================================= */
-/* body/html rules removed — .ras-amr-viewport (position:fixed;inset:0)
-   handles full-screen confinement; body rules bleed across SPA navigation */
+/* .ras-amr-viewport: page-scroll root (replaces position:fixed)          */
+/* Sticky header + sticky sidebars + sticky timeline work via position:sticky */
 
 .ras-amr-viewport {
-  position: fixed;
-  inset: 0;
+  position: relative;
+  min-height: 100dvh;
   background-color: var(--chamber-bg);
   color: var(--text-main);
-  /* Sovereign Typography System's own font authority (SIO-007) */
   font-family: var(--azma-font-family);
   direction: rtl;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   transition: filter 0.3s ease;
+}
+
+/* ========================================= */
+/* PHASE B: STICKY HEADER                    */
+/* ========================================= */
+.ras-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(2, 2, 2, 0.96);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--neon-gold-dim);
+  height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 10px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.6);
+}
+
+.ras-exit-btn {
+  background: transparent;
+  border: 1px solid var(--neon-gold-dim);
+  color: var(--neon-gold-bright);
+  font-size: 11px;
+  font-weight: bold;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 8px var(--neon-gold-shadow);
+  font-family: inherit;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ras-exit-btn:hover {
+  background: rgba(255, 215, 0, 0.1);
+  border-color: var(--neon-gold-bright);
+  box-shadow: 0 0 14px var(--neon-gold-bright);
+  transform: translateX(2px);
+}
+
+.ras-header-name {
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--neon-gold-bright);
+  letter-spacing: 1px;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
+  white-space: nowrap;
+}
+
+.ras-mode-toggle {
+  display: flex;
+  border: 1px solid var(--neon-gold-dim);
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ras-mode-btn {
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.ras-mode-btn.ras-mode-active {
+  background: rgba(255, 215, 0, 0.15);
+  color: var(--neon-gold-bright);
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
+}
+.ras-mode-btn:hover:not(.ras-mode-active) {
+  background: rgba(255, 215, 0, 0.06);
+  color: var(--text-main);
+}
+
+.ras-selected-node-badge {
+  font-size: 9px;
+  font-family: monospace;
+  color: var(--neon-gold-dim);
+  padding: 2px 8px;
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.ras-header-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+}
+
+.ras-header-render-status {
+  font-size: 10px;
+  font-family: monospace;
+  color: var(--text-muted);
+}
+
+.ras-render-btn {
+  background: linear-gradient(135deg, #a07800, var(--neon-gold-primary));
+  border: 1px solid var(--neon-gold-bright);
+  color: #000;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.3s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 0 12px var(--neon-gold-shadow);
+}
+.ras-render-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--neon-gold-primary), var(--neon-gold-bright));
+  box-shadow: 0 0 22px var(--neon-gold-heavy-shadow);
+  transform: translateY(-1px);
+}
+.ras-render-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.ras-render-btn.rendering { opacity: 0.7; animation: pulseOpacity 1s infinite alternate; }
+
+/* ========================================= */
+/* PHASE C: DESKTOP BODY GRID                */
+/* ========================================= */
+.ras-body-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr 300px;
+  gap: 8px;
+  padding: 8px;
+  min-height: calc(100dvh - 52px - 188px);
+  box-sizing: border-box;
+  position: relative;
+  z-index: 10;
+}
+
+.ras-panel-left,
+.ras-panel-right {
+  position: sticky;
+  top: 60px;
+  max-height: calc(100dvh - 60px - 188px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg);
+  border-radius: 16px;
+  backdrop-filter: blur(25px);
+  align-self: start;
+}
+
+.ras-center {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+/* ========================================= */
+/* PHASE D: 5-TAB WORKSPACE                  */
+/* ========================================= */
+.ras-tab-bar {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--neon-gold-dim);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.ras-tab-btn {
+  flex: 1;
+  padding: 10px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ras-tab-btn.ras-tab-active {
+  border-bottom-color: var(--neon-gold-primary);
+  color: var(--neon-gold-bright);
+  background: rgba(255, 215, 0, 0.04);
+}
+.ras-tab-btn:hover:not(.ras-tab-active) {
+  color: var(--text-main);
+  background: rgba(255, 215, 0, 0.03);
+}
+
+.ras-tab-content {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.ras-tab-content::-webkit-scrollbar { width: 3px; }
+.ras-tab-content::-webkit-scrollbar-track { background: transparent; }
+.ras-tab-content::-webkit-scrollbar-thumb { background: var(--neon-gold-dim); border-radius: 3px; }
+
+/* Direction tab mode indicator */
+.ras-direction-mode-indicator {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+}
+
+/* Audio tab node rows */
+.ras-audio-node-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+/* Honesty note — per CA Correction #3 */
+.ras-honesty-note {
+  font-size: 10px;
+  color: rgba(255, 215, 0, 0.45);
+  margin: 4px 0 0;
+  font-style: italic;
+  line-height: 1.4;
+  padding: 0 4px;
+}
+
+/* ========================================= */
+/* PHASE F: AUDIO VIEWPORT SURFACE           */
+/* ========================================= */
+.viewport-audio-surface {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  width: 100%;
+  height: 100%;
+}
+.viewport-audio-icon {
+  font-size: 2.5rem;
+  filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.4));
+}
+.viewport-audio-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  text-align: center;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.viewport-audio-hint {
+  margin: 0;
+  font-size: 10px;
+  color: var(--neon-gold-dim);
+  font-style: italic;
+}
+.viewport-audio-player {
+  width: 90%;
+  accent-color: var(--neon-gold-bright);
+  color-scheme: dark;
+}
+
+/* ========================================= */
+/* PHASE G: STICKY TIMELINE                  */
+/* ========================================= */
+.ras-timeline {
+  position: sticky;
+  bottom: 0;
+  z-index: 40;
+  height: 180px;
+  background: rgba(3, 3, 3, 0.98);
+  border-top: 1px solid var(--neon-gold-dim);
+  box-shadow: 0 0 15px var(--neon-gold-shadow), inset 0 0 10px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.ras-timeline-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.06);
+  flex-shrink: 0;
+}
+
+.ras-timeline-ruler {
+  position: relative;
+  height: 18px;
+  flex-shrink: 0;
+  margin: 0 66px 0 66px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.08);
+}
+
+.ras-ruler-tick {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateX(-50%);
+}
+.ras-ruler-tick::before {
+  content: '';
+  width: 1px;
+  height: 6px;
+  background: rgba(255, 215, 0, 0.25);
+}
+.ras-ruler-tick span {
+  font-size: 8px;
+  color: rgba(255, 215, 0, 0.4);
+  font-family: monospace;
+  margin-top: 2px;
+}
+
+.ras-corridor-btn {
+  background: linear-gradient(90deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.08));
+  border: 1px solid var(--neon-gold-dim);
+  color: var(--neon-gold-bright);
+  padding: 5px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.3s;
+  animation: goldenPulseFlash 2s ease-in-out infinite alternate;
+  white-space: nowrap;
+}
+.ras-corridor-btn:hover {
+  background: rgba(255, 215, 0, 0.25);
+  box-shadow: 0 0 18px var(--neon-gold-shadow);
+}
+
+/* ========================================= */
+/* PHASE H: TABLET (1200px > width >= 681px) */
+/* ========================================= */
+@media (max-width: 1199px) and (min-width: 681px) {
+  .ras-body-grid {
+    grid-template-columns: 1fr 280px;
+    grid-template-rows: auto auto;
+  }
+  .ras-panel-left {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    position: relative;
+    top: auto;
+    max-height: 180px;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-radius: 12px;
+  }
+  .ras-panel-left .queue-container {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex: 1;
+  }
+  .ras-panel-left .queue-item-card {
+    min-width: 160px;
+    flex-shrink: 0;
+  }
+  .ras-center { grid-column: 1; grid-row: 2; }
+  .ras-panel-right { grid-column: 2; grid-row: 2; position: sticky; top: 60px; max-height: calc(100dvh - 60px - 188px); }
+}
+
+/* ========================================= */
+/* PHASE I: MOBILE (≤ 680px)                 */
+/* ========================================= */
+@media (max-width: 680px) {
+  .ras-header { height: auto; min-height: 52px; flex-wrap: wrap; padding: 8px 12px; gap: 8px; }
+  .ras-header-name { font-size: 12px; }
+  .ras-render-btn { font-size: 10px; padding: 5px 10px; }
+
+  .ras-body-grid {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    padding: 6px;
+    gap: 6px;
+  }
+  .ras-panel-left, .ras-panel-right {
+    position: relative;
+    top: auto;
+    max-height: none;
+  }
+  .ras-panel-left { min-height: 200px; }
+  .ras-panel-right { min-height: 300px; }
+  .ras-center { min-height: 280px; }
+
+  .ras-timeline { height: auto; min-height: 140px; }
+  .ras-timeline-ruler { margin: 0 52px; }
 }
 
 /* ========================================= */
@@ -61,38 +471,13 @@
   100% { box-shadow: inset 0 0 0px transparent; filter: brightness(1); }
 }
 
-/* ========================================= */
-/* GLOBAL SOVEREIGN BACK NAVIGATION          */
-/* ========================================= */
-.sovereign-exit-btn {
-  position: absolute;
-  top: 15px;
-  right: 20px;
-  z-index: 100;
-  background: transparent;
-  border: 1px solid var(--neon-gold-dim);
-  color: var(--neon-gold-bright);
-  font-size: 12px;
-  font-weight: bold;
-  padding: 6px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 10px var(--neon-gold-shadow);
-}
-
-.sovereign-exit-btn:hover {
-  background: rgba(255, 215, 0, 0.1);
-  border-color: var(--neon-gold-bright);
-  box-shadow: 0 0 15px var(--neon-gold-bright);
-  transform: translateX(3px);
-}
+/* .sovereign-exit-btn removed in Package XXXI — exit button is now .ras-exit-btn inside sticky header */
 
 /* ========================================= */
 /* NEON GOLDEN LIGHTING PHYSICS              */
 /* ========================================= */
 .neon-layer {
-  position: absolute;
+  position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
@@ -138,50 +523,8 @@
   box-shadow: 0 0 25px var(--neon-gold-shadow), inset 0 0 30px rgba(0, 0, 0, 0.9);
 }
 
-/* ========================================= */
-/* INTERFACE GRID STRUCTURING                */
-/* ========================================= */
-.chamber-grid-layout {
-  position: relative;
-  z-index: 10;
-  width: 100%;
-  height: 100dvh;
-  padding: 52px 8px 6px 8px;
-  box-sizing: border-box;
-  display: grid;
-  grid-template-columns: min(220px, 17vw) 1fr min(220px, 17vw);
-  grid-template-rows: 1fr 130px;
-  gap: 6px;
-  overflow: hidden;
-}
-
-@media (max-width: 680px) {
-  .ras-amr-viewport { overflow-y: auto; }
-  .chamber-grid-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: none;
-    height: auto;
-    min-height: 100vh;
-    overflow-y: auto;
-    padding-top: 70px;
-  }
-  .control-panel,
-  .main-director-core,
-  .center-stage {
-    height: auto;
-    min-height: 60vh;
-    overflow-y: auto;
-  }
-  .cinema-viewport {
-    flex: none;
-    height: clamp(240px, 45vw, 360px);
-  }
-  .timeline-full-width {
-    grid-column: 1;
-    grid-row: auto;
-    min-height: 140px;
-  }
-}
+/* .chamber-grid-layout removed in Package XXXI — replaced by .ras-body-grid */
+/* Old mobile override also removed — see Phase H/I breakpoints above */
 
 .control-panel {
   background: var(--panel-bg);
@@ -695,8 +1038,8 @@
 }
 
 .render-btn {
-  background: linear-gradient(135deg, var(--neon-gold-dark), var(--neon-gold-primary));
-  border: 1px solid var(--neon-gold-light);
+  background: linear-gradient(135deg, #a07800, var(--neon-gold-primary));
+  border: 1px solid var(--neon-gold-bright);
   color: #000;
   box-shadow: 0 0 15px var(--neon-gold-shadow);
 }

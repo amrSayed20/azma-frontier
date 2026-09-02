@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AZMA OS – Ras Al-Amr Chamber (Hollywood Master Director Console)
  * File: app/ras-amr/page.tsx
  *
@@ -1482,6 +1482,9 @@ export default function RasAmrChamber() {
   const [showCanvasLoad,   setShowCanvasLoad]   = useState(false);
   const [isLoadingCanvases, setIsLoadingCanvases] = useState(false);
 
+  // PACKAGE XXXI — 5-tab right workspace: المشهد | التوجيه | الصوت | الترجمة | المشروع
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'canvas' | 'direction' | 'audio' | 'subtitles' | 'project'>('canvas');
+
   const handleSaveCanvas = async () => {
     if (!sessionCanvas) return;
     setIsSavingCanvas(true);
@@ -1535,41 +1538,67 @@ export default function RasAmrChamber() {
   return (
     <RasAmrExperience>
     <main className={`ras-amr-viewport ${injectionFlash ? 'neon-flash-active' : ''}`}>
-      {/* IMPERIAL JOURNEY CONTINUITY — Package D: return context written
-          so the Foyer can acknowledge the Creator's return from Ras Al Amr. */}
-      <button className="sovereign-exit-btn" onClick={() => {
-        try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'ras-amr', constitutionalAct: 'direction' })); } catch { /* ignore */ }
-        goTo('/imperial-foyer');
-      }}>
-        ⮜ قلب الإمبراطورية
-      </button>
 
-      {/* Cyber Golden Neon Grid Atmosphere */}
+      {/* Neon atmosphere — fixed behind all content */}
       <div className="neon-layer">
         <div className="cyber-grid" />
         <div className="neon-pulse-glow np-left" />
         <div className="neon-pulse-glow np-right" />
       </div>
 
-      <div className="chamber-grid-layout">
-        
-        {/* ========================================= */}
-        {/* 1. LEFT SIDEBAR: SMART QUEUE              */}
-        {/* ========================================= */}
-        <aside className="control-panel queue-sidebar neon-border">
+      {/* STICKY HEADER — Phase B */}
+      <header className="ras-header">
+        <button className="ras-exit-btn" onClick={() => {
+          try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'ras-amr', constitutionalAct: 'direction' })); } catch { /* ignore */ }
+          goTo('/imperial-foyer');
+        }}>
+          ⮜ قلب الإمبراطورية
+        </button>
+        <span className="ras-header-name">رأس الأمر</span>
+        <div className="ras-mode-toggle" role="group" aria-label="وضع التوجيه">
+          <button
+            className={`ras-mode-btn ${directingMode === 'manual' ? 'ras-mode-active' : ''}`}
+            onClick={() => setDirectingMode('manual')}
+            aria-pressed={directingMode === 'manual'}
+          >يدوي</button>
+          <button
+            className={`ras-mode-btn ${directingMode === 'smart' ? 'ras-mode-active' : ''}`}
+            onClick={() => setDirectingMode('smart')}
+            aria-pressed={directingMode === 'smart'}
+          >آلي</button>
+        </div>
+        {selectedNodeId && sessionCanvas && (
+          <span className="ras-selected-node-badge">عقدة: {selectedNodeId.slice(-6)}</span>
+        )}
+        <div className="ras-header-status">
+          <span className={`strip-pulse${isRendering ? ' strip-pulse-active' : ''}`} aria-hidden="true" />
+          <span className="ras-header-render-status">
+            {isRendering ? renderStatus : (compiledGraph && compiledForAssetId === activeAsset?.id ? '✓ مُصهَر' : '◉ جاهز')}
+          </span>
+        </div>
+        <button
+          className={`ras-render-btn ${isRendering ? 'rendering' : ''}`}
+          onClick={triggerMasterRender}
+          disabled={isRendering || !canCompile}
+          title={!canCompile ? 'استدعِ أصلاً حقيقياً من الخزانة السيادية أولاً' : undefined}
+        >
+          {isRendering ? '⏳ صهر…' : '🎬 صهر نهائي'}
+        </button>
+      </header>
+
+      {/* BODY GRID — Phase C: Desktop 280px 1fr 300px */}
+      <div className="ras-body-grid">
+
+        {/* LEFT: Asset Queue */}
+        <aside className="ras-panel-left neon-border">
           <header className="panel-header">
             <div className="neon-tag">الأصول</div>
             <h2>أصول الإنتاج</h2>
-            <p>الأصول المستدعاة من الخزانة السيادية — تُضاف إلى المشهد</p>
-
-            <button
-              className="summon-bridge-trigger-btn"
-              onClick={() => setIsSummonOpen(true)}
-            >
+            <p>الأصول المستدعاة من الخزانة السيادية</p>
+            <button className="summon-bridge-trigger-btn" onClick={() => setIsSummonOpen(true)}>
               استدعِ من الخزانة السيادية
             </button>
           </header>
-
           <div className="queue-container custom-scroll">
             {queue.length === 0 && (
               <p className="queue-empty-hint">
@@ -1596,18 +1625,12 @@ export default function RasAmrChamber() {
           </div>
         </aside>
 
-        {/* =========================================== */}
-        {/* 2. CENTER: CINEMATIC DIRECTION WORKSPACE   */}
-        {/* =========================================== */}
-        <section className="main-director-core">
+        {/* CENTER: Viewport + Quick Actions + Status */}
+        <section className="ras-center">
 
-          {/* ZONE 1 — CINEMATIC VIEWPORT
-              Real data only. Image: <img> via secureStorageUri (Makman pattern).
-              Audio: waveform shape indicator — type signal, not fake data.
-              Video: cinematic frame indicator. Empty: chamber identity. */}
+          {/* CINEMATIC VIEWPORT */}
           <div className={`cinema-viewport neon-border-heavy ${!activeAsset ? 'viewport-empty-state' : activeAsset.isRealAsset ? 'viewport-real' : 'viewport-demo'}`}>
             <div className="viewport-scanlines" aria-hidden="true" />
-
             {kernelContinuity && (
               <div className="viewport-continuity-ribbon" role="status">
                 {kernelContinuity === 'palace-treasure'
@@ -1615,43 +1638,31 @@ export default function RasAmrChamber() {
                   : 'الإمبراطورية أعدّت هذه الجلسة — المخرج الإمبراطوري يستقبلك'}
               </div>
             )}
-
             <div className="viewport-main-content">
               {!activeAsset ? (
                 <div className="viewport-chamber-identity">
                   <div className="viewport-sigil" aria-hidden="true">✦</div>
                   <h2 className="viewport-chamber-name">رأس الأمر</h2>
-                  <p className="viewport-chamber-mandate">
-                    الجهة الدستورية لتوجيه الإنتاج السيادي — مكانية، بصرية، زمنية، وصوتية
-                  </p>
+                  <p className="viewport-chamber-mandate">الجهة الدستورية لتوجيه الإنتاج السيادي — مكانية، بصرية، زمنية، وصوتية</p>
                   <p className="viewport-summon-cue">← استدعِ أصلاً من الخزانة للبدء</p>
                 </div>
               ) : activeAsset.isRealAsset && activeAsset.capabilityOrigin === CapabilityTarget.VISUAL && activeAsset.secureStorageUri ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  className="viewport-asset-image"
-                  src={activeAsset.secureStorageUri}
-                  alt={activeAsset.title}
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                />
+                <img className="viewport-asset-image" src={activeAsset.secureStorageUri} alt={activeAsset.title} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
               ) : activeAsset.isRealAsset && activeAsset.capabilityOrigin === CapabilityTarget.AUDIO ? (
-                <div className="viewport-audio-identity">
-                  <div className="viewport-waveform" aria-hidden="true">
-                    {[65, 40, 85, 55, 90, 45, 75, 60, 80, 50, 70, 35, 88, 42, 68].map((h, i) => (
-                      <span key={i} className="viewport-wave-bar" style={{ height: `${h}%` }} />
-                    ))}
-                  </div>
-                  <p className="viewport-audio-label">{activeAsset.title}</p>
+                // Phase F: real audio player replaces decorative waveform bars
+                <div className="viewport-audio-surface">
+                  <span className="viewport-audio-icon" aria-hidden="true">🎙</span>
+                  <p className="viewport-audio-title">{activeAsset.title}</p>
+                  <p className="viewport-audio-hint">أصل صوتي حقيقي</p>
+                  {activeAsset.secureStorageUri && (
+                    // eslint-disable-next-line jsx-a11y/media-has-caption
+                    <audio controls src={activeAsset.secureStorageUri} className="viewport-audio-player" />
+                  )}
                 </div>
               ) : activeAsset.isRealAsset && activeAsset.capabilityOrigin === CapabilityTarget.MOTION && activeAsset.secureStorageUri ? (
                 // eslint-disable-next-line jsx-a11y/media-has-caption
-                <video
-                  className="viewport-asset-image"
-                  src={activeAsset.secureStorageUri}
-                  controls
-                  playsInline
-                  style={{ background: '#000', objectFit: 'contain' }}
-                />
+                <video className="viewport-asset-image" src={activeAsset.secureStorageUri} controls playsInline style={{ background: '#000', objectFit: 'contain' }} />
               ) : (
                 <div className="viewport-generic-identity">
                   <div className="viewport-sigil viewport-sigil-dim" aria-hidden="true">✦</div>
@@ -1659,7 +1670,6 @@ export default function RasAmrChamber() {
                 </div>
               )}
             </div>
-
             <div className="viewport-meta-strip">
               {activeAsset ? (
                 <>
@@ -1676,51 +1686,20 @@ export default function RasAmrChamber() {
             </div>
           </div>
 
-          {/* ZONE 2.5 — CREATOR QUICK ACTIONS
-              Primary operational bar — surfaces the exact next action
-              the Creator should take without requiring sidebar navigation. */}
+          {/* QUICK ACTIONS — add to scene; render button is in header only */}
           {activeAsset && (
             <div className="creator-quick-actions">
-
-              {/* Audio playback — Creator hears the asset immediately */}
-              {activeAsset.isRealAsset && activeAsset.capabilityOrigin === CapabilityTarget.AUDIO && activeAsset.secureStorageUri && (
-                // eslint-disable-next-line jsx-a11y/media-has-caption
-                <audio controls src={activeAsset.secureStorageUri} className="creator-audio-player" />
-              )}
-
-              {/* Add to scene — primary action when asset not yet in the scene */}
               {activeAsset.isRealAsset && sessionCanvas &&
                 !sessionCanvas.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id) && (
-                <button
-                  className="creator-action-btn creator-action-primary"
-                  onClick={handleAddActiveAssetToCanvas}
-                >
+                <button className="creator-action-btn creator-action-primary" onClick={handleAddActiveAssetToCanvas}>
                   ➕ أضف إلى مشهد الإخراج
                 </button>
               )}
-
-              {/* No canvas yet — show initialize cue */}
               {activeAsset.isRealAsset && !sessionCanvas && (
-                <button
-                  className="creator-action-btn creator-action-primary"
-                  onClick={handleAddActiveAssetToCanvas}
-                >
+                <button className="creator-action-btn creator-action-primary" onClick={handleAddActiveAssetToCanvas}>
                   ➕ ابدأ مشهد الإخراج بهذا الأصل
                 </button>
               )}
-
-              {/* Render to MP4 — shows when scene is ready */}
-              {canCompile && (
-                <button
-                  className={`creator-action-btn ${isRendering ? 'creator-action-secondary' : 'creator-action-primary'}`}
-                  onClick={triggerMasterRender}
-                  disabled={isRendering}
-                >
-                  {isRendering ? '⏳ جارٍ الصهر…' : '🎬 صهر وتصدير MP4'}
-                </button>
-              )}
-
-              {/* Asset already in scene confirmation */}
               {activeAsset.isRealAsset && sessionCanvas &&
                 sessionCanvas.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id) &&
                 !canCompile && (
@@ -1731,7 +1710,7 @@ export default function RasAmrChamber() {
             </div>
           )}
 
-          {/* ZONE 3 — DIRECTOR STATUS STRIP
+          {/* DIRECTOR STATUS STRIP
               Three live cells: active operator, canvas summary, render state. */}
           <div className="director-status-strip neon-border">
             <div className="strip-cell strip-operator">
@@ -1739,9 +1718,7 @@ export default function RasAmrChamber() {
               <span>{directingMode === 'smart' ? 'المخرج الآلي' : 'المخرج اليدوي'}</span>
             </div>
             <div className="strip-cell strip-canvas">
-              {sessionCanvas
-                ? `${sessionCanvas.tracks.flatMap(t => t.nodes).length} عنصر`
-                : 'لا يوجد مشهد'}
+              {sessionCanvas ? `${sessionCanvas.tracks.flatMap(t => t.nodes).length} عنصر` : 'لا يوجد مشهد'}
             </div>
             <div className="strip-cell strip-render">
               {renderStatus !== 'في وضع الاستعداد الإخراجي' ? renderStatus : '◉ جاهز'}
@@ -1750,655 +1727,410 @@ export default function RasAmrChamber() {
 
         </section>
 
-        {/* ========================================= */}
-        {/* 3. RIGHT SIDEBAR: HOLLYWOOD STUDIO TOOLS  */}
-        {/* ========================================= */}
-        <aside className="control-panel tools-sidebar neon-border">
-          <header className="panel-header">
-            <div className="neon-tag">مساحة التوجيه</div>
-            <h2>مساحة التوجيه السيادية</h2>
-            <p>الخالق يوجّه — الذكاء ينفّذ</p>
-          </header>
-
-          <div className="operator-switcher">
-            <button
-              className={`operator-btn ${directingMode === 'smart' ? 'operator-active' : ''}`}
-              onClick={() => setDirectingMode('smart')}
-              aria-pressed={directingMode === 'smart'}
-            >
-              <span className="operator-btn-label">المخرج الآلي</span>
-              <span className="operator-btn-desc">قرارات توجيهية آلية بناءً على الهدف</span>
-            </button>
-            <button
-              className={`operator-btn ${directingMode === 'manual' ? 'operator-active' : ''}`}
-              onClick={() => setDirectingMode('manual')}
-              aria-pressed={directingMode === 'manual'}
-            >
-              <span className="operator-btn-label">المخرج اليدوي</span>
-              <span className="operator-btn-desc">مكاني، بصري، زمني، صوتي</span>
-            </button>
+        {/* RIGHT: 5-Tab Workspace */}
+        <aside className="ras-panel-right neon-border">
+          {/* Tab bar — Phase D */}
+          <div className="ras-tab-bar" role="tablist">
+            {(['canvas', 'direction', 'audio', 'subtitles', 'project'] as const).map((tab) => {
+              const labels: Record<typeof tab, string> = { canvas: 'المشهد', direction: 'التوجيه', audio: 'الصوت', subtitles: 'الترجمة', project: 'المشروع' };
+              return (
+                <button
+                  key={tab}
+                  role="tab"
+                  aria-selected={activeWorkspaceTab === tab}
+                  className={`ras-tab-btn ${activeWorkspaceTab === tab ? 'ras-tab-active' : ''}`}
+                  onClick={() => setActiveWorkspaceTab(tab)}
+                >
+                  {labels[tab]}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Canvas Mode Selection — choose before adding the first asset.   */}
-          {/* Changing mode after the canvas is seeded resets it entirely.   */}
-          <div className="canvas-mode-selector">
-            <div className="neon-tag">نوع الإخراج</div>
-            <select
-              className="canvas-type-select"
-              value={selectedCanvasType}
-              onChange={(e) => {
-                const newType = e.target.value as CanvasType;
-                setSelectedCanvasType(newType);
-                if (sessionCanvas) {
-                  setSessionCanvas(null);
-                  setSelectedNodeId(null);
-                  setCompiledGraph(null);
-                  setCompiledForAssetId(null);
-                }
-              }}
-              aria-label="نوع الإخراج"
-            >
-              <option value={CanvasType.CINEMATIC}>سينمائي — ملف MP4 حقيقي عبر مشفّر FFmpeg</option>
-              <option value={CanvasType.NARRATIVE}>سردي — بنية تجميع ديناميكية (ليس ملف وسائط)</option>
-              <option value={CanvasType.DIRECTORIAL}>توجيهي — بنية حالة توجيه (ليس ملف وسائط)</option>
-            </select>
-            {sessionCanvas && (
-              <p className="canvas-mode-reset-note">⚠ تغيير النوع يُعيد تهيئة المشهد الحالي</p>
-            )}
-          </div>
+          {/* Tab: المشهد */}
+          {activeWorkspaceTab === 'canvas' && (
+            <div className="ras-tab-content custom-scroll">
+              <div className="canvas-mode-selector">
+                <div className="neon-tag">نوع الإخراج</div>
+                <select
+                  className="canvas-type-select"
+                  value={selectedCanvasType}
+                  onChange={(e) => {
+                    const newType = e.target.value as CanvasType;
+                    setSelectedCanvasType(newType);
+                    if (sessionCanvas) { setSessionCanvas(null); setSelectedNodeId(null); setCompiledGraph(null); setCompiledForAssetId(null); }
+                  }}
+                  aria-label="نوع الإخراج"
+                >
+                  <option value={CanvasType.CINEMATIC}>سينمائي — ملف MP4 حقيقي عبر مشفّر FFmpeg</option>
+                  <option value={CanvasType.NARRATIVE}>سردي — بنية تجميع ديناميكية</option>
+                  <option value={CanvasType.DIRECTORIAL}>توجيهي — بنية حالة توجيه</option>
+                </select>
+                {sessionCanvas && <p className="canvas-mode-reset-note">⚠ تغيير النوع يُعيد تهيئة المشهد الحالي</p>}
+              </div>
 
-          {/* ── SCROLLABLE ZONE: all canvas + direction panels ── */}
-          <div className="tools-sidebar-scroll">
-
-          {sessionCanvas && (
-            <div className="spatial-adjust-panel">
-              <header className="panel-header">
-                <div className="neon-tag">مشهد الإخراج</div>
-                <h2>مشهد الإخراج</h2>
-                <p>مساحة عمل سينمائية واحدة تتّسع لعدة أصول إنتاجية — الترتيب والاتجاه يُحكَمان عبر العناصر</p>
-              </header>
-
-              {/* PACKAGE XXIII — DIRECTION DECISION MODEL: real, visible proof that every Manual Direction Decision above now produces a shared DirectionDecision, not just a raw mutation. */}
-              {directionDecisionLog.length > 0 && (
+              {sessionCanvas && directionDecisionLog.length > 0 && (
                 <div className="direction-decision-log" data-testid="direction-decision-log">
                   <span className="neon-tag">سجل القرارات التوجيهية</span>
                   <p className="direction-decision-latest">
-                    آخر قرار توجيهي: {directionDecisionLog[0].mutation.actionType} — {directionDecisionLog[0].operator} — {new Date(directionDecisionLog[0].issuedAtMs).toLocaleTimeString('ar-EG')}
+                    آخر قرار: {directionDecisionLog[0].mutation.actionType} — {directionDecisionLog[0].operator} — {new Date(directionDecisionLog[0].issuedAtMs).toLocaleTimeString('ar-EG')}
                   </p>
                 </div>
               )}
 
-              {/* PACKAGE XX — DIRECTION ASSEMBLY LAYER: real group creation + selection for where a newly-added asset lands. */}
-              <div className="group-controls-row">
-                <select
-                  className="group-select"
-                  value={activeTrackId}
-                  onChange={(e) => setActiveTrackId(e.target.value)}
-                  aria-label="المجموعة المستهدفة عند الإضافة"
-                >
-                  {sessionCanvas.tracks.map((track) => (
-                    <option key={track.trackId} value={track.trackId}>{track.trackName}</option>
-                  ))}
-                </select>
-                <input
-                  type="text"
-                  className="group-name-input"
-                  placeholder="اسم مجموعة جديدة"
-                  value={newGroupName}
-                  onChange={(e) => setNewGroupName(e.target.value)}
-                />
-                <button className="action-trigger-btn" onClick={handleAddGroup} disabled={!newGroupName.trim()}>
-                  ＋ مجموعة
-                </button>
+              {sessionCanvas && (
+                <div className="spatial-adjust-panel">
+                  <div className="group-controls-row">
+                    <select className="group-select" value={activeTrackId} onChange={(e) => setActiveTrackId(e.target.value)} aria-label="المجموعة المستهدفة">
+                      {sessionCanvas.tracks.map((track) => (
+                        <option key={track.trackId} value={track.trackId}>{track.trackName}</option>
+                      ))}
+                    </select>
+                    <input type="text" className="group-name-input" placeholder="اسم مجموعة جديدة" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
+                    <button className="action-trigger-btn" onClick={handleAddGroup} disabled={!newGroupName.trim()}>＋ مجموعة</button>
+                  </div>
+                  <button
+                    className="action-trigger-btn spatial-apply-btn"
+                    onClick={handleAddActiveAssetToCanvas}
+                    disabled={!wantsRealCanvas || (sessionCanvas !== null && sessionCanvas.tracks.flatMap((t) => t.nodes).some((n) => n.assetId === activeAsset?.id))}
+                  >
+                    ➕ أضف الأصل النشط إلى المجموعة
+                  </button>
+                  {sessionCanvas.tracks.every((t) => t.nodes.length === 0) ? (
+                    <p className="spatial-current-state">المشهد فارغ — أضف أصلاً حقيقياً للبدء</p>
+                  ) : (
+                    sessionCanvas.tracks.map((track) => (
+                      <div key={track.trackId} className="narrative-canvas-group">
+                        <h3 className="narrative-canvas-group-name">{track.trackName}</h3>
+                        {track.nodes.length === 0 ? (
+                          <p className="spatial-current-state">هذه المجموعة فارغة</p>
+                        ) : (
+                          <ul className="narrative-canvas-node-list">
+                            {track.nodes.map((node, index) => (
+                              <li key={node.nodeId} className={`narrative-canvas-node ${node.nodeId === selectedNodeId ? 'node-selected' : ''} ${node.isActive === false ? 'node-inactive' : ''} ${node.isLocked ? 'node-locked' : ''}`}>
+                                <button className="narrative-node-select" onClick={() => { setSelectedNodeId(node.nodeId); setActiveWorkspaceTab('direction'); }}>
+                                  #{index + 1} — {node.assetFamily}/{node.capabilityOrigin}
+                                  {node.directionRole ? ` — ${DIRECTION_NODE_ROLE_LABELS[node.directionRole]}` : ''}
+                                  {node.directionEmphasis === 'primary' ? ' — ◆' : node.directionEmphasis === 'supporting' ? ' — ◇' : ''}
+                                  {node.isActive === false ? ' — (معطَّل)' : ''}{node.isLocked ? ' — 🔒' : ''}
+                                </button>
+                                <select className="narrative-node-classification" value={node.directionRole ?? ''} onChange={(e) => handleUpdateNodeClassification(node.nodeId, (e.target.value || undefined) as DirectionNodeRole | undefined)} disabled={node.isLocked} aria-label="التصنيف السينمائي">
+                                  <option value="">غير مصنَّف</option>
+                                  {Object.values(DirectionNodeRole).map((role) => (<option key={role} value={role}>{DIRECTION_NODE_ROLE_LABELS[role]}</option>))}
+                                </select>
+                                <select className="narrative-node-emphasis" value={node.directionEmphasis ?? ''} onChange={(e) => handleSetNodeEmphasis(node.nodeId, (e.target.value || null) as 'primary' | 'supporting' | null)} disabled={node.isLocked} aria-label="الأهمية الإخراجية">
+                                  <option value="">بلا تمييز</option>
+                                  <option value="primary">أساسي</option>
+                                  <option value="supporting">مساند</option>
+                                </select>
+                                <button className="narrative-node-reorder" onClick={() => handleReorderNode(node.nodeId, 'up')} disabled={index === 0 || node.isLocked} aria-label="ترقية العقدة">↑</button>
+                                <button className="narrative-node-reorder" onClick={() => handleReorderNode(node.nodeId, 'down')} disabled={index === track.nodes.length - 1 || node.isLocked} aria-label="خفض رتبة العقدة">↓</button>
+                                {sessionCanvas.tracks.length > 1 && (
+                                  <select className="narrative-node-move-group" value={track.trackId} onChange={(e) => handleMoveNodeToGroup(node.nodeId, e.target.value)} disabled={node.isLocked} aria-label="نقل إلى مجموعة">
+                                    {sessionCanvas.tracks.map((dest) => (<option key={dest.trackId} value={dest.trackId}>{dest.trackName}</option>))}
+                                  </select>
+                                )}
+                                <button className="narrative-node-toggle" onClick={() => handleSetNodeActive(node.nodeId, node.isActive === false)} disabled={node.isLocked} aria-label={node.isActive === false ? 'تفعيل العقدة' : 'تعطيل العقدة'}>
+                                  {node.isActive === false ? '✓' : '⏸'}
+                                </button>
+                                <button className="narrative-node-toggle" onClick={() => handleSetNodeLock(node.nodeId, !node.isLocked)} aria-label={node.isLocked ? 'إلغاء القفل' : 'قفل التوجيه'}>
+                                  {node.isLocked ? '🔓' : '🔒'}
+                                </button>
+                                <button className="narrative-node-remove" onClick={() => handleRemoveNodeFromCanvas(node.nodeId)} aria-label="إزالة من المشهد">✕</button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))
+                  )}
+                  {narrativeIntegrity && !narrativeIntegrity.valid && (
+                    <p className="spatial-current-state narrative-integrity-violation">انتهاك للسلامة السردية: {narrativeIntegrity.violations.join(' — ')}</p>
+                  )}
+                  {multiNodeDirection && multiNodeDirection.nodeDecisions.length > 1 && (
+                    <p className="spatial-current-state">
+                      {multiNodeDirection.primaryNodeId ? 'تم تحديد اتجاه أساسي حقيقي واحد من بين العقد.' : 'لا يوجد اتجاه أساسي محدَّد — لا يوجد هدف خالق مصرَّح به.'}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab: التوجيه — Phase E: real mode consequence */}
+          {activeWorkspaceTab === 'direction' && (
+            <div className="ras-tab-content custom-scroll">
+              <div className="ras-direction-mode-indicator">
+                <div className="neon-tag">{directingMode === 'manual' ? 'المخرج اليدوي' : 'المخرج الآلي'}</div>
+                <div className="ras-mode-toggle" role="group" aria-label="تبديل وضع التوجيه">
+                  <button className={`ras-mode-btn ${directingMode === 'manual' ? 'ras-mode-active' : ''}`} onClick={() => setDirectingMode('manual')} aria-pressed={directingMode === 'manual'}>يدوي</button>
+                  <button className={`ras-mode-btn ${directingMode === 'smart' ? 'ras-mode-active' : ''}`} onClick={() => setDirectingMode('smart')} aria-pressed={directingMode === 'smart'}>آلي</button>
+                </div>
               </div>
 
-              <button
-                className="action-trigger-btn spatial-apply-btn"
-                onClick={handleAddActiveAssetToCanvas}
-                disabled={!wantsRealCanvas || sessionCanvas.tracks.flatMap((t) => t.nodes).some((n) => n.assetId === activeAsset?.id)}
-              >
-                ➕ أضف الأصل النشط إلى المجموعة المحددة
-              </button>
-
-              {/* MINISTRY V — hidden file input shared by all per-node subtitle import buttons */}
-              <input
-                type="file"
-                ref={subtitleInputRef}
-                accept=".srt,.vtt,text/plain"
-                style={{ display: 'none' }}
-                onChange={handleSubtitleFileChosen}
-              />
-              {subtitleImportError && (
-                <p className="spatial-current-state narrative-integrity-violation">{subtitleImportError}</p>
+              {directingMode === 'manual' ? (
+                <>
+                  {sessionCanvas && selectedNodeId ? (
+                    <>
+                      <div className="spatial-adjust-panel panel-manual-spatial">
+                        <header className="panel-header">
+                          <div className="neon-tag">التوجيه المكاني</div>
+                          <h2>تعديل مكاني حقيقي</h2>
+                          <p>يُطبَّق على المشهد ويصل إلى الصهر النهائي</p>
+                        </header>
+                        <p className="ras-honesty-note">⚠ النافذة السينمائية تعرض الأصل الأصلي — التوجيه يظهر في الصهر النهائي فقط</p>
+                        <div className="spatial-input-grid">
+                          <label>X<input type="number" value={spatialForm.positionX} onChange={(e) => setSpatialForm((prev) => ({ ...prev, positionX: Number(e.target.value) }))} /></label>
+                          <label>Y<input type="number" value={spatialForm.positionY} onChange={(e) => setSpatialForm((prev) => ({ ...prev, positionY: Number(e.target.value) }))} /></label>
+                          <label>Scale X<input type="number" step="0.1" value={spatialForm.scaleX} onChange={(e) => setSpatialForm((prev) => ({ ...prev, scaleX: Number(e.target.value) }))} /></label>
+                          <label>Scale Y<input type="number" step="0.1" value={spatialForm.scaleY} onChange={(e) => setSpatialForm((prev) => ({ ...prev, scaleY: Number(e.target.value) }))} /></label>
+                          <label>Rotation°<input type="number" value={spatialForm.rotationDegrees} onChange={(e) => setSpatialForm((prev) => ({ ...prev, rotationDegrees: Number(e.target.value) }))} /></label>
+                        </div>
+                        <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplySpatialAdjustment}>⇲ تطبيق التعديل المكاني الحقيقي</button>
+                        {activeSpatialDirective && (
+                          <p className="spatial-current-state">الحالي: X={activeSpatialDirective.positionX}, Y={activeSpatialDirective.positionY}, Scale=({activeSpatialDirective.scaleX}, {activeSpatialDirective.scaleY}), Rotation={activeSpatialDirective.rotationDegrees}°</p>
+                        )}
+                      </div>
+                      <div className="spatial-adjust-panel panel-manual-visual">
+                        <header className="panel-header">
+                          <div className="neon-tag">التوجيه البصري</div>
+                          <h2>تعديل بصري حقيقي</h2>
+                          <p>معالج البكسل + صهر اللون</p>
+                        </header>
+                        <p className="ras-honesty-note">⚠ النافذة السينمائية تعرض الأصل الأصلي — التوجيه يظهر في الصهر النهائي فقط</p>
+                        <div className="spatial-input-grid">
+                          <label>Opacity<input type="number" min="0" max="1" step="0.05" value={visualForm.opacity} onChange={(e) => setVisualForm((prev) => ({ ...prev, opacity: Number(e.target.value) }))} /></label>
+                          <label>Blend Mode<select value={visualForm.blendMode} onChange={(e) => setVisualForm((prev) => ({ ...prev, blendMode: e.target.value as VisualFilterDirective['blendMode'] }))}>{BLEND_MODES.map((mode) => (<option key={mode} value={mode}>{mode}</option>))}</select></label>
+                        </div>
+                        <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplyVisualAdjustment}>🎨 تطبيق التعديل البصري الحقيقي</button>
+                        {activeVisualDirective && (
+                          <p className="spatial-current-state">الحالي: Opacity={activeVisualDirective.opacity}, Blend={activeVisualDirective.blendMode}</p>
+                        )}
+                      </div>
+                      <div className="spatial-adjust-panel panel-manual-temporal">
+                        <header className="panel-header">
+                          <div className="neon-tag">التوجيه الزمني</div>
+                          <h2>تعديل زمني حقيقي</h2>
+                          <p>المزامنة العصبية للصوت — توقيت حقيقي على الخط الزمني</p>
+                        </header>
+                        <div className="spatial-input-grid">
+                          <label>بداية (ث)<input type="number" min="0" value={temporalForm.globalStartTimeSeconds} onChange={(e) => setTemporalForm((prev) => ({ ...prev, globalStartTimeSeconds: Number(e.target.value) }))} /></label>
+                          <label>مدة (ث)<input type="number" min="0" value={temporalForm.playDurationSeconds} onChange={(e) => setTemporalForm((prev) => ({ ...prev, playDurationSeconds: Number(e.target.value) }))} /></label>
+                          <label>قص-من (ث)<input type="number" min="0" value={temporalForm.trimStartSeconds ?? ''} onChange={(e) => setTemporalForm((prev) => ({ ...prev, trimStartSeconds: e.target.value === '' ? undefined : Number(e.target.value) }))} /></label>
+                          <label>قص-إلى (ث)<input type="number" min="0" value={temporalForm.trimEndSeconds ?? ''} onChange={(e) => setTemporalForm((prev) => ({ ...prev, trimEndSeconds: e.target.value === '' ? undefined : Number(e.target.value) }))} /></label>
+                        </div>
+                        <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplyTemporalAdjustment}>🎙 تطبيق التعديل الزمني الحقيقي</button>
+                        {activeTemporalDirective && (
+                          <p className="spatial-current-state">
+                            الحالي: بداية={activeTemporalDirective.globalStartTimeSeconds}ث، مدة={activeTemporalDirective.playDurationSeconds}ث
+                            {activeTemporalDirective.trimStartSeconds !== undefined ? `، قص-من=${activeTemporalDirective.trimStartSeconds}ث` : ''}
+                            {activeTemporalDirective.trimEndSeconds !== undefined ? `، قص-إلى=${activeTemporalDirective.trimEndSeconds}ث` : ''}
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="spatial-current-state" style={{ padding: '12px' }}>اختر عقدة من تبويب «المشهد» لتطبيق التعديلات اليدوية</p>
+                  )}
+                </>
+              ) : (
+                sessionCanvas && directorDecision ? (
+                  <div className="spatial-adjust-panel panel-auto-director">
+                    <header className="panel-header">
+                      <div className="neon-tag">قرار المخرج الآلي</div>
+                      <h2>قرار الإخراج السينمائي الحقيقي</h2>
+                      <p>المخرج الذكي الآلي يقرر — التنفيذ عبر محرك الحالة الحقيقي</p>
+                    </header>
+                    {!directorDecision.included ? (
+                      <p className="spatial-current-state">مرفوض: {directorDecision.rejectionReason}</p>
+                    ) : (
+                      <>
+                        <p className="spatial-current-state">التوقيت: بداية={directorDecision.temporal?.globalStartTimeSeconds}ث، مدة={directorDecision.temporal?.playDurationSeconds}ث ({directorDecision.temporalBasis === 'real-evidence' ? 'بيانات حقيقية' : 'قيمة افتراضية'})</p>
+                        <p className="spatial-current-state">الترتيب السردي: الموضع {directorDecision.structural?.executionOrderIndex}</p>
+                        {directorDecision.audio && (<p className="spatial-current-state">الصوت: مستوى={directorDecision.audio.volumeDb}dB، توازن={directorDecision.audio.panCenter}</p>)}
+                        <p className="spatial-current-state">{directorDecision.creatorGoal.stated ? `هدف الخالق: "${directorDecision.creatorGoal.statedIntent}"` : 'لا يوجد هدف خالق مصرَّح به — لم يُختلَق بديل'} ({directorDecision.creatorGoal.source === 'formal-goal-contract' ? 'مصدر رسمي حقيقي' : 'صدى الطلب'})</p>
+                        {directorDecision.creatorGoal.title && (<p className="spatial-current-state">عنوان الهدف: {directorDecision.creatorGoal.title}</p>)}
+                        {directorDecision.creatorGoal.priority && (<p className="spatial-current-state">أولوية الهدف: {directorDecision.creatorGoal.priority}</p>)}
+                        {directorDecision.creatorGoal.commercialIntent && (<p className="spatial-current-state">النية التجارية: {directorDecision.creatorGoal.commercialIntent.accessPolicy.distributionTier}{directorDecision.creatorGoal.commercialIntent.coverArtUri ? ` — صورة الغلاف متوفرة` : ''}</p>)}
+                        <p className="spatial-current-state">الاعتبار الأساسي: {directorDecision.primaryConsideration}</p>
+                        <p className="spatial-current-state">{directorDecision.rhythm ? `الإيقاع: ${directorDecision.rhythm}` : 'لا إيقاع مصرَّح به'} — {directorDecision.transitionStrategy ? `الانتقال: ${directorDecision.transitionStrategy}` : 'لا انتقال مصرَّح به'}</p>
+                        <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplyDirectorDecision}>🤖 تطبيق قرار الإخراج الحقيقي</button>
+                        {(activeStructuralDirective || activeAudioDirective) && (
+                          <p className="spatial-current-state">المُطبَّق:{activeStructuralDirective ? ` ترتيب=${activeStructuralDirective.executionOrderIndex}` : ''}{activeAudioDirective ? `، صوت مطبَّق` : ''}</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <p className="spatial-current-state" style={{ padding: '12px' }}>
+                    {sessionCanvas ? 'لا يوجد قرار آلي بعد — أضف أصولاً لتفعيل المخرج الآلي' : 'ابدأ مشهداً لاستخدام المخرج الآلي'}
+                  </p>
+                )
               )}
+            </div>
+          )}
 
-              {sessionCanvas.tracks.every((t) => t.nodes.length === 0) ? (
-                <p className="spatial-current-state">المشهد فارغ — أضف أصلاً حقيقياً للبدء</p>
+          {/* Tab: الصوت — Phase D: track volume + per-node voice */}
+          {activeWorkspaceTab === 'audio' && (
+            <div className="ras-tab-content custom-scroll">
+              {!sessionCanvas ? (
+                <p className="spatial-current-state" style={{ padding: '12px' }}>ابدأ مشهداً لضبط الصوت</p>
               ) : (
                 sessionCanvas.tracks.map((track) => (
-                  <div key={track.trackId} className="narrative-canvas-group">
-                    <h3 className="narrative-canvas-group-name">{track.trackName}</h3>
-                    {/* MINISTRY IV — track-level volume fader */}
+                  <div key={track.trackId} className="spatial-adjust-panel">
+                    <header className="panel-header">
+                      <div className="neon-tag">مجموعة</div>
+                      <h2>{track.trackName}</h2>
+                    </header>
                     <div className="track-volume-row">
                       <span className="track-volume-label">🔊 {track.trackVolumeDb ?? 0} dB</span>
-                      <input
-                        type="range"
-                        className="track-volume-slider"
-                        min={-60}
-                        max={12}
-                        step={1}
-                        value={track.trackVolumeDb ?? 0}
-                        onChange={(e) => handleSetTrackVolume(track.trackId, Number(e.target.value))}
-                        aria-label={`مستوى صوت مجموعة ${track.trackName}`}
-                      />
+                      <input type="range" className="track-volume-slider" min={-60} max={12} step={1} value={track.trackVolumeDb ?? 0} onChange={(e) => handleSetTrackVolume(track.trackId, Number(e.target.value))} aria-label={`مستوى صوت ${track.trackName}`} />
                     </div>
-                    {track.nodes.length === 0 ? (
-                      <p className="spatial-current-state">هذه المجموعة فارغة</p>
-                    ) : (
-                      <ul className="narrative-canvas-node-list">
-                        {track.nodes.map((node, index) => (
-                          <li
-                            key={node.nodeId}
-                            className={`narrative-canvas-node ${node.nodeId === selectedNodeId ? 'node-selected' : ''} ${node.isActive === false ? 'node-inactive' : ''} ${node.isLocked ? 'node-locked' : ''}`}
-                          >
-                            <button className="narrative-node-select" onClick={() => setSelectedNodeId(node.nodeId)}>
-                              #{index + 1} — {node.assetFamily} / {node.capabilityOrigin}
-                              {node.directionRole ? ` — ${DIRECTION_NODE_ROLE_LABELS[node.directionRole]}` : ''}
-                              {node.directionEmphasis === 'primary' ? ' — ◆ أساسي (مُصرَّح به)' : ''}
-                              {node.directionEmphasis === 'supporting' ? ' — ◇ مساند' : ''}
-                              {node.isActive === false ? ' — (معطَّل)' : ''}
-                              {node.isLocked ? ' — 🔒' : ''}
-                              {node.temporal ? ` — مُطبَّق ${node.temporal.globalStartTimeSeconds}s→${node.temporal.globalStartTimeSeconds + node.temporal.playDurationSeconds}s` : ''}
-                              {(() => {
-                                const proposed = multiNodeDirection?.nodeDecisions.find((nd) => nd.nodeId === node.nodeId)?.decision.temporal;
-                                return proposed ? ` — مُقترَح ${proposed.globalStartTimeSeconds}s→${proposed.globalStartTimeSeconds + proposed.playDurationSeconds}s` : '';
-                              })()}
-                              {multiNodeDirection?.primaryNodeId === node.nodeId ? ' — ★ الاتجاه الأساسي' : ''}
-                              {(() => {
-                                const assignedVoiceId = (node.customDirectives?.voice as VoiceAssignmentDirective | undefined)?.vaultAssetId;
-                                if (!assignedVoiceId) return '';
-                                const assignedVoice = voiceLibrary.find((v) => v.assetId === assignedVoiceId);
-                                return ` — 🎙 ${assignedVoice?.metadata.voiceDisplayName ?? assignedVoiceId}`;
-                              })()}
-                            </button>
-                            {/* PACKAGE XXI — DIRECTION NODE LAYER: real cinematic classification, genuinely optional. */}
-                            <select
-                              className="narrative-node-classification"
-                              value={node.directionRole ?? ''}
-                              onChange={(e) => handleUpdateNodeClassification(node.nodeId, (e.target.value || undefined) as DirectionNodeRole | undefined)}
-                              disabled={node.isLocked}
-                              aria-label="التصنيف السينمائي للعقدة"
-                            >
-                              <option value="">غير مصنَّف</option>
-                              {Object.values(DirectionNodeRole).map((role) => (
-                                <option key={role} value={role}>{DIRECTION_NODE_ROLE_LABELS[role]}</option>
-                              ))}
-                            </select>
-                            {/* PACKAGE XXII — MANUAL DIRECTION ENGINE: Mark as Primary / Mark as Supporting. */}
-                            <select
-                              className="narrative-node-emphasis"
-                              value={node.directionEmphasis ?? ''}
-                              onChange={(e) => handleSetNodeEmphasis(node.nodeId, (e.target.value || null) as 'primary' | 'supporting' | null)}
-                              disabled={node.isLocked}
-                              aria-label="الأهمية الإخراجية للعقدة"
-                            >
-                              <option value="">بلا تمييز</option>
-                              <option value="primary">أساسي</option>
-                              <option value="supporting">مساند</option>
-                            </select>
-                            {/* MINISTRY I — VOICE ECOSYSTEM: Voice Selection — assign a real voice from the Voice Library to this Direction Node. */}
-                            <select
-                              className="narrative-node-voice"
-                              value={(node.customDirectives?.voice as VoiceAssignmentDirective | undefined)?.vaultAssetId ?? ''}
-                              onChange={(e) => handleAssignVoiceToNode(node.nodeId, e.target.value)}
-                              disabled={node.isLocked || audioVoiceAssets.length === 0}
-                              aria-label="الصوت المُسنَد لهذه العقدة"
-                            >
+                    {track.nodes.length > 0 && (
+                      <div>
+                        <p className="spatial-current-state" style={{ marginBottom: '6px' }}>تعيين الصوت لكل عقدة:</p>
+                        {track.nodes.map((node, idx) => (
+                          <div key={node.nodeId} className="ras-audio-node-row">
+                            <span className="spatial-current-state">عقدة {idx + 1}</span>
+                            <select className="narrative-node-voice" value={(node.customDirectives?.voice as VoiceAssignmentDirective | undefined)?.vaultAssetId ?? ''} onChange={(e) => handleAssignVoiceToNode(node.nodeId, e.target.value)} disabled={node.isLocked || audioVoiceAssets.length === 0} aria-label={`الصوت المُسنَد للعقدة ${idx + 1}`}>
                               <option value="">بلا صوت مُسنَد</option>
-                              {audioVoiceAssets.map((voice) => (
-                                <option key={voice.assetId} value={voice.assetId}>
-                                  {voice.metadata.voiceDisplayName ?? voice.assetId}
-                                </option>
-                              ))}
+                              {audioVoiceAssets.map((voice) => (<option key={voice.assetId} value={voice.assetId}>{voice.metadata.voiceDisplayName ?? voice.assetId}</option>))}
                             </select>
-                            {/* MINISTRY V — SOVEREIGN SUBTITLE SYSTEM: import SRT/VTT for this node. */}
-                            {(() => {
-                              const nodeSubs = node.customDirectives?.subtitles as SubtitleDirective | undefined;
-                              const cueCount = nodeSubs?.cues?.length ?? 0;
-                              return (
-                                <button
-                                  className="narrative-node-toggle"
-                                  onClick={() => {
-                                    setSubtitleTargetNodeId(node.nodeId);
-                                    subtitleInputRef.current?.click();
-                                  }}
-                                  disabled={node.isLocked || (subtitleImportBusy && subtitleTargetNodeId === node.nodeId)}
-                                  aria-label="استيراد ترجمات للعقدة"
-                                  title={cueCount > 0 ? `ترجمات مُحمَّلة — ${cueCount} إدخال` : 'استيراد ترجمات SRT/VTT'}
-                                >
-                                  {subtitleImportBusy && subtitleTargetNodeId === node.nodeId
-                                    ? '⏳'
-                                    : cueCount > 0 ? `💬 ${cueCount}` : '💬'}
-                                </button>
-                              );
-                            })()}
-                            {/* PACKAGE XXII — MANUAL DIRECTION ENGINE: Promote/Demote Node reuse the real REORDER_NODE mutation (Package XX). */}
-                            <button
-                              className="narrative-node-reorder"
-                              onClick={() => handleReorderNode(node.nodeId, 'up')}
-                              disabled={index === 0 || node.isLocked}
-                              aria-label="ترقية العقدة (نقل للأعلى)"
-                            >
-                              ↑
-                            </button>
-                            <button
-                              className="narrative-node-reorder"
-                              onClick={() => handleReorderNode(node.nodeId, 'down')}
-                              disabled={index === track.nodes.length - 1 || node.isLocked}
-                              aria-label="خفض رتبة العقدة (نقل للأسفل)"
-                            >
-                              ↓
-                            </button>
-                            {sessionCanvas.tracks.length > 1 && (
-                              <select
-                                className="narrative-node-move-group"
-                                value={track.trackId}
-                                onChange={(e) => handleMoveNodeToGroup(node.nodeId, e.target.value)}
-                                disabled={node.isLocked}
-                                aria-label="نقل إلى مجموعة أخرى"
-                              >
-                                {sessionCanvas.tracks.map((destination) => (
-                                  <option key={destination.trackId} value={destination.trackId}>{destination.trackName}</option>
-                                ))}
-                              </select>
-                            )}
-                            {/* PACKAGE XXII — MANUAL DIRECTION ENGINE: Activate Node / Disable Node. */}
-                            <button
-                              className="narrative-node-toggle"
-                              onClick={() => handleSetNodeActive(node.nodeId, node.isActive === false)}
-                              disabled={node.isLocked}
-                              aria-label={node.isActive === false ? 'تفعيل العقدة' : 'تعطيل العقدة'}
-                            >
-                              {node.isActive === false ? '✓' : '⏸'}
-                            </button>
-                            {/* PACKAGE XXII — MANUAL DIRECTION ENGINE: Lock Direction / Unlock Direction — never itself disabled by lock. */}
-                            <button
-                              className="narrative-node-toggle"
-                              onClick={() => handleSetNodeLock(node.nodeId, !node.isLocked)}
-                              aria-label={node.isLocked ? 'إلغاء قفل التوجيه' : 'قفل التوجيه'}
-                            >
-                              {node.isLocked ? '🔓' : '🔒'}
-                            </button>
-                            <button
-                              className="narrative-node-remove"
-                              onClick={() => handleRemoveNodeFromCanvas(node.nodeId)}
-                              aria-label="إزالة من المشهد"
-                            >
-                              ✕
-                            </button>
-                          </li>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     )}
                   </div>
                 ))
               )}
-              {narrativeIntegrity && !narrativeIntegrity.valid && (
-                <p className="spatial-current-state narrative-integrity-violation">
-                  انتهاك للسلامة السردية: {narrativeIntegrity.violations.join(' — ')}
-                </p>
-              )}
-              {multiNodeDirection && multiNodeDirection.nodeDecisions.length > 1 && (
-                <p className="spatial-current-state">
-                  {multiNodeDirection.primaryNodeId
-                    ? 'تم تحديد اتجاه أساسي حقيقي واحد من بين العقد بناءً على هدف خالق مصرَّح به فعلياً.'
-                    : 'لا يوجد اتجاه أساسي محدَّد بثقة بين هذه العقد — إمّا لا يوجد هدف خالق مصرَّح به لأي عقدة، أو أكثر من عقدة تحمل هدفاً متنافساً؛ لم يُفتَرض ترتيب اعتباطي.'}
-                </p>
-              )}
             </div>
           )}
 
-          {sessionCanvas && selectedNodeId && (
-            <div className="spatial-adjust-panel panel-manual-spatial">
-              <header className="panel-header">
-                <div className="neon-tag">التوجيه المكاني</div>
-                <h2>تعديل مكاني حقيقي</h2>
-                <p>يُطبَّق فعلياً على المشهد ويصل إلى الصهر النهائي</p>
-              </header>
-              <div className="spatial-input-grid">
-                <label>
-                  X
-                  <input
-                    type="number"
-                    value={spatialForm.positionX}
-                    onChange={(e) => setSpatialForm((prev) => ({ ...prev, positionX: Number(e.target.value) }))}
-                  />
-                </label>
-                <label>
-                  Y
-                  <input
-                    type="number"
-                    value={spatialForm.positionY}
-                    onChange={(e) => setSpatialForm((prev) => ({ ...prev, positionY: Number(e.target.value) }))}
-                  />
-                </label>
-                <label>
-                  Scale X
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={spatialForm.scaleX}
-                    onChange={(e) => setSpatialForm((prev) => ({ ...prev, scaleX: Number(e.target.value) }))}
-                  />
-                </label>
-                <label>
-                  Scale Y
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={spatialForm.scaleY}
-                    onChange={(e) => setSpatialForm((prev) => ({ ...prev, scaleY: Number(e.target.value) }))}
-                  />
-                </label>
-                <label>
-                  Rotation°
-                  <input
-                    type="number"
-                    value={spatialForm.rotationDegrees}
-                    onChange={(e) => setSpatialForm((prev) => ({ ...prev, rotationDegrees: Number(e.target.value) }))}
-                  />
-                </label>
-              </div>
-              <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplySpatialAdjustment}>
-                ⇲ تطبيق التعديل المكاني الحقيقي
-              </button>
-              {activeSpatialDirective && (
-                <p className="spatial-current-state">
-                  الحالي: X={activeSpatialDirective.positionX}, Y={activeSpatialDirective.positionY}, Scale=({activeSpatialDirective.scaleX}, {activeSpatialDirective.scaleY}), Rotation={activeSpatialDirective.rotationDegrees}°
-                </p>
-              )}
-            </div>
-          )}
-
-          {sessionCanvas && selectedNodeId && (
-            <div className="spatial-adjust-panel panel-manual-visual">
-              <header className="panel-header">
-                <div className="neon-tag">التوجيه البصري</div>
-                <h2>تعديل بصري حقيقي</h2>
-                <p>يدعم: معالج البكسل + صهر اللون — خانة بصرية حقيقية واحدة يشتركان فيها</p>
-              </header>
-              <div className="spatial-input-grid">
-                <label>
-                  Opacity
-                  <input
-                    type="number"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={visualForm.opacity}
-                    onChange={(e) => setVisualForm((prev) => ({ ...prev, opacity: Number(e.target.value) }))}
-                  />
-                </label>
-                <label>
-                  Blend Mode
-                  <select
-                    value={visualForm.blendMode}
-                    onChange={(e) => setVisualForm((prev) => ({ ...prev, blendMode: e.target.value as VisualFilterDirective['blendMode'] }))}
-                  >
-                    {BLEND_MODES.map((mode) => (
-                      <option key={mode} value={mode}>{mode}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplyVisualAdjustment}>
-                🎨 تطبيق التعديل البصري الحقيقي
-              </button>
-              {activeVisualDirective && (
-                <p className="spatial-current-state">
-                  الحالي: Opacity={activeVisualDirective.opacity}, Blend={activeVisualDirective.blendMode}
-                </p>
-              )}
-            </div>
-          )}
-
-          {sessionCanvas && selectedNodeId && (
-            <div className="spatial-adjust-panel panel-manual-temporal">
-              <header className="panel-header">
-                <div className="neon-tag">التوجيه الزمني</div>
-                <h2>تعديل زمني حقيقي</h2>
-                <p>يدعم: المزامنة العصبية للصوت — توقيت حقيقي على الخط الزمني الرئيسي</p>
-              </header>
-              <div className="spatial-input-grid">
-                <label>
-                  بداية (ث)
-                  <input
-                    type="number"
-                    min="0"
-                    value={temporalForm.globalStartTimeSeconds}
-                    onChange={(e) => setTemporalForm((prev) => ({ ...prev, globalStartTimeSeconds: Number(e.target.value) }))}
-                  />
-                </label>
-                <label>
-                  مدة (ث)
-                  <input
-                    type="number"
-                    min="0"
-                    value={temporalForm.playDurationSeconds}
-                    onChange={(e) => setTemporalForm((prev) => ({ ...prev, playDurationSeconds: Number(e.target.value) }))}
-                  />
-                </label>
-                <label>
-                  قص-من (ث)
-                  <input
-                    type="number"
-                    min="0"
-                    value={temporalForm.trimStartSeconds ?? ''}
-                    onChange={(e) => setTemporalForm((prev) => ({ ...prev, trimStartSeconds: e.target.value === '' ? undefined : Number(e.target.value) }))}
-                  />
-                </label>
-                <label>
-                  قص-إلى (ث)
-                  <input
-                    type="number"
-                    min="0"
-                    value={temporalForm.trimEndSeconds ?? ''}
-                    onChange={(e) => setTemporalForm((prev) => ({ ...prev, trimEndSeconds: e.target.value === '' ? undefined : Number(e.target.value) }))}
-                  />
-                </label>
-              </div>
-              <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplyTemporalAdjustment}>
-                🎙 تطبيق التعديل الزمني الحقيقي
-              </button>
-              {activeTemporalDirective && (
-                <p className="spatial-current-state">
-                  الحالي: بداية={activeTemporalDirective.globalStartTimeSeconds}ث، مدة={activeTemporalDirective.playDurationSeconds}ث
-                  {activeTemporalDirective.trimStartSeconds !== undefined ? `، قص-من=${activeTemporalDirective.trimStartSeconds}ث` : ''}
-                  {activeTemporalDirective.trimEndSeconds !== undefined ? `، قص-إلى=${activeTemporalDirective.trimEndSeconds}ث` : ''}
-                </p>
-              )}
-            </div>
-          )}
-
-          {sessionCanvas && directorDecision && (
-            <div className="spatial-adjust-panel panel-auto-director">
-              <header className="panel-header">
-                <div className="neon-tag">قرار المخرج الآلي</div>
-                <h2>قرار الإخراج السينمائي الحقيقي</h2>
-                <p>المخرج الذكي الآلي يقرر؛ لا يولّد محتوى — التنفيذ يبقى دائماً عبر محرك الحالة الحقيقي</p>
-              </header>
-              {!directorDecision.included ? (
-                <p className="spatial-current-state">مرفوض: {directorDecision.rejectionReason}</p>
+          {/* Tab: الترجمة — Phase D: per-node subtitle import */}
+          {activeWorkspaceTab === 'subtitles' && (
+            <div className="ras-tab-content custom-scroll">
+              <input type="file" ref={subtitleInputRef} accept=".srt,.vtt,text/plain" style={{ display: 'none' }} onChange={handleSubtitleFileChosen} />
+              {subtitleImportError && (<p className="spatial-current-state narrative-integrity-violation" style={{ padding: '8px' }}>{subtitleImportError}</p>)}
+              {!sessionCanvas ? (
+                <p className="spatial-current-state" style={{ padding: '12px' }}>ابدأ مشهداً لاستيراد ترجمات</p>
               ) : (
-                <>
-                  <p className="spatial-current-state">
-                    التوقيت: بداية تسلسلية حقيقية={directorDecision.temporal?.globalStartTimeSeconds}ث، مدة={directorDecision.temporal?.playDurationSeconds}ث
-                    {' '}({directorDecision.temporalBasis === 'real-evidence' ? 'من بيانات الأصل الحقيقية' : 'قيمة افتراضية — لا بيانات مدة حقيقية'})
-                  </p>
-                  <p className="spatial-current-state">
-                    الترتيب السردي: الموضع {directorDecision.structural?.executionOrderIndex} (الموضع الحقيقي ضمن المشهد)
-                  </p>
-                  {directorDecision.audio && (
-                    <p className="spatial-current-state">الصوت: مستوى={directorDecision.audio.volumeDb}dB، توازن={directorDecision.audio.panCenter}</p>
-                  )}
-                  <p className="spatial-current-state">
-                    {directorDecision.creatorGoal.stated
-                      ? `هدف الخالق المصرَّح به: "${directorDecision.creatorGoal.statedIntent}"`
-                      : 'لا يوجد هدف خالق مصرَّح به لهذا الأصل — لم يُختلَق نية غير موجودة'}
-                    {' '}({directorDecision.creatorGoal.source === 'formal-goal-contract' ? 'مصدر رسمي حقيقي' : 'صدى الطلب الأصلي'})
-                  </p>
-                  {directorDecision.creatorGoal.title && (
-                    <p className="spatial-current-state">عنوان الهدف الرسمي: {directorDecision.creatorGoal.title}</p>
-                  )}
-                  {directorDecision.creatorGoal.priority && (
-                    <p className="spatial-current-state">أولوية الهدف الرسمي: {directorDecision.creatorGoal.priority}</p>
-                  )}
-                  {directorDecision.creatorGoal.commercialIntent && (
-                    <p className="spatial-current-state">
-                      النية التجارية المخزَّنة بشكل دائم: {directorDecision.creatorGoal.commercialIntent.accessPolicy.distributionTier}
-                      {directorDecision.creatorGoal.commercialIntent.coverArtUri ? ` — صورة الغلاف متوفرة` : ''}
-                    </p>
-                  )}
-                  <p className="spatial-current-state">
-                    الاعتبار الأساسي (المادة التاسعة): {directorDecision.primaryConsideration}
-                  </p>
-                  <p className="spatial-current-state">
-                    {directorDecision.rhythm
-                      ? `الإيقاع: ${directorDecision.rhythm} (تفضيل حقيقي صرَّح به الخالق للهدف الرسمي)`
-                      : 'الإيقاع: لا يوجد تفضيل إيقاع مصرَّح به لهذا الهدف — لم يُختلَق بديل'}
-                    {' — '}
-                    {directorDecision.transitionStrategy
-                      ? `الانتقال السينمائي: ${directorDecision.transitionStrategy} (تفضيل حقيقي صرَّح به الخالق للهدف الرسمي)`
-                      : 'الانتقال السينمائي: لا يوجد تفضيل انتقال مصرَّح به لهذا الهدف — لم يُختلَق بديل'}
-                  </p>
-                  <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplyDirectorDecision}>
-                    🤖 تطبيق قرار الإخراج الحقيقي
-                  </button>
-                  {(activeStructuralDirective || activeAudioDirective) && (
-                    <p className="spatial-current-state">
-                      المُطبَّق فعلياً:
-                      {activeStructuralDirective ? ` ترتيب=${activeStructuralDirective.executionOrderIndex}` : ''}
-                      {activeAudioDirective ? `، صوت مطبَّق` : ''}
-                    </p>
-                  )}
-                </>
+                sessionCanvas.tracks.flatMap(t => t.nodes).map((node, idx) => {
+                  const nodeSubs = node.customDirectives?.subtitles as SubtitleDirective | undefined;
+                  const cueCount = nodeSubs?.cues?.length ?? 0;
+                  return (
+                    <div key={node.nodeId} className="spatial-adjust-panel">
+                      <p className="spatial-current-state">عقدة {idx + 1} — {node.assetFamily}/{node.capabilityOrigin}</p>
+                      <button className="action-trigger-btn spatial-apply-btn" onClick={() => { setSubtitleTargetNodeId(node.nodeId); subtitleInputRef.current?.click(); }} disabled={node.isLocked || (subtitleImportBusy && subtitleTargetNodeId === node.nodeId)} aria-label={`استيراد ترجمات للعقدة ${idx + 1}`}>
+                        {subtitleImportBusy && subtitleTargetNodeId === node.nodeId ? '⏳ جارٍ الاستيراد…' : cueCount > 0 ? `💬 ${cueCount} ترجمة — تحديث` : '💬 استيراد SRT/VTT'}
+                      </button>
+                    </div>
+                  );
+                })
               )}
             </div>
           )}
 
-          </div>{/* end tools-sidebar-scroll */}
-
-          <div className="executive-actions-panel">
-            <button
-              className={`action-trigger-btn render-btn ${isRendering ? 'rendering' : ''}`}
-              onClick={triggerMasterRender}
-              disabled={isRendering || !canCompile}
-              title={!canCompile ? 'استدعِ أصلاً حقيقياً من الخزانة السيادية أولاً — لا يوجد صهر تجريبي بعد الآن' : undefined}
-            >
-              🎬 صهر الإخراج النهائي (Master Render)
-            </button>
-
-            <button
-              className="action-trigger-btn forward-btn"
-              onClick={handleForwardToMakman}
-              title={
-                compiledGraph && compiledForAssetId === activeAsset?.id
-                  ? 'سيصل تجميع حقيقي مختوم إلى مكمن الغاية — جاهز للتوزيع السيادي الحقيقي'
-                  : 'لا يوجد تجميع حقيقي مصهور بعد لهذا الأصل — سيصل عرض أولي فقط'
-              }
-            >
-              👑 ترحيل العمل المكتمل لـ &quot;مكمن الغاية&quot;
-            </button>
-
-            {/* PACKAGE F — Canvas save/load: reveals the certified persistence
-                capability that previously had API routes but zero UI surface. */}
-            {sessionCanvas && (
-              <button
-                className={`action-trigger-btn canvas-save-btn ${isSavingCanvas ? 'rendering' : ''}`}
-                onClick={() => void handleSaveCanvas()}
-                disabled={isSavingCanvas}
-              >
-                {isSavingCanvas ? 'المشهد يُحفظ…' : '💾 حفظ المشهد'}
-              </button>
-            )}
-
-            <button
-              className="action-trigger-btn canvas-load-btn"
-              onClick={() => void handleLoadCanvases()}
-            >
-              📂 استعادة مشهد محفوظ
-            </button>
-
-            {saveCanvasStatus && (
-              <p className="canvas-save-status">{saveCanvasStatus}</p>
-            )}
-
-            {showCanvasLoad && (
-              <div className="canvas-load-panel">
-                {isLoadingCanvases && <p className="canvas-load-hint">التشكيلات تُحمَّل…</p>}
-                {!isLoadingCanvases && savedCanvases.length === 0 && (
-                  <p className="canvas-load-hint">لا توجد تشكيلات محفوظة بعد.</p>
-                )}
-                {savedCanvases.map((c) => (
-                  <button
-                    key={c.canvasId}
-                    className="canvas-load-item"
-                    onClick={() => void handleRestoreCanvas(c.canvasId)}
-                  >
-                    {c.title || c.canvasId}
+          {/* Tab: المشروع — Phase D: save/restore + forward */}
+          {activeWorkspaceTab === 'project' && (
+            <div className="ras-tab-content custom-scroll">
+              <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button className="action-trigger-btn forward-btn" onClick={handleForwardToMakman} title={compiledGraph && compiledForAssetId === activeAsset?.id ? 'سيصل تجميع حقيقي مختوم إلى مكمن الغاية' : 'لا يوجد تجميع مُصهَر بعد — سيصل عرض أولي فقط'}>
+                  👑 ترحيل العمل المكتمل لـ &quot;مكمن الغاية&quot;
+                </button>
+                {sessionCanvas && (
+                  <button className={`action-trigger-btn canvas-save-btn ${isSavingCanvas ? 'rendering' : ''}`} onClick={() => void handleSaveCanvas()} disabled={isSavingCanvas}>
+                    {isSavingCanvas ? 'المشهد يُحفظ…' : '💾 حفظ المشهد'}
                   </button>
-                ))}
-                <button className="canvas-load-close" onClick={() => setShowCanvasLoad(false)}>✖ إغلاق</button>
+                )}
+                <button className="action-trigger-btn canvas-load-btn" onClick={() => void handleLoadCanvases()}>📂 استعادة مشهد محفوظ</button>
+                {saveCanvasStatus && (<p className="canvas-save-status">{saveCanvasStatus}</p>)}
+                {showCanvasLoad && (
+                  <div className="canvas-load-panel">
+                    {isLoadingCanvases && <p className="canvas-load-hint">التشكيلات تُحمَّل…</p>}
+                    {!isLoadingCanvases && savedCanvases.length === 0 && (<p className="canvas-load-hint">لا توجد تشكيلات محفوظة بعد.</p>)}
+                    {savedCanvases.map((c) => (
+                      <button key={c.canvasId} className="canvas-load-item" onClick={() => void handleRestoreCanvas(c.canvasId)}>{c.title || c.canvasId}</button>
+                    ))}
+                    <button className="canvas-load-close" onClick={() => setShowCanvasLoad(false)}>✖ إغلاق</button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </aside>
 
-        {/* =========================================== */}
-        {/* 4. EDITING TIMELINE — full-width bottom row */}
-        {/* =========================================== */}
-        <div className="sovereign-timeline-panel timeline-full-width neon-border">
-          <div className="neon-tag">مشهد الإخراج — الخط الزمني</div>
-          {!sessionCanvas || sessionCanvas.tracks.flatMap(t => t.nodes).length === 0 ? (
-            <p className="timeline-empty-hint">
-              {!sessionCanvas ? 'أضف أصلاً لبدء الإخراج' : 'المشهد جاهز — أضف أصلك'}
-            </p>
-          ) : (
+      </div>{/* end ras-body-grid */}
+
+      {/* STICKY TIMELINE — Phase G: 180px, time ruler, role icons, corridor CTA */}
+      <div className="ras-timeline">
+        <div className="ras-timeline-header">
+          <span className="neon-tag" style={{ margin: 0 }}>الخط الزمني</span>
+          {sessionCanvas && (<span className="spatial-current-state">{sessionCanvas.tracks.flatMap(t => t.nodes).length} عقدة</span>)}
+          {compiledGraph && compiledForAssetId === activeAsset?.id && (
+            <button className="ras-corridor-btn" onClick={handleForwardToMakman}>
+              ✦ الصهر مكتمل — انتقل إلى مكمن الغاية
+            </button>
+          )}
+        </div>
+        {!sessionCanvas || sessionCanvas.tracks.flatMap(t => t.nodes).length === 0 ? (
+          <p className="timeline-empty-hint" style={{ padding: '0 14px' }}>
+            {!sessionCanvas ? 'أضف أصلاً لبدء الإخراج' : 'المشهد جاهز — أضف أصلك'}
+          </p>
+        ) : (
+          <>
+            {(() => {
+              const allNodes = sessionCanvas.tracks.flatMap(t => t.nodes);
+              const totalDuration = Math.max(...allNodes.map(n => (n.temporal?.globalStartTimeSeconds ?? 0) + (n.temporal?.playDurationSeconds ?? 5)), 5);
+              const tickInterval = totalDuration <= 30 ? 5 : totalDuration <= 120 ? 10 : 30;
+              const ticks: number[] = [];
+              for (let ti = 0; ti <= totalDuration; ti += tickInterval) ticks.push(ti);
+              return (
+                <div className="ras-timeline-ruler">
+                  {ticks.map((tick) => (
+                    <div key={tick} className="ras-ruler-tick" style={{ left: `${(tick / totalDuration) * 100}%` }}>
+                      <span>{tick}s</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
             <div className="timeline-tracks-container">
               {(() => {
-                const allNodes = sessionCanvas.tracks.flatMap(t => t.nodes);
-                const totalDuration = Math.max(
-                  ...allNodes.map(n => (n.temporal?.globalStartTimeSeconds ?? 0) + (n.temporal?.playDurationSeconds ?? 5)),
-                  5
-                );
+                const allNodes2 = sessionCanvas.tracks.flatMap(t => t.nodes);
+                const totalDur2 = Math.max(...allNodes2.map(n => (n.temporal?.globalStartTimeSeconds ?? 0) + (n.temporal?.playDurationSeconds ?? 5)), 5);
+                const roleIconMap: Partial<Record<DirectionNodeRole, string>> = {
+                  [DirectionNodeRole.OPENING_SHOT]: '◀',
+                  [DirectionNodeRole.DIALOGUE_SCENE]: '💬',
+                  [DirectionNodeRole.NARRATION]: '🎙',
+                  [DirectionNodeRole.MUSIC_LAYER]: '🎵',
+                  [DirectionNodeRole.AMBIENT_LAYER]: '〰',
+                  [DirectionNodeRole.TRANSITION]: '—',
+                  [DirectionNodeRole.CLOSING_SHOT]: '▶',
+                };
                 return sessionCanvas.tracks.filter(t => t.nodes.length > 0).map((track) => (
                   <div key={track.trackId} className={`timeline-track-row${track.isMuted ? ' track-muted' : ''}`}>
-                    <span className="timeline-track-label" title={track.trackName}>
-                      {track.trackName.slice(0, 8)}
-                    </span>
+                    <span className="timeline-track-label" title={track.trackName}>{track.trackName.slice(0, 8)}</span>
                     <div className="timeline-nodes-bar">
                       {track.nodes.map((node, idx) => {
                         const start = node.temporal?.globalStartTimeSeconds ?? 0;
                         const dur = node.temporal?.playDurationSeconds ?? 5;
                         const isSelected = selectedNodeId === node.nodeId;
                         const isCurrentAsset = activeAsset?.id === node.assetId;
+                        const roleIcon = node.directionRole ? (roleIconMap[node.directionRole] ?? '') : '';
                         return (
                           <div
                             key={node.nodeId}
                             className={`timeline-node-block${isSelected ? ' node-block-selected' : ''}${isCurrentAsset ? ' node-block-active' : ''}${node.isLocked ? ' node-block-locked' : ''}${node.isActive === false ? ' node-block-inactive' : ''}`}
-                            style={{
-                              left: `${(start / totalDuration) * 100}%`,
-                              width: `${Math.max((dur / totalDuration) * 100, 4)}%`,
-                            }}
-                            onClick={() => setSelectedNodeId(node.nodeId)}
+                            style={{ left: `${(start / totalDur2) * 100}%`, width: `${Math.max((dur / totalDur2) * 100, 4)}%` }}
+                            onClick={() => { setSelectedNodeId(node.nodeId); setActiveWorkspaceTab('direction'); }}
                             role="button"
                             tabIndex={0}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedNodeId(node.nodeId); }}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setSelectedNodeId(node.nodeId); setActiveWorkspaceTab('direction'); } }}
                             aria-label={`عقدة ${idx + 1}: من ${start}ث إلى ${start + dur}ث`}
                             aria-pressed={isSelected}
                             title={`${start}s → ${start + dur}s`}
                           >
-                            <span className="timeline-node-index">{idx + 1}</span>
+                            <span className="timeline-node-index">{roleIcon || (idx + 1)}</span>
                           </div>
                         );
                       })}
@@ -2407,14 +2139,11 @@ export default function RasAmrChamber() {
                 ));
               })()}
             </div>
-          )}
-        </div>
-
+          </>
+        )}
       </div>
 
-      {/* ============================================= */}
-      {/* 5. SOVEREIGN SUMMONING BRIDGE: VAULT GATEWAY  */}
-      {/* ============================================= */}
+      {/* SOVEREIGN SUMMONING BRIDGE: VAULT GATEWAY HUD — COMPLETELY UNCHANGED */}
       {isSummonOpen && (
         <div className="summon-hud-overlay">
           <div className="hud-window-container metallic-surface neon-border-heavy fade-in">
@@ -2427,23 +2156,11 @@ export default function RasAmrChamber() {
               <button className="hud-close-btn" onClick={() => setIsSummonOpen(false)}>✖ إغلاق</button>
             </header>
 
-            {/* ── HUD TOP-LEVEL TAB SWITCHER ────────────────────────────────── */}
             <div className="hud-tab-switcher">
-              <button
-                className={`hud-top-tab ${hudActiveTab === 'vault' ? 'hud-top-tab-active' : ''}`}
-                onClick={() => setHudActiveTab('vault')}
-              >
-                ◆ من الخزانة السيادية
-              </button>
-              <button
-                className={`hud-top-tab ${hudActiveTab === 'create' ? 'hud-top-tab-active' : ''}`}
-                onClick={() => setHudActiveTab('create')}
-              >
-                ⬆ رفع ملف | توليد صوت
-              </button>
+              <button className={`hud-top-tab ${hudActiveTab === 'vault' ? 'hud-top-tab-active' : ''}`} onClick={() => setHudActiveTab('vault')}>◆ من الخزانة السيادية</button>
+              <button className={`hud-top-tab ${hudActiveTab === 'create' ? 'hud-top-tab-active' : ''}`} onClick={() => setHudActiveTab('create')}>⬆ رفع ملف | توليد صوت</button>
             </div>
 
-            {/* ── TAB: VAULT BROWSER — existing real assets (default, first) ── */}
             {hudActiveTab === 'vault' && (
               vaultAssetsLoaded && realVaultCategories.length === 0 ? (
                 <div className="hud-empty-state">
@@ -2454,20 +2171,14 @@ export default function RasAmrChamber() {
                 <div className="hud-body-layout">
                   <aside className="hud-vaults-picker custom-scroll">
                     {realVaultCategories.map(v => (
-                      <button
-                        key={v.id}
-                        className={`hud-vault-tab ${activeVaultCategory?.id === v.id ? 'active-hud-tab' : ''}`}
-                        onClick={() => setSelectedVault(v.id)}
-                      >
+                      <button key={v.id} className={`hud-vault-tab ${activeVaultCategory?.id === v.id ? 'active-hud-tab' : ''}`} onClick={() => setSelectedVault(v.id)}>
                         <span className="hud-tab-icon">{v.icon}</span>
                         <span className="hud-tab-name">{v.name}</span>
                       </button>
                     ))}
                   </aside>
                   <main className="hud-items-viewer custom-scroll">
-                    <h3 className="viewer-title-context">
-                      محتويات {activeVaultCategory?.name} المتاحة للاستدعاء الفوري:
-                    </h3>
+                    <h3 className="viewer-title-context">محتويات {activeVaultCategory?.name} المتاحة للاستدعاء الفوري:</h3>
                     <div className="hud-items-grid">
                       {activeVaultCategory?.assets.map((asset) => {
                         const prompt = typeof asset.metadata.generationPrompt === 'string' && asset.metadata.generationPrompt ? asset.metadata.generationPrompt : null;
@@ -2481,30 +2192,15 @@ export default function RasAmrChamber() {
                         return (
                           <div key={asset.assetId} className="hud-asset-item-chip glassmorphism">
                             {isImage ? (
-                              <img
-                                src={asset.secureStorageUri}
-                                alt={label}
-                                className="hud-item-thumbnail"
-                              />
+                              <img src={asset.secureStorageUri} alt={label} className="hud-item-thumbnail" />
                             ) : isVideo ? (
                               // eslint-disable-next-line jsx-a11y/media-has-caption
-                              <video
-                                src={asset.secureStorageUri}
-                                className="hud-item-thumbnail"
-                                preload="metadata"
-                                muted
-                                playsInline
-                              />
+                              <video src={asset.secureStorageUri} className="hud-item-thumbnail" preload="metadata" muted playsInline />
                             ) : (
                               <div className="hud-item-graphic" style={{ fontSize: '28px' }}>{typeIcon}</div>
                             )}
                             <span className="hud-item-name">{label}</span>
-                            <button
-                              className="hud-inject-btn"
-                              onClick={() => handleInjectAsset(asset)}
-                            >
-                              ⚡ حقن
-                            </button>
+                            <button className="hud-inject-btn" onClick={() => handleInjectAsset(asset)}>⚡ حقن</button>
                           </div>
                         );
                       })}
@@ -2514,168 +2210,57 @@ export default function RasAmrChamber() {
               )
             )}
 
-            {/* ── TAB: CREATE NEW ASSET — upload / TTS / voice cloning ─────── */}
             {hudActiveTab === 'create' && (
               <div className="hud-create-tab-scroll custom-scroll">
-                {/* PACKAGE XIX — file upload */}
                 <div className="hud-upload-row">
-                  <input
-                    ref={uploadFileInputRef}
-                    type="file"
-                    id="ras-amr-media-upload"
-                    className="hud-upload-input"
-                    disabled={isUploadingAsset}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) void handleUploadAsset(file);
-                    }}
-                  />
-                  <label htmlFor="ras-amr-media-upload" className="action-trigger-btn hud-upload-label">
-                    {isUploadingAsset ? '⏳ الرفع إلى الخزانة جارٍ…' : '⬆ رفع ملف حقيقي من الجهاز إلى الخزانة'}
-                  </label>
+                  <input ref={uploadFileInputRef} type="file" id="ras-amr-media-upload" className="hud-upload-input" disabled={isUploadingAsset} onChange={(e) => { const file = e.target.files?.[0]; if (file) void handleUploadAsset(file); }} />
+                  <label htmlFor="ras-amr-media-upload" className="action-trigger-btn hud-upload-label">{isUploadingAsset ? '⏳ الرفع إلى الخزانة جارٍ…' : '⬆ رفع ملف حقيقي من الجهاز إلى الخزانة'}</label>
                   {uploadError && <p className="spatial-current-state narrative-integrity-violation">{uploadError}</p>}
                 </div>
-                {/* MINISTRY I — voice flag */}
                 <div className="hud-voice-upload-row">
                   <label className="hud-voice-checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={isVoiceUpload}
-                      onChange={(e) => setIsVoiceUpload(e.target.checked)}
-                      disabled={isUploadingAsset}
-                    />
+                    <input type="checkbox" checked={isVoiceUpload} onChange={(e) => setIsVoiceUpload(e.target.checked)} disabled={isUploadingAsset} />
                     هذا الملف صوت (Voice)
                   </label>
-                  {isVoiceUpload && (
-                    <input
-                      type="text"
-                      className="hud-voice-name-input"
-                      placeholder="اسم هوية الصوت (اختياري)"
-                      value={voiceDisplayNameInput}
-                      onChange={(e) => setVoiceDisplayNameInput(e.target.value)}
-                      disabled={isUploadingAsset}
-                    />
-                  )}
+                  {isVoiceUpload && (<input type="text" className="hud-voice-name-input" placeholder="اسم هوية الصوت (اختياري)" value={voiceDisplayNameInput} onChange={(e) => setVoiceDisplayNameInput(e.target.value)} disabled={isUploadingAsset} />)}
                 </div>
-                {/* MINISTRY II — TTS */}
                 <div className="hud-tts-row">
-                  <textarea
-                    className="hud-tts-text-input"
-                    placeholder="اكتب نصًا لتحويله إلى كلام حقيقي..."
-                    value={ttsText}
-                    onChange={(e) => setTtsText(e.target.value)}
-                    disabled={isGeneratingSpeech}
-                    rows={2}
-                  />
+                  <textarea className="hud-tts-text-input" placeholder="اكتب نصًا لتحويله إلى كلام حقيقي..." value={ttsText} onChange={(e) => setTtsText(e.target.value)} disabled={isGeneratingSpeech} rows={2} />
                   <div className="hud-tts-controls">
-                    <select
-                      className="hud-tts-voice-select"
-                      value={ttsPresetVoiceId}
-                      onChange={(e) => setTtsPresetVoiceId(e.target.value)}
-                      disabled={isGeneratingSpeech}
-                      aria-label="الصوت الجاهز المُستخدَم في التوليد"
-                    >
-                      {ELEVENLABS_PRESET_VOICES.map((voice) => (
-                        <option key={voice.id} value={voice.id}>{voice.label}</option>
-                      ))}
+                    <select className="hud-tts-voice-select" value={ttsPresetVoiceId} onChange={(e) => setTtsPresetVoiceId(e.target.value)} disabled={isGeneratingSpeech} aria-label="الصوت الجاهز">
+                      {ELEVENLABS_PRESET_VOICES.map((voice) => (<option key={voice.id} value={voice.id}>{voice.label}</option>))}
                     </select>
-                    <input
-                      type="text"
-                      className="hud-voice-name-input"
-                      placeholder="اسم هوية الصوت الناتج (اختياري)"
-                      value={ttsDisplayNameInput}
-                      onChange={(e) => setTtsDisplayNameInput(e.target.value)}
-                      disabled={isGeneratingSpeech}
-                    />
-                    <button
-                      className="action-trigger-btn"
-                      onClick={handleGenerateSpeech}
-                      disabled={isGeneratingSpeech || !ttsText.trim()}
-                    >
-                      {isGeneratingSpeech ? '⏳ الصوت يُولَّد…' : '🗣 توليد كلام حقيقي'}
-                    </button>
+                    <input type="text" className="hud-voice-name-input" placeholder="اسم هوية الصوت الناتج (اختياري)" value={ttsDisplayNameInput} onChange={(e) => setTtsDisplayNameInput(e.target.value)} disabled={isGeneratingSpeech} />
+                    <button className="action-trigger-btn" onClick={handleGenerateSpeech} disabled={isGeneratingSpeech || !ttsText.trim()}>{isGeneratingSpeech ? '⏳ الصوت يُولَّد…' : '🗣 توليد كلام حقيقي'}</button>
                   </div>
                   {ttsError && <p className="spatial-current-state narrative-integrity-violation">{ttsError}</p>}
                 </div>
-                {/* MINISTRY III — voice cloning */}
                 {audioVoiceAssets.length > 0 && (
                   <div className="hud-tts-row">
-                    <select
-                      className="hud-tts-voice-select"
-                      value={cloneSourceVoiceId}
-                      onChange={(e) => setCloneSourceVoiceId(e.target.value)}
-                      disabled={isVoiceCloning}
-                      aria-label="الصوت المرجعي للاستنساخ"
-                    >
+                    <select className="hud-tts-voice-select" value={cloneSourceVoiceId} onChange={(e) => setCloneSourceVoiceId(e.target.value)} disabled={isVoiceCloning} aria-label="الصوت المرجعي للاستنساخ">
                       <option value="">اختر صوتاً مرجعياً للاستنساخ…</option>
-                      {audioVoiceAssets.map((voice) => (
-                        <option key={voice.assetId} value={voice.assetId}>
-                          {String(voice.metadata.voiceDisplayName ?? voice.assetId)}
-                        </option>
-                      ))}
+                      {audioVoiceAssets.map((voice) => (<option key={voice.assetId} value={voice.assetId}>{String(voice.metadata.voiceDisplayName ?? voice.assetId)}</option>))}
                     </select>
                     <div className="hud-tts-controls">
-                      <input
-                        type="text"
-                        className="hud-voice-name-input"
-                        placeholder="اسم الهوية المستنسَخة (اختياري)"
-                        value={cloneVoiceNameInput}
-                        onChange={(e) => setCloneVoiceNameInput(e.target.value)}
-                        disabled={isVoiceCloning}
-                      />
+                      <input type="text" className="hud-voice-name-input" placeholder="اسم الهوية المستنسَخة (اختياري)" value={cloneVoiceNameInput} onChange={(e) => setCloneVoiceNameInput(e.target.value)} disabled={isVoiceCloning} />
                       <label className="hud-consent-label" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.4rem', opacity: isVoiceCloning ? 0.5 : 1 }}>
-                        <input
-                          type="checkbox"
-                          checked={cloneConsentConfirmed}
-                          onChange={(e) => setCloneConsentConfirmed(e.target.checked)}
-                          disabled={isVoiceCloning}
-                        />
+                        <input type="checkbox" checked={cloneConsentConfirmed} onChange={(e) => setCloneConsentConfirmed(e.target.checked)} disabled={isVoiceCloning} />
                         أؤكد أن لديّ إذناً بإنشاء هوية صوتية من هذا التسجيل
                       </label>
-                      <button
-                        className="action-trigger-btn"
-                        onClick={handleCloneVoice}
-                        disabled={isVoiceCloning || !cloneSourceVoiceId || !cloneConsentConfirmed}
-                      >
-                        {isVoiceCloning ? '⏳ الاستنساخ جارٍ…' : '🔮 استنسخ صوتاً حقيقياً'}
-                      </button>
+                      <button className="action-trigger-btn" onClick={handleCloneVoice} disabled={isVoiceCloning || !cloneSourceVoiceId || !cloneConsentConfirmed}>{isVoiceCloning ? '⏳ الاستنساخ جارٍ…' : '🔮 استنسخ صوتاً حقيقياً'}</button>
                     </div>
                     {voiceCloneError && <p className="spatial-current-state narrative-integrity-violation">{voiceCloneError}</p>}
                   </div>
                 )}
-                {/* MINISTRY III — cloned voice synthesis */}
                 {clonedVoiceIdentities.length > 0 && (
                   <div className="hud-tts-row">
-                    <select
-                      className="hud-tts-voice-select"
-                      value={clonedVoiceSynthTarget}
-                      onChange={(e) => setClonedVoiceSynthTarget(e.target.value)}
-                      disabled={isGeneratingClonedSpeech}
-                      aria-label="الهوية الصوتية المستنسَخة للتوليد"
-                    >
+                    <select className="hud-tts-voice-select" value={clonedVoiceSynthTarget} onChange={(e) => setClonedVoiceSynthTarget(e.target.value)} disabled={isGeneratingClonedSpeech} aria-label="الهوية الصوتية المستنسَخة">
                       <option value="">اختر هوية صوتية مستنسَخة…</option>
-                      {clonedVoiceIdentities.map((v) => (
-                        <option key={v.assetId} value={v.assetId}>
-                          {String(v.metadata.voiceDisplayName ?? v.assetId)} — هوية مستنسَخة
-                        </option>
-                      ))}
+                      {clonedVoiceIdentities.map((v) => (<option key={v.assetId} value={v.assetId}>{String(v.metadata.voiceDisplayName ?? v.assetId)} — هوية مستنسَخة</option>))}
                     </select>
                     <div className="hud-tts-controls">
-                      <textarea
-                        className="hud-tts-text-input"
-                        placeholder="النص الجديد المراد توليده بالصوت المستنسَخ…"
-                        value={clonedVoiceSynthText}
-                        onChange={(e) => setClonedVoiceSynthText(e.target.value)}
-                        disabled={isGeneratingClonedSpeech}
-                        rows={2}
-                      />
-                      <button
-                        className="action-trigger-btn"
-                        onClick={handleGenerateClonedSpeech}
-                        disabled={isGeneratingClonedSpeech || !clonedVoiceSynthTarget || !clonedVoiceSynthText.trim()}
-                      >
-                        {isGeneratingClonedSpeech ? '⏳ الكلام يُولَّد…' : '🗣 توليد كلام بالهوية المستنسَخة'}
-                      </button>
+                      <textarea className="hud-tts-text-input" placeholder="النص الجديد المراد توليده بالصوت المستنسَخ…" value={clonedVoiceSynthText} onChange={(e) => setClonedVoiceSynthText(e.target.value)} disabled={isGeneratingClonedSpeech} rows={2} />
+                      <button className="action-trigger-btn" onClick={handleGenerateClonedSpeech} disabled={isGeneratingClonedSpeech || !clonedVoiceSynthTarget || !clonedVoiceSynthText.trim()}>{isGeneratingClonedSpeech ? '⏳ الكلام يُولَّد…' : '🗣 توليد كلام بالهوية المستنسَخة'}</button>
                     </div>
                     {clonedSpeechError && <p className="spatial-current-state narrative-integrity-violation">{clonedSpeechError}</p>}
                   </div>
@@ -2685,6 +2270,7 @@ export default function RasAmrChamber() {
           </div>
         </div>
       )}
+
     </main>
     </RasAmrExperience>
   );
