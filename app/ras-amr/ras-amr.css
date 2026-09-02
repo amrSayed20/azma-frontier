@@ -2254,3 +2254,209 @@
   0% { opacity: 0.4; }
   100% { opacity: 1; }
 }
+
+/* ========================================================= */
+/* PACKAGE XXXII — SOVEREIGN CREATIVE CANVAS                 */
+/* Multi-node composition surface + direct manipulation       */
+/* ========================================================= */
+
+/* Compact asset rail — canvas must own the dominant workspace. */
+.queue-item-card {
+  padding: 8px !important;
+}
+.item-title {
+  font-size: 11px !important;
+  margin: 0 0 6px 0 !important;
+}
+.item-footer {
+  font-size: 10px !important;
+}
+
+/* Composition surface — replaces single-asset viewport when canvas has nodes. */
+.composition-surface {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  cursor: crosshair;
+  touch-action: none; /* prevent scroll interference during drag */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Drop-zone active state — border flashes gold */
+.composition-drop-active {
+  outline: 2px dashed var(--neon-gold-bright) !important;
+  outline-offset: -4px;
+  background: rgba(255, 215, 0, 0.03) !important;
+}
+
+.composition-drop-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--neon-gold-bright);
+  text-shadow: 0 0 12px var(--neon-gold-bright);
+  pointer-events: none;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.45);
+  letter-spacing: 0.5px;
+}
+
+/* Canvas layer — each node renders as a positioned, transformed element. */
+.canvas-layer {
+  position: absolute;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  transition: opacity 0.15s;
+}
+
+.canvas-layer-inactive {
+  opacity: 0.3 !important;
+}
+
+/* Selection ring — visible outline around the selected layer. */
+.canvas-layer-selected::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 2px solid var(--neon-gold-bright);
+  border-radius: 3px;
+  pointer-events: none;
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.5), inset 0 0 6px rgba(255, 215, 0, 0.1);
+  z-index: 10;
+}
+
+/* Layer asset image / video — fills the layer element proportionally. */
+.layer-asset-img {
+  display: block;
+  max-width: min(280px, 40%);
+  max-height: min(180px, 35vh);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* Audio / unknown layer — compact pill visible in the composition. */
+.layer-audio-pill {
+  background: rgba(255, 215, 0, 0.12);
+  border: 1px solid var(--neon-gold-dim);
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--neon-gold-bright);
+  white-space: nowrap;
+  pointer-events: none;
+  min-width: 80px;
+  text-align: center;
+}
+
+/* Selection handles container — sits inside the selected layer. */
+.selection-handles {
+  position: absolute;
+  inset: -3px;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Individual handle — 44×44 touch target, visible 12px square. */
+.selection-handle {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: all;
+  cursor: nwse-resize;
+}
+
+/* The visible knob inside the touch target */
+.selection-handle::after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--neon-gold-bright);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.6);
+}
+
+/* Corner handle positions */
+.handle-nw { top: -22px; right: -22px; cursor: nwse-resize; }
+.handle-ne { top: -22px; left: -22px; cursor: nesw-resize; }
+.handle-sw { bottom: -22px; right: -22px; cursor: nesw-resize; }
+.handle-se { bottom: -22px; left: -22px; cursor: nwse-resize; }
+
+/* Rotation handle — top center, circular knob */
+.handle-rotate {
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: grab;
+}
+.handle-rotate::after {
+  border-radius: 50%;
+  background: rgba(255, 215, 0, 0.6);
+  border: 2px solid var(--neon-gold-bright);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+.handle-rotate:active { cursor: grabbing; }
+
+/* Voice-to-text mic button in TTS panel */
+.voice-to-text-btn {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--neon-gold-dim);
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--neon-gold-bright);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.voice-to-text-btn:hover:not(:disabled) {
+  background: rgba(255, 215, 0, 0.1);
+  border-color: var(--neon-gold-bright);
+  box-shadow: 0 0 10px var(--neon-gold-shadow);
+}
+
+.voice-to-text-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.voice-to-text-btn.voice-listening {
+  border-color: #e74c3c;
+  background: rgba(231, 76, 60, 0.12);
+  box-shadow: 0 0 12px rgba(231, 76, 60, 0.4);
+  animation: pulseOpacity 0.7s infinite alternate;
+}
+
+/* Mobile touch: ensure composition surface handles work on small screens */
+@media (max-width: 680px) {
+  .layer-asset-img {
+    max-width: min(200px, 55vw);
+    max-height: min(140px, 28vh);
+  }
+  .handle-nw { top: -18px; right: -18px; }
+  .handle-ne { top: -18px; left: -18px; }
+  .handle-sw { bottom: -18px; right: -18px; }
+  .handle-se { bottom: -18px; left: -18px; }
+  .handle-rotate { top: -36px; }
+}

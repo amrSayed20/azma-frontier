@@ -391,7 +391,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import { RasAmrExperience } from '@/src/imperial-experience-engine';
 import type { VaultAsset, AssetFamily } from '@/src/vault/sovereign-vault-types';
@@ -429,6 +429,7 @@ import { toDirectionDecision } from '@/src/chambers/ras-al-amr/direction-workspa
 import type { DirectionDecision, DirectionOperator } from '@/src/chambers/ras-al-amr/direction-workspace-constitution';
 import { AssemblyRuntime } from '@/src/chambers/ras-al-amr/assembly-runtime';
 import type { CanvasMutationPayload } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
+import { useVoiceMode } from '@/src/components/living-companion/useVoiceMode';
 import './ras-amr.css';
 
 // Pure, stateless transformer (see its own header comment) — one shared
@@ -613,6 +614,150 @@ export default function RasAmrChamber() {
     const decision = toDirectionDecision(operator, mutation);
     setDirectionDecisionLog((prev) => [decision, ...prev].slice(0, 10));
     return assemblyRuntime.execute(canvas, decision);
+  };
+
+  // PACKAGE XXXII — SOVEREIGN CREATIVE CANVAS
+  // Composition surface ref — needed for pointer coordinate math.
+  const compositionRef = useRef<HTMLDivElement>(null);
+
+  // PACKAGE XXXII — COORDINATE SYSTEM (documented):
+  // positionX / positionY are percentage offsets from the composition surface center.
+  //   (0, 0)   = center of the surface
+  //   (50, 0)  = 50% of viewport width to the right of center
+  // CSS: top:50%; left:50%; transform: translate(calc(-50% + positionX%), calc(-50% + positionY%)) ...
+  // This is viewport-resize-tolerant. scaleX/scaleY are multipliers (1.0 = intrinsic).
+  // rotationDegrees is clockwise degrees. FFmpeg render semantics differ —
+  // browser preview is a compositional guide, not pixel-perfect render parity.
+
+  // Drag interaction state — stored in a ref to avoid per-frame React state updates.
+  const dragRef = useRef<{
+    nodeId: string;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    originSpatial: SpatialDirective;
+    handleType: 'move' | 'scale' | 'rotate';
+    liveSpatial: SpatialDirective;
+  } | null>(null);
+
+  // Live drag preview — single state update per pointer-move frame.
+  const [liveTransform, setLiveTransform] = useState<{ nodeId: string; spatial: SpatialDirective } | null>(null);
+
+  // Drop-zone active flag for drag-over visual feedback.
+  const [isDragOverSurface, setIsDragOverSurface] = useState(false);
+
+  const handleLayerPointerDown = (
+    e: React.PointerEvent<HTMLDivElement>,
+    nodeId: string,
+    handleType: 'move' | 'scale' | 'rotate',
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const node = sessionCanvas?.tracks.flatMap((t) => t.nodes).find((n) => n.nodeId === nodeId);
+    if (!node || node.isLocked) return;
+    // Capture on the surface so surface's onPointerMove/Up receive all drag events,
+    // even when the pointer moves off the originating layer or handle element.
+    compositionRef.current?.setPointerCapture(e.pointerId);
+    setSelectedNodeId(nodeId);
+    const originSpatial = node.spatial ?? DEFAULT_SPATIAL;
+    dragRef.current = { nodeId, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, originSpatial, handleType, liveSpatial: { ...originSpatial } };
+  };
+
+  const handleSurfacePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    const surface = compositionRef.current;
+    if (!surface) return;
+    const rect = surface.getBoundingClientRect();
+    const dx = ((e.clientX - drag.startX) / rect.width) * 100;
+    const dy = ((e.clientY - drag.startY) / rect.height) * 100;
+    const next: SpatialDirective = { ...drag.originSpatial };
+    if (drag.handleType === 'move') {
+      next.positionX = drag.originSpatial.positionX + dx;
+      next.positionY = drag.originSpatial.positionY + dy;
+    } else if (drag.handleType === 'scale') {
+      const delta = 1 + (dx - dy) * 0.015;
+      next.scaleX = Math.max(0.05, drag.originSpatial.scaleX * delta);
+      next.scaleY = Math.max(0.05, drag.originSpatial.scaleY * delta);
+    } else if (drag.handleType === 'rotate') {
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const a0 = Math.atan2(drag.startY - cy, drag.startX - cx);
+      const a1 = Math.atan2(e.clientY - cy, e.clientX - cx);
+      next.rotationDegrees = drag.originSpatial.rotationDegrees + ((a1 - a0) * 180) / Math.PI;
+    }
+    dragRef.current = { ...drag, liveSpatial: next };
+    setLiveTransform({ nodeId: drag.nodeId, spatial: next });
+  };
+
+  const handleSurfacePointerUp = () => {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    setLiveTransform(null);
+    if (!drag || !sessionCanvas) return;
+    const finalSpatial = drag.liveSpatial;
+    const mutation: UpdateNodeSpatialPayload = {
+      actionType: CanvasActionType.UPDATE_SPATIAL,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: 'track-1',
+      targetNodeId: drag.nodeId,
+      spatialUpdates: finalSpatial,
+    };
+    setSpatialForm(finalSpatial);
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
+  };
+
+  const handleSurfaceDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOverSurface(false);
+    const assetId = e.dataTransfer.getData('application/x-ras-amr-asset-id');
+    if (assetId && sessionCanvas) {
+      const asset = queue.find((a) => a.id === assetId);
+      if (asset?.isRealAsset && asset.assetFamily && asset.capabilityOrigin) {
+        if (sessionCanvas.tracks.flatMap((t) => t.nodes).some((n) => n.assetId === assetId)) return;
+        setActiveAsset(asset);
+        const mutation: AddNodePayload = {
+          actionType: CanvasActionType.ADD_NODE,
+          canvasId: sessionCanvas.canvasId,
+          subscriberTenantId: sessionCanvas.subscriberTenantId,
+          targetTrackId: activeTrackId,
+          vaultAssetId: asset.id,
+          assetFamily: asset.assetFamily,
+          capabilityOrigin: asset.capabilityOrigin,
+          initialTemporal: DEFAULT_TEMPORAL,
+          initialSpatial: DEFAULT_SPATIAL,
+        };
+        const updatedCanvas = executeDirectionDecision(sessionCanvas, mutation);
+        setSessionCanvas(updatedCanvas);
+        const tgt = updatedCanvas.tracks.find((t) => t.trackId === activeTrackId);
+        const newNode = tgt?.nodes[tgt.nodes.length - 1];
+        if (newNode) { setSelectedNodeId(newNode.nodeId); setSpatialForm(DEFAULT_SPATIAL); }
+      } else if (asset) {
+        setActiveAsset(asset);
+      }
+      return;
+    }
+    const file = e.dataTransfer.files?.[0];
+    if (file) void handleUploadAsset(file);
+  };
+
+  // Per-node audio volume (AudioMixingDirective already in data model).
+  const handleSetNodeVolume = (nodeId: string, volumeDb: number) => {
+    if (!sessionCanvas) return;
+    const track = sessionCanvas.tracks.find((t) => t.nodes.some((n) => n.nodeId === nodeId));
+    if (!track) return;
+    const existing = track.nodes.find((n) => n.nodeId === nodeId)?.customDirectives?.audio as AudioMixingDirective | undefined;
+    const mutation: UpdateNodeAdvancedPayload = {
+      actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: track.trackId,
+      targetNodeId: nodeId,
+      directiveKey: 'audio',
+      directivePayload: { volumeDb, panCenter: existing?.panCenter ?? 0, isMuted: existing?.isMuted ?? false } as AudioMixingDirective,
+    };
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
   };
 
   const wantsRealCanvas = Boolean(activeAsset?.isRealAsset && activeAsset.assetFamily && activeAsset.capabilityOrigin);
@@ -993,6 +1138,14 @@ export default function RasAmrChamber() {
     [voiceLibrary],
   );
 
+  // PACKAGE XXXII — VOICE-TO-TEXT: reuse the existing useVoiceMode hook.
+  // Transcribed speech appends to the TTS textarea. Does NOT interpret commands
+  // — speech recognition only. Natural-language directing is out of scope.
+  const handleVoiceTranscript = useCallback((text: string) => {
+    setTtsText((prev) => (prev.trim() ? prev.trim() + ' ' + text : text));
+  }, []);
+  const voiceMode = useVoiceMode(true, handleVoiceTranscript, 'ar-SA');
+
   // MINISTRY II — TEXT TO SPEECH ENGINE (ElevenLabs preset voices).
   const [ttsText, setTtsText] = useState<string>('');
   const [ttsPresetVoiceId, setTtsPresetVoiceId] = useState<string>(ELEVENLABS_PRESET_VOICES[0].id);
@@ -1280,7 +1433,8 @@ export default function RasAmrChamber() {
   // — DIRECTOR panel simply shows nothing for it, never a fabricated one.
   const multiNodeDirection = useMemo(() => {
     if (!sessionCanvas) return null;
-    const nodesWithAssets = sessionCanvas.tracks[0].nodes
+    // PACKAGE XXXII fix: reason across ALL tracks, not only tracks[0].
+    const nodesWithAssets = sessionCanvas.tracks.flatMap((t) => t.nodes)
       .map((node) => {
         const asset = vaultAssets.find((a) => a.assetId === node.assetId);
         if (!asset) return null;
@@ -1610,6 +1764,8 @@ export default function RasAmrChamber() {
                 key={asset.id}
                 className={`queue-item-card ${activeAsset?.id === asset.id ? 'active-neon-card' : ''}`}
                 onClick={() => setActiveAsset(asset)}
+                draggable={asset.isRealAsset === true}
+                onDragStart={(e) => { e.dataTransfer.setData('application/x-ras-amr-asset-id', asset.id); e.dataTransfer.effectAllowed = 'copy'; }}
               >
                 <div className="item-meta">
                   <span className="item-type-badge">{asset.type}</span>
@@ -1638,38 +1794,126 @@ export default function RasAmrChamber() {
                   : 'الإمبراطورية أعدّت هذه الجلسة — المخرج الإمبراطوري يستقبلك'}
               </div>
             )}
-            <div className="viewport-main-content">
-              {!activeAsset ? (
-                <div className="viewport-chamber-identity">
-                  <div className="viewport-sigil" aria-hidden="true">✦</div>
-                  <h2 className="viewport-chamber-name">رأس الأمر</h2>
-                  <p className="viewport-chamber-mandate">الجهة الدستورية لتوجيه الإنتاج السيادي — مكانية، بصرية، زمنية، وصوتية</p>
-                  <p className="viewport-summon-cue">← استدعِ أصلاً من الخزانة للبدء</p>
-                </div>
-              ) : activeAsset.isRealAsset && activeAsset.capabilityOrigin === CapabilityTarget.VISUAL && activeAsset.secureStorageUri ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img className="viewport-asset-image" src={activeAsset.secureStorageUri} alt={activeAsset.title} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-              ) : activeAsset.isRealAsset && activeAsset.capabilityOrigin === CapabilityTarget.AUDIO ? (
-                // Phase F: real audio player replaces decorative waveform bars
-                <div className="viewport-audio-surface">
-                  <span className="viewport-audio-icon" aria-hidden="true">🎙</span>
-                  <p className="viewport-audio-title">{activeAsset.title}</p>
-                  <p className="viewport-audio-hint">أصل صوتي حقيقي</p>
-                  {activeAsset.secureStorageUri && (
+            {/* PACKAGE XXXII — SOVEREIGN CREATIVE CANVAS
+                The composition surface renders ALL canvas nodes as positioned layers
+                when the canvas has nodes. Single-asset preview is shown otherwise. */}
+            {(() => {
+              const canvasNodes = sessionCanvas?.tracks.flatMap((t) => t.nodes) ?? [];
+              const hasCanvasNodes = canvasNodes.length > 0;
+
+              if (hasCanvasNodes) {
+                return (
+                  <div
+                    className={`composition-surface${isDragOverSurface ? ' composition-drop-active' : ''}`}
+                    ref={compositionRef}
+                    onPointerMove={handleSurfacePointerMove}
+                    onPointerUp={handleSurfacePointerUp}
+                    onPointerCancel={handleSurfacePointerUp}
+                    onDrop={handleSurfaceDrop}
+                    onDragOver={(e) => { e.preventDefault(); setIsDragOverSurface(true); }}
+                    onDragLeave={() => setIsDragOverSurface(false)}
+                    aria-label="سطح التأليف السينمائي"
+                  >
+                    {canvasNodes.map((node) => {
+                      const vaultAsset = vaultAssets.find((a) => a.assetId === node.assetId);
+                      const uri = vaultAsset?.secureStorageUri;
+                      const isSelected = node.nodeId === selectedNodeId;
+                      const liveSpatial = (liveTransform?.nodeId === node.nodeId) ? liveTransform.spatial : null;
+                      const spatial = liveSpatial ?? node.spatial ?? DEFAULT_SPATIAL;
+                      const visual = (node.customDirectives?.visual as VisualFilterDirective | undefined) ?? DEFAULT_VISUAL;
+                      const blendMode = visual.blendMode === 'NORMAL' ? 'normal'
+                        : visual.blendMode === 'MULTIPLY' ? 'multiply'
+                        : visual.blendMode === 'SCREEN' ? 'screen'
+                        : 'overlay';
+                      return (
+                        <div
+                          key={node.nodeId}
+                          className={`canvas-layer${isSelected ? ' canvas-layer-selected' : ''}${node.isActive === false ? ' canvas-layer-inactive' : ''}`}
+                          style={{
+                            position: 'absolute', top: '50%', left: '50%',
+                            transform: `translate(calc(-50% + ${spatial.positionX}%), calc(-50% + ${spatial.positionY}%)) scale(${spatial.scaleX}, ${spatial.scaleY}) rotate(${spatial.rotationDegrees}deg)`,
+                            opacity: visual.opacity,
+                            zIndex: spatial.zIndex + 1,
+                            mixBlendMode: blendMode as React.CSSProperties['mixBlendMode'],
+                            cursor: node.isLocked ? 'not-allowed' : 'grab',
+                          }}
+                          onPointerDown={(e) => handleLayerPointerDown(e, node.nodeId, 'move')}
+                          onClick={() => { setSelectedNodeId(node.nodeId); setActiveWorkspaceTab('direction'); }}
+                        >
+                          {vaultAsset?.capabilityTarget === CapabilityTarget.VISUAL && uri ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={uri} className="layer-asset-img" alt="" draggable={false} />
+                          ) : vaultAsset?.capabilityTarget === CapabilityTarget.MOTION && uri ? (
+                            // eslint-disable-next-line jsx-a11y/media-has-caption
+                            <video src={uri} className="layer-asset-img" muted playsInline preload="metadata" />
+                          ) : (
+                            <div className="layer-audio-pill">
+                              {vaultAsset?.capabilityTarget === CapabilityTarget.AUDIO ? '🎙' : '◆'}{' '}
+                              {vaultAsset?.metadata?.voiceDisplayName as string ?? node.capabilityOrigin}
+                            </div>
+                          )}
+                          {isSelected && !node.isLocked && (
+                            <div className="selection-handles" onPointerDown={(e) => e.stopPropagation()}>
+                              <div className="selection-handle handle-se" title="حجم" onPointerDown={(e) => { e.stopPropagation(); handleLayerPointerDown(e, node.nodeId, 'scale'); }} />
+                              <div className="selection-handle handle-sw" title="حجم" onPointerDown={(e) => { e.stopPropagation(); handleLayerPointerDown(e, node.nodeId, 'scale'); }} />
+                              <div className="selection-handle handle-ne" title="حجم" onPointerDown={(e) => { e.stopPropagation(); handleLayerPointerDown(e, node.nodeId, 'scale'); }} />
+                              <div className="selection-handle handle-nw" title="حجم" onPointerDown={(e) => { e.stopPropagation(); handleLayerPointerDown(e, node.nodeId, 'scale'); }} />
+                              <div className="selection-handle handle-rotate" title="دوران" onPointerDown={(e) => { e.stopPropagation(); handleLayerPointerDown(e, node.nodeId, 'rotate'); }} />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {isDragOverSurface && (
+                      <div className="composition-drop-hint" aria-hidden="true">أسقط الأصل هنا ← أضفه للمشهد</div>
+                    )}
+                  </div>
+                );
+              }
+
+              // No canvas nodes yet — show single-asset preview (or identity state).
+              return (
+                <div
+                  className={`viewport-main-content${isDragOverSurface ? ' composition-drop-active' : ''}`}
+                  onDrop={handleSurfaceDrop}
+                  onDragOver={(e) => { e.preventDefault(); setIsDragOverSurface(true); }}
+                  onDragLeave={() => setIsDragOverSurface(false)}
+                >
+                  {!activeAsset ? (
+                    <div className="viewport-chamber-identity">
+                      <div className="viewport-sigil" aria-hidden="true">✦</div>
+                      <h2 className="viewport-chamber-name">رأس الأمر</h2>
+                      <p className="viewport-chamber-mandate">الجهة الدستورية لتوجيه الإنتاج السيادي — مكانية، بصرية، زمنية، وصوتية</p>
+                      <p className="viewport-summon-cue">← استدعِ أصلاً من الخزانة للبدء</p>
+                    </div>
+                  ) : activeAsset.isRealAsset && activeAsset.capabilityOrigin === CapabilityTarget.VISUAL && activeAsset.secureStorageUri ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img className="viewport-asset-image" src={activeAsset.secureStorageUri} alt={activeAsset.title} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                  ) : activeAsset.isRealAsset && activeAsset.capabilityOrigin === CapabilityTarget.AUDIO ? (
+                    <div className="viewport-audio-surface">
+                      <span className="viewport-audio-icon" aria-hidden="true">🎙</span>
+                      <p className="viewport-audio-title">{activeAsset.title}</p>
+                      <p className="viewport-audio-hint">أصل صوتي حقيقي</p>
+                      {activeAsset.secureStorageUri && (
+                        // eslint-disable-next-line jsx-a11y/media-has-caption
+                        <audio controls src={activeAsset.secureStorageUri} className="viewport-audio-player" />
+                      )}
+                    </div>
+                  ) : activeAsset.isRealAsset && activeAsset.capabilityOrigin === CapabilityTarget.MOTION && activeAsset.secureStorageUri ? (
                     // eslint-disable-next-line jsx-a11y/media-has-caption
-                    <audio controls src={activeAsset.secureStorageUri} className="viewport-audio-player" />
+                    <video className="viewport-asset-image" src={activeAsset.secureStorageUri} controls playsInline style={{ background: '#000', objectFit: 'contain' }} />
+                  ) : (
+                    <div className="viewport-generic-identity">
+                      <div className="viewport-sigil viewport-sigil-dim" aria-hidden="true">✦</div>
+                      <p className="viewport-generic-label">{activeAsset.title}</p>
+                    </div>
+                  )}
+                  {isDragOverSurface && (
+                    <div className="composition-drop-hint" aria-hidden="true">أسقط الأصل هنا ← أضفه للمشهد</div>
                   )}
                 </div>
-              ) : activeAsset.isRealAsset && activeAsset.capabilityOrigin === CapabilityTarget.MOTION && activeAsset.secureStorageUri ? (
-                // eslint-disable-next-line jsx-a11y/media-has-caption
-                <video className="viewport-asset-image" src={activeAsset.secureStorageUri} controls playsInline style={{ background: '#000', objectFit: 'contain' }} />
-              ) : (
-                <div className="viewport-generic-identity">
-                  <div className="viewport-sigil viewport-sigil-dim" aria-hidden="true">✦</div>
-                  <p className="viewport-generic-label">{activeAsset.title}</p>
-                </div>
-              )}
-            </div>
+              );
+            })()}
             <div className="viewport-meta-strip">
               {activeAsset ? (
                 <>
@@ -1860,12 +2104,9 @@ export default function RasAmrChamber() {
           {/* Tab: التوجيه — Phase E: real mode consequence */}
           {activeWorkspaceTab === 'direction' && (
             <div className="ras-tab-content custom-scroll">
+              {/* Mode indicator — read-only label. The authoritative toggle is in the sticky header. */}
               <div className="ras-direction-mode-indicator">
                 <div className="neon-tag">{directingMode === 'manual' ? 'المخرج اليدوي' : 'المخرج الآلي'}</div>
-                <div className="ras-mode-toggle" role="group" aria-label="تبديل وضع التوجيه">
-                  <button className={`ras-mode-btn ${directingMode === 'manual' ? 'ras-mode-active' : ''}`} onClick={() => setDirectingMode('manual')} aria-pressed={directingMode === 'manual'}>يدوي</button>
-                  <button className={`ras-mode-btn ${directingMode === 'smart' ? 'ras-mode-active' : ''}`} onClick={() => setDirectingMode('smart')} aria-pressed={directingMode === 'smart'}>آلي</button>
-                </div>
               </div>
 
               {directingMode === 'manual' ? (
@@ -1878,15 +2119,16 @@ export default function RasAmrChamber() {
                           <h2>تعديل مكاني حقيقي</h2>
                           <p>يُطبَّق على المشهد ويصل إلى الصهر النهائي</p>
                         </header>
-                        <p className="ras-honesty-note">⚠ النافذة السينمائية تعرض الأصل الأصلي — التوجيه يظهر في الصهر النهائي فقط</p>
+                        <p className="ras-honesty-note">⚠ التوجيه المكاني يظهر مباشرة في سطح التأليف — اسحب العقدة للتحريك، أو استخدم الحقول أدناه للقيم الدقيقة. التأثيرات البصرية المتقدمة تظهر في الصهر النهائي.</p>
                         <div className="spatial-input-grid">
-                          <label>X<input type="number" value={spatialForm.positionX} onChange={(e) => setSpatialForm((prev) => ({ ...prev, positionX: Number(e.target.value) }))} /></label>
-                          <label>Y<input type="number" value={spatialForm.positionY} onChange={(e) => setSpatialForm((prev) => ({ ...prev, positionY: Number(e.target.value) }))} /></label>
-                          <label>Scale X<input type="number" step="0.1" value={spatialForm.scaleX} onChange={(e) => setSpatialForm((prev) => ({ ...prev, scaleX: Number(e.target.value) }))} /></label>
-                          <label>Scale Y<input type="number" step="0.1" value={spatialForm.scaleY} onChange={(e) => setSpatialForm((prev) => ({ ...prev, scaleY: Number(e.target.value) }))} /></label>
-                          <label>Rotation°<input type="number" value={spatialForm.rotationDegrees} onChange={(e) => setSpatialForm((prev) => ({ ...prev, rotationDegrees: Number(e.target.value) }))} /></label>
+                          <label>X (%)<input type="number" step="0.5" value={spatialForm.positionX} onChange={(e) => setSpatialForm((prev) => ({ ...prev, positionX: Number(e.target.value) }))} /></label>
+                          <label>Y (%)<input type="number" step="0.5" value={spatialForm.positionY} onChange={(e) => setSpatialForm((prev) => ({ ...prev, positionY: Number(e.target.value) }))} /></label>
+                          <label>Scale X<input type="number" step="0.05" value={spatialForm.scaleX} onChange={(e) => setSpatialForm((prev) => ({ ...prev, scaleX: Number(e.target.value) }))} /></label>
+                          <label>Scale Y<input type="number" step="0.05" value={spatialForm.scaleY} onChange={(e) => setSpatialForm((prev) => ({ ...prev, scaleY: Number(e.target.value) }))} /></label>
+                          <label>دوران°<input type="number" step="1" value={spatialForm.rotationDegrees} onChange={(e) => setSpatialForm((prev) => ({ ...prev, rotationDegrees: Number(e.target.value) }))} /></label>
+                          <label>z-Index<input type="number" step="1" value={spatialForm.zIndex} onChange={(e) => setSpatialForm((prev) => ({ ...prev, zIndex: Number(e.target.value) }))} /></label>
                         </div>
-                        <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplySpatialAdjustment}>⇲ تطبيق التعديل المكاني الحقيقي</button>
+                        <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplySpatialAdjustment}>⇲ تطبيق التعديل المكاني</button>
                         {activeSpatialDirective && (
                           <p className="spatial-current-state">الحالي: X={activeSpatialDirective.positionX}, Y={activeSpatialDirective.positionY}, Scale=({activeSpatialDirective.scaleX}, {activeSpatialDirective.scaleY}), Rotation={activeSpatialDirective.rotationDegrees}°</p>
                         )}
@@ -1897,7 +2139,7 @@ export default function RasAmrChamber() {
                           <h2>تعديل بصري حقيقي</h2>
                           <p>معالج البكسل + صهر اللون</p>
                         </header>
-                        <p className="ras-honesty-note">⚠ النافذة السينمائية تعرض الأصل الأصلي — التوجيه يظهر في الصهر النهائي فقط</p>
+                        <p className="ras-honesty-note">⚠ Opacity يظهر مباشرة في سطح التأليف — Blend Mode يظهر في الصهر النهائي فقط</p>
                         <div className="spatial-input-grid">
                           <label>Opacity<input type="number" min="0" max="1" step="0.05" value={visualForm.opacity} onChange={(e) => setVisualForm((prev) => ({ ...prev, opacity: Number(e.target.value) }))} /></label>
                           <label>Blend Mode<select value={visualForm.blendMode} onChange={(e) => setVisualForm((prev) => ({ ...prev, blendMode: e.target.value as VisualFilterDirective['blendMode'] }))}>{BLEND_MODES.map((mode) => (<option key={mode} value={mode}>{mode}</option>))}</select></label>
@@ -1988,16 +2230,25 @@ export default function RasAmrChamber() {
                     </div>
                     {track.nodes.length > 0 && (
                       <div>
-                        <p className="spatial-current-state" style={{ marginBottom: '6px' }}>تعيين الصوت لكل عقدة:</p>
-                        {track.nodes.map((node, idx) => (
-                          <div key={node.nodeId} className="ras-audio-node-row">
-                            <span className="spatial-current-state">عقدة {idx + 1}</span>
-                            <select className="narrative-node-voice" value={(node.customDirectives?.voice as VoiceAssignmentDirective | undefined)?.vaultAssetId ?? ''} onChange={(e) => handleAssignVoiceToNode(node.nodeId, e.target.value)} disabled={node.isLocked || audioVoiceAssets.length === 0} aria-label={`الصوت المُسنَد للعقدة ${idx + 1}`}>
-                              <option value="">بلا صوت مُسنَد</option>
-                              {audioVoiceAssets.map((voice) => (<option key={voice.assetId} value={voice.assetId}>{voice.metadata.voiceDisplayName ?? voice.assetId}</option>))}
-                            </select>
-                          </div>
-                        ))}
+                        <p className="spatial-current-state" style={{ marginBottom: '6px' }}>صوت ومستوى صوت لكل عقدة:</p>
+                        {track.nodes.map((node, idx) => {
+                          const nodeAudio = node.customDirectives?.audio as AudioMixingDirective | undefined;
+                          return (
+                            <div key={node.nodeId} style={{ marginBottom: '10px', padding: '6px', border: '1px solid rgba(255,215,0,0.08)', borderRadius: '6px' }}>
+                              <p className="spatial-current-state" style={{ marginBottom: '4px' }}>عقدة {idx + 1}</p>
+                              <div className="ras-audio-node-row">
+                                <select className="narrative-node-voice" value={(node.customDirectives?.voice as VoiceAssignmentDirective | undefined)?.vaultAssetId ?? ''} onChange={(e) => handleAssignVoiceToNode(node.nodeId, e.target.value)} disabled={node.isLocked || audioVoiceAssets.length === 0} aria-label={`الصوت المُسنَد للعقدة ${idx + 1}`}>
+                                  <option value="">بلا صوت مُسنَد</option>
+                                  {audioVoiceAssets.map((voice) => (<option key={voice.assetId} value={voice.assetId}>{voice.metadata.voiceDisplayName ?? voice.assetId}</option>))}
+                                </select>
+                              </div>
+                              <div className="ras-audio-node-row" style={{ marginTop: '4px' }}>
+                                <span className="track-volume-label">🔊 {(nodeAudio?.volumeDb ?? 0).toFixed(0)} dB</span>
+                                <input type="range" className="track-volume-slider" min={-60} max={12} step={1} value={nodeAudio?.volumeDb ?? 0} onChange={(e) => handleSetNodeVolume(node.nodeId, Number(e.target.value))} disabled={node.isLocked} aria-label={`مستوى صوت العقدة ${idx + 1}`} />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -2225,7 +2476,20 @@ export default function RasAmrChamber() {
                   {isVoiceUpload && (<input type="text" className="hud-voice-name-input" placeholder="اسم هوية الصوت (اختياري)" value={voiceDisplayNameInput} onChange={(e) => setVoiceDisplayNameInput(e.target.value)} disabled={isUploadingAsset} />)}
                 </div>
                 <div className="hud-tts-row">
-                  <textarea className="hud-tts-text-input" placeholder="اكتب نصًا لتحويله إلى كلام حقيقي..." value={ttsText} onChange={(e) => setTtsText(e.target.value)} disabled={isGeneratingSpeech} rows={2} />
+                  <div style={{ position: 'relative', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                    <textarea className="hud-tts-text-input" style={{ flex: 1 }} placeholder="اكتب نصًا لتحويله إلى كلام حقيقي، أو انقر 🎤 للتحدث..." value={ttsText} onChange={(e) => setTtsText(e.target.value)} disabled={isGeneratingSpeech} rows={2} />
+                    {voiceMode.isSupported && (
+                      <button
+                        className={`voice-to-text-btn${voiceMode.isListening ? ' voice-listening' : ''}`}
+                        onClick={voiceMode.startListening}
+                        disabled={voiceMode.isListening || isGeneratingSpeech}
+                        title={voiceMode.hasPermission === false ? 'إذن الميكروفون مرفوض' : voiceMode.isListening ? 'جارٍ الاستماع…' : 'انقر للإملاء بالعربية'}
+                        aria-label={voiceMode.isListening ? 'جارٍ الاستماع' : 'إملاء بالصوت'}
+                      >
+                        {voiceMode.isListening ? '🔴' : '🎤'}
+                      </button>
+                    )}
+                  </div>
                   <div className="hud-tts-controls">
                     <select className="hud-tts-voice-select" value={ttsPresetVoiceId} onChange={(e) => setTtsPresetVoiceId(e.target.value)} disabled={isGeneratingSpeech} aria-label="الصوت الجاهز">
                       {ELEVENLABS_PRESET_VOICES.map((voice) => (<option key={voice.id} value={voice.id}>{voice.label}</option>))}
