@@ -2458,5 +2458,229 @@
   .handle-ne { top: -18px; left: -18px; }
   .handle-sw { bottom: -18px; right: -18px; }
   .handle-se { bottom: -18px; left: -18px; }
-  .handle-rotate { top: -36px; }
+}
+
+/* ============================================================
+   PACKAGE XXXII CLOSE-OUT — CREATOR WORKSPACE CORRECTIONS
+   ============================================================ */
+
+/* --- Observation 1: Real asset card previews --- */
+.queue-card-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+.queue-card-thumb {
+  flex-shrink: 0;
+  width: 52px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  background: #000;
+}
+.queue-card-audio-pill {
+  flex-shrink: 0;
+  width: 52px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  border-radius: 4px;
+  background: rgba(255, 215, 0, 0.08);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+}
+.queue-card-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.queue-card-meta .item-type-badge {
+  font-size: 9px;
+  opacity: 0.7;
+}
+.queue-card-meta .item-title {
+  font-size: 11px !important;
+  margin: 0 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+}
+
+/* --- Observation 2: Layer list identity + z-order --- */
+.layer-identity-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-bottom: 4px;
+}
+.layer-list-thumb {
+  flex-shrink: 0;
+  width: 36px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  background: #000;
+}
+.layer-list-audio-pill {
+  flex-shrink: 0;
+  width: 36px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  border-radius: 3px;
+  background: rgba(255, 215, 0, 0.08);
+  border: 1px solid rgba(255, 215, 0, 0.15);
+}
+.layer-select-btn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: var(--neon-gold-dim);
+  font-size: 11px;
+  text-align: right;
+  cursor: pointer;
+  padding: 3px 4px;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+.layer-select-btn:hover { background: rgba(255,215,0,0.08); color: var(--neon-gold-bright); }
+.node-selected .layer-select-btn { color: var(--neon-gold-bright); }
+.layer-select-index { font-weight: 700; opacity: 0.6; font-size: 10px; }
+.layer-select-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.layer-z-btn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  background: rgba(255,215,0,0.06);
+  border: 1px solid rgba(255,215,0,0.15);
+  border-radius: 4px;
+  color: var(--neon-gold-dim);
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.layer-z-btn:hover { background: rgba(255,215,0,0.15); color: var(--neon-gold-bright); }
+.layer-z-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* --- Observation 3: Audio panel node identity --- */
+.audio-tab-node-row {
+  margin-bottom: 10px;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 215, 0, 0.08);
+}
+.audio-tab-node-audio {
+  border-color: rgba(100, 180, 255, 0.25);
+  background: rgba(100, 180, 255, 0.04);
+}
+.audio-tab-node-visual {
+  border-color: rgba(255, 215, 0, 0.08);
+}
+.audio-tab-node-identity {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.audio-tab-asset-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.badge-audio {
+  background: rgba(100, 180, 255, 0.15);
+  color: #64b4ff;
+  border: 1px solid rgba(100, 180, 255, 0.3);
+}
+.badge-visual {
+  background: rgba(255, 215, 0, 0.08);
+  color: var(--neon-gold-dim);
+  border: 1px solid rgba(255, 215, 0, 0.15);
+}
+.audio-tab-asset-name {
+  font-size: 11px;
+  color: var(--neon-gold-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+/* --- Observation 4: Audio timeline lane --- */
+.timeline-audio-lane {
+  border-top: 1px solid rgba(100, 180, 255, 0.15);
+  background: rgba(100, 180, 255, 0.03);
+}
+.timeline-audio-label {
+  color: #64b4ff !important;
+  opacity: 1 !important;
+}
+.timeline-audio-block {
+  position: absolute;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(100, 180, 255, 0.35), rgba(70, 130, 220, 0.25));
+  border: 1px solid rgba(100, 180, 255, 0.5);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+.timeline-audio-block:hover { border-color: rgba(100, 180, 255, 0.9); }
+.timeline-audio-block.node-block-selected {
+  border-color: #64b4ff;
+  box-shadow: 0 0 8px rgba(100, 180, 255, 0.5);
+}
+.timeline-audio-block.node-block-inactive { opacity: 0.35; }
+.audio-trim-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.7);
+}
+.audio-trim-start { border-radius: 0 1px 1px 0; }
+.audio-trim-end  { border-radius: 1px 0 0 1px; }
+
+/* --- Observation 6: Director apply status feedback --- */
+.director-apply-status {
+  font-size: 11px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  margin-top: 6px;
+  line-height: 1.5;
+  direction: rtl;
+}
+.director-apply-success {
+  background: rgba(100, 255, 160, 0.08);
+  border: 1px solid rgba(100, 255, 160, 0.25);
+  color: #64ffa0;
+}
+.director-apply-error {
+  background: rgba(255, 100, 100, 0.08);
+  border: 1px solid rgba(255, 100, 100, 0.25);
+  color: #ff8080;
 }

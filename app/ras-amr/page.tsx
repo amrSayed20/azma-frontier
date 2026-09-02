@@ -763,6 +763,37 @@ export default function RasAmrChamber() {
     setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
   };
 
+  // Z-order: bring the node one step forward or backward in the composition surface.
+  const handleBringForward = (nodeId: string) => {
+    if (!sessionCanvas) return;
+    const node = sessionCanvas.tracks.flatMap((t) => t.nodes).find((n) => n.nodeId === nodeId);
+    if (!node || node.isLocked) return;
+    const mutation: UpdateNodeSpatialPayload = {
+      actionType: CanvasActionType.UPDATE_SPATIAL,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      spatialUpdates: { ...(node.spatial ?? DEFAULT_SPATIAL), zIndex: (node.spatial?.zIndex ?? 0) + 1 },
+    };
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
+  };
+
+  const handleSendBackward = (nodeId: string) => {
+    if (!sessionCanvas) return;
+    const node = sessionCanvas.tracks.flatMap((t) => t.nodes).find((n) => n.nodeId === nodeId);
+    if (!node || node.isLocked) return;
+    const mutation: UpdateNodeSpatialPayload = {
+      actionType: CanvasActionType.UPDATE_SPATIAL,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      spatialUpdates: { ...(node.spatial ?? DEFAULT_SPATIAL), zIndex: Math.max(0, (node.spatial?.zIndex ?? 0) - 1) },
+    };
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
+  };
+
   const wantsRealCanvas = Boolean(activeAsset?.isRealAsset && activeAsset.assetFamily && activeAsset.capabilityOrigin);
 
   // THE NARRATIVE CANVAS FOUNDATION: created once, lazily, the first time
@@ -1472,7 +1503,22 @@ export default function RasAmrChamber() {
   // tagged 'automatic-director', submitted to the same Assembly Runtime
   // Manual Director already executes through — no second execution path.
   const handleApplyDirectorDecision = () => {
-    if (!sessionCanvas || !selectedNodeId || !directorDecision?.included || !directorDecision.temporal || !directorDecision.structural) return;
+    if (!sessionCanvas || !selectedNodeId) {
+      setDirectorApplyStatus('اختر عقدة من المشهد أولاً ثم طبّق القرار');
+      return;
+    }
+    if (!directorDecision) {
+      setDirectorApplyStatus('لا يوجد قرار إخراجي — أضف عقدة للمشهد أولاً');
+      return;
+    }
+    if (!directorDecision.included) {
+      setDirectorApplyStatus(`القرار الآلي رفض هذه العقدة: ${directorDecision.rejectionReason ?? 'غير محدَّد'}`);
+      return;
+    }
+    if (!directorDecision.temporal || !directorDecision.structural) {
+      setDirectorApplyStatus('القرار الآلي ناقص — لا توجد بيانات زمنية أو هيكلية كافية');
+      return;
+    }
 
     let canvas = executeDirectionDecision(
       sessionCanvas,
@@ -1518,6 +1564,9 @@ export default function RasAmrChamber() {
     }
 
     setSessionCanvas(canvas);
+    setDirectorApplyStatus(
+      `✓ الإخراج الآلي مُطبَّق — بداية: ${directorDecision.temporal.globalStartTimeSeconds}ث، مدة: ${directorDecision.temporal.playDurationSeconds}ث، ترتيب: ${directorDecision.structural.executionOrderIndex}${directorDecision.audio ? `، صوت: ${directorDecision.audio.volumeDb}dB` : ''}`
+    );
   };
 
   const realVaultCategories = useMemo(() => {
@@ -1638,6 +1687,8 @@ export default function RasAmrChamber() {
   const [savedCanvases,    setSavedCanvases]    = useState<{ canvasId: string; title: string }[]>([]);
   const [showCanvasLoad,   setShowCanvasLoad]   = useState(false);
   const [isLoadingCanvases, setIsLoadingCanvases] = useState(false);
+  // Automatic Director apply feedback — describes what was actually changed (or why it failed).
+  const [directorApplyStatus, setDirectorApplyStatus] = useState<string | null>(null);
 
   // PACKAGE XXXI — 5-tab right workspace: المشهد | التوجيه | الصوت | الترجمة | المشروع
   const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'canvas' | 'direction' | 'audio' | 'subtitles' | 'project'>('canvas');
@@ -1686,7 +1737,8 @@ export default function RasAmrChamber() {
         if (d.status === 'succeeded') {
           setSessionCanvas(d.canvas);
           setShowCanvasLoad(false);
-          setSaveCanvasStatus('المشهد مُستعاد ✔');
+          setSaveCanvasStatus(`المشهد مُستعاد ✔ — ${d.canvas.tracks.flatMap(t => t.nodes).length} عنصر`);
+          setActiveWorkspaceTab('canvas');
         }
       }
     } catch { /* silent */ }
@@ -1762,25 +1814,38 @@ export default function RasAmrChamber() {
                 لا توجد أصول مستدعاة بعد. استدعِ أصلاً حقيقياً من الخزانة السيادية للبدء.
               </p>
             )}
-            {queue.map(asset => (
-              <div
-                key={asset.id}
-                className={`queue-item-card ${activeAsset?.id === asset.id ? 'active-neon-card' : ''}`}
-                onClick={() => setActiveAsset(asset)}
-                draggable={asset.isRealAsset === true}
-                onDragStart={(e) => { e.dataTransfer.setData('application/x-ras-amr-asset-id', asset.id); e.dataTransfer.effectAllowed = 'copy'; }}
-              >
-                <div className="item-meta">
-                  <span className="item-type-badge">{asset.type}</span>
-                  <span className="item-source">{asset.source}</span>
+            {queue.map(asset => {
+              const isAudio = asset.capabilityOrigin === CapabilityTarget.AUDIO;
+              const isMotion = asset.capabilityOrigin === CapabilityTarget.MOTION;
+              return (
+                <div
+                  key={asset.id}
+                  className={`queue-item-card ${activeAsset?.id === asset.id ? 'active-neon-card' : ''}`}
+                  onClick={() => setActiveAsset(asset)}
+                  draggable={asset.isRealAsset === true}
+                  onDragStart={(e) => { e.dataTransfer.setData('application/x-ras-amr-asset-id', asset.id); e.dataTransfer.effectAllowed = 'copy'; }}
+                >
+                  <div className="queue-card-inner">
+                    {/* Real asset preview — uses existing secureStorageUri, no new API */}
+                    {asset.secureStorageUri && !isAudio && !isMotion && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={asset.secureStorageUri} className="queue-card-thumb" alt="" draggable={false} />
+                    )}
+                    {asset.secureStorageUri && isMotion && (
+                      // eslint-disable-next-line jsx-a11y/media-has-caption
+                      <video src={asset.secureStorageUri} className="queue-card-thumb" muted preload="metadata" />
+                    )}
+                    {isAudio && (
+                      <div className="queue-card-audio-pill" aria-hidden="true">🎵</div>
+                    )}
+                    <div className="queue-card-meta">
+                      <span className="item-type-badge">{asset.type}</span>
+                      <span className="item-title">{asset.title}</span>
+                    </div>
+                  </div>
                 </div>
-                <h3 className="item-title">{asset.title}</h3>
-                <div className="item-footer">
-                  <span className="item-duration">⏱ {asset.duration}</span>
-                  <span className="item-status-text">{asset.status}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </aside>
 
@@ -2055,14 +2120,36 @@ export default function RasAmrChamber() {
                           <p className="spatial-current-state">هذه المجموعة فارغة</p>
                         ) : (
                           <ul className="narrative-canvas-node-list">
-                            {track.nodes.map((node, index) => (
+                            {track.nodes.map((node, index) => {
+                              const layerVaultAsset = vaultAssets.find((a) => a.assetId === node.assetId);
+                              const layerUri = layerVaultAsset?.secureStorageUri;
+                              const layerIsAudio = layerVaultAsset?.capabilityTarget === CapabilityTarget.AUDIO;
+                              const layerIsMotion = layerVaultAsset?.capabilityTarget === CapabilityTarget.MOTION;
+                              const layerLabel = layerVaultAsset
+                                ? ((layerVaultAsset.metadata?.voiceDisplayName ?? layerVaultAsset.metadata?.generationPrompt ?? '') as string).slice(0, 32) || node.capabilityOrigin
+                                : `${node.assetFamily}/${node.capabilityOrigin}`;
+                              return (
                               <li key={node.nodeId} className={`narrative-canvas-node ${node.nodeId === selectedNodeId ? 'node-selected' : ''} ${node.isActive === false ? 'node-inactive' : ''} ${node.isLocked ? 'node-locked' : ''}`}>
-                                <button className="narrative-node-select" onClick={() => { setSelectedNodeId(node.nodeId); setActiveWorkspaceTab('direction'); }}>
-                                  #{index + 1} — {node.assetFamily}/{node.capabilityOrigin}
-                                  {node.directionRole ? ` — ${DIRECTION_NODE_ROLE_LABELS[node.directionRole]}` : ''}
-                                  {node.directionEmphasis === 'primary' ? ' — ◆' : node.directionEmphasis === 'supporting' ? ' — ◇' : ''}
-                                  {node.isActive === false ? ' — (معطَّل)' : ''}{node.isLocked ? ' — 🔒' : ''}
-                                </button>
+                                {/* Layer identity row: thumbnail + label + select + z-order */}
+                                <div className="layer-identity-row">
+                                  {layerUri && !layerIsAudio && !layerIsMotion && (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={layerUri} className="layer-list-thumb" alt="" draggable={false} />
+                                  )}
+                                  {layerUri && layerIsMotion && (
+                                    // eslint-disable-next-line jsx-a11y/media-has-caption
+                                    <video src={layerUri} className="layer-list-thumb" muted preload="metadata" />
+                                  )}
+                                  {layerIsAudio && <div className="layer-list-audio-pill">🎵</div>}
+                                  <button className="narrative-node-select layer-select-btn" onClick={() => setSelectedNodeId(node.nodeId)} title="اختر هذه الطبقة على السطح">
+                                    <span className="layer-select-index">#{index + 1}</span>
+                                    <span className="layer-select-label">{layerLabel}</span>
+                                    {node.isLocked && <span title="مقفولة">🔒</span>}
+                                    {node.isActive === false && <span title="معطَّلة">⏸</span>}
+                                  </button>
+                                  <button className="layer-z-btn" onClick={() => handleBringForward(node.nodeId)} disabled={node.isLocked} title="إلى الأمام">▲</button>
+                                  <button className="layer-z-btn" onClick={() => handleSendBackward(node.nodeId)} disabled={node.isLocked} title="إلى الخلف">▼</button>
+                                </div>
                                 <select className="narrative-node-classification" value={node.directionRole ?? ''} onChange={(e) => handleUpdateNodeClassification(node.nodeId, (e.target.value || undefined) as DirectionNodeRole | undefined)} disabled={node.isLocked} aria-label="التصنيف السينمائي">
                                   <option value="">غير مصنَّف</option>
                                   {Object.values(DirectionNodeRole).map((role) => (<option key={role} value={role}>{DIRECTION_NODE_ROLE_LABELS[role]}</option>))}
@@ -2087,7 +2174,8 @@ export default function RasAmrChamber() {
                                 </button>
                                 <button className="narrative-node-remove" onClick={() => handleRemoveNodeFromCanvas(node.nodeId)} aria-label="إزالة من المشهد">✕</button>
                               </li>
-                            ))}
+                              );
+                            })}
                           </ul>
                         )}
                       </div>
@@ -2202,16 +2290,21 @@ export default function RasAmrChamber() {
                         <p className="spatial-current-state">الاعتبار الأساسي: {directorDecision.primaryConsideration}</p>
                         <p className="spatial-current-state">{directorDecision.rhythm ? `الإيقاع: ${directorDecision.rhythm}` : 'لا إيقاع مصرَّح به'} — {directorDecision.transitionStrategy ? `الانتقال: ${directorDecision.transitionStrategy}` : 'لا انتقال مصرَّح به'}</p>
                         <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplyDirectorDecision}>🤖 تطبيق قرار الإخراج الحقيقي</button>
-                        {(activeStructuralDirective || activeAudioDirective) && (
-                          <p className="spatial-current-state">المُطبَّق:{activeStructuralDirective ? ` ترتيب=${activeStructuralDirective.executionOrderIndex}` : ''}{activeAudioDirective ? `، صوت مطبَّق` : ''}</p>
+                        {directorApplyStatus && (
+                          <p className={`director-apply-status${directorApplyStatus.startsWith('✓') ? ' director-apply-success' : ' director-apply-error'}`}>{directorApplyStatus}</p>
                         )}
                       </>
                     )}
                   </div>
                 ) : (
-                  <p className="spatial-current-state" style={{ padding: '12px' }}>
-                    {sessionCanvas ? 'لا يوجد قرار آلي بعد — أضف أصولاً لتفعيل المخرج الآلي' : 'ابدأ مشهداً لاستخدام المخرج الآلي'}
-                  </p>
+                  <>
+                    <p className="spatial-current-state" style={{ padding: '12px' }}>
+                      {sessionCanvas ? 'اختر عقدة من تبويب «المشهد» لاستعراض قرار المخرج الآلي' : 'ابدأ مشهداً لاستخدام المخرج الآلي'}
+                    </p>
+                    {directorApplyStatus && (
+                      <p className={`director-apply-status${directorApplyStatus.startsWith('✓') ? ' director-apply-success' : ' director-apply-error'}`} style={{ margin: '0 12px 8px' }}>{directorApplyStatus}</p>
+                    )}
+                  </>
                 )
               )}
             </div>
@@ -2235,21 +2328,33 @@ export default function RasAmrChamber() {
                     </div>
                     {track.nodes.length > 0 && (
                       <div>
-                        <p className="spatial-current-state" style={{ marginBottom: '6px' }}>صوت ومستوى صوت لكل عقدة:</p>
                         {track.nodes.map((node, idx) => {
                           const nodeAudio = node.customDirectives?.audio as AudioMixingDirective | undefined;
+                          const audioTabAsset = vaultAssets.find((a) => a.assetId === node.assetId);
+                          const isAudioAsset = audioTabAsset?.capabilityTarget === CapabilityTarget.AUDIO;
+                          const assetLabel = (
+                            (audioTabAsset?.metadata?.voiceDisplayName ?? audioTabAsset?.metadata?.generationPrompt ?? '') as string
+                          ).slice(0, 40) || `عقدة ${idx + 1}`;
                           return (
-                            <div key={node.nodeId} style={{ marginBottom: '10px', padding: '6px', border: '1px solid rgba(255,215,0,0.08)', borderRadius: '6px' }}>
-                              <p className="spatial-current-state" style={{ marginBottom: '4px' }}>عقدة {idx + 1}</p>
-                              <div className="ras-audio-node-row">
-                                <select className="narrative-node-voice" value={(node.customDirectives?.voice as VoiceAssignmentDirective | undefined)?.vaultAssetId ?? ''} onChange={(e) => handleAssignVoiceToNode(node.nodeId, e.target.value)} disabled={node.isLocked || audioVoiceAssets.length === 0} aria-label={`الصوت المُسنَد للعقدة ${idx + 1}`}>
-                                  <option value="">بلا صوت مُسنَد</option>
-                                  {audioVoiceAssets.map((voice) => (<option key={voice.assetId} value={voice.assetId}>{voice.metadata.voiceDisplayName ?? voice.assetId}</option>))}
-                                </select>
+                            <div key={node.nodeId} className={`audio-tab-node-row${isAudioAsset ? ' audio-tab-node-audio' : ' audio-tab-node-visual'}`}>
+                              <div className="audio-tab-node-identity">
+                                <span className={`audio-tab-asset-badge${isAudioAsset ? ' badge-audio' : ' badge-visual'}`}>
+                                  {isAudioAsset ? '🎵 أصل صوتي' : '🖼 مشهد مرئي'}
+                                </span>
+                                <span className="audio-tab-asset-name">{assetLabel}</span>
                               </div>
+                              {/* Voice assignment (only meaningful for visual nodes — assigns TTS voice) */}
+                              {!isAudioAsset && (
+                                <div className="ras-audio-node-row">
+                                  <select className="narrative-node-voice" value={(node.customDirectives?.voice as VoiceAssignmentDirective | undefined)?.vaultAssetId ?? ''} onChange={(e) => handleAssignVoiceToNode(node.nodeId, e.target.value)} disabled={node.isLocked || audioVoiceAssets.length === 0} aria-label={`الصوت المُسنَد للعقدة ${idx + 1}`}>
+                                    <option value="">بلا صوت مُسنَد</option>
+                                    {audioVoiceAssets.map((voice) => (<option key={voice.assetId} value={voice.assetId}>{voice.metadata.voiceDisplayName ?? voice.assetId}</option>))}
+                                  </select>
+                                </div>
+                              )}
                               <div className="ras-audio-node-row" style={{ marginTop: '4px' }}>
                                 <span className="track-volume-label">🔊 {(nodeAudio?.volumeDb ?? 0).toFixed(0)} dB</span>
-                                <input type="range" className="track-volume-slider" min={-60} max={12} step={1} value={nodeAudio?.volumeDb ?? 0} onChange={(e) => handleSetNodeVolume(node.nodeId, Number(e.target.value))} disabled={node.isLocked} aria-label={`مستوى صوت العقدة ${idx + 1}`} />
+                                <input type="range" className="track-volume-slider" min={-60} max={12} step={1} value={nodeAudio?.volumeDb ?? 0} onChange={(e) => handleSetNodeVolume(node.nodeId, Number(e.target.value))} disabled={node.isLocked} aria-label={`مستوى صوت ${assetLabel}`} />
                               </div>
                             </div>
                           );
@@ -2302,8 +2407,8 @@ export default function RasAmrChamber() {
                 {saveCanvasStatus && (<p className="canvas-save-status">{saveCanvasStatus}</p>)}
                 {showCanvasLoad && (
                   <div className="canvas-load-panel">
-                    {isLoadingCanvases && <p className="canvas-load-hint">التشكيلات تُحمَّل…</p>}
-                    {!isLoadingCanvases && savedCanvases.length === 0 && (<p className="canvas-load-hint">لا توجد تشكيلات محفوظة بعد.</p>)}
+                    {isLoadingCanvases && <p className="canvas-load-hint">المشاهد المحفوظة تُحمَّل…</p>}
+                    {!isLoadingCanvases && savedCanvases.length === 0 && (<p className="canvas-load-hint">لا توجد مشاهد محفوظة بعد.</p>)}
                     {savedCanvases.map((c) => (
                       <button key={c.canvasId} className="canvas-load-item" onClick={() => void handleRestoreCanvas(c.canvasId)}>{c.title || c.canvasId}</button>
                     ))}
@@ -2363,36 +2468,80 @@ export default function RasAmrChamber() {
                   [DirectionNodeRole.TRANSITION]: '—',
                   [DirectionNodeRole.CLOSING_SHOT]: '▶',
                 };
-                return sessionCanvas.tracks.filter(t => t.nodes.length > 0).map((track) => (
-                  <div key={track.trackId} className={`timeline-track-row${track.isMuted ? ' track-muted' : ''}`}>
-                    <span className="timeline-track-label" title={track.trackName}>{track.trackName.slice(0, 8)}</span>
-                    <div className="timeline-nodes-bar">
-                      {track.nodes.map((node, idx) => {
-                        const start = node.temporal?.globalStartTimeSeconds ?? 0;
-                        const dur = node.temporal?.playDurationSeconds ?? 5;
-                        const isSelected = selectedNodeId === node.nodeId;
-                        const isCurrentAsset = activeAsset?.id === node.assetId;
-                        const roleIcon = node.directionRole ? (roleIconMap[node.directionRole] ?? '') : '';
-                        return (
-                          <div
-                            key={node.nodeId}
-                            className={`timeline-node-block${isSelected ? ' node-block-selected' : ''}${isCurrentAsset ? ' node-block-active' : ''}${node.isLocked ? ' node-block-locked' : ''}${node.isActive === false ? ' node-block-inactive' : ''}`}
-                            style={{ left: `${(start / totalDur2) * 100}%`, width: `${Math.max((dur / totalDur2) * 100, 4)}%` }}
-                            onClick={() => { setSelectedNodeId(node.nodeId); setActiveWorkspaceTab('direction'); }}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setSelectedNodeId(node.nodeId); setActiveWorkspaceTab('direction'); } }}
-                            aria-label={`عقدة ${idx + 1}: من ${start}ث إلى ${start + dur}ث`}
-                            aria-pressed={isSelected}
-                            title={`${start}s → ${start + dur}s`}
-                          >
-                            <span className="timeline-node-index">{roleIcon || (idx + 1)}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ));
+                // Separate audio nodes from visual/motion — audio gets its own dedicated lane.
+                const audioTimelineNodes = allNodes2.filter(n => vaultAssets.find(a => a.assetId === n.assetId)?.capabilityTarget === CapabilityTarget.AUDIO);
+                const visualTimelineNodes = allNodes2.filter(n => vaultAssets.find(a => a.assetId === n.assetId)?.capabilityTarget !== CapabilityTarget.AUDIO);
+                return (
+                  <>
+                    {/* Visual / motion tracks — existing gold treatment */}
+                    {sessionCanvas.tracks.filter(t => t.nodes.some(n => visualTimelineNodes.some(v => v.nodeId === n.nodeId))).map((track) => (
+                      <div key={track.trackId} className={`timeline-track-row${track.isMuted ? ' track-muted' : ''}`}>
+                        <span className="timeline-track-label" title={track.trackName}>{track.trackName.slice(0, 8)}</span>
+                        <div className="timeline-nodes-bar">
+                          {track.nodes.filter(n => visualTimelineNodes.some(v => v.nodeId === n.nodeId)).map((node, idx) => {
+                            const start = node.temporal?.globalStartTimeSeconds ?? 0;
+                            const dur = node.temporal?.playDurationSeconds ?? 5;
+                            const isSelected = selectedNodeId === node.nodeId;
+                            const isCurrentAsset = activeAsset?.id === node.assetId;
+                            const roleIcon = node.directionRole ? (roleIconMap[node.directionRole] ?? '') : '';
+                            return (
+                              <div
+                                key={node.nodeId}
+                                className={`timeline-node-block${isSelected ? ' node-block-selected' : ''}${isCurrentAsset ? ' node-block-active' : ''}${node.isLocked ? ' node-block-locked' : ''}${node.isActive === false ? ' node-block-inactive' : ''}`}
+                                style={{ left: `${(start / totalDur2) * 100}%`, width: `${Math.max((dur / totalDur2) * 100, 4)}%` }}
+                                onClick={() => { setSelectedNodeId(node.nodeId); setActiveWorkspaceTab('direction'); }}
+                                role="button" tabIndex={0}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setSelectedNodeId(node.nodeId); setActiveWorkspaceTab('direction'); } }}
+                                aria-label={`مشهد مرئي ${idx + 1}: من ${start}ث إلى ${start + dur}ث`}
+                                aria-pressed={isSelected} title={`${start}s → ${start + dur}s`}
+                              >
+                                <span className="timeline-node-index">{roleIcon || (idx + 1)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                    {/* Dedicated audio lane — shown only when audio nodes exist */}
+                    {audioTimelineNodes.length > 0 && (
+                      <div className="timeline-track-row timeline-audio-lane">
+                        <span className="timeline-track-label timeline-audio-label" title="الصوت">🎵 صوت</span>
+                        <div className="timeline-nodes-bar">
+                          {audioTimelineNodes.map((node, idx) => {
+                            const start = node.temporal?.globalStartTimeSeconds ?? 0;
+                            const dur = node.temporal?.playDurationSeconds ?? 5;
+                            const trimStart = node.temporal?.trimStartSeconds;
+                            const trimEnd = node.temporal?.trimEndSeconds;
+                            const isSelected = selectedNodeId === node.nodeId;
+                            const audioLabel = (vaultAssets.find(a => a.assetId === node.assetId)?.metadata?.voiceDisplayName ?? '') as string;
+                            return (
+                              <div
+                                key={node.nodeId}
+                                className={`timeline-audio-block${isSelected ? ' node-block-selected' : ''}${node.isActive === false ? ' node-block-inactive' : ''}`}
+                                style={{ left: `${(start / totalDur2) * 100}%`, width: `${Math.max((dur / totalDur2) * 100, 4)}%` }}
+                                onClick={() => { setSelectedNodeId(node.nodeId); setActiveWorkspaceTab('audio'); }}
+                                role="button" tabIndex={0}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setSelectedNodeId(node.nodeId); setActiveWorkspaceTab('audio'); } }}
+                                aria-label={`أصل صوتي ${idx + 1}: من ${start}ث إلى ${start + dur}ث`}
+                                aria-pressed={isSelected}
+                                title={`${audioLabel || 'صوت'} — ${start}s → ${start + dur}s${trimStart != null ? ` (قص من ${trimStart}s)` : ''}${trimEnd != null ? ` (إلى ${trimEnd}s)` : ''}`}
+                              >
+                                <span className="timeline-node-index">🎵{idx + 1}</span>
+                                {/* Trim markers: inner markers showing the used region */}
+                                {trimStart != null && dur > 0 && (
+                                  <div className="audio-trim-marker audio-trim-start" style={{ left: `${Math.min((trimStart / dur) * 100, 90)}%` }} />
+                                )}
+                                {trimEnd != null && dur > 0 && (
+                                  <div className="audio-trim-marker audio-trim-end" style={{ right: `${Math.max(100 - (trimEnd / dur) * 100, 10)}%` }} />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
               })()}
             </div>
           </>
