@@ -620,14 +620,17 @@ export default function RasAmrChamber() {
   // Composition surface ref — needed for pointer coordinate math.
   const compositionRef = useRef<HTMLDivElement>(null);
 
-  // PACKAGE XXXII — COORDINATE SYSTEM (documented):
-  // positionX / positionY are percentage offsets from the composition surface center.
-  //   (0, 0)   = center of the surface
-  //   (50, 0)  = 50% of viewport width to the right of center
-  // CSS: top:50%; left:50%; transform: translate(calc(-50% + positionX%), calc(-50% + positionY%)) ...
-  // This is viewport-resize-tolerant. scaleX/scaleY are multipliers (1.0 = intrinsic).
-  // rotationDegrees is clockwise degrees. FFmpeg render semantics differ —
-  // browser preview is a compositional guide, not pixel-perfect render parity.
+  // PACKAGE XXXII — COORDINATE SYSTEM (Constitutional Contract):
+  // positionX / positionY = percentage-point offsets from the composition surface center.
+  //   (0, 0)   = node center at surface center
+  //   (10, 0)  = node center at 60% of surface width  (50% + 10%)
+  //   (-25, 0) = node center at 25% of surface width  (50% - 25%)
+  //   (0, 20)  = node center at 70% of surface height (50% + 20%)
+  // CSS: top: calc(50% + positionY%); left: calc(50% + positionX%);
+  //      transform: translate(-50%, -50%) scale(sX, sY) rotate(Rdeg);
+  // left/top percentages are relative to the SURFACE (containing block) — asset-size-independent.
+  // translate(-50%, -50%) centers the node's box on the anchor point only.
+  // Drag: dx = (pointerDelta / surfaceWidth) * 100 — already in surface-percent space.
 
   // Drag interaction state — stored in a ref to avoid per-frame React state updates.
   const dragRef = useRef<{
@@ -1830,8 +1833,10 @@ export default function RasAmrChamber() {
                           key={node.nodeId}
                           className={`canvas-layer${isSelected ? ' canvas-layer-selected' : ''}${node.isActive === false ? ' canvas-layer-inactive' : ''}`}
                           style={{
-                            position: 'absolute', top: '50%', left: '50%',
-                            transform: `translate(calc(-50% + ${spatial.positionX}%), calc(-50% + ${spatial.positionY}%)) scale(${spatial.scaleX}, ${spatial.scaleY}) rotate(${spatial.rotationDegrees}deg)`,
+                            position: 'absolute',
+                            top: `calc(50% + ${spatial.positionY}%)`,
+                            left: `calc(50% + ${spatial.positionX}%)`,
+                            transform: `translate(-50%, -50%) scale(${spatial.scaleX}, ${spatial.scaleY}) rotate(${spatial.rotationDegrees}deg)`,
                             opacity: visual.opacity,
                             zIndex: spatial.zIndex + 1,
                             mixBlendMode: blendMode as React.CSSProperties['mixBlendMode'],
