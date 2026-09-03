@@ -2684,3 +2684,217 @@
   border: 1px solid rgba(255, 100, 100, 0.25);
   color: #ff8080;
 }
+
+/* ============================================================
+   PACKAGE XXXII — SECOND LIVE EXPERIENCE CORRECTIONS
+   ============================================================ */
+
+/* --- Finding 1: Audio play affordance in queue card --- */
+.queue-card-audio-pill {
+  flex-direction: column;
+  gap: 4px;
+  height: auto;
+  min-height: 40px;
+  padding: 4px;
+}
+.queue-card-audio-mini {
+  width: 100%;
+  height: 24px;
+  accent-color: var(--neon-gold-bright);
+}
+
+/* --- Finding 3: Audio tab player --- */
+.audio-tab-player {
+  width: 100%;
+  margin: 8px 0;
+  accent-color: var(--neon-gold-bright);
+  border-radius: 6px;
+}
+
+/* --- Finding 6: Creator intent panel in direction tab --- */
+.creator-intent-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: rgba(255, 215, 0, 0.04);
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+.creator-intent-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--neon-gold-bright);
+  letter-spacing: 0.02em;
+}
+.creator-intent-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 6px;
+  color: #e8e0c8;
+  font-size: 12px;
+  padding: 7px 10px;
+  resize: vertical;
+  direction: rtl;
+  font-family: inherit;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+.creator-intent-input:focus {
+  outline: none;
+  border-color: rgba(255, 215, 0, 0.5);
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.15);
+}
+.creator-intent-hint {
+  font-size: 10px;
+  color: rgba(255, 215, 0, 0.7);
+  margin: 0;
+  direction: rtl;
+}
+
+/* --- Finding 7: Post-compile result panel --- */
+.compiled-result-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  background: rgba(100, 255, 160, 0.05);
+  border: 1px solid rgba(100, 255, 160, 0.3);
+  border-radius: 10px;
+  margin: 10px 0;
+  direction: rtl;
+}
+.compiled-result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.compiled-result-icon {
+  font-size: 18px;
+  color: #64ffa0;
+  flex-shrink: 0;
+}
+.compiled-result-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #64ffa0;
+  letter-spacing: 0.02em;
+}
+.compiled-result-summary {
+  font-size: 11px;
+  color: rgba(200, 230, 210, 0.85);
+  margin: 0;
+  line-height: 1.5;
+}
+.compiled-result-hint {
+  font-size: 11px;
+  color: rgba(100, 255, 160, 0.6);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* --- Finding 7: Corridor CTA button --- */
+.creator-action-corridor {
+  background: rgba(100, 255, 160, 0.1);
+  border: 1px solid rgba(100, 255, 160, 0.45);
+  color: #64ffa0;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  direction: rtl;
+  transition: all 0.2s;
+  width: 100%;
+}
+.creator-action-corridor:hover {
+  background: rgba(100, 255, 160, 0.2);
+  border-color: rgba(100, 255, 160, 0.8);
+  box-shadow: 0 0 12px rgba(100, 255, 160, 0.25);
+}
+
+/* --- Finding 8: Canvas tab save row + button --- */
+.canvas-mode-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.canvas-tab-save-btn {
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--neon-gold-bright);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.canvas-tab-save-btn:hover:not(:disabled) {
+  background: rgba(255, 215, 0, 0.1);
+  border-color: var(--neon-gold-bright);
+}
+.canvas-tab-save-btn.rendering,
+.canvas-tab-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.canvas-tab-save-status {
+  font-size: 10px;
+  color: rgba(255, 215, 0, 0.7);
+  margin: 0;
+  direction: rtl;
+}
+
+/* --- Finding 5: HUD create tab section headings --- */
+.hud-section-heading {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--neon-gold-bright);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  direction: rtl;
+  padding: 10px 0 4px;
+  border-top: 1px solid rgba(255, 215, 0, 0.1);
+  margin-top: 4px;
+}
+.hud-create-tab-scroll > .hud-section-heading:first-child {
+  border-top: none;
+  padding-top: 4px;
+}
+.hud-section-caption {
+  font-size: 10px;
+  color: rgba(255, 215, 0, 0.5);
+  margin: 0 0 6px;
+  direction: rtl;
+  line-height: 1.5;
+}
+
+/* Dictation section layout */
+.hud-dictation-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 0 10px;
+}
+.hud-dictation-btn {
+  width: 100% !important;
+  height: auto !important;
+  padding: 10px 14px !important;
+  font-size: 13px !important;
+  justify-content: flex-start !important;
+  gap: 8px;
+  direction: rtl;
+}
+
+/* --- Quick-action hint text --- */
+.quick-action-hint {
+  font-size: 10px;
+  color: rgba(255, 215, 0, 0.45);
+  margin: 2px 0 0;
+  direction: rtl;
+  line-height: 1.4;
+}

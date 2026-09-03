@@ -1394,6 +1394,8 @@ export default function RasAmrChamber() {
   // decideCinematicDirection falls back to the honest prompt-echo source.
   const [formalGoal, setFormalGoal] = useState<FormalGoalContractView | null>(null);
   const [formalGoalTrackedForId, setFormalGoalTrackedForId] = useState<string | null>(null);
+  // FINDING 6 — placed before multiNodeDirection memo (which consumes it).
+  const [creatorDirectorIntent, setCreatorDirectorIntent] = useState<string>('');
   const activeGoalId = activeVaultAsset?.metadata?.goalId ?? null;
 
   // Adjust state during render — the same established pattern
@@ -1467,6 +1469,16 @@ export default function RasAmrChamber() {
   // — DIRECTOR panel simply shows nothing for it, never a fabricated one.
   const multiNodeDirection = useMemo(() => {
     if (!sessionCanvas) return null;
+    // FINDING 6: when the creator has typed a free-form intent and no formal
+    // GoalContract is linked, build a minimal synthetic goal view so the Director
+    // can use it. Source labeling is handled in the UI display (not in the Director
+    // function itself) — the UI shows 'نية الخالق' not 'مصدر رسمي' in this case.
+    const _desc = creatorDirectorIntent.trim();
+    const syntheticGoal: FormalGoalContractView | null =
+      !formalGoal && _desc
+        ? { description: _desc, title: _desc.slice(0, 60), priority: 'MEDIUM' as FormalGoalContractView['priority'] }
+        : null;
+    const goalToUse = formalGoal ?? syntheticGoal ?? undefined;
     // PACKAGE XXXII fix: reason across ALL tracks, not only tracks[0].
     const nodesWithAssets = sessionCanvas.tracks.flatMap((t) => t.nodes)
       .map((node) => {
@@ -1475,12 +1487,12 @@ export default function RasAmrChamber() {
         return {
           nodeId: node.nodeId,
           asset,
-          formalGoal: node.nodeId === selectedNodeId ? (formalGoal ?? undefined) : undefined,
+          formalGoal: node.nodeId === selectedNodeId ? goalToUse : undefined,
         };
       })
       .filter((n): n is { nodeId: string; asset: VaultAsset; formalGoal: FormalGoalContractView | undefined } => n !== null);
     return nodesWithAssets.length > 0 ? decideMultiNodeCinematicDirection(nodesWithAssets) : null;
-  }, [sessionCanvas, vaultAssets, selectedNodeId, formalGoal]);
+  }, [sessionCanvas, vaultAssets, selectedNodeId, formalGoal, creatorDirectorIntent]);
 
   // PACKAGE XIV: derived directly from multiNodeDirection rather than a
   // second, separate decideCinematicDirection call — the selected node is
@@ -1689,7 +1701,6 @@ export default function RasAmrChamber() {
   const [isLoadingCanvases, setIsLoadingCanvases] = useState(false);
   // Automatic Director apply feedback — describes what was actually changed (or why it failed).
   const [directorApplyStatus, setDirectorApplyStatus] = useState<string | null>(null);
-
   // PACKAGE XXXI — 5-tab right workspace: المشهد | التوجيه | الصوت | الترجمة | المشروع
   const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'canvas' | 'direction' | 'audio' | 'subtitles' | 'project'>('canvas');
 
@@ -1737,8 +1748,13 @@ export default function RasAmrChamber() {
         if (d.status === 'succeeded') {
           setSessionCanvas(d.canvas);
           setShowCanvasLoad(false);
-          setSaveCanvasStatus(`المشهد مُستعاد ✔ — ${d.canvas.tracks.flatMap(t => t.nodes).length} عنصر`);
+          const nodeCount = d.canvas.tracks.flatMap(t => t.nodes).length;
+          setSaveCanvasStatus(`المشهد مُستعاد ✔ — ${nodeCount} عنصر`);
           setActiveWorkspaceTab('canvas');
+          // FINDING 8: auto-select the first node so the creator immediately
+          // sees which asset is active — the restored composition is not anonymous.
+          const firstRestoredNode = d.canvas.tracks.flatMap(t => t.nodes)[0];
+          if (firstRestoredNode) setSelectedNodeId(firstRestoredNode.nodeId);
         }
       }
     } catch { /* silent */ }
@@ -1776,9 +1792,14 @@ export default function RasAmrChamber() {
             aria-pressed={directingMode === 'smart'}
           >آلي</button>
         </div>
-        {selectedNodeId && sessionCanvas && (
-          <span className="ras-selected-node-badge">عقدة: {selectedNodeId.slice(-6)}</span>
-        )}
+        {selectedNodeId && sessionCanvas && (() => {
+          const _badgeNode = sessionCanvas.tracks.flatMap(t => t.nodes).find(n => n.nodeId === selectedNodeId);
+          const _badgeAsset = _badgeNode ? vaultAssets.find(a => a.assetId === _badgeNode.assetId) : null;
+          const _badgeLabel = _badgeAsset
+            ? ((_badgeAsset.metadata?.voiceDisplayName ?? _badgeAsset.metadata?.generationPrompt ?? '') as string).slice(0, 22) || typeLabelForCapability(_badgeAsset.capabilityTarget)
+            : typeLabelForCapability(_badgeNode?.capabilityOrigin ?? '');
+          return <span className="ras-selected-node-badge" title="الطبقة المحددة حالياً">✦ {_badgeLabel}</span>;
+        })()}
         <div className="ras-header-status">
           <span className={`strip-pulse${isRendering ? ' strip-pulse-active' : ''}`} aria-hidden="true" />
           <span className="ras-header-render-status">
@@ -1836,7 +1857,21 @@ export default function RasAmrChamber() {
                       <video src={asset.secureStorageUri} className="queue-card-thumb" muted preload="metadata" />
                     )}
                     {isAudio && (
-                      <div className="queue-card-audio-pill" aria-hidden="true">🎵</div>
+                      <div className="queue-card-audio-pill">
+                        <span aria-hidden="true">🎵</span>
+                        {/* FINDING 1 — Real audio preview: compact player stops parent click via stopPropagation */}
+                        {asset.secureStorageUri && (
+                          // eslint-disable-next-line jsx-a11y/media-has-caption
+                          <audio
+                            controls
+                            src={asset.secureStorageUri}
+                            className="queue-card-audio-mini"
+                            preload="none"
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label={`معاينة: ${asset.title}`}
+                          />
+                        )}
+                      </div>
                     )}
                     <div className="queue-card-meta">
                       <span className="item-type-badge">{asset.type}</span>
@@ -1908,7 +1943,7 @@ export default function RasAmrChamber() {
                             cursor: node.isLocked ? 'not-allowed' : 'grab',
                           }}
                           onPointerDown={(e) => handleLayerPointerDown(e, node.nodeId, 'move')}
-                          onClick={() => { setSelectedNodeId(node.nodeId); setActiveWorkspaceTab('direction'); }}
+                          onClick={() => setSelectedNodeId(node.nodeId)}
                         >
                           {vaultAsset?.capabilityTarget === CapabilityTarget.VISUAL && uri ? (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -2006,21 +2041,44 @@ export default function RasAmrChamber() {
               {activeAsset.isRealAsset && sessionCanvas &&
                 !sessionCanvas.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id) && (
                 <button className="creator-action-btn creator-action-primary" onClick={handleAddActiveAssetToCanvas}>
-                  ➕ أضف إلى مشهد الإخراج
+                  ➕ أضف إلى المشهد
                 </button>
               )}
               {activeAsset.isRealAsset && !sessionCanvas && (
                 <button className="creator-action-btn creator-action-primary" onClick={handleAddActiveAssetToCanvas}>
-                  ➕ ابدأ مشهد الإخراج بهذا الأصل
+                  ➕ ابدأ المشهد بهذا الأصل
                 </button>
               )}
               {activeAsset.isRealAsset && sessionCanvas &&
                 sessionCanvas.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id) &&
                 !canCompile && (
-                <span style={{ fontSize: '11px', color: 'var(--neon-gold-dim)' }}>
-                  ✓ الأصل في المشهد — أضف أصولاً إضافية أو اصهر للتصدير
+                <span className="quick-action-hint">
+                  ✓ الأصل موجود في المشهد — يمكنك إضافة المزيد أو الضغط على «صهر نهائي»
                 </span>
               )}
+            </div>
+          )}
+
+          {/* FINDING 7 — Post-compile result panel: shown immediately after a successful
+              compilation so the creator knows exactly what was produced and what to do next.
+              Constitutional boundary: Ras Al Amr compiles → Makman renders/distributes.
+              The compile output is a structured assembly graph, not a media file — the MP4
+              is produced by Makman's Fleet materialization step. */}
+          {compiledGraph && compiledForAssetId === activeAsset?.id && (
+            <div className="compiled-result-panel">
+              <div className="compiled-result-header">
+                <span className="compiled-result-icon">✦</span>
+                <span className="compiled-result-title">المشهد مُجمَّع وجاهز</span>
+              </div>
+              <p className="compiled-result-summary">
+                {compiledGraph.metadata.totalNodes} {compiledGraph.metadata.totalNodes === 1 ? 'عنصر' : 'عناصر'} — مدة تقديرية {Math.round(compiledGraph.metadata.estimatedDurationSeconds ?? 0)} ث — نوع: {compiledGraph.canvasType}
+              </p>
+              <p className="compiled-result-hint">
+                الإخراج جاهز للإرسال إلى مكمن الغاية حيث يتحوّل إلى ملف نهائي قابل للتوزيع.
+              </p>
+              <button className="creator-action-btn creator-action-corridor" onClick={handleForwardToMakman}>
+                ✦ أرسل إلى مكمن الغاية
+              </button>
             </div>
           )}
 
@@ -2065,7 +2123,20 @@ export default function RasAmrChamber() {
           {activeWorkspaceTab === 'canvas' && (
             <div className="ras-tab-content custom-scroll">
               <div className="canvas-mode-selector">
-                <div className="neon-tag">نوع الإخراج</div>
+                <div className="canvas-mode-header-row">
+                  <div className="neon-tag">نوع الإنتاج</div>
+                  {/* FINDING 8: save button accessible from canvas tab — no need to hunt for project tab */}
+                  {sessionCanvas && (
+                    <button
+                      className={`canvas-tab-save-btn ${isSavingCanvas ? 'rendering' : ''}`}
+                      onClick={() => void handleSaveCanvas()}
+                      disabled={isSavingCanvas}
+                      title="حفظ المشهد الحالي"
+                    >
+                      {isSavingCanvas ? '⏳' : '💾 حفظ'}
+                    </button>
+                  )}
+                </div>
                 <select
                   className="canvas-type-select"
                   value={selectedCanvasType}
@@ -2074,20 +2145,31 @@ export default function RasAmrChamber() {
                     setSelectedCanvasType(newType);
                     if (sessionCanvas) { setSessionCanvas(null); setSelectedNodeId(null); setCompiledGraph(null); setCompiledForAssetId(null); }
                   }}
-                  aria-label="نوع الإخراج"
+                  aria-label="نوع الإنتاج"
                 >
-                  <option value={CanvasType.CINEMATIC}>سينمائي — ملف MP4 حقيقي عبر مشفّر FFmpeg</option>
+                  <option value={CanvasType.CINEMATIC}>سينمائي — يُنتج ملف فيديو MP4</option>
                   <option value={CanvasType.NARRATIVE}>سردي — بنية تجميع ديناميكية</option>
                   <option value={CanvasType.DIRECTORIAL}>توجيهي — بنية حالة توجيه</option>
                 </select>
                 {sessionCanvas && <p className="canvas-mode-reset-note">⚠ تغيير النوع يُعيد تهيئة المشهد الحالي</p>}
+                {saveCanvasStatus && <p className="canvas-save-status canvas-tab-save-status">{saveCanvasStatus}</p>}
               </div>
 
               {sessionCanvas && directionDecisionLog.length > 0 && (
                 <div className="direction-decision-log" data-testid="direction-decision-log">
                   <span className="neon-tag">سجل القرارات التوجيهية</span>
                   <p className="direction-decision-latest">
-                    آخر قرار: {directionDecisionLog[0].mutation.actionType} — {directionDecisionLog[0].operator} — {new Date(directionDecisionLog[0].issuedAtMs).toLocaleTimeString('ar-EG')}
+                    {(() => {
+                      const _entry = directionDecisionLog[0];
+                      const _actionLabels: Record<string, string> = {
+                        UPDATE_SPATIAL: 'تعديل مكاني', ADD_NODE: 'إضافة طبقة', REMOVE_NODE: 'حذف طبقة',
+                        UPDATE_ADVANCED_DIRECTIVE: 'توجيه متقدم', REORDER_NODES: 'إعادة ترتيب', UPDATE_NODE_CLASSIFICATION: 'تصنيف الدور',
+                        SET_NODE_ACTIVE: 'تغيير حالة الطبقة', SET_NODE_LOCK: 'قفل/فتح الطبقة', MOVE_NODE: 'نقل الطبقة',
+                      };
+                      const _opLabel = _entry.operator === 'automatic-director' ? 'المخرج الآلي' : _entry.operator === 'manual-director' ? 'المخرج اليدوي' : 'الخالق';
+                      const _actLabel = _actionLabels[_entry.mutation.actionType] ?? _entry.mutation.actionType;
+                      return `آخر توجيه: ${_actLabel} — ${_opLabel} — ${new Date(_entry.issuedAtMs).toLocaleTimeString('ar-EG')}`;
+                    })()}
                   </p>
                 </div>
               )}
@@ -2127,7 +2209,7 @@ export default function RasAmrChamber() {
                               const layerIsMotion = layerVaultAsset?.capabilityTarget === CapabilityTarget.MOTION;
                               const layerLabel = layerVaultAsset
                                 ? ((layerVaultAsset.metadata?.voiceDisplayName ?? layerVaultAsset.metadata?.generationPrompt ?? '') as string).slice(0, 32) || node.capabilityOrigin
-                                : `${node.assetFamily}/${node.capabilityOrigin}`;
+                                : 'طبقة غير محددة';
                               return (
                               <li key={node.nodeId} className={`narrative-canvas-node ${node.nodeId === selectedNodeId ? 'node-selected' : ''} ${node.isActive === false ? 'node-inactive' : ''} ${node.isLocked ? 'node-locked' : ''}`}>
                                 {/* Layer identity row: thumbnail + label + select + z-order */}
@@ -2159,14 +2241,14 @@ export default function RasAmrChamber() {
                                   <option value="primary">أساسي</option>
                                   <option value="supporting">مساند</option>
                                 </select>
-                                <button className="narrative-node-reorder" onClick={() => handleReorderNode(node.nodeId, 'up')} disabled={index === 0 || node.isLocked} aria-label="ترقية العقدة">↑</button>
-                                <button className="narrative-node-reorder" onClick={() => handleReorderNode(node.nodeId, 'down')} disabled={index === track.nodes.length - 1 || node.isLocked} aria-label="خفض رتبة العقدة">↓</button>
+                                <button className="narrative-node-reorder" onClick={() => handleReorderNode(node.nodeId, 'up')} disabled={index === 0 || node.isLocked} aria-label="ترقية الطبقة">↑</button>
+                                <button className="narrative-node-reorder" onClick={() => handleReorderNode(node.nodeId, 'down')} disabled={index === track.nodes.length - 1 || node.isLocked} aria-label="خفض رتبة الطبقة">↓</button>
                                 {sessionCanvas.tracks.length > 1 && (
                                   <select className="narrative-node-move-group" value={track.trackId} onChange={(e) => handleMoveNodeToGroup(node.nodeId, e.target.value)} disabled={node.isLocked} aria-label="نقل إلى مجموعة">
                                     {sessionCanvas.tracks.map((dest) => (<option key={dest.trackId} value={dest.trackId}>{dest.trackName}</option>))}
                                   </select>
                                 )}
-                                <button className="narrative-node-toggle" onClick={() => handleSetNodeActive(node.nodeId, node.isActive === false)} disabled={node.isLocked} aria-label={node.isActive === false ? 'تفعيل العقدة' : 'تعطيل العقدة'}>
+                                <button className="narrative-node-toggle" onClick={() => handleSetNodeActive(node.nodeId, node.isActive === false)} disabled={node.isLocked} aria-label={node.isActive === false ? 'تفعيل الطبقة' : 'تعطيل الطبقة'}>
                                   {node.isActive === false ? '✓' : '⏸'}
                                 </button>
                                 <button className="narrative-node-toggle" onClick={() => handleSetNodeLock(node.nodeId, !node.isLocked)} aria-label={node.isLocked ? 'إلغاء القفل' : 'قفل التوجيه'}>
@@ -2186,7 +2268,7 @@ export default function RasAmrChamber() {
                   )}
                   {multiNodeDirection && multiNodeDirection.nodeDecisions.length > 1 && (
                     <p className="spatial-current-state">
-                      {multiNodeDirection.primaryNodeId ? 'تم تحديد اتجاه أساسي حقيقي واحد من بين العقد.' : 'لا يوجد اتجاه أساسي محدَّد — لا يوجد هدف خالق مصرَّح به.'}
+                      {multiNodeDirection.primaryNodeId ? 'تم تحديد اتجاه أساسي حقيقي واحد من بين العناصر.' : 'لا يوجد اتجاه أساسي محدَّد — لا يوجد هدف خالق مصرَّح به.'}
                     </p>
                   )}
                 </div>
@@ -2199,7 +2281,29 @@ export default function RasAmrChamber() {
             <div className="ras-tab-content custom-scroll">
               {/* Mode indicator — read-only label. The authoritative toggle is in the sticky header. */}
               <div className="ras-direction-mode-indicator">
-                <div className="neon-tag">{directingMode === 'manual' ? 'المخرج اليدوي' : 'المخرج الآلي'}</div>
+                <div className="neon-tag">{directingMode === 'manual' ? 'التوجيه اليدوي' : 'التوجيه الآلي'}</div>
+              </div>
+
+              {/* FINDING 6 — Creator Intent Field: what do you want from this scene? */}
+              <div className="creator-intent-panel">
+                <label className="creator-intent-label" htmlFor="creator-intent-input">
+                  ما الذي تريد من هذا المشهد؟
+                </label>
+                <textarea
+                  id="creator-intent-input"
+                  className="creator-intent-input"
+                  placeholder="مثال: مشهد افتتاحي درامي بإيقاع هادئ يُعبِّر عن الأمل…"
+                  value={creatorDirectorIntent}
+                  onChange={(e) => setCreatorDirectorIntent(e.target.value)}
+                  rows={2}
+                  aria-label="نية الخالق من المشهد"
+                />
+                {creatorDirectorIntent.trim() && !formalGoal && (
+                  <p className="creator-intent-hint">✓ المخرج الآلي سيأخذ نيتك بعين الاعتبار</p>
+                )}
+                {formalGoal && (
+                  <p className="creator-intent-hint">يُستخدَم الهدف الرسمي من SOEL — النية المكتوبة تعمل كمرجع إضافي</p>
+                )}
               </div>
 
               {directingMode === 'manual' ? (
@@ -2212,7 +2316,7 @@ export default function RasAmrChamber() {
                           <h2>تعديل مكاني حقيقي</h2>
                           <p>يُطبَّق على المشهد ويصل إلى الصهر النهائي</p>
                         </header>
-                        <p className="ras-honesty-note">⚠ التوجيه المكاني يظهر مباشرة في سطح التأليف — اسحب العقدة للتحريك، أو استخدم الحقول أدناه للقيم الدقيقة. التأثيرات البصرية المتقدمة تظهر في الصهر النهائي.</p>
+                        <p className="ras-honesty-note">⚠ التوجيه المكاني يظهر مباشرة في سطح التأليف — اسحب الطبقة للتحريك، أو استخدم الحقول أدناه للقيم الدقيقة. التأثيرات البصرية المتقدمة تظهر في الصهر النهائي.</p>
                         <div className="spatial-input-grid">
                           <label>X (%)<input type="number" step="0.5" value={spatialForm.positionX} onChange={(e) => setSpatialForm((prev) => ({ ...prev, positionX: Number(e.target.value) }))} /></label>
                           <label>Y (%)<input type="number" step="0.5" value={spatialForm.positionY} onChange={(e) => setSpatialForm((prev) => ({ ...prev, positionY: Number(e.target.value) }))} /></label>
@@ -2283,7 +2387,7 @@ export default function RasAmrChamber() {
                         <p className="spatial-current-state">التوقيت: بداية={directorDecision.temporal?.globalStartTimeSeconds}ث، مدة={directorDecision.temporal?.playDurationSeconds}ث ({directorDecision.temporalBasis === 'real-evidence' ? 'بيانات حقيقية' : 'قيمة افتراضية'})</p>
                         <p className="spatial-current-state">الترتيب السردي: الموضع {directorDecision.structural?.executionOrderIndex}</p>
                         {directorDecision.audio && (<p className="spatial-current-state">الصوت: مستوى={directorDecision.audio.volumeDb}dB، توازن={directorDecision.audio.panCenter}</p>)}
-                        <p className="spatial-current-state">{directorDecision.creatorGoal.stated ? `هدف الخالق: "${directorDecision.creatorGoal.statedIntent}"` : 'لا يوجد هدف خالق مصرَّح به — لم يُختلَق بديل'} ({directorDecision.creatorGoal.source === 'formal-goal-contract' ? 'مصدر رسمي حقيقي' : 'صدى الطلب'})</p>
+                        <p className="spatial-current-state">{directorDecision.creatorGoal.stated ? `نية الخالق: "${directorDecision.creatorGoal.statedIntent}"` : 'لا توجد نية مُعلَنة — المخرج يعتمد على بيانات الأصل'} ({formalGoal ? 'هدف رسمي من SOEL' : creatorDirectorIntent.trim() ? 'نية الخالق المُدخَلة مباشرةً' : 'صدى توليد الأصل'})</p>
                         {directorDecision.creatorGoal.title && (<p className="spatial-current-state">عنوان الهدف: {directorDecision.creatorGoal.title}</p>)}
                         {directorDecision.creatorGoal.priority && (<p className="spatial-current-state">أولوية الهدف: {directorDecision.creatorGoal.priority}</p>)}
                         {directorDecision.creatorGoal.commercialIntent && (<p className="spatial-current-state">النية التجارية: {directorDecision.creatorGoal.commercialIntent.accessPolicy.distributionTier}{directorDecision.creatorGoal.commercialIntent.coverArtUri ? ` — صورة الغلاف متوفرة` : ''}</p>)}
@@ -2343,6 +2447,18 @@ export default function RasAmrChamber() {
                                 </span>
                                 <span className="audio-tab-asset-name">{assetLabel}</span>
                               </div>
+                              {/* FINDING 3 — Real audio player: creator can hear the source before
+                                  making temporal decisions. No waveform (not fake). Real <audio> only. */}
+                              {isAudioAsset && audioTabAsset?.secureStorageUri && (
+                                // eslint-disable-next-line jsx-a11y/media-has-caption
+                                <audio
+                                  controls
+                                  src={audioTabAsset.secureStorageUri}
+                                  className="audio-tab-player"
+                                  preload="none"
+                                  aria-label={`تشغيل: ${assetLabel}`}
+                                />
+                              )}
                               {/* Voice assignment (only meaningful for visual nodes — assigns TTS voice) */}
                               {!isAudioAsset && (
                                 <div className="ras-audio-node-row">
@@ -2409,8 +2525,8 @@ export default function RasAmrChamber() {
                   <div className="canvas-load-panel">
                     {isLoadingCanvases && <p className="canvas-load-hint">المشاهد المحفوظة تُحمَّل…</p>}
                     {!isLoadingCanvases && savedCanvases.length === 0 && (<p className="canvas-load-hint">لا توجد مشاهد محفوظة بعد.</p>)}
-                    {savedCanvases.map((c) => (
-                      <button key={c.canvasId} className="canvas-load-item" onClick={() => void handleRestoreCanvas(c.canvasId)}>{c.title || c.canvasId}</button>
+                    {savedCanvases.map((c, _idx) => (
+                      <button key={c.canvasId} className="canvas-load-item" onClick={() => void handleRestoreCanvas(c.canvasId)}>{c.title || `مشهد محفوظ ${_idx + 1}`}</button>
                     ))}
                     <button className="canvas-load-close" onClick={() => setShowCanvasLoad(false)}>✖ إغلاق</button>
                   </div>
@@ -2426,7 +2542,7 @@ export default function RasAmrChamber() {
       <div className="ras-timeline">
         <div className="ras-timeline-header">
           <span className="neon-tag" style={{ margin: 0 }}>الخط الزمني</span>
-          {sessionCanvas && (<span className="spatial-current-state">{sessionCanvas.tracks.flatMap(t => t.nodes).length} عقدة</span>)}
+          {sessionCanvas && (<span className="spatial-current-state">{sessionCanvas.tracks.flatMap(t => t.nodes).length} طبقة</span>)}
           {compiledGraph && compiledForAssetId === activeAsset?.id && (
             <button className="ras-corridor-btn" onClick={handleForwardToMakman}>
               ✦ الصهر مكتمل — انتقل إلى مكمن الغاية
@@ -2563,7 +2679,7 @@ export default function RasAmrChamber() {
 
             <div className="hud-tab-switcher">
               <button className={`hud-top-tab ${hudActiveTab === 'vault' ? 'hud-top-tab-active' : ''}`} onClick={() => setHudActiveTab('vault')}>◆ من الخزانة السيادية</button>
-              <button className={`hud-top-tab ${hudActiveTab === 'create' ? 'hud-top-tab-active' : ''}`} onClick={() => setHudActiveTab('create')}>⬆ رفع ملف | توليد صوت</button>
+              <button className={`hud-top-tab ${hudActiveTab === 'create' ? 'hud-top-tab-active' : ''}`} onClick={() => setHudActiveTab('create')}>⬆ رفع ملف | توليد صوت | استنساخ</button>
             </div>
 
             {hudActiveTab === 'vault' && (
@@ -2617,6 +2733,9 @@ export default function RasAmrChamber() {
 
             {hudActiveTab === 'create' && (
               <div className="hud-create-tab-scroll custom-scroll">
+
+                {/* ─── 1. رفع ملف من الجهاز ─── */}
+                <div className="hud-section-heading">⬆ رفع ملف من الجهاز</div>
                 <div className="hud-upload-row">
                   <input ref={uploadFileInputRef} type="file" id="ras-amr-media-upload" className="hud-upload-input" disabled={isUploadingAsset} onChange={(e) => { const file = e.target.files?.[0]; if (file) void handleUploadAsset(file); }} />
                   <label htmlFor="ras-amr-media-upload" className="action-trigger-btn hud-upload-label">{isUploadingAsset ? '⏳ الرفع إلى الخزانة جارٍ…' : '⬆ رفع ملف حقيقي من الجهاز إلى الخزانة'}</label>
@@ -2625,25 +2744,34 @@ export default function RasAmrChamber() {
                 <div className="hud-voice-upload-row">
                   <label className="hud-voice-checkbox-label">
                     <input type="checkbox" checked={isVoiceUpload} onChange={(e) => setIsVoiceUpload(e.target.checked)} disabled={isUploadingAsset} />
-                    هذا الملف صوت (Voice)
+                    هذا الملف صوت — أريد استخدامه كهوية صوتية
                   </label>
                   {isVoiceUpload && (<input type="text" className="hud-voice-name-input" placeholder="اسم هوية الصوت (اختياري)" value={voiceDisplayNameInput} onChange={(e) => setVoiceDisplayNameInput(e.target.value)} disabled={isUploadingAsset} />)}
                 </div>
-                <div className="hud-tts-row">
-                  <div style={{ position: 'relative', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                    <textarea className="hud-tts-text-input" style={{ flex: 1 }} placeholder="اكتب نصًا لتحويله إلى كلام حقيقي، أو انقر 🎤 للتحدث..." value={ttsText} onChange={(e) => setTtsText(e.target.value)} disabled={isGeneratingSpeech} rows={2} />
-                    {voiceMode.isSupported && (
+
+                {/* ─── 2. إملاء بالصوت ─── */}
+                {voiceMode.isSupported && (
+                  <>
+                    <div className="hud-section-heading">🎤 إملاء بالصوت</div>
+                    <div className="hud-dictation-section">
+                      <p className="hud-section-caption">أملِ نصاً بالعربية — سيُضاف تلقائياً إلى حقل التعليق الصوتي.</p>
                       <button
-                        className={`voice-to-text-btn${voiceMode.isListening ? ' voice-listening' : ''}`}
+                        className={`voice-to-text-btn hud-dictation-btn${voiceMode.isListening ? ' voice-listening' : ''}`}
                         onClick={voiceMode.startListening}
                         disabled={voiceMode.isListening || isGeneratingSpeech}
                         title={voiceMode.hasPermission === false ? 'إذن الميكروفون مرفوض' : voiceMode.isListening ? 'جارٍ الاستماع…' : 'انقر للإملاء بالعربية'}
                         aria-label={voiceMode.isListening ? 'جارٍ الاستماع' : 'إملاء بالصوت'}
                       >
-                        {voiceMode.isListening ? '🔴' : '🎤'}
+                        {voiceMode.isListening ? '🔴 جارٍ الاستماع…' : '🎤 ابدأ الإملاء بالصوت'}
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  </>
+                )}
+
+                {/* ─── 3. توليد تعليق صوتي ─── */}
+                <div className="hud-section-heading">🗣 توليد تعليق صوتي</div>
+                <div className="hud-tts-row">
+                  <textarea className="hud-tts-text-input" placeholder="اكتب النص المراد تحويله إلى كلام حقيقي…" value={ttsText} onChange={(e) => setTtsText(e.target.value)} disabled={isGeneratingSpeech} rows={2} />
                   <div className="hud-tts-controls">
                     <select className="hud-tts-voice-select" value={ttsPresetVoiceId} onChange={(e) => setTtsPresetVoiceId(e.target.value)} disabled={isGeneratingSpeech} aria-label="الصوت الجاهز">
                       {ELEVENLABS_PRESET_VOICES.map((voice) => (<option key={voice.id} value={voice.id}>{voice.label}</option>))}
@@ -2653,8 +2781,14 @@ export default function RasAmrChamber() {
                   </div>
                   {ttsError && <p className="spatial-current-state narrative-integrity-violation">{ttsError}</p>}
                 </div>
+
+                {/* ─── 4. استخدام صوت مستنسَخ ─── */}
+                {(audioVoiceAssets.length > 0 || clonedVoiceIdentities.length > 0) && (
+                  <div className="hud-section-heading">🔮 استخدام صوت مستنسَخ</div>
+                )}
                 {audioVoiceAssets.length > 0 && (
                   <div className="hud-tts-row">
+                    <p className="hud-section-caption">استنسخ هوية صوتية من تسجيل موجود في الخزانة.</p>
                     <select className="hud-tts-voice-select" value={cloneSourceVoiceId} onChange={(e) => setCloneSourceVoiceId(e.target.value)} disabled={isVoiceCloning} aria-label="الصوت المرجعي للاستنساخ">
                       <option value="">اختر صوتاً مرجعياً للاستنساخ…</option>
                       {audioVoiceAssets.map((voice) => (<option key={voice.assetId} value={voice.assetId}>{String(voice.metadata.voiceDisplayName ?? voice.assetId)}</option>))}
@@ -2672,6 +2806,7 @@ export default function RasAmrChamber() {
                 )}
                 {clonedVoiceIdentities.length > 0 && (
                   <div className="hud-tts-row">
+                    <p className="hud-section-caption">استخدم هوية مستنسَخة لتوليد كلام جديد بصوتها.</p>
                     <select className="hud-tts-voice-select" value={clonedVoiceSynthTarget} onChange={(e) => setClonedVoiceSynthTarget(e.target.value)} disabled={isGeneratingClonedSpeech} aria-label="الهوية الصوتية المستنسَخة">
                       <option value="">اختر هوية صوتية مستنسَخة…</option>
                       {clonedVoiceIdentities.map((v) => (<option key={v.assetId} value={v.assetId}>{String(v.metadata.voiceDisplayName ?? v.assetId)} — هوية مستنسَخة</option>))}
@@ -2683,6 +2818,7 @@ export default function RasAmrChamber() {
                     {clonedSpeechError && <p className="spatial-current-state narrative-integrity-violation">{clonedSpeechError}</p>}
                   </div>
                 )}
+
               </div>
             )}
           </div>
