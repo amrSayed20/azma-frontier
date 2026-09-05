@@ -585,16 +585,23 @@ export default function MakmanAlGhayah() {
 
             {realDistributionResult && renderPollingStatus === 'succeeded' && (
               <div className="cinematic-result-panel neon-border-gold">
-                <p className="project-status">✅ الإنتاج السينمائي مكتمل — ملف MP4 حقيقي مودَع في الخزانة السيادية</p>
-                {renderVaultAssetId && (
-                  <p className="project-status">رقم الأصل: {renderVaultAssetId}</p>
+                <p className="project-status cinematic-result-label">✅ هذا هو الناتج النهائي — ملف MP4 حقيقي مُنتَج بالكامل</p>
+                {renderOperationId && (
+                  // eslint-disable-next-line jsx-a11y/media-has-caption
+                  <video
+                    src={`/renders/${renderOperationId}.mp4`}
+                    controls
+                    playsInline
+                    className="cinematic-final-video"
+                    aria-label="الناتج السينمائي النهائي"
+                  />
                 )}
-                <div className="action-row">
+                <div className="action-row" style={{ marginTop: '12px' }}>
                   <button
-                    className="sovereign-deploy-btn"
+                    className="import-btn"
                     onClick={() => window.location.assign('/sovereign-vault-palace')}
                   >
-                    🎬 انتقل إلى القصر السيادي لمشاهدة الفيلم الحقيقي
+                    📥 عرض في القصر السيادي
                   </button>
                 </div>
               </div>

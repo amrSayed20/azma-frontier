@@ -1609,7 +1609,7 @@ export default function RasAmrChamber() {
     if (!activeAsset?.isRealAsset || !sessionCanvas) return;
 
     setIsRendering(true);
-    setRenderStatus('الصهر الحقيقي جارٍ…');
+    setRenderStatus('تجميع المشهد جارٍ…');
 
     const canvas: SovereignCanvas = { ...sessionCanvas, updatedAt: Date.now() };
 
@@ -1622,7 +1622,7 @@ export default function RasAmrChamber() {
       const result = await response.json();
 
       if (!response.ok) {
-        setRenderStatus(`الصهر لم يكتمل — ${result.message ?? result.error ?? 'ما لم يُتوقَّع'}`);
+        setRenderStatus(`التجميع لم يكتمل — ${result.message ?? result.error ?? 'ما لم يُتوقَّع'}`);
         return;
       }
 
@@ -1630,10 +1630,10 @@ export default function RasAmrChamber() {
       setCompiledGraph(compiled);
       setCompiledForAssetId(activeAsset.id);
       setRenderStatus(
-        `تم الصهر الحقيقي بنجاح — ${compiled.compilationId} — ${compiled.metadata.totalNodes} عنصر مضمَّن`,
+        `تم التجميع بنجاح — ${compiled.compilationId} — ${compiled.metadata.totalNodes} عنصر مضمَّن`,
       );
     } catch {
-      setRenderStatus('بوابة الصهر لا تستجيب.');
+      setRenderStatus('بوابة التجميع لا تستجيب.');
     } finally {
       setIsRendering(false);
     }
@@ -1704,6 +1704,21 @@ export default function RasAmrChamber() {
   // PACKAGE XXXI — 5-tab right workspace: المشهد | التوجيه | الصوت | الترجمة | المشروع
   const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'canvas' | 'direction' | 'audio' | 'subtitles' | 'project'>('canvas');
 
+  // PACKAGE XXXII — PREVIEW PLAYBACK: client-side composition preview loop.
+  // Read-only consumer of existing sessionCanvas + vaultAssets. No new backend.
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playheadSec, setPlayheadSec] = useState(0);
+  const playbackIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const playbackWallStartRef = useRef<number>(0);
+  const totalDurationRef = useRef<number>(0);
+  const layerVideoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
+  const layerAudioElements = useRef<Map<string, HTMLAudioElement>>(new Map());
+  // Stable refs so interval callbacks never read stale render-scope values.
+  const sessionCanvasRef = useRef<SovereignCanvas | null>(null);
+  const vaultAssetsRef = useRef<VaultAsset[]>([]);
+  sessionCanvasRef.current = sessionCanvas;
+  vaultAssetsRef.current = vaultAssets;
+
   const handleSaveCanvas = async () => {
     if (!sessionCanvas) return;
     setIsSavingCanvas(true);
@@ -1760,6 +1775,90 @@ export default function RasAmrChamber() {
     } catch { /* silent */ }
   };
 
+  // PACKAGE XXXII — PREVIEW PLAYBACK handlers.
+  // handleStopPreview: stable via useCallback([]) — only touches refs and stable state setters.
+  const handleStopPreview = useCallback(() => {
+    if (playbackIntervalRef.current) {
+      clearInterval(playbackIntervalRef.current);
+      playbackIntervalRef.current = null;
+    }
+    layerAudioElements.current.forEach((el) => { try { el.pause(); } catch { /* ignore */ } });
+    layerAudioElements.current.clear();
+    layerVideoRefs.current.forEach((el) => { try { el.pause(); } catch { /* ignore */ } });
+    setIsPlaying(false);
+    setPlayheadSec(0);
+  }, []);
+
+  // Stop playback on unmount to prevent orphaned intervals/audio.
+  useEffect(() => () => { handleStopPreview(); }, [handleStopPreview]);
+
+  const handleStartPreview = () => {
+    if (!sessionCanvas) return;
+    handleStopPreview();
+
+    const allNodes = sessionCanvas.tracks.flatMap((t) => t.nodes);
+    const totalDur = Math.max(
+      ...allNodes.map((n) => (n.temporal?.globalStartTimeSeconds ?? 0) + (n.temporal?.playDurationSeconds ?? 5)),
+      5,
+    );
+    totalDurationRef.current = totalDur;
+
+    // Schedule audio nodes: create real HTMLAudioElement from Vault URI,
+    // respect volume/mute directives, start at the node's temporal position.
+    allNodes.forEach((node) => {
+      if (node.isActive === false) return;
+      const vaultAsset = vaultAssets.find((a) => a.assetId === node.assetId);
+      if (!vaultAsset?.secureStorageUri || vaultAsset.capabilityTarget !== CapabilityTarget.AUDIO) return;
+      const startSec = node.temporal?.globalStartTimeSeconds ?? 0;
+      const audioDir = node.customDirectives?.audio as AudioMixingDirective | undefined;
+      const volLinear = audioDir?.isMuted
+        ? 0
+        : Math.max(0, Math.min(1, audioDir?.volumeDb !== undefined
+            ? Math.pow(10, audioDir.volumeDb / 20)
+            : 1));
+      const audioEl = new Audio(vaultAsset.secureStorageUri);
+      audioEl.volume = volLinear;
+      if (node.temporal?.trimStartSeconds !== undefined) audioEl.currentTime = node.temporal.trimStartSeconds;
+      layerAudioElements.current.set(node.nodeId, audioEl);
+      if (startSec <= 0) {
+        audioEl.play().catch(() => { /* autoplay policy — silent */ });
+      } else {
+        setTimeout(() => {
+          if (layerAudioElements.current.has(node.nodeId)) audioEl.play().catch(() => { /* autoplay */ });
+        }, startSec * 1000);
+      }
+    });
+
+    playbackWallStartRef.current = Date.now();
+    setIsPlaying(true);
+    setPlayheadSec(0);
+
+    // 100ms tick: advances playhead, controls video elements via stable refs.
+    playbackIntervalRef.current = setInterval(() => {
+      const currentSec = (Date.now() - playbackWallStartRef.current) / 1000;
+      setPlayheadSec(currentSec);
+
+      const canvas = sessionCanvasRef.current;
+      if (canvas) {
+        canvas.tracks.flatMap((t) => t.nodes).forEach((node) => {
+          if (node.isActive === false) return;
+          const asset = vaultAssetsRef.current.find((a) => a.assetId === node.assetId);
+          if (asset?.capabilityTarget !== CapabilityTarget.MOTION) return;
+          const start = node.temporal?.globalStartTimeSeconds ?? 0;
+          const dur = node.temporal?.playDurationSeconds ?? 5;
+          const inWindow = currentSec >= start && currentSec < start + dur;
+          const videoEl = layerVideoRefs.current.get(node.nodeId);
+          if (videoEl) {
+            if (inWindow && videoEl.paused) videoEl.play().catch(() => { /* autoplay */ });
+            else if (!inWindow && !videoEl.paused) videoEl.pause();
+          }
+        });
+      }
+
+      if (currentSec >= totalDurationRef.current) handleStopPreview();
+    }, 100);
+  };
+
   return (
     <RasAmrExperience>
     <main className={`ras-amr-viewport ${injectionFlash ? 'neon-flash-active' : ''}`}>
@@ -1803,7 +1902,7 @@ export default function RasAmrChamber() {
         <div className="ras-header-status">
           <span className={`strip-pulse${isRendering ? ' strip-pulse-active' : ''}`} aria-hidden="true" />
           <span className="ras-header-render-status">
-            {isRendering ? renderStatus : (compiledGraph && compiledForAssetId === activeAsset?.id ? '✓ مُصهَر' : '◉ جاهز')}
+            {isRendering ? renderStatus : (compiledGraph && compiledForAssetId === activeAsset?.id ? '✓ مُجمَّع' : '◉ جاهز')}
           </span>
         </div>
         <button
@@ -1812,7 +1911,7 @@ export default function RasAmrChamber() {
           disabled={isRendering || !canCompile}
           title={!canCompile ? 'استدعِ أصلاً حقيقياً من الخزانة السيادية أولاً' : undefined}
         >
-          {isRendering ? '⏳ صهر…' : '🎬 صهر نهائي'}
+          {isRendering ? '⏳ تجميع…' : '🎬 تجميع المشهد'}
         </button>
       </header>
 
@@ -1928,6 +2027,10 @@ export default function RasAmrChamber() {
                         : visual.blendMode === 'MULTIPLY' ? 'multiply'
                         : visual.blendMode === 'SCREEN' ? 'screen'
                         : 'overlay';
+                      // During playback, hide layers outside their temporal window.
+                      const nodeStart = node.temporal?.globalStartTimeSeconds ?? 0;
+                      const nodeDur = node.temporal?.playDurationSeconds ?? 5;
+                      const inTemporalWindow = !isPlaying || (playheadSec >= nodeStart && playheadSec < nodeStart + nodeDur);
                       return (
                         <div
                           key={node.nodeId}
@@ -1937,10 +2040,11 @@ export default function RasAmrChamber() {
                             top: `calc(50% + ${spatial.positionY}%)`,
                             left: `calc(50% + ${spatial.positionX}%)`,
                             transform: `translate(-50%, -50%) scale(${spatial.scaleX}, ${spatial.scaleY}) rotate(${spatial.rotationDegrees}deg)`,
-                            opacity: visual.opacity,
+                            opacity: inTemporalWindow ? visual.opacity : 0,
                             zIndex: spatial.zIndex + 1,
                             mixBlendMode: blendMode as React.CSSProperties['mixBlendMode'],
                             cursor: node.isLocked ? 'not-allowed' : 'grab',
+                            transition: isPlaying ? 'opacity 0.08s' : 'none',
                           }}
                           onPointerDown={(e) => handleLayerPointerDown(e, node.nodeId, 'move')}
                           onClick={() => setSelectedNodeId(node.nodeId)}
@@ -1950,7 +2054,14 @@ export default function RasAmrChamber() {
                             <img src={uri} className="layer-asset-img" alt="" draggable={false} />
                           ) : vaultAsset?.capabilityTarget === CapabilityTarget.MOTION && uri ? (
                             // eslint-disable-next-line jsx-a11y/media-has-caption
-                            <video src={uri} className="layer-asset-img" muted playsInline preload="metadata" />
+                            <video
+                              ref={(el) => { if (el) layerVideoRefs.current.set(node.nodeId, el); else layerVideoRefs.current.delete(node.nodeId); }}
+                              src={uri}
+                              className="layer-asset-img"
+                              muted={!isPlaying}
+                              playsInline
+                              preload="metadata"
+                            />
                           ) : (
                             <div className="layer-audio-pill">
                               {vaultAsset?.capabilityTarget === CapabilityTarget.AUDIO ? '🎙' : '◆'}{' '}
@@ -2035,6 +2146,45 @@ export default function RasAmrChamber() {
             </div>
           </div>
 
+          {/* PREVIEW PLAYBACK CONTROLS
+              ▶ تشغيل المعاينة plays the composition in the browser using real Vault URIs
+              and existing temporal directives. NOT the final FFmpeg render.
+              Limitation: browser compositing only — blend modes and color grading
+              appear in the final تجميع المشهد output, not here. */}
+          {sessionCanvas && sessionCanvas.tracks.flatMap(t => t.nodes).length > 0 && (
+            <div className="preview-playback-controls">
+              {!isPlaying ? (
+                <button
+                  className="preview-play-btn"
+                  onClick={handleStartPreview}
+                  aria-label="تشغيل معاينة المشهد"
+                >
+                  ▶ تشغيل المعاينة
+                </button>
+              ) : (
+                <button
+                  className="preview-stop-btn"
+                  onClick={handleStopPreview}
+                  aria-label="إيقاف معاينة المشهد"
+                >
+                  ⏸ إيقاف المعاينة
+                </button>
+              )}
+              {isPlaying && (
+                <span
+                  className="preview-playhead-display"
+                  aria-live="polite"
+                  aria-label={`موضع المعاينة: ${playheadSec.toFixed(1)} ثانية`}
+                >
+                  {playheadSec.toFixed(1)} ث
+                </span>
+              )}
+              <span className="preview-limitation-note">
+                معاينة — الناتج النهائي يُنتَج في مكمن الغاية
+              </span>
+            </div>
+          )}
+
           {/* QUICK ACTIONS — add to scene; render button is in header only */}
           {activeAsset && (
             <div className="creator-quick-actions">
@@ -2053,7 +2203,7 @@ export default function RasAmrChamber() {
                 sessionCanvas.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id) &&
                 !canCompile && (
                 <span className="quick-action-hint">
-                  ✓ الأصل موجود في المشهد — يمكنك إضافة المزيد أو الضغط على «صهر نهائي»
+                  ✓ الأصل موجود في المشهد — يمكنك إضافة المزيد أو الضغط على «تجميع المشهد»
                 </span>
               )}
             </div>
@@ -2545,7 +2695,7 @@ export default function RasAmrChamber() {
           {sessionCanvas && (<span className="spatial-current-state">{sessionCanvas.tracks.flatMap(t => t.nodes).length} طبقة</span>)}
           {compiledGraph && compiledForAssetId === activeAsset?.id && (
             <button className="ras-corridor-btn" onClick={handleForwardToMakman}>
-              ✦ الصهر مكتمل — انتقل إلى مكمن الغاية
+              ✦ التجميع مكتمل — انتقل إلى مكمن الغاية
             </button>
           )}
         </div>
@@ -2562,12 +2712,19 @@ export default function RasAmrChamber() {
               const ticks: number[] = [];
               for (let ti = 0; ti <= totalDuration; ti += tickInterval) ticks.push(ti);
               return (
-                <div className="ras-timeline-ruler">
+                <div className="ras-timeline-ruler" style={{ position: 'relative' }}>
                   {ticks.map((tick) => (
                     <div key={tick} className="ras-ruler-tick" style={{ left: `${(tick / totalDuration) * 100}%` }}>
                       <span>{tick}s</span>
                     </div>
                   ))}
+                  {isPlaying && totalDuration > 0 && (
+                    <div
+                      className="timeline-playhead"
+                      style={{ left: `${Math.min((playheadSec / totalDuration) * 100, 100)}%` }}
+                      aria-hidden="true"
+                    />
+                  )}
                 </div>
               );
             })()}
