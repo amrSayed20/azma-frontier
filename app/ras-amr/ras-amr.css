@@ -2973,3 +2973,187 @@
 }
 :root[data-theme="light"] .preview-play-btn { color: #8a7200; border-color: rgba(180, 140, 0, 0.5); }
 :root[data-theme="light"] .preview-limitation-note { color: rgba(100, 80, 0, 0.5); }
+/* ── PACKAGE XXXII — Save State Indicator ──────────────────────────── */
+
+.canvas-save-state-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.save-state-pill {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  letter-spacing: 0.02em;
+  direction: rtl;
+}
+.save-state-saved    { color: #4caf50; border-color: rgba(76, 175, 80, 0.4); background: rgba(76, 175, 80, 0.08); }
+.save-state-saving   { color: #ffc107; border-color: rgba(255, 193, 7, 0.4); background: rgba(255, 193, 7, 0.08); }
+.save-state-unsaved  { color: #ff9800; border-color: rgba(255, 152, 0, 0.4); background: rgba(255, 152, 0, 0.08); }
+.save-state-restored { color: #2196f3; border-color: rgba(33, 150, 243, 0.4); background: rgba(33, 150, 243, 0.08); }
+.save-state-error    { color: #f44336; border-color: rgba(244, 67, 54, 0.4); background: rgba(244, 67, 54, 0.08); }
+.save-state-null     { opacity: 0; pointer-events: none; }
+
+.canvas-tab-save-btn {
+  margin-right: auto;
+  background: transparent;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 4px;
+  color: var(--neon-gold-dim);
+  font-size: 11px;
+  padding: 2px 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.canvas-tab-save-btn:hover { background: rgba(255, 215, 0, 0.08); border-color: var(--neon-gold-primary); }
+
+/* ── PACKAGE XXXII — Director Apply-All ────────────────────────────── */
+
+.director-apply-all-section {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 215, 0, 0.04);
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  border-radius: 6px;
+}
+
+.director-apply-all-note {
+  font-size: 11px;
+  color: rgba(255, 215, 0, 0.55);
+  margin-bottom: 8px;
+  line-height: 1.5;
+  direction: rtl;
+}
+
+.director-apply-all-btn {
+  width: 100%;
+  font-size: 12px;
+}
+
+/* ── PACKAGE XXXII — Timeline Drag Handles ─────────────────────────── */
+
+.timeline-block-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  background: rgba(255, 215, 0, 0.3);
+  border-radius: 0 3px 3px 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 3;
+}
+.timeline-node-block:hover .timeline-block-resize-handle,
+.timeline-audio-block:hover .timeline-block-resize-handle { opacity: 1; }
+
+.audio-trim-handle-start,
+.audio-trim-handle-end {
+  position: absolute;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 4;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.audio-trim-handle-start {
+  left: 16%;
+  background: rgba(80, 200, 255, 0.5);
+  border-radius: 3px 0 0 3px;
+}
+.audio-trim-handle-end {
+  right: 0;
+  left: auto;
+  width: 6px;
+  background: rgba(80, 200, 255, 0.5);
+  border-radius: 0 3px 3px 0;
+}
+.timeline-audio-block:hover .audio-trim-handle-start,
+.timeline-audio-block:hover .audio-trim-handle-end { opacity: 1; }
+
+/* ── PACKAGE XXXII — Audio Tab Selected Node ───────────────────────── */
+
+.audio-tab-node-selected {
+  border-color: rgba(255, 215, 0, 0.5) !important;
+  background: rgba(255, 215, 0, 0.06) !important;
+}
+
+.audio-tab-selected-indicator {
+  color: var(--neon-gold-primary);
+  font-size: 8px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* ── PACKAGE XXXII — Audio Trim Panel ──────────────────────────────── */
+
+.audio-trim-panel {
+  margin-top: 8px;
+  padding: 10px;
+  background: rgba(80, 200, 255, 0.05);
+  border: 1px solid rgba(80, 200, 255, 0.2);
+  border-radius: 6px;
+  direction: rtl;
+}
+
+.audio-trim-hint {
+  font-size: 11px;
+  color: rgba(180, 220, 255, 0.65);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.audio-trim-inputs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.audio-trim-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  color: rgba(180, 220, 255, 0.8);
+  font-weight: 500;
+}
+
+.audio-trim-input {
+  width: 80px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(80, 200, 255, 0.3);
+  border-radius: 4px;
+  color: rgba(200, 230, 255, 0.9);
+  font-size: 12px;
+  padding: 4px 6px;
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+}
+.audio-trim-input:focus { outline: none; border-color: rgba(80, 200, 255, 0.6); }
+
+.audio-trim-current {
+  font-size: 10px;
+  color: rgba(180, 220, 255, 0.5);
+  margin-top: 6px;
+  direction: rtl;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Light theme overrides ──────────────────────────────────────────── */
+
+:root[data-theme="light"] .canvas-save-state-row { background: rgba(250, 245, 220, 0.3); }
+:root[data-theme="light"] .audio-trim-panel { background: rgba(0, 100, 180, 0.05); border-color: rgba(0, 100, 180, 0.2); }
+:root[data-theme="light"] .audio-trim-label { color: rgba(0, 80, 160, 0.8); }
+:root[data-theme="light"] .audio-trim-input { background: rgba(255,255,255,0.7); border-color: rgba(0,100,180,0.3); color: #004080; }
+:root[data-theme="light"] .director-apply-all-section { background: rgba(180, 140, 0, 0.05); border-color: rgba(180, 140, 0, 0.2); }

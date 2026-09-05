@@ -1713,11 +1713,49 @@ export default function RasAmrChamber() {
   const totalDurationRef = useRef<number>(0);
   const layerVideoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
   const layerAudioElements = useRef<Map<string, HTMLAudioElement>>(new Map());
+  // P0 — AUDIO ORPHAN FIX: every setTimeout ID for delayed audio is stored here
+  // so handleStopPreview can cancel all of them before a new session starts.
+  // Previously these IDs were discarded, allowing old-session callbacks to fire
+  // into new sessions when the same nodeId slot was repopulated.
+  const pendingAudioTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   // Stable refs so interval callbacks never read stale render-scope values.
   const sessionCanvasRef = useRef<SovereignCanvas | null>(null);
   const vaultAssetsRef = useRef<VaultAsset[]>([]);
   sessionCanvasRef.current = sessionCanvas;
   vaultAssetsRef.current = vaultAssets;
+
+  // P0 — WORK CONTINUITY: five-state save machine.
+  // null = no canvas yet; unsaved = mutation pending; saving = write in flight;
+  // saved = confirmed durable; restored = just loaded from DB; error = write failed.
+  const [saveState, setSaveState] = useState<'saved' | 'saving' | 'unsaved' | 'restored' | 'error' | null>(null);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // justRestoredRef prevents the auto-save debounce effect from immediately
+  // overwriting the 'restored' save state with 'unsaved' when the restored
+  // canvas is set as the new sessionCanvas value.
+  const justRestoredRef = useRef<boolean>(false);
+
+  // P1 — TIMELINE DRAG: ref-based drag state (same pattern as compositionRef drag).
+  // type 'move' = reposition globalStartTimeSeconds
+  //      'resize-end' = extend/shrink playDurationSeconds from the right edge
+  //      'trim-start' / 'trim-end' = move the source IN/OUT point
+  const timelineDragRef = useRef<{
+    nodeId: string;
+    pointerId: number;
+    startClientX: number;
+    totalDur: number;
+    containerLeft: number;
+    containerWidth: number;
+    type: 'move' | 'resize-end' | 'trim-start' | 'trim-end';
+    originalValue: number;
+  } | null>(null);
+  // Live display state for the dragged block (no mutation until pointer-up).
+  const [timelineLive, setTimelineLive] = useState<{
+    nodeId: string;
+    globalStartTimeSeconds?: number;
+    playDurationSeconds?: number;
+    trimStartSeconds?: number;
+    trimEndSeconds?: number;
+  } | null>(null);
 
   const handleSaveCanvas = async () => {
     if (!sessionCanvas) return;
@@ -1761,13 +1799,13 @@ export default function RasAmrChamber() {
       if (r.ok) {
         const d = await r.json() as { status: string; canvas: SovereignCanvas };
         if (d.status === 'succeeded') {
+          justRestoredRef.current = true;
           setSessionCanvas(d.canvas);
+          setSaveState('restored');
           setShowCanvasLoad(false);
           const nodeCount = d.canvas.tracks.flatMap(t => t.nodes).length;
           setSaveCanvasStatus(`المشهد مُستعاد ✔ — ${nodeCount} عنصر`);
           setActiveWorkspaceTab('canvas');
-          // FINDING 8: auto-select the first node so the creator immediately
-          // sees which asset is active — the restored composition is not anonymous.
           const firstRestoredNode = d.canvas.tracks.flatMap(t => t.nodes)[0];
           if (firstRestoredNode) setSelectedNodeId(firstRestoredNode.nodeId);
         }
@@ -1775,16 +1813,118 @@ export default function RasAmrChamber() {
     } catch { /* silent */ }
   };
 
+  // P0 — AUTO-RESTORE: on mount, fetch the Creator's latest saved canvas and
+  // restore it silently. The queue is reconstructed from canvas nodes + vaultAssets
+  // in a separate effect that waits for both to be available.
+  const handleAutoRestore = useCallback(async () => {
+    try {
+      const listRes = await fetch('/api/ras-amr/canvas');
+      if (!listRes.ok) return;
+      const listData = await listRes.json() as { status: string; canvases: { canvasId: string; title: string }[] };
+      if (listData.status !== 'succeeded' || listData.canvases.length === 0) return;
+      const latestId = listData.canvases[0].canvasId;
+      const canvasRes = await fetch(`/api/ras-amr/canvas/${encodeURIComponent(latestId)}`);
+      if (!canvasRes.ok) return;
+      const canvasData = await canvasRes.json() as { status: string; canvas: SovereignCanvas };
+      if (canvasData.status !== 'succeeded') return;
+      const restoredCanvas = canvasData.canvas;
+      if (restoredCanvas.tracks.flatMap(t => t.nodes).length === 0) return;
+      justRestoredRef.current = true;
+      setSessionCanvas(restoredCanvas);
+      setSaveState('restored');
+      setSavedCanvases(listData.canvases);
+      const firstNode = restoredCanvas.tracks.flatMap(t => t.nodes)[0];
+      if (firstNode) setSelectedNodeId(firstNode.nodeId);
+    } catch { /* silent — if restore fails, Creator starts fresh */ }
+  }, []);
+
+  // Mount-time auto-restore: runs once after first render.
+  useEffect(() => {
+    handleAutoRestore();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Debounced auto-save: fires 2 s after the last canvas mutation.
+  // Guards: never saves null or empty canvas over a valid saved scene.
+  useEffect(() => {
+    if (!sessionCanvas || sessionCanvas.tracks.flatMap(t => t.nodes).length === 0) return;
+    if (justRestoredRef.current) {
+      // Canvas changed because of a restore — don't start the unsaved-changes
+      // cycle yet; the flag is consumed here and cleared for the next change.
+      justRestoredRef.current = false;
+      return;
+    }
+    setSaveState('unsaved');
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      autoSaveTimerRef.current = null;
+      setSaveState('saving');
+      fetch('/api/ras-amr/canvas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ canvas: { ...sessionCanvas, updatedAt: Date.now() } }),
+      })
+        .then((res) => setSaveState(res.ok ? 'saved' : 'error'))
+        .catch(() => setSaveState('error'));
+    }, 2000);
+    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+  // sessionCanvas identity changes on every mutation — this is correct.
+  }, [sessionCanvas]);
+
+  // Queue reconstruction: when vault assets arrive AND a canvas is already restored
+  // (i.e. queue is still empty), build QueueItems from canvas nodes + Vault data.
+  // Guard: queue.length > 0 means the Creator has already manually populated the
+  // queue this session — we must not overwrite their manually staged assets.
+  useEffect(() => {
+    if (!vaultAssetsLoaded || !sessionCanvas || queue.length > 0) return;
+    const canvasNodes = sessionCanvas.tracks.flatMap((t) => t.nodes);
+    if (canvasNodes.length === 0) return;
+    const reconstructed: QueueItem[] = canvasNodes.flatMap((node) => {
+      const asset = vaultAssets.find((a) => a.assetId === node.assetId);
+      if (!asset) return [];
+      const prompt = typeof asset.metadata.generationPrompt === 'string' ? asset.metadata.generationPrompt : null;
+      return [{
+        id: asset.assetId,
+        title: prompt ? prompt.slice(0, 60) : 'أصل من الخزانة السيادية',
+        type: typeLabelForCapability(asset.capabilityTarget),
+        source: 'الخزانة السيادية',
+        duration: '--:--',
+        status: 'أصل مُستعاد من المشهد المحفوظ',
+        isRealAsset: true,
+        secureStorageUri: asset.secureStorageUri,
+        assetFamily: asset.assetFamily,
+        capabilityOrigin: asset.capabilityTarget,
+      } as QueueItem];
+    });
+    if (reconstructed.length === 0) return;
+    setQueue(reconstructed);
+    // Set activeAsset to whichever asset corresponds to the currently selected node.
+    const targetNode = sessionCanvas.tracks.flatMap((t) => t.nodes)
+      .find((n) => n.nodeId === selectedNodeId) ?? sessionCanvas.tracks.flatMap((t) => t.nodes)[0];
+    const targetItem = targetNode ? reconstructed.find((i) => i.id === targetNode.assetId) : null;
+    setActiveAsset(targetItem ?? reconstructed[0] ?? null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vaultAssetsLoaded, vaultAssets, sessionCanvas]);
+
   // PACKAGE XXXII — PREVIEW PLAYBACK handlers.
   // handleStopPreview: stable via useCallback([]) — only touches refs and stable state setters.
+  // P0 FIX: also cancels all pending audio setTimeout IDs and clears video refs
+  // so a stopped session can never start media in a new preview session.
   const handleStopPreview = useCallback(() => {
     if (playbackIntervalRef.current) {
       clearInterval(playbackIntervalRef.current);
       playbackIntervalRef.current = null;
     }
+    // Cancel every delayed-audio timer before it fires. Without this, a timer
+    // from a stopped session fires into a new session when the same nodeId key
+    // is repopulated, causing the old element to play alongside the new one.
+    pendingAudioTimersRef.current.forEach((id) => clearTimeout(id));
+    pendingAudioTimersRef.current = [];
     layerAudioElements.current.forEach((el) => { try { el.pause(); } catch { /* ignore */ } });
     layerAudioElements.current.clear();
     layerVideoRefs.current.forEach((el) => { try { el.pause(); } catch { /* ignore */ } });
+    // Clear the video ref map — DOM callbacks repopulate it on the next render.
+    layerVideoRefs.current.clear();
     setIsPlaying(false);
     setPlayheadSec(0);
   }, []);
@@ -1794,6 +1934,8 @@ export default function RasAmrChamber() {
 
   const handleStartPreview = () => {
     if (!sessionCanvas) return;
+    // handleStopPreview cancels all pending timers and clears all media refs
+    // before the new session begins — prevents any old-session media surviving.
     handleStopPreview();
 
     const allNodes = sessionCanvas.tracks.flatMap((t) => t.nodes);
@@ -1818,14 +1960,20 @@ export default function RasAmrChamber() {
             : 1));
       const audioEl = new Audio(vaultAsset.secureStorageUri);
       audioEl.volume = volLinear;
+      // trimStartSeconds = absolute IN point in the source file.
       if (node.temporal?.trimStartSeconds !== undefined) audioEl.currentTime = node.temporal.trimStartSeconds;
       layerAudioElements.current.set(node.nodeId, audioEl);
       if (startSec <= 0) {
         audioEl.play().catch(() => { /* autoplay policy — silent */ });
       } else {
-        setTimeout(() => {
+        // P0 FIX: store timer ID so handleStopPreview can cancel it before
+        // it fires. Without storage, a stopped session's timer fires into a
+        // new session when the same nodeId slot is repopulated, causing the
+        // old element to play alongside the new one.
+        const timerId = setTimeout(() => {
           if (layerAudioElements.current.has(node.nodeId)) audioEl.play().catch(() => { /* autoplay */ });
         }, startSec * 1000);
+        pendingAudioTimersRef.current.push(timerId);
       }
     });
 
@@ -1833,7 +1981,7 @@ export default function RasAmrChamber() {
     setIsPlaying(true);
     setPlayheadSec(0);
 
-    // 100ms tick: advances playhead, controls video elements via stable refs.
+    // 100ms tick: advances playhead, controls video and audio elements via stable refs.
     playbackIntervalRef.current = setInterval(() => {
       const currentSec = (Date.now() - playbackWallStartRef.current) / 1000;
       setPlayheadSec(currentSec);
@@ -1853,10 +2001,184 @@ export default function RasAmrChamber() {
             else if (!inWindow && !videoEl.paused) videoEl.pause();
           }
         });
+
+        // P0 FIX: enforce trimEndSeconds for audio.
+        // trimEndSeconds is the absolute OUT point in the source file.
+        // The source position at scene time t is:
+        //   audioEl.currentTime ≈ trimStartSeconds + (t - globalStartTimeSeconds)
+        // We check audioEl.currentTime directly — more accurate than wall-clock math.
+        const nodesToStop: string[] = [];
+        layerAudioElements.current.forEach((audioEl, nodeId) => {
+          const audioNode = canvas.tracks.flatMap((t) => t.nodes).find((n) => n.nodeId === nodeId);
+          const trimEnd = audioNode?.temporal?.trimEndSeconds;
+          if (trimEnd !== undefined && audioEl.currentTime >= trimEnd) {
+            try { audioEl.pause(); } catch { /* ignore */ }
+            nodesToStop.push(nodeId);
+          }
+        });
+        nodesToStop.forEach((id) => layerAudioElements.current.delete(id));
       }
 
       if (currentSec >= totalDurationRef.current) handleStopPreview();
     }, 100);
+  };
+
+  // P0 — FORM SYNC: keep spatial/visual/temporal forms in sync with the
+  // currently selected node. Without this, form values are stale defaults
+  // and pressing Apply overwrites the node's real state with 0/1 defaults.
+  useEffect(() => {
+    if (!selectedNode) {
+      setSpatialForm(DEFAULT_SPATIAL);
+      setVisualForm(DEFAULT_VISUAL);
+      setTemporalForm(DEFAULT_TEMPORAL);
+      return;
+    }
+    if (selectedNode.spatial) setSpatialForm(selectedNode.spatial);
+    const visualDir = selectedNode.customDirectives?.visual as VisualFilterDirective | undefined;
+    setVisualForm(visualDir ?? DEFAULT_VISUAL);
+    if (selectedNode.temporal) setTemporalForm(selectedNode.temporal);
+  // selectedNodeId drives this — selectedNode is derived from it.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNodeId]);
+
+  // P1 — TIMELINE DRAG HANDLERS.
+  // All three use setPointerCapture on the dragged element so the element
+  // keeps receiving pointer events even when the pointer moves outside it.
+  // Mutations only happen on pointer-up; live display is via timelineLive state.
+  const handleTimelinePointerDown = (
+    e: React.PointerEvent<HTMLDivElement>,
+    nodeId: string,
+    type: 'move' | 'resize-end' | 'trim-start' | 'trim-end',
+    totalDur: number,
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    if (!sessionCanvas) return;
+    const node = sessionCanvas.tracks.flatMap((t) => t.nodes).find((n) => n.nodeId === nodeId);
+    if (!node) return;
+    // Compute the coordinate container (the nodes bar this block lives in).
+    const bar = (e.currentTarget.closest('.timeline-nodes-bar') ?? e.currentTarget.parentElement);
+    const barRect = bar?.getBoundingClientRect();
+    const originalValue =
+      type === 'move'        ? (node.temporal?.globalStartTimeSeconds ?? 0)
+      : type === 'resize-end' ? (node.temporal?.playDurationSeconds ?? 5)
+      : type === 'trim-start' ? (node.temporal?.trimStartSeconds ?? 0)
+      :                          (node.temporal?.trimEndSeconds ?? (node.temporal?.playDurationSeconds ?? 5));
+    timelineDragRef.current = {
+      nodeId, pointerId: e.pointerId, startClientX: e.clientX, type, totalDur,
+      containerLeft: barRect?.left ?? 0,
+      containerWidth: barRect?.width ?? 1,
+      originalValue,
+    };
+    setSelectedNodeId(nodeId);
+  };
+
+  const handleTimelinePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = timelineDragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    const deltaX = e.clientX - drag.startClientX;
+    const deltaTime = (deltaX / drag.containerWidth) * drag.totalDur;
+    const newValue =
+      drag.type === 'move'        ? Math.max(0, drag.originalValue + deltaTime)
+      : drag.type === 'resize-end' ? Math.max(0.5, drag.originalValue + deltaTime)
+      : drag.type === 'trim-start' ? Math.max(0, drag.originalValue + deltaTime)
+      :                               Math.max(0, drag.originalValue + deltaTime);
+    const liveKey =
+      drag.type === 'move'        ? 'globalStartTimeSeconds'
+      : drag.type === 'resize-end' ? 'playDurationSeconds'
+      : drag.type === 'trim-start' ? 'trimStartSeconds'
+      :                               'trimEndSeconds';
+    setTimelineLive({ nodeId: drag.nodeId, [liveKey]: newValue });
+  };
+
+  const handleTimelinePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = timelineDragRef.current;
+    timelineDragRef.current = null;
+    setTimelineLive(null);
+    if (!drag || !sessionCanvas) return;
+    const node = sessionCanvas.tracks.flatMap((t) => t.nodes).find((n) => n.nodeId === drag.nodeId);
+    if (!node) return;
+    const track = sessionCanvas.tracks.find((t) => t.nodes.some((n) => n.nodeId === drag.nodeId));
+    if (!track) return;
+    const deltaX = e.clientX - drag.startClientX;
+    const deltaTime = (deltaX / drag.containerWidth) * drag.totalDur;
+    const currentTemporal = node.temporal ?? DEFAULT_TEMPORAL;
+    let temporalUpdates: TemporalDirective;
+    if (drag.type === 'move') {
+      temporalUpdates = { ...currentTemporal, globalStartTimeSeconds: Math.max(0, drag.originalValue + deltaTime) };
+    } else if (drag.type === 'resize-end') {
+      temporalUpdates = { ...currentTemporal, playDurationSeconds: Math.max(0.5, drag.originalValue + deltaTime) };
+    } else if (drag.type === 'trim-start') {
+      temporalUpdates = { ...currentTemporal, trimStartSeconds: Math.max(0, drag.originalValue + deltaTime) };
+    } else {
+      temporalUpdates = { ...currentTemporal, trimEndSeconds: Math.max(0, drag.originalValue + deltaTime) };
+    }
+    const mutation: UpdateNodeTemporalPayload = {
+      actionType: CanvasActionType.UPDATE_TEMPORAL,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: track.trackId,
+      targetNodeId: drag.nodeId,
+      temporalUpdates,
+    };
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
+  };
+
+  // P1 — DIRECTOR APPLY ALL: applies the already-computed multi-node plan
+  // to every node in order. Honest label: this is array-order sequencing,
+  // not natural-language parsing. The intent text feeds the goal signal
+  // but does not directly map action words to node identities.
+  const handleApplyAllDirectorDecisions = () => {
+    if (!sessionCanvas || !multiNodeDirection) return;
+    let canvas = sessionCanvas;
+    multiNodeDirection.nodeDecisions.forEach(({ nodeId, decision }) => {
+      if (!decision.included || !decision.temporal || !decision.structural) return;
+      const track = canvas.tracks.find((t) => t.nodes.some((n) => n.nodeId === nodeId));
+      if (!track) return;
+      canvas = executeDirectionDecision(
+        canvas,
+        {
+          actionType: CanvasActionType.UPDATE_TEMPORAL,
+          canvasId: canvas.canvasId,
+          subscriberTenantId: canvas.subscriberTenantId,
+          targetTrackId: track.trackId,
+          targetNodeId: nodeId,
+          temporalUpdates: decision.temporal,
+        },
+        'automatic-director',
+      );
+      canvas = executeDirectionDecision(
+        canvas,
+        {
+          actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE,
+          canvasId: canvas.canvasId,
+          subscriberTenantId: canvas.subscriberTenantId,
+          targetTrackId: track.trackId,
+          targetNodeId: nodeId,
+          directiveKey: 'structural',
+          directivePayload: decision.structural,
+        },
+        'automatic-director',
+      );
+      if (decision.audio) {
+        canvas = executeDirectionDecision(
+          canvas,
+          {
+            actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE,
+            canvasId: canvas.canvasId,
+            subscriberTenantId: canvas.subscriberTenantId,
+            targetTrackId: track.trackId,
+            targetNodeId: nodeId,
+            directiveKey: 'audio',
+            directivePayload: decision.audio,
+          },
+          'automatic-director',
+        );
+      }
+    });
+    setSessionCanvas(canvas);
+    setDirectorApplyStatus(`✓ الخطة الإخراجية مُطبَّقة على ${multiNodeDirection.nodeDecisions.filter(nd => nd.decision.included).length} عنصر — الترتيب مبني على موضع الطبقات في المشهد`);
   };
 
   return (
@@ -2275,16 +2597,26 @@ export default function RasAmrChamber() {
               <div className="canvas-mode-selector">
                 <div className="canvas-mode-header-row">
                   <div className="neon-tag">نوع الإنتاج</div>
-                  {/* FINDING 8: save button accessible from canvas tab — no need to hunt for project tab */}
+                  {/* Save state indicator — always shows the current persistence state */}
                   {sessionCanvas && (
-                    <button
-                      className={`canvas-tab-save-btn ${isSavingCanvas ? 'rendering' : ''}`}
-                      onClick={() => void handleSaveCanvas()}
-                      disabled={isSavingCanvas}
-                      title="حفظ المشهد الحالي"
-                    >
-                      {isSavingCanvas ? '⏳' : '💾 حفظ'}
-                    </button>
+                    <div className="canvas-save-state-row">
+                      <span className={`save-state-pill save-state-${saveState ?? 'null'}`} aria-live="polite">
+                        {saveState === 'saving'   ? '⏳ يحفظ…'
+                         : saveState === 'saved'   ? '✔ محفوظ'
+                         : saveState === 'unsaved' ? '● غير محفوظ'
+                         : saveState === 'restored' ? '↩ مُستعاد'
+                         : saveState === 'error'   ? '✕ خطأ في الحفظ'
+                         : ''}
+                      </span>
+                      <button
+                        className={`canvas-tab-save-btn ${isSavingCanvas ? 'rendering' : ''}`}
+                        onClick={() => void handleSaveCanvas()}
+                        disabled={isSavingCanvas}
+                        title="حفظ المشهد الآن"
+                      >
+                        {isSavingCanvas ? '⏳' : '💾 حفظ'}
+                      </button>
+                    </div>
                   )}
                 </div>
                 <select
@@ -2543,7 +2875,17 @@ export default function RasAmrChamber() {
                         {directorDecision.creatorGoal.commercialIntent && (<p className="spatial-current-state">النية التجارية: {directorDecision.creatorGoal.commercialIntent.accessPolicy.distributionTier}{directorDecision.creatorGoal.commercialIntent.coverArtUri ? ` — صورة الغلاف متوفرة` : ''}</p>)}
                         <p className="spatial-current-state">الاعتبار الأساسي: {directorDecision.primaryConsideration}</p>
                         <p className="spatial-current-state">{directorDecision.rhythm ? `الإيقاع: ${directorDecision.rhythm}` : 'لا إيقاع مصرَّح به'} — {directorDecision.transitionStrategy ? `الانتقال: ${directorDecision.transitionStrategy}` : 'لا انتقال مصرَّح به'}</p>
-                        <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplyDirectorDecision}>🤖 تطبيق قرار الإخراج الحقيقي</button>
+                        <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplyDirectorDecision}>🤖 تطبيق على الطبقة المحددة</button>
+                        {multiNodeDirection && multiNodeDirection.nodeDecisions.length > 1 && (
+                          <div className="director-apply-all-section">
+                            <p className="director-apply-all-note">
+                              الخطة الإخراجية تُرتِّب {multiNodeDirection.nodeDecisions.length} عناصر تسلسلياً بحسب ترتيبها في المشهد — ليس تفسيراً للنص.
+                            </p>
+                            <button className="action-trigger-btn director-apply-all-btn" onClick={handleApplyAllDirectorDecisions}>
+                              ✦ تطبيق خطة الإخراج على جميع العناصر
+                            </button>
+                          </div>
+                        )}
                         {directorApplyStatus && (
                           <p className={`director-apply-status${directorApplyStatus.startsWith('✓') ? ' director-apply-success' : ' director-apply-error'}`}>{directorApplyStatus}</p>
                         )}
@@ -2553,8 +2895,18 @@ export default function RasAmrChamber() {
                 ) : (
                   <>
                     <p className="spatial-current-state" style={{ padding: '12px' }}>
-                      {sessionCanvas ? 'اختر عقدة من تبويب «المشهد» لاستعراض قرار المخرج الآلي' : 'ابدأ مشهداً لاستخدام المخرج الآلي'}
+                      {sessionCanvas ? 'اختر طبقة من تبويب «المشهد» لاستعراض قرار المخرج الآلي' : 'ابدأ مشهداً لاستخدام المخرج الآلي'}
                     </p>
+                    {sessionCanvas && multiNodeDirection && multiNodeDirection.nodeDecisions.length > 1 && (
+                      <div style={{ padding: '0 12px 8px' }}>
+                        <p className="director-apply-all-note">
+                          يمكن تطبيق الخطة الإخراجية على جميع العناصر مرة واحدة — الترتيب بحسب موضع الطبقات في المشهد.
+                        </p>
+                        <button className="action-trigger-btn director-apply-all-btn" onClick={handleApplyAllDirectorDecisions}>
+                          ✦ تطبيق خطة الإخراج على جميع العناصر
+                        </button>
+                      </div>
+                    )}
                     {directorApplyStatus && (
                       <p className={`director-apply-status${directorApplyStatus.startsWith('✓') ? ' director-apply-success' : ' director-apply-error'}`} style={{ margin: '0 12px 8px' }}>{directorApplyStatus}</p>
                     )}
@@ -2569,66 +2921,144 @@ export default function RasAmrChamber() {
             <div className="ras-tab-content custom-scroll">
               {!sessionCanvas ? (
                 <p className="spatial-current-state" style={{ padding: '12px' }}>ابدأ مشهداً لضبط الصوت</p>
+              ) : sessionCanvas.tracks.flatMap(t => t.nodes).length === 0 ? (
+                <p className="spatial-current-state" style={{ padding: '12px' }}>أضف أصولاً إلى المشهد لضبط الصوت</p>
               ) : (
-                sessionCanvas.tracks.map((track) => (
-                  <div key={track.trackId} className="spatial-adjust-panel">
-                    <header className="panel-header">
-                      <div className="neon-tag">مجموعة</div>
-                      <h2>{track.trackName}</h2>
-                    </header>
-                    <div className="track-volume-row">
-                      <span className="track-volume-label">🔊 {track.trackVolumeDb ?? 0} dB</span>
-                      <input type="range" className="track-volume-slider" min={-60} max={12} step={1} value={track.trackVolumeDb ?? 0} onChange={(e) => handleSetTrackVolume(track.trackId, Number(e.target.value))} aria-label={`مستوى صوت ${track.trackName}`} />
-                    </div>
-                    {track.nodes.length > 0 && (
-                      <div>
-                        {track.nodes.map((node, idx) => {
-                          const nodeAudio = node.customDirectives?.audio as AudioMixingDirective | undefined;
-                          const audioTabAsset = vaultAssets.find((a) => a.assetId === node.assetId);
-                          const isAudioAsset = audioTabAsset?.capabilityTarget === CapabilityTarget.AUDIO;
-                          const assetLabel = (
-                            (audioTabAsset?.metadata?.voiceDisplayName ?? audioTabAsset?.metadata?.generationPrompt ?? '') as string
-                          ).slice(0, 40) || `عقدة ${idx + 1}`;
-                          return (
-                            <div key={node.nodeId} className={`audio-tab-node-row${isAudioAsset ? ' audio-tab-node-audio' : ' audio-tab-node-visual'}`}>
-                              <div className="audio-tab-node-identity">
-                                <span className={`audio-tab-asset-badge${isAudioAsset ? ' badge-audio' : ' badge-visual'}`}>
-                                  {isAudioAsset ? '🎵 أصل صوتي' : '🖼 مشهد مرئي'}
-                                </span>
-                                <span className="audio-tab-asset-name">{assetLabel}</span>
-                              </div>
-                              {/* FINDING 3 — Real audio player: creator can hear the source before
-                                  making temporal decisions. No waveform (not fake). Real <audio> only. */}
-                              {isAudioAsset && audioTabAsset?.secureStorageUri && (
-                                // eslint-disable-next-line jsx-a11y/media-has-caption
-                                <audio
-                                  controls
-                                  src={audioTabAsset.secureStorageUri}
-                                  className="audio-tab-player"
-                                  preload="none"
-                                  aria-label={`تشغيل: ${assetLabel}`}
-                                />
-                              )}
-                              {/* Voice assignment (only meaningful for visual nodes — assigns TTS voice) */}
-                              {!isAudioAsset && (
-                                <div className="ras-audio-node-row">
-                                  <select className="narrative-node-voice" value={(node.customDirectives?.voice as VoiceAssignmentDirective | undefined)?.vaultAssetId ?? ''} onChange={(e) => handleAssignVoiceToNode(node.nodeId, e.target.value)} disabled={node.isLocked || audioVoiceAssets.length === 0} aria-label={`الصوت المُسنَد للعقدة ${idx + 1}`}>
-                                    <option value="">بلا صوت مُسنَد</option>
-                                    {audioVoiceAssets.map((voice) => (<option key={voice.assetId} value={voice.assetId}>{voice.metadata.voiceDisplayName ?? voice.assetId}</option>))}
-                                  </select>
-                                </div>
-                              )}
-                              <div className="ras-audio-node-row" style={{ marginTop: '4px' }}>
-                                <span className="track-volume-label">🔊 {(nodeAudio?.volumeDb ?? 0).toFixed(0)} dB</span>
-                                <input type="range" className="track-volume-slider" min={-60} max={12} step={1} value={nodeAudio?.volumeDb ?? 0} onChange={(e) => handleSetNodeVolume(node.nodeId, Number(e.target.value))} disabled={node.isLocked} aria-label={`مستوى صوت ${assetLabel}`} />
-                              </div>
-                            </div>
-                          );
-                        })}
+                <>
+                  {sessionCanvas.tracks.map((track) => (
+                    <div key={track.trackId} className="spatial-adjust-panel">
+                      <header className="panel-header">
+                        <div className="neon-tag">مجموعة</div>
+                        <h2>{track.trackName}</h2>
+                      </header>
+                      <div className="track-volume-row">
+                        <span className="track-volume-label">🔊 {track.trackVolumeDb ?? 0} dB</span>
+                        <input type="range" className="track-volume-slider" min={-60} max={12} step={1} value={track.trackVolumeDb ?? 0} onChange={(e) => handleSetTrackVolume(track.trackId, Number(e.target.value))} aria-label={`مستوى صوت ${track.trackName}`} />
                       </div>
-                    )}
-                  </div>
-                ))
+                      {track.nodes.length > 0 && (
+                        <div>
+                          {track.nodes.map((node, idx) => {
+                            const nodeAudio = node.customDirectives?.audio as AudioMixingDirective | undefined;
+                            const audioTabAsset = vaultAssets.find((a) => a.assetId === node.assetId);
+                            const isAudioAsset = audioTabAsset?.capabilityTarget === CapabilityTarget.AUDIO;
+                            const isSelected = node.nodeId === selectedNodeId;
+                            const assetLabel = (
+                              (audioTabAsset?.metadata?.voiceDisplayName ?? audioTabAsset?.metadata?.generationPrompt ?? '') as string
+                            ).slice(0, 40) || `طبقة ${idx + 1}`;
+                            return (
+                              <div
+                                key={node.nodeId}
+                                className={`audio-tab-node-row${isAudioAsset ? ' audio-tab-node-audio' : ' audio-tab-node-visual'}${isSelected ? ' audio-tab-node-selected' : ''}`}
+                                onClick={() => setSelectedNodeId(node.nodeId)}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                <div className="audio-tab-node-identity">
+                                  <span className={`audio-tab-asset-badge${isAudioAsset ? ' badge-audio' : ' badge-visual'}`}>
+                                    {isAudioAsset ? '🎵 أصل صوتي' : '🖼 مشهد مرئي'}
+                                  </span>
+                                  <span className="audio-tab-asset-name">{assetLabel}</span>
+                                  {isSelected && <span className="audio-tab-selected-indicator" aria-label="محدد">●</span>}
+                                </div>
+                                {/* Real audio player — hear the source before setting trim */}
+                                {isAudioAsset && audioTabAsset?.secureStorageUri && (
+                                  // eslint-disable-next-line jsx-a11y/media-has-caption
+                                  <audio
+                                    controls
+                                    src={audioTabAsset.secureStorageUri}
+                                    className="audio-tab-player"
+                                    preload="metadata"
+                                    aria-label={`تشغيل: ${assetLabel}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                )}
+                                {/* P0 — AUDIO TRIM: directly in the audio workspace, no tab-switching.
+                                    trimStartSeconds = absolute IN point in the source (seconds).
+                                    trimEndSeconds   = absolute OUT point in the source (seconds).
+                                    Both are non-destructive — only the rendered segment is used.
+                                    Use the native audio player above to discover the file's full duration. */}
+                                {isAudioAsset && isSelected && (
+                                  <div className="audio-trim-panel" onClick={(e) => e.stopPropagation()}>
+                                    <div className="neon-tag" style={{ marginBottom: '6px' }}>تحديد المنطقة المُستخدَمة</div>
+                                    <p className="audio-trim-hint">
+                                      استمع للملف أعلاه، ثم أدخل نقطة البداية ونهاية المقطع المطلوب بالثواني.
+                                    </p>
+                                    <div className="audio-trim-inputs">
+                                      <label className="audio-trim-label">
+                                        من (ث)
+                                        <input
+                                          type="number" min="0" step="0.1"
+                                          className="audio-trim-input"
+                                          value={temporalForm.trimStartSeconds ?? ''}
+                                          placeholder="0"
+                                          onChange={(e) => setTemporalForm((prev) => ({
+                                            ...prev,
+                                            trimStartSeconds: e.target.value === '' ? undefined : Number(e.target.value),
+                                          }))}
+                                        />
+                                      </label>
+                                      <label className="audio-trim-label">
+                                        إلى (ث)
+                                        <input
+                                          type="number" min="0" step="0.1"
+                                          className="audio-trim-input"
+                                          value={temporalForm.trimEndSeconds ?? ''}
+                                          placeholder="نهاية الملف"
+                                          onChange={(e) => setTemporalForm((prev) => ({
+                                            ...prev,
+                                            trimEndSeconds: e.target.value === '' ? undefined : Number(e.target.value),
+                                          }))}
+                                        />
+                                      </label>
+                                      <label className="audio-trim-label">
+                                        بداية في المشهد (ث)
+                                        <input
+                                          type="number" min="0" step="0.1"
+                                          className="audio-trim-input"
+                                          value={temporalForm.globalStartTimeSeconds}
+                                          onChange={(e) => setTemporalForm((prev) => ({
+                                            ...prev,
+                                            globalStartTimeSeconds: Number(e.target.value),
+                                          }))}
+                                        />
+                                      </label>
+                                    </div>
+                                    <button
+                                      className="action-trigger-btn spatial-apply-btn"
+                                      disabled={node.isLocked}
+                                      onClick={() => handleApplyTemporalAdjustment()}
+                                    >
+                                      ✔ تطبيق التوقيت والتقطيع
+                                    </button>
+                                    {node.temporal && (
+                                      <p className="audio-trim-current">
+                                        الحالي: يبدأ في المشهد {node.temporal.globalStartTimeSeconds}ث
+                                        {node.temporal.trimStartSeconds !== undefined ? ` | من ${node.temporal.trimStartSeconds}ث` : ''}
+                                        {node.temporal.trimEndSeconds !== undefined ? ` إلى ${node.temporal.trimEndSeconds}ث` : ''}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                                {/* Voice assignment for visual nodes */}
+                                {!isAudioAsset && (
+                                  <div className="ras-audio-node-row" onClick={(e) => e.stopPropagation()}>
+                                    <select className="narrative-node-voice" value={(node.customDirectives?.voice as VoiceAssignmentDirective | undefined)?.vaultAssetId ?? ''} onChange={(e) => handleAssignVoiceToNode(node.nodeId, e.target.value)} disabled={node.isLocked || audioVoiceAssets.length === 0} aria-label={`الصوت المُسنَد للطبقة ${idx + 1}`}>
+                                      <option value="">بلا صوت مُسنَد</option>
+                                      {audioVoiceAssets.map((voice) => (<option key={voice.assetId} value={voice.assetId}>{voice.metadata.voiceDisplayName ?? voice.assetId}</option>))}
+                                    </select>
+                                  </div>
+                                )}
+                                <div className="ras-audio-node-row" style={{ marginTop: '4px' }} onClick={(e) => e.stopPropagation()}>
+                                  <span className="track-volume-label">🔊 {(nodeAudio?.volumeDb ?? 0).toFixed(0)} dB</span>
+                                  <input type="range" className="track-volume-slider" min={-60} max={12} step={1} value={nodeAudio?.volumeDb ?? 0} onChange={(e) => handleSetNodeVolume(node.nodeId, Number(e.target.value))} disabled={node.isLocked} aria-label={`مستوى صوت ${assetLabel}`} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </>
               )}
             </div>
           )}
@@ -2761,14 +3191,25 @@ export default function RasAmrChamber() {
                               <div
                                 key={node.nodeId}
                                 className={`timeline-node-block${isSelected ? ' node-block-selected' : ''}${isCurrentAsset ? ' node-block-active' : ''}${node.isLocked ? ' node-block-locked' : ''}${node.isActive === false ? ' node-block-inactive' : ''}`}
-                                style={{ left: `${(start / totalDur2) * 100}%`, width: `${Math.max((dur / totalDur2) * 100, 4)}%` }}
-                                onClick={() => { setSelectedNodeId(node.nodeId); setActiveWorkspaceTab('direction'); }}
+                                style={{
+                                  left: `${((timelineLive?.nodeId === node.nodeId && timelineLive.globalStartTimeSeconds !== undefined ? timelineLive.globalStartTimeSeconds : start) / totalDur2) * 100}%`,
+                                  width: `${Math.max(((timelineLive?.nodeId === node.nodeId && timelineLive.playDurationSeconds !== undefined ? timelineLive.playDurationSeconds : dur) / totalDur2) * 100, 4)}%`,
+                                }}
+                                onClick={() => setSelectedNodeId(node.nodeId)}
                                 role="button" tabIndex={0}
-                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setSelectedNodeId(node.nodeId); setActiveWorkspaceTab('direction'); } }}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedNodeId(node.nodeId); }}
+                                onPointerDown={(e) => handleTimelinePointerDown(e, node.nodeId, 'move', totalDur2)}
+                                onPointerMove={handleTimelinePointerMove}
+                                onPointerUp={handleTimelinePointerUp}
                                 aria-label={`مشهد مرئي ${idx + 1}: من ${start}ث إلى ${start + dur}ث`}
                                 aria-pressed={isSelected} title={`${start}s → ${start + dur}s`}
                               >
                                 <span className="timeline-node-index">{roleIcon || (idx + 1)}</span>
+                                <div
+                                  className="timeline-block-resize-handle"
+                                  onPointerDown={(e) => { e.stopPropagation(); handleTimelinePointerDown(e, node.nodeId, 'resize-end', totalDur2); }}
+                                  aria-label="تغيير المدة"
+                                />
                               </div>
                             );
                           })}
@@ -2791,22 +3232,44 @@ export default function RasAmrChamber() {
                               <div
                                 key={node.nodeId}
                                 className={`timeline-audio-block${isSelected ? ' node-block-selected' : ''}${node.isActive === false ? ' node-block-inactive' : ''}`}
-                                style={{ left: `${(start / totalDur2) * 100}%`, width: `${Math.max((dur / totalDur2) * 100, 4)}%` }}
-                                onClick={() => { setSelectedNodeId(node.nodeId); setActiveWorkspaceTab('audio'); }}
+                                style={{
+                                  left: `${((timelineLive?.nodeId === node.nodeId && timelineLive.globalStartTimeSeconds !== undefined ? timelineLive.globalStartTimeSeconds : start) / totalDur2) * 100}%`,
+                                  width: `${Math.max(((timelineLive?.nodeId === node.nodeId && timelineLive.playDurationSeconds !== undefined ? timelineLive.playDurationSeconds : dur) / totalDur2) * 100, 4)}%`,
+                                }}
+                                onClick={() => setSelectedNodeId(node.nodeId)}
                                 role="button" tabIndex={0}
-                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setSelectedNodeId(node.nodeId); setActiveWorkspaceTab('audio'); } }}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedNodeId(node.nodeId); }}
+                                onPointerDown={(e) => handleTimelinePointerDown(e, node.nodeId, 'move', totalDur2)}
+                                onPointerMove={handleTimelinePointerMove}
+                                onPointerUp={handleTimelinePointerUp}
                                 aria-label={`أصل صوتي ${idx + 1}: من ${start}ث إلى ${start + dur}ث`}
                                 aria-pressed={isSelected}
                                 title={`${audioLabel || 'صوت'} — ${start}s → ${start + dur}s${trimStart != null ? ` (قص من ${trimStart}s)` : ''}${trimEnd != null ? ` (إلى ${trimEnd}s)` : ''}`}
                               >
                                 <span className="timeline-node-index">🎵{idx + 1}</span>
-                                {/* Trim markers: inner markers showing the used region */}
+                                {/* Trim region handles — drag to set trimStart/trimEnd without leaving timeline */}
+                                <div
+                                  className="audio-trim-handle-start"
+                                  onPointerDown={(e) => { e.stopPropagation(); handleTimelinePointerDown(e, node.nodeId, 'trim-start', totalDur2); }}
+                                  aria-label="نقطة بداية التقطيع"
+                                />
+                                <div
+                                  className="audio-trim-handle-end"
+                                  onPointerDown={(e) => { e.stopPropagation(); handleTimelinePointerDown(e, node.nodeId, 'trim-end', totalDur2); }}
+                                  aria-label="نقطة نهاية التقطيع"
+                                />
+                                {/* Trim position markers (visual reference) */}
                                 {trimStart != null && dur > 0 && (
                                   <div className="audio-trim-marker audio-trim-start" style={{ left: `${Math.min((trimStart / dur) * 100, 90)}%` }} />
                                 )}
                                 {trimEnd != null && dur > 0 && (
                                   <div className="audio-trim-marker audio-trim-end" style={{ right: `${Math.max(100 - (trimEnd / dur) * 100, 10)}%` }} />
                                 )}
+                                <div
+                                  className="timeline-block-resize-handle"
+                                  onPointerDown={(e) => { e.stopPropagation(); handleTimelinePointerDown(e, node.nodeId, 'resize-end', totalDur2); }}
+                                  aria-label="تغيير مدة الأصل الصوتي"
+                                />
                               </div>
                             );
                           })}
