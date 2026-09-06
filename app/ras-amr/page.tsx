@@ -1130,6 +1130,12 @@ export default function RasAmrChamber() {
   const [isVoiceUpload, setIsVoiceUpload] = useState<boolean>(false);
   const [voiceDisplayNameInput, setVoiceDisplayNameInput] = useState<string>('');
 
+  // PACKAGE XXXIV — Audio Recording: MediaRecorder → VaultAsset (real third audio path).
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [recordingError, setRecordingError] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+
   const handleUploadAsset = async (file: File) => {
     setIsUploadingAsset(true);
     setUploadError(null);
@@ -1154,6 +1160,41 @@ export default function RasAmrChamber() {
     } finally {
       setIsUploadingAsset(false);
       if (uploadFileInputRef.current) uploadFileInputRef.current.value = '';
+    }
+  };
+
+  // PACKAGE XXXIV — real third audio path: browser microphone → VaultAsset.
+  // Uses MediaRecorder (no external dependency). Recorded blob handed directly
+  // to handleUploadAsset, which already knows how to deposit audio into the Vault.
+  const handleStartRecording = async () => {
+    setRecordingError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      recordingChunksRef.current = [];
+      recorder.ondataavailable = (e: BlobEvent) => {
+        if (e.data.size > 0) recordingChunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(recordingChunksRef.current, { type: mimeType });
+        const ext = mimeType.includes('ogg') ? 'ogg' : 'webm';
+        const file = new File([blob], `recording-${Date.now()}.${ext}`, { type: mimeType });
+        void handleUploadAsset(file);
+        setIsRecording(false);
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+    } catch {
+      setRecordingError('لا يمكن الوصول إلى الميكروفون — تحقق من إذن المتصفح.');
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
     }
   };
 
@@ -2230,7 +2271,15 @@ export default function RasAmrChamber() {
       }
     });
     setSessionCanvas(canvas);
-    setDirectorApplyStatus(`✓ الخطة الإخراجية مُطبَّقة على ${multiNodeDirection.nodeDecisions.filter(nd => nd.decision.included).length} عنصر — الترتيب مبني على موضع الطبقات في المشهد`);
+    const sequenceParts = multiNodeDirection.nodeDecisions
+      .filter((nd) => nd.decision.included && nd.decision.temporal)
+      .map((nd, i) => {
+        const t = nd.decision.temporal!;
+        return `${i + 1}: ${t.globalStartTimeSeconds.toFixed(1)}ث–${(t.globalStartTimeSeconds + t.playDurationSeconds).toFixed(1)}ث`;
+      });
+    setDirectorApplyStatus(
+      `✓ تسلسل زمني حقيقي — ${sequenceParts.join(' ← ')} — الترتيب بحسب موضع الطبقات لا تفسير نص`
+    );
   };
 
   return (
@@ -2766,29 +2815,33 @@ export default function RasAmrChamber() {
                                   <button className="layer-z-btn" onClick={() => handleBringForward(node.nodeId)} disabled={node.isLocked} title="إلى الأمام">▲</button>
                                   <button className="layer-z-btn" onClick={() => handleSendBackward(node.nodeId)} disabled={node.isLocked} title="إلى الخلف">▼</button>
                                 </div>
-                                <select className="narrative-node-classification" value={node.directionRole ?? ''} onChange={(e) => handleUpdateNodeClassification(node.nodeId, (e.target.value || undefined) as DirectionNodeRole | undefined)} disabled={node.isLocked} aria-label="التصنيف السينمائي">
-                                  <option value="">غير مصنَّف</option>
-                                  {Object.values(DirectionNodeRole).map((role) => (<option key={role} value={role}>{DIRECTION_NODE_ROLE_LABELS[role]}</option>))}
-                                </select>
-                                <select className="narrative-node-emphasis" value={node.directionEmphasis ?? ''} onChange={(e) => handleSetNodeEmphasis(node.nodeId, (e.target.value || null) as 'primary' | 'supporting' | null)} disabled={node.isLocked} aria-label="الأهمية الإخراجية">
-                                  <option value="">بلا تمييز</option>
-                                  <option value="primary">أساسي</option>
-                                  <option value="supporting">مساند</option>
-                                </select>
-                                <button className="narrative-node-reorder" onClick={() => handleReorderNode(node.nodeId, 'up')} disabled={index === 0 || node.isLocked} aria-label="ترقية الطبقة">↑</button>
-                                <button className="narrative-node-reorder" onClick={() => handleReorderNode(node.nodeId, 'down')} disabled={index === track.nodes.length - 1 || node.isLocked} aria-label="خفض رتبة الطبقة">↓</button>
-                                {sessionCanvas.tracks.length > 1 && (
-                                  <select className="narrative-node-move-group" value={track.trackId} onChange={(e) => handleMoveNodeToGroup(node.nodeId, e.target.value)} disabled={node.isLocked} aria-label="نقل إلى مجموعة">
-                                    {sessionCanvas.tracks.map((dest) => (<option key={dest.trackId} value={dest.trackId}>{dest.trackName}</option>))}
+                                {/* PACKAGE XXXIV — controls strip: all per-node actions wrapped to prevent
+                                    horizontal overflow in the 240px-wide left panel. */}
+                                <div className="layer-controls-strip">
+                                  <select className="narrative-node-classification" value={node.directionRole ?? ''} onChange={(e) => handleUpdateNodeClassification(node.nodeId, (e.target.value || undefined) as DirectionNodeRole | undefined)} disabled={node.isLocked} aria-label="التصنيف السينمائي">
+                                    <option value="">غير مصنَّف</option>
+                                    {Object.values(DirectionNodeRole).map((role) => (<option key={role} value={role}>{DIRECTION_NODE_ROLE_LABELS[role]}</option>))}
                                   </select>
-                                )}
-                                <button className="narrative-node-toggle" onClick={() => handleSetNodeActive(node.nodeId, node.isActive === false)} disabled={node.isLocked} aria-label={node.isActive === false ? 'تفعيل الطبقة' : 'تعطيل الطبقة'}>
-                                  {node.isActive === false ? '✓' : '⏸'}
-                                </button>
-                                <button className="narrative-node-toggle" onClick={() => handleSetNodeLock(node.nodeId, !node.isLocked)} aria-label={node.isLocked ? 'إلغاء القفل' : 'قفل التوجيه'}>
-                                  {node.isLocked ? '🔓' : '🔒'}
-                                </button>
-                                <button className="narrative-node-remove" onClick={() => handleRemoveNodeFromCanvas(node.nodeId)} aria-label="حذف الطبقة من المشهد" title="حذف من المشهد">✕ حذف</button>
+                                  <select className="narrative-node-emphasis" value={node.directionEmphasis ?? ''} onChange={(e) => handleSetNodeEmphasis(node.nodeId, (e.target.value || null) as 'primary' | 'supporting' | null)} disabled={node.isLocked} aria-label="الأهمية الإخراجية">
+                                    <option value="">بلا تمييز</option>
+                                    <option value="primary">أساسي</option>
+                                    <option value="supporting">مساند</option>
+                                  </select>
+                                  <button className="narrative-node-reorder" onClick={() => handleReorderNode(node.nodeId, 'up')} disabled={index === 0 || node.isLocked} aria-label="ترقية الطبقة">↑</button>
+                                  <button className="narrative-node-reorder" onClick={() => handleReorderNode(node.nodeId, 'down')} disabled={index === track.nodes.length - 1 || node.isLocked} aria-label="خفض رتبة الطبقة">↓</button>
+                                  {sessionCanvas.tracks.length > 1 && (
+                                    <select className="narrative-node-move-group" value={track.trackId} onChange={(e) => handleMoveNodeToGroup(node.nodeId, e.target.value)} disabled={node.isLocked} aria-label="نقل إلى مجموعة">
+                                      {sessionCanvas.tracks.map((dest) => (<option key={dest.trackId} value={dest.trackId}>{dest.trackName}</option>))}
+                                    </select>
+                                  )}
+                                  <button className="narrative-node-toggle" onClick={() => handleSetNodeActive(node.nodeId, node.isActive === false)} disabled={node.isLocked} aria-label={node.isActive === false ? 'تفعيل الطبقة' : 'تعطيل الطبقة'} title={node.isActive === false ? 'تفعيل' : 'تعطيل'}>
+                                    {node.isActive === false ? '✓ فعِّل' : '⏸ عطِّل'}
+                                  </button>
+                                  <button className="narrative-node-toggle" onClick={() => handleSetNodeLock(node.nodeId, !node.isLocked)} aria-label={node.isLocked ? 'إلغاء القفل' : 'قفل التوجيه'} title={node.isLocked ? 'فكّ القفل' : 'قفل'}>
+                                    {node.isLocked ? '🔓' : '🔒'}
+                                  </button>
+                                  <button className="narrative-node-remove" onClick={() => handleRemoveNodeFromCanvas(node.nodeId)} aria-label="حذف الطبقة من المشهد" title="حذف من المشهد">✕ حذف</button>
+                                </div>
                               </li>
                               );
                             })}
@@ -3455,7 +3508,24 @@ export default function RasAmrChamber() {
                   </>
                 )}
 
-                {/* ─── 3. توليد تعليق صوتي ─── */}
+                {/* ─── 3. تسجيل صوت حقيقي ─── PACKAGE XXXIV: real third audio path via MediaRecorder */}
+                <div className="hud-section-heading">🔴 تسجيل صوت حقيقي</div>
+                <div className="hud-recording-section">
+                  <p className="hud-section-caption">سجِّل صوتاً من الميكروفون مباشرةً — يُضاف إلى خزانتك كأصل حقيقي قابل للتعيين على الطبقات.</p>
+                  {isRecording ? (
+                    <button className="action-trigger-btn hud-recording-stop-btn" onClick={handleStopRecording}>
+                      ⏹ أوقف التسجيل
+                    </button>
+                  ) : (
+                    <button className="action-trigger-btn hud-recording-start-btn" onClick={() => void handleStartRecording()} disabled={isUploadingAsset}>
+                      🔴 ابدأ التسجيل
+                    </button>
+                  )}
+                  {isRecording && <span className="hud-recording-indicator">● جارٍ التسجيل…</span>}
+                  {recordingError && <p className="spatial-current-state narrative-integrity-violation">{recordingError}</p>}
+                </div>
+
+                {/* ─── 4. توليد تعليق صوتي ─── */}
                 <div className="hud-section-heading">🗣 توليد تعليق صوتي</div>
                 <div className="hud-tts-row">
                   <textarea className="hud-tts-text-input" placeholder="اكتب النص المراد تحويله إلى كلام حقيقي…" value={ttsText} onChange={(e) => setTtsText(e.target.value)} disabled={isGeneratingSpeech} rows={2} />

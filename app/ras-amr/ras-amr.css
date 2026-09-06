@@ -1141,11 +1141,11 @@
 
 .narrative-canvas-node {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
   border: 1px solid var(--neon-gold-dim);
   border-radius: 8px;
-  padding: 2px;
+  padding: 6px;
 }
 
 .narrative-canvas-node.node-selected {
@@ -1161,6 +1161,15 @@
 .narrative-canvas-node.node-locked {
   border-style: dashed;
   border-color: rgba(255, 215, 0, 0.5);
+}
+
+/* PACKAGE XXXIV — controls strip: wraps all per-node action controls so they
+   stack vertically under the identity row rather than overflowing horizontally. */
+.layer-controls-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
 }
 
 .narrative-node-select {
@@ -2910,6 +2919,36 @@
   justify-content: flex-start !important;
   gap: 8px;
   direction: rtl;
+}
+
+/* --- PACKAGE XXXIV: Audio Recording section --- */
+.hud-recording-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 0 10px;
+}
+.hud-recording-start-btn {
+  border-color: rgba(255, 80, 80, 0.5) !important;
+  color: rgba(255, 140, 140, 0.9) !important;
+}
+.hud-recording-start-btn:hover:not(:disabled) {
+  background: rgba(255, 80, 80, 0.08) !important;
+  border-color: rgba(255, 80, 80, 0.8) !important;
+}
+.hud-recording-stop-btn {
+  border-color: rgba(255, 60, 60, 0.9) !important;
+  color: rgba(255, 100, 100, 1.0) !important;
+  animation: recording-pulse 1s ease-in-out infinite alternate;
+}
+.hud-recording-indicator {
+  font-size: 11px;
+  color: rgba(255, 80, 80, 0.9);
+  animation: recording-pulse 1s ease-in-out infinite alternate;
+}
+@keyframes recording-pulse {
+  from { opacity: 0.6; }
+  to { opacity: 1.0; }
 }
 
 /* --- Quick-action hint text --- */
