@@ -1035,6 +1035,18 @@
   cursor: pointer;
   font-family: inherit;
   transition: all 0.3s;
+  /* Sovereign visual identity base — no browser-default white. */
+  background: transparent;
+  border: 1px solid var(--neon-gold-dim);
+  color: var(--neon-gold-primary);
+}
+.action-trigger-btn:hover:not(:disabled) {
+  background: rgba(255, 215, 0, 0.08);
+  border-color: var(--neon-gold-primary);
+}
+.action-trigger-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .render-btn {
@@ -1169,15 +1181,21 @@
 
 .narrative-node-remove {
   background: transparent;
-  border: none;
-  color: var(--text-muted);
+  border: 1px solid rgba(255, 80, 80, 0.3);
+  border-radius: 4px;
+  color: rgba(255, 120, 120, 0.8);
   cursor: pointer;
-  font-size: 12px;
-  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
 }
 
 .narrative-node-remove:hover {
-  color: var(--neon-gold-bright);
+  background: rgba(255, 80, 80, 0.12);
+  border-color: rgba(255, 80, 80, 0.7);
+  color: rgba(255, 120, 120, 1);
 }
 
 /* PACKAGE XXIII — DIRECTION DECISION MODEL: real, visible decision log. */
@@ -2279,10 +2297,14 @@
   overflow: hidden;
   background: #000;
   cursor: crosshair;
-  touch-action: none; /* prevent scroll interference during drag */
+  touch-action: none;
   display: flex;
   align-items: center;
   justify-content: center;
+  /* z-index: 3 renders the composition above .viewport-scanlines (z-index: 2).
+     Without this, the scanlines' position:absolute at z-index 2 overlays all
+     media layers, creating a visible dark-stripe filter over every image/video. */
+  z-index: 3;
 }
 
 /* Drop-zone active state — border flashes gold */
@@ -3157,3 +3179,69 @@
 :root[data-theme="light"] .audio-trim-label { color: rgba(0, 80, 160, 0.8); }
 :root[data-theme="light"] .audio-trim-input { background: rgba(255,255,255,0.7); border-color: rgba(0,100,180,0.3); color: #004080; }
 :root[data-theme="light"] .director-apply-all-section { background: rgba(180, 140, 0, 0.05); border-color: rgba(180, 140, 0, 0.2); }
+
+/* ── PACKAGE XXXIII — Restore Panel: Snapshot vs Draft ─────────────── */
+
+.canvas-load-item-snapshot {
+  border-color: rgba(255, 215, 0, 0.4) !important;
+  background: rgba(255, 215, 0, 0.05) !important;
+}
+
+.canvas-load-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.badge-snapshot {
+  background: rgba(255, 215, 0, 0.15);
+  color: var(--neon-gold-bright);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+}
+
+.badge-draft {
+  background: rgba(100, 200, 255, 0.1);
+  color: rgba(100, 200, 255, 0.9);
+  border: 1px solid rgba(100, 200, 255, 0.25);
+}
+
+/* ── PACKAGE XXXIII — Manual Director Capability Index ─────────────── */
+
+.manual-director-capability-index {
+  margin: 6px 0 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 215, 0, 0.12);
+  background: rgba(0, 0, 0, 0.2);
+  direction: rtl;
+}
+
+.manual-cap-real {
+  font-size: 10px;
+  color: rgba(100, 220, 100, 0.8);
+  margin: 0 0 4px;
+  line-height: 1.5;
+}
+
+.manual-cap-unimplemented {
+  font-size: 10px;
+  color: rgba(255, 120, 80, 0.75);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── PACKAGE XXXIII — Light theme overrides ─────────────────────────── */
+
+:root[data-theme="light"] .manual-director-capability-index {
+  background: rgba(250, 245, 220, 0.3);
+  border-color: rgba(180, 140, 0, 0.15);
+}
+
+:root[data-theme="light"] .canvas-load-item-snapshot {
+  border-color: rgba(180, 140, 0, 0.4) !important;
+  background: rgba(180, 140, 0, 0.05) !important;
+}

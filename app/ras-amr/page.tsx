@@ -525,7 +525,7 @@ const DIRECTION_NODE_ROLE_LABELS: Record<DirectionNodeRole, string> = {
   [DirectionNodeRole.NARRATION]: 'سرد صوتي',
   [DirectionNodeRole.MUSIC_LAYER]: 'طبقة موسيقية',
   [DirectionNodeRole.AMBIENT_LAYER]: 'طبقة صوتية محيطة',
-  [DirectionNodeRole.TRANSITION]: 'انتقال',
+  [DirectionNodeRole.TRANSITION]: 'انتقال (تصنيف فقط — غير مُنفَّذ)',
   [DirectionNodeRole.CLOSING_SHOT]: 'لقطة ختامية',
 };
 
@@ -1203,12 +1203,20 @@ export default function RasAmrChamber() {
           voiceDisplayName,
         }),
       });
-      const result = await response.json();
+      const result = await response.json() as { status: string; reason?: string; message?: string; asset?: VaultAsset; estimatedCost?: number; availableUnits?: number };
       if (!response.ok || result.status !== 'succeeded') {
-        setTtsError(result.message ?? 'الصوت لم يُولَّد.');
+        if (result.reason === 'provider-error') {
+          setTtsError(`خطأ في مزود الصوت (ElevenLabs): ${result.message ?? 'الخدمة غير متاحة.'} — قد يكون رصيد حساب ElevenLabs قد نفد.`);
+        } else if (result.reason === 'payment-required') {
+          setTtsError(`وحدات AZMA غير كافية للتوليد. الرصيد المتاح: ${result.availableUnits ?? '—'} وحدة.`);
+        } else if (result.reason === 'cost-unavailable') {
+          setTtsError('تكلفة التوليد الصوتي غير محددة بعد — التوليد موقوف مؤقتاً.');
+        } else {
+          setTtsError(result.message ?? 'الصوت لم يُولَّد.');
+        }
         return;
       }
-      setVaultAssets((prev) => [...prev, result.asset]);
+      if (result.asset) setVaultAssets((prev) => [...prev, result.asset!]);
       setTtsText('');
       setTtsDisplayNameInput('');
     } catch {
@@ -1762,13 +1770,32 @@ export default function RasAmrChamber() {
     setIsSavingCanvas(true);
     setSaveCanvasStatus(null);
     try {
+      // SNAPSHOT ISOLATION: explicit save creates a NEW canvasId so that
+      // subsequent auto-saves (which use the working canvasId) cannot
+      // overwrite the explicit snapshot. Without this, auto-save fires
+      // 2s after any post-save edit and overwrites the explicit record.
+      const snapshotId = `snap-${sessionCanvas.canvasId.replace(/^snap-[^-]+-/, '').replace(/^draft-/, '')}`;
+      const timestamp = Date.now();
+      const snapshotCanvas = {
+        ...sessionCanvas,
+        canvasId: `snap-${timestamp}-${snapshotId.slice(0, 8)}`,
+        title: sessionCanvas.title || `مشهد ${new Date(timestamp).toLocaleTimeString('ar')}`,
+        updatedAt: timestamp,
+      };
       const r = await fetch('/api/ras-amr/canvas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ canvas: sessionCanvas }),
+        body: JSON.stringify({ canvas: snapshotCanvas }),
       });
       if (r.ok) {
-        setSaveCanvasStatus('المشهد محفوظ ✔');
+        setSaveCanvasStatus('لقطة محفوظة ✔ — الاستعادة ستعيد هذا الإصدار');
+        setSaveState('saved');
+        // Update the list so the new snapshot appears in the restore panel.
+        const listRes = await fetch('/api/ras-amr/canvas');
+        if (listRes.ok) {
+          const ld = await listRes.json() as { status: string; canvases: { canvasId: string; title: string }[] };
+          if (ld.status === 'succeeded') setSavedCanvases(ld.canvases);
+        }
       } else {
         const d = await r.json() as { error?: string };
         setSaveCanvasStatus(d.error ?? 'لم يُحفظ المشهد.');
@@ -1799,14 +1826,21 @@ export default function RasAmrChamber() {
       if (r.ok) {
         const d = await r.json() as { status: string; canvas: SovereignCanvas };
         if (d.status === 'succeeded') {
+          // SNAPSHOT ISOLATION: after restoring any saved canvas (including explicit
+          // snapshots), reset its canvasId to the working-draft key so that subsequent
+          // auto-saves write to the draft and never overwrite the original snapshot.
+          const restoredCanvas: SovereignCanvas = {
+            ...d.canvas,
+            canvasId: 'canvas_narrative_session',
+          };
           justRestoredRef.current = true;
-          setSessionCanvas(d.canvas);
+          setSessionCanvas(restoredCanvas);
           setSaveState('restored');
           setShowCanvasLoad(false);
-          const nodeCount = d.canvas.tracks.flatMap(t => t.nodes).length;
+          const nodeCount = restoredCanvas.tracks.flatMap(t => t.nodes).length;
           setSaveCanvasStatus(`المشهد مُستعاد ✔ — ${nodeCount} عنصر`);
           setActiveWorkspaceTab('canvas');
-          const firstRestoredNode = d.canvas.tracks.flatMap(t => t.nodes)[0];
+          const firstRestoredNode = restoredCanvas.tracks.flatMap(t => t.nodes)[0];
           if (firstRestoredNode) setSelectedNodeId(firstRestoredNode.nodeId);
         }
       }
@@ -1822,12 +1856,18 @@ export default function RasAmrChamber() {
       if (!listRes.ok) return;
       const listData = await listRes.json() as { status: string; canvases: { canvasId: string; title: string }[] };
       if (listData.status !== 'succeeded' || listData.canvases.length === 0) return;
-      const latestId = listData.canvases[0].canvasId;
+      // Prefer the working draft (canvas_narrative_session) over snapshots,
+      // since the draft has the creator's latest unsaved work.
+      const draftEntry = listData.canvases.find(c => c.canvasId === 'canvas_narrative_session');
+      const latestId = (draftEntry ?? listData.canvases[0]).canvasId;
       const canvasRes = await fetch(`/api/ras-amr/canvas/${encodeURIComponent(latestId)}`);
       if (!canvasRes.ok) return;
       const canvasData = await canvasRes.json() as { status: string; canvas: SovereignCanvas };
       if (canvasData.status !== 'succeeded') return;
-      const restoredCanvas = canvasData.canvas;
+      const restoredCanvas = {
+        ...canvasData.canvas,
+        canvasId: 'canvas_narrative_session',
+      };
       if (restoredCanvas.tracks.flatMap(t => t.nodes).length === 0) return;
       justRestoredRef.current = true;
       setSessionCanvas(restoredCanvas);
@@ -1922,9 +1962,13 @@ export default function RasAmrChamber() {
     pendingAudioTimersRef.current = [];
     layerAudioElements.current.forEach((el) => { try { el.pause(); } catch { /* ignore */ } });
     layerAudioElements.current.clear();
-    layerVideoRefs.current.forEach((el) => { try { el.pause(); } catch { /* ignore */ } });
-    // Clear the video ref map — DOM callbacks repopulate it on the next render.
-    layerVideoRefs.current.clear();
+    // Pause videos and rewind to start, but KEEP the DOM refs in the map.
+    // Clearing the map would lose the refs and the next replay cannot control the elements.
+    // The ref callback (el => { if (el) map.set(…) }) only fires on mount/unmount,
+    // NOT on every render, so clearing here breaks subsequent playback sessions.
+    layerVideoRefs.current.forEach((el) => {
+      try { el.pause(); el.currentTime = 0; } catch { /* ignore */ }
+    });
     setIsPlaying(false);
     setPlayheadSec(0);
   }, []);
@@ -1995,10 +2039,18 @@ export default function RasAmrChamber() {
           const start = node.temporal?.globalStartTimeSeconds ?? 0;
           const dur = node.temporal?.playDurationSeconds ?? 5;
           const inWindow = currentSec >= start && currentSec < start + dur;
+          const trimStart = node.temporal?.trimStartSeconds ?? 0;
           const videoEl = layerVideoRefs.current.get(node.nodeId);
           if (videoEl) {
-            if (inWindow && videoEl.paused) videoEl.play().catch(() => { /* autoplay */ });
-            else if (!inWindow && !videoEl.paused) videoEl.pause();
+            if (inWindow && videoEl.paused) {
+              // Seek to the correct source position before playing.
+              // Source position = trimStart + elapsed-time-inside-this-window.
+              const targetSrc = trimStart + (currentSec - start);
+              videoEl.currentTime = Math.max(trimStart, targetSrc);
+              videoEl.play().catch(() => { /* autoplay policy */ });
+            } else if (!inWindow && !videoEl.paused) {
+              videoEl.pause();
+            }
           }
         });
 
@@ -2736,7 +2788,7 @@ export default function RasAmrChamber() {
                                 <button className="narrative-node-toggle" onClick={() => handleSetNodeLock(node.nodeId, !node.isLocked)} aria-label={node.isLocked ? 'إلغاء القفل' : 'قفل التوجيه'}>
                                   {node.isLocked ? '🔓' : '🔒'}
                                 </button>
-                                <button className="narrative-node-remove" onClick={() => handleRemoveNodeFromCanvas(node.nodeId)} aria-label="إزالة من المشهد">✕</button>
+                                <button className="narrative-node-remove" onClick={() => handleRemoveNodeFromCanvas(node.nodeId)} aria-label="حذف الطبقة من المشهد" title="حذف من المشهد">✕ حذف</button>
                               </li>
                               );
                             })}
@@ -2788,6 +2840,12 @@ export default function RasAmrChamber() {
                 )}
               </div>
 
+              {directingMode === 'manual' && (
+                <div className="manual-director-capability-index">
+                  <p className="manual-cap-real">✔ مُنفَّذ حقيقي: الموضع، الحجم، الدوران، التوقيت، التقطيع الزمني، ترتيب الطبقات، مستوى الصوت</p>
+                  <p className="manual-cap-unimplemented">✕ غير مُنفَّذ: تأثيرات الانتقال بين المشاهد، تقسيم المشهد — هذه القدرات غير متاحة في المعاينة أو الصهر النهائي</p>
+                </div>
+              )}
               {directingMode === 'manual' ? (
                 <>
                   {sessionCanvas && selectedNodeId ? (
@@ -3105,9 +3163,18 @@ export default function RasAmrChamber() {
                   <div className="canvas-load-panel">
                     {isLoadingCanvases && <p className="canvas-load-hint">المشاهد المحفوظة تُحمَّل…</p>}
                     {!isLoadingCanvases && savedCanvases.length === 0 && (<p className="canvas-load-hint">لا توجد مشاهد محفوظة بعد.</p>)}
-                    {savedCanvases.map((c, _idx) => (
-                      <button key={c.canvasId} className="canvas-load-item" onClick={() => void handleRestoreCanvas(c.canvasId)}>{c.title || `مشهد محفوظ ${_idx + 1}`}</button>
-                    ))}
+                    {savedCanvases.map((c, _idx) => {
+                      const isDraft = c.canvasId === 'canvas_narrative_session';
+                      const isSnapshot = c.canvasId.startsWith('snap-');
+                      const label = c.title || `مشهد ${_idx + 1}`;
+                      const badge = isDraft ? '● آخر عمل' : isSnapshot ? '✦ لقطة يدوية' : '';
+                      return (
+                        <button key={c.canvasId} className={`canvas-load-item${isSnapshot ? ' canvas-load-item-snapshot' : ''}`} onClick={() => void handleRestoreCanvas(c.canvasId)}>
+                          {badge && <span className={`canvas-load-badge${isSnapshot ? ' badge-snapshot' : ' badge-draft'}`}>{badge}</span>}
+                          {label}
+                        </button>
+                      );
+                    })}
                     <button className="canvas-load-close" onClick={() => setShowCanvasLoad(false)}>✖ إغلاق</button>
                   </div>
                 )}
