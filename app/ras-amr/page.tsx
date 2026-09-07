@@ -464,6 +464,98 @@ const DEFAULT_TEMPORAL: TemporalDirective = {
 
 const BLEND_MODES: VisualFilterDirective['blendMode'][] = ['NORMAL', 'MULTIPLY', 'SCREEN', 'OVERLAY'];
 
+// ============================================================
+// PACKAGE XXXVI — SOVEREIGN STARTING TEMPLATES + CREATION PHASE
+// Pure data. No new engine. Applied as initial temporal defaults
+// only — creator edits override freely. computeTemplateSlotTemporal
+// is a pure function consumed by handleAddActiveAssetToCanvas and
+// handleSurfaceDrop.
+// ============================================================
+
+type CreationPhase = 'intent' | 'workspace';
+
+interface SovereignTemplate {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  directorIntentPreset: string;
+  transitionPreference: 'cut' | 'crossfade';
+  transitionDurationSeconds?: number;
+  slotDurations: number[];
+}
+
+const SOVEREIGN_TEMPLATES: SovereignTemplate[] = [
+  {
+    id: 'product-ad',
+    name: 'إعلان منتج',
+    icon: '📦',
+    description: 'منتج، صورة، صوت — تسلسل إعلاني جاهز للبداية.',
+    directorIntentPreset: 'أبرز المنتج، ابدأ بأفضل صورة، ثم انتقل بين اللقطات بسلاسة، واختتم بعرض واضح.',
+    transitionPreference: 'crossfade',
+    transitionDurationSeconds: 0.9,
+    slotDurations: [4, 4, 4, 12],
+  },
+  {
+    id: 'cinematic-story',
+    name: 'قصة سينمائية',
+    icon: '🎞',
+    description: 'حوّل أصولك إلى فصول متتابعة داخل مشهد واحد.',
+    directorIntentPreset: 'ابنِ قصة مصورة متتابعة، بحيث تصبح كل لقطة فصلاً من المشهد.',
+    transitionPreference: 'crossfade',
+    transitionDurationSeconds: 1.0,
+    slotDurations: [5, 5, 5, 5],
+  },
+  {
+    id: 'short-social',
+    name: 'ريلز / فيديو قصير',
+    icon: '⚡',
+    description: 'إيقاع سريع ولقطات مباشرة لمحتوى قصير.',
+    directorIntentPreset: 'اصنع إيقاعًا سريعًا بقطعات مباشرة ومختصرة.',
+    transitionPreference: 'cut',
+    slotDurations: [3, 3, 3],
+  },
+  {
+    id: 'voice-led',
+    name: 'صوت وتعليق',
+    icon: '🎙',
+    description: 'اجعل الصورة والفيديو يتحركان على إيقاع صوتك أو تعليقك.',
+    directorIntentPreset: 'اجعل الصوت يقود المشهد، مع انتقالات هادئة بين اللقطات.',
+    transitionPreference: 'crossfade',
+    transitionDurationSeconds: 0.5,
+    slotDurations: [8, 8, 16],
+  },
+];
+
+// Computes initial temporal for a template slot based on current canvas state.
+// Creator edits always override these values — templates are starting points only.
+function computeTemplateSlotTemporal(
+  template: SovereignTemplate,
+  nodeIndex: number,
+  canvas: SovereignCanvas,
+): TemporalDirective {
+  const allNodes = canvas.tracks.flatMap((t) => t.nodes);
+  const lastEnd = allNodes.reduce((acc, n) => {
+    const end = (n.temporal?.globalStartTimeSeconds ?? 0) + (n.temporal?.playDurationSeconds ?? 5);
+    return Math.max(acc, end);
+  }, 0);
+  const slotDuration =
+    nodeIndex < template.slotDurations.length
+      ? template.slotDurations[nodeIndex]
+      : DEFAULT_TEMPORAL.playDurationSeconds;
+  const useCrossfade = template.transitionPreference === 'crossfade' && nodeIndex > 0;
+  const fadeDur = template.transitionDurationSeconds ?? 0.5;
+  const startTime = useCrossfade && lastEnd > 0 ? Math.max(0, lastEnd - fadeDur) : lastEnd;
+  return {
+    globalStartTimeSeconds: startTime,
+    playDurationSeconds: slotDuration,
+    trimStartSeconds: undefined,
+    trimEndSeconds: undefined,
+    transitionInType: useCrossfade ? 'crossfade' : 'cut',
+    transitionInDurationSeconds: useCrossfade ? fadeDur : undefined,
+  };
+}
+
 
 const CAPABILITY_LABELS: Record<string, { name: string; icon: string }> = {
   VISUAL:      { name: 'الصور المولَّدة',    icon: '🖼️' },
@@ -563,6 +655,11 @@ export default function RasAmrChamber() {
   // MP4 production path). NARRATIVE and DIRECTORIAL produce real structural
   // graphs — not media files. Changing after the canvas is seeded resets it.
   const [selectedCanvasType, setSelectedCanvasType] = useState<CanvasType>(CanvasType.CINEMATIC);
+  // PACKAGE XXXVI — EXPERIENCE REFORMATION: creation phase + active template.
+  // Pure presentation states — they route into existing capabilities only.
+  const [creationPhase, setCreationPhase] = useState<CreationPhase>('intent');
+  const [selectedTemplate, setSelectedTemplate] = useState<SovereignTemplate | null>(null);
+
   const [isRendering, setIsRendering] = useState<boolean>(false);
   const [renderStatus, setRenderStatus] = useState<string>('في وضع الاستعداد الإخراجي');
   // THE CORRIDOR PACKAGE: the real compiled graph from the most recent
@@ -719,8 +816,9 @@ export default function RasAmrChamber() {
     if (assetId && sessionCanvas) {
       const asset = queue.find((a) => a.id === assetId);
       if (asset?.isRealAsset && asset.assetFamily && asset.capabilityOrigin) {
-        if (sessionCanvas.tracks.flatMap((t) => t.nodes).some((n) => n.assetId === assetId)) return;
+        // PACKAGE XXXV: duplicate guard removed. PACKAGE XXXVI: template temporal.
         setActiveAsset(asset);
+        const dropNodeIndex = sessionCanvas.tracks.flatMap((t) => t.nodes).length;
         const mutation: AddNodePayload = {
           actionType: CanvasActionType.ADD_NODE,
           canvasId: sessionCanvas.canvasId,
@@ -729,7 +827,9 @@ export default function RasAmrChamber() {
           vaultAssetId: asset.id,
           assetFamily: asset.assetFamily,
           capabilityOrigin: asset.capabilityOrigin,
-          initialTemporal: DEFAULT_TEMPORAL,
+          initialTemporal: selectedTemplate
+            ? computeTemplateSlotTemporal(selectedTemplate, dropNodeIndex, sessionCanvas)
+            : DEFAULT_TEMPORAL,
           initialSpatial: DEFAULT_SPATIAL,
         };
         const updatedCanvas = executeDirectionDecision(sessionCanvas, mutation);
@@ -857,6 +957,11 @@ export default function RasAmrChamber() {
     if (!sessionCanvas || !activeAsset?.isRealAsset || !activeAsset.assetFamily || !activeAsset.capabilityOrigin) return;
     // PACKAGE XXXV: duplicate guard removed — same asset may appear in multiple
     // temporal windows (ghost reappears, product cycles, repeated motif).
+    // PACKAGE XXXVI: template-aware initial temporal. Creator edits override freely.
+    const nodeIndex = sessionCanvas.tracks.flatMap((t) => t.nodes).length;
+    const initialTemporal = selectedTemplate
+      ? computeTemplateSlotTemporal(selectedTemplate, nodeIndex, sessionCanvas)
+      : DEFAULT_TEMPORAL;
 
     const mutation: AddNodePayload = {
       actionType: CanvasActionType.ADD_NODE,
@@ -866,7 +971,7 @@ export default function RasAmrChamber() {
       vaultAssetId: activeAsset.id,
       assetFamily: activeAsset.assetFamily,
       capabilityOrigin: activeAsset.capabilityOrigin,
-      initialTemporal: DEFAULT_TEMPORAL,
+      initialTemporal,
       initialSpatial: DEFAULT_SPATIAL,
     };
 
@@ -1880,6 +1985,7 @@ export default function RasAmrChamber() {
           setSessionCanvas(restoredCanvas);
           setSaveState('restored');
           setShowCanvasLoad(false);
+          setCreationPhase('workspace'); // PACKAGE XXXVI: skip intent gate on manual restore
           const nodeCount = restoredCanvas.tracks.flatMap(t => t.nodes).length;
           setSaveCanvasStatus(`المشهد مُستعاد ✔ — ${nodeCount} عنصر`);
           setActiveWorkspaceTab('canvas');
@@ -1916,6 +2022,7 @@ export default function RasAmrChamber() {
       setSessionCanvas(restoredCanvas);
       setSaveState('restored');
       setSavedCanvases(listData.canvases);
+      setCreationPhase('workspace'); // PACKAGE XXXVI: skip intent gate on restore
       const firstNode = restoredCanvas.tracks.flatMap(t => t.nodes)[0];
       if (firstNode) setSelectedNodeId(firstNode.nodeId);
     } catch { /* silent — if restore fails, Creator starts fresh */ }
@@ -2307,6 +2414,35 @@ export default function RasAmrChamber() {
     );
   };
 
+  // PACKAGE XXXVI — EXPERIENCE REFORMATION: seven creation intents → workspace.
+  // No AI call. No credit consumption. Existing capabilities become authoritative.
+  const handleSelectIntent = (intentId: string) => {
+    const template = SOVEREIGN_TEMPLATES.find((t) => t.id === intentId) ?? null;
+    setSelectedTemplate(template);
+    if (template?.directorIntentPreset) {
+      setCreatorDirectorIntent(template.directorIntentPreset);
+    }
+    // Route into smart (automatic) director for template paths and imaginative entry.
+    if (template !== null || intentId === 'auto-direct' || intentId === 'imagine') {
+      setDirectingMode('smart');
+    }
+    // Navigate to the most relevant tab for each intent.
+    if (intentId === 'voice-led') {
+      setActiveWorkspaceTab('audio');
+    } else if (intentId === 'auto-direct' || intentId === 'imagine') {
+      setActiveWorkspaceTab('direction');
+    } else {
+      setActiveWorkspaceTab('canvas');
+    }
+    setCreationPhase('workspace');
+  };
+
+  // Returns to intent screen WITHOUT clearing composition state. Per directive:
+  // the existing canvas content and queue are preserved.
+  const handleChangeIntent = () => {
+    setCreationPhase('intent');
+  };
+
   return (
     <RasAmrExperience>
     <main className={`ras-amr-viewport ${injectionFlash ? 'neon-flash-active' : ''}`}>
@@ -2318,8 +2454,90 @@ export default function RasAmrChamber() {
         <div className="neon-pulse-glow np-right" />
       </div>
 
+      {/* PACKAGE XXXVI — INTENT GATE: shown before workspace when no prior session */}
+      {creationPhase === 'intent' && (
+        <div className="ras-intent-gate">
+          <div className="ras-intent-gate-inner">
+            {/* Minimal header: exit only */}
+            <div className="ras-intent-mini-header">
+              <button className="ras-exit-btn" onClick={() => {
+                try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'ras-amr', constitutionalAct: 'direction' })); } catch { /* ignore */ }
+                goTo('/imperial-foyer');
+              }}>
+                ⮜ قلب الإمبراطورية
+              </button>
+              <span className="ras-header-name">رأس الأمر</span>
+            </div>
+
+            {/* Hero question */}
+            <div className="ras-intent-hero">
+              <h1 className="ras-intent-question">ماذا تريد أن تصنع؟</h1>
+              <p className="ras-intent-sub">اختر نقطة البداية — يمكنك تغيير كل شيء داخل المشهد.</p>
+            </div>
+
+            {/* 7-card grid */}
+            <div className="ras-intent-grid">
+
+              {/* 4 Template cards */}
+              {SOVEREIGN_TEMPLATES.map((tpl) => (
+                <button
+                  key={tpl.id}
+                  className="ras-intent-card ras-intent-template"
+                  onClick={() => handleSelectIntent(tpl.id)}
+                >
+                  <span className="ras-intent-card-icon">{tpl.icon}</span>
+                  <span className="ras-intent-card-name">{tpl.name}</span>
+                  <span className="ras-intent-card-desc">{tpl.description}</span>
+                </button>
+              ))}
+
+              {/* Direct mode: Smart Director */}
+              <button
+                className="ras-intent-card ras-intent-mode"
+                onClick={() => handleSelectIntent('auto-direct')}
+              >
+                <span className="ras-intent-card-icon">✦</span>
+                <span className="ras-intent-card-name">وجّه المخرج</span>
+                <span className="ras-intent-card-desc">أعطِ المخرج الذكي تعليماتك وهو يبني التسلسل.</span>
+              </button>
+
+              {/* Direct mode: Blank canvas */}
+              <button
+                className="ras-intent-card ras-intent-mode"
+                onClick={() => handleSelectIntent('blank')}
+              >
+                <span className="ras-intent-card-icon">◻</span>
+                <span className="ras-intent-card-name">لوحة فارغة</span>
+                <span className="ras-intent-card-desc">ابدأ من الصفر وتحكم في كل تفصيلة بيدك.</span>
+              </button>
+
+              {/* Direct mode: Voice-led */}
+              <button
+                className="ras-intent-card ras-intent-mode"
+                onClick={() => handleSelectIntent('voice-led')}
+              >
+                <span className="ras-intent-card-icon">🎙</span>
+                <span className="ras-intent-card-name">ابدأ بالصوت</span>
+                <span className="ras-intent-card-desc">سجّل صوتك أو أضف تعليقاً وابنِ المشهد حوله.</span>
+              </button>
+
+              {/* Imagine: full-width creative entry */}
+              <button
+                className="ras-intent-card ras-intent-imagine"
+                onClick={() => handleSelectIntent('imagine')}
+              >
+                <span className="ras-intent-card-icon">✦</span>
+                <span className="ras-intent-card-name">اصنع ما تتخيل</span>
+                <span className="ras-intent-card-desc">لا قيود — أخبر المخرج بما تتخيله وابدأ.</span>
+              </button>
+
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* STICKY HEADER — Phase B */}
-      <header className="ras-header">
+      <header className="ras-header" style={{ display: creationPhase === 'intent' ? 'none' : undefined }}>
         <button className="ras-exit-btn" onClick={() => {
           try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'ras-amr', constitutionalAct: 'direction' })); } catch { /* ignore */ }
           goTo('/imperial-foyer');
@@ -2363,8 +2581,21 @@ export default function RasAmrChamber() {
         </button>
       </header>
 
+      {/* PACKAGE XXXVI — TEMPLATE BANNER: visible during workspace when a template is active */}
+      {selectedTemplate && creationPhase === 'workspace' && (
+        <div className="ras-template-banner">
+          <span className="ras-template-banner-label">
+            {selectedTemplate.icon} {selectedTemplate.name}
+          </span>
+          <span className="ras-template-banner-hint">الهيكل جاهز — أضف أصولك.</span>
+          <button className="ras-template-banner-change" onClick={handleChangeIntent}>
+            تغيير البداية
+          </button>
+        </div>
+      )}
+
       {/* BODY GRID — Phase C: Desktop 280px 1fr 300px */}
-      <div className="ras-body-grid">
+      <div className="ras-body-grid" style={{ display: creationPhase === 'intent' ? 'none' : undefined }}>
 
         {/* LEFT: Asset Queue */}
         <aside className="ras-panel-left neon-border">
