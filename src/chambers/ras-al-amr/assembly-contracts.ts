@@ -75,6 +75,17 @@ export interface TemporalDirective {
   playDurationSeconds: number;    // How long the node exists on the timeline
   trimStartSeconds?: number;      // Non-destructive IN point
   trimEndSeconds?: number;        // Non-destructive OUT point
+  /**
+   * PACKAGE XXXV — Cinematic transition at this node's IN point.
+   * 'cut' = immediate appearance (default). 'crossfade' = opacity ramps
+   * from 0→1 over transitionInDurationSeconds while the preceding
+   * adjacent node ramps 1→0 simultaneously — no blank frame.
+   * Only has preview consequence when the preceding track-sibling ends
+   * at or near this node's globalStartTimeSeconds.
+   */
+  transitionInType?: 'cut' | 'crossfade';
+  /** PACKAGE XXXV — duration of the crossfade in seconds. Default 0.5. */
+  transitionInDurationSeconds?: number;
 }
 
 /**

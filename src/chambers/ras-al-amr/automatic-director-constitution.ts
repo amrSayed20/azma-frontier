@@ -669,13 +669,12 @@ export interface NarrativeIntegrityResult {
 export function validateNarrativeIntegrity(nodes: readonly NarrativeIntegrityNode[]): NarrativeIntegrityResult {
   const violations: string[] = [];
 
-  const seenAssetIds = new Set<string>();
+  // PACKAGE XXXV: duplicate-asset check removed. Repeated appearance of the
+  // same asset (e.g. ghost reappears, product cycles) is a valid temporal
+  // storytelling pattern — each node is an independent Direction Node with
+  // its own temporal window. Structural checks (negative times, zero
+  // duration) remain.
   for (const node of nodes) {
-    if (seenAssetIds.has(node.assetId)) {
-      violations.push(`Asset '${node.assetId}' appears in more than one node — the same production asset may not occupy two places in one narrative.`);
-    }
-    seenAssetIds.add(node.assetId);
-
     if (node.temporal) {
       if (node.temporal.globalStartTimeSeconds < 0) {
         violations.push(`Node '${node.nodeId}' has a negative start time — a scene cannot begin before the timeline does.`);

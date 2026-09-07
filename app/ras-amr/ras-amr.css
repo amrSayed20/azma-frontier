@@ -1163,13 +1163,30 @@
   border-color: rgba(255, 215, 0, 0.5);
 }
 
-/* PACKAGE XXXIV — controls strip: wraps all per-node action controls so they
-   stack vertically under the identity row rather than overflowing horizontally. */
+/* PACKAGE XXXV — controls strip: 2-column grid so all per-node controls
+   are always fully visible in the 240px-wide panel with no overflow. */
 .layer-controls-strip {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 4px;
+  width: 100%;
+}
+
+/* Selects and the remove button span both columns */
+.layer-controls-strip .narrative-node-move-group,
+.layer-controls-strip .narrative-node-remove {
+  grid-column: 1 / -1;
+  max-width: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Classification + emphasis selects fill their grid cells */
+.layer-controls-strip .narrative-node-classification,
+.layer-controls-strip .narrative-node-emphasis {
+  max-width: none;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .narrative-node-select {
@@ -1315,7 +1332,18 @@
 .narrative-node-emphasis {
   font-size: 9px;
   padding: 4px 6px;
-  max-width: 100px;
+}
+
+/* PACKAGE XXXV — transition type select in the temporal form */
+.temporal-transition-select {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--neon-gold-dim);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-family: monospace;
+  font-size: 10px;
+  padding: 4px 6px;
+  width: 100%;
 }
 
 .narrative-node-toggle {

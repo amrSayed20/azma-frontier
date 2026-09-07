@@ -459,6 +459,7 @@ const DEFAULT_TEMPORAL: TemporalDirective = {
   playDurationSeconds: 5,
   trimStartSeconds: undefined,
   trimEndSeconds: undefined,
+  transitionInType: 'cut',
 };
 
 const BLEND_MODES: VisualFilterDirective['blendMode'][] = ['NORMAL', 'MULTIPLY', 'SCREEN', 'OVERLAY'];
@@ -854,7 +855,8 @@ export default function RasAmrChamber() {
   // selected, and the duplicate guard now spans every group.
   const handleAddActiveAssetToCanvas = () => {
     if (!sessionCanvas || !activeAsset?.isRealAsset || !activeAsset.assetFamily || !activeAsset.capabilityOrigin) return;
-    if (sessionCanvas.tracks.flatMap((t) => t.nodes).some((n) => n.assetId === activeAsset.id)) return; // already present — no duplicate node for the same asset anywhere in the canvas
+    // PACKAGE XXXV: duplicate guard removed — same asset may appear in multiple
+    // temporal windows (ghost reappears, product cycles, repeated motif).
 
     const mutation: AddNodePayload = {
       actionType: CanvasActionType.ADD_NODE,
@@ -2073,26 +2075,36 @@ export default function RasAmrChamber() {
 
       const canvas = sessionCanvasRef.current;
       if (canvas) {
-        canvas.tracks.flatMap((t) => t.nodes).forEach((node) => {
-          if (node.isActive === false) return;
-          const asset = vaultAssetsRef.current.find((a) => a.assetId === node.assetId);
-          if (asset?.capabilityTarget !== CapabilityTarget.MOTION) return;
-          const start = node.temporal?.globalStartTimeSeconds ?? 0;
-          const dur = node.temporal?.playDurationSeconds ?? 5;
-          const inWindow = currentSec >= start && currentSec < start + dur;
-          const trimStart = node.temporal?.trimStartSeconds ?? 0;
-          const videoEl = layerVideoRefs.current.get(node.nodeId);
-          if (videoEl) {
-            if (inWindow && videoEl.paused) {
-              // Seek to the correct source position before playing.
-              // Source position = trimStart + elapsed-time-inside-this-window.
-              const targetSrc = trimStart + (currentSec - start);
-              videoEl.currentTime = Math.max(trimStart, targetSrc);
-              videoEl.play().catch(() => { /* autoplay policy */ });
-            } else if (!inWindow && !videoEl.paused) {
-              videoEl.pause();
+        // PACKAGE XXXV: track-aware iteration so we can read next-sibling
+        // for crossfade outFade window extension.
+        canvas.tracks.forEach((track) => {
+          track.nodes.forEach((node, nodeIndex) => {
+            if (node.isActive === false) return;
+            const asset = vaultAssetsRef.current.find((a) => a.assetId === node.assetId);
+            if (asset?.capabilityTarget !== CapabilityTarget.MOTION) return;
+            const start = node.temporal?.globalStartTimeSeconds ?? 0;
+            const dur = node.temporal?.playDurationSeconds ?? 5;
+            const fadeDurIn = node.temporal?.transitionInType === 'crossfade'
+              ? (node.temporal?.transitionInDurationSeconds ?? 0.5) : 0;
+            const nextNode = nodeIndex + 1 < track.nodes.length ? track.nodes[nodeIndex + 1] : undefined;
+            const fadeDurOut = nextNode?.temporal?.transitionInType === 'crossfade'
+              ? (nextNode.temporal?.transitionInDurationSeconds ?? 0.5) : 0;
+            const playWindowStart = start - fadeDurIn;
+            const playWindowEnd = start + dur + fadeDurOut;
+            const inWindow = currentSec >= playWindowStart && currentSec < playWindowEnd;
+            const trimStart = node.temporal?.trimStartSeconds ?? 0;
+            const videoEl = layerVideoRefs.current.get(node.nodeId);
+            if (videoEl) {
+              if (inWindow && videoEl.paused) {
+                // Source position = trimStart + elapsed time since play window opened.
+                const elapsed = currentSec - playWindowStart;
+                videoEl.currentTime = Math.max(trimStart, trimStart + elapsed);
+                videoEl.play().catch(() => { /* autoplay policy */ });
+              } else if (!inWindow && !videoEl.paused) {
+                videoEl.pause();
+              }
             }
-          }
+          });
         });
 
         // P0 FIX: enforce trimEndSeconds for audio.
@@ -2225,10 +2237,21 @@ export default function RasAmrChamber() {
   const handleApplyAllDirectorDecisions = () => {
     if (!sessionCanvas || !multiNodeDirection) return;
     let canvas = sessionCanvas;
-    multiNodeDirection.nodeDecisions.forEach(({ nodeId, decision }) => {
+    multiNodeDirection.nodeDecisions.forEach(({ nodeId, decision }, idx) => {
       if (!decision.included || !decision.temporal || !decision.structural) return;
       const track = canvas.tracks.find((t) => t.nodes.some((n) => n.nodeId === nodeId));
       if (!track) return;
+      // PACKAGE XXXV: inject crossfade for non-first nodes when director
+      // recommends SOFT or GRADUAL transitions. First node always cuts in.
+      const wantsCrossfade = idx > 0 && (
+        decision.transitionStrategy === 'SOFT' ||
+        decision.transitionStrategy === 'GRADUAL'
+      );
+      const temporalWithTransition: TemporalDirective = {
+        ...decision.temporal,
+        transitionInType: wantsCrossfade ? 'crossfade' : 'cut',
+        transitionInDurationSeconds: wantsCrossfade ? 0.5 : undefined,
+      };
       canvas = executeDirectionDecision(
         canvas,
         {
@@ -2237,7 +2260,7 @@ export default function RasAmrChamber() {
           subscriberTenantId: canvas.subscriberTenantId,
           targetTrackId: track.trackId,
           targetNodeId: nodeId,
-          temporalUpdates: decision.temporal,
+          temporalUpdates: temporalWithTransition,
         },
         'automatic-director',
       );
@@ -2275,10 +2298,12 @@ export default function RasAmrChamber() {
       .filter((nd) => nd.decision.included && nd.decision.temporal)
       .map((nd, i) => {
         const t = nd.decision.temporal!;
-        return `${i + 1}: ${t.globalStartTimeSeconds.toFixed(1)}ث–${(t.globalStartTimeSeconds + t.playDurationSeconds).toFixed(1)}ث`;
+        const isCrossfade = i > 0 && (nd.decision.transitionStrategy === 'SOFT' || nd.decision.transitionStrategy === 'GRADUAL');
+        const prefix = i === 0 ? '' : isCrossfade ? '≈' : '|';
+        return `${prefix}${i + 1}: ${t.globalStartTimeSeconds.toFixed(1)}–${(t.globalStartTimeSeconds + t.playDurationSeconds).toFixed(1)}ث`;
       });
     setDirectorApplyStatus(
-      `✓ تسلسل زمني حقيقي — ${sequenceParts.join(' ← ')} — الترتيب بحسب موضع الطبقات لا تفسير نص`
+      `✓ تسلسل زمني حقيقي — ${sequenceParts.join(' ')} — الترتيب بحسب موضع الطبقات لا تفسير نص`
     );
   };
 
@@ -2450,10 +2475,31 @@ export default function RasAmrChamber() {
                         : visual.blendMode === 'MULTIPLY' ? 'multiply'
                         : visual.blendMode === 'SCREEN' ? 'screen'
                         : 'overlay';
-                      // During playback, hide layers outside their temporal window.
+                      // PACKAGE XXXV — crossfade: extend visibility windows and
+                      // compute per-frame opacity ramp for smooth dissolves.
                       const nodeStart = node.temporal?.globalStartTimeSeconds ?? 0;
                       const nodeDur = node.temporal?.playDurationSeconds ?? 5;
-                      const inTemporalWindow = !isPlaying || (playheadSec >= nodeStart && playheadSec < nodeStart + nodeDur);
+                      const fadeDurIn = node.temporal?.transitionInType === 'crossfade'
+                        ? (node.temporal?.transitionInDurationSeconds ?? 0.5) : 0;
+                      // Find next sibling to determine outFade duration.
+                      const nodeTrack = sessionCanvas?.tracks.find((t) => t.nodes.some((n) => n.nodeId === node.nodeId));
+                      const nodeIdx = nodeTrack?.nodes.findIndex((n) => n.nodeId === node.nodeId) ?? -1;
+                      const nextSibling = nodeTrack && nodeIdx >= 0 ? nodeTrack.nodes[nodeIdx + 1] : undefined;
+                      const fadeDurOut = nextSibling?.temporal?.transitionInType === 'crossfade'
+                        ? (nextSibling.temporal?.transitionInDurationSeconds ?? 0.5) : 0;
+                      const effectiveStart = nodeStart - fadeDurIn;
+                      const effectiveEnd = nodeStart + nodeDur + fadeDurOut;
+                      const inTemporalWindow = !isPlaying || (playheadSec >= effectiveStart && playheadSec < effectiveEnd);
+                      let computedOpacity = visual.opacity;
+                      if (isPlaying && inTemporalWindow) {
+                        if (fadeDurIn > 0 && playheadSec >= effectiveStart && playheadSec < nodeStart) {
+                          // Fade in: ramp 0→1 over fadeDurIn seconds
+                          computedOpacity = visual.opacity * Math.max(0, (playheadSec - effectiveStart) / fadeDurIn);
+                        } else if (fadeDurOut > 0 && playheadSec >= nodeStart + nodeDur && playheadSec < effectiveEnd) {
+                          // Fade out: ramp 1→0 over fadeDurOut seconds
+                          computedOpacity = visual.opacity * Math.max(0, 1 - (playheadSec - (nodeStart + nodeDur)) / fadeDurOut);
+                        }
+                      }
                       return (
                         <div
                           key={node.nodeId}
@@ -2463,11 +2509,11 @@ export default function RasAmrChamber() {
                             top: `calc(50% + ${spatial.positionY}%)`,
                             left: `calc(50% + ${spatial.positionX}%)`,
                             transform: `translate(-50%, -50%) scale(${spatial.scaleX}, ${spatial.scaleY}) rotate(${spatial.rotationDegrees}deg)`,
-                            opacity: inTemporalWindow ? visual.opacity : 0,
+                            opacity: inTemporalWindow ? computedOpacity : 0,
                             zIndex: spatial.zIndex + 1,
                             mixBlendMode: blendMode as React.CSSProperties['mixBlendMode'],
                             cursor: node.isLocked ? 'not-allowed' : 'grab',
-                            transition: isPlaying ? 'opacity 0.08s' : 'none',
+                            transition: 'none',
                           }}
                           onPointerDown={(e) => handleLayerPointerDown(e, node.nodeId, 'move')}
                           onClick={() => setSelectedNodeId(node.nodeId)}
@@ -2609,10 +2655,11 @@ export default function RasAmrChamber() {
           )}
 
           {/* QUICK ACTIONS — add to scene; render button is in header only */}
+          {/* PACKAGE XXXV: duplicate guard removed — same asset may appear in
+              multiple nodes (repeated appearance is valid direction). */}
           {activeAsset && (
             <div className="creator-quick-actions">
-              {activeAsset.isRealAsset && sessionCanvas &&
-                !sessionCanvas.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id) && (
+              {activeAsset.isRealAsset && sessionCanvas && (
                 <button className="creator-action-btn creator-action-primary" onClick={handleAddActiveAssetToCanvas}>
                   ➕ أضف إلى المشهد
                 </button>
@@ -2621,13 +2668,6 @@ export default function RasAmrChamber() {
                 <button className="creator-action-btn creator-action-primary" onClick={handleAddActiveAssetToCanvas}>
                   ➕ ابدأ المشهد بهذا الأصل
                 </button>
-              )}
-              {activeAsset.isRealAsset && sessionCanvas &&
-                sessionCanvas.tracks.flatMap(t => t.nodes).some(n => n.assetId === activeAsset.id) &&
-                !canCompile && (
-                <span className="quick-action-hint">
-                  ✓ الأصل موجود في المشهد — يمكنك إضافة المزيد أو الضغط على «تجميع المشهد»
-                </span>
               )}
             </div>
           )}
@@ -2771,7 +2811,7 @@ export default function RasAmrChamber() {
                   <button
                     className="action-trigger-btn spatial-apply-btn"
                     onClick={handleAddActiveAssetToCanvas}
-                    disabled={!wantsRealCanvas || (sessionCanvas !== null && sessionCanvas.tracks.flatMap((t) => t.nodes).some((n) => n.assetId === activeAsset?.id))}
+                    disabled={!wantsRealCanvas}
                   >
                     ➕ أضف الأصل النشط إلى المجموعة
                   </button>
@@ -2950,6 +2990,13 @@ export default function RasAmrChamber() {
                           <label>مدة (ث)<input type="number" min="0" value={temporalForm.playDurationSeconds} onChange={(e) => setTemporalForm((prev) => ({ ...prev, playDurationSeconds: Number(e.target.value) }))} /></label>
                           <label>قص-من (ث)<input type="number" min="0" value={temporalForm.trimStartSeconds ?? ''} onChange={(e) => setTemporalForm((prev) => ({ ...prev, trimStartSeconds: e.target.value === '' ? undefined : Number(e.target.value) }))} /></label>
                           <label>قص-إلى (ث)<input type="number" min="0" value={temporalForm.trimEndSeconds ?? ''} onChange={(e) => setTemporalForm((prev) => ({ ...prev, trimEndSeconds: e.target.value === '' ? undefined : Number(e.target.value) }))} /></label>
+                          <label>انتقال<select className="temporal-transition-select" value={temporalForm.transitionInType ?? 'cut'} onChange={(e) => setTemporalForm((prev) => ({ ...prev, transitionInType: e.target.value as 'cut' | 'crossfade' }))}>
+                            <option value="cut">قطع (فوري)</option>
+                            <option value="crossfade">تلاشي متبادل</option>
+                          </select></label>
+                          {temporalForm.transitionInType === 'crossfade' && (
+                            <label>مدة التلاشي (ث)<input type="number" min="0.1" max="5" step="0.1" value={temporalForm.transitionInDurationSeconds ?? 0.5} onChange={(e) => setTemporalForm((prev) => ({ ...prev, transitionInDurationSeconds: Number(e.target.value) }))} /></label>
+                          )}
                         </div>
                         <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplyTemporalAdjustment}>🎙 تطبيق التعديل الزمني الحقيقي</button>
                         {activeTemporalDirective && (
@@ -2957,6 +3004,7 @@ export default function RasAmrChamber() {
                             الحالي: بداية={activeTemporalDirective.globalStartTimeSeconds}ث، مدة={activeTemporalDirective.playDurationSeconds}ث
                             {activeTemporalDirective.trimStartSeconds !== undefined ? `، قص-من=${activeTemporalDirective.trimStartSeconds}ث` : ''}
                             {activeTemporalDirective.trimEndSeconds !== undefined ? `، قص-إلى=${activeTemporalDirective.trimEndSeconds}ث` : ''}
+                            {activeTemporalDirective.transitionInType === 'crossfade' ? `، تلاشي=${activeTemporalDirective.transitionInDurationSeconds ?? 0.5}ث` : ''}
                           </p>
                         )}
                       </div>
