@@ -483,6 +483,7 @@ interface SovereignTemplate {
   transitionPreference: 'cut' | 'crossfade';
   transitionDurationSeconds?: number;
   slotDurations: number[];
+  slotRoles?: string[]; // presentation-only production position labels
 }
 
 const SOVEREIGN_TEMPLATES: SovereignTemplate[] = [
@@ -495,6 +496,7 @@ const SOVEREIGN_TEMPLATES: SovereignTemplate[] = [
     transitionPreference: 'crossfade',
     transitionDurationSeconds: 0.9,
     slotDurations: [4, 4, 4, 12],
+    slotRoles: ['افتتاحية', 'المنتج', 'إبراز', 'الخاتمة'],
   },
   {
     id: 'cinematic-story',
@@ -505,6 +507,7 @@ const SOVEREIGN_TEMPLATES: SovereignTemplate[] = [
     transitionPreference: 'crossfade',
     transitionDurationSeconds: 1.0,
     slotDurations: [5, 5, 5, 5],
+    slotRoles: ['الفصل الأول', 'الفصل الثاني', 'الفصل الثالث', 'الخاتمة'],
   },
   {
     id: 'short-social',
@@ -514,6 +517,7 @@ const SOVEREIGN_TEMPLATES: SovereignTemplate[] = [
     directorIntentPreset: 'اصنع إيقاعًا سريعًا بقطعات مباشرة ومختصرة.',
     transitionPreference: 'cut',
     slotDurations: [3, 3, 3],
+    slotRoles: ['لقطة ١', 'لقطة ٢', 'لقطة ٣'],
   },
   {
     id: 'voice-led',
@@ -524,6 +528,7 @@ const SOVEREIGN_TEMPLATES: SovereignTemplate[] = [
     transitionPreference: 'crossfade',
     transitionDurationSeconds: 0.5,
     slotDurations: [8, 8, 16],
+    slotRoles: ['مقدمة', 'الجسم', 'الخاتمة'],
   },
 ];
 
@@ -3631,6 +3636,47 @@ export default function RasAmrChamber() {
         </aside>
 
       </div>{/* end ras-body-grid */}
+
+      {/* PACKAGE XXXVII — TEMPLATE STRUCTURE VISUALIZER
+          Sits between the body grid and the timeline so the creator sees the
+          production structure immediately — not inside a side panel or behind a toggle.
+          Slots are structural positions, NOT fake assets or placeholder media.
+          Fill state is derived from real canvas node count only. */}
+      {selectedTemplate && creationPhase === 'workspace' && (
+        <div className="ras-template-structure" aria-label={`هيكل قالب ${selectedTemplate.name}`}>
+          <span className="ras-template-structure-label">
+            {selectedTemplate.icon} {selectedTemplate.name}
+          </span>
+          <div className="ras-template-structure-slots">
+            {selectedTemplate.slotDurations.map((dur, i) => {
+              const nodeCount = sessionCanvas?.tracks.flatMap(t => t.nodes).length ?? 0;
+              const isFilled = i < nodeCount;
+              const role = selectedTemplate.slotRoles?.[i] ?? `موضع ${i + 1}`;
+              const isLast = i === selectedTemplate.slotDurations.length - 1;
+              const sep = selectedTemplate.transitionPreference === 'crossfade' ? '≈' : '|';
+              return (
+                <div key={i} className="ras-template-structure-slot-group">
+                  <div className={`ras-template-structure-slot${isFilled ? ' ras-tss-filled' : ''}`}>
+                    <span className="ras-tss-role">{role}</span>
+                    <span className="ras-tss-dur">{dur}ث</span>
+                    {isFilled && <span className="ras-tss-check" aria-label="ممتلئة">✓</span>}
+                  </div>
+                  {!isLast && (
+                    <span className="ras-template-structure-sep" aria-hidden="true">{sep}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <button
+            className="ras-template-structure-remove"
+            onClick={() => setSelectedTemplate(null)}
+            title="إزالة القالب — يبقى المشهد كما هو"
+          >
+            × بدون قالب
+          </button>
+        </div>
+      )}
 
       {/* STICKY TIMELINE — Phase G: 180px, time ruler, role icons, corridor CTA */}
       <div className="ras-timeline">

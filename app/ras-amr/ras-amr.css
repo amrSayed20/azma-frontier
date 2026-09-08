@@ -3918,3 +3918,172 @@
   color: rgba(120, 90, 0, 0.7);
 }
 
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PACKAGE XXXVII — TEMPLATE STRUCTURE VISUALIZER
+   Horizontal band between body-grid and sticky timeline.
+   Slots are structural positions — not fake assets.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.ras-template-structure {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: rgba(10, 8, 4, 0.97);
+  border-top: 1px solid rgba(212, 175, 55, 0.22);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.12);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.2) transparent;
+}
+
+.ras-template-structure-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(212, 175, 55, 0.55);
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-left: 8px; /* visual separator from slots in RTL */
+  border-left: 1px solid rgba(212, 175, 55, 0.15);
+}
+
+.ras-template-structure-slots {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.ras-template-structure-slot-group {
+  display: flex;
+  align-items: center;
+}
+
+/* Individual slot card */
+.ras-template-structure-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 5px 12px;
+  border: 1px dashed rgba(212, 175, 55, 0.25);
+  border-radius: 4px;
+  background: rgba(212, 175, 55, 0.02);
+  min-width: 64px;
+  position: relative;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+/* Filled slot */
+.ras-tss-filled {
+  border-style: solid;
+  border-color: rgba(212, 175, 55, 0.5);
+  background: rgba(212, 175, 55, 0.07);
+}
+
+.ras-tss-role {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.ras-tss-filled .ras-tss-role {
+  color: rgba(212, 175, 55, 0.85);
+}
+
+.ras-tss-dur {
+  font-size: 0.6rem;
+  color: rgba(212, 175, 55, 0.35);
+  font-variant-numeric: tabular-nums;
+}
+
+.ras-tss-filled .ras-tss-dur {
+  color: rgba(212, 175, 55, 0.6);
+}
+
+.ras-tss-check {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 0.5rem;
+  color: #d4af37;
+  opacity: 0.8;
+}
+
+/* Transition separator between slots */
+.ras-template-structure-sep {
+  font-size: 0.65rem;
+  color: rgba(212, 175, 55, 0.3);
+  padding: 0 5px;
+  flex-shrink: 0;
+}
+
+/* Remove-template button */
+.ras-template-structure-remove {
+  background: transparent;
+  border: none;
+  color: rgba(212, 175, 55, 0.25);
+  font-size: 0.65rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: color 0.15s;
+  font-family: inherit;
+}
+
+.ras-template-structure-remove:hover {
+  color: rgba(212, 175, 55, 0.6);
+}
+
+/* Light theme */
+:root[data-theme="light"] .ras-template-structure {
+  background: rgba(250, 248, 240, 0.97);
+  border-top-color: rgba(160, 120, 0, 0.2);
+  border-bottom-color: rgba(160, 120, 0, 0.1);
+}
+
+:root[data-theme="light"] .ras-template-structure-label {
+  color: rgba(120, 90, 0, 0.5);
+  border-left-color: rgba(160, 120, 0, 0.15);
+}
+
+:root[data-theme="light"] .ras-template-structure-slot {
+  border-color: rgba(160, 120, 0, 0.2);
+  background: rgba(160, 120, 0, 0.02);
+}
+
+:root[data-theme="light"] .ras-tss-filled {
+  border-color: rgba(160, 120, 0, 0.45);
+  background: rgba(160, 120, 0, 0.06);
+}
+
+:root[data-theme="light"] .ras-tss-role {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+:root[data-theme="light"] .ras-tss-filled .ras-tss-role {
+  color: rgba(120, 90, 0, 0.85);
+}
+
+:root[data-theme="light"] .ras-tss-dur,
+:root[data-theme="light"] .ras-tss-filled .ras-tss-dur {
+  color: rgba(120, 90, 0, 0.5);
+}
+
+:root[data-theme="light"] .ras-tss-check {
+  color: #7a5c00;
+}
+
+:root[data-theme="light"] .ras-template-structure-sep {
+  color: rgba(120, 90, 0, 0.3);
+}
+
