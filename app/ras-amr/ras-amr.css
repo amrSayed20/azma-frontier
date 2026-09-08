@@ -3479,10 +3479,67 @@
   line-height: 1.5;
 }
 
+/* PACKAGE XXXIX — domain label on Ready Template cards */
+.ras-intent-card-domain {
+  font-size: 0.65rem;
+  color: rgba(212, 175, 55, 0.45);
+  letter-spacing: 0.04em;
+  direction: rtl;
+  line-height: 1;
+  margin-top: -4px;
+}
+:root[data-theme="light"] .ras-intent-card-domain {
+  color: rgba(139, 101, 8, 0.55);
+}
+
 /* Template cards — slightly warmer border */
 .ras-intent-template {
   border-color: rgba(212, 175, 55, 0.25);
 }
+
+/* ── Per-template card accent personalities ────────────────────────────── */
+/* Subtle personality per template while staying inside the sovereign family. */
+
+.ras-tpl-sovereign-product-reveal:hover {
+  border-color: rgba(212, 175, 55, 0.55);
+  box-shadow: 0 0 18px rgba(212, 175, 55, 0.1), inset 0 1px 0 rgba(212, 175, 55, 0.12);
+}
+.ras-tpl-sovereign-product-reveal .ras-intent-card-icon { color: #d4af37; }
+
+.ras-tpl-sovereign-device-showcase:hover {
+  border-color: rgba(100, 180, 220, 0.4);
+  box-shadow: 0 0 18px rgba(80, 160, 210, 0.08), inset 0 1px 0 rgba(100, 180, 220, 0.1);
+}
+.ras-tpl-sovereign-device-showcase .ras-intent-card-icon { color: rgba(140, 200, 230, 0.85); }
+.ras-tpl-sovereign-device-showcase .ras-intent-card-domain { color: rgba(120, 180, 220, 0.5); }
+
+.ras-tpl-sovereign-luxury-editorial:hover {
+  border-color: rgba(212, 175, 55, 0.35);
+  box-shadow: 0 0 24px rgba(212, 175, 55, 0.06), inset 0 1px 0 rgba(212, 175, 55, 0.08);
+}
+.ras-tpl-sovereign-luxury-editorial .ras-intent-card-icon { color: rgba(220, 185, 70, 0.9); }
+.ras-tpl-sovereign-luxury-editorial .ras-intent-card-name { letter-spacing: 0.04em; }
+
+.ras-tpl-sovereign-food-story:hover {
+  border-color: rgba(210, 150, 50, 0.45);
+  box-shadow: 0 0 18px rgba(200, 140, 40, 0.1), inset 0 1px 0 rgba(210, 150, 50, 0.1);
+}
+.ras-tpl-sovereign-food-story .ras-intent-card-icon { color: rgba(220, 155, 50, 0.9); }
+.ras-tpl-sovereign-food-story .ras-intent-card-domain { color: rgba(210, 140, 45, 0.5); }
+
+.ras-tpl-sovereign-spatial-showcase:hover {
+  border-color: rgba(160, 180, 200, 0.3);
+  box-shadow: 0 0 22px rgba(140, 165, 190, 0.07), inset 0 1px 0 rgba(160, 180, 200, 0.08);
+}
+.ras-tpl-sovereign-spatial-showcase .ras-intent-card-icon { color: rgba(170, 190, 210, 0.85); }
+.ras-tpl-sovereign-spatial-showcase .ras-intent-card-domain { color: rgba(150, 175, 200, 0.5); }
+
+.ras-tpl-sovereign-fast-story:hover {
+  border-color: rgba(212, 175, 55, 0.7);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.18), inset 0 1px 0 rgba(212, 175, 55, 0.2);
+}
+.ras-tpl-sovereign-fast-story .ras-intent-card-icon { color: #ffe680; }
+.ras-tpl-sovereign-fast-story .ras-intent-card-name { color: #ffe680; }
 
 /* Direct-mode cards — cooler silver tone */
 .ras-intent-mode {
@@ -4876,6 +4933,212 @@
 }
 .demo-default {
   background: rgba(7,7,7,0.99);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PACKAGE XXXIX — AZMA ORIGINAL READY-TEMPLATE MOTIF CLASSES
+   Six sovereign template demo personalities. Each class is a cinematic
+   stage atmosphere belonging to one of the six templates.
+   All motifs share: black foundation, gold vocabulary, sovereign depth.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Template 01: الظهور السيادي — Sovereign Product Reveal ───────────
+   Character: dramatic spotlight reveal, controlled warmth, premium spatial
+   ───────────────────────────────────────────────────────────────────── */
+.spr-hook {
+  background:
+    radial-gradient(ellipse at 50% 55%, rgba(212,175,55,0.32) 0%, rgba(5,4,2,0.99) 50%),
+    linear-gradient(180deg, rgba(2,2,1,0.99) 0%, rgba(10,8,3,0.99) 100%);
+}
+.spr-reveal {
+  background:
+    radial-gradient(circle at 50% 48%, rgba(212,175,55,0.22) 0%, transparent 42%),
+    radial-gradient(ellipse at 50% 50%, rgba(30,24,8,0.95) 0%, rgba(5,4,2,0.99) 70%);
+}
+.spr-detail {
+  background:
+    radial-gradient(ellipse at 68% 32%, rgba(212,175,55,0.28) 0%, transparent 38%),
+    linear-gradient(50deg, rgba(5,4,2,0.99) 0%, rgba(16,13,4,0.99) 100%);
+}
+.spr-benefit {
+  background:
+    linear-gradient(140deg, rgba(14,11,3,0.99) 0%, rgba(26,20,6,0.98) 55%, rgba(212,175,55,0.08) 100%);
+}
+.spr-hero {
+  background:
+    radial-gradient(ellipse at 50% 46%, rgba(212,175,55,0.38) 0%, rgba(8,6,2,0.99) 52%),
+    linear-gradient(180deg, rgba(2,2,1,0.99) 0%, rgba(5,4,2,0.99) 100%);
+}
+.spr-cta {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(212,175,55,0.20) 0%, rgba(5,4,2,0.99) 58%),
+    linear-gradient(0deg, rgba(212,175,55,0.06) 0%, transparent 35%);
+}
+
+/* ── Template 02: مرآة التقنية — Sovereign Device Showcase ───────────
+   Character: imperial futuristic, cool precision, spatial interface depth
+   ───────────────────────────────────────────────────────────────────── */
+.sds-presence {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(60,110,160,0.12) 0%, rgba(3,4,9,0.99) 60%),
+    linear-gradient(180deg, rgba(3,4,9,0.99) 0%, rgba(5,7,14,0.99) 100%);
+}
+.sds-reveal {
+  background:
+    radial-gradient(circle at 50% 46%, rgba(100,175,220,0.14) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 50%, rgba(20,30,55,0.95) 0%, rgba(3,4,9,0.99) 65%);
+}
+.sds-feature {
+  background:
+    linear-gradient(60deg, rgba(3,4,9,0.99) 0%, rgba(18,28,48,0.98) 50%, rgba(80,140,190,0.08) 100%);
+}
+.sds-detail {
+  background:
+    radial-gradient(ellipse at 72% 28%, rgba(90,160,210,0.16) 0%, transparent 35%),
+    linear-gradient(50deg, rgba(4,5,10,0.99) 0%, rgba(12,18,34,0.99) 100%);
+}
+.sds-dominance {
+  background:
+    radial-gradient(ellipse at 50% 48%, rgba(80,150,200,0.14) 0%, rgba(3,4,9,0.99) 55%),
+    radial-gradient(ellipse at 50% 50%, rgba(212,175,55,0.08) 0%, transparent 60%);
+}
+.sds-cta {
+  background:
+    linear-gradient(180deg, rgba(3,4,9,0.99) 0%, rgba(10,15,28,0.99) 60%, rgba(212,175,55,0.06) 100%);
+}
+
+/* ── Template 03: النسيج الذهبي — Sovereign Luxury Editorial ──────────
+   Character: maximum restraint, whisper of gold, sovereign minimalism
+   ───────────────────────────────────────────────────────────────────── */
+.sle-open {
+  background:
+    linear-gradient(180deg, rgba(6,5,4,0.99) 0%, rgba(12,10,6,0.99) 100%);
+}
+.sle-subject {
+  background:
+    radial-gradient(ellipse at 50% 44%, rgba(212,175,55,0.08) 0%, rgba(8,7,5,0.99) 58%),
+    linear-gradient(180deg, rgba(5,4,3,0.99) 0%, rgba(10,9,6,0.99) 100%);
+}
+.sle-texture {
+  background:
+    radial-gradient(ellipse at 62% 38%, rgba(212,175,55,0.11) 0%, transparent 40%),
+    linear-gradient(135deg, rgba(7,6,4,0.99) 0%, rgba(14,12,8,0.99) 100%);
+}
+.sle-hero {
+  background:
+    radial-gradient(ellipse at 50% 48%, rgba(212,175,55,0.14) 0%, rgba(8,7,5,0.99) 55%),
+    linear-gradient(180deg, rgba(5,4,3,0.99) 0%, rgba(12,10,7,0.99) 100%);
+}
+.sle-brand {
+  background:
+    linear-gradient(160deg, rgba(8,7,5,0.99) 0%, rgba(18,15,9,0.99) 60%, rgba(212,175,55,0.06) 100%);
+}
+.sle-close {
+  background:
+    linear-gradient(180deg, rgba(10,9,6,0.99) 0%, rgba(5,4,3,0.99) 100%);
+}
+
+/* ── Template 04: شهية المشهد — Sovereign Food Story ─────────────────
+   Character: warm amber-gold, appetizing warmth, energetic commercial
+   ───────────────────────────────────────────────────────────────────── */
+.sfs-hook {
+  background:
+    radial-gradient(ellipse at 50% 55%, rgba(200,140,40,0.38) 0%, rgba(6,4,2,0.99) 48%);
+}
+.sfs-hero {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(210,150,45,0.28) 0%, transparent 42%),
+    radial-gradient(ellipse at 50% 50%, rgba(28,18,5,0.97) 0%, rgba(6,4,2,0.99) 68%);
+}
+.sfs-detail {
+  background:
+    radial-gradient(ellipse at 65% 35%, rgba(210,145,40,0.30) 0%, transparent 38%),
+    linear-gradient(50deg, rgba(6,4,2,0.99) 0%, rgba(18,12,4,0.99) 100%);
+}
+.sfs-motion {
+  background:
+    linear-gradient(140deg, rgba(12,8,3,0.99) 0%, rgba(26,17,5,0.98) 55%, rgba(200,140,38,0.10) 100%);
+}
+.sfs-info {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(200,140,40,0.14) 0%, rgba(8,5,2,0.99) 55%),
+    linear-gradient(180deg, rgba(5,3,1,0.99) 0%, rgba(10,7,2,0.99) 100%);
+}
+.sfs-cta {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(212,155,42,0.22) 0%, rgba(6,4,2,0.99) 55%),
+    linear-gradient(0deg, rgba(200,140,38,0.08) 0%, transparent 40%);
+}
+
+/* ── Template 05: بوابة المكان — Sovereign Spatial Showcase ───────────
+   Character: architectural depth, cool stone blue-grey, spatial scale
+   ───────────────────────────────────────────────────────────────────── */
+.sss-establish {
+  background:
+    linear-gradient(180deg, rgba(8,10,14,0.99) 0%, rgba(14,17,22,0.99) 50%, rgba(8,10,14,0.99) 100%);
+}
+.sss-entry {
+  background:
+    radial-gradient(ellipse at 50% 46%, rgba(130,155,180,0.10) 0%, rgba(8,10,14,0.99) 60%),
+    linear-gradient(180deg, rgba(8,10,14,0.99) 0%, rgba(14,17,22,0.99) 100%);
+}
+.sss-progression {
+  background:
+    linear-gradient(130deg, rgba(9,11,15,0.99) 0%, rgba(18,22,28,0.98) 60%, rgba(120,145,170,0.06) 100%);
+}
+.sss-detail {
+  background:
+    radial-gradient(ellipse at 68% 32%, rgba(140,165,190,0.12) 0%, transparent 38%),
+    radial-gradient(ellipse at 32% 68%, rgba(212,175,55,0.08) 0%, transparent 38%),
+    linear-gradient(50deg, rgba(8,10,14,0.99) 0%, rgba(14,18,24,0.99) 100%);
+}
+.sss-hero {
+  background:
+    radial-gradient(ellipse at 50% 48%, rgba(130,155,180,0.14) 0%, rgba(8,10,14,0.99) 55%),
+    radial-gradient(ellipse at 50% 50%, rgba(212,175,55,0.06) 0%, transparent 60%);
+}
+.sss-info {
+  background:
+    linear-gradient(160deg, rgba(9,11,15,0.99) 0%, rgba(15,18,24,0.99) 60%, rgba(212,175,55,0.07) 100%);
+}
+.sss-cta {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(212,175,55,0.12) 0%, rgba(8,10,14,0.99) 58%),
+    linear-gradient(180deg, rgba(8,10,14,0.99) 0%, rgba(12,15,20,0.99) 100%);
+}
+
+/* ── Template 06: النبض السيادي — Sovereign Fast Story ───────────────
+   Character: maximum contrast, sharp cuts, gold at full intensity, high energy
+   ───────────────────────────────────────────────────────────────────── */
+.sfst-hook {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(212,175,55,0.55) 0%, rgba(3,3,3,0.99) 35%);
+}
+.sfst-impact {
+  background:
+    linear-gradient(45deg, rgba(212,175,55,0.45) 0%, rgba(3,3,3,0.99) 30%, rgba(212,175,55,0.10) 100%);
+}
+.sfst-rapid {
+  background:
+    linear-gradient(70deg, rgba(3,3,3,0.99) 0%, rgba(212,175,55,0.30) 40%, rgba(3,3,3,0.99) 100%);
+}
+.sfst-highlight {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(255,230,120,0.40) 0%, rgba(3,3,3,0.99) 42%);
+}
+.sfst-escalate {
+  background:
+    radial-gradient(ellipse at 18% 82%, rgba(212,175,55,0.36) 0%, transparent 40%),
+    radial-gradient(ellipse at 82% 18%, rgba(212,175,55,0.28) 0%, transparent 40%),
+    rgba(3,3,3,0.99);
+}
+.sfst-hero {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255,230,120,0.55) 0%, rgba(212,175,55,0.18) 30%, rgba(3,3,3,0.99) 55%);
+}
+.sfst-beat {
+  background:
+    linear-gradient(180deg, rgba(3,3,3,0.99) 0%, rgba(212,175,55,0.20) 50%, rgba(3,3,3,0.99) 100%);
 }
 
 /* ── Demo idle state ─────────────────────────────────────────────────── */

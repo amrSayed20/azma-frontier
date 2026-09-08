@@ -480,6 +480,7 @@ interface SovereignTemplate {
   id: string;
   name: string;
   icon: string;
+  domain: string;         // creator-facing domain label (e.g. "منتج / تجاري")
   description: string;
   directorIntentPreset: string;
   transitionPreference: 'cut' | 'crossfade';
@@ -489,56 +490,87 @@ interface SovereignTemplate {
   slotCues?: string[];    // per-slot asset guidance (what to put here)
 }
 
-// PACKAGE XXXVIII — SOVEREIGN LIVING TEMPLATES
-// Six-slot production grammar per directive spec. These are starting grammars,
-// not fixed structures — the creator expands/overrides/removes freely.
+// PACKAGE XXXIX — AZMA ORIGINAL READY-TEMPLATE SYSTEM
+// Six sovereign templates reconstructed from creative-grammar principles.
+// These are expandable production grammars, not fixed slot counts.
+// Creator adds/removes/reorders freely — template defines rhythm and identity.
 const SOVEREIGN_TEMPLATES: SovereignTemplate[] = [
   {
-    id: 'product-ad',
-    name: 'إعلان منتج',
-    icon: '📦',
-    description: 'من الخطاف إلى الدعوة — تسلسل إعلاني يُبرز المنتج بإيقاع محترف.',
-    directorIntentPreset: 'ابدأ بخطاف يجذب الانتباه، قدّم المنتج بوضوح، أبرز ميزته الرئيسية، ثم اختتم بدعوة واضحة.',
+    id: 'sovereign-product-reveal',
+    name: 'الظهور السيادي',
+    icon: '◈',
+    domain: 'منتج · تجاري · علامة',
+    description: 'كشف المنتج السينمائي — تجارية راقية وحضور بصري يُثبت المكانة.',
+    directorIntentPreset: 'كشف سيادي للمنتج: ابدأ بخطاف بصري يُعلن الحضور، ثم اكشف المنتج بشكل درامي، أبرز التفصيل والجودة، قدّم الفائدة الحقيقية، ثم اختتم بتقديم بطولي وخاتمة واضحة.',
     transitionPreference: 'crossfade',
     transitionDurationSeconds: 0.8,
-    slotDurations: [3, 5, 4, 4, 4, 10],
-    slotRoles: ['خطاف البداية', 'تقديم المنتج', 'إبراز المنتج', 'الفائدة والاستخدام', 'مشاهد داعمة', 'الخاتمة / الدعوة'],
-    slotCues: ['لحظة أو صورة تجذب الانتباه فوراً', 'صورة المنتج الرئيسية بوضوح', 'لقطة قريبة أو تفصيل بارز', 'لقطة الاستخدام الحقيقي', 'لقطات إضافية تدعم الرسالة', 'صورة ختامية مع رسالة أو دعوة واضحة'],
+    slotDurations: [2, 4, 4, 4, 5, 3],
+    slotRoles: ['الخطاف البصري', 'الكشف عن المنتج', 'التفصيل والقُرب', 'الفائدة والقيمة', 'التقديم البطولي', 'الدعوة للتصرف'],
+    slotCues: ['لحظة بصرية مفاجئة تُعلن حضور المنتج فوراً', 'الكشف الرئيسي عن المنتج بتكوين درامي', 'لقطة قريبة تُظهر الجودة والتفصيل', 'مشهد الاستخدام الحقيقي والقيمة العملية', 'المشهد البطولي الأكثر تأثيراً في المحتوى', 'الصورة الختامية مع رسالة أو دعوة واضحة'],
   },
   {
-    id: 'cinematic-story',
-    name: 'قصة سينمائية',
-    icon: '🎞',
-    description: 'من عالم الافتتاح إلى خاتمة تُحسّ — بناء قصصي متسلسل داخل مشهد واحد.',
-    directorIntentPreset: 'ابنِ قصة مصورة متسلسلة — كل لقطة فصل من المشهد — مع ذروة واضحة وخاتمة تترك أثراً.',
-    transitionPreference: 'crossfade',
-    transitionDurationSeconds: 1.0,
-    slotDurations: [5, 5, 6, 5, 5, 4],
-    slotRoles: ['الافتتاح والعالم', 'التقديم', 'التطور', 'نقطة التحول', 'الذروة', 'الخاتمة'],
-    slotCues: ['لقطة تُعرّف المكان أو الشخصية', 'تقديم العناصر الرئيسية للقصة', 'تطور الحدث أو الصراع', 'اللحظة التي يتغير فيها كل شيء', 'أقوى لحظة أو اكتمال الحدث', 'خاتمة تترك أثراً أو رسالة'],
-  },
-  {
-    id: 'short-social',
-    name: 'ريلز / فيديو قصير',
-    icon: '⚡',
-    description: 'إيقاع سريع وتصاعدي — خطاف، حركة، ذروة، خاتمة.',
-    directorIntentPreset: 'ابدأ بخطاف آسر، صاعِد بسرعة، وانتهِ بلحظة ذروة قصيرة وحادة.',
-    transitionPreference: 'cut',
-    slotDurations: [2, 3, 3, 3, 3, 2],
-    slotRoles: ['الخطاف', 'الحركة', 'المعلومة / الحدث', 'الإبراز', 'التصاعد', 'الخاتمة'],
-    slotCues: ['أول لحظة تمسك العين', 'لقطة حركة أو انتقال', 'المعلومة أو الحدث الجوهري', 'اللقطة الأقوى', 'تصاعد قبل النهاية', 'خاتمة حادة ومختصرة'],
-  },
-  {
-    id: 'voice-led',
-    name: 'الصوت والحكاية',
-    icon: '🎙',
-    description: 'صوتك يقود — الصور والفيديو تستجيب لإيقاعك وتعليقك.',
-    directorIntentPreset: 'اجعل الصوت يقود المشهد — كل لقطة استجابة بصرية لما يُقال — مع انتقالات هادئة وإيقاع سردي.',
+    id: 'sovereign-device-showcase',
+    name: 'مرآة التقنية',
+    icon: '⬡',
+    domain: 'تقنية · تطبيقات · ذكاء اصطناعي',
+    description: 'واجهة المستقبل — عمق مكاني سيادي لعرض الجهاز والمنتج الرقمي.',
+    directorIntentPreset: 'عرض تقني مستقبلي: أثبت الهوية التقنية، اكشف الجهاز أو الواجهة بعمق مكاني، قدّم الميزات والتفصيل بدقة، ثم أنهِ بحضور بصري يُثبت السيطرة.',
     transitionPreference: 'crossfade',
     transitionDurationSeconds: 0.6,
-    slotDurations: [6, 8, 8, 8, 10, 8],
-    slotRoles: ['افتتاح صوتي', 'استجابة بصرية', 'تطور بصري', 'مشاهد داعمة', 'دعم موسيقي / صوتي', 'الخاتمة'],
-    slotCues: ['سجّل الجملة الافتتاحية أو المقدمة', 'صورة أو فيديو يعكس ما يُقال', 'مشهد يتطور مع السرد', 'لقطات إضافية تدعم التعليق', 'موسيقى أو صوت محيطي يُكمل المشهد', 'خاتمة صوتية مع صورة ختامية'],
+    slotDurations: [3, 5, 4, 4, 4, 3],
+    slotRoles: ['الحضور التقني', 'الكشف عن الجهاز', 'عرض الميزات', 'حركة التفصيل', 'السيطرة البصرية', 'الدعوة للتصرف'],
+    slotCues: ['مشهد يُعلن الهوية التقنية المستقبلية', 'الكشف الرئيسي عن الجهاز أو الواجهة الرقمية', 'تقديم ميزة أو وظيفة رئيسية بوضوح', 'تفصيل يُبرز الدقة والجودة التقنية', 'المنتج في وضع الحضور المطلق والسيطرة', 'رسالة ختامية مع دعوة للاستجابة'],
+  },
+  {
+    id: 'sovereign-luxury-editorial',
+    name: 'النسيج الذهبي',
+    icon: '◆',
+    domain: 'أزياء · مجوهرات · فخامة · جمال',
+    description: 'التحرير البصري الفاخر — أزياء ومجوهرات وعطور بلغة صورية سيادية.',
+    directorIntentPreset: 'تحرير فاخر: افتح بلحظة تُعلن الهوية الراقية، اكشف الموضوع بتكوين عالي، أظهر التفصيل والملمس، ثم اختتم ببيان العلامة وصورة تبقى في الذاكرة.',
+    transitionPreference: 'crossfade',
+    transitionDurationSeconds: 1.0,
+    slotDurations: [4, 5, 5, 5, 5, 4],
+    slotRoles: ['الافتتاح التحريري', 'الكشف عن الموضوع', 'التفصيل والملمس', 'التكوين البطولي', 'بيان العلامة', 'الصورة الختامية'],
+    slotCues: ['لحظة بصرية تُعلن هوية المحتوى الفاخر دون كلام', 'الكشف الرئيسي بتكوين راقٍ ومتعمَّد', 'لقطة قريبة تكشف الملمس والجودة والتفصيل', 'التكوين الأكثر تأثيراً — الصورة التي تُعرَّف بها', 'الرسالة أو روح العلامة التجارية في صورة', 'الصورة الأخيرة التي تبقى في ذاكرة المشاهد'],
+  },
+  {
+    id: 'sovereign-food-story',
+    name: 'شهية المشهد',
+    icon: '◉',
+    domain: 'طعام · مطاعم · مقاهٍ · منتجات',
+    description: 'إيقاع الشهية — منتجات الطعام والمشروبات بتصوير يُثير الحواس.',
+    directorIntentPreset: 'قصة شهية: ابدأ بلحظة تشدّ العين فوراً، قدّم المنتج في أبهى صورة، أظهر التفصيل والملمس، ثم اختتم بمعلومة أو دعوة للطلب.',
+    transitionPreference: 'crossfade',
+    transitionDurationSeconds: 0.5,
+    slotDurations: [2, 4, 4, 3, 4, 3],
+    slotRoles: ['الخطاف البصري', 'المنتج البطل', 'التفصيل والقُرب', 'الحركة والتطور', 'المعلومة والقيمة', 'الدعوة للتصرف'],
+    slotCues: ['لحظة شهية تجذب العين فوراً — صوت أو صورة جاهزة', 'المنتج الرئيسي في أبهى صورة وأفضل إضاءة', 'لقطة قريبة تُظهر الملمس والجودة والتفصيل', 'مشهد الإعداد أو التقديم أو اللحظة الجذابة', 'معلومة عن الخدمة أو الموقع أو السعر', 'دعوة واضحة للطلب أو الزيارة أو التواصل'],
+  },
+  {
+    id: 'sovereign-spatial-showcase',
+    name: 'بوابة المكان',
+    icon: '▣',
+    domain: 'عقارات · فنادق · معمار · داخلي',
+    description: 'السرد المكاني السينمائي — فضاءات ومعمار وبيئات بعمق وحجم حقيقي.',
+    directorIntentPreset: 'سرد مكاني: ابدأ بلقطة واسعة تُعلن الحجم والمكانة، ادخل الفضاء تدريجياً، أظهر التطور البيئي والتفصيل، ثم اختتم بمعلومات المشروع ودعوة للتواصل.',
+    transitionPreference: 'crossfade',
+    transitionDurationSeconds: 1.2,
+    slotDurations: [5, 5, 5, 4, 5, 4, 3],
+    slotRoles: ['المشهد التأسيسي', 'الدخول المكاني', 'التطور البيئي', 'التفصيل المعماري', 'المساحة البطولة', 'المعلومة والسياق', 'خاتمة الدعوة'],
+    slotCues: ['اللقطة الواسعة التي تُعلن الحجم والمكانة', 'الدخول السينمائي إلى الفضاء الرئيسي', 'تتابع يكشف البيئة تدريجياً وبشكل طبيعي', 'تفصيل معماري أو عنصر داخلي مميز', 'المساحة أو العنصر الأكثر تأثيراً في المشروع', 'معلومات المشروع أو الموقع أو السعر', 'رسالة ختامية مع دعوة للتواصل أو الزيارة'],
+  },
+  {
+    id: 'sovereign-fast-story',
+    name: 'النبض السيادي',
+    icon: '⚡',
+    domain: 'ريلز · رياضة · أحداث · حملات',
+    description: 'الإيقاع الحاد — ريلز وشورتس وحملات بحضور سينمائي لا عادي.',
+    directorIntentPreset: 'قصة سريعة: ضربة خطاف فورية، تصاعد سريع، ذروة واضحة، خاتمة حادة. لا مساحة للتردد — كل لقطة تُضيف زخماً.',
+    transitionPreference: 'cut',
+    slotDurations: [1, 2, 2, 2, 2, 2, 1],
+    slotRoles: ['الخطاف', 'التأثير الأول', 'التصاعد السريع', 'الإبراز', 'ذروة الطاقة', 'اللحظة البطولة', 'الضربة الختامية'],
+    slotCues: ['الصدمة البصرية الأولى — لا مقدمات', 'تأثير فوري — حركة أو طاقة عالية', 'تتابع سريع يبني الزخم', 'الإبراز الرئيسي بطاقة كاملة', 'أقصى طاقة ممكنة في الإيقاع', 'اللحظة التي يتذكرها المشاهد', 'الضربة الأخيرة — حادة ومباشرة'],
   },
 ];
 
@@ -561,11 +593,14 @@ interface DemoFrame {
 }
 
 // Per-template motif CSS classes: visually distinct atmospheres for each stage.
+// Each class has a unique gradient personality matching the template's creative character.
 const TEMPLATE_MOTIFS: Record<string, string[]> = {
-  'product-ad':      ['demo-hook', 'demo-reveal', 'demo-detail', 'demo-lifestyle', 'demo-support', 'demo-cta'],
-  'cinematic-story': ['demo-establish', 'demo-intro', 'demo-develop', 'demo-pivot', 'demo-climax', 'demo-resolve'],
-  'short-social':    ['demo-impact', 'demo-motion', 'demo-info', 'demo-bright', 'demo-intense', 'demo-hold'],
-  'voice-led':       ['demo-voice', 'demo-visual-resp', 'demo-progression', 'demo-ambient', 'demo-music', 'demo-conclusion'],
+  'sovereign-product-reveal':   ['spr-hook', 'spr-reveal', 'spr-detail', 'spr-benefit', 'spr-hero', 'spr-cta'],
+  'sovereign-device-showcase':  ['sds-presence', 'sds-reveal', 'sds-feature', 'sds-detail', 'sds-dominance', 'sds-cta'],
+  'sovereign-luxury-editorial': ['sle-open', 'sle-subject', 'sle-texture', 'sle-hero', 'sle-brand', 'sle-close'],
+  'sovereign-food-story':       ['sfs-hook', 'sfs-hero', 'sfs-detail', 'sfs-motion', 'sfs-info', 'sfs-cta'],
+  'sovereign-spatial-showcase': ['sss-establish', 'sss-entry', 'sss-progression', 'sss-detail', 'sss-hero', 'sss-info', 'sss-cta'],
+  'sovereign-fast-story':       ['sfst-hook', 'sfst-impact', 'sfst-rapid', 'sfst-highlight', 'sfst-escalate', 'sfst-hero', 'sfst-beat'],
 };
 
 function buildDemoFrames(template: SovereignTemplate): DemoFrame[] {
@@ -2772,23 +2807,24 @@ export default function RasAmrChamber() {
             {/* Card grid — templates first, then direct paths */}
             <div className="ras-intent-grid">
 
-              {/* Section: starting templates */}
+              {/* Section: ready templates */}
               <div className="ras-intent-section-label">
-                <span>قوالب البداية</span>
+                <span>قوالب جاهزة</span>
               </div>
 
-              {/* 4 Template cards — mini slot strip + open preview screen before workspace */}
+              {/* 6 AZMA Original Ready Template cards — click opens live preview screen */}
               {SOVEREIGN_TEMPLATES.map((tpl) => {
                 const total = tpl.slotDurations.reduce((a, b) => a + b, 0);
                 return (
                   <button
                     key={tpl.id}
-                    className="ras-intent-card ras-intent-template"
+                    className={`ras-intent-card ras-intent-template ras-tpl-${tpl.id}`}
                     onClick={() => { setSelectedTemplate(tpl); setCreationPhase('template-preview'); }}
                   >
                     <span className="ras-intent-card-icon">{tpl.icon}</span>
                     <span className="ras-intent-card-name">{tpl.name}</span>
-                    {/* Mini visual strip — shows relative slot widths and transition style */}
+                    <span className="ras-intent-card-domain">{tpl.domain}</span>
+                    {/* Rhythmic grammar strip — shows transition style and relative stage proportions */}
                     <div className="ras-intent-card-strip" aria-hidden="true">
                       {tpl.slotDurations.map((d, i) => (
                         <React.Fragment key={i}>
@@ -2804,7 +2840,7 @@ export default function RasAmrChamber() {
                       ))}
                     </div>
                     <span className="ras-intent-card-desc">{tpl.description}</span>
-                    <span className="ras-intent-card-preview-hint">← معاينة الهيكل</span>
+                    <span className="ras-intent-card-preview-hint">← معاينة مباشرة</span>
                   </button>
                 );
               })}
