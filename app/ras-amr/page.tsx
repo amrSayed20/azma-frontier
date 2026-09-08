@@ -542,6 +542,55 @@ const SOVEREIGN_TEMPLATES: SovereignTemplate[] = [
   },
 ];
 
+// PACKAGE XXXVIII CLOSURE — LIVE DEMO COMPOSITION PREVIEW
+// Each demo frame is a visually distinct "cinematic stage" shown inside the
+// template-preview screen. Frames use the identical opacity/crossfade math
+// the real production preview uses — so what you see in the demo is what
+// the real system produces between canvas nodes. No creator state is touched;
+// the demo plays in a presentation-only div and disappears on exit.
+
+const DEMO_TOTAL_SECS = 12; // real-time seconds for the full demo playback
+
+interface DemoFrame {
+  role: string;        // Arabic stage label
+  motifClass: string;  // CSS class for this frame's cinematic background
+  scaledDur: number;   // frame duration in demo-time seconds
+  scaledStart: number; // cumulative start in demo-time seconds
+  fadeDur: number;     // crossfade overlap duration (0 for cut)
+  hasFade: boolean;    // whether this frame fades IN from previous
+}
+
+// Per-template motif CSS classes: visually distinct atmospheres for each stage.
+const TEMPLATE_MOTIFS: Record<string, string[]> = {
+  'product-ad':      ['demo-hook', 'demo-reveal', 'demo-detail', 'demo-lifestyle', 'demo-support', 'demo-cta'],
+  'cinematic-story': ['demo-establish', 'demo-intro', 'demo-develop', 'demo-pivot', 'demo-climax', 'demo-resolve'],
+  'short-social':    ['demo-impact', 'demo-motion', 'demo-info', 'demo-bright', 'demo-intense', 'demo-hold'],
+  'voice-led':       ['demo-voice', 'demo-visual-resp', 'demo-progression', 'demo-ambient', 'demo-music', 'demo-conclusion'],
+};
+
+function buildDemoFrames(template: SovereignTemplate): DemoFrame[] {
+  const total = template.slotDurations.reduce((a, b) => a + b, 0);
+  const isCrossfade = template.transitionPreference === 'crossfade';
+  // Scale the raw transitionDuration to demo-time proportionally.
+  const rawFadeSecs = isCrossfade ? (template.transitionDurationSeconds ?? 0.6) : 0;
+  const scaledFade = isCrossfade ? rawFadeSecs * (DEMO_TOTAL_SECS / total) : 0;
+  const motifs = TEMPLATE_MOTIFS[template.id] ?? [];
+  let start = 0;
+  return template.slotDurations.map((dur, i) => {
+    const scaledDur = (dur / total) * DEMO_TOTAL_SECS;
+    const frame: DemoFrame = {
+      role: template.slotRoles?.[i] ?? `موضع ${i + 1}`,
+      motifClass: motifs[i] ?? 'demo-default',
+      scaledDur,
+      scaledStart: start,
+      fadeDur: scaledFade,
+      hasFade: isCrossfade && i > 0,
+    };
+    start += scaledDur;
+    return frame;
+  });
+}
+
 // Computes initial temporal for a template slot based on current canvas state.
 // Creator edits always override these values — templates are starting points only.
 function computeTemplateSlotTemporal(
@@ -680,6 +729,12 @@ export default function RasAmrChamber() {
   // -1 = not playing. Driven by a timer chain in useEffect below.
   const [previewStep, setPreviewStep] = useState<number>(-1);
   const previewTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  // DEMO PLAYBACK — isolated from the creator's real preview (isPlaying / playheadSec).
+  // Reads only from demoFrames derived from selectedTemplate; never touches sessionCanvas.
+  const [isDemoPlaying, setIsDemoPlaying] = useState(false);
+  const [demoPlayheadSec, setDemoPlayheadSec] = useState(0);
+  const demoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const demoStartRef = useRef(0);
 
   const [isRendering, setIsRendering] = useState<boolean>(false);
   const [renderStatus, setRenderStatus] = useState<string>('في وضع الاستعداد الإخراجي');
@@ -2172,13 +2227,13 @@ export default function RasAmrChamber() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [creationPhase, selectedTemplate?.id]);
 
-  // Replay the structural preview animation (triggered by creator button).
+  // Replay the structural label animation (secondary indicator, still runs alongside demo).
   const replayPreviewAnimation = () => {
     if (!selectedTemplate) return;
     previewTimersRef.current.forEach(clearTimeout);
     previewTimersRef.current = [];
     const total = selectedTemplate.slotDurations.reduce((a, b) => a + b, 0);
-    const PREVIEW_SECS = 9;
+    const PREVIEW_SECS = DEMO_TOTAL_SECS;
     let elapsed = 0;
     setPreviewStep(0);
     selectedTemplate.slotDurations.forEach((dur, i) => {
@@ -2188,6 +2243,43 @@ export default function RasAmrChamber() {
     });
     previewTimersRef.current.push(setTimeout(() => setPreviewStep(-1), PREVIEW_SECS * 1000 + 300));
   };
+
+  // DEMO PLAYBACK — plays frames using the same crossfade math as the real preview.
+  // Isolated: never reads sessionCanvas, never touches Vault.
+  const handleStartDemo = () => {
+    if (demoIntervalRef.current) clearInterval(demoIntervalRef.current);
+    demoStartRef.current = Date.now();
+    setIsDemoPlaying(true);
+    setDemoPlayheadSec(0);
+    replayPreviewAnimation(); // keep slot indicators in sync
+    demoIntervalRef.current = setInterval(() => {
+      const sec = (Date.now() - demoStartRef.current) / 1000;
+      setDemoPlayheadSec(sec);
+      if (sec >= DEMO_TOTAL_SECS) {
+        clearInterval(demoIntervalRef.current!);
+        demoIntervalRef.current = null;
+        setIsDemoPlaying(false);
+        setDemoPlayheadSec(0);
+        setPreviewStep(-1);
+      }
+    }, 50); // 50ms tick → smooth 20fps opacity ramp
+  };
+
+  const handleStopDemo = () => {
+    if (demoIntervalRef.current) clearInterval(demoIntervalRef.current);
+    demoIntervalRef.current = null;
+    setIsDemoPlaying(false);
+    setDemoPlayheadSec(0);
+    previewTimersRef.current.forEach(clearTimeout);
+    setPreviewStep(-1);
+  };
+
+  // Stop demo on phase change or unmount.
+  useEffect(() => {
+    if (creationPhase !== 'template-preview') handleStopDemo();
+    return () => { if (demoIntervalRef.current) clearInterval(demoIntervalRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [creationPhase]);
 
   const handleStartPreview = () => {
     if (!sessionCanvas) return;
@@ -2737,69 +2829,144 @@ export default function RasAmrChamber() {
               <span className="ras-intent-chamber-seal">رأس الأمر</span>
             </div>
 
-            {/* Template identity hero */}
-            <div className="ras-tp-hero">
+            {/* Template identity — compact header */}
+            <div className="ras-tp-hero ras-tp-hero-compact">
               <span className="ras-tp-icon" aria-hidden="true">{selectedTemplate.icon}</span>
               <h1 className="ras-tp-name">{selectedTemplate.name}</h1>
               <p className="ras-tp-desc">{selectedTemplate.description}</p>
             </div>
 
-            {/* LIVE PRODUCTION BODY: animated structural preview */}
-            <div className="ras-tp-body-section">
-              <div className="ras-tp-body-label-row">
-                <span className="ras-tp-body-label">الجسد الإنتاجي</span>
-                <button
-                  className="ras-tp-replay-btn"
-                  onClick={replayPreviewAnimation}
-                  title="أعِد تشغيل المعاينة"
-                >
-                  {previewStep >= 0 ? '⬤ تشغيل' : '▶ معاينة الهيكل'}
-                </button>
-              </div>
+            {/* ═══ PRIMARY: LIVE DEMO COMPOSITION ═══
+                Frames use the same opacity/crossfade math as the real production preview.
+                No creator state touched. Demo disappears on phase exit. */}
+            {(() => {
+              const demoFrames = buildDemoFrames(selectedTemplate);
+              return (
+                <div className="ras-tp-demo-stage" aria-label={`معاينة مباشرة: ${selectedTemplate.name}`}>
+                  {/* Cinematic scanlines overlay */}
+                  <div className="ras-tp-demo-scanlines" aria-hidden="true" />
+
+                  {/* Frame layers — identical opacity math to the real composition preview */}
+                  {demoFrames.map((frame, i) => {
+                    const effectiveStart = frame.scaledStart - (frame.hasFade ? frame.fadeDur : 0);
+                    const nextFrame = demoFrames[i + 1];
+                    const outFadeDur = nextFrame?.hasFade ? nextFrame.fadeDur : 0;
+                    const effectiveEnd = frame.scaledStart + frame.scaledDur + outFadeDur;
+                    const inWindow = isDemoPlaying
+                      && demoPlayheadSec >= effectiveStart
+                      && demoPlayheadSec < effectiveEnd;
+                    let opacity = 0;
+                    if (inWindow) {
+                      opacity = 1;
+                      if (frame.hasFade && demoPlayheadSec < frame.scaledStart) {
+                        opacity = (demoPlayheadSec - effectiveStart) / frame.fadeDur;
+                      } else if (outFadeDur > 0 && demoPlayheadSec >= frame.scaledStart + frame.scaledDur) {
+                        opacity = 1 - (demoPlayheadSec - (frame.scaledStart + frame.scaledDur)) / outFadeDur;
+                      }
+                    }
+                    const clampedOpacity = inWindow ? Math.max(0, Math.min(1, opacity)) : 0;
+                    return (
+                      <div
+                        key={i}
+                        className={`ras-tp-demo-frame ${frame.motifClass}`}
+                        style={{ opacity: clampedOpacity }}
+                        aria-hidden={clampedOpacity < 0.05}
+                      >
+                        <div className="ras-tp-demo-frame-inner">
+                          <span className="ras-tp-demo-frame-num">
+                            {selectedTemplate.transitionPreference === 'crossfade' ? '≈' : '|'}&nbsp;{i + 1}
+                          </span>
+                          <span className="ras-tp-demo-frame-role">{frame.role}</span>
+                          <span className="ras-tp-demo-frame-cue">
+                            {selectedTemplate.slotCues?.[i] ?? ''}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Idle state — shown when demo is not playing */}
+                  <div
+                    className="ras-tp-demo-idle"
+                    style={{ opacity: isDemoPlaying ? 0 : 1, pointerEvents: isDemoPlaying ? 'none' : 'auto' }}
+                  >
+                    <span className="ras-tp-demo-idle-icon" aria-hidden="true">{selectedTemplate.icon}</span>
+                    <p className="ras-tp-demo-idle-text">
+                      معاينة الهيكل الإنتاجي — {selectedTemplate.slotDurations.length} مراحل
+                    </p>
+                    <button className="ras-tp-demo-play-btn" onClick={handleStartDemo}>
+                      ▶ شاهد الهيكل
+                    </button>
+                  </div>
+
+                  {/* Playback controls — visible while playing */}
+                  {isDemoPlaying && (
+                    <div className="ras-tp-demo-controls">
+                      <div
+                        className="ras-tp-demo-progress"
+                        style={{ width: `${Math.min((demoPlayheadSec / DEMO_TOTAL_SECS) * 100, 100)}%` }}
+                        aria-hidden="true"
+                      />
+                      <button
+                        className="ras-tp-demo-stop-btn"
+                        onClick={handleStopDemo}
+                        aria-label="إيقاف المعاينة"
+                      >
+                        ⏹
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Replay after finish */}
+                  {!isDemoPlaying && demoPlayheadSec === 0 && previewStep === -1 && (
+                    <button
+                      className="ras-tp-demo-replay-corner"
+                      onClick={handleStartDemo}
+                      title="أعِد تشغيل المعاينة"
+                      style={{ display: isDemoPlaying ? 'none' : undefined }}
+                    >
+                      ↺
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ═══ SECONDARY: production grammar — slot flow ═══ */}
+            <div className="ras-tp-body-section ras-tp-body-section-secondary">
               <div className="ras-tp-body-flow">
                 {selectedTemplate.slotDurations.map((dur, i) => {
                   const role = selectedTemplate.slotRoles?.[i] ?? `موضع ${i + 1}`;
-                  const cue = selectedTemplate.slotCues?.[i] ?? 'أضف أصلاً — صورة · فيديو · صوت';
                   const isLast = i === selectedTemplate.slotDurations.length - 1;
-                  const sep = selectedTemplate.transitionPreference === 'crossfade' ? '≈ تلاشٍ' : '| قطع';
+                  const sep = selectedTemplate.transitionPreference === 'crossfade' ? '≈' : '|';
                   const isActive = previewStep === i;
                   const isPast = previewStep > i && previewStep >= 0;
                   return (
                     <div key={i} className="ras-tp-slot-group">
-                      <div className={`ras-tp-slot${isActive ? ' ras-tp-slot-playing' : ''}${isPast ? ' ras-tp-slot-done' : ''}`}>
+                      <div className={`ras-tp-slot ras-tp-slot-compact${isActive ? ' ras-tp-slot-playing' : ''}${isPast ? ' ras-tp-slot-done' : ''}`}>
                         <span className="ras-tp-slot-num">{i + 1}</span>
                         <span className="ras-tp-slot-role">{role}</span>
-                        <span className="ras-tp-slot-cue">{cue}</span>
-                        <span className="ras-tp-slot-dur">~{dur}ث</span>
-                        {isPast && <span className="ras-tp-slot-check-icon" aria-hidden="true">✓</span>}
+                        <span className="ras-tp-slot-dur">{dur}ث</span>
                       </div>
                       {!isLast && (
-                        <div className="ras-tp-connector">
-                          <span className="ras-tp-connector-line" aria-hidden="true" />
-                          <span className="ras-tp-connector-label">{sep}</span>
-                        </div>
+                        <span className="ras-tp-connector-compact" aria-hidden="true">{sep}</span>
                       )}
                     </div>
                   );
                 })}
-                {/* Expandability indicator — no fixed limit */}
-                <div className="ras-tp-connector ras-tp-connector-expand">
-                  <span className="ras-tp-connector-line" aria-hidden="true" />
-                  <span className="ras-tp-connector-label ras-tp-expand-label">
-                    + يتوسع مع كل أصل تضيفه — لا حدود مفروضة
-                  </span>
-                </div>
+                <span className="ras-tp-connector-compact ras-tp-expand-label" aria-label="قابل للتوسع">
+                  + …
+                </span>
               </div>
             </div>
 
             {/* Metadata row */}
             <div className="ras-tp-meta">
-              <span>الانتقال:&nbsp;
-                {selectedTemplate.transitionPreference === 'crossfade'
-                  ? `تلاشٍ سيادي (${selectedTemplate.transitionDurationSeconds ?? 0.5}ث)`
-                  : 'قطع مباشر'}
+              <span>الانتقال: {selectedTemplate.transitionPreference === 'crossfade'
+                ? `تلاشٍ (${selectedTemplate.transitionDurationSeconds ?? 0.5}ث)`
+                : 'قطع مباشر'}
               </span>
-              <span>الإيقاع الإرشادي: {selectedTemplate.slotDurations.reduce((a, b) => a + b, 0)}ث — قابل للتوسع</span>
+              <span>{selectedTemplate.slotDurations.reduce((a, b) => a + b, 0)}ث — قابل للتوسع</span>
             </div>
 
             {/* CTA */}

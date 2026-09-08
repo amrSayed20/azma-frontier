@@ -4621,3 +4621,367 @@
   color: rgba(120,90,0,0.45);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   PACKAGE XXXVIII CLOSURE — LIVE DEMO COMPOSITION STAGE
+   Frames use the same opacity/crossfade mechanism as the real preview engine.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Template preview: compact hero ──────────────────────────────────── */
+.ras-tp-hero-compact {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(212,175,55,0.1);
+  margin-bottom: 14px;
+}
+
+.ras-tp-hero-compact .ras-tp-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.ras-tp-hero-compact .ras-tp-name {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.ras-tp-hero-compact .ras-tp-desc {
+  font-size: 0.62rem;
+  margin: 0;
+  opacity: 0.6;
+}
+
+/* ── Demo stage container ─────────────────────────────────────────────── */
+.ras-tp-demo-stage {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  aspect-ratio: 16 / 9;
+  max-height: 270px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #050505;
+  border: 1px solid rgba(212,175,55,0.22);
+  margin: 0 auto 16px;
+  box-shadow: 0 0 30px rgba(212,175,55,0.06), inset 0 0 40px rgba(0,0,0,0.6);
+}
+
+/* Cinematic scanlines — consistent with the real viewport */
+.ras-tp-demo-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0,0,0,0.06) 0px,
+    rgba(0,0,0,0.06) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ── Demo frames ─────────────────────────────────────────────────────── */
+.ras-tp-demo-frame {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Opacity is controlled entirely via inline style — no CSS transition
+     so the ramp math matches the real production preview exactly. */
+}
+
+.ras-tp-demo-frame-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  padding: 0 20px;
+}
+
+.ras-tp-demo-frame-num {
+  font-size: 0.6rem;
+  color: rgba(212,175,55,0.4);
+  letter-spacing: 0.15em;
+  font-variant-numeric: tabular-nums;
+}
+
+.ras-tp-demo-frame-role {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: rgba(212,175,55,0.9);
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 24px rgba(212,175,55,0.35), 0 2px 8px rgba(0,0,0,0.8);
+  line-height: 1.2;
+}
+
+.ras-tp-demo-frame-cue {
+  font-size: 0.58rem;
+  color: rgba(255,255,255,0.28);
+  line-height: 1.4;
+  max-width: 200px;
+}
+
+/* ── Product ad motifs ────────────────────────────────────────────────── */
+.demo-hook {
+  background: radial-gradient(ellipse at 28% 50%, rgba(212,175,55,0.28) 0%, rgba(5,4,2,0.98) 62%);
+}
+.demo-reveal {
+  background:
+    radial-gradient(circle at 50% 52%, rgba(212,175,55,0.14) 0%, transparent 48%),
+    linear-gradient(180deg, rgba(8,8,5,0.99) 0%, rgba(14,12,4,0.99) 100%);
+}
+.demo-detail {
+  background:
+    linear-gradient(50deg, rgba(212,175,55,0.08) 0%, rgba(5,5,3,0.98) 35%),
+    radial-gradient(ellipse at 72% 28%, rgba(212,175,55,0.2) 0%, transparent 45%);
+}
+.demo-lifestyle {
+  background: linear-gradient(140deg, rgba(10,8,3,0.99) 0%, rgba(22,17,5,0.98) 55%, rgba(212,175,55,0.06) 100%);
+}
+.demo-support {
+  background: linear-gradient(165deg, rgba(212,175,55,0.04) 0%, rgba(6,6,4,0.99) 100%);
+}
+.demo-cta {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(212,175,55,0.18) 0%, rgba(8,6,2,0.99) 55%),
+    linear-gradient(0deg, rgba(212,175,55,0.06) 0%, rgba(8,6,2,0.99) 100%);
+}
+
+/* ── Cinematic story motifs ───────────────────────────────────────────── */
+.demo-establish {
+  background: linear-gradient(180deg, rgba(5,5,9,0.99) 0%, rgba(14,14,22,0.99) 65%, rgba(212,175,55,0.04) 100%);
+}
+.demo-intro {
+  background: radial-gradient(ellipse at 50% 28%, rgba(38,32,55,0.92) 0%, rgba(5,5,9,0.99) 68%);
+}
+.demo-develop {
+  background: linear-gradient(130deg, rgba(8,8,13,0.99) 0%, rgba(24,20,36,0.98) 100%);
+}
+.demo-pivot {
+  background:
+    linear-gradient(135deg, rgba(34,24,8,0.96) 0%, rgba(5,5,9,0.99) 48%),
+    radial-gradient(ellipse at 82% 82%, rgba(212,175,55,0.14) 0%, transparent 45%);
+}
+.demo-climax {
+  background: radial-gradient(ellipse at 50% 50%, rgba(212,175,55,0.22) 0%, rgba(8,6,2,0.99) 58%);
+}
+.demo-resolve {
+  background: linear-gradient(180deg, rgba(5,5,9,0.99) 0%, rgba(212,175,55,0.03) 100%);
+}
+
+/* ── Short social / reel motifs — high contrast, sharp ───────────────── */
+.demo-impact {
+  background: radial-gradient(circle at 50% 50%, rgba(212,175,55,0.38) 0%, rgba(3,3,3,0.99) 42%);
+}
+.demo-motion {
+  background: linear-gradient(55deg, rgba(212,175,55,0.28) 0%, rgba(3,3,3,0.99) 28%, rgba(212,175,55,0.06) 100%);
+}
+.demo-info {
+  background: linear-gradient(90deg, rgba(3,3,3,0.99) 0%, rgba(212,175,55,0.1) 50%, rgba(3,3,3,0.99) 100%);
+}
+.demo-bright {
+  background: radial-gradient(ellipse at 50% 50%, rgba(212,175,55,0.32) 0%, rgba(3,3,3,0.99) 50%);
+}
+.demo-intense {
+  background:
+    radial-gradient(ellipse at 18% 82%, rgba(212,175,55,0.24) 0%, transparent 42%),
+    radial-gradient(ellipse at 82% 18%, rgba(212,175,55,0.2) 0%, transparent 38%),
+    rgba(3,3,3,0.99);
+}
+.demo-hold {
+  background: radial-gradient(circle at 50% 50%, rgba(212,175,55,0.06) 0%, rgba(3,3,3,0.99) 65%);
+}
+
+/* ── Voice-led / storytelling motifs — soft, atmospheric ─────────────── */
+.demo-voice {
+  background:
+    radial-gradient(ellipse at 50% 62%, rgba(90,80,160,0.14) 0%, rgba(5,5,9,0.99) 52%),
+    linear-gradient(180deg, rgba(5,5,9,0.99) 0%, rgba(8,7,14,0.99) 100%);
+}
+.demo-visual-resp {
+  background: linear-gradient(152deg, rgba(5,5,9,0.99) 0%, rgba(28,26,45,0.98) 60%, rgba(212,175,55,0.05) 100%);
+}
+.demo-progression {
+  background: linear-gradient(130deg, rgba(5,5,9,0.99) 0%, rgba(32,28,48,0.98) 100%);
+}
+.demo-ambient {
+  background: radial-gradient(ellipse at 32% 72%, rgba(70,55,110,0.12) 0%, rgba(5,5,9,0.99) 58%);
+}
+.demo-music {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(70,55,110,0.18) 0%, rgba(5,5,9,0.99) 58%),
+    linear-gradient(180deg, rgba(5,5,9,0.99) 0%, rgba(212,175,55,0.02) 100%);
+}
+.demo-conclusion {
+  background: linear-gradient(180deg, rgba(5,5,9,0.99) 0%, rgba(212,175,55,0.05) 80%, rgba(5,5,9,0.99) 100%);
+}
+.demo-default {
+  background: rgba(7,7,7,0.99);
+}
+
+/* ── Demo idle state ─────────────────────────────────────────────────── */
+.ras-tp-demo-idle {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(5,5,5,0.92);
+  transition: opacity 0.3s ease;
+  z-index: 5;
+}
+
+.ras-tp-demo-idle-icon {
+  font-size: 2rem;
+  opacity: 0.4;
+}
+
+.ras-tp-demo-idle-text {
+  font-size: 0.65rem;
+  color: rgba(212,175,55,0.45);
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.ras-tp-demo-play-btn {
+  padding: 8px 22px;
+  border: 1px solid rgba(212,175,55,0.45);
+  border-radius: 20px;
+  background: rgba(212,175,55,0.07);
+  color: #d4af37;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.ras-tp-demo-play-btn:hover {
+  background: rgba(212,175,55,0.14);
+  border-color: rgba(212,175,55,0.7);
+  box-shadow: 0 0 12px rgba(212,175,55,0.15);
+}
+
+/* ── Demo playback controls (progress bar + stop) ────────────────────── */
+.ras-tp-demo-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  background: linear-gradient(0deg, rgba(0,0,0,0.75) 0%, transparent 100%);
+  display: flex;
+  align-items: flex-end;
+  padding: 0 8px 4px;
+  gap: 6px;
+  z-index: 8;
+}
+
+.ras-tp-demo-progress {
+  flex: 1;
+  height: 2px;
+  background: rgba(212,175,55,0.75);
+  border-radius: 1px;
+  margin-bottom: 2px;
+  transition: width 0.05s linear;
+}
+
+.ras-tp-demo-stop-btn {
+  font-size: 0.65rem;
+  color: rgba(212,175,55,0.6);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  transition: color 0.1s;
+}
+
+.ras-tp-demo-stop-btn:hover {
+  color: #d4af37;
+}
+
+/* ── Replay corner button (shown after demo ends) ────────────────────── */
+.ras-tp-demo-replay-corner {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(212,175,55,0.3);
+  background: rgba(0,0,0,0.5);
+  color: rgba(212,175,55,0.6);
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 6;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.ras-tp-demo-replay-corner:hover {
+  border-color: rgba(212,175,55,0.6);
+  color: #d4af37;
+}
+
+/* ── Secondary slot flow (compact, below demo) ───────────────────────── */
+.ras-tp-body-section-secondary {
+  margin-bottom: 8px;
+}
+
+.ras-tp-slot-compact {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  min-width: unset;
+}
+
+.ras-tp-slot-compact .ras-tp-slot-num {
+  width: 16px;
+  height: 16px;
+  font-size: 0.55rem;
+}
+
+.ras-tp-slot-compact .ras-tp-slot-role {
+  font-size: 0.6rem;
+}
+
+.ras-tp-slot-compact .ras-tp-slot-dur {
+  font-size: 0.55rem;
+  color: rgba(212,175,55,0.25);
+}
+
+.ras-tp-connector-compact {
+  font-size: 0.6rem;
+  color: rgba(212,175,55,0.2);
+  padding: 0 3px;
+  flex-shrink: 0;
+}
+
+/* ── Light theme additions ────────────────────────────────────────────── */
+:root[data-theme="light"] .ras-tp-demo-stage {
+  background: #0a0a0a;
+  border-color: rgba(160,120,0,0.3);
+}
+
+:root[data-theme="light"] .ras-tp-demo-idle {
+  background: rgba(8,8,8,0.94);
+}
+
+:root[data-theme="light"] .ras-tp-demo-play-btn {
+  border-color: rgba(160,120,0,0.5);
+  color: #a07800;
+  background: rgba(160,120,0,0.08);
+}
+
