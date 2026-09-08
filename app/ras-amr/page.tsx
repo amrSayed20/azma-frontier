@@ -659,6 +659,7 @@ export default function RasAmrChamber() {
   // Pure presentation states — they route into existing capabilities only.
   const [creationPhase, setCreationPhase] = useState<CreationPhase>('intent');
   const [selectedTemplate, setSelectedTemplate] = useState<SovereignTemplate | null>(null);
+  const [showTemplatePanel, setShowTemplatePanel] = useState(false);
 
   const [isRendering, setIsRendering] = useState<boolean>(false);
   const [renderStatus, setRenderStatus] = useState<string>('في وضع الاستعداد الإخراجي');
@@ -2641,13 +2642,22 @@ export default function RasAmrChamber() {
         </button>
       </header>
 
-      {/* PACKAGE XXXVI — TEMPLATE BANNER: visible during workspace when a template is active */}
+      {/* TEMPLATE BANNER — shows selected template + real slot structure so creator
+          can see the timing consequence before adding any asset */}
       {selectedTemplate && creationPhase === 'workspace' && (
         <div className="ras-template-banner">
           <span className="ras-template-banner-label">
             {selectedTemplate.icon} {selectedTemplate.name}
           </span>
-          <span className="ras-template-banner-hint">الهيكل جاهز — أضف أصولك.</span>
+          <span className="ras-template-banner-slots" aria-label="مدد الخانات">
+            {selectedTemplate.slotDurations.map((d, i) => (
+              <span key={i} className="ras-template-slot-chip">{d}ث</span>
+            ))}
+            {selectedTemplate.transitionPreference === 'crossfade' && (
+              <span className="ras-template-slot-chip ras-template-slot-chip-fx">≈ تلاشٍ</span>
+            )}
+          </span>
+          <span className="ras-template-banner-hint">أضف أصولك لملء الهيكل</span>
           <button className="ras-template-banner-change" onClick={handleChangeIntent}>
             تغيير البداية
           </button>
@@ -3056,6 +3066,62 @@ export default function RasAmrChamber() {
                     as choices violates the "visible action → real consequence" rule. */}
                 <div className="canvas-type-info">◉ سينمائي — مشهد بتسلسل زمني وفضائي</div>
                 {saveCanvasStatus && <p className="canvas-save-status canvas-tab-save-status">{saveCanvasStatus}</p>}
+              </div>
+
+              {/* DIRECTIVE §11 — TEMPLATES INSIDE WORKSPACE: discoverable without
+                  leaving the chamber. Selecting a template here updates the active
+                  template state only — no destructive canvas mutation. */}
+              <div className="workspace-template-section">
+                <button
+                  className={`workspace-template-toggle ${showTemplatePanel ? 'workspace-template-toggle-open' : ''}`}
+                  onClick={() => setShowTemplatePanel((v) => !v)}
+                  aria-expanded={showTemplatePanel}
+                >
+                  <span>قوالب البداية</span>
+                  {selectedTemplate && (
+                    <span className="workspace-template-active-chip">
+                      {selectedTemplate.icon} {selectedTemplate.name}
+                    </span>
+                  )}
+                  <span className="workspace-template-toggle-arrow">{showTemplatePanel ? '▲' : '▼'}</span>
+                </button>
+                {showTemplatePanel && (
+                  <div className="workspace-template-grid">
+                    {SOVEREIGN_TEMPLATES.map((tpl) => (
+                      <button
+                        key={tpl.id}
+                        className={`workspace-template-card${selectedTemplate?.id === tpl.id ? ' workspace-template-card-active' : ''}`}
+                        onClick={() => {
+                          setSelectedTemplate(tpl);
+                          setCreatorDirectorIntent(tpl.directorIntentPreset);
+                          setDirectingMode('smart');
+                          setShowTemplatePanel(false);
+                        }}
+                      >
+                        <span className="workspace-template-card-icon">{tpl.icon}</span>
+                        <span className="workspace-template-card-name">{tpl.name}</span>
+                        <span className="workspace-template-card-slots">
+                          {tpl.slotDurations.map((d, i) => (
+                            <span key={i} className="workspace-template-slot-dot" title={`خانة ${i + 1}: ${d}ث`} />
+                          ))}
+                          <span className="workspace-template-card-total">
+                            {tpl.slotDurations.reduce((a, b) => a + b, 0)}ث
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                    {selectedTemplate && (
+                      <button
+                        className="workspace-template-card workspace-template-card-clear"
+                        onClick={() => { setSelectedTemplate(null); setShowTemplatePanel(false); }}
+                      >
+                        <span className="workspace-template-card-icon">◻</span>
+                        <span className="workspace-template-card-name">بدون قالب</span>
+                        <span className="workspace-template-card-slots" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {sessionCanvas && directionDecisionLog.length > 0 && (

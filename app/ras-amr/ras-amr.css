@@ -3719,3 +3719,202 @@
   background: rgba(160, 120, 0, 0.12);
 }
 
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DIRECTIVE §11-12 — TEMPLATES INSIDE WORKSPACE
+   Workspace template panel + slot chips + banner slots
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Template panel section */
+.workspace-template-section {
+  margin: 8px 0 4px;
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* Toggle button */
+.workspace-template-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: rgba(212, 175, 55, 0.04);
+  border: none;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.75rem;
+  color: rgba(212, 175, 55, 0.6);
+  letter-spacing: 0.06em;
+  text-align: right;
+  transition: background 0.15s, color 0.15s;
+}
+
+.workspace-template-toggle:hover,
+.workspace-template-toggle-open {
+  background: rgba(212, 175, 55, 0.08);
+  color: #d4af37;
+}
+
+.workspace-template-toggle-arrow {
+  margin-right: auto; /* pushes to left in RTL */
+  font-size: 0.6rem;
+  opacity: 0.5;
+}
+
+.workspace-template-active-chip {
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 3px;
+  padding: 1px 7px;
+  font-size: 0.7rem;
+  color: #d4af37;
+}
+
+/* 2-column card grid */
+.workspace-template-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* Individual card */
+.workspace-template-card {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  border-radius: 5px;
+  padding: 8px 8px 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  font-family: inherit;
+  text-align: right;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.workspace-template-card:hover {
+  background: rgba(212, 175, 55, 0.07);
+  border-color: rgba(212, 175, 55, 0.4);
+}
+
+.workspace-template-card-active {
+  background: rgba(212, 175, 55, 0.1);
+  border-color: rgba(212, 175, 55, 0.55);
+}
+
+.workspace-template-card-clear {
+  border-color: rgba(180, 180, 180, 0.1);
+  opacity: 0.6;
+}
+
+.workspace-template-card-clear:hover {
+  opacity: 1;
+  border-color: rgba(180, 180, 180, 0.3);
+}
+
+.workspace-template-card-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.workspace-template-card-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(212, 175, 55, 0.85);
+  line-height: 1.2;
+}
+
+/* Slot dots row */
+.workspace-template-card-slots {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.workspace-template-slot-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(212, 175, 55, 0.4);
+  flex-shrink: 0;
+}
+
+.workspace-template-card-active .workspace-template-slot-dot {
+  background: #d4af37;
+}
+
+.workspace-template-card-total {
+  font-size: 0.62rem;
+  color: rgba(255, 255, 255, 0.3);
+  margin-right: 2px;
+}
+
+/* ── Template banner slot chips ──────────────────────────────────────── */
+.ras-template-banner-slots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.ras-template-slot-chip {
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 0.68rem;
+  color: rgba(212, 175, 55, 0.75);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.ras-template-slot-chip-fx {
+  background: rgba(120, 160, 212, 0.08);
+  border-color: rgba(120, 160, 212, 0.2);
+  color: rgba(160, 200, 240, 0.6);
+}
+
+/* Light theme */
+:root[data-theme="light"] .workspace-template-section {
+  border-color: rgba(160, 120, 0, 0.18);
+}
+
+:root[data-theme="light"] .workspace-template-toggle {
+  background: rgba(160, 120, 0, 0.04);
+  color: rgba(120, 90, 0, 0.6);
+}
+
+:root[data-theme="light"] .workspace-template-toggle:hover,
+:root[data-theme="light"] .workspace-template-toggle-open {
+  background: rgba(160, 120, 0, 0.08);
+  color: #7a5c00;
+}
+
+:root[data-theme="light"] .workspace-template-grid {
+  background: rgba(250, 245, 220, 0.4);
+}
+
+:root[data-theme="light"] .workspace-template-card {
+  background: rgba(0, 0, 0, 0.025);
+  border-color: rgba(160, 120, 0, 0.18);
+}
+
+:root[data-theme="light"] .workspace-template-card-name {
+  color: rgba(120, 90, 0, 0.85);
+}
+
+:root[data-theme="light"] .ras-template-slot-chip {
+  background: rgba(160, 120, 0, 0.08);
+  border-color: rgba(160, 120, 0, 0.2);
+  color: rgba(120, 90, 0, 0.7);
+}
+
