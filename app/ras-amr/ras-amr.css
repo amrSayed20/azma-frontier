@@ -4087,3 +4087,339 @@
   color: rgba(120, 90, 0, 0.3);
 }
 
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   FINAL SPECIFICATION — LIVE TEMPLATE BODY
+   Template preview screen + viewport live body
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Template preview screen (full-screen) ───────────────────────────── */
+.ras-template-preview-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 25%, rgba(212, 175, 55, 0.05) 0%, transparent 70%),
+    #000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding-bottom: 48px;
+}
+
+.ras-template-preview-inner {
+  width: 100%;
+  max-width: 680px;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* Hero */
+.ras-tp-hero {
+  text-align: center;
+  padding: 36px 0 28px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+  margin-bottom: 32px;
+}
+
+.ras-tp-icon {
+  font-size: 2.8rem;
+  display: block;
+  margin-bottom: 10px;
+  line-height: 1;
+}
+
+.ras-tp-name {
+  font-size: clamp(1.4rem, 3.5vw, 2rem);
+  font-weight: 700;
+  color: #d4af37;
+  letter-spacing: 0.02em;
+  margin: 0 0 8px;
+}
+
+.ras-tp-desc {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+  letter-spacing: 0.03em;
+}
+
+/* Production body section */
+.ras-tp-body-section {
+  margin-bottom: 24px;
+}
+
+.ras-tp-body-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(212, 175, 55, 0.4);
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+/* Vertical flow of slots */
+.ras-tp-body-flow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.ras-tp-slot-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Individual slot card */
+.ras-tp-slot {
+  width: 100%;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 6px;
+  background: rgba(212, 175, 55, 0.04);
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 2px 8px;
+  align-items: start;
+}
+
+.ras-tp-slot-role {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e8d48a;
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.ras-tp-slot-cue {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.3);
+  grid-column: 1;
+  grid-row: 2;
+  letter-spacing: 0.02em;
+}
+
+.ras-tp-slot-dur {
+  font-size: 0.7rem;
+  color: rgba(212, 175, 55, 0.4);
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Connector between slots */
+.ras-tp-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.ras-tp-connector-line {
+  display: block;
+  width: 1px;
+  height: 14px;
+  background: rgba(212, 175, 55, 0.2);
+}
+
+.ras-tp-connector-label {
+  font-size: 0.6rem;
+  color: rgba(212, 175, 55, 0.3);
+  letter-spacing: 0.06em;
+}
+
+.ras-tp-expand-label {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+/* Metadata row */
+.ras-tp-meta {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+  font-size: 0.72rem;
+  color: rgba(212, 175, 55, 0.35);
+  letter-spacing: 0.04em;
+  margin: 12px 0 28px;
+  border-top: 1px solid rgba(212, 175, 55, 0.08);
+  padding-top: 12px;
+}
+
+/* CTA buttons */
+.ras-tp-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.ras-tp-use-btn {
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  border-radius: 6px;
+  color: #d4af37;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 12px 32px;
+  cursor: pointer;
+  width: 100%;
+  max-width: 340px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.ras-tp-use-btn:hover {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: #d4af37;
+}
+
+.ras-tp-back-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.25);
+  font-family: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  padding: 6px 12px;
+  transition: color 0.15s;
+}
+
+.ras-tp-back-btn:hover {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* ── Viewport live template body ─────────────────────────────────────── */
+.viewport-template-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.viewport-tb-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.viewport-tb-icon {
+  font-size: 1.1rem;
+}
+
+.viewport-tb-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(212, 175, 55, 0.5);
+}
+
+/* Horizontal slot flow in viewport */
+.viewport-tb-flow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  max-width: 100%;
+  padding: 4px 0 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.15) transparent;
+}
+
+.viewport-tb-slot-group {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.viewport-tb-slot {
+  border: 1px dashed rgba(212, 175, 55, 0.2);
+  border-radius: 5px;
+  background: rgba(212, 175, 55, 0.02);
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 80px;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.viewport-tb-slot-filled {
+  border-style: solid;
+  border-color: rgba(212, 175, 55, 0.45);
+  background: rgba(212, 175, 55, 0.07);
+}
+
+.viewport-tb-slot-extra {
+  border-color: rgba(212, 175, 55, 0.25);
+  background: rgba(212, 175, 55, 0.04);
+}
+
+.viewport-tb-slot-role {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.45);
+  white-space: nowrap;
+}
+
+.viewport-tb-slot-filled .viewport-tb-slot-role {
+  color: rgba(212, 175, 55, 0.8);
+}
+
+.viewport-tb-slot-cue {
+  font-size: 0.55rem;
+  color: rgba(255, 255, 255, 0.2);
+  white-space: nowrap;
+}
+
+.viewport-tb-slot-check {
+  font-size: 0.7rem;
+  color: #d4af37;
+}
+
+.viewport-tb-slot-dur {
+  font-size: 0.55rem;
+  color: rgba(212, 175, 55, 0.25);
+  font-variant-numeric: tabular-nums;
+}
+
+.viewport-tb-sep {
+  font-size: 0.65rem;
+  color: rgba(212, 175, 55, 0.2);
+  padding: 0 5px;
+  flex-shrink: 0;
+}
+
+/* ── Light theme ─────────────────────────────────────────────────────── */
+:root[data-theme="light"] .ras-template-preview-gate {
+  background: #fafaf7;
+}
+
+:root[data-theme="light"] .ras-tp-name { color: #8a6800; }
+:root[data-theme="light"] .ras-tp-slot { background: rgba(0,0,0,0.02); border-color: rgba(160,120,0,0.22); }
+:root[data-theme="light"] .ras-tp-slot-role { color: #6d5200; }
+:root[data-theme="light"] .ras-tp-use-btn { background: rgba(160,120,0,0.1); border-color: rgba(160,120,0,0.5); color: #7a5c00; }
+:root[data-theme="light"] .viewport-template-body .viewport-tb-slot { border-color: rgba(160,120,0,0.18); }
+:root[data-theme="light"] .viewport-template-body .viewport-tb-slot-filled { border-color: rgba(160,120,0,0.45); background: rgba(160,120,0,0.06); }
+

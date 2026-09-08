@@ -472,7 +472,9 @@ const BLEND_MODES: VisualFilterDirective['blendMode'][] = ['NORMAL', 'MULTIPLY',
 // handleSurfaceDrop.
 // ============================================================
 
-type CreationPhase = 'intent' | 'workspace';
+// 'template-preview': intermediate screen after selecting a template from the intent
+// gate — creator reviews the production body before committing to the workspace.
+type CreationPhase = 'intent' | 'template-preview' | 'workspace';
 
 interface SovereignTemplate {
   id: string;
@@ -2529,12 +2531,12 @@ export default function RasAmrChamber() {
                 <span>قوالب البداية</span>
               </div>
 
-              {/* 4 Template cards */}
+              {/* 4 Template cards — open preview screen before workspace */}
               {SOVEREIGN_TEMPLATES.map((tpl) => (
                 <button
                   key={tpl.id}
                   className="ras-intent-card ras-intent-template"
-                  onClick={() => handleSelectIntent(tpl.id)}
+                  onClick={() => { setSelectedTemplate(tpl); setCreationPhase('template-preview'); }}
                 >
                   <span className="ras-intent-card-icon">{tpl.icon}</span>
                   <span className="ras-intent-card-name">{tpl.name}</span>
@@ -2594,7 +2596,7 @@ export default function RasAmrChamber() {
       )}
 
       {/* STICKY HEADER — Phase B */}
-      <header className="ras-header" style={{ display: creationPhase === 'intent' ? 'none' : undefined }}>
+      <header className="ras-header" style={{ display: (creationPhase === 'intent' || creationPhase === 'template-preview') ? 'none' : undefined }}>
         <button className="ras-exit-btn" onClick={() => {
           try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'ras-amr', constitutionalAct: 'direction' })); } catch { /* ignore */ }
           goTo('/imperial-foyer');
@@ -2647,8 +2649,92 @@ export default function RasAmrChamber() {
         </button>
       </header>
 
-      {/* TEMPLATE BANNER — shows selected template + real slot structure so creator
-          can see the timing consequence before adding any asset */}
+      {/* TEMPLATE PREVIEW SCREEN — intermediate step between intent gate and workspace.
+          Creator sees the production body before committing. Section 3-4 of directive. */}
+      {creationPhase === 'template-preview' && selectedTemplate && (
+        <div className="ras-template-preview-gate">
+          <div className="ras-template-preview-inner">
+
+            {/* Mini header */}
+            <div className="ras-intent-mini-header">
+              <button className="ras-exit-btn" onClick={() => setCreationPhase('intent')}>
+                ← قوالب الإنتاج
+              </button>
+              <span className="ras-intent-chamber-seal">رأس الأمر</span>
+            </div>
+
+            {/* Template identity hero */}
+            <div className="ras-tp-hero">
+              <span className="ras-tp-icon" aria-hidden="true">{selectedTemplate.icon}</span>
+              <h1 className="ras-tp-name">{selectedTemplate.name}</h1>
+              <p className="ras-tp-desc">{selectedTemplate.description}</p>
+            </div>
+
+            {/* LIVE PRODUCTION BODY: visual flow of slots */}
+            <div className="ras-tp-body-section">
+              <div className="ras-tp-body-label">الجسد الإنتاجي</div>
+              <div className="ras-tp-body-flow">
+                {selectedTemplate.slotDurations.map((dur, i) => {
+                  const role = selectedTemplate.slotRoles?.[i] ?? `موضع ${i + 1}`;
+                  const isLast = i === selectedTemplate.slotDurations.length - 1;
+                  const sep = selectedTemplate.transitionPreference === 'crossfade' ? '≈ تلاشٍ' : '| قطع';
+                  return (
+                    <div key={i} className="ras-tp-slot-group">
+                      <div className="ras-tp-slot">
+                        <span className="ras-tp-slot-role">{role}</span>
+                        <span className="ras-tp-slot-cue">أضف أصلاً — صورة · فيديو · صوت</span>
+                        <span className="ras-tp-slot-dur">~{dur}ث</span>
+                      </div>
+                      {!isLast && (
+                        <div className="ras-tp-connector">
+                          <span className="ras-tp-connector-line" aria-hidden="true" />
+                          <span className="ras-tp-connector-label">{sep}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {/* Expandability indicator — no fixed limit */}
+                <div className="ras-tp-connector ras-tp-connector-expand">
+                  <span className="ras-tp-connector-line" aria-hidden="true" />
+                  <span className="ras-tp-connector-label ras-tp-expand-label">
+                    + يتوسع مع كل أصل تضيفه — لا حدود مفروضة
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Metadata row */}
+            <div className="ras-tp-meta">
+              <span>الانتقال:&nbsp;
+                {selectedTemplate.transitionPreference === 'crossfade'
+                  ? `تلاشٍ سيادي (${selectedTemplate.transitionDurationSeconds ?? 0.5}ث)`
+                  : 'قطع مباشر'}
+              </span>
+              <span>المدة الإرشادية: {selectedTemplate.slotDurations.reduce((a, b) => a + b, 0)}ث</span>
+            </div>
+
+            {/* CTA */}
+            <div className="ras-tp-actions">
+              <button
+                className="ras-tp-use-btn"
+                onClick={() => handleSelectIntent(selectedTemplate.id)}
+              >
+                استخدام هذا القالب ←
+              </button>
+              <button
+                className="ras-tp-back-btn"
+                onClick={() => setCreationPhase('intent')}
+              >
+                رجوع
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* TEMPLATE BANNER — workspace only */}
       {selectedTemplate && creationPhase === 'workspace' && (
         <div className="ras-template-banner">
           <span className="ras-template-banner-label">
@@ -2670,7 +2756,7 @@ export default function RasAmrChamber() {
       )}
 
       {/* BODY GRID — Phase C: Desktop 280px 1fr 300px */}
-      <div className="ras-body-grid" style={{ display: creationPhase === 'intent' ? 'none' : undefined }}>
+      <div className="ras-body-grid" style={{ display: (creationPhase === 'intent' || creationPhase === 'template-preview') ? 'none' : undefined }}>
 
         {/* LEFT: Asset Queue */}
         <aside className="ras-panel-left neon-border">
@@ -2871,12 +2957,61 @@ export default function RasAmrChamber() {
                   onDragLeave={() => setIsDragOverSurface(false)}
                 >
                   {!activeAsset ? (
+                    selectedTemplate ? (
+                      /* Live template body — slots shown with fill status */
+                      <div className="viewport-template-body">
+                        <div className="viewport-tb-header">
+                          <span className="viewport-tb-icon">{selectedTemplate.icon}</span>
+                          <span className="viewport-tb-name">{selectedTemplate.name}</span>
+                        </div>
+                        <div className="viewport-tb-flow">
+                          {selectedTemplate.slotDurations.map((dur, i) => {
+                            const nodeCount = sessionCanvas?.tracks.flatMap(t => t.nodes).length ?? 0;
+                            const isFilled = i < nodeCount;
+                            const role = selectedTemplate.slotRoles?.[i] ?? `موضع ${i + 1}`;
+                            const isLast = i === selectedTemplate.slotDurations.length - 1;
+                            const sep = selectedTemplate.transitionPreference === 'crossfade' ? '≈' : '|';
+                            return (
+                              <div key={i} className="viewport-tb-slot-group">
+                                <div className={`viewport-tb-slot${isFilled ? ' viewport-tb-slot-filled' : ''}`}>
+                                  <span className="viewport-tb-slot-role">{role}</span>
+                                  {!isFilled
+                                    ? <span className="viewport-tb-slot-cue">← أضف أصلاً</span>
+                                    : <span className="viewport-tb-slot-check">✓</span>
+                                  }
+                                  <span className="viewport-tb-slot-dur">{dur}ث</span>
+                                </div>
+                                {!isLast && (
+                                  <span className="viewport-tb-sep">{sep}</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {/* Extra slots when creator added beyond template */}
+                          {(() => {
+                            const nodeCount = sessionCanvas?.tracks.flatMap(t => t.nodes).length ?? 0;
+                            const extra = Math.max(0, nodeCount - selectedTemplate.slotDurations.length);
+                            return extra > 0 ? (
+                              <div className="viewport-tb-slot-group">
+                                <span className="viewport-tb-sep">+</span>
+                                <div className="viewport-tb-slot viewport-tb-slot-filled viewport-tb-slot-extra">
+                                  <span className="viewport-tb-slot-role">{extra} {extra === 1 ? 'أصل إضافي' : 'أصول إضافية'}</span>
+                                  <span className="viewport-tb-slot-check">✓</span>
+                                </div>
+                              </div>
+                            ) : null;
+                          })()}
+                        </div>
+                        <p className="viewport-summon-cue">← استدعِ أصلاً من الخزانة</p>
+                      </div>
+                    ) : (
                     <div className="viewport-chamber-identity">
                       <div className="viewport-sigil" aria-hidden="true">✦</div>
                       <h2 className="viewport-chamber-name">رأس الأمر</h2>
                       <p className="viewport-chamber-mandate">الجهة الدستورية لتوجيه الإنتاج السيادي — مكانية، بصرية، زمنية، وصوتية</p>
                       <p className="viewport-summon-cue">← استدعِ أصلاً من الخزانة للبدء</p>
                     </div>
+                    )
                   ) : activeAsset.isRealAsset && activeAsset.capabilityOrigin === CapabilityTarget.VISUAL && activeAsset.secureStorageUri ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img className="viewport-asset-image" src={activeAsset.secureStorageUri} alt={activeAsset.title} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
@@ -3642,7 +3777,7 @@ export default function RasAmrChamber() {
           production structure immediately — not inside a side panel or behind a toggle.
           Slots are structural positions, NOT fake assets or placeholder media.
           Fill state is derived from real canvas node count only. */}
-      {selectedTemplate && creationPhase === 'workspace' && (
+      {selectedTemplate && creationPhase === 'workspace' && selectedTemplate.slotDurations.length > 0 && (
         <div className="ras-template-structure" aria-label={`هيكل قالب ${selectedTemplate.name}`}>
           <span className="ras-template-structure-label">
             {selectedTemplate.icon} {selectedTemplate.name}
