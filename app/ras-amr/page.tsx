@@ -485,52 +485,60 @@ interface SovereignTemplate {
   transitionPreference: 'cut' | 'crossfade';
   transitionDurationSeconds?: number;
   slotDurations: number[];
-  slotRoles?: string[]; // presentation-only production position labels
+  slotRoles?: string[];   // production position labels shown to creator
+  slotCues?: string[];    // per-slot asset guidance (what to put here)
 }
 
+// PACKAGE XXXVIII — SOVEREIGN LIVING TEMPLATES
+// Six-slot production grammar per directive spec. These are starting grammars,
+// not fixed structures — the creator expands/overrides/removes freely.
 const SOVEREIGN_TEMPLATES: SovereignTemplate[] = [
   {
     id: 'product-ad',
     name: 'إعلان منتج',
     icon: '📦',
-    description: 'منتج، صورة، صوت — تسلسل إعلاني جاهز للبداية.',
-    directorIntentPreset: 'أبرز المنتج، ابدأ بأفضل صورة، ثم انتقل بين اللقطات بسلاسة، واختتم بعرض واضح.',
+    description: 'من الخطاف إلى الدعوة — تسلسل إعلاني يُبرز المنتج بإيقاع محترف.',
+    directorIntentPreset: 'ابدأ بخطاف يجذب الانتباه، قدّم المنتج بوضوح، أبرز ميزته الرئيسية، ثم اختتم بدعوة واضحة.',
     transitionPreference: 'crossfade',
-    transitionDurationSeconds: 0.9,
-    slotDurations: [4, 4, 4, 12],
-    slotRoles: ['افتتاحية', 'المنتج', 'إبراز', 'الخاتمة'],
+    transitionDurationSeconds: 0.8,
+    slotDurations: [3, 5, 4, 4, 4, 10],
+    slotRoles: ['خطاف البداية', 'تقديم المنتج', 'إبراز المنتج', 'الفائدة والاستخدام', 'مشاهد داعمة', 'الخاتمة / الدعوة'],
+    slotCues: ['لحظة أو صورة تجذب الانتباه فوراً', 'صورة المنتج الرئيسية بوضوح', 'لقطة قريبة أو تفصيل بارز', 'لقطة الاستخدام الحقيقي', 'لقطات إضافية تدعم الرسالة', 'صورة ختامية مع رسالة أو دعوة واضحة'],
   },
   {
     id: 'cinematic-story',
     name: 'قصة سينمائية',
     icon: '🎞',
-    description: 'حوّل أصولك إلى فصول متتابعة داخل مشهد واحد.',
-    directorIntentPreset: 'ابنِ قصة مصورة متتابعة، بحيث تصبح كل لقطة فصلاً من المشهد.',
+    description: 'من عالم الافتتاح إلى خاتمة تُحسّ — بناء قصصي متسلسل داخل مشهد واحد.',
+    directorIntentPreset: 'ابنِ قصة مصورة متسلسلة — كل لقطة فصل من المشهد — مع ذروة واضحة وخاتمة تترك أثراً.',
     transitionPreference: 'crossfade',
     transitionDurationSeconds: 1.0,
-    slotDurations: [5, 5, 5, 5],
-    slotRoles: ['الفصل الأول', 'الفصل الثاني', 'الفصل الثالث', 'الخاتمة'],
+    slotDurations: [5, 5, 6, 5, 5, 4],
+    slotRoles: ['الافتتاح والعالم', 'التقديم', 'التطور', 'نقطة التحول', 'الذروة', 'الخاتمة'],
+    slotCues: ['لقطة تُعرّف المكان أو الشخصية', 'تقديم العناصر الرئيسية للقصة', 'تطور الحدث أو الصراع', 'اللحظة التي يتغير فيها كل شيء', 'أقوى لحظة أو اكتمال الحدث', 'خاتمة تترك أثراً أو رسالة'],
   },
   {
     id: 'short-social',
     name: 'ريلز / فيديو قصير',
     icon: '⚡',
-    description: 'إيقاع سريع ولقطات مباشرة لمحتوى قصير.',
-    directorIntentPreset: 'اصنع إيقاعًا سريعًا بقطعات مباشرة ومختصرة.',
+    description: 'إيقاع سريع وتصاعدي — خطاف، حركة، ذروة، خاتمة.',
+    directorIntentPreset: 'ابدأ بخطاف آسر، صاعِد بسرعة، وانتهِ بلحظة ذروة قصيرة وحادة.',
     transitionPreference: 'cut',
-    slotDurations: [3, 3, 3],
-    slotRoles: ['لقطة ١', 'لقطة ٢', 'لقطة ٣'],
+    slotDurations: [2, 3, 3, 3, 3, 2],
+    slotRoles: ['الخطاف', 'الحركة', 'المعلومة / الحدث', 'الإبراز', 'التصاعد', 'الخاتمة'],
+    slotCues: ['أول لحظة تمسك العين', 'لقطة حركة أو انتقال', 'المعلومة أو الحدث الجوهري', 'اللقطة الأقوى', 'تصاعد قبل النهاية', 'خاتمة حادة ومختصرة'],
   },
   {
     id: 'voice-led',
-    name: 'صوت وتعليق',
+    name: 'الصوت والحكاية',
     icon: '🎙',
-    description: 'اجعل الصورة والفيديو يتحركان على إيقاع صوتك أو تعليقك.',
-    directorIntentPreset: 'اجعل الصوت يقود المشهد، مع انتقالات هادئة بين اللقطات.',
+    description: 'صوتك يقود — الصور والفيديو تستجيب لإيقاعك وتعليقك.',
+    directorIntentPreset: 'اجعل الصوت يقود المشهد — كل لقطة استجابة بصرية لما يُقال — مع انتقالات هادئة وإيقاع سردي.',
     transitionPreference: 'crossfade',
-    transitionDurationSeconds: 0.5,
-    slotDurations: [8, 8, 16],
-    slotRoles: ['مقدمة', 'الجسم', 'الخاتمة'],
+    transitionDurationSeconds: 0.6,
+    slotDurations: [6, 8, 8, 8, 10, 8],
+    slotRoles: ['افتتاح صوتي', 'استجابة بصرية', 'تطور بصري', 'مشاهد داعمة', 'دعم موسيقي / صوتي', 'الخاتمة'],
+    slotCues: ['سجّل الجملة الافتتاحية أو المقدمة', 'صورة أو فيديو يعكس ما يُقال', 'مشهد يتطور مع السرد', 'لقطات إضافية تدعم التعليق', 'موسيقى أو صوت محيطي يُكمل المشهد', 'خاتمة صوتية مع صورة ختامية'],
   },
 ];
 
@@ -667,6 +675,11 @@ export default function RasAmrChamber() {
   const [creationPhase, setCreationPhase] = useState<CreationPhase>('intent');
   const [selectedTemplate, setSelectedTemplate] = useState<SovereignTemplate | null>(null);
   const [showTemplatePanel, setShowTemplatePanel] = useState(false);
+  // PACKAGE XXXVIII — ANIMATED STRUCTURAL PREVIEW
+  // Which slot index is currently "active" in the template preview animation.
+  // -1 = not playing. Driven by a timer chain in useEffect below.
+  const [previewStep, setPreviewStep] = useState<number>(-1);
+  const previewTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const [isRendering, setIsRendering] = useState<boolean>(false);
   const [renderStatus, setRenderStatus] = useState<string>('في وضع الاستعداد الإخراجي');
@@ -2134,6 +2147,48 @@ export default function RasAmrChamber() {
   // Stop playback on unmount to prevent orphaned intervals/audio.
   useEffect(() => () => { handleStopPreview(); }, [handleStopPreview]);
 
+  // PACKAGE XXXVIII — AUTO-ANIMATE template preview on entry.
+  // Each slot lights up for its proportional share of a 9-second preview window.
+  // Honest: shows timing structure (relative slot durations) without faking content.
+  useEffect(() => {
+    previewTimersRef.current.forEach(clearTimeout);
+    previewTimersRef.current = [];
+    if (creationPhase !== 'template-preview' || !selectedTemplate) {
+      setPreviewStep(-1);
+      return;
+    }
+    const total = selectedTemplate.slotDurations.reduce((a, b) => a + b, 0);
+    const PREVIEW_SECS = 9; // total animation window in real seconds
+    let elapsed = 0;
+    setPreviewStep(0);
+    selectedTemplate.slotDurations.forEach((dur, i) => {
+      const delay = Math.round((elapsed / total) * PREVIEW_SECS * 1000);
+      previewTimersRef.current.push(setTimeout(() => setPreviewStep(i), delay));
+      elapsed += dur;
+    });
+    // stop after full preview
+    previewTimersRef.current.push(setTimeout(() => setPreviewStep(-1), PREVIEW_SECS * 1000 + 300));
+    return () => { previewTimersRef.current.forEach(clearTimeout); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [creationPhase, selectedTemplate?.id]);
+
+  // Replay the structural preview animation (triggered by creator button).
+  const replayPreviewAnimation = () => {
+    if (!selectedTemplate) return;
+    previewTimersRef.current.forEach(clearTimeout);
+    previewTimersRef.current = [];
+    const total = selectedTemplate.slotDurations.reduce((a, b) => a + b, 0);
+    const PREVIEW_SECS = 9;
+    let elapsed = 0;
+    setPreviewStep(0);
+    selectedTemplate.slotDurations.forEach((dur, i) => {
+      const delay = Math.round((elapsed / total) * PREVIEW_SECS * 1000);
+      previewTimersRef.current.push(setTimeout(() => setPreviewStep(i), delay));
+      elapsed += dur;
+    });
+    previewTimersRef.current.push(setTimeout(() => setPreviewStep(-1), PREVIEW_SECS * 1000 + 300));
+  };
+
   const handleStartPreview = () => {
     if (!sessionCanvas) return;
     // handleStopPreview cancels all pending timers and clears all media refs
@@ -2531,18 +2586,37 @@ export default function RasAmrChamber() {
                 <span>قوالب البداية</span>
               </div>
 
-              {/* 4 Template cards — open preview screen before workspace */}
-              {SOVEREIGN_TEMPLATES.map((tpl) => (
-                <button
-                  key={tpl.id}
-                  className="ras-intent-card ras-intent-template"
-                  onClick={() => { setSelectedTemplate(tpl); setCreationPhase('template-preview'); }}
-                >
-                  <span className="ras-intent-card-icon">{tpl.icon}</span>
-                  <span className="ras-intent-card-name">{tpl.name}</span>
-                  <span className="ras-intent-card-desc">{tpl.description}</span>
-                </button>
-              ))}
+              {/* 4 Template cards — mini slot strip + open preview screen before workspace */}
+              {SOVEREIGN_TEMPLATES.map((tpl) => {
+                const total = tpl.slotDurations.reduce((a, b) => a + b, 0);
+                return (
+                  <button
+                    key={tpl.id}
+                    className="ras-intent-card ras-intent-template"
+                    onClick={() => { setSelectedTemplate(tpl); setCreationPhase('template-preview'); }}
+                  >
+                    <span className="ras-intent-card-icon">{tpl.icon}</span>
+                    <span className="ras-intent-card-name">{tpl.name}</span>
+                    {/* Mini visual strip — shows relative slot widths and transition style */}
+                    <div className="ras-intent-card-strip" aria-hidden="true">
+                      {tpl.slotDurations.map((d, i) => (
+                        <React.Fragment key={i}>
+                          <span
+                            className={`ras-intent-strip-slot${tpl.transitionPreference === 'crossfade' && i > 0 ? ' strip-slot-fade' : ''}`}
+                            style={{ flex: d / total * 10 }}
+                            title={tpl.slotRoles?.[i]}
+                          />
+                          {i < tpl.slotDurations.length - 1 && (
+                            <span className={`ras-intent-strip-sep${tpl.transitionPreference === 'crossfade' ? ' strip-sep-fade' : ''}`} />
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                    <span className="ras-intent-card-desc">{tpl.description}</span>
+                    <span className="ras-intent-card-preview-hint">← معاينة الهيكل</span>
+                  </button>
+                );
+              })}
 
               {/* Section: direct entry */}
               <div className="ras-intent-section-label">
@@ -2670,20 +2744,34 @@ export default function RasAmrChamber() {
               <p className="ras-tp-desc">{selectedTemplate.description}</p>
             </div>
 
-            {/* LIVE PRODUCTION BODY: visual flow of slots */}
+            {/* LIVE PRODUCTION BODY: animated structural preview */}
             <div className="ras-tp-body-section">
-              <div className="ras-tp-body-label">الجسد الإنتاجي</div>
+              <div className="ras-tp-body-label-row">
+                <span className="ras-tp-body-label">الجسد الإنتاجي</span>
+                <button
+                  className="ras-tp-replay-btn"
+                  onClick={replayPreviewAnimation}
+                  title="أعِد تشغيل المعاينة"
+                >
+                  {previewStep >= 0 ? '⬤ تشغيل' : '▶ معاينة الهيكل'}
+                </button>
+              </div>
               <div className="ras-tp-body-flow">
                 {selectedTemplate.slotDurations.map((dur, i) => {
                   const role = selectedTemplate.slotRoles?.[i] ?? `موضع ${i + 1}`;
+                  const cue = selectedTemplate.slotCues?.[i] ?? 'أضف أصلاً — صورة · فيديو · صوت';
                   const isLast = i === selectedTemplate.slotDurations.length - 1;
                   const sep = selectedTemplate.transitionPreference === 'crossfade' ? '≈ تلاشٍ' : '| قطع';
+                  const isActive = previewStep === i;
+                  const isPast = previewStep > i && previewStep >= 0;
                   return (
                     <div key={i} className="ras-tp-slot-group">
-                      <div className="ras-tp-slot">
+                      <div className={`ras-tp-slot${isActive ? ' ras-tp-slot-playing' : ''}${isPast ? ' ras-tp-slot-done' : ''}`}>
+                        <span className="ras-tp-slot-num">{i + 1}</span>
                         <span className="ras-tp-slot-role">{role}</span>
-                        <span className="ras-tp-slot-cue">أضف أصلاً — صورة · فيديو · صوت</span>
+                        <span className="ras-tp-slot-cue">{cue}</span>
                         <span className="ras-tp-slot-dur">~{dur}ث</span>
+                        {isPast && <span className="ras-tp-slot-check-icon" aria-hidden="true">✓</span>}
                       </div>
                       {!isLast && (
                         <div className="ras-tp-connector">
@@ -2711,7 +2799,7 @@ export default function RasAmrChamber() {
                   ? `تلاشٍ سيادي (${selectedTemplate.transitionDurationSeconds ?? 0.5}ث)`
                   : 'قطع مباشر'}
               </span>
-              <span>المدة الإرشادية: {selectedTemplate.slotDurations.reduce((a, b) => a + b, 0)}ث</span>
+              <span>الإيقاع الإرشادي: {selectedTemplate.slotDurations.reduce((a, b) => a + b, 0)}ث — قابل للتوسع</span>
             </div>
 
             {/* CTA */}
@@ -2976,7 +3064,7 @@ export default function RasAmrChamber() {
                                 <div className={`viewport-tb-slot${isFilled ? ' viewport-tb-slot-filled' : ''}`}>
                                   <span className="viewport-tb-slot-role">{role}</span>
                                   {!isFilled
-                                    ? <span className="viewport-tb-slot-cue">← أضف أصلاً</span>
+                                    ? <span className="viewport-tb-slot-cue">{selectedTemplate.slotCues?.[i] ?? '← أضف أصلاً'}</span>
                                     : <span className="viewport-tb-slot-check">✓</span>
                                   }
                                   <span className="viewport-tb-slot-dur">{dur}ث</span>
