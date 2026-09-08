@@ -927,7 +927,8 @@ export default function RasAmrChamber() {
     if (assetId && sessionCanvas) {
       const asset = queue.find((a) => a.id === assetId);
       if (asset?.isRealAsset && asset.assetFamily && asset.capabilityOrigin) {
-        // PACKAGE XXXV: duplicate guard removed. PACKAGE XXXVI: template temporal.
+        // PACKAGE XXXIX: audio assets add to canvas as nodes (for preview temporal
+        // tracking) but are routed to the audio tab, not shown as visual layers.
         setActiveAsset(asset);
         const dropNodeIndex = sessionCanvas.tracks.flatMap((t) => t.nodes).length;
         const mutation: AddNodePayload = {
@@ -945,9 +946,15 @@ export default function RasAmrChamber() {
         };
         const updatedCanvas = executeDirectionDecision(sessionCanvas, mutation);
         setSessionCanvas(updatedCanvas);
-        const tgt = updatedCanvas.tracks.find((t) => t.trackId === activeTrackId);
-        const newNode = tgt?.nodes[tgt.nodes.length - 1];
-        if (newNode) { setSelectedNodeId(newNode.nodeId); setSpatialForm(DEFAULT_SPATIAL); }
+
+        if (asset.capabilityOrigin === CapabilityTarget.AUDIO) {
+          // Audio belongs to the audio track — not a visual layer.
+          setActiveWorkspaceTab('audio');
+        } else {
+          const tgt = updatedCanvas.tracks.find((t) => t.trackId === activeTrackId);
+          const newNode = tgt?.nodes[tgt.nodes.length - 1];
+          if (newNode) { setSelectedNodeId(newNode.nodeId); setSpatialForm(DEFAULT_SPATIAL); }
+        }
       } else if (asset) {
         setActiveAsset(asset);
       }
@@ -1091,10 +1098,20 @@ export default function RasAmrChamber() {
 
     const targetTrack = updatedCanvas.tracks.find((t) => t.trackId === activeTrackId);
     const newNode = targetTrack?.nodes[targetTrack.nodes.length - 1];
-    if (newNode) setSelectedNodeId(newNode.nodeId);
-    setSpatialForm(DEFAULT_SPATIAL);
-    setVisualForm(DEFAULT_VISUAL);
-    setTemporalForm(DEFAULT_TEMPORAL);
+
+    if (activeAsset.capabilityOrigin === CapabilityTarget.AUDIO) {
+      // Audio nodes live in the audio track, not the visual canvas surface.
+      // Route the creator to the audio tab so they can see and control the asset.
+      // The node exists in canvas for preview temporal tracking — it is NOT
+      // rendered as a visual layer.
+      setActiveWorkspaceTab('audio');
+    } else {
+      // Visual/motion asset: select the new node for immediate spatial editing.
+      if (newNode) setSelectedNodeId(newNode.nodeId);
+      setSpatialForm(DEFAULT_SPATIAL);
+      setVisualForm(DEFAULT_VISUAL);
+      setTemporalForm(DEFAULT_TEMPORAL);
+    }
   };
 
   // Removes one node from the Narrative Canvas — reuses
@@ -2689,6 +2706,10 @@ export default function RasAmrChamber() {
   const handleNewScene = async () => {
     const ts = Date.now();
 
+    // 0. Stop any running preview so audio timers + video refs don't outlive
+    //    the current session and fire into the new scene's state.
+    handleStopPreview();
+
     // 1. Snapshot the current scene before clearing (preserve previous work).
     if (sessionCanvas && sessionCanvas.tracks.flatMap(t => t.nodes).length > 0) {
       try {
@@ -3246,7 +3267,13 @@ export default function RasAmrChamber() {
                 when the canvas has nodes. Single-asset preview is shown otherwise. */}
             {(() => {
               const canvasNodes = sessionCanvas?.tracks.flatMap((t) => t.nodes) ?? [];
-              const hasCanvasNodes = canvasNodes.length > 0;
+              // PACKAGE XXXIX: visual-only check — audio nodes exist in canvas for
+              // preview temporal tracking but must NOT appear as visual layers.
+              const visualCanvasNodes = canvasNodes.filter((node) => {
+                const va = vaultAssets.find((a) => a.assetId === node.assetId);
+                return va?.capabilityTarget !== CapabilityTarget.AUDIO;
+              });
+              const hasCanvasNodes = visualCanvasNodes.length > 0;
 
               if (hasCanvasNodes) {
                 return (
@@ -3261,7 +3288,7 @@ export default function RasAmrChamber() {
                     onDragLeave={() => setIsDragOverSurface(false)}
                     aria-label="سطح التأليف السينمائي"
                   >
-                    {canvasNodes.map((node) => {
+                    {visualCanvasNodes.map((node) => {
                       const vaultAsset = vaultAssets.find((a) => a.assetId === node.assetId);
                       const uri = vaultAsset?.secureStorageUri;
                       const isSelected = node.nodeId === selectedNodeId;
@@ -3370,41 +3397,61 @@ export default function RasAmrChamber() {
                           <span className="viewport-tb-name">{selectedTemplate.name}</span>
                         </div>
                         <div className="viewport-tb-flow">
-                          {selectedTemplate.slotDurations.map((dur, i) => {
-                            const nodeCount = sessionCanvas?.tracks.flatMap(t => t.nodes).length ?? 0;
-                            const isFilled = i < nodeCount;
-                            const role = selectedTemplate.slotRoles?.[i] ?? `موضع ${i + 1}`;
-                            const isLast = i === selectedTemplate.slotDurations.length - 1;
-                            const sep = selectedTemplate.transitionPreference === 'crossfade' ? '≈' : '|';
-                            return (
-                              <div key={i} className="viewport-tb-slot-group">
-                                <div className={`viewport-tb-slot${isFilled ? ' viewport-tb-slot-filled' : ''}`}>
-                                  <span className="viewport-tb-slot-role">{role}</span>
-                                  {!isFilled
-                                    ? <span className="viewport-tb-slot-cue">{selectedTemplate.slotCues?.[i] ?? '← أضف أصلاً'}</span>
-                                    : <span className="viewport-tb-slot-check">✓</span>
-                                  }
-                                  <span className="viewport-tb-slot-dur">{dur}ث</span>
-                                </div>
-                                {!isLast && (
-                                  <span className="viewport-tb-sep">{sep}</span>
-                                )}
-                              </div>
-                            );
-                          })}
-                          {/* Extra slots when creator added beyond template */}
                           {(() => {
-                            const nodeCount = sessionCanvas?.tracks.flatMap(t => t.nodes).length ?? 0;
-                            const extra = Math.max(0, nodeCount - selectedTemplate.slotDurations.length);
-                            return extra > 0 ? (
-                              <div className="viewport-tb-slot-group">
-                                <span className="viewport-tb-sep">+</span>
-                                <div className="viewport-tb-slot viewport-tb-slot-filled viewport-tb-slot-extra">
-                                  <span className="viewport-tb-slot-role">{extra} {extra === 1 ? 'أصل إضافي' : 'أصول إضافية'}</span>
-                                  <span className="viewport-tb-slot-check">✓</span>
-                                </div>
-                              </div>
-                            ) : null;
+                            // PACKAGE XXXIX: only VISUAL assets fill template grammar slots.
+                            // Audio nodes exist in canvas for preview timing but must NOT
+                            // count as visual production stages.
+                            const visualNodeCount = sessionCanvas?.tracks.flatMap(t => t.nodes)
+                              .filter(n => vaultAssets.find(a => a.assetId === n.assetId)?.capabilityTarget !== CapabilityTarget.AUDIO)
+                              .length ?? 0;
+                            const audioNodeCount = sessionCanvas?.tracks.flatMap(t => t.nodes)
+                              .filter(n => vaultAssets.find(a => a.assetId === n.assetId)?.capabilityTarget === CapabilityTarget.AUDIO)
+                              .length ?? 0;
+                            return (
+                              <>
+                                {selectedTemplate.slotDurations.map((dur, i) => {
+                                  const isFilled = i < visualNodeCount;
+                                  const role = selectedTemplate.slotRoles?.[i] ?? `موضع ${i + 1}`;
+                                  const isLast = i === selectedTemplate.slotDurations.length - 1;
+                                  const sep = selectedTemplate.transitionPreference === 'crossfade' ? '≈' : '|';
+                                  return (
+                                    <div key={i} className="viewport-tb-slot-group">
+                                      <div className={`viewport-tb-slot${isFilled ? ' viewport-tb-slot-filled' : ''}`}>
+                                        <span className="viewport-tb-slot-role">{role}</span>
+                                        {!isFilled
+                                          ? <span className="viewport-tb-slot-cue">{selectedTemplate.slotCues?.[i] ?? '← أضف أصلاً'}</span>
+                                          : <span className="viewport-tb-slot-check">✓</span>
+                                        }
+                                        <span className="viewport-tb-slot-dur">{dur}ث</span>
+                                      </div>
+                                      {!isLast && (
+                                        <span className="viewport-tb-sep">{sep}</span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                                {/* Extra visual slots when creator added beyond template */}
+                                {Math.max(0, visualNodeCount - selectedTemplate.slotDurations.length) > 0 && (
+                                  <div className="viewport-tb-slot-group">
+                                    <span className="viewport-tb-sep">+</span>
+                                    <div className="viewport-tb-slot viewport-tb-slot-filled viewport-tb-slot-extra">
+                                      {(() => { const ex = visualNodeCount - selectedTemplate.slotDurations.length; return <span className="viewport-tb-slot-role">{ex} {ex === 1 ? 'أصل مرئي إضافي' : 'أصول مرئية إضافية'}</span>; })()}
+                                      <span className="viewport-tb-slot-check">✓</span>
+                                    </div>
+                                  </div>
+                                )}
+                                {/* Audio indicator — separate, never counted as visual stages */}
+                                {audioNodeCount > 0 && (
+                                  <div className="viewport-tb-slot-group viewport-tb-audio-indicator">
+                                    <span className="viewport-tb-sep">🎵</span>
+                                    <div className="viewport-tb-slot viewport-tb-slot-filled viewport-tb-slot-audio">
+                                      <span className="viewport-tb-slot-role">{audioNodeCount} {audioNodeCount === 1 ? 'مسار صوتي' : 'مسارات صوتية'}</span>
+                                      <span className="viewport-tb-slot-check">✓</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            );
                           })()}
                         </div>
                         <p className="viewport-summon-cue">← استدعِ أصلاً من الخزانة</p>
@@ -3549,7 +3596,15 @@ export default function RasAmrChamber() {
               <span>{directingMode === 'smart' ? 'المخرج الآلي' : 'المخرج اليدوي'}</span>
             </div>
             <div className="strip-cell strip-canvas">
-              {sessionCanvas ? `${sessionCanvas.tracks.flatMap(t => t.nodes).length} عنصر` : 'لا يوجد مشهد'}
+              {sessionCanvas ? (() => {
+                const allN = sessionCanvas.tracks.flatMap(t => t.nodes);
+                const visualN = allN.filter(n => vaultAssets.find(a => a.assetId === n.assetId)?.capabilityTarget !== CapabilityTarget.AUDIO).length;
+                const audioN = allN.length - visualN;
+                if (allN.length === 0) return 'لوحة فارغة';
+                return audioN > 0
+                  ? `${visualN} مرئي · ${audioN} صوتي`
+                  : `${visualN} مرئي`;
+              })() : 'لا يوجد مشهد'}
             </div>
             <div className="strip-cell strip-render">
               {renderStatus !== 'في وضع الاستعداد الإخراجي' ? renderStatus : '◉ جاهز'}
