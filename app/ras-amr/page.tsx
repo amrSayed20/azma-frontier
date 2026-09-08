@@ -1088,6 +1088,50 @@ export default function RasAmrChamber() {
     }
   };
 
+  // PACKAGE XXXVIII BLOCKER — REMOVE FROM PRODUCTION:
+  // Removes a Vault asset from the current production session (queue + all
+  // canvas nodes that reference it) WITHOUT deleting it from Sovereign Vault.
+  // "إزالة من المشروع" is a session-scoped removal only.
+  const handleRemoveFromProduction = (assetId: string) => {
+    // 1. Remove from visual production queue.
+    setQueue((prev) => prev.filter((item) => item.id !== assetId));
+
+    // 2. Clear active selection if it was this asset.
+    if (activeAsset?.id === assetId) {
+      setActiveAsset(null);
+    }
+
+    // 3. Remove every canvas node that references this asset via executeDirectionDecision chain.
+    if (sessionCanvas) {
+      const matchingNodes = sessionCanvas.tracks
+        .flatMap((t) => t.nodes)
+        .filter((n) => n.assetId === assetId);
+
+      let updatedCanvas = sessionCanvas;
+      for (const node of matchingNodes) {
+        const mutation: RemoveNodePayload = {
+          actionType: CanvasActionType.REMOVE_NODE,
+          canvasId: updatedCanvas.canvasId,
+          subscriberTenantId: updatedCanvas.subscriberTenantId,
+          targetTrackId: 'track-1',
+          targetNodeId: node.nodeId,
+        };
+        updatedCanvas = executeDirectionDecision(updatedCanvas, mutation);
+      }
+
+      if (updatedCanvas !== sessionCanvas) {
+        setSessionCanvas(updatedCanvas);
+        // Clear node selection if selected node belonged to removed asset.
+        if (selectedNodeId) {
+          const stillExists = updatedCanvas.tracks
+            .flatMap((t) => t.nodes)
+            .some((n) => n.nodeId === selectedNodeId);
+          if (!stillExists) setSelectedNodeId(null);
+        }
+      }
+    }
+  };
+
   // PACKAGE XX — DIRECTION ASSEMBLY LAYER: non-destructive reordering —
   // moves a node one position up or down within its own group.
   const handleReorderNode = (nodeId: string, direction: 'up' | 'down') => {
@@ -2598,27 +2642,59 @@ export default function RasAmrChamber() {
     setCreationPhase('intent');
   };
 
-  // AMENDMENT — NEW SCENE: saves current work as a snapshot first (preserving it),
-  // then resets to a blank working context and returns to the intent gate.
-  // The previous scene remains accessible via the restore/load panel.
+  // PACKAGE XXXVIII BLOCKER — NEW SCENE: full production-session isolation.
+  // Saves the previous scene as a restorable snapshot, then resets ALL
+  // current-production state — canvas, queue, active selection, template,
+  // transient compile/preview state — so the creator starts a genuinely
+  // clean session. Also explicitly writes a blank working draft to the DB
+  // so a browser refresh does NOT resurrect the previous production.
+  //
+  // Does NOT delete anything from Sovereign Vault.
+  // Does NOT touch vaultAssets.
   const handleNewScene = async () => {
+    const ts = Date.now();
+
+    // 1. Snapshot the current scene before clearing (preserve previous work).
     if (sessionCanvas && sessionCanvas.tracks.flatMap(t => t.nodes).length > 0) {
       try {
-        const timestamp = Date.now();
         await fetch('/api/ras-amr/canvas', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             canvas: {
               ...sessionCanvas,
-              canvasId: `snap-${timestamp}-scene`,
-              title: sessionCanvas.title || `مشهد ${new Date(timestamp).toLocaleTimeString('ar')}`,
-              updatedAt: timestamp,
+              canvasId: `snap-${ts}-scene`,
+              title: sessionCanvas.title || `مشهد ${new Date(ts).toLocaleTimeString('ar')}`,
+              updatedAt: ts,
             },
           }),
         });
-      } catch { /* silent — draft is already auto-saved */ }
+      } catch { /* silent */ }
     }
+
+    // 2. Overwrite the working draft in DB with a blank canvas.
+    // This prevents auto-restore on refresh from resurrecting the old production.
+    // The autosave debounce guard blocks blank canvases from being saved automatically,
+    // so we do it explicitly here as a session-boundary write.
+    try {
+      await fetch('/api/ras-amr/canvas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          canvas: {
+            canvasId: 'canvas_narrative_session',
+            subscriberTenantId: 'pending-server-verification',
+            canvasType: CanvasType.CINEMATIC,
+            title: '',
+            tracks: [{ trackId: 'track-1', trackName: 'المسار الرئيسي', isMuted: false, isHidden: false, nodes: [] }],
+            createdAt: ts,
+            updatedAt: ts,
+          },
+        }),
+      });
+    } catch { /* silent */ }
+
+    // 3. Reset canvas composition state.
     setSessionCanvas({
       canvasId: 'canvas_narrative_session',
       subscriberTenantId: 'pending-server-verification',
@@ -2628,13 +2704,36 @@ export default function RasAmrChamber() {
       createdAt: 0,
       updatedAt: 0,
     });
+
+    // 4. Reset current-production asset queue and active selection.
+    //    These were NOT cleared before — this was the root cause of old assets
+    //    reappearing after New Scene → Template → Workspace.
+    setQueue([]);
+    setActiveAsset(null);
+
+    // 5. Reset node selection and edit forms.
     setSelectedNodeId(null);
+    setSpatialForm(DEFAULT_SPATIAL);
+    setVisualForm(DEFAULT_VISUAL);
+    setTemporalForm(DEFAULT_TEMPORAL);
+    setActiveTrackId('track-1');
+
+    // 6. Reset compile/render state belonging to the old production.
     setCompiledGraph(null);
     setCompiledForAssetId(null);
+    setIsRendering(false);
+    setRenderStatus('في وضع الاستعداد الإخراجي');
+
+    // 7. Reset template, direction intent, and decision log.
     setSelectedTemplate(null);
     setCreatorDirectorIntent('');
+    setDirectionDecisionLog([]);
+
+    // 8. Reset persistence indicator.
     setSaveState(null);
     setSaveCanvasStatus(null);
+
+    // 9. Return to intent/template selection.
     setCreationPhase('intent');
   };
 
@@ -3072,6 +3171,21 @@ export default function RasAmrChamber() {
                       <span className="item-title">{asset.title}</span>
                     </div>
                   </div>
+                  {/* PACKAGE XXXVIII BLOCKER — session-scoped removal: removes this
+                      asset from the current production queue and canvas nodes only.
+                      Vault is NOT affected. stopPropagation prevents card selection. */}
+                  {asset.isRealAsset && (
+                    <div className="queue-card-actions">
+                      <button
+                        className="queue-card-remove-btn"
+                        aria-label={`إزالة "${asset.title}" من المشروع الحالي`}
+                        title="إزالة من المشروع الحالي — يبقى الأصل في الخزانة"
+                        onClick={(e) => { e.stopPropagation(); handleRemoveFromProduction(asset.id); }}
+                      >
+                        إزالة من المشروع
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}

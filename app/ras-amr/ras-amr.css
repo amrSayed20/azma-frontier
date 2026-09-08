@@ -2572,6 +2572,59 @@
   direction: rtl;
 }
 
+/* --- Package XXXVIII Blocker: production-session removal action --- */
+/* Shown below the card content; session-scoped only — Vault untouched. */
+.queue-card-actions {
+  border-top: 1px solid rgba(255, 215, 0, 0.08);
+  padding-top: 5px;
+  margin-top: 5px;
+  display: flex;
+  justify-content: flex-end;
+}
+.queue-card-remove-btn {
+  background: transparent;
+  border: 1px solid rgba(180, 100, 100, 0.35);
+  border-radius: 4px;
+  color: rgba(220, 140, 140, 0.7);
+  font-family: var(--font-arabic), var(--font-main), sans-serif;
+  font-size: 9px;
+  padding: 2px 7px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+  direction: rtl;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.queue-card-remove-btn:hover {
+  border-color: rgba(220, 100, 100, 0.7);
+  color: rgba(240, 160, 160, 1);
+  background: rgba(180, 60, 60, 0.12);
+}
+.queue-card-remove-btn:active {
+  background: rgba(180, 60, 60, 0.22);
+}
+/* light theme */
+@media (prefers-color-scheme: light) {
+  .queue-card-remove-btn {
+    border-color: rgba(160, 60, 60, 0.3);
+    color: rgba(160, 60, 60, 0.7);
+  }
+  .queue-card-remove-btn:hover {
+    border-color: rgba(160, 60, 60, 0.7);
+    color: rgba(140, 40, 40, 1);
+    background: rgba(200, 80, 80, 0.1);
+  }
+}
+:root[data-theme="light"] .queue-card-remove-btn {
+  border-color: rgba(160, 60, 60, 0.3);
+  color: rgba(160, 60, 60, 0.7);
+}
+:root[data-theme="light"] .queue-card-remove-btn:hover {
+  border-color: rgba(160, 60, 60, 0.7);
+  color: rgba(140, 40, 40, 1);
+  background: rgba(200, 80, 80, 0.1);
+}
+
 /* --- Observation 2: Layer list identity + z-order --- */
 .layer-identity-row {
   display: flex;
