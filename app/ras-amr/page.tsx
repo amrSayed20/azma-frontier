@@ -912,7 +912,7 @@ export default function RasAmrChamber() {
       // at compile time regardless of what's carried here — see the
       // compile route's own note.
       subscriberTenantId: 'pending-server-verification',
-      canvasType: selectedCanvasType,
+      canvasType: CanvasType.CINEMATIC,
       title: 'مشهد الإخراج',
       tracks: [
         {
@@ -2443,6 +2443,46 @@ export default function RasAmrChamber() {
     setCreationPhase('intent');
   };
 
+  // AMENDMENT — NEW SCENE: saves current work as a snapshot first (preserving it),
+  // then resets to a blank working context and returns to the intent gate.
+  // The previous scene remains accessible via the restore/load panel.
+  const handleNewScene = async () => {
+    if (sessionCanvas && sessionCanvas.tracks.flatMap(t => t.nodes).length > 0) {
+      try {
+        const timestamp = Date.now();
+        await fetch('/api/ras-amr/canvas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            canvas: {
+              ...sessionCanvas,
+              canvasId: `snap-${timestamp}-scene`,
+              title: sessionCanvas.title || `مشهد ${new Date(timestamp).toLocaleTimeString('ar')}`,
+              updatedAt: timestamp,
+            },
+          }),
+        });
+      } catch { /* silent — draft is already auto-saved */ }
+    }
+    setSessionCanvas({
+      canvasId: 'canvas_narrative_session',
+      subscriberTenantId: 'pending-server-verification',
+      canvasType: CanvasType.CINEMATIC,
+      title: 'مشهد الإخراج',
+      tracks: [{ trackId: 'track-1', trackName: 'المسار الرئيسي', isMuted: false, isHidden: false, nodes: [] }],
+      createdAt: 0,
+      updatedAt: 0,
+    });
+    setSelectedNodeId(null);
+    setCompiledGraph(null);
+    setCompiledForAssetId(null);
+    setSelectedTemplate(null);
+    setCreatorDirectorIntent('');
+    setSaveState(null);
+    setSaveCanvasStatus(null);
+    setCreationPhase('intent');
+  };
+
   return (
     <RasAmrExperience>
     <main className={`ras-amr-viewport ${injectionFlash ? 'neon-flash-active' : ''}`}>
@@ -2458,7 +2498,7 @@ export default function RasAmrChamber() {
       {creationPhase === 'intent' && (
         <div className="ras-intent-gate">
           <div className="ras-intent-gate-inner">
-            {/* Minimal header: exit only */}
+            {/* Minimal header: exit + chamber seal */}
             <div className="ras-intent-mini-header">
               <button className="ras-exit-btn" onClick={() => {
                 try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'ras-amr', constitutionalAct: 'direction' })); } catch { /* ignore */ }
@@ -2466,17 +2506,22 @@ export default function RasAmrChamber() {
               }}>
                 ⮜ قلب الإمبراطورية
               </button>
-              <span className="ras-header-name">رأس الأمر</span>
+              <span className="ras-intent-chamber-seal">رأس الأمر</span>
             </div>
 
             {/* Hero question */}
             <div className="ras-intent-hero">
               <h1 className="ras-intent-question">ماذا تريد أن تصنع؟</h1>
-              <p className="ras-intent-sub">اختر نقطة البداية — يمكنك تغيير كل شيء داخل المشهد.</p>
+              <p className="ras-intent-sub">كل مشهد يبدأ باختيار.</p>
             </div>
 
-            {/* 7-card grid */}
+            {/* Card grid — templates first, then direct paths */}
             <div className="ras-intent-grid">
+
+              {/* Section: starting templates */}
+              <div className="ras-intent-section-label">
+                <span>قوالب البداية</span>
+              </div>
 
               {/* 4 Template cards */}
               {SOVEREIGN_TEMPLATES.map((tpl) => (
@@ -2491,6 +2536,11 @@ export default function RasAmrChamber() {
                 </button>
               ))}
 
+              {/* Section: direct entry */}
+              <div className="ras-intent-section-label">
+                <span>دخول مباشر</span>
+              </div>
+
               {/* Direct mode: Smart Director */}
               <button
                 className="ras-intent-card ras-intent-mode"
@@ -2498,7 +2548,7 @@ export default function RasAmrChamber() {
               >
                 <span className="ras-intent-card-icon">✦</span>
                 <span className="ras-intent-card-name">وجّه المخرج</span>
-                <span className="ras-intent-card-desc">أعطِ المخرج الذكي تعليماتك وهو يبني التسلسل.</span>
+                <span className="ras-intent-card-desc">افتح حقل التوجيه وأعطِ المخرج بنية البداية.</span>
               </button>
 
               {/* Direct mode: Blank canvas */}
@@ -2521,14 +2571,15 @@ export default function RasAmrChamber() {
                 <span className="ras-intent-card-desc">سجّل صوتك أو أضف تعليقاً وابنِ المشهد حوله.</span>
               </button>
 
-              {/* Imagine: full-width creative entry */}
+              {/* Imagine: full-width — honest: routes to director intent field,
+                  does NOT promise unrestricted NLP execution */}
               <button
                 className="ras-intent-card ras-intent-imagine"
                 onClick={() => handleSelectIntent('imagine')}
               >
                 <span className="ras-intent-card-icon">✦</span>
                 <span className="ras-intent-card-name">اصنع ما تتخيل</span>
-                <span className="ras-intent-card-desc">لا قيود — أخبر المخرج بما تتخيله وابدأ.</span>
+                <span className="ras-intent-card-desc">صِف فكرتك في حقل التوجيه — المخرج يُترجمها إلى قرار توجيهي.</span>
               </button>
 
             </div>
@@ -2544,6 +2595,15 @@ export default function RasAmrChamber() {
         }}>
           ⮜ قلب الإمبراطورية
         </button>
+        {/* AMENDMENT — creator navigation: change-start + new-scene */}
+        <div className="ras-nav-actions">
+          <button className="ras-nav-btn" onClick={handleChangeIntent} title="العودة إلى اختيار البداية — يبقى مشهدك محفوظاً">
+            تغيير البداية
+          </button>
+          <button className="ras-nav-btn ras-nav-new-scene" onClick={() => void handleNewScene()} title="بدء مشهد جديد — يُحفظ المشهد الحالي تلقائياً">
+            🎬 مشهد جديد
+          </button>
+        </div>
         <span className="ras-header-name">رأس الأمر</span>
         <div className="ras-mode-toggle" role="group" aria-label="وضع التوجيه">
           <button
@@ -2991,21 +3051,10 @@ export default function RasAmrChamber() {
                     </div>
                   )}
                 </div>
-                <select
-                  className="canvas-type-select"
-                  value={selectedCanvasType}
-                  onChange={(e) => {
-                    const newType = e.target.value as CanvasType;
-                    setSelectedCanvasType(newType);
-                    if (sessionCanvas) { setSessionCanvas(null); setSelectedNodeId(null); setCompiledGraph(null); setCompiledForAssetId(null); }
-                  }}
-                  aria-label="نوع الإنتاج"
-                >
-                  <option value={CanvasType.CINEMATIC}>سينمائي — يُنتج ملف فيديو MP4</option>
-                  <option value={CanvasType.NARRATIVE}>سردي — بنية تجميع ديناميكية</option>
-                  <option value={CanvasType.DIRECTORIAL}>توجيهي — بنية حالة توجيه</option>
-                </select>
-                {sessionCanvas && <p className="canvas-mode-reset-note">⚠ تغيير النوع يُعيد تهيئة المشهد الحالي</p>}
+                {/* AMENDMENT: only CINEMATIC has a real execution backend (real MP4 output).
+                    Removed the 3-option selector — presenting unsupported output types
+                    as choices violates the "visible action → real consequence" rule. */}
+                <div className="canvas-type-info">◉ سينمائي — مشهد بتسلسل زمني وفضائي</div>
                 {saveCanvasStatus && <p className="canvas-save-status canvas-tab-save-status">{saveCanvasStatus}</p>}
               </div>
 
