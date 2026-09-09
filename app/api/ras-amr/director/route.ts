@@ -32,7 +32,7 @@ export const dynamic = 'force-dynamic';
 
 const SESSION_COOKIE = 'azma_session';
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const GEMINI_MODEL = 'gemini-3.1-flash-lite';
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 function getGeminiApiKey(): string {
