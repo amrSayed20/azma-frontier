@@ -26,6 +26,7 @@ import type {
   DirectorPlan,
   DirectorInterpretRequest,
   ProductionAssetContext,
+  TemplateGrammar,
 } from '../../../../src/chambers/ras-al-amr/director-plan-types';
 
 export const dynamic = 'force-dynamic';
@@ -41,31 +42,56 @@ function getGeminiApiKey(): string {
   return key;
 }
 
-function buildSystemPrompt(assets: ProductionAssetContext[]): string {
+function buildSystemPrompt(assets: ProductionAssetContext[], templateGrammar?: TemplateGrammar): string {
   const assetLines = assets
     .map((a) => {
       const typeLabel =
         a.capabilityTarget === 'VISUAL' ? 'صورة' :
         a.capabilityTarget === 'MOTION' ? 'فيديو' : 'صوت';
       const dur = a.durationSeconds ? ` · ${a.durationSeconds}ث` : '';
-      return `  - ${a.label}: ${typeLabel} (${a.name}${dur})`;
+      // Voice hint: tells the interpreter this is a narration/voice-over asset,
+      // distinguishing it from background music or generic sound effects.
+      const voiceHint = a.isVoiceAsset ? ' [صوت سردي / تعليق صوتي]' : '';
+      return `  - ${a.label}: ${typeLabel} (${a.name}${dur}${voiceHint})`;
     })
     .join('\n');
+
+  // REPAIR #8 — TEMPLATE GRAMMAR: inject the selected template's production
+  // rhythm as a planning guide. The template is advisory, not a hard slot count.
+  let templateSection = '';
+  if (templateGrammar) {
+    const slotLines = templateGrammar.slotDurations
+      .map((dur, i) => {
+        const role = templateGrammar.slotRoles?.[i] ?? `موضع ${i + 1}`;
+        return `    موضع ${i + 1}: ${role} — ${dur}ث`;
+      })
+      .join('\n');
+    const transLabel = templateGrammar.transitionPreference === 'crossfade'
+      ? `تلاشي متبادل (${templateGrammar.transitionDurationSeconds ?? 0.7}ث)`
+      : 'قطع مباشر';
+    templateSection = `
+قالب الإنتاج المختار: ${templateGrammar.name} (${templateGrammar.domain})
+إيقاع القالب الموجَّه (وسِّع أو قلِّص حسب الأصول المتاحة — ليس قيداً صارماً):
+${slotLines}
+تفضيل الانتقال: ${transLabel}
+`;
+  }
 
   return `أنت مُفسِّر النية السيادي لنظام AZMA OS للإخراج السينمائي. مهمتك الوحيدة: تحويل نية الخالق إلى خطة إخراج منظمة تعتمد حصراً على الأصول المتاحة.
 
 الأصول المتاحة في مشهد الإنتاج الحالي:
 ${assetLines}
-
+${templateSection}
 قواعد حصرية لا استثناء فيها:
 1. استخدم فقط التسميات المذكورة أعلاه في visualSequence و audioTracks — لا تخترع تسميات.
 2. visualSequence: الأصول المرئية فقط (النوع "صورة" أو "فيديو").
 3. audioTracks: الأصول الصوتية فقط (النوع "صوت").
-4. إذا طُلبت أصول غير موجودة، دوِّنها في unresolvedInstructions ولا تضعها في الخطة.
-5. transitionType: "crossfade" للمشاهد الهادئة، "cut" للمشاهد الديناميكية.
-6. durationSeconds لكل عنصر مرئي: اقترح قيماً منطقية بين 2 و 8 ثوانٍ.
-7. confidence: نسبة ثقتك من 0 إلى 1.
-8. الرد بـ JSON صرف بلا شرح.
+4. الأصول المميَّزة بـ [صوت سردي / تعليق صوتي] تحصل على دور "narration" في audioTracks.
+5. إذا طُلبت أصول غير موجودة، دوِّنها في unresolvedInstructions ولا تضعها في الخطة.
+6. transitionType: "crossfade" للمشاهد الهادئة، "cut" للمشاهد الديناميكية.
+7. durationSeconds لكل عنصر مرئي: اقترح قيماً منطقية بين 2 و 8 ثوانٍ ما لم يطلب الخالق توقيتاً محدداً.
+8. confidence: نسبة ثقتك من 0 إلى 1.
+9. الرد بـ JSON صرف بلا شرح.
 
 الشكل المطلوب بالضبط:
 {
@@ -163,7 +189,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { intent, productionAssets } = body;
+  const { intent, productionAssets, templateGrammar } = body;
 
   if (!intent?.trim()) {
     return NextResponse.json(
@@ -197,7 +223,7 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         systemInstruction: {
-          parts: [{ text: buildSystemPrompt(productionAssets) }],
+          parts: [{ text: buildSystemPrompt(productionAssets, templateGrammar as TemplateGrammar | undefined) }],
         },
         contents: [
           {

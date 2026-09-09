@@ -93,12 +93,27 @@ export interface ProductionAssetContext {
   name: string;
   /** Duration hint in seconds, if known. Omit when unknown. */
   durationSeconds?: number;
+  /** True when the vault asset carries isVoiceAsset=true — distinguishes
+   *  narration/TTS from background music or generic audio. */
+  isVoiceAsset?: boolean;
+}
+
+/** Template production grammar passed to the server when a template is active. */
+export interface TemplateGrammar {
+  name: string;
+  domain: string;
+  transitionPreference: 'cut' | 'crossfade';
+  transitionDurationSeconds?: number;
+  slotDurations: number[];
+  slotRoles?: string[];
 }
 
 /** The full request body sent to /api/ras-amr/director. */
 export interface DirectorInterpretRequest {
   intent: string;
   productionAssets: ProductionAssetContext[];
-  /** ID of the active template, if any. Used for duration hints. */
+  /** ID of the active template, if any. */
   templateId?: string;
+  /** Full template grammar so the server can apply its rhythm as a planning guide. */
+  templateGrammar?: TemplateGrammar;
 }

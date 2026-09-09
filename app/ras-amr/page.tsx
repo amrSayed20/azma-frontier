@@ -2699,9 +2699,14 @@ export default function RasAmrChamber() {
     setIntentInterpretError(null);
     setLastDirectorPlan(null);
 
-    // Build labelled asset context — provider receives labels, never raw IDs.
+    // REPAIR #1 — FIFO LABEL ORDERING:
+    // Queue prepends (LIFO), so realAssets[0] is the most recently injected asset.
+    // Reverse so the earliest-created asset of each capability gets *_1.
+    // The creator's "الصورة الأولى" must resolve to the first image they added.
+    const orderedForLabeling = [...realAssets].reverse();
+
     const visualCount: Record<string, number> = {};
-    const productionAssets: ProductionAssetContext[] = realAssets.map((item) => {
+    const productionAssets: ProductionAssetContext[] = orderedForLabeling.map((item) => {
       const cap = item.capabilityOrigin ?? 'VISUAL';
       const prefix =
         cap === CapabilityTarget.MOTION ? 'VIDEO' :
@@ -2709,17 +2714,24 @@ export default function RasAmrChamber() {
         'VISUAL';
       visualCount[prefix] = (visualCount[prefix] ?? 0) + 1;
       const label = `${prefix}_${visualCount[prefix]}`;
+      // REPAIR #4 — AUDIO IDENTITY: pass vault asset metadata so the Interpreter
+      // can distinguish narration (isVoiceAsset=true) from background music.
+      const vaultItemAsset = vaultAssets.find((a) => a.assetId === item.id);
       return {
         label,
         assetId: item.id,    // stored locally; NOT sent to provider API
         capabilityTarget: cap,
         name: item.title.slice(0, 80),
+        durationSeconds: typeof vaultItemAsset?.metadata?.durationSeconds === 'number'
+          ? vaultItemAsset.metadata.durationSeconds
+          : undefined,
+        isVoiceAsset: vaultItemAsset?.metadata?.isVoiceAsset === true,
       } as ProductionAssetContext & { assetId: string };
     });
 
-    // label → queue item map for Scene Executor resolution
+    // label → queue item map for Scene Executor resolution (uses FIFO order)
     const labelToQueueItem = new Map<string, QueueItem>(
-      productionAssets.map((ctx, i) => [ctx.label, realAssets[i]])
+      productionAssets.map((ctx, i) => [ctx.label, orderedForLabeling[i]])
     );
 
     let plan: DirectorPlan;
@@ -2729,8 +2741,18 @@ export default function RasAmrChamber() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           intent: creatorDirectorIntent.trim(),
-          productionAssets: productionAssets.map(({ label, capabilityTarget, name, durationSeconds }) => ({ label, capabilityTarget, name, durationSeconds })),
+          productionAssets: productionAssets.map(({ label, capabilityTarget, name, durationSeconds, isVoiceAsset }) => ({ label, capabilityTarget, name, durationSeconds, isVoiceAsset })),
           templateId: selectedTemplate?.id,
+          // REPAIR #8 — TEMPLATE GRAMMAR: pass full template rhythm so server
+          // can inject it into the system prompt as a planning guide.
+          templateGrammar: selectedTemplate ? {
+            name: selectedTemplate.name,
+            domain: selectedTemplate.domain,
+            transitionPreference: selectedTemplate.transitionPreference,
+            transitionDurationSeconds: selectedTemplate.transitionDurationSeconds,
+            slotDurations: selectedTemplate.slotDurations,
+            slotRoles: selectedTemplate.slotRoles,
+          } : undefined,
         }),
       });
       const result = await response.json() as { status: string; plan?: DirectorPlan; message?: string };
@@ -2804,9 +2826,9 @@ export default function RasAmrChamber() {
           transitionInType: i > 0 && isCrossfade ? 'crossfade' : 'cut',
           transitionInDurationSeconds: i > 0 && isCrossfade ? fadeSecs : undefined,
         },
-        initialSpatial: vaultAsset
-          ? { positionX: 50, positionY: 50, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: i + 1 }
-          : undefined,
+        // REPAIR #3 — correct coordinate: (0,0) = surface center per the
+        // established coordinate system. (50,50) placed nodes off-screen.
+        initialSpatial: { positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: i + 1 },
       };
       canvas = executeDirectionDecision(canvas, addMutation, 'automatic-director');
 
@@ -2824,6 +2846,13 @@ export default function RasAmrChamber() {
       const item = labelToQueueItem.get(audioSlot.assetLabel);
       if (!item) continue;
 
+      // REPAIR #5 — REAL AUDIO DURATION: use actual durationSeconds from vault
+      // asset metadata when available. Fallback to 30s only when genuinely unknown.
+      const vaultAudioAsset = vaultAssets.find((a) => a.assetId === item.id);
+      const audioDuration = typeof vaultAudioAsset?.metadata?.durationSeconds === 'number'
+        ? vaultAudioAsset.metadata.durationSeconds
+        : 30;
+
       const audioAddMutation: AddNodePayload = {
         actionType: CanvasActionType.ADD_NODE,
         canvasId: canvas.canvasId,
@@ -2834,7 +2863,7 @@ export default function RasAmrChamber() {
         capabilityOrigin: item.capabilityOrigin,
         initialTemporal: {
           globalStartTimeSeconds: audioSlot.startSeconds,
-          playDurationSeconds: 30,
+          playDurationSeconds: audioDuration,
           trimStartSeconds: undefined,
           trimEndSeconds: undefined,
           transitionInType: 'cut',
@@ -2889,6 +2918,9 @@ export default function RasAmrChamber() {
     setSessionCanvas(canvas);
     setSelectedNodeId(firstNodeId.value);
     setLastDirectorPlan(plan);
+    // REPAIR #7 — reset playhead to 0 so sequential canvas shows the first
+    // visual node immediately after the Director builds the scene.
+    setPlayheadSec(0);
     setActiveWorkspaceTab('canvas');
     setCreationPhase('workspace');
   };
@@ -3541,9 +3573,12 @@ export default function RasAmrChamber() {
                         ? (nextSibling.temporal?.transitionInDurationSeconds ?? 0.5) : 0;
                       const effectiveStart = nodeStart - fadeDurIn;
                       const effectiveEnd = nodeStart + nodeDur + fadeDurOut;
-                      const inTemporalWindow = !isPlaying || (playheadSec >= effectiveStart && playheadSec < effectiveEnd);
+                      // REPAIR #7 — sequential canvas: the temporal window governs
+                      // visibility in BOTH playing and static (scrubbing) states.
+                      // Removes the !isPlaying override that stacked all layers.
+                      const inTemporalWindow = playheadSec >= effectiveStart && playheadSec < effectiveEnd;
                       let computedOpacity = visual.opacity;
-                      if (isPlaying && inTemporalWindow) {
+                      if (inTemporalWindow) {
                         if (fadeDurIn > 0 && playheadSec >= effectiveStart && playheadSec < nodeStart) {
                           // Fade in: ramp 0→1 over fadeDurIn seconds
                           computedOpacity = visual.opacity * Math.max(0, (playheadSec - effectiveStart) / fadeDurIn);
@@ -4621,9 +4656,9 @@ export default function RasAmrChamber() {
                                   left: `${((timelineLive?.nodeId === node.nodeId && timelineLive.globalStartTimeSeconds !== undefined ? timelineLive.globalStartTimeSeconds : start) / totalDur2) * 100}%`,
                                   width: `${Math.max(((timelineLive?.nodeId === node.nodeId && timelineLive.playDurationSeconds !== undefined ? timelineLive.playDurationSeconds : dur) / totalDur2) * 100, 4)}%`,
                                 }}
-                                onClick={() => setSelectedNodeId(node.nodeId)}
+                                onClick={() => { setSelectedNodeId(node.nodeId); setPlayheadSec(start); }}
                                 role="button" tabIndex={0}
-                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedNodeId(node.nodeId); }}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setSelectedNodeId(node.nodeId); setPlayheadSec(start); } }}
                                 onPointerDown={(e) => handleTimelinePointerDown(e, node.nodeId, 'move', totalDur2)}
                                 onPointerMove={handleTimelinePointerMove}
                                 onPointerUp={handleTimelinePointerUp}
@@ -4662,9 +4697,9 @@ export default function RasAmrChamber() {
                                   left: `${((timelineLive?.nodeId === node.nodeId && timelineLive.globalStartTimeSeconds !== undefined ? timelineLive.globalStartTimeSeconds : start) / totalDur2) * 100}%`,
                                   width: `${Math.max(((timelineLive?.nodeId === node.nodeId && timelineLive.playDurationSeconds !== undefined ? timelineLive.playDurationSeconds : dur) / totalDur2) * 100, 4)}%`,
                                 }}
-                                onClick={() => setSelectedNodeId(node.nodeId)}
+                                onClick={() => { setSelectedNodeId(node.nodeId); setPlayheadSec(start); }}
                                 role="button" tabIndex={0}
-                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedNodeId(node.nodeId); }}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setSelectedNodeId(node.nodeId); setPlayheadSec(start); } }}
                                 onPointerDown={(e) => handleTimelinePointerDown(e, node.nodeId, 'move', totalDur2)}
                                 onPointerMove={handleTimelinePointerMove}
                                 onPointerUp={handleTimelinePointerUp}
