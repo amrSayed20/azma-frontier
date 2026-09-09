@@ -430,6 +430,7 @@ import type { DirectionDecision, DirectionOperator } from '@/src/chambers/ras-al
 import { AssemblyRuntime } from '@/src/chambers/ras-al-amr/assembly-runtime';
 import type { CanvasMutationPayload } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
 import { useVoiceMode } from '@/src/components/living-companion/useVoiceMode';
+import type { DirectorPlan, ProductionAssetContext } from '@/src/chambers/ras-al-amr/director-plan-types';
 import './ras-amr.css';
 
 // Pure, stateless transformer (see its own header comment) — one shared
@@ -1724,6 +1725,12 @@ export default function RasAmrChamber() {
   const [formalGoalTrackedForId, setFormalGoalTrackedForId] = useState<string | null>(null);
   // FINDING 6 — placed before multiNodeDirection memo (which consumes it).
   const [creatorDirectorIntent, setCreatorDirectorIntent] = useState<string>('');
+  // PACKAGE XL — SOVEREIGN DIRECTOR EXECUTION BRIDGE: interpretation state.
+  // isInterpretingIntent gates the API call; lastDirectorPlan records the
+  // most recently executed plan for display in the direction panel.
+  const [isInterpretingIntent, setIsInterpretingIntent] = useState(false);
+  const [lastDirectorPlan, setLastDirectorPlan] = useState<DirectorPlan | null>(null);
+  const [intentInterpretError, setIntentInterpretError] = useState<string | null>(null);
   const activeGoalId = activeVaultAsset?.metadata?.goalId ?? null;
 
   // Adjust state during render — the same established pattern
@@ -2665,6 +2672,227 @@ export default function RasAmrChamber() {
     );
   };
 
+  // PACKAGE XL — SOVEREIGN DIRECTOR EXECUTION BRIDGE
+  // Chain: Creator → Intent Interpreter (server AI) → DirectorPlan → Sovereign
+  // Director (validation) → Scene Executor (state mutations) → canvas.
+  //
+  // The external AI provider is the Intent Interpreter only — it converts
+  // natural creator language into the constrained DirectorPlan schema.
+  // The provider never sees real asset IDs or storage URIs; only client-
+  // assigned labels (VISUAL_1, VIDEO_1, AUDIO_1, ...).
+  // All actual canvas mutations use existing executeDirectionDecision()
+  // through CanvasActionType.ADD_NODE and UPDATE_ADVANCED_DIRECTIVE —
+  // no new execution path, no new state manager, no new runtime.
+  const handleInterpretAndExecute = async () => {
+    const realAssets = queue.filter((q) => q.isRealAsset);
+    if (realAssets.length === 0) {
+      setIntentInterpretError('أضف أصولاً حقيقية من المخزن السيادي إلى الإنتاج أولاً');
+      return;
+    }
+    if (!creatorDirectorIntent.trim()) {
+      setIntentInterpretError('اكتب نيتك في الحقل أعلاه قبل تشغيل المخرج');
+      return;
+    }
+    if (isInterpretingIntent) return;
+
+    setIsInterpretingIntent(true);
+    setIntentInterpretError(null);
+    setLastDirectorPlan(null);
+
+    // Build labelled asset context — provider receives labels, never raw IDs.
+    const visualCount: Record<string, number> = {};
+    const productionAssets: ProductionAssetContext[] = realAssets.map((item) => {
+      const cap = item.capabilityOrigin ?? 'VISUAL';
+      const prefix =
+        cap === CapabilityTarget.MOTION ? 'VIDEO' :
+        cap === CapabilityTarget.AUDIO  ? 'AUDIO' :
+        'VISUAL';
+      visualCount[prefix] = (visualCount[prefix] ?? 0) + 1;
+      const label = `${prefix}_${visualCount[prefix]}`;
+      return {
+        label,
+        assetId: item.id,    // stored locally; NOT sent to provider API
+        capabilityTarget: cap,
+        name: item.title.slice(0, 80),
+      } as ProductionAssetContext & { assetId: string };
+    });
+
+    // label → queue item map for Scene Executor resolution
+    const labelToQueueItem = new Map<string, QueueItem>(
+      productionAssets.map((ctx, i) => [ctx.label, realAssets[i]])
+    );
+
+    let plan: DirectorPlan;
+    try {
+      const response = await fetch('/api/ras-amr/director', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          intent: creatorDirectorIntent.trim(),
+          productionAssets: productionAssets.map(({ label, capabilityTarget, name, durationSeconds }) => ({ label, capabilityTarget, name, durationSeconds })),
+          templateId: selectedTemplate?.id,
+        }),
+      });
+      const result = await response.json() as { status: string; plan?: DirectorPlan; message?: string };
+      if (!response.ok || result.status !== 'succeeded' || !result.plan) {
+        setIntentInterpretError(result.message ?? 'تعذَّر التواصل مع المفسِّر');
+        return;
+      }
+      plan = result.plan;
+    } catch {
+      setIntentInterpretError('المفسِّر لا يستجيب — تحقق من الاتصال');
+      return;
+    } finally {
+      setIsInterpretingIntent(false);
+    }
+
+    // ── SOVEREIGN DIRECTOR LAYER: validate plan against AZMA rules ──
+    // Rule 1: Must have at least one visual slot.
+    if (plan.visualSequence.length === 0) {
+      setIntentInterpretError('المخرج لم يتمكن من بناء تسلسل مرئي من الأصول المتاحة');
+      setLastDirectorPlan(plan);
+      return;
+    }
+
+    // ── SCENE EXECUTOR: build canvas from scratch using existing mutations ──
+    // Start from a blank canvas, preserving session identity.
+    const baseCanvas = sessionCanvas ?? {
+      canvasId: 'canvas_narrative_session',
+      subscriberTenantId: 'pending-server-verification',
+      canvasType: CanvasType.CINEMATIC,
+      title: 'مشهد الإخراج',
+      tracks: [{ trackId: 'track-1', trackName: 'المسار الرئيسي', isMuted: false, isHidden: false, nodes: [] }],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    // Wipe existing nodes — the Director Plan is authoritative for the full scene.
+    let canvas: SovereignCanvas = {
+      ...baseCanvas,
+      tracks: baseCanvas.tracks.map((t) => ({ ...t, nodes: [] })),
+      updatedAt: Date.now(),
+    };
+
+    const isCrossfade = plan.transitionType === 'crossfade';
+    const fadeSecs = isCrossfade ? (plan.transitionDurationSeconds ?? 0.7) : 0;
+    let visualCursor = 0;
+    const firstNodeId: { value: string | null } = { value: null };
+
+    // Step A: add visual assets in Director Plan order with computed temporal.
+    for (let i = 0; i < plan.visualSequence.length; i++) {
+      const slot = plan.visualSequence[i];
+      const item = labelToQueueItem.get(slot.assetLabel);
+      if (!item) continue;
+
+      const vaultAsset = vaultAssets.find((a) => a.assetId === item.id);
+      const duration = slot.durationSeconds;
+      const start = i === 0 ? 0 : isCrossfade ? Math.max(0, visualCursor - fadeSecs) : visualCursor;
+
+      const addMutation: AddNodePayload = {
+        actionType: CanvasActionType.ADD_NODE,
+        canvasId: canvas.canvasId,
+        subscriberTenantId: canvas.subscriberTenantId,
+        targetTrackId: 'track-1',
+        vaultAssetId: item.id,
+        assetFamily: item.assetFamily,
+        capabilityOrigin: item.capabilityOrigin,
+        initialTemporal: {
+          globalStartTimeSeconds: start,
+          playDurationSeconds: duration,
+          trimStartSeconds: undefined,
+          trimEndSeconds: undefined,
+          transitionInType: i > 0 && isCrossfade ? 'crossfade' : 'cut',
+          transitionInDurationSeconds: i > 0 && isCrossfade ? fadeSecs : undefined,
+        },
+        initialSpatial: vaultAsset
+          ? { positionX: 50, positionY: 50, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: i + 1 }
+          : undefined,
+      };
+      canvas = executeDirectionDecision(canvas, addMutation, 'automatic-director');
+
+      // Record first visual node for selection after execution.
+      if (firstNodeId.value === null) {
+        const addedNode = canvas.tracks.flatMap((t) => t.nodes).at(-1);
+        if (addedNode) firstNodeId.value = addedNode.nodeId;
+      }
+
+      visualCursor = start + duration;
+    }
+
+    // Step B: add audio tracks.
+    for (const audioSlot of plan.audioTracks) {
+      const item = labelToQueueItem.get(audioSlot.assetLabel);
+      if (!item) continue;
+
+      const audioAddMutation: AddNodePayload = {
+        actionType: CanvasActionType.ADD_NODE,
+        canvasId: canvas.canvasId,
+        subscriberTenantId: canvas.subscriberTenantId,
+        targetTrackId: 'track-1',
+        vaultAssetId: item.id,
+        assetFamily: item.assetFamily,
+        capabilityOrigin: item.capabilityOrigin,
+        initialTemporal: {
+          globalStartTimeSeconds: audioSlot.startSeconds,
+          playDurationSeconds: 30,
+          trimStartSeconds: undefined,
+          trimEndSeconds: undefined,
+          transitionInType: 'cut',
+        },
+      };
+      canvas = executeDirectionDecision(canvas, audioAddMutation, 'automatic-director');
+
+      // Apply volume if specified.
+      if (audioSlot.volumeDb !== undefined && audioSlot.volumeDb !== 0) {
+        const audioNode = canvas.tracks.flatMap((t) => t.nodes).at(-1);
+        if (audioNode) {
+          const volMutation: UpdateNodeAdvancedPayload = {
+            actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE,
+            canvasId: canvas.canvasId,
+            subscriberTenantId: canvas.subscriberTenantId,
+            targetTrackId: 'track-1',
+            targetNodeId: audioNode.nodeId,
+            directiveKey: 'audio',
+            directivePayload: { volumeDb: audioSlot.volumeDb, panCenter: 0, isMuted: false } as AudioMixingDirective,
+          };
+          canvas = executeDirectionDecision(canvas, volMutation, 'automatic-director');
+        }
+      }
+    }
+
+    // Step C: mute original audio on MOTION nodes if videoPolicy requires it.
+    if (plan.videoPolicy.muteOriginalAudio) {
+      const allNodes = canvas.tracks.flatMap((t) => t.nodes);
+      for (const node of allNodes) {
+        const va = vaultAssets.find((a) => a.assetId === node.assetId);
+        if (va?.capabilityTarget === CapabilityTarget.MOTION) {
+          const existing = node.customDirectives?.audio as AudioMixingDirective | undefined;
+          const muteMutation: UpdateNodeAdvancedPayload = {
+            actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE,
+            canvasId: canvas.canvasId,
+            subscriberTenantId: canvas.subscriberTenantId,
+            targetTrackId: 'track-1',
+            targetNodeId: node.nodeId,
+            directiveKey: 'audio',
+            directivePayload: {
+              volumeDb: existing?.volumeDb ?? -60,
+              panCenter: existing?.panCenter ?? 0,
+              isMuted: true,
+            } as AudioMixingDirective,
+          };
+          canvas = executeDirectionDecision(canvas, muteMutation, 'automatic-director');
+        }
+      }
+    }
+
+    // Commit the built scene.
+    setSessionCanvas(canvas);
+    setSelectedNodeId(firstNodeId.value);
+    setLastDirectorPlan(plan);
+    setActiveWorkspaceTab('canvas');
+    setCreationPhase('workspace');
+  };
+
   // PACKAGE XXXVI — EXPERIENCE REFORMATION: seven creation intents → workspace.
   // No AI call. No credit consumption. Existing capabilities become authoritative.
   const handleSelectIntent = (intentId: string) => {
@@ -3351,7 +3579,7 @@ export default function RasAmrChamber() {
                               ref={(el) => { if (el) layerVideoRefs.current.set(node.nodeId, el); else layerVideoRefs.current.delete(node.nodeId); }}
                               src={uri}
                               className="layer-asset-img"
-                              muted={!isPlaying}
+                              muted={!isPlaying || Boolean((node.customDirectives?.audio as AudioMixingDirective | undefined)?.isMuted)}
                               playsInline
                               preload="metadata"
                             />
@@ -3960,7 +4188,49 @@ export default function RasAmrChamber() {
                   )}
                 </>
               ) : (
-                sessionCanvas && directorDecision ? (
+                <>
+                  {/* PACKAGE XL — SOVEREIGN DIRECTOR EXECUTION BRIDGE */}
+                  <div className="sovereign-director-bridge">
+                    <header className="panel-header">
+                      <div className="neon-tag">المخرج السيادي</div>
+                      <h2>تفسير النية وبناء المشهد</h2>
+                      <p>يقرأ نيتك، يفسِّرها، يبني المشهد كاملاً من أصول الإنتاج</p>
+                    </header>
+                    {queue.filter((q) => q.isRealAsset).length === 0 ? (
+                      <p className="director-bridge-hint">أضف أصولاً من المخزن السيادي إلى الإنتاج لتفعيل المخرج السيادي</p>
+                    ) : !creatorDirectorIntent.trim() ? (
+                      <p className="director-bridge-hint">اكتب نيتك في الحقل أعلاه — المخرج السيادي سيبني المشهد كاملاً</p>
+                    ) : (
+                      <button
+                        className={`action-trigger-btn director-interpret-btn${isInterpretingIntent ? ' director-interpreting' : ''}`}
+                        onClick={handleInterpretAndExecute}
+                        disabled={isInterpretingIntent}
+                        aria-live="polite"
+                      >
+                        {isInterpretingIntent ? 'المخرج السيادي يبني المشهد…' : '⬡ تفسير النية وبناء المشهد'}
+                      </button>
+                    )}
+                    {intentInterpretError && (
+                      <p className="director-interpret-error">{intentInterpretError}</p>
+                    )}
+                    {lastDirectorPlan && !isInterpretingIntent && (
+                      <div className="director-plan-summary">
+                        <p className="plan-purpose">الغرض: {lastDirectorPlan.purpose}</p>
+                        <p className="plan-detail">
+                          {lastDirectorPlan.visualSequence.length} مقطع مرئي
+                          {lastDirectorPlan.audioTracks.length > 0 ? ` · ${lastDirectorPlan.audioTracks.length} مسار صوتي` : ''}
+                          {' · '}
+                          {lastDirectorPlan.transitionType === 'crossfade' ? 'تلاشي متبادل' : 'قطع مباشر'}
+                        </p>
+                        {lastDirectorPlan.unresolvedInstructions.length > 0 && (
+                          <p className="plan-unresolved">⚠ تعذَّر تنفيذ: {lastDirectorPlan.unresolvedInstructions.join(' — ')}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Existing local Automatic Director panel — unchanged */}
+                  {sessionCanvas && directorDecision ? (
                   <div className="spatial-adjust-panel panel-auto-director">
                     <header className="panel-header">
                       <div className="neon-tag">قرار المخرج الآلي</div>
@@ -4016,7 +4286,8 @@ export default function RasAmrChamber() {
                       <p className={`director-apply-status${directorApplyStatus.startsWith('✓') ? ' director-apply-success' : ' director-apply-error'}`} style={{ margin: '0 12px 8px' }}>{directorApplyStatus}</p>
                     )}
                   </>
-                )
+                )}
+                </>
               )}
             </div>
           )}

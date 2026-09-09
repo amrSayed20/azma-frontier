@@ -5301,3 +5301,147 @@
   background: rgba(160,120,0,0.08);
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   PACKAGE XL — SOVEREIGN DIRECTOR EXECUTION BRIDGE
+   ────────────────────────────────────────────────────────────────────────── */
+
+.sovereign-director-bridge {
+  background: rgba(255, 215, 0, 0.03);
+  border: 1px solid rgba(255, 215, 0, 0.18);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.sovereign-director-bridge .panel-header {
+  margin-bottom: 10px;
+}
+
+.sovereign-director-bridge .panel-header h2 {
+  font-size: 0.92rem;
+  color: var(--neon-gold-bright);
+  margin: 3px 0 2px;
+}
+
+.sovereign-director-bridge .panel-header p {
+  font-size: 0.75rem;
+  color: rgba(255,215,0,0.5);
+  margin: 0;
+}
+
+/* The primary "interpret & build" action button */
+.director-interpret-btn {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(255, 215, 0, 0.08);
+  border: 1px solid rgba(255, 215, 0, 0.45);
+  border-radius: 6px;
+  color: var(--neon-gold-bright);
+  font-size: 0.88rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: center;
+  letter-spacing: 0.02em;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.director-interpret-btn:hover:not(:disabled) {
+  background: rgba(255, 215, 0, 0.15);
+  border-color: rgba(255, 215, 0, 0.7);
+}
+
+.director-interpret-btn:disabled,
+.director-interpret-btn.director-interpreting {
+  opacity: 0.65;
+  cursor: not-allowed;
+  border-color: rgba(255, 215, 0, 0.25);
+  animation: director-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes director-pulse {
+  0%, 100% { background: rgba(255,215,0,0.06); }
+  50%       { background: rgba(255,215,0,0.14); }
+}
+
+/* Hint text shown when preconditions are not met */
+.director-bridge-hint {
+  font-size: 0.78rem;
+  color: rgba(255,215,0,0.45);
+  text-align: center;
+  padding: 8px 0 4px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Error message */
+.director-interpret-error {
+  font-size: 0.78rem;
+  color: #e05555;
+  padding: 6px 0 2px;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Plan summary shown after successful execution */
+.director-plan-summary {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,215,0,0.1);
+}
+
+.director-plan-summary .plan-purpose {
+  font-size: 0.82rem;
+  color: rgba(255,215,0,0.85);
+  margin: 0 0 4px;
+  line-height: 1.4;
+}
+
+.director-plan-summary .plan-detail {
+  font-size: 0.75rem;
+  color: rgba(255,215,0,0.55);
+  margin: 0 0 4px;
+}
+
+.director-plan-summary .plan-unresolved {
+  font-size: 0.75rem;
+  color: #d4a020;
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+/* Light theme overrides */
+:root[data-theme="light"] .sovereign-director-bridge {
+  background: rgba(160,120,0,0.04);
+  border-color: rgba(160,120,0,0.2);
+}
+
+:root[data-theme="light"] .director-interpret-btn {
+  background: rgba(160,120,0,0.07);
+  border-color: rgba(160,120,0,0.4);
+  color: #8a6500;
+}
+
+:root[data-theme="light"] .director-interpret-btn:hover:not(:disabled) {
+  background: rgba(160,120,0,0.14);
+}
+
+:root[data-theme="light"] .director-bridge-hint {
+  color: rgba(120,90,0,0.55);
+}
+
+:root[data-theme="light"] .director-plan-summary .plan-purpose {
+  color: #7a5800;
+}
+
+:root[data-theme="light"] .director-plan-summary .plan-detail {
+  color: rgba(120,90,0,0.65);
+}
+
+:root[data-theme="light"] .director-plan-summary .plan-unresolved {
+  color: #a07000;
+}
+
+:root[data-theme="light"] .sovereign-director-bridge .panel-header p {
+  color: rgba(120,90,0,0.55);
+}
+
