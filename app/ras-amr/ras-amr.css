@@ -181,6 +181,12 @@
 .ras-body-grid {
   display: grid;
   grid-template-columns: 280px 1fr 300px;
+  /* XLII-B: explicit 1fr row forces the single row to fit within the grid
+     container's available height (from flex:1 parent). Without this, the
+     implicit row expands to the center column's intrinsic content height
+     (~600px), making height:100% on panels resolve to that oversized value
+     and the grid's overflow:hidden clips the bottom of the sidebars. */
+  grid-template-rows: 1fr;
   gap: 8px;
   padding: 8px;
   flex: 1;
@@ -193,11 +199,14 @@
 
 .ras-panel-left,
 .ras-panel-right {
-  /* XLII-A: height: 100% resolves against the definite grid-row height that
-     flex:1 + min-height:0 on .ras-body-grid establishes. No sticky needed —
-     the app-shell viewport never scrolls. align-self defaults to stretch,
-     so panels fill the full grid track height automatically. */
-  height: 100%;
+  /* XLII-B: min-height:0 allows the grid item to shrink to the row's
+     constrained height (1fr = grid container available height). Without it,
+     min-height:auto (grid default) prevents the item from shrinking below its
+     content — the same overflow problem as the row itself. align-self:stretch
+     (default) fills the row; no explicit height needed. The inner flex chain
+     (tab-bar flex-shrink:0 + tab-content flex:1 min-height:0 overflow-y:auto)
+     then resolves correctly against this definite panel height. */
+  min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -455,6 +464,7 @@
 
   .ras-body-grid {
     grid-template-columns: 1fr;
+    grid-template-rows: none;   /* reset 1fr row — stacked layout uses content height */
     flex: none;
     min-height: auto;
     overflow: visible;
@@ -463,6 +473,7 @@
   }
   .ras-panel-left, .ras-panel-right {
     height: auto;
+    min-height: 0;
   }
   .ras-panel-left { min-height: 200px; }
   .ras-panel-right { min-height: 300px; }
