@@ -33,17 +33,18 @@
 /* PHASE A: ROOT SCROLL ARCHITECTURE         */
 /* ========================================= */
 /* .ras-amr-viewport: page-scroll root (replaces position:fixed)          */
-/* Sticky header + sticky sidebars + sticky timeline work via position:sticky */
+/* XLII-A: App-shell model — viewport is a fixed-height container.
+   Header + body-grid + timeline stack as flex children that sum to 100dvh.
+   All scrolling happens inside each panel/column, not at the page level. */
 
 .ras-amr-viewport {
   position: relative;
-  min-height: 100dvh;
+  height: 100dvh;
   background-color: var(--chamber-bg);
   color: var(--text-main);
   font-family: var(--azma-font-family);
   direction: rtl;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   transition: filter 0.3s ease;
@@ -182,7 +183,9 @@
   grid-template-columns: 280px 1fr 300px;
   gap: 8px;
   padding: 8px;
-  min-height: calc(100dvh - 52px - 188px);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   box-sizing: border-box;
   position: relative;
   z-index: 10;
@@ -190,18 +193,17 @@
 
 .ras-panel-left,
 .ras-panel-right {
-  position: sticky;
-  top: 60px;
-  /* XLII: explicit height (not max-height) breaks the circular flex sizing that
-     prevented the inner .ras-tab-content scroll container from activating. */
-  height: calc(100dvh - 60px - 188px);
+  /* XLII-A: height: 100% resolves against the definite grid-row height that
+     flex:1 + min-height:0 on .ras-body-grid establishes. No sticky needed —
+     the app-shell viewport never scrolls. align-self defaults to stretch,
+     so panels fill the full grid track height automatically. */
+  height: 100%;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   background: var(--panel-bg);
   border-radius: 16px;
   backdrop-filter: blur(25px);
-  align-self: start;
 }
 
 .ras-center {
@@ -209,6 +211,7 @@
   flex-direction: column;
   gap: 6px;
   min-height: 0;
+  overflow-y: auto;
 }
 
 /* ========================================= */
@@ -405,16 +408,16 @@
 /* PHASE H: TABLET (1200px > width >= 681px) */
 /* ========================================= */
 @media (max-width: 1199px) and (min-width: 681px) {
+  /* XLII-A: grid-template-rows gives the first row a definite 180px so the
+     left-panel horizontal strip resolves height: 100% correctly.
+     Second row takes the remaining space so the right panel fills it. */
   .ras-body-grid {
     grid-template-columns: 1fr 280px;
-    grid-template-rows: auto auto;
+    grid-template-rows: 180px 1fr;
   }
   .ras-panel-left {
     grid-column: 1 / -1;
     grid-row: 1;
-    position: relative;
-    top: auto;
-    max-height: 180px;
     flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;
@@ -431,33 +434,41 @@
     flex-shrink: 0;
   }
   .ras-center { grid-column: 1; grid-row: 2; }
-  .ras-panel-right { grid-column: 2; grid-row: 2; position: sticky; top: 60px; max-height: calc(100dvh - 60px - 188px); }
+  .ras-panel-right { grid-column: 2; grid-row: 2; }
 }
 
 /* ========================================= */
 /* PHASE I: MOBILE (≤ 680px)                 */
 /* ========================================= */
 @media (max-width: 680px) {
+  /* XLII-A: revert to stacked scrolling layout on mobile — viewport scrolls
+     as a page, panels are auto-height stacked. */
+  .ras-amr-viewport {
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
   .ras-header { height: auto; min-height: 52px; flex-wrap: wrap; padding: 8px 12px; gap: 8px; }
   .ras-header-name { font-size: 12px; }
   .ras-render-btn { font-size: 10px; padding: 5px 10px; }
 
   .ras-body-grid {
     grid-template-columns: 1fr;
+    flex: none;
     min-height: auto;
+    overflow: visible;
     padding: 6px;
     gap: 6px;
   }
   .ras-panel-left, .ras-panel-right {
-    position: relative;
-    top: auto;
-    max-height: none;
+    height: auto;
   }
   .ras-panel-left { min-height: 200px; }
   .ras-panel-right { min-height: 300px; }
-  .ras-center { min-height: 280px; }
+  .ras-center { min-height: 280px; overflow-y: visible; }
 
-  .ras-timeline { height: auto; min-height: 140px; }
+  .ras-timeline { position: sticky; bottom: 0; height: auto; min-height: 140px; }
   .ras-timeline-ruler { margin: 0 52px; }
 }
 
