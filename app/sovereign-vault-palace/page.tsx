@@ -76,6 +76,12 @@ interface SovereignTreasure {
   mediaUrl?: string;
   /** Phase 3B Package I — N-1: media element type to render in detail panel. */
   mediaType?: AssetMediaType;
+  /** PACKAGE XL-D — required by Ras Al Amr injection (handleInjectAsset):
+      string value of AssetFamily enum (e.g. 'IMAGE', 'AUDIO', 'VIDEO'). */
+  assetFamily?: string;
+  /** PACKAGE XL-D — required by Ras Al Amr injection:
+      string value of CapabilityTarget enum (e.g. 'VISUAL', 'AUDIO', 'MOTION'). */
+  capabilityTarget?: string;
 }
 
 // ── Palace Storage ────────────────────────────────────────────────────────
@@ -127,9 +133,12 @@ function vaultAssetToTreasure(asset: VaultAsset): SovereignTreasure {
         ? { actionAr: 'رُفع إلى الخزانة السيادية', chamberAr: 'القيامة', at: asset.createdAt }
         : { actionAr: 'تولَّد في حجرة القيامة',     chamberAr: 'القيامة', at: asset.createdAt },
     ],
-    isRealAsset: true,
-    mediaUrl:    mapping.mediaUrl,
-    mediaType:   mapping.mediaType,
+    isRealAsset:      true,
+    mediaUrl:         mapping.mediaUrl,
+    mediaType:        mapping.mediaType,
+    // PACKAGE XL-D — required by Ras Al Amr injection; carried from the real VaultAsset.
+    assetFamily:      asset.assetFamily as string,
+    capabilityTarget: asset.capabilityTarget as string,
   };
 }
 
@@ -315,6 +324,8 @@ export default function SovereignVaultPalace() {
   const [activeVault, setActiveVault]           = useState<string | null>(null);
   const [selectedTreasure, setSelectedTreasure] = useState<SovereignTreasure | null>(null);
   const [incomingTreasure, setIncomingTreasure] = useState<SovereignTreasure | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId]   = useState<string | null>(null);
+  const [isDeletingAsset, setIsDeletingAsset]   = useState(false);
 
   // Palace memory — familiarity grows with each return
   const [palaceMemory, setPalaceMemory] = useState<PalaceMemory>(() => readPalaceMemory());
@@ -589,18 +600,44 @@ export default function SovereignVaultPalace() {
 
   function handleTreasureTransfer(t: SovereignTreasure, destination: string) {
     try {
+      // PACKAGE XL-D: payload now includes secureStorageUri (mediaUrl),
+      // assetFamily, and capabilityTarget so Ras Al Amr can inject the asset
+      // into its queue without a banner-only fallback.
       sessionStorage.setItem('azma.transfer.treasure', JSON.stringify({
-        id:      t.id,
-        titleAr: t.titleAr,
-        preview: t.preview,
-        origin:  'القصر السيادي',
-        vaultId: t.vaultId,
+        id:               t.id,
+        titleAr:          t.titleAr,
+        preview:          t.preview,
+        origin:           'القصر السيادي',
+        vaultId:          t.vaultId,
+        secureStorageUri: t.mediaUrl,
+        assetFamily:      t.assetFamily,
+        capabilityTarget: t.capabilityTarget,
       }));
       sessionStorage.setItem('azma.transfer.origin', 'palace');
     } catch { /* ignore */ }
     setCompanionMsg('الكنز يواصل رحلته.');
     setPhase('sealing');
     setTimeout(() => goTo(destination), 950);
+  }
+
+  async function handleDeleteVaultAsset(treasure: SovereignTreasure) {
+    if (!treasure.isRealAsset) return;
+    setIsDeletingAsset(true);
+    try {
+      const r = await fetch(`/api/vault/assets/${encodeURIComponent(treasure.id)}`, { method: 'DELETE' });
+      if (r.ok) {
+        setTreasures(prev => {
+          const next = { ...prev };
+          for (const vaultId of Object.keys(next)) {
+            next[vaultId] = next[vaultId].filter(t => t.id !== treasure.id);
+          }
+          return next;
+        });
+        setSelectedTreasure(null);
+        setDeleteConfirmId(null);
+      }
+    } catch { /* silent */ }
+    setIsDeletingAsset(false);
   }
 
   // ── Actions on Treasure ───────────────────────────────────────────────────
@@ -1252,7 +1289,36 @@ export default function SovereignVaultPalace() {
                             title={selectedTreasure.isRealAsset ? '◎ صلاحية كامنة — سلطة الإتلاف الدائم في انتظار استدعائها' : undefined}>
                             إتلاف دائم
                           </button>
+                          {selectedTreasure.isRealAsset && (
+                            <button className="detail-action action-vault-delete"
+                              onClick={() => setDeleteConfirmId(selectedTreasure.id)}>
+                              حذف من الخزانة
+                            </button>
+                          )}
                         </div>
+
+                        {deleteConfirmId === selectedTreasure.id && (
+                          <div className="vault-delete-modal">
+                            <div className="vault-delete-modal-body">
+                              <p className="vault-delete-title">حذف نهائي من الخزانة السيادية</p>
+                              <p className="vault-delete-warning">
+                                هذا الأصل الحقيقي سيُحذف بشكل دائم لا رجعة فيه. أي استخدام له في مشاهد التوجيه سيفقد مصدره.
+                              </p>
+                              <div className="vault-delete-actions">
+                                <button className="vault-delete-confirm"
+                                  disabled={isDeletingAsset}
+                                  onClick={() => handleDeleteVaultAsset(selectedTreasure)}>
+                                  {isDeletingAsset ? 'جارٍ الحذف…' : 'تأكيد الحذف النهائي'}
+                                </button>
+                                <button className="vault-delete-cancel"
+                                  disabled={isDeletingAsset}
+                                  onClick={() => setDeleteConfirmId(null)}>
+                                  إلغاء
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

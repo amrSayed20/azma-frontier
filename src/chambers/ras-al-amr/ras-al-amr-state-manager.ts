@@ -57,7 +57,9 @@ import {
   SetNodeActivePayload,
   SetNodeEmphasisPayload,
   SetNodeLockPayload,
-  SetTrackVolumePayload
+  SetTrackVolumePayload,
+  AddTextNodePayload,
+  UpdateTextNodePayload
 } from './assembly-directive-payloads';
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 import { AssetFamily } from '../../vault/sovereign-vault-types';
@@ -114,6 +116,10 @@ export class RasAlAmrStateManager {
         return this.handleSetNodeLock(updatedCanvas, mutation);
       case CanvasActionType.SET_TRACK_VOLUME:
         return this.handleSetTrackVolume(updatedCanvas, mutation);
+      case CanvasActionType.ADD_TEXT_NODE:
+        return this.handleAddTextNode(updatedCanvas, mutation);
+      case CanvasActionType.UPDATE_TEXT_NODE:
+        return this.handleUpdateTextNode(updatedCanvas, mutation);
       default:
         return updatedCanvas;
     }
@@ -513,6 +519,60 @@ export class RasAlAmrStateManager {
     if (trackIndex === -1) return canvas;
 
     canvas.tracks[trackIndex] = { ...canvas.tracks[trackIndex], trackVolumeDb: payload.volumeDb };
+    return canvas;
+  }
+
+  /**
+   * PACKAGE XL-D — SOVEREIGN CREATOR PRODUCTION EXPERIENCE CLOSURE:
+   * adds a TextNode (inline text, no Vault asset) to the target track.
+   * assetId is '' — TextNodes never reference the Vault. The node
+   * participates in the timeline and canvas exactly like a visual node:
+   * it has temporal/spatial directives, is subject to auto-save/restore,
+   * and can be removed via the existing REMOVE_NODE path.
+   */
+  private handleAddTextNode(canvas: SovereignCanvas, payload: AddTextNodePayload): SovereignCanvas {
+    const trackIndex = canvas.tracks.findIndex((t) => t.trackId === payload.targetTrackId);
+    if (trackIndex === -1) return canvas;
+
+    const newNode: AssemblyNode = {
+      nodeId: `text-node_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      assetId: '',
+      assetFamily: AssetFamily.STRUCTURAL,
+      capabilityOrigin: CapabilityTarget.WRITING,
+      temporal: payload.initialTemporal,
+      spatial: payload.initialSpatial,
+      textContent: payload.textContent,
+      customDirectives: {},
+    };
+
+    const track = canvas.tracks[trackIndex];
+    canvas.tracks[trackIndex] = { ...track, nodes: [...track.nodes, newNode] };
+    return canvas;
+  }
+
+  /**
+   * PACKAGE XL-D — updates a TextNode's inline text content non-destructively.
+   * Temporal/spatial/lock state are not touched. Subject to the node's own lock.
+   */
+  private handleUpdateTextNode(canvas: SovereignCanvas, payload: UpdateTextNodePayload): SovereignCanvas {
+    const location = this.locateNode(canvas, payload.targetNodeId);
+    if (!location) return canvas;
+    if (this.isNodeLocked(canvas, payload.targetNodeId)) return canvas;
+
+    const { trackIndex, nodeIndex } = location;
+    const track = canvas.tracks[trackIndex];
+    const node = track.nodes[nodeIndex];
+    if (!node.textContent) return canvas;
+
+    const updatedNode: AssemblyNode = {
+      ...node,
+      textContent: { ...node.textContent, ...payload.textContent },
+    };
+
+    canvas.tracks[trackIndex] = {
+      ...track,
+      nodes: [...track.nodes.slice(0, nodeIndex), updatedNode, ...track.nodes.slice(nodeIndex + 1)],
+    };
     return canvas;
   }
 }

@@ -420,7 +420,10 @@ import type {
   StructuralLogicDirective,
   AudioMixingDirective,
   VoiceAssignmentDirective,
+  AddTextNodePayload,
+  UpdateTextNodePayload,
 } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
+import type { TextNodeContent } from '@/src/chambers/ras-al-amr/assembly-contracts';
 import type { SubtitleDirective } from '@/src/chambers/ras-al-amr/subtitle-directive';
 import { decideMultiNodeCinematicDirection } from '@/src/chambers/ras-al-amr/automatic-director';
 import { validateNarrativeIntegrity } from '@/src/chambers/ras-al-amr/automatic-director-constitution';
@@ -477,6 +480,9 @@ const BLEND_MODES: VisualFilterDirective['blendMode'][] = ['NORMAL', 'MULTIPLY',
 // gate — creator reviews the production body before committing to the workspace.
 type CreationPhase = 'intent' | 'template-preview' | 'workspace';
 
+/** PACKAGE XL-D — four creator-facing family names, independent of internal template IDs. */
+type TemplateFamilyId = 'ilan-muntaj' | 'qissa-sinamaiyya' | 'reels' | 'sawt-wa-hikaya';
+
 interface SovereignTemplate {
   id: string;
   name: string;
@@ -489,12 +495,58 @@ interface SovereignTemplate {
   slotDurations: number[];
   slotRoles?: string[];   // production position labels shown to creator
   slotCues?: string[];    // per-slot asset guidance (what to put here)
+  /** PACKAGE XL-D — creator-facing family grouping (independent of internal id). */
+  familyId: TemplateFamilyId;
+  /** PACKAGE XL-D — per-slot SVG data URIs for the live demo player.
+   *  Each entry is an actual <img src> value (data:image/svg+xml encoded).
+   *  Must have the same length as slotDurations. */
+  demoSvgFrames: string[];
+  /** PACKAGE XL-D — demo audio frequency (Hz) played during template preview via Web Audio API. */
+  demoAudioHz?: number;
 }
 
-// PACKAGE XXXIX — AZMA ORIGINAL READY-TEMPLATE SYSTEM
-// Six sovereign templates reconstructed from creative-grammar principles.
-// These are expandable production grammars, not fixed slot counts.
-// Creator adds/removes/reorders freely — template defines rhythm and identity.
+// PACKAGE XL-D — SVG Demo Frame System
+// Produces actual data:image/svg+xml URIs per slot — real <img src> media elements,
+// not CSS atmospheric boxes. Each shape is geometrically distinct per slot type.
+function makeDemoSvgUri(bg: string, accent: string, shape: 'spot'|'diamond'|'grid'|'circle'|'lines'|'triangle'|'wave'|'slash'|'arch'): string {
+  let s: string;
+  switch (shape) {
+    case 'spot':
+      s = `<defs><radialGradient id="g"><stop offset="0%" stop-color="${accent}" stop-opacity=".7"/><stop offset="100%" stop-color="${accent}" stop-opacity="0"/></radialGradient></defs><ellipse cx="200" cy="112" rx="140" ry="80" fill="url(#g)"/>`;
+      break;
+    case 'diamond':
+      s = `<polygon points="200,35 340,112 200,190 60,112" fill="none" stroke="${accent}" stroke-width="2" opacity=".55"/><polygon points="200,70 305,112 200,155 95,112" fill="${accent}" opacity=".12"/>`;
+      break;
+    case 'grid':
+      s = Array.from({length:5},(_,r)=>Array.from({length:9},(_,c)=>`<circle cx="${c*45+22}" cy="${r*45+22}" r="1.5" fill="${accent}" opacity=".35"/>`).join('')).join('');
+      break;
+    case 'circle':
+      s = `<circle cx="200" cy="112" r="80" fill="none" stroke="${accent}" stroke-width="2" opacity=".5"/><circle cx="200" cy="112" r="50" fill="${accent}" opacity=".1"/><circle cx="200" cy="112" r="20" fill="${accent}" opacity=".25"/>`;
+      break;
+    case 'lines':
+      s = `<line x1="50" y1="85" x2="350" y2="85" stroke="${accent}" stroke-width="1" opacity=".3"/><line x1="50" y1="112" x2="350" y2="112" stroke="${accent}" stroke-width="2.5" opacity=".6"/><line x1="50" y1="139" x2="350" y2="139" stroke="${accent}" stroke-width="1" opacity=".3"/>`;
+      break;
+    case 'triangle':
+      s = `<polygon points="200,42 330,178 70,178" fill="none" stroke="${accent}" stroke-width="2" opacity=".5"/><polygon points="200,80 280,160 120,160" fill="${accent}" opacity=".1"/>`;
+      break;
+    case 'wave':
+      s = `<path d="M0,112 C67,80 133,144 200,112 S333,80 400,112" stroke="${accent}" stroke-width="2.5" fill="none" opacity=".6"/><path d="M0,130 C67,98 133,162 200,130 S333,98 400,130" stroke="${accent}" stroke-width="1" fill="none" opacity=".3"/>`;
+      break;
+    case 'slash':
+      s = `<line x1="60" y1="178" x2="200" y2="32" stroke="${accent}" stroke-width="3" opacity=".6"/><line x1="200" y1="178" x2="340" y2="32" stroke="${accent}" stroke-width="3" opacity=".6"/>`;
+      break;
+    case 'arch':
+      s = `<path d="M80,178 A120,120 0 0,1 320,178" fill="none" stroke="${accent}" stroke-width="2.5" opacity=".55"/><path d="M110,178 A90,90 0 0,1 290,178" fill="${accent}" opacity=".08"/>`;
+      break;
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="225"><rect width="400" height="225" fill="${bg}"/>${s!}</svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+// PACKAGE XXXIX / XL-D — AZMA ORIGINAL READY-TEMPLATE SYSTEM
+// Seven sovereign templates grouped into four creator-facing families.
+// Templates are expandable production grammars. demoSvgFrames are real SVG images
+// per slot rendered as <img> elements in the live demo player — not CSS boxes.
 const SOVEREIGN_TEMPLATES: SovereignTemplate[] = [
   {
     id: 'sovereign-product-reveal',
@@ -508,6 +560,16 @@ const SOVEREIGN_TEMPLATES: SovereignTemplate[] = [
     slotDurations: [2, 4, 4, 4, 5, 3],
     slotRoles: ['الخطاف البصري', 'الكشف عن المنتج', 'التفصيل والقُرب', 'الفائدة والقيمة', 'التقديم البطولي', 'الدعوة للتصرف'],
     slotCues: ['لحظة بصرية مفاجئة تُعلن حضور المنتج فوراً', 'الكشف الرئيسي عن المنتج بتكوين درامي', 'لقطة قريبة تُظهر الجودة والتفصيل', 'مشهد الاستخدام الحقيقي والقيمة العملية', 'المشهد البطولي الأكثر تأثيراً في المحتوى', 'الصورة الختامية مع رسالة أو دعوة واضحة'],
+    familyId: 'ilan-muntaj',
+    demoAudioHz: 440,
+    demoSvgFrames: [
+      makeDemoSvgUri('#0A0A14','#F59E0B','spot'),
+      makeDemoSvgUri('#0A0A14','#F59E0B','diamond'),
+      makeDemoSvgUri('#0A0A14','#F59E0B','grid'),
+      makeDemoSvgUri('#0A0A14','#F59E0B','triangle'),
+      makeDemoSvgUri('#0A0A14','#F59E0B','circle'),
+      makeDemoSvgUri('#0A0A14','#F59E0B','lines'),
+    ],
   },
   {
     id: 'sovereign-device-showcase',
@@ -521,6 +583,16 @@ const SOVEREIGN_TEMPLATES: SovereignTemplate[] = [
     slotDurations: [3, 5, 4, 4, 4, 3],
     slotRoles: ['الحضور التقني', 'الكشف عن الجهاز', 'عرض الميزات', 'حركة التفصيل', 'السيطرة البصرية', 'الدعوة للتصرف'],
     slotCues: ['مشهد يُعلن الهوية التقنية المستقبلية', 'الكشف الرئيسي عن الجهاز أو الواجهة الرقمية', 'تقديم ميزة أو وظيفة رئيسية بوضوح', 'تفصيل يُبرز الدقة والجودة التقنية', 'المنتج في وضع الحضور المطلق والسيطرة', 'رسالة ختامية مع دعوة للاستجابة'],
+    familyId: 'ilan-muntaj',
+    demoAudioHz: 528,
+    demoSvgFrames: [
+      makeDemoSvgUri('#020B14','#22D3EE','grid'),
+      makeDemoSvgUri('#020B14','#22D3EE','diamond'),
+      makeDemoSvgUri('#020B14','#22D3EE','lines'),
+      makeDemoSvgUri('#020B14','#22D3EE','arch'),
+      makeDemoSvgUri('#020B14','#22D3EE','circle'),
+      makeDemoSvgUri('#020B14','#22D3EE','triangle'),
+    ],
   },
   {
     id: 'sovereign-luxury-editorial',
@@ -534,6 +606,16 @@ const SOVEREIGN_TEMPLATES: SovereignTemplate[] = [
     slotDurations: [4, 5, 5, 5, 5, 4],
     slotRoles: ['الافتتاح التحريري', 'الكشف عن الموضوع', 'التفصيل والملمس', 'التكوين البطولي', 'بيان العلامة', 'الصورة الختامية'],
     slotCues: ['لحظة بصرية تُعلن هوية المحتوى الفاخر دون كلام', 'الكشف الرئيسي بتكوين راقٍ ومتعمَّد', 'لقطة قريبة تكشف الملمس والجودة والتفصيل', 'التكوين الأكثر تأثيراً — الصورة التي تُعرَّف بها', 'الرسالة أو روح العلامة التجارية في صورة', 'الصورة الأخيرة التي تبقى في ذاكرة المشاهد'],
+    familyId: 'qissa-sinamaiyya',
+    demoAudioHz: 396,
+    demoSvgFrames: [
+      makeDemoSvgUri('#14001E','#C084FC','spot'),
+      makeDemoSvgUri('#14001E','#C084FC','diamond'),
+      makeDemoSvgUri('#14001E','#C084FC','grid'),
+      makeDemoSvgUri('#14001E','#C084FC','circle'),
+      makeDemoSvgUri('#14001E','#C084FC','lines'),
+      makeDemoSvgUri('#14001E','#C084FC','triangle'),
+    ],
   },
   {
     id: 'sovereign-food-story',
@@ -547,6 +629,16 @@ const SOVEREIGN_TEMPLATES: SovereignTemplate[] = [
     slotDurations: [2, 4, 4, 3, 4, 3],
     slotRoles: ['الخطاف البصري', 'المنتج البطل', 'التفصيل والقُرب', 'الحركة والتطور', 'المعلومة والقيمة', 'الدعوة للتصرف'],
     slotCues: ['لحظة شهية تجذب العين فوراً — صوت أو صورة جاهزة', 'المنتج الرئيسي في أبهى صورة وأفضل إضاءة', 'لقطة قريبة تُظهر الملمس والجودة والتفصيل', 'مشهد الإعداد أو التقديم أو اللحظة الجذابة', 'معلومة عن الخدمة أو الموقع أو السعر', 'دعوة واضحة للطلب أو الزيارة أو التواصل'],
+    familyId: 'ilan-muntaj',
+    demoAudioHz: 417,
+    demoSvgFrames: [
+      makeDemoSvgUri('#1C0800','#FB923C','spot'),
+      makeDemoSvgUri('#1C0800','#FB923C','circle'),
+      makeDemoSvgUri('#1C0800','#FB923C','grid'),
+      makeDemoSvgUri('#1C0800','#FB923C','wave'),
+      makeDemoSvgUri('#1C0800','#FB923C','lines'),
+      makeDemoSvgUri('#1C0800','#FB923C','triangle'),
+    ],
   },
   {
     id: 'sovereign-spatial-showcase',
@@ -560,6 +652,17 @@ const SOVEREIGN_TEMPLATES: SovereignTemplate[] = [
     slotDurations: [5, 5, 5, 4, 5, 4, 3],
     slotRoles: ['المشهد التأسيسي', 'الدخول المكاني', 'التطور البيئي', 'التفصيل المعماري', 'المساحة البطولة', 'المعلومة والسياق', 'خاتمة الدعوة'],
     slotCues: ['اللقطة الواسعة التي تُعلن الحجم والمكانة', 'الدخول السينمائي إلى الفضاء الرئيسي', 'تتابع يكشف البيئة تدريجياً وبشكل طبيعي', 'تفصيل معماري أو عنصر داخلي مميز', 'المساحة أو العنصر الأكثر تأثيراً في المشروع', 'معلومات المشروع أو الموقع أو السعر', 'رسالة ختامية مع دعوة للتواصل أو الزيارة'],
+    familyId: 'qissa-sinamaiyya',
+    demoAudioHz: 285,
+    demoSvgFrames: [
+      makeDemoSvgUri('#0A1020','#94A3B8','arch'),
+      makeDemoSvgUri('#0A1020','#94A3B8','diamond'),
+      makeDemoSvgUri('#0A1020','#94A3B8','grid'),
+      makeDemoSvgUri('#0A1020','#94A3B8','lines'),
+      makeDemoSvgUri('#0A1020','#94A3B8','circle'),
+      makeDemoSvgUri('#0A1020','#94A3B8','triangle'),
+      makeDemoSvgUri('#0A1020','#94A3B8','spot'),
+    ],
   },
   {
     id: 'sovereign-fast-story',
@@ -572,51 +675,148 @@ const SOVEREIGN_TEMPLATES: SovereignTemplate[] = [
     slotDurations: [1, 2, 2, 2, 2, 2, 1],
     slotRoles: ['الخطاف', 'التأثير الأول', 'التصاعد السريع', 'الإبراز', 'ذروة الطاقة', 'اللحظة البطولة', 'الضربة الختامية'],
     slotCues: ['الصدمة البصرية الأولى — لا مقدمات', 'تأثير فوري — حركة أو طاقة عالية', 'تتابع سريع يبني الزخم', 'الإبراز الرئيسي بطاقة كاملة', 'أقصى طاقة ممكنة في الإيقاع', 'اللحظة التي يتذكرها المشاهد', 'الضربة الأخيرة — حادة ومباشرة'],
+    familyId: 'reels',
+    demoAudioHz: 880,
+    demoSvgFrames: [
+      makeDemoSvgUri('#000508','#4ADE80','slash'),
+      makeDemoSvgUri('#000508','#4ADE80','circle'),
+      makeDemoSvgUri('#000508','#4ADE80','triangle'),
+      makeDemoSvgUri('#000508','#4ADE80','diamond'),
+      makeDemoSvgUri('#000508','#4ADE80','grid'),
+      makeDemoSvgUri('#000508','#4ADE80','spot'),
+      makeDemoSvgUri('#000508','#4ADE80','lines'),
+    ],
+  },
+  // PACKAGE XL-D — صوت وحكاية: voice-first narrative template (new fourth family)
+  {
+    id: 'sovereign-voice-story',
+    name: 'صوت وحكاية',
+    icon: '🎙',
+    domain: 'رواية · بودكاست · حكاية مرئية',
+    description: 'السرد الصوتي السينمائي — الصوت هو البطل والصورة تُكمل الحكاية.',
+    directorIntentPreset: 'رواية صوتية: ابدأ بمشهد يُرسّخ الجو، اترك الصوت يقود السرد، أضف الصور دعماً للمعنى، ثم اختتم بلحظة تأمل تبقى في الذاكرة.',
+    transitionPreference: 'crossfade',
+    transitionDurationSeconds: 1.5,
+    slotDurations: [4, 6, 6, 4],
+    slotRoles: ['تأسيس الجو', 'السرد الرئيسي', 'التأمل والعمق', 'الخاتمة الهادئة'],
+    slotCues: ['مشهد هادئ يُرسّخ جو القصة — ضوء وبيئة', 'الصور التي تُعزز الصوت السردي وتُعمّق المعنى', 'لحظة تأمل بصرية — بطيئة وعميقة', 'الصورة الختامية التي تُكمل الحكاية بصمت'],
+    familyId: 'sawt-wa-hikaya',
+    demoAudioHz: 256,
+    demoSvgFrames: [
+      makeDemoSvgUri('#100010','#FDA4AF','wave'),
+      makeDemoSvgUri('#100010','#FDA4AF','circle'),
+      makeDemoSvgUri('#100010','#FDA4AF','lines'),
+      makeDemoSvgUri('#100010','#FDA4AF','spot'),
+    ],
+  },
+  // PACKAGE XLI — هيبة المنتج: brand identity showcase (required template)
+  {
+    id: 'sovereign-brand-showcase',
+    name: 'هيبة المنتج',
+    icon: '◇',
+    domain: 'علامة · هوية · براند · فخامة',
+    description: 'حضور العلامة التجارية — هوية بصرية تُثبت المكانة وتُعلن الفئة.',
+    directorIntentPreset: 'هوية البراند: افتح بلحظة تُعلن الانتماء للفئة الراقية، قدّم المنتج كتجسيد للهوية، أظهر التفصيل الذي يُثبت الجودة، قدّم بيان العلامة، ثم اختتم بصورة تُرسّخ الذاكرة.',
+    transitionPreference: 'crossfade',
+    transitionDurationSeconds: 1.0,
+    slotDurations: [3, 5, 4, 5, 3],
+    slotRoles: ['إعلان الهوية', 'المنتج كتجسيد للعلامة', 'تفصيل الجودة', 'بيان العلامة', 'الصورة الراسخة'],
+    slotCues: ['لحظة تُعلن فوراً الانتماء لفئة راقية محددة', 'المنتج يُقدَّم كتجسيد حقيقي لروح العلامة', 'تفصيل بصري يُثبت الجودة ويُقنع دون كلام', 'الرسالة أو البيان الذي يُعرَّف به البراند', 'الصورة الختامية التي تبقى في ذاكرة المشاهد'],
+    familyId: 'ilan-muntaj',
+    demoAudioHz: 396,
+    demoSvgFrames: [
+      makeDemoSvgUri('#0D0D1A','#E2C27D','spot'),
+      makeDemoSvgUri('#0D0D1A','#E2C27D','diamond'),
+      makeDemoSvgUri('#0D0D1A','#E2C27D','circle'),
+      makeDemoSvgUri('#0D0D1A','#E2C27D','lines'),
+      makeDemoSvgUri('#0D0D1A','#E2C27D','triangle'),
+    ],
+  },
+  // PACKAGE XLI — المشهد السينمائي: cinematic story arc (required template)
+  {
+    id: 'sovereign-cinematic-story',
+    name: 'المشهد السينمائي',
+    icon: '◈',
+    domain: 'قصة · سرد · وثائقي · إنساني',
+    description: 'قوس السرد السينمائي — ستة فصول تبني عالماً وتُحقق تحولاً.',
+    directorIntentPreset: 'قوس سينمائي: افتح عالم القصة بمشهد تأسيسي، قدّم الشخصية أو الموضوع، طوّر السرد وارفع التوتر، قدّم نقطة التحول، ابلغ الذروة، ثم اختتم بنهاية تُلخّص الرحلة.',
+    transitionPreference: 'crossfade',
+    transitionDurationSeconds: 1.2,
+    slotDurations: [5, 5, 5, 5, 5, 5],
+    slotRoles: ['فتح العالم', 'تقديم الموضوع', 'التطور والبناء', 'نقطة التحول', 'الذروة', 'الخاتمة'],
+    slotCues: ['المشهد التأسيسي الذي يفتح عالم القصة كاملاً', 'تقديم الشخصية أو الموضوع الرئيسي بعمق', 'مشهد التطور — السرد يتصاعد والتوتر يرتفع', 'اللحظة التي يتحول فيها كل شيء — نقطة اللاعودة', 'ذروة السرد — أقصى لحظة من القصة عاطفياً', 'الخاتمة التي تُجيب وتُلخّص رحلة المشاهد'],
+    familyId: 'qissa-sinamaiyya',
+    demoAudioHz: 285,
+    demoSvgFrames: [
+      makeDemoSvgUri('#08080F','#60A5FA','arch'),
+      makeDemoSvgUri('#08080F','#60A5FA','wave'),
+      makeDemoSvgUri('#08080F','#60A5FA','diamond'),
+      makeDemoSvgUri('#08080F','#60A5FA','triangle'),
+      makeDemoSvgUri('#08080F','#60A5FA','circle'),
+      makeDemoSvgUri('#08080F','#60A5FA','spot'),
+    ],
+  },
+  // PACKAGE XLI — النبض: fast social content (required template)
+  {
+    id: 'sovereign-fast-social',
+    name: 'النبض',
+    icon: '⚡',
+    domain: 'ريلز · شورتس · حملات · ترند',
+    description: 'الإيقاع الحاد للسوشيال — ستة ضربات بلا تردد ولا مساحة للغياب.',
+    directorIntentPreset: 'سوشيال سريع: خطاف فوري بلا مقدمات، حركة بصرية سريعة، ضربة معلومات واضحة، إبراز حاد، تصعيد كامل، خاتمة تُغلق الدائرة.',
+    transitionPreference: 'cut',
+    slotDurations: [1, 2, 2, 2, 2, 1],
+    slotRoles: ['الخطاف الفوري', 'الحركة البصرية السريعة', 'ضربة المعلومة', 'الإبراز الحاد', 'التصعيد', 'الخاتمة'],
+    slotCues: ['الضربة الأولى — صدمة بصرية فورية بلا مقدمة', 'حركة أو طاقة عالية — لا توقف ولا تردد', 'المعلومة أو الرسالة الرئيسية بوضوح تام', 'الإبراز الأقوى — اللقطة التي لا تُنسى', 'تصعيد الطاقة حتى أقصى درجة ممكنة', 'الضربة الأخيرة — حادة ومغلقة ومباشرة'],
+    familyId: 'reels',
+    demoAudioHz: 880,
+    demoSvgFrames: [
+      makeDemoSvgUri('#000508','#F43F5E','slash'),
+      makeDemoSvgUri('#000508','#F43F5E','circle'),
+      makeDemoSvgUri('#000508','#F43F5E','triangle'),
+      makeDemoSvgUri('#000508','#F43F5E','diamond'),
+      makeDemoSvgUri('#000508','#F43F5E','grid'),
+      makeDemoSvgUri('#000508','#F43F5E','spot'),
+    ],
   },
 ];
 
-// PACKAGE XXXVIII CLOSURE — LIVE DEMO COMPOSITION PREVIEW
-// Each demo frame is a visually distinct "cinematic stage" shown inside the
-// template-preview screen. Frames use the identical opacity/crossfade math
-// the real production preview uses — so what you see in the demo is what
-// the real system produces between canvas nodes. No creator state is touched;
-// the demo plays in a presentation-only div and disappears on exit.
+// PACKAGE XL-D — four creator-facing families used to group templates in the intent gate.
+const TEMPLATE_FAMILIES: { id: TemplateFamilyId; nameAr: string; descAr: string }[] = [
+  { id: 'ilan-muntaj',      nameAr: 'إعلان منتج',      descAr: 'منتجات، تجاري، غذاء، تقنية' },
+  { id: 'qissa-sinamaiyya', nameAr: 'قصة سينمائية',    descAr: 'سرد مكاني وتحريري فاخر' },
+  { id: 'reels',            nameAr: 'ريلز',             descAr: 'محتوى قصير عالي الطاقة' },
+  { id: 'sawt-wa-hikaya',   nameAr: 'صوت وحكاية',      descAr: 'رواية صوتية وسردية' },
+];
 
-const DEMO_TOTAL_SECS = 12; // real-time seconds for the full demo playback
+// PACKAGE XXXVIII / XL-D — LIVE DEMO COMPOSITION PREVIEW
+// Each DemoFrame carries an actual SVG data URI for an <img> element — real media.
+// Frames use the identical opacity/crossfade math the real production preview uses.
+// No creator state is touched; the demo plays in a presentation-only div and disappears on exit.
 
+const DEMO_TOTAL_SECS = 12;
+
+// PACKAGE XL-D: svgDataUri replaces motifClass — actual <img src>, not a CSS class.
 interface DemoFrame {
-  role: string;        // Arabic stage label
-  motifClass: string;  // CSS class for this frame's cinematic background
-  scaledDur: number;   // frame duration in demo-time seconds
-  scaledStart: number; // cumulative start in demo-time seconds
-  fadeDur: number;     // crossfade overlap duration (0 for cut)
-  hasFade: boolean;    // whether this frame fades IN from previous
+  role: string;
+  svgDataUri: string;   // data:image/svg+xml — rendered as <img src={svgDataUri}/>
+  scaledDur: number;
+  scaledStart: number;
+  fadeDur: number;
+  hasFade: boolean;
 }
-
-// Per-template motif CSS classes: visually distinct atmospheres for each stage.
-// Each class has a unique gradient personality matching the template's creative character.
-const TEMPLATE_MOTIFS: Record<string, string[]> = {
-  'sovereign-product-reveal':   ['spr-hook', 'spr-reveal', 'spr-detail', 'spr-benefit', 'spr-hero', 'spr-cta'],
-  'sovereign-device-showcase':  ['sds-presence', 'sds-reveal', 'sds-feature', 'sds-detail', 'sds-dominance', 'sds-cta'],
-  'sovereign-luxury-editorial': ['sle-open', 'sle-subject', 'sle-texture', 'sle-hero', 'sle-brand', 'sle-close'],
-  'sovereign-food-story':       ['sfs-hook', 'sfs-hero', 'sfs-detail', 'sfs-motion', 'sfs-info', 'sfs-cta'],
-  'sovereign-spatial-showcase': ['sss-establish', 'sss-entry', 'sss-progression', 'sss-detail', 'sss-hero', 'sss-info', 'sss-cta'],
-  'sovereign-fast-story':       ['sfst-hook', 'sfst-impact', 'sfst-rapid', 'sfst-highlight', 'sfst-escalate', 'sfst-hero', 'sfst-beat'],
-};
 
 function buildDemoFrames(template: SovereignTemplate): DemoFrame[] {
   const total = template.slotDurations.reduce((a, b) => a + b, 0);
   const isCrossfade = template.transitionPreference === 'crossfade';
-  // Scale the raw transitionDuration to demo-time proportionally.
   const rawFadeSecs = isCrossfade ? (template.transitionDurationSeconds ?? 0.6) : 0;
   const scaledFade = isCrossfade ? rawFadeSecs * (DEMO_TOTAL_SECS / total) : 0;
-  const motifs = TEMPLATE_MOTIFS[template.id] ?? [];
   let start = 0;
   return template.slotDurations.map((dur, i) => {
     const scaledDur = (dur / total) * DEMO_TOTAL_SECS;
     const frame: DemoFrame = {
       role: template.slotRoles?.[i] ?? `موضع ${i + 1}`,
-      motifClass: motifs[i] ?? 'demo-default',
+      svgDataUri: template.demoSvgFrames[i] ?? template.demoSvgFrames[0],
       scaledDur,
       scaledStart: start,
       fadeDur: scaledFade,
@@ -672,6 +872,24 @@ function typeLabelForCapability(target: string): string {
     case 'AUDIO':   return 'صوت';
     default:        return 'وثيقة';
   }
+}
+
+// PACKAGE XL-D — Legacy canvas migration.
+// Only runs when schemaVersion is absent (canvas created before coordinate fix).
+// Migrates ONLY nodes at positionX:50, positionY:50 — the exact broken default
+// from the pre-fix build. Does NOT blindly clamp all out-of-range coordinates.
+function migrateLegacyCanvas(canvas: SovereignCanvas): SovereignCanvas {
+  if ((canvas.schemaVersion ?? 0) >= 2) return canvas;
+  const migratedTracks = canvas.tracks.map((track) => ({
+    ...track,
+    nodes: track.nodes.map((node) => {
+      if (node.spatial && node.spatial.positionX === 50 && node.spatial.positionY === 50) {
+        return { ...node, spatial: { ...node.spatial, positionX: 0, positionY: 0 } };
+      }
+      return node;
+    }),
+  }));
+  return { ...canvas, tracks: migratedTracks, schemaVersion: 2 };
 }
 
 // MINISTRY II — ElevenLabs curated preset voices (popular + distinctive).
@@ -771,6 +989,9 @@ export default function RasAmrChamber() {
   const [demoPlayheadSec, setDemoPlayheadSec] = useState(0);
   const demoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const demoStartRef = useRef(0);
+  // PACKAGE XL-D — Web Audio API oscillator for demo sound (real audio, not silence).
+  const demoAudioCtxRef = useRef<AudioContext | null>(null);
+  const demoOscRef = useRef<OscillatorNode | null>(null);
 
   const [isRendering, setIsRendering] = useState<boolean>(false);
   const [renderStatus, setRenderStatus] = useState<string>('في وضع الاستعداد الإخراجي');
@@ -1044,6 +1265,7 @@ export default function RasAmrChamber() {
       ],
       createdAt: 0,
       updatedAt: 0,
+      schemaVersion: 2,  // PACKAGE XL-D: mark as current coordinate convention
     });
   }
 
@@ -1310,6 +1532,42 @@ export default function RasAmrChamber() {
       locked,
     };
 
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
+  };
+
+  // PACKAGE XL-D — TextNode: add a new text overlay node to the first track.
+  const handleAddTextNode = () => {
+    if (!sessionCanvas) return;
+    const allNodes = sessionCanvas.tracks.flatMap(t => t.nodes);
+    const lastEnd = allNodes.reduce((acc, n) => {
+      const e = (n.temporal?.globalStartTimeSeconds ?? 0) + (n.temporal?.playDurationSeconds ?? 5);
+      return Math.max(acc, e);
+    }, 0);
+    const mutation: AddTextNodePayload = {
+      actionType: CanvasActionType.ADD_TEXT_NODE,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: sessionCanvas.tracks[0]?.trackId ?? 'track-1',
+      textContent: { ...textNodeForm },
+      initialTemporal: { globalStartTimeSeconds: lastEnd, playDurationSeconds: 5 },
+      initialSpatial: { positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: allNodes.length + 1 },
+    };
+    const updated = executeDirectionDecision(sessionCanvas, mutation);
+    setSessionCanvas(updated);
+    setIsTextNodeFormOpen(false);
+  };
+
+  // PACKAGE XL-D — TextNode: update a selected TextNode's content without touching temporal/spatial.
+  const handleUpdateTextNodeContent = (nodeId: string, content: Partial<import('@/src/chambers/ras-al-amr/assembly-contracts').TextNodeContent>) => {
+    if (!sessionCanvas) return;
+    const mutation: UpdateTextNodePayload = {
+      actionType: CanvasActionType.UPDATE_TEXT_NODE,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: 'track-1',
+      targetNodeId: nodeId,
+      textContent: content,
+    };
     setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
   };
 
@@ -1769,11 +2027,35 @@ export default function RasAmrChamber() {
     const raw = sessionStorage.getItem('azma.kernel.session');
     if (raw) sessionStorage.removeItem('azma.kernel.session');
 
-    // Consume Palace treasure context — acknowledged via the continuity banner
+    // Consume Palace treasure context — PACKAGE XL-D: now injects the asset
+    // directly into the queue using the enriched payload (secureStorageUri,
+    // assetFamily, capabilityTarget). Banner still shows; queue now also loads.
     const treasureRaw = sessionStorage.getItem('azma.transfer.treasure');
     if (treasureRaw) {
       sessionStorage.removeItem('azma.transfer.treasure');
       sessionStorage.removeItem('azma.transfer.origin');
+      try {
+        const payload = JSON.parse(treasureRaw) as {
+          id?: string; titleAr?: string; secureStorageUri?: string;
+          assetFamily?: string; capabilityTarget?: string;
+        };
+        if (payload.id && payload.secureStorageUri && payload.assetFamily && payload.capabilityTarget) {
+          const queueItem: QueueItem = {
+            id: payload.id,
+            title: payload.titleAr ?? 'أصل من الخزانة السيادية',
+            type: typeLabelForCapability(payload.capabilityTarget),
+            source: 'القصر السيادي',
+            duration: '--:--',
+            status: 'أصل حقيقي — وصل من القصر السيادي',
+            isRealAsset: true,
+            secureStorageUri: payload.secureStorageUri,
+            assetFamily: payload.assetFamily as AssetFamily,
+            capabilityOrigin: payload.capabilityTarget as CapabilityTarget,
+          };
+          setQueue((prev) => [queueItem, ...prev.filter((a) => a.id !== queueItem.id)]);
+          setActiveAsset(queueItem);
+        }
+      } catch { /* malformed payload — show banner only */ }
       setKernelContinuity('palace-treasure');
       return;
     }
@@ -2039,6 +2321,12 @@ export default function RasAmrChamber() {
   // PACKAGE XXXI — 5-tab right workspace: المشهد | التوجيه | الصوت | الترجمة | المشروع
   const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'canvas' | 'direction' | 'audio' | 'subtitles' | 'project'>('canvas');
 
+  // PACKAGE XL-D — TextNode editing form state.
+  const [textNodeForm, setTextNodeForm] = useState<{
+    text: string; fontSizePx: number; colorHex: string; alignment: 'right'|'center'|'left'; fontWeight: 'normal'|'bold';
+  }>({ text: '', fontSizePx: 28, colorHex: '#ffffff', alignment: 'center', fontWeight: 'normal' });
+  const [isTextNodeFormOpen, setIsTextNodeFormOpen] = useState(false);
+
   // PACKAGE XXXII — PREVIEW PLAYBACK: client-side composition preview loop.
   // Read-only consumer of existing sessionCanvas + vaultAssets. No new backend.
   const [isPlaying, setIsPlaying] = useState(false);
@@ -2156,10 +2444,11 @@ export default function RasAmrChamber() {
           // SNAPSHOT ISOLATION: after restoring any saved canvas (including explicit
           // snapshots), reset its canvasId to the working-draft key so that subsequent
           // auto-saves write to the draft and never overwrite the original snapshot.
-          const restoredCanvas: SovereignCanvas = {
+          // PACKAGE XL-D: apply legacy migration (positionX:50→0) when schemaVersion absent.
+          const restoredCanvas: SovereignCanvas = migrateLegacyCanvas({
             ...d.canvas,
             canvasId: 'canvas_narrative_session',
-          };
+          });
           justRestoredRef.current = true;
           setSessionCanvas(restoredCanvas);
           setSaveState('restored');
@@ -2192,10 +2481,11 @@ export default function RasAmrChamber() {
       if (!canvasRes.ok) return;
       const canvasData = await canvasRes.json() as { status: string; canvas: SovereignCanvas };
       if (canvasData.status !== 'succeeded') return;
-      const restoredCanvas = {
+      // PACKAGE XL-D: apply legacy migration (positionX:50→0) when schemaVersion absent.
+      const restoredCanvas = migrateLegacyCanvas({
         ...canvasData.canvas,
         canvasId: 'canvas_narrative_session',
-      };
+      });
       if (restoredCanvas.tracks.flatMap(t => t.nodes).length === 0) return;
       justRestoredRef.current = true;
       setSessionCanvas(restoredCanvas);
@@ -2351,10 +2641,33 @@ export default function RasAmrChamber() {
   // Isolated: never reads sessionCanvas, never touches Vault.
   const handleStartDemo = () => {
     if (demoIntervalRef.current) clearInterval(demoIntervalRef.current);
+    // PACKAGE XL-D — Web Audio API oscillator: real ambient sound during demo.
+    // Stops any previous oscillator, then starts a soft sine wave at the template's Hz.
+    try {
+      if (demoOscRef.current) { try { demoOscRef.current.stop(); } catch { /* already stopped */ } demoOscRef.current = null; }
+      if (!demoAudioCtxRef.current || demoAudioCtxRef.current.state === 'closed') {
+        demoAudioCtxRef.current = new AudioContext();
+      }
+      const ctx = demoAudioCtxRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = selectedTemplate?.demoAudioHz ?? 440;
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 0.8);
+      gain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + DEMO_TOTAL_SECS - 1.2);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + DEMO_TOTAL_SECS);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + DEMO_TOTAL_SECS + 0.1);
+      demoOscRef.current = osc;
+    } catch { /* Web Audio unavailable — demo plays silently */ }
     demoStartRef.current = Date.now();
     setIsDemoPlaying(true);
     setDemoPlayheadSec(0);
-    replayPreviewAnimation(); // keep slot indicators in sync
+    replayPreviewAnimation();
     demoIntervalRef.current = setInterval(() => {
       const sec = (Date.now() - demoStartRef.current) / 1000;
       setDemoPlayheadSec(sec);
@@ -2365,12 +2678,13 @@ export default function RasAmrChamber() {
         setDemoPlayheadSec(0);
         setPreviewStep(-1);
       }
-    }, 50); // 50ms tick → smooth 20fps opacity ramp
+    }, 50);
   };
 
   const handleStopDemo = () => {
     if (demoIntervalRef.current) clearInterval(demoIntervalRef.current);
     demoIntervalRef.current = null;
+    try { if (demoOscRef.current) { demoOscRef.current.stop(); demoOscRef.current = null; } } catch { /* already stopped */ }
     setIsDemoPlaying(false);
     setDemoPlayheadSec(0);
     previewTimersRef.current.forEach(clearTimeout);
@@ -2786,6 +3100,7 @@ export default function RasAmrChamber() {
       tracks: [{ trackId: 'track-1', trackName: 'المسار الرئيسي', isMuted: false, isHidden: false, nodes: [] }],
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      schemaVersion: 2,  // PACKAGE XL-D: mark as current coordinate convention
     };
 
     // Wipe existing nodes — the Director Plan is authoritative for the full scene.
@@ -2945,6 +3260,46 @@ export default function RasAmrChamber() {
     } else {
       setActiveWorkspaceTab('canvas');
     }
+
+    // PACKAGE XLI — Template auto-populate:
+    // When a structured template is chosen and the canvas is empty but the
+    // queue carries real assets, immediately place all queue assets onto the
+    // canvas using template slot timing. This is what makes "استخدام القالب"
+    // produce a real living scene state, not just a chip or a card.
+    if (template && sessionCanvas) {
+      const existingNodes = sessionCanvas.tracks.flatMap((t) => t.nodes);
+      const realAssets = queue.filter((q) => q.isRealAsset && q.assetFamily && q.capabilityOrigin);
+      if (existingNodes.length === 0 && realAssets.length > 0) {
+        let canvas = sessionCanvas;
+        let firstVisualNodeId: string | null = null;
+        realAssets.forEach((asset, idx) => {
+          const nodeIndex = canvas.tracks.flatMap((t) => t.nodes).length;
+          const initialTemporal = computeTemplateSlotTemporal(template, nodeIndex, canvas);
+          const mutation: AddNodePayload = {
+            actionType: CanvasActionType.ADD_NODE,
+            canvasId: canvas.canvasId,
+            subscriberTenantId: canvas.subscriberTenantId,
+            targetTrackId: activeTrackId,
+            vaultAssetId: asset.id,
+            assetFamily: asset.assetFamily!,
+            capabilityOrigin: asset.capabilityOrigin!,
+            initialTemporal,
+            initialSpatial: DEFAULT_SPATIAL,
+          };
+          canvas = executeDirectionDecision(canvas, mutation);
+          if (!firstVisualNodeId && asset.capabilityOrigin !== CapabilityTarget.AUDIO) {
+            const track = canvas.tracks.find((t) => t.trackId === activeTrackId);
+            const added = track?.nodes[track.nodes.length - 1];
+            if (added) firstVisualNodeId = added.nodeId;
+          }
+          // Silence idx reference so TS doesn't warn about unused param.
+          void idx;
+        });
+        setSessionCanvas(canvas);
+        if (firstVisualNodeId) setSelectedNodeId(firstVisualNodeId);
+      }
+    }
+
     setCreationPhase('workspace');
   };
 
@@ -3010,7 +3365,7 @@ export default function RasAmrChamber() {
       });
     } catch { /* silent */ }
 
-    // 3. Reset canvas composition state.
+    // 3. Reset canvas composition state. PACKAGE XL-D: schemaVersion:2 marks this as current coordinate convention.
     setSessionCanvas({
       canvasId: 'canvas_narrative_session',
       subscriberTenantId: 'pending-server-verification',
@@ -3019,6 +3374,7 @@ export default function RasAmrChamber() {
       tracks: [{ trackId: 'track-1', trackName: 'المسار الرئيسي', isMuted: false, isHidden: false, nodes: [] }],
       createdAt: 0,
       updatedAt: 0,
+      schemaVersion: 2,
     });
 
     // 4. Reset current-production asset queue and active selection.
@@ -3088,41 +3444,54 @@ export default function RasAmrChamber() {
             {/* Card grid — templates first, then direct paths */}
             <div className="ras-intent-grid">
 
-              {/* Section: ready templates */}
+              {/* Section: ready templates — PACKAGE XL-D: grouped by four creator-facing families */}
               <div className="ras-intent-section-label">
                 <span>قوالب جاهزة</span>
               </div>
 
-              {/* 6 AZMA Original Ready Template cards — click opens live preview screen */}
-              {SOVEREIGN_TEMPLATES.map((tpl) => {
-                const total = tpl.slotDurations.reduce((a, b) => a + b, 0);
+              {/* PACKAGE XL-D — four creator families, each with its member templates.
+                  Card click = معاينة القالب (preview only, never enters production state). */}
+              {TEMPLATE_FAMILIES.map((family) => {
+                const familyTemplates = SOVEREIGN_TEMPLATES.filter(t => t.familyId === family.id);
+                if (familyTemplates.length === 0) return null;
                 return (
-                  <button
-                    key={tpl.id}
-                    className={`ras-intent-card ras-intent-template ras-tpl-${tpl.id}`}
-                    onClick={() => { setSelectedTemplate(tpl); setCreationPhase('template-preview'); }}
-                  >
-                    <span className="ras-intent-card-icon">{tpl.icon}</span>
-                    <span className="ras-intent-card-name">{tpl.name}</span>
-                    <span className="ras-intent-card-domain">{tpl.domain}</span>
-                    {/* Rhythmic grammar strip — shows transition style and relative stage proportions */}
-                    <div className="ras-intent-card-strip" aria-hidden="true">
-                      {tpl.slotDurations.map((d, i) => (
-                        <React.Fragment key={i}>
-                          <span
-                            className={`ras-intent-strip-slot${tpl.transitionPreference === 'crossfade' && i > 0 ? ' strip-slot-fade' : ''}`}
-                            style={{ flex: d / total * 10 }}
-                            title={tpl.slotRoles?.[i]}
-                          />
-                          {i < tpl.slotDurations.length - 1 && (
-                            <span className={`ras-intent-strip-sep${tpl.transitionPreference === 'crossfade' ? ' strip-sep-fade' : ''}`} />
-                          )}
-                        </React.Fragment>
-                      ))}
+                  <React.Fragment key={family.id}>
+                    <div className="ras-intent-family-header">
+                      <span className="ras-intent-family-name">{family.nameAr}</span>
+                      <span className="ras-intent-family-desc">{family.descAr}</span>
                     </div>
-                    <span className="ras-intent-card-desc">{tpl.description}</span>
-                    <span className="ras-intent-card-preview-hint">← معاينة مباشرة</span>
-                  </button>
+                    {familyTemplates.map((tpl) => {
+                      const total = tpl.slotDurations.reduce((a, b) => a + b, 0);
+                      return (
+                        <button
+                          key={tpl.id}
+                          className={`ras-intent-card ras-intent-template ras-tpl-${tpl.id}`}
+                          onClick={() => { setSelectedTemplate(tpl); setCreationPhase('template-preview'); }}
+                        >
+                          <span className="ras-intent-card-icon">{tpl.icon}</span>
+                          <span className="ras-intent-card-name">{tpl.name}</span>
+                          <span className="ras-intent-card-domain">{tpl.domain}</span>
+                          <div className="ras-intent-card-strip" aria-hidden="true">
+                            {tpl.slotDurations.map((d, i) => (
+                              <React.Fragment key={i}>
+                                <span
+                                  className={`ras-intent-strip-slot${tpl.transitionPreference === 'crossfade' && i > 0 ? ' strip-slot-fade' : ''}`}
+                                  style={{ flex: d / total * 10 }}
+                                  title={tpl.slotRoles?.[i]}
+                                />
+                                {i < tpl.slotDurations.length - 1 && (
+                                  <span className={`ras-intent-strip-sep${tpl.transitionPreference === 'crossfade' ? ' strip-sep-fade' : ''}`} />
+                                )}
+                              </React.Fragment>
+                            ))}
+                          </div>
+                          <span className="ras-intent-card-desc">{tpl.description}</span>
+                          {/* PACKAGE XL-D — explicit معاينة label: card click is preview ONLY */}
+                          <span className="ras-intent-card-preview-hint">معاينة القالب ←</span>
+                        </button>
+                      );
+                    })}
+                  </React.Fragment>
                 );
               })}
 
@@ -3284,10 +3653,17 @@ export default function RasAmrChamber() {
                     return (
                       <div
                         key={i}
-                        className={`ras-tp-demo-frame ${frame.motifClass}`}
+                        className="ras-tp-demo-frame"
                         style={{ opacity: clampedOpacity }}
                         aria-hidden={clampedOpacity < 0.05}
                       >
+                        {/* PACKAGE XL-D — real SVG <img> element per slot, not a CSS box */}
+                        <img
+                          src={frame.svgDataUri}
+                          alt={frame.role}
+                          className="ras-tp-demo-frame-img"
+                          draggable={false}
+                        />
                         <div className="ras-tp-demo-frame-inner">
                           <span className="ras-tp-demo-frame-num">
                             {selectedTemplate.transitionPreference === 'crossfade' ? '≈' : '|'}&nbsp;{i + 1}
@@ -3385,19 +3761,19 @@ export default function RasAmrChamber() {
               <span>{selectedTemplate.slotDurations.reduce((a, b) => a + b, 0)}ث — قابل للتوسع</span>
             </div>
 
-            {/* CTA */}
+            {/* CTA — PACKAGE XL-D: استخدام القالب commits to workspace; back returns to intent gate without touching production state */}
             <div className="ras-tp-actions">
               <button
                 className="ras-tp-use-btn"
                 onClick={() => handleSelectIntent(selectedTemplate.id)}
               >
-                استخدام هذا القالب ←
+                استخدام القالب ←
               </button>
               <button
                 className="ras-tp-back-btn"
-                onClick={() => setCreationPhase('intent')}
+                onClick={() => { setCreationPhase('intent'); handleStopDemo(); }}
               >
-                رجوع
+                معاينة قالب آخر
               </button>
             </div>
 
@@ -3530,8 +3906,10 @@ export default function RasAmrChamber() {
               // PACKAGE XXXIX: visual-only check — audio nodes exist in canvas for
               // preview temporal tracking but must NOT appear as visual layers.
               const visualCanvasNodes = canvasNodes.filter((node) => {
-                const va = vaultAssets.find((a) => a.assetId === node.assetId);
-                return va?.capabilityTarget !== CapabilityTarget.AUDIO;
+                // TextNodes (no assetId) are always visual.
+                if (node.textContent !== undefined) return true;
+                // Use the node's own capabilityOrigin — set at ADD_NODE time, reliable before vault assets load.
+                return node.capabilityOrigin !== CapabilityTarget.AUDIO;
               });
               const hasCanvasNodes = visualCanvasNodes.length > 0;
 
@@ -3596,8 +3974,15 @@ export default function RasAmrChamber() {
                             top: `calc(50% + ${spatial.positionY}%)`,
                             left: `calc(50% + ${spatial.positionX}%)`,
                             transform: `translate(-50%, -50%) scale(${spatial.scaleX}, ${spatial.scaleY}) rotate(${spatial.rotationDegrees}deg)`,
-                            opacity: inTemporalWindow ? computedOpacity : 0,
-                            zIndex: spatial.zIndex + 1,
+                            opacity: (() => {
+                              // Preview/playing: strict temporal window governs.
+                              if (isPlaying) return inTemporalWindow ? computedOpacity : 0;
+                              // Authoring: selected node always full opacity.
+                              if (isSelected) return visual.opacity;
+                              // Authoring: in-window nodes at authored opacity; out-of-window ghosted.
+                              return inTemporalWindow ? visual.opacity * 0.85 : visual.opacity * 0.25;
+                            })(),
+                            zIndex: (isSelected && !isPlaying) ? (spatial.zIndex + 999) : (spatial.zIndex + 1),
                             mixBlendMode: blendMode as React.CSSProperties['mixBlendMode'],
                             cursor: node.isLocked ? 'not-allowed' : 'grab',
                             transition: 'none',
@@ -3605,18 +3990,43 @@ export default function RasAmrChamber() {
                           onPointerDown={(e) => handleLayerPointerDown(e, node.nodeId, 'move')}
                           onClick={() => setSelectedNodeId(node.nodeId)}
                         >
-                          {vaultAsset?.capabilityTarget === CapabilityTarget.VISUAL && uri ? (
+                          {/* PACKAGE XL-D — TextNode: rendered as styled text overlay, no vault asset */}
+                          {node.textContent !== undefined ? (
+                            <div
+                              className="layer-text-node"
+                              style={{
+                                fontSize: node.textContent.fontSizePx,
+                                color: node.textContent.colorHex,
+                                textAlign: node.textContent.alignment,
+                                fontWeight: node.textContent.fontWeight ?? 'normal',
+                              }}
+                            >
+                              {node.textContent.text}
+                            </div>
+                          ) : vaultAsset?.capabilityTarget === CapabilityTarget.VISUAL && uri ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={uri} className="layer-asset-img" alt="" draggable={false} />
                           ) : vaultAsset?.capabilityTarget === CapabilityTarget.MOTION && uri ? (
                             // eslint-disable-next-line jsx-a11y/media-has-caption
                             <video
-                              ref={(el) => { if (el) layerVideoRefs.current.set(node.nodeId, el); else layerVideoRefs.current.delete(node.nodeId); }}
+                              ref={(el) => {
+                                if (el) {
+                                  layerVideoRefs.current.set(node.nodeId, el);
+                                  // Muted must be set via DOM — React `muted` prop does not always update.
+                                  el.muted = !isPlaying || Boolean((node.customDirectives?.audio as AudioMixingDirective | undefined)?.isMuted);
+                                } else {
+                                  layerVideoRefs.current.delete(node.nodeId);
+                                }
+                              }}
                               src={uri}
                               className="layer-asset-img"
-                              muted={!isPlaying || Boolean((node.customDirectives?.audio as AudioMixingDirective | undefined)?.isMuted)}
                               playsInline
-                              preload="metadata"
+                              preload="auto"
+                              onLoadedMetadata={(e) => {
+                                // Seek to just past zero so the browser paints a real frame in authoring mode.
+                                const v = e.currentTarget as HTMLVideoElement;
+                                if (!isPlaying && v.currentTime === 0) v.currentTime = 0.001;
+                              }}
                             />
                           ) : (
                             <div className="layer-audio-pill">
@@ -3986,6 +4396,101 @@ export default function RasAmrChamber() {
                   </div>
                 )}
               </div>
+
+              {/* PACKAGE XL-D — TextNode: إضافة نص button + inline editing form */}
+              {sessionCanvas && (
+                <div className="text-node-section" data-testid="text-node-section">
+                  <div className="text-node-section-header">
+                    <span className="neon-tag">طبقة نصية</span>
+                    {/* Show edit form for selected TextNode OR open "add" form */}
+                    {selectedNode?.textContent !== undefined ? (
+                      <button
+                        className="text-node-edit-toggle"
+                        onClick={() => {
+                          setTextNodeForm({
+                            text: selectedNode.textContent!.text,
+                            fontSizePx: selectedNode.textContent!.fontSizePx,
+                            colorHex: selectedNode.textContent!.colorHex,
+                            alignment: selectedNode.textContent!.alignment,
+                            fontWeight: selectedNode.textContent!.fontWeight ?? 'normal',
+                          });
+                          setIsTextNodeFormOpen((v) => !v);
+                        }}
+                      >
+                        {isTextNodeFormOpen ? 'إغلاق' : 'تعديل النص المحدد'}
+                      </button>
+                    ) : (
+                      <button
+                        className="text-node-add-btn"
+                        onClick={() => { setTextNodeForm({ text: '', fontSizePx: 28, colorHex: '#ffffff', alignment: 'center', fontWeight: 'normal' }); setIsTextNodeFormOpen((v) => !v); }}
+                      >
+                        {isTextNodeFormOpen ? 'إغلاق' : '＋ إضافة نص'}
+                      </button>
+                    )}
+                  </div>
+                  {isTextNodeFormOpen && (
+                    <div className="text-node-form">
+                      <label className="text-node-label">النص
+                        <textarea
+                          className="text-node-textarea"
+                          rows={3}
+                          value={textNodeForm.text}
+                          onChange={(e) => setTextNodeForm((p) => ({ ...p, text: e.target.value }))}
+                          placeholder="أدخل النص هنا…"
+                          dir="auto"
+                        />
+                      </label>
+                      <div className="text-node-row">
+                        <label className="text-node-label">حجم الخط (px)
+                          <input type="number" min={10} max={120} value={textNodeForm.fontSizePx}
+                            onChange={(e) => setTextNodeForm((p) => ({ ...p, fontSizePx: Number(e.target.value) }))} />
+                        </label>
+                        <label className="text-node-label">اللون
+                          <input type="color" value={textNodeForm.colorHex}
+                            onChange={(e) => setTextNodeForm((p) => ({ ...p, colorHex: e.target.value }))} />
+                        </label>
+                      </div>
+                      <div className="text-node-row">
+                        <label className="text-node-label">المحاذاة
+                          <select value={textNodeForm.alignment}
+                            onChange={(e) => setTextNodeForm((p) => ({ ...p, alignment: e.target.value as 'right'|'center'|'left' }))}>
+                            <option value="right">يمين</option>
+                            <option value="center">وسط</option>
+                            <option value="left">يسار</option>
+                          </select>
+                        </label>
+                        <label className="text-node-label">الوزن
+                          <select value={textNodeForm.fontWeight}
+                            onChange={(e) => setTextNodeForm((p) => ({ ...p, fontWeight: e.target.value as 'normal'|'bold' }))}>
+                            <option value="normal">عادي</option>
+                            <option value="bold">عريض</option>
+                          </select>
+                        </label>
+                      </div>
+                      <div className="text-node-actions">
+                        {selectedNode?.textContent !== undefined ? (
+                          <>
+                            <button className="text-node-apply-btn" onClick={() => {
+                              handleUpdateTextNodeContent(selectedNodeId!, { ...textNodeForm });
+                              setIsTextNodeFormOpen(false);
+                            }}>تطبيق</button>
+                            <button className="text-node-remove-btn" onClick={() => {
+                              handleRemoveNodeFromCanvas(selectedNodeId!);
+                              setIsTextNodeFormOpen(false);
+                            }}>إزالة من المشهد</button>
+                          </>
+                        ) : (
+                          <button
+                            className="text-node-apply-btn"
+                            disabled={!textNodeForm.text.trim()}
+                            onClick={handleAddTextNode}
+                          >إضافة إلى المشهد</button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {sessionCanvas && directionDecisionLog.length > 0 && (
                 <div className="direction-decision-log" data-testid="direction-decision-log">

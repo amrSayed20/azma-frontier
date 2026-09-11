@@ -573,6 +573,11 @@ export default function MakmanAlGhayah() {
               <p className="project-status narrative-integrity-violation">{realDistributionError}</p>
             )}
 
+            <div className="makman-channel-row">
+              <span className="makman-channel-active">◎ خاص — النشر الداخلي فعّال</span>
+              <span className="makman-channel-unavailable">يوتيوب — غير متاح حاليًا</span>
+            </div>
+
             {/* ── CINEMATIC Encoding Result ──────────────────────────── */}
             {/* Polls until the real MP4 is deposited in the Vault.       */}
             {/* Shown only when the canvas type was CINEMATIC (opId set). */}

@@ -1282,6 +1282,59 @@
 .action-dispose { border-color: rgba(180,40,40,.15); }
 .action-dispose:hover  { background: rgba(180,40,40,.08); border-color: rgba(180,40,40,.50); color: rgba(220,80,80,.80); font-weight: 600; }
 
+.action-vault-delete { border-color: rgba(200,30,30,.35); color: rgba(220,60,60,.85); }
+.action-vault-delete:hover { background: rgba(200,30,30,.12); border-color: rgba(200,30,30,.70); color: rgba(240,80,80,1); font-weight: 600; }
+
+.vault-delete-modal {
+  margin-top: 16px;
+  border: 1px solid rgba(200,30,30,.35);
+  border-radius: 8px;
+  background: rgba(30,8,8,.85);
+  padding: 16px 18px;
+}
+.vault-delete-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(230,80,80,.9);
+  margin: 0 0 8px;
+}
+.vault-delete-warning {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 0 14px;
+  line-height: 1.6;
+}
+.vault-delete-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.vault-delete-confirm {
+  padding: 7px 16px;
+  border-radius: 6px;
+  border: 1px solid rgba(200,30,30,.60);
+  background: rgba(180,20,20,.25);
+  color: rgba(240,80,80,1);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s;
+}
+.vault-delete-confirm:hover:not(:disabled) { background: rgba(200,30,30,.45); }
+.vault-delete-confirm:disabled { opacity: .5; cursor: not-allowed; }
+.vault-delete-cancel {
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.vault-delete-cancel:hover:not(:disabled) { border-color: rgba(255,255,255,.25); }
+.vault-delete-cancel:disabled { opacity: .5; cursor: not-allowed; }
+
 /* ═══════════════════════════════════════════════════════════════
    CINEMATIC CHAMBER SEAL — Exit
    ═══════════════════════════════════════════════════════════════ */

@@ -7,7 +7,7 @@
  * * Update Notice: Clean integration of the Semantic Hybrid Core (No Patching Rule).
  */
 
-import { TemporalDirective, SpatialDirective, DirectionNodeRole } from './assembly-contracts';
+import { TemporalDirective, SpatialDirective, DirectionNodeRole, TextNodeContent } from './assembly-contracts';
 import type { SubtitleDirective } from './subtitle-directive';
 
 // ==========================================
@@ -96,7 +96,11 @@ export enum CanvasActionType {
   /** PACKAGE XXII — MANUAL DIRECTION ENGINE: Lock Direction / Unlock Direction. */
   SET_NODE_LOCK = 'SET_NODE_LOCK',
   /** MINISTRY IV — SOVEREIGN MIXING ENGINE: sets track-level volume attenuation; reuses existing AssemblyTrack as the track-level mixing state container. */
-  SET_TRACK_VOLUME = 'SET_TRACK_VOLUME'
+  SET_TRACK_VOLUME = 'SET_TRACK_VOLUME',
+  /** PACKAGE XL-D — adds a TextNode (no Vault asset, inline text content) to a track. */
+  ADD_TEXT_NODE = 'ADD_TEXT_NODE',
+  /** PACKAGE XL-D — mutates a TextNode's inline text content without touching its temporal/spatial state. */
+  UPDATE_TEXT_NODE = 'UPDATE_TEXT_NODE'
 }
 
 /**
@@ -272,6 +276,30 @@ export interface SetTrackVolumePayload extends BaseCanvasMutation {
 }
 
 /**
+ * PACKAGE XL-D — adds a TextNode to a canvas track. No vaultAssetId required;
+ * the node carries its own content in textContent.
+ */
+export interface AddTextNodePayload extends BaseCanvasMutation {
+  actionType: CanvasActionType.ADD_TEXT_NODE;
+  targetTrackId: string;
+  textContent: TextNodeContent;
+  initialTemporal?: TemporalDirective;
+  initialSpatial?: SpatialDirective;
+}
+
+/**
+ * PACKAGE XL-D — non-destructively updates a TextNode's inline text content.
+ * Temporal and spatial state are unchanged; use UPDATE_TEMPORAL / UPDATE_SPATIAL
+ * for those. Subject to the node's own lock guard.
+ */
+export interface UpdateTextNodePayload extends BaseCanvasMutation {
+  actionType: CanvasActionType.UPDATE_TEXT_NODE;
+  targetTrackId: string;
+  targetNodeId: string;
+  textContent: Partial<TextNodeContent>;
+}
+
+/**
  * The definitive union type consumed by the Ras Al-Amr State Manager.
  */
 export type CanvasMutationPayload =
@@ -287,4 +315,6 @@ export type CanvasMutationPayload =
   | SetNodeActivePayload
   | SetNodeEmphasisPayload
   | SetNodeLockPayload
-  | SetTrackVolumePayload;
+  | SetTrackVolumePayload
+  | AddTextNodePayload
+  | UpdateTextNodePayload;

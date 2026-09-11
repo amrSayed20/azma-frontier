@@ -1225,6 +1225,106 @@
 }
 
 /* PACKAGE XXIII — DIRECTION DECISION MODEL: real, visible decision log. */
+/* ── PACKAGE XL-D: TextNode editing panel ───────────────────────────── */
+.text-node-section {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(212,175,55,0.25);
+  border-radius: 6px;
+  background: rgba(0,0,0,0.25);
+}
+
+.text-node-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.text-node-add-btn,
+.text-node-edit-toggle {
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  border: 1px solid rgba(212,175,55,0.4);
+  border-radius: 12px;
+  background: rgba(212,175,55,0.08);
+  color: rgba(212,175,55,0.9);
+  cursor: pointer;
+}
+
+.text-node-form {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.text-node-label {
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.text-node-label input,
+.text-node-label select,
+.text-node-textarea {
+  font-size: 0.75rem;
+  padding: 4px 6px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(212,175,55,0.2);
+  border-radius: 4px;
+  color: #fff;
+  width: 100%;
+}
+
+.text-node-textarea {
+  resize: vertical;
+  min-height: 52px;
+}
+
+.text-node-row {
+  display: flex;
+  gap: 8px;
+}
+
+.text-node-row .text-node-label {
+  flex: 1;
+}
+
+.text-node-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.text-node-apply-btn {
+  flex: 1;
+  padding: 5px 0;
+  background: rgba(212,175,55,0.15);
+  border: 1px solid rgba(212,175,55,0.5);
+  border-radius: 4px;
+  color: rgba(212,175,55,1);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.text-node-apply-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.text-node-remove-btn {
+  flex: 1;
+  padding: 5px 0;
+  background: rgba(200,60,60,0.12);
+  border: 1px solid rgba(200,60,60,0.35);
+  border-radius: 4px;
+  color: rgba(255,120,120,0.9);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
 .direction-decision-log {
   margin: 8px 0;
   padding: 6px 10px;
@@ -2402,6 +2502,21 @@
   object-fit: contain;
   border-radius: 2px;
   pointer-events: none;
+}
+
+/* PACKAGE XL-D — TextNode: positioned text overlay on the composition canvas. */
+.layer-text-node {
+  display: block;
+  min-width: 80px;
+  max-width: 360px;
+  padding: 6px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.35;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.75);
+  background: rgba(0,0,0,0.25);
+  border-radius: 3px;
+  user-select: none;
 }
 
 /* Audio / unknown layer — compact pill visible in the composition. */
@@ -3791,6 +3906,30 @@
   margin-top: 0;
 }
 
+/* ── PACKAGE XL-D: template family group headers ────────────────────── */
+.ras-intent-family-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 0 2px;
+  border-bottom: 1px solid rgba(212,175,55,0.08);
+  margin-top: 12px;
+}
+
+.ras-intent-family-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(212,175,55,0.75);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ras-intent-family-desc {
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.32);
+}
+
 /* ── Template banner upgrade ────────────────────────────────────────── */
 .ras-template-banner {
   /* Slightly more presence */
@@ -4792,15 +4931,29 @@
   z-index: 10;
 }
 
-/* ── Demo frames ─────────────────────────────────────────────────────── */
+/* ── Demo frames — PACKAGE XL-D: real SVG <img> per slot ────────────── */
 .ras-tp-demo-frame {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #070707;
+  overflow: hidden;
   /* Opacity is controlled entirely via inline style — no CSS transition
      so the ramp math matches the real production preview exactly. */
+}
+
+/* PACKAGE XL-D — the actual SVG media element rendered behind the label overlay. */
+.ras-tp-demo-frame-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
 }
 
 .ras-tp-demo-frame-inner {

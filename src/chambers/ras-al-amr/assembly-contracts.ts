@@ -164,6 +164,33 @@ export interface AssemblyNode {
 
   /** PACKAGE XXII — Lock/Unlock Direction. Absent or `false` = unlocked; `true` = the Creator has locked this node's own direction decisions against further mutation (see RasAlAmrStateManager's own lock-guard account). Never blocks REMOVE_NODE — locking protects direction, not the Creator's separate right to delete a node outright. */
   isLocked?: boolean;
+
+  /** PACKAGE XL-D — SOVEREIGN CREATOR PRODUCTION EXPERIENCE CLOSURE:
+   * when present, this node is a TextNode — it carries its own text content
+   * rather than referencing a Vault asset. assetId is '' for TextNodes.
+   * Rendered as a positioned text overlay on the composition canvas.
+   * Participates in the timeline exactly as a visual node does. */
+  textContent?: TextNodeContent;
+}
+
+// ==========================================
+// 3B. TEXT NODE CONTENT
+// ==========================================
+
+/**
+ * PACKAGE XL-D — SOVEREIGN CREATOR PRODUCTION EXPERIENCE CLOSURE:
+ * inline text content for a TextNode — a canvas node that carries its own
+ * textual content rather than referencing a Vault asset. Stored on
+ * AssemblyNode.textContent; a node with this field set is a TextNode and
+ * renders as a positioned text overlay rather than a media element.
+ * assetId is empty string for TextNodes — no Vault asset is referenced.
+ */
+export interface TextNodeContent {
+  text: string;
+  fontSizePx: number;
+  colorHex: string;
+  alignment: 'right' | 'center' | 'left';
+  fontWeight?: 'normal' | 'bold';
 }
 
 /**
@@ -208,4 +235,10 @@ export interface SovereignCanvas {
   
   createdAt: number;
   updatedAt: number;
+
+  /** PACKAGE XL-D — canvas schema version for safe legacy migration.
+   * Absent = created before coordinate-system fix (pre-18:18 Sep 9 build).
+   * 2 = current coordinate convention: (0,0) = surface center.
+   * Used by handleAutoRestore to detect and migrate stale (50,50) positions. */
+  schemaVersion?: number;
 }

@@ -364,3 +364,28 @@
   .cinematic-final-video { border-color: var(--neon-gold-dim); }
 }
 :root[data-theme="light"] .cinematic-final-video { border-color: rgba(180, 140, 0, 0.5); }
+
+.makman-channel-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.07);
+}
+.makman-channel-active {
+  font-size: 11px;
+  color: rgba(120,200,140,.75);
+  padding: 4px 10px;
+  border: 1px solid rgba(120,200,140,.25);
+  border-radius: 4px;
+}
+.makman-channel-unavailable {
+  font-size: 11px;
+  color: rgba(255,255,255,.28);
+  padding: 4px 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 4px;
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
