@@ -1533,6 +1533,62 @@
 .canvas-load-close:hover { color: rgba(232, 228, 220, 0.7); }
 
 /* ======================================================== */
+/* XLII — Project settings: output profile + quality selectors */
+.project-setting-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.project-setting-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.project-profile-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.project-profile-btn {
+  flex: 1;
+  min-width: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  background: rgba(10, 10, 10, 0.8);
+  border: 1px solid rgba(232, 228, 220, 0.15);
+  border-radius: 8px;
+  color: rgba(232, 228, 220, 0.65);
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.project-profile-btn:hover {
+  border-color: rgba(232, 228, 220, 0.35);
+  color: rgba(232, 228, 220, 0.9);
+}
+
+.project-profile-btn.active {
+  border-color: var(--neon-gold-bright);
+  color: var(--neon-gold-bright);
+  background: rgba(226, 194, 125, 0.08);
+}
+
+.project-profile-hint {
+  font-size: 0.63rem;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
 /* 4. SOVEREIGN SUMMONING BRIDGE: HOLOGRAPHIC HUD OVERLAY   */
 /* ======================================================== */
 

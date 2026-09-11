@@ -456,6 +456,7 @@ const DEFAULT_VISUAL: VisualFilterDirective = {
   opacity: 1,
   blendMode: 'NORMAL',
   colorGradeReferenceId: undefined,
+  framingMode: 'contain',
 };
 
 const DEFAULT_TEMPORAL: TemporalDirective = {
@@ -1012,6 +1013,9 @@ export default function RasAmrChamber() {
   // survives ordinary re-renders instead of being wiped every time.
   const [sessionCanvas, setSessionCanvas] = useState<SovereignCanvas | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  // XLII — output profile and quality tier; written into the canvas on change.
+  const [outputProfile, setOutputProfile] = useState<'landscape' | 'portrait' | 'square'>('landscape');
+  const [exportQuality, setExportQuality] = useState<'standard' | 'high' | 'maximum'>('high');
   const [spatialForm, setSpatialForm] = useState<SpatialDirective>(DEFAULT_SPATIAL);
   // REAL VISUAL + TEMPORAL ADJUSTMENT: same non-destructive pattern as
   // Spatial, one form each, reset alongside it whenever the Creator
@@ -1235,6 +1239,17 @@ export default function RasAmrChamber() {
     setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
   };
 
+  // XLII — update canvas metadata when profile/quality changes so the stored
+  // canvas always carries the currently-selected settings at compile time.
+  const handleOutputProfileChange = (p: 'landscape' | 'portrait' | 'square') => {
+    setOutputProfile(p);
+    if (sessionCanvas) setSessionCanvas({ ...sessionCanvas, outputProfile: p });
+  };
+  const handleExportQualityChange = (q: 'standard' | 'high' | 'maximum') => {
+    setExportQuality(q);
+    if (sessionCanvas) setSessionCanvas({ ...sessionCanvas, exportQuality: q });
+  };
+
   const wantsRealCanvas = Boolean(activeAsset?.isRealAsset && activeAsset.assetFamily && activeAsset.capabilityOrigin);
 
   // THE NARRATIVE CANVAS FOUNDATION: created once, lazily, the first time
@@ -1266,6 +1281,8 @@ export default function RasAmrChamber() {
       createdAt: 0,
       updatedAt: 0,
       schemaVersion: 2,  // PACKAGE XL-D: mark as current coordinate convention
+      outputProfile,
+      exportQuality,
     });
   }
 
@@ -3931,6 +3948,9 @@ export default function RasAmrChamber() {
                   <div
                     className={`composition-surface${isDragOverSurface ? ' composition-drop-active' : ''}`}
                     ref={compositionRef}
+                    style={{
+                      aspectRatio: outputProfile === 'portrait' ? '9/16' : outputProfile === 'square' ? '1/1' : '16/9',
+                    }}
                     onPointerMove={handleSurfacePointerMove}
                     onPointerUp={handleSurfacePointerUp}
                     onPointerCancel={handleSurfacePointerUp}
@@ -4700,10 +4720,15 @@ export default function RasAmrChamber() {
                         <div className="spatial-input-grid">
                           <label>Opacity<input type="number" min="0" max="1" step="0.05" value={visualForm.opacity} onChange={(e) => setVisualForm((prev) => ({ ...prev, opacity: Number(e.target.value) }))} /></label>
                           <label>Blend Mode<select value={visualForm.blendMode} onChange={(e) => setVisualForm((prev) => ({ ...prev, blendMode: e.target.value as VisualFilterDirective['blendMode'] }))}>{BLEND_MODES.map((mode) => (<option key={mode} value={mode}>{mode}</option>))}</select></label>
+                          <label>الإطار<select value={visualForm.framingMode ?? 'contain'} onChange={(e) => setVisualForm((prev) => ({ ...prev, framingMode: e.target.value as VisualFilterDirective['framingMode'] }))}>
+                            <option value="contain">احتواء — Contain</option>
+                            <option value="cover">ملء — Cover</option>
+                            <option value="fill">تمديد — Fill</option>
+                          </select></label>
                         </div>
                         <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplyVisualAdjustment}>🎨 تطبيق التعديل البصري الحقيقي</button>
                         {activeVisualDirective && (
-                          <p className="spatial-current-state">الحالي: Opacity={activeVisualDirective.opacity}, Blend={activeVisualDirective.blendMode}</p>
+                          <p className="spatial-current-state">الحالي: Opacity={activeVisualDirective.opacity}, Blend={activeVisualDirective.blendMode}, Framing={activeVisualDirective.framingMode ?? 'contain'}</p>
                         )}
                       </div>
                       <div className="spatial-adjust-panel panel-manual-temporal">
@@ -5020,6 +5045,51 @@ export default function RasAmrChamber() {
           {activeWorkspaceTab === 'project' && (
             <div className="ras-tab-content custom-scroll">
               <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+
+                {/* XLII — Output profile selector */}
+                <div className="project-setting-group">
+                  <label className="project-setting-label">أبعاد المخرج</label>
+                  <div className="project-profile-row">
+                    {([
+                      { value: 'landscape', label: 'أفقي', hint: '1920×1080' },
+                      { value: 'portrait',  label: 'عمودي', hint: '1080×1920' },
+                      { value: 'square',    label: 'مربع',  hint: '1080×1080' },
+                    ] as const).map(({ value, label, hint }) => (
+                      <button
+                        key={value}
+                        className={`project-profile-btn${outputProfile === value ? ' active' : ''}`}
+                        onClick={() => handleOutputProfileChange(value)}
+                        title={hint}
+                      >
+                        {label}
+                        <span className="project-profile-hint">{hint}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* XLII — Export quality selector */}
+                <div className="project-setting-group">
+                  <label className="project-setting-label">جودة التصدير</label>
+                  <div className="project-profile-row">
+                    {([
+                      { value: 'standard', label: 'قياسية', hint: 'CRF 28' },
+                      { value: 'high',     label: 'عالية',  hint: 'CRF 23' },
+                      { value: 'maximum',  label: 'قصوى',   hint: 'CRF 18' },
+                    ] as const).map(({ value, label, hint }) => (
+                      <button
+                        key={value}
+                        className={`project-profile-btn${exportQuality === value ? ' active' : ''}`}
+                        onClick={() => handleExportQualityChange(value)}
+                        title={hint}
+                      >
+                        {label}
+                        <span className="project-profile-hint">{hint}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <button className="action-trigger-btn forward-btn" onClick={handleForwardToMakman} title={compiledGraph && compiledForAssetId === activeAsset?.id ? 'سيصل تجميع حقيقي مختوم إلى مكمن الغاية' : 'لا يوجد تجميع مُصهَر بعد — سيصل عرض أولي فقط'}>
                   👑 ترحيل العمل المكتمل لـ &quot;مكمن الغاية&quot;
                 </button>

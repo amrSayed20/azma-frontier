@@ -241,4 +241,14 @@ export interface SovereignCanvas {
    * 2 = current coordinate convention: (0,0) = surface center.
    * Used by handleAutoRestore to detect and migrate stale (50,50) positions. */
   schemaVersion?: number;
+
+  /** XLII — output profile for final render dimensions.
+   * landscape = 1920×1080 (16:9)  portrait = 1080×1920 (9:16)  square = 1080×1080 (1:1)
+   * Absent defaults to 'landscape'. */
+  outputProfile?: 'landscape' | 'portrait' | 'square';
+
+  /** XLII — export quality tier (affects CRF and FFmpeg preset).
+   * standard = CRF 28 / medium   high = CRF 23 / fast   maximum = CRF 18 / slow
+   * Absent defaults to 'high'. */
+  exportQuality?: 'standard' | 'high' | 'maximum';
 }

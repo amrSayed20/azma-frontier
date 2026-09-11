@@ -37,6 +37,11 @@ export interface VisualFilterDirective {
   opacity: number;         // 0.0 to 1.0
   blendMode: 'NORMAL' | 'MULTIPLY' | 'SCREEN' | 'OVERLAY';
   colorGradeReferenceId?: string; // Points to a structural logic asset defining LUTs
+  /** XLII — how the asset fills its allocated slot in the output canvas.
+   * contain: fit inside slot, preserve aspect ratio (default — no distortion).
+   * cover:   fill slot, crop overflow, preserve aspect ratio.
+   * fill:    stretch to exact slot dimensions (may distort). */
+  framingMode?: 'contain' | 'cover' | 'fill';
 }
 
 /**

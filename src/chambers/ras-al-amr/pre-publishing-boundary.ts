@@ -31,6 +31,10 @@ export interface CompilationMetadata {
   totalNodes: number;
   estimatedDurationSeconds?: number; // Crucial for CINEMATIC timelines
   aggregatedAssetFamilies: string[]; // Defines the multi-modal footprint of the project
+  /** XLII — output profile carried from SovereignCanvas for encoder use. */
+  outputProfile?: 'landscape' | 'portrait' | 'square';
+  /** XLII — export quality tier carried from SovereignCanvas for encoder use. */
+  exportQuality?: 'standard' | 'high' | 'maximum';
 }
 
 /**
@@ -298,7 +302,9 @@ export class PrePublishingBoundary {
       totalTracks: hydratedCanvas.tracks.filter(t => !t.isMuted && !t.isHidden).length,
       totalNodes,
       estimatedDurationSeconds: hydratedCanvas.canvasType === CanvasType.CINEMATIC ? maxCinematicDuration : undefined,
-      aggregatedAssetFamilies: Array.from(assetFamilies)
+      aggregatedAssetFamilies: Array.from(assetFamilies),
+      outputProfile: hydratedCanvas.outputProfile,
+      exportQuality: hydratedCanvas.exportQuality,
     };
   }
 }

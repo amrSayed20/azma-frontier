@@ -37,8 +37,24 @@ const jobs = new Map<string, JobState>();
 // ==========================================
 
 const RENDERS_DIR = join(process.cwd(), 'public', 'renders');
-const OUTPUT_WIDTH = 1920;
-const OUTPUT_HEIGHT = 1080;
+
+/** XLII — output dimensions per profile.  Default = landscape when profile is absent. */
+const PROFILE_DIMENSIONS: Record<string, { w: number; h: number }> = {
+  landscape: { w: 1920, h: 1080 },
+  portrait:  { w: 1080, h: 1920 },
+  square:    { w: 1080, h: 1080 },
+};
+
+function getOutputDimensions(profile?: string): { w: number; h: number } {
+  return PROFILE_DIMENSIONS[profile ?? 'landscape'] ?? PROFILE_DIMENSIONS['landscape'];
+}
+
+/** XLII — FFmpeg codec settings per quality tier. */
+const QUALITY_SETTINGS: Record<string, { crf: number; preset: string }> = {
+  standard: { crf: 28, preset: 'medium' },
+  high:     { crf: 23, preset: 'fast' },
+  maximum:  { crf: 18, preset: 'slow' },
+};
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
 const VIDEO_EXTS = new Set(['.mp4', '.mov', '.webm', '.avi', '.mkv']);
@@ -176,6 +192,7 @@ interface NodeEntry {
   zIndex: number;
   opacity: number;             // VI-C: 0.0–1.0 alpha (VisualFilterDirective)
   blendMode: BlendMode;        // VI-C: composition blend mode
+  framingMode: 'contain' | 'cover' | 'fill'; // XLII: how the asset fills its slot
 }
 
 function buildFfmpegArgs(
@@ -184,6 +201,9 @@ function buildFfmpegArgs(
   resolvedVoicePaths: ReadonlyMap<string, string> = new Map(),
 ): string[] {
   const outputPath = getOutputPath(operationId);
+  const { w: outW, h: outH } = getOutputDimensions(graph.metadata.outputProfile);
+  const quality = QUALITY_SETTINGS[graph.metadata.exportQuality ?? 'high'] ?? QUALITY_SETTINGS['high'];
+
   const stillInputs: NodeEntry[] = [];   // still images: -loop 1 -t dur -i path
   const videoInputs: NodeEntry[] = [];   // video clips:  -i path (no loop)
   const audioFileInputs: NodeEntry[] = []; // standalone audio files
@@ -226,17 +246,20 @@ function buildFfmpegArgs(
       const rotationDegrees = node.spatial?.rotationDegrees ?? 0;
       const zIndex = node.spatial?.zIndex ?? 0;
       const visualDir = (node.customDirectives as Record<string, unknown> | undefined)
-        ?.['visual'] as { opacity?: number; blendMode?: string } | undefined;
+        ?.['visual'] as { opacity?: number; blendMode?: string; framingMode?: string } | undefined;
       const opacity = Math.max(0, Math.min(1, visualDir?.opacity ?? 1));
       const rawBlend = visualDir?.blendMode ?? 'NORMAL';
       const blendMode: BlendMode = (['NORMAL', 'MULTIPLY', 'SCREEN', 'OVERLAY'] as const).includes(rawBlend as BlendMode)
         ? (rawBlend as BlendMode) : 'NORMAL';
+      const rawFraming = visualDir?.framingMode ?? 'contain';
+      const framingMode: 'contain' | 'cover' | 'fill' =
+        rawFraming === 'cover' ? 'cover' : rawFraming === 'fill' ? 'fill' : 'contain';
 
       // inputIdx will be assigned below after all inputs are collected
       const base = {
         path: assetPath, duration, startSec, nodeId: node.nodeId, trackId: track.trackId,
         trimStart, trimEnd, effectiveDuration,
-        positionX, positionY, scaleX, scaleY, rotationDegrees, zIndex, opacity, blendMode,
+        positionX, positionY, scaleX, scaleY, rotationDegrees, zIndex, opacity, blendMode, framingMode,
         inputIdx: -1,
       };
 
@@ -249,7 +272,7 @@ function buildFfmpegArgs(
           ...base,
           kind: 'audio',
           positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: 0,
-          opacity: 1, blendMode: 'NORMAL',
+          opacity: 1, blendMode: 'NORMAL', framingMode: 'contain',
         });
       }
       // Text/structural nodes carry no media — silently skipped
@@ -289,7 +312,7 @@ function buildFfmpegArgs(
       trimEnd: visEntry.trimEnd,
       effectiveDuration: visEntry.effectiveDuration,
       positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: 0,
-      opacity: 1, blendMode: 'NORMAL',
+      opacity: 1, blendMode: 'NORMAL', framingMode: 'contain',
     });
   }
 
@@ -362,7 +385,7 @@ function buildFfmpegArgs(
   const filterParts: string[] = [];
 
   // Overlay composition pipeline — handles both stills and video clips
-  buildVideoCompositionFilters(allVisualInputs, totalDuration).forEach((f) => filterParts.push(f));
+  buildVideoCompositionFilters(allVisualInputs, totalDuration, outW, outH).forEach((f) => filterParts.push(f));
 
   // Subtitle burning
   const hasSubs = graph.subtitlePlan.absoluteCues.length > 0;
@@ -415,8 +438,8 @@ function buildFfmpegArgs(
   args.push(
     '-c:v', 'libx264',
     '-pix_fmt', 'yuv420p',
-    '-preset', 'fast',
-    '-crf', '23',
+    '-preset', quality.preset,
+    '-crf', String(quality.crf),
     '-c:a', 'aac',
     '-b:a', '128k',
     '-movflags', '+faststart',
@@ -463,24 +486,36 @@ function buildFfmpegArgs(
  *   Then overlay with enable='between(t,S,E)':eof_action=pass so the base canvas
  *   shows through before and after the clip's window. ✓
  */
-function buildVideoCompositionFilters(visualInputs: NodeEntry[], totalDuration: number): string[] {
+function buildVideoCompositionFilters(
+  visualInputs: NodeEntry[],
+  totalDuration: number,
+  outW: number,
+  outH: number,
+): string[] {
   const filters: string[] = [];
 
   if (visualInputs.length === 0) {
     filters.push(
-      `color=c=black:size=${OUTPUT_WIDTH}x${OUTPUT_HEIGHT}:rate=25:d=${totalDuration}[vraw]`,
+      `color=c=black:size=${outW}x${outH}:rate=25:d=${totalDuration}[vraw]`,
     );
     return filters;
   }
 
   // Base black canvas — all visual nodes are layered on top of this
   filters.push(
-    `color=c=black:size=${OUTPUT_WIDTH}x${OUTPUT_HEIGHT}:rate=25:d=${totalDuration}[canvas0]`,
+    `color=c=black:size=${outW}x${outH}:rate=25:d=${totalDuration}[canvas0]`,
   );
 
   visualInputs.forEach((node, idx) => {
-    const targetW = Math.max(1, Math.round(OUTPUT_WIDTH * node.scaleX));
-    const targetH = Math.max(1, Math.round(OUTPUT_HEIGHT * node.scaleY));
+    const targetW = Math.max(1, Math.round(outW * node.scaleX));
+    const targetH = Math.max(1, Math.round(outH * node.scaleY));
+    // XLII — COORDINATE CONVERSION: positionX/positionY are percentage-point offsets
+    // from the output canvas center (canvas contract: 0,0 = center).
+    // FFmpeg overlay x/y is the TOP-LEFT pixel of the layer.
+    // centerPx = outW * (50 + positionX) / 100
+    // ffmpegX = centerPx - targetW / 2
+    const ffmpegX = Math.round(outW * (50 + node.positionX) / 100 - targetW / 2);
+    const ffmpegY = Math.round(outH * (50 + node.positionY) / 100 - targetH / 2);
     const rotRad = (node.rotationDegrees * Math.PI) / 180;
     const startSec = node.startSec;
     const endSec = node.startSec + node.effectiveDuration;
@@ -491,13 +526,23 @@ function buildVideoCompositionFilters(visualInputs: NodeEntry[], totalDuration: 
     // Use explicit inputIdx (not array idx) to reference the correct FFmpeg -i stream
     const ffStreamRef = `[${node.inputIdx}:v]`;
 
+    // XLII — scale filter respects framingMode:
+    // contain: preserve aspect ratio, pad to targetW×targetH with black
+    // cover:   preserve aspect ratio, scale up and crop to targetW×targetH
+    // fill:    stretch to exact targetW×targetH (may distort)
+    const scaleFilter = node.framingMode === 'cover'
+      ? `scale=${targetW}:${targetH}:force_original_aspect_ratio=increase,crop=${targetW}:${targetH}`
+      : node.framingMode === 'fill'
+        ? `scale=${targetW}:${targetH}`
+        : `scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease,pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2:color=black`;
+
     if (node.kind === 'video') {
       // VIDEO: trim source to [trimStart, trimEnd], normalise PTS, then shift to output position S.
       // This makes the clip play from its own frame 0 starting at output time S.
       const videoParts: string[] = [
         `trim=${node.trimStart.toFixed(6)}:${node.trimEnd.toFixed(6)}`,
         `setpts=PTS-STARTPTS+(${startSec.toFixed(6)}/TB)`,
-        `scale=${targetW}:${targetH}`,
+        scaleFilter,
         'format=rgba',
       ];
       if (hasRotation) {
@@ -508,12 +553,12 @@ function buildVideoCompositionFilters(visualInputs: NodeEntry[], totalDuration: 
       }
       filters.push(`${ffStreamRef}${videoParts.join(',')}[vn${idx}]`);
       filters.push(
-        `${canvasIn}[vn${idx}]overlay=x=${node.positionX}:y=${node.positionY}` +
+        `${canvasIn}[vn${idx}]overlay=x=${ffmpegX}:y=${ffmpegY}` +
           `:format=auto:eof_action=pass:enable='between(t,${startSec},${endSec})'${canvasOut}`,
       );
     } else if (node.blendMode === 'NORMAL') {
       // STILL IMAGE — NORMAL blend: scale → [rotate] → rgba → [opacity] → overlay
-      const parts: string[] = [`scale=${targetW}:${targetH}`];
+      const parts: string[] = [scaleFilter];
       if (hasRotation) {
         parts.push(`rotate=${rotRad.toFixed(6)}:fillcolor=0x00000000`);
       }
@@ -523,7 +568,7 @@ function buildVideoCompositionFilters(visualInputs: NodeEntry[], totalDuration: 
       }
       filters.push(`${ffStreamRef}${parts.join(',')}[vn${idx}]`);
       filters.push(
-        `${canvasIn}[vn${idx}]overlay=x=${node.positionX}:y=${node.positionY}` +
+        `${canvasIn}[vn${idx}]overlay=x=${ffmpegX}:y=${ffmpegY}` +
           `:format=auto:enable='between(t,${startSec},${endSec})'${canvasOut}`,
       );
     } else {
@@ -543,17 +588,17 @@ function buildVideoCompositionFilters(visualInputs: NodeEntry[], totalDuration: 
             : '0x808080';
 
       filters.push(
-        `color=c=${identityColor}:size=${OUTPUT_WIDTH}x${OUTPUT_HEIGHT}:rate=25:d=${totalDuration}[id${idx}]`,
+        `color=c=${identityColor}:size=${outW}x${outH}:rate=25:d=${totalDuration}[id${idx}]`,
       );
 
-      const layerParts: string[] = [`scale=${targetW}:${targetH}`];
+      const layerParts: string[] = [scaleFilter];
       if (hasRotation) {
         layerParts.push(`rotate=${rotRad.toFixed(6)}:fillcolor=${rotFillcolor}`);
       }
       filters.push(`${ffStreamRef}${layerParts.join(',')}[vl${idx}]`);
 
       filters.push(
-        `[id${idx}][vl${idx}]overlay=x=${node.positionX}:y=${node.positionY}` +
+        `[id${idx}][vl${idx}]overlay=x=${ffmpegX}:y=${ffmpegY}` +
           `:enable='between(t,${startSec},${endSec})'[nm${idx}]`,
       );
 

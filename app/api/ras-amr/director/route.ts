@@ -257,6 +257,45 @@ export async function POST(request: NextRequest) {
     const parsed: unknown = JSON.parse(rawContent);
     const plan = sanitizePlan(parsed, availableLabels);
 
+    // XLII — STRONG VALIDATION: verify the plan is honestly executable
+    // before returning it. This catches cases where the provider omitted
+    // visual or audio assets silently rather than listing them as unresolved.
+    const planValidationErrors: string[] = [];
+
+    // 1. Visual plan must not be empty if there are visual assets
+    const visualLabels = productionAssets
+      .filter((a) => a.capabilityTarget === 'VISUAL' || a.capabilityTarget === 'MOTION')
+      .map((a) => a.label);
+    if (visualLabels.length > 0 && plan.visualSequence.length === 0) {
+      planValidationErrors.push('الخطة لا تحتوي على أي عنصر مرئي رغم وجود أصول مرئية');
+    }
+
+    // 2. No asset label appears twice in the visual sequence
+    const seenVisual = new Set<string>();
+    for (const slot of plan.visualSequence) {
+      if (seenVisual.has(slot.assetLabel)) {
+        planValidationErrors.push(`التسمية ${slot.assetLabel} تظهر مرتين في التسلسل المرئي`);
+      }
+      seenVisual.add(slot.assetLabel);
+    }
+
+    // 3. Audio role consistency — AUDIO_NARRATION must not be assigned as background_music
+    for (const track of plan.audioTracks) {
+      if (track.assetLabel.startsWith('AUDIO_NARRATION') && track.role === 'background_music') {
+        planValidationErrors.push(`${track.assetLabel} هو تعليق صوتي لكن الخطة تعيِّنه دوراً موسيقياً`);
+      }
+      if (track.assetLabel.startsWith('AUDIO_MUSIC') && track.role === 'narration') {
+        planValidationErrors.push(`${track.assetLabel} هو موسيقى لكن الخطة تعيِّنه دور السرد`);
+      }
+    }
+
+    if (planValidationErrors.length > 0) {
+      return NextResponse.json(
+        { status: 'failed', reason: 'plan-validation', message: planValidationErrors.join('. ') },
+        { status: 422 },
+      );
+    }
+
     return NextResponse.json({ status: 'succeeded', plan });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'خطأ في تفسير النية';
