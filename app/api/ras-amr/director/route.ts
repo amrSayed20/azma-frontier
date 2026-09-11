@@ -14,7 +14,8 @@
  * Security discipline:
  * - GEMINI_API_KEY is read server-side only; never returned to client.
  * - Provider never receives raw asset IDs or storage URIs — only
- *   client-assigned labels (VISUAL_1, VIDEO_1, AUDIO_1, ...).
+ *   client-assigned semantic labels (VISUAL_1, VIDEO_1,
+ *   AUDIO_NARRATION, AUDIO_MUSIC, ...).
  * - subscriberTenantId verified via session cookie before any AI call.
  * - Response carries only the DirectorPlan — no provider metadata,
  *   no model version details, no job IDs.
@@ -86,7 +87,7 @@ ${templateSection}
 1. استخدم فقط التسميات المذكورة أعلاه في visualSequence و audioTracks — لا تخترع تسميات.
 2. visualSequence: الأصول المرئية فقط (النوع "صورة" أو "فيديو").
 3. audioTracks: الأصول الصوتية فقط (النوع "صوت").
-4. الأصول المميَّزة بـ [صوت سردي / تعليق صوتي] تحصل على دور "narration" في audioTracks.
+4. الأصول المسماة AUDIO_NARRATION مخصصة للتعليق الصوتي (دور "narration")؛ الأصول المسماة AUDIO_MUSIC مخصصة للموسيقى الخلفية (دور "background").
 5. إذا طُلبت أصول غير موجودة، دوِّنها في unresolvedInstructions ولا تضعها في الخطة.
 6. transitionType: "crossfade" للمشاهد الهادئة، "cut" للمشاهد الديناميكية.
 7. durationSeconds لكل عنصر مرئي: اقترح قيماً منطقية بين 2 و 8 ثوانٍ ما لم يطلب الخالق توقيتاً محدداً.
@@ -100,7 +101,7 @@ ${templateSection}
     {"assetLabel": "VISUAL_1", "durationSeconds": 4, "role": "hook"}
   ],
   "audioTracks": [
-    {"assetLabel": "AUDIO_1", "role": "narration", "startSeconds": 0, "volumeDb": 0}
+    {"assetLabel": "AUDIO_NARRATION", "role": "narration", "startSeconds": 0, "volumeDb": 0}
   ],
   "videoPolicy": {"muteOriginalAudio": true},
   "transitionType": "crossfade",

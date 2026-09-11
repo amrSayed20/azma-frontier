@@ -3022,15 +3022,28 @@ export default function RasAmrChamber() {
     const visualCount: Record<string, number> = {};
     const productionAssets: ProductionAssetContext[] = orderedForLabeling.map((item) => {
       const cap = item.capabilityOrigin ?? 'VISUAL';
-      const prefix =
-        cap === CapabilityTarget.MOTION ? 'VIDEO' :
-        cap === CapabilityTarget.AUDIO  ? 'AUDIO' :
-        'VISUAL';
-      visualCount[prefix] = (visualCount[prefix] ?? 0) + 1;
-      const label = `${prefix}_${visualCount[prefix]}`;
-      // REPAIR #4 — AUDIO IDENTITY: pass vault asset metadata so the Interpreter
-      // can distinguish narration (isVoiceAsset=true) from background music.
+      // XLII — SEMANTIC AUDIO LABELS: audio assets receive role-specific labels
+      // so the AI Interpreter sees AUDIO_NARRATION vs AUDIO_MUSIC, not AUDIO_1/AUDIO_2.
+      // The role is determined from vault asset metadata (isVoiceAsset).
+      // Visual and video assets continue to use VISUAL_N / VIDEO_N.
       const vaultItemAsset = vaultAssets.find((a) => a.assetId === item.id);
+      const isVoiceAsset = vaultItemAsset?.metadata?.isVoiceAsset === true;
+      let label: string;
+      if (cap === CapabilityTarget.MOTION) {
+        visualCount['VIDEO'] = (visualCount['VIDEO'] ?? 0) + 1;
+        label = `VIDEO_${visualCount['VIDEO']}`;
+      } else if (cap === CapabilityTarget.AUDIO) {
+        if (isVoiceAsset) {
+          visualCount['NARRATION'] = (visualCount['NARRATION'] ?? 0) + 1;
+          label = visualCount['NARRATION'] === 1 ? 'AUDIO_NARRATION' : `AUDIO_NARRATION_${visualCount['NARRATION']}`;
+        } else {
+          visualCount['MUSIC'] = (visualCount['MUSIC'] ?? 0) + 1;
+          label = visualCount['MUSIC'] === 1 ? 'AUDIO_MUSIC' : `AUDIO_MUSIC_${visualCount['MUSIC']}`;
+        }
+      } else {
+        visualCount['VISUAL'] = (visualCount['VISUAL'] ?? 0) + 1;
+        label = `VISUAL_${visualCount['VISUAL']}`;
+      }
       return {
         label,
         assetId: item.id,    // stored locally; NOT sent to provider API
@@ -3039,7 +3052,7 @@ export default function RasAmrChamber() {
         durationSeconds: typeof vaultItemAsset?.metadata?.durationSeconds === 'number'
           ? vaultItemAsset.metadata.durationSeconds
           : undefined,
-        isVoiceAsset: vaultItemAsset?.metadata?.isVoiceAsset === true,
+        isVoiceAsset,
       } as ProductionAssetContext & { assetId: string };
     });
 

@@ -192,7 +192,9 @@
 .ras-panel-right {
   position: sticky;
   top: 60px;
-  max-height: calc(100dvh - 60px - 188px);
+  /* XLII: explicit height (not max-height) breaks the circular flex sizing that
+     prevented the inner .ras-tab-content scroll container from activating. */
+  height: calc(100dvh - 60px - 188px);
   overflow: hidden;
   display: flex;
   flex-direction: column;

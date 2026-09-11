@@ -41,6 +41,7 @@ const OUTPUT_WIDTH = 1920;
 const OUTPUT_HEIGHT = 1080;
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
+const VIDEO_EXTS = new Set(['.mp4', '.mov', '.webm', '.avi', '.mkv']);
 const AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac']);
 
 function resolveAssetPath(secureStorageUri: string): string {
@@ -69,6 +70,10 @@ function getExt(uri: string): string {
 
 function isImageUri(uri: string): boolean {
   return IMAGE_EXTS.has(getExt(uri));
+}
+
+function isVideoUri(uri: string): boolean {
+  return VIDEO_EXTS.has(getExt(uri));
 }
 
 function isAudioUri(uri: string): boolean {
@@ -152,7 +157,9 @@ type BlendMode = 'NORMAL' | 'MULTIPLY' | 'SCREEN' | 'OVERLAY';
 
 interface NodeEntry {
   path: string;
-  kind: 'image' | 'audio';
+  kind: 'image' | 'video' | 'audio';
+  /** Explicit FFmpeg input index (-i order). Assigned after all inputs are collected. */
+  inputIdx: number;
   duration: number;            // playDurationSeconds (declared slot on timeline)
   startSec: number;            // globalStartTimeSeconds
   nodeId: string;
@@ -160,7 +167,7 @@ interface NodeEntry {
   trimStart: number;           // VI-B: effective trim start in source media (seconds)
   trimEnd: number;             // VI-B: effective trim end in source media (seconds)
   effectiveDuration: number;   // VI-B: trimEnd - trimStart (always ≥ 0.001)
-  // VI-C: spatial composition (image nodes only; audio nodes use identity defaults)
+  // VI-C: spatial composition (image/video nodes only; audio nodes use identity defaults)
   positionX: number;
   positionY: number;
   scaleX: number;
@@ -177,8 +184,9 @@ function buildFfmpegArgs(
   resolvedVoicePaths: ReadonlyMap<string, string> = new Map(),
 ): string[] {
   const outputPath = getOutputPath(operationId);
-  const imageInputs: NodeEntry[] = [];
-  const audioInputs: NodeEntry[] = [];
+  const stillInputs: NodeEntry[] = [];   // still images: -loop 1 -t dur -i path
+  const videoInputs: NodeEntry[] = [];   // video clips:  -i path (no loop)
+  const audioFileInputs: NodeEntry[] = []; // standalone audio files
 
   // Walk every non-muted, non-hidden track and collect active nodes
   for (const track of graph.hydratedCanvas.tracks as HydratedAssemblyTrack[]) {
@@ -210,7 +218,7 @@ function buildFfmpegArgs(
       // VI-B: compute safe trim bounds from TemporalDirective
       const { trimStart, trimEnd, effectiveDuration } = computeTrimBounds(node.temporal, duration);
 
-      // VI-C: read spatial and visual directives (image nodes only; audio uses identity defaults)
+      // VI-C: read spatial and visual directives (visual nodes only; audio uses identity defaults)
       const positionX = node.spatial?.positionX ?? 0;
       const positionY = node.spatial?.positionY ?? 0;
       const scaleX = Math.max(0.001, node.spatial?.scaleX ?? 1);
@@ -224,81 +232,109 @@ function buildFfmpegArgs(
       const blendMode: BlendMode = (['NORMAL', 'MULTIPLY', 'SCREEN', 'OVERLAY'] as const).includes(rawBlend as BlendMode)
         ? (rawBlend as BlendMode) : 'NORMAL';
 
+      // inputIdx will be assigned below after all inputs are collected
+      const base = {
+        path: assetPath, duration, startSec, nodeId: node.nodeId, trackId: track.trackId,
+        trimStart, trimEnd, effectiveDuration,
+        positionX, positionY, scaleX, scaleY, rotationDegrees, zIndex, opacity, blendMode,
+        inputIdx: -1,
+      };
+
       if (isImageUri(uri)) {
-        imageInputs.push({
-          path: assetPath, kind: 'image', duration, startSec, nodeId: node.nodeId, trackId: track.trackId,
-          trimStart, trimEnd, effectiveDuration,
-          positionX, positionY, scaleX, scaleY, rotationDegrees, zIndex, opacity, blendMode,
-        });
+        stillInputs.push({ ...base, kind: 'image' });
+      } else if (isVideoUri(uri)) {
+        videoInputs.push({ ...base, kind: 'video' });
       } else if (isAudioUri(uri)) {
-        audioInputs.push({
-          path: assetPath, kind: 'audio', duration, startSec, nodeId: node.nodeId, trackId: track.trackId,
-          trimStart, trimEnd, effectiveDuration,
+        audioFileInputs.push({
+          ...base,
+          kind: 'audio',
           positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: 0,
           opacity: 1, blendMode: 'NORMAL',
         });
       }
-      // Text/structural nodes (TXT etc.) carry no media — silently skipped
+      // Text/structural nodes carry no media — silently skipped
     }
   }
 
-  // VI-A: Add voice-assigned audio entries.
-  // For each image node that has a resolved voice secureStorageUri, add an audio
-  // input that starts at the same globalStartTimeSeconds as the image node.
-  // The voice entry inherits the image node's nodeId/trackId so it picks up the
-  // same volumeDb/isMuted mix settings from mixPlan. Missing files are skipped
-  // gracefully — they never throw or abort the encode.
-  for (const imgEntry of imageInputs) {
-    const voiceUri = resolvedVoicePaths.get(imgEntry.nodeId);
+  // Assign explicit FFmpeg input indices.
+  // Order: stills (with -loop), then videos, then standalone audio.
+  let nextIdx = 0;
+  stillInputs.forEach((e) => { e.inputIdx = nextIdx++; });
+  videoInputs.forEach((e) => { e.inputIdx = nextIdx++; });
+  const audioFileStart = nextIdx;
+  audioFileInputs.forEach((e) => { e.inputIdx = nextIdx++; });
+
+  // VI-A: Add voice-assigned audio entries from resolvedVoicePaths.
+  // For each image/video node that has a resolved voice secureStorageUri, add a
+  // standalone audio input that starts at the same globalStartTimeSeconds.
+  for (const visEntry of [...stillInputs, ...videoInputs]) {
+    const voiceUri = resolvedVoicePaths.get(visEntry.nodeId);
     if (!voiceUri) continue;
     const voicePath = resolveAssetPath(voiceUri);
     if (!existsSync(voicePath)) {
       console.warn(
-        `[CinematicEncoder] voice file missing at [${voicePath}] for node [${imgEntry.nodeId}] — skipping`,
+        `[CinematicEncoder] voice file missing at [${voicePath}] for node [${visEntry.nodeId}] — skipping`,
       );
       continue;
     }
-    audioInputs.push({
+    audioFileInputs.push({
       path: voicePath,
       kind: 'audio',
-      duration: imgEntry.duration,
-      startSec: imgEntry.startSec,
-      nodeId: imgEntry.nodeId,
-      trackId: imgEntry.trackId,
-      trimStart: imgEntry.trimStart,
-      trimEnd: imgEntry.trimEnd,
-      effectiveDuration: imgEntry.effectiveDuration,
+      inputIdx: nextIdx++,
+      duration: visEntry.duration,
+      startSec: visEntry.startSec,
+      nodeId: visEntry.nodeId,
+      trackId: visEntry.trackId,
+      trimStart: visEntry.trimStart,
+      trimEnd: visEntry.trimEnd,
+      effectiveDuration: visEntry.effectiveDuration,
       positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: 0,
       opacity: 1, blendMode: 'NORMAL',
     });
   }
 
-  if (imageInputs.length === 0) {
-    throw new Error(
-      `CINEMATIC encoder: no active image nodes found for operation [${operationId}]. ` +
-        `A CINEMATIC canvas must contain at least one active image node to produce a video.`,
-    );
+  // XLII: For video nodes whose audio is NOT muted, extract audio from the video
+  // stream itself as an additional audio entry.  No new -i argument is added —
+  // the existing video input already carries the audio stream at [inputIdx:a].
+  const videoAudioEntries: NodeEntry[] = [];
+  for (const vidEntry of videoInputs) {
+    const nodeMix = graph.mixPlan.nodeMixes.find((m) => m.nodeId === vidEntry.nodeId);
+    if (nodeMix?.isMuted) continue;
+    videoAudioEntries.push({
+      ...vidEntry,
+      kind: 'audio',
+      // inputIdx stays the same as the video — references [inputIdx:a] in the filter
+    });
   }
 
-  // VI-C: Sort by zIndex ascending (lower zIndex = below) then nodeId for deterministic tie-breaking.
-  // Lower zIndex nodes are overlaid first and appear beneath higher zIndex nodes.
-  imageInputs.sort((a, b) =>
+  // All visual inputs for composition (stills + videos), sorted by zIndex
+  const allVisualInputs = [...stillInputs, ...videoInputs];
+  if (allVisualInputs.length === 0) {
+    throw new Error(
+      `CINEMATIC encoder: no active visual nodes found for operation [${operationId}]. ` +
+        `A CINEMATIC canvas must contain at least one active image or video node.`,
+    );
+  }
+  allVisualInputs.sort((a, b) =>
     a.zIndex !== b.zIndex ? a.zIndex - b.zIndex : a.nodeId.localeCompare(b.nodeId),
   );
 
-  // Total duration: prefer compiled metadata; fall back to max effective node end time (VI-B)
+  // All audio entries: video-extracted audio first, then standalone audio files
+  const allAudioEntries = [...videoAudioEntries, ...audioFileInputs];
+
+  // Total duration: prefer compiled metadata; fall back to max effective node end time
   const totalDuration =
     graph.metadata.estimatedDurationSeconds ??
     Math.max(
-      ...imageInputs.map((n) => n.startSec + n.effectiveDuration),
-      ...audioInputs.map((n) => n.startSec + n.effectiveDuration),
+      ...allVisualInputs.map((n) => n.startSec + n.effectiveDuration),
+      ...allAudioEntries.map((n) => n.startSec + n.effectiveDuration),
       1,
     );
 
   if (totalDuration <= 0) {
     throw new Error(
       `CINEMATIC encoder: computed duration is ${totalDuration}s. ` +
-        `Image nodes must have temporal directives with positive playDurationSeconds.`,
+        `Visual nodes must have temporal directives with positive playDurationSeconds.`,
     );
   }
 
@@ -306,30 +342,32 @@ function buildFfmpegArgs(
 
   // --- INPUTS ---
 
-  // Still-image inputs: loop each frame for exactly its effectiveDuration (VI-B: respects trim)
-  imageInputs.forEach(({ path, effectiveDuration }) => {
+  // Still-image inputs: loop each frame for exactly its effectiveDuration
+  stillInputs.forEach(({ path, effectiveDuration }) => {
     args.push('-loop', '1', '-t', String(effectiveDuration), '-i', path);
   });
 
-  // Audio inputs: standard file read
-  const audioInputStart = imageInputs.length;
-  audioInputs.forEach(({ path }) => {
+  // Video inputs: direct file read (no loop, no -t duration limit)
+  videoInputs.forEach(({ path }) => {
     args.push('-i', path);
   });
+
+  // Standalone audio inputs (voice-assigned entries also added to audioFileInputs above)
+  audioFileInputs.forEach(({ path }) => {
+    args.push('-i', path);
+  });
+  void audioFileStart; // used for index assignment only
 
   // --- FILTER_COMPLEX ---
   const filterParts: string[] = [];
 
-  // VI-C: Full overlay composition pipeline (replaces concat-based sequential architecture).
-  // Visual nodes are layered onto a 1920×1080 black canvas in zIndex order; each node is
-  // temporally activated via enable='between(t,S,E)' so simultaneous overlay is real.
-  buildVideoCompositionFilters(imageInputs, totalDuration).forEach((f) => filterParts.push(f));
+  // Overlay composition pipeline — handles both stills and video clips
+  buildVideoCompositionFilters(allVisualInputs, totalDuration).forEach((f) => filterParts.push(f));
 
   // Subtitle burning
   const hasSubs = graph.subtitlePlan.absoluteCues.length > 0;
   if (hasSubs) {
     const srtPath = writeSrtFile(operationId, graph);
-    // FFmpeg subtitle filter requires forward slashes and escaped colons on Linux
     const escapedPath = srtPath.replace(/\\/g, '/');
     filterParts.push(
       `[vraw]subtitles='${escapedPath}':force_style='FontSize=24,PrimaryColour=&HFFFFFF,Outline=1'[vout]`,
@@ -338,33 +376,30 @@ function buildFfmpegArgs(
     filterParts.push('[vraw]copy[vout]');
   }
 
-  // Audio chain — VI-B: trim, fade, pan now consumed via buildAudioNodeFilter()
+  // Audio chain
   let finalAudioLabel: string;
-  if (audioInputs.length === 0) {
-    // No audio nodes — generate silent stereo audio for the full duration
+  if (allAudioEntries.length === 0) {
     filterParts.push(`aevalsrc=0:c=stereo:s=44100:d=${totalDuration}[aout]`);
     finalAudioLabel = '[aout]';
-  } else if (audioInputs.length === 1) {
-    const inp = audioInputs[0];
+  } else if (allAudioEntries.length === 1) {
+    const inp = allAudioEntries[0];
     const nodeMix = graph.mixPlan.nodeMixes.find((m) => m.nodeId === inp.nodeId);
     const trackMix = graph.mixPlan.trackMixes.find((m) => m.trackId === inp.trackId);
     filterParts.push(
-      buildAudioNodeFilter(inp, audioInputStart, totalDuration, nodeMix, trackMix) + '[aout]',
+      buildAudioNodeFilter(inp, inp.inputIdx, totalDuration, nodeMix, trackMix) + '[aout]',
     );
     finalAudioLabel = '[aout]';
   } else {
-    // Multiple audio inputs — each gets full VI-B fidelity treatment, then amix
-    audioInputs.forEach((inp, i) => {
-      const nodeIdx = audioInputStart + i;
+    allAudioEntries.forEach((inp, i) => {
       const nodeMix = graph.mixPlan.nodeMixes.find((m) => m.nodeId === inp.nodeId);
       const trackMix = graph.mixPlan.trackMixes.find((m) => m.trackId === inp.trackId);
       filterParts.push(
-        buildAudioNodeFilter(inp, nodeIdx, totalDuration, nodeMix, trackMix) + `[a${i}]`,
+        buildAudioNodeFilter(inp, inp.inputIdx, totalDuration, nodeMix, trackMix) + `[a${i}]`,
       );
     });
-    const amixRefs = audioInputs.map((_, i) => `[a${i}]`).join('');
+    const amixRefs = allAudioEntries.map((_, i) => `[a${i}]`).join('');
     filterParts.push(
-      `${amixRefs}amix=inputs=${audioInputs.length}:normalize=0,` +
+      `${amixRefs}amix=inputs=${allAudioEntries.length}:normalize=0,` +
         `atrim=0:${totalDuration},asetpts=PTS-STARTPTS[aout]`,
     );
     finalAudioLabel = '[aout]';
@@ -412,10 +447,26 @@ function buildFfmpegArgs(
  *
  * Emits [vraw] as the final named output label consumed by the subtitle/copy step.
  */
-function buildVideoCompositionFilters(imageInputs: NodeEntry[], totalDuration: number): string[] {
+/**
+ * Builds all filter_complex filter strings for the visual overlay composition pipeline.
+ * visualInputs must be sorted by zIndex ascending (lower zIndex = below in z-order).
+ * Each entry carries an explicit inputIdx (FFmpeg -i order) and a kind ('image'|'video').
+ *
+ * Still images: the FFmpeg input is looped for effectiveDuration, PTS starts at 0.
+ *   Overlay enable='between(t,S,E)' shows the still only during its slot. ✓
+ *
+ * Video clips: the FFmpeg input starts playing from PTS=0 at the same instant the
+ *   output canvas starts.  To make the clip appear at output position S playing from
+ *   its own frame 0, we apply:
+ *     trim=trimStart:trimEnd  → extract the desired clip segment
+ *     setpts=PTS-STARTPTS+(S/TB)  → normalise to 0 then shift PTS to S
+ *   Then overlay with enable='between(t,S,E)':eof_action=pass so the base canvas
+ *   shows through before and after the clip's window. ✓
+ */
+function buildVideoCompositionFilters(visualInputs: NodeEntry[], totalDuration: number): string[] {
   const filters: string[] = [];
 
-  if (imageInputs.length === 0) {
+  if (visualInputs.length === 0) {
     filters.push(
       `color=c=black:size=${OUTPUT_WIDTH}x${OUTPUT_HEIGHT}:rate=25:d=${totalDuration}[vraw]`,
     );
@@ -427,7 +478,7 @@ function buildVideoCompositionFilters(imageInputs: NodeEntry[], totalDuration: n
     `color=c=black:size=${OUTPUT_WIDTH}x${OUTPUT_HEIGHT}:rate=25:d=${totalDuration}[canvas0]`,
   );
 
-  imageInputs.forEach((node, idx) => {
+  visualInputs.forEach((node, idx) => {
     const targetW = Math.max(1, Math.round(OUTPUT_WIDTH * node.scaleX));
     const targetH = Math.max(1, Math.round(OUTPUT_HEIGHT * node.scaleY));
     const rotRad = (node.rotationDegrees * Math.PI) / 180;
@@ -435,37 +486,55 @@ function buildVideoCompositionFilters(imageInputs: NodeEntry[], totalDuration: n
     const endSec = node.startSec + node.effectiveDuration;
     const canvasIn = `[canvas${idx}]`;
     // Last node writes directly to [vraw] so the subtitle/copy step can pick it up
-    const canvasOut = idx < imageInputs.length - 1 ? `[canvas${idx + 1}]` : '[vraw]';
+    const canvasOut = idx < visualInputs.length - 1 ? `[canvas${idx + 1}]` : '[vraw]';
     const hasRotation = Math.abs(node.rotationDegrees) > 0.001;
+    // Use explicit inputIdx (not array idx) to reference the correct FFmpeg -i stream
+    const ffStreamRef = `[${node.inputIdx}:v]`;
 
-    if (node.blendMode === 'NORMAL') {
-      // RGBA alpha overlay pipeline: scale → [rotate] → rgba → [opacity] → overlay
+    if (node.kind === 'video') {
+      // VIDEO: trim source to [trimStart, trimEnd], normalise PTS, then shift to output position S.
+      // This makes the clip play from its own frame 0 starting at output time S.
+      const videoParts: string[] = [
+        `trim=${node.trimStart.toFixed(6)}:${node.trimEnd.toFixed(6)}`,
+        `setpts=PTS-STARTPTS+(${startSec.toFixed(6)}/TB)`,
+        `scale=${targetW}:${targetH}`,
+        'format=rgba',
+      ];
+      if (hasRotation) {
+        videoParts.splice(3, 0, `rotate=${rotRad.toFixed(6)}:fillcolor=0x00000000`);
+      }
+      if (node.opacity < 0.9999) {
+        videoParts.push(`colorchannelmixer=aa=${node.opacity.toFixed(6)}`);
+      }
+      filters.push(`${ffStreamRef}${videoParts.join(',')}[vn${idx}]`);
+      filters.push(
+        `${canvasIn}[vn${idx}]overlay=x=${node.positionX}:y=${node.positionY}` +
+          `:format=auto:eof_action=pass:enable='between(t,${startSec},${endSec})'${canvasOut}`,
+      );
+    } else if (node.blendMode === 'NORMAL') {
+      // STILL IMAGE — NORMAL blend: scale → [rotate] → rgba → [opacity] → overlay
       const parts: string[] = [`scale=${targetW}:${targetH}`];
       if (hasRotation) {
-        // Transparent fill so rotated corners don't bleed into the overlay
         parts.push(`rotate=${rotRad.toFixed(6)}:fillcolor=0x00000000`);
       }
       parts.push('format=rgba');
       if (node.opacity < 0.9999) {
         parts.push(`colorchannelmixer=aa=${node.opacity.toFixed(6)}`);
       }
-      filters.push(`[${idx}:v]${parts.join(',')}[vn${idx}]`);
+      filters.push(`${ffStreamRef}${parts.join(',')}[vn${idx}]`);
       filters.push(
         `${canvasIn}[vn${idx}]overlay=x=${node.positionX}:y=${node.positionY}` +
           `:format=auto:enable='between(t,${startSec},${endSec})'${canvasOut}`,
       );
     } else {
-      // Non-NORMAL blend via identity-canvas trick.
-      // An identity-color full-size canvas is generated; the actual layer is overlaid
-      // onto it only during its active window. Outside that window the identity color
-      // makes the subsequent blend filter a mathematical no-op against the main canvas.
-      const ffBlend = node.blendMode.toLowerCase(); // 'multiply' | 'screen' | 'overlay'
+      // STILL IMAGE — Non-NORMAL blend via identity-canvas trick.
+      const ffBlend = node.blendMode.toLowerCase();
       const identityColor =
         node.blendMode === 'MULTIPLY'
           ? 'white'
           : node.blendMode === 'SCREEN'
             ? 'black'
-            : '0x808080'; // OVERLAY: neutral gray
+            : '0x808080';
       const rotFillcolor =
         node.blendMode === 'MULTIPLY'
           ? '0xffffff'
@@ -473,25 +542,21 @@ function buildVideoCompositionFilters(imageInputs: NodeEntry[], totalDuration: n
             ? '0x000000'
             : '0x808080';
 
-      // Full-duration identity canvas (produces no-op blend outside active region)
       filters.push(
         `color=c=${identityColor}:size=${OUTPUT_WIDTH}x${OUTPUT_HEIGHT}:rate=25:d=${totalDuration}[id${idx}]`,
       );
 
-      // Prepare layer: scale [→ rotate] — fill with identity color so rotation corners are no-ops
       const layerParts: string[] = [`scale=${targetW}:${targetH}`];
       if (hasRotation) {
         layerParts.push(`rotate=${rotRad.toFixed(6)}:fillcolor=${rotFillcolor}`);
       }
-      filters.push(`[${idx}:v]${layerParts.join(',')}[vl${idx}]`);
+      filters.push(`${ffStreamRef}${layerParts.join(',')}[vl${idx}]`);
 
-      // Overlay actual content onto identity canvas only during active temporal window
       filters.push(
         `[id${idx}][vl${idx}]overlay=x=${node.positionX}:y=${node.positionY}` +
           `:enable='between(t,${startSec},${endSec})'[nm${idx}]`,
       );
 
-      // Blend identity+content composite with main canvas
       filters.push(
         `${canvasIn}[nm${idx}]blend=all_mode=${ffBlend}:all_opacity=${node.opacity.toFixed(6)}${canvasOut}`,
       );
