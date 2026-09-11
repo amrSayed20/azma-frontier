@@ -27,6 +27,20 @@
   --text-muted: var(--azma-text-muted);
   --os-surface-elevated: #0d0d0d;
   --os-surface-highlight: #151515;
+
+  /* XLII-C: App-shell height ledger — single source of truth for all
+     explicit height calculations that bypass fr-in-flex resolution quirks. */
+  --ras-header-h: 52px;
+  --ras-timeline-h: 180px;
+  --ras-grid-pad: 8px;
+  --ras-banner-h: 0px;   /* overridden below when template banner is visible */
+}
+
+/* XLII-C: When the template banner is present it consumes ~37px of viewport
+   height as a flex sibling of the body-grid. Update the ledger so panel
+   height calculations account for it automatically. */
+.ras-amr-viewport:has(.ras-template-banner) {
+  --ras-banner-h: 37px;
 }
 
 /* ========================================= */
@@ -199,13 +213,19 @@
 
 .ras-panel-left,
 .ras-panel-right {
-  /* XLII-B: min-height:0 allows the grid item to shrink to the row's
-     constrained height (1fr = grid container available height). Without it,
-     min-height:auto (grid default) prevents the item from shrinking below its
-     content — the same overflow problem as the row itself. align-self:stretch
-     (default) fills the row; no explicit height needed. The inner flex chain
-     (tab-bar flex-shrink:0 + tab-content flex:1 min-height:0 overflow-y:auto)
-     then resolves correctly against this definite panel height. */
+  /* XLII-C: Explicit height derived directly from the viewport ledger.
+     This is the definitive fix for the fr-in-flex Chrome quirk:
+     grid-template-rows:1fr inside a flex:1 container may resolve the
+     fr track to 0/auto rather than the container's flex-allocated height,
+     because CSS Grid track sizing runs before the flex algorithm has
+     committed the container's definite block size in Chrome.
+     With an explicit height here, the panel's internal flex chain
+     (panel-header flex-shrink:0 + queue-container flex:1 min-height:0
+     overflow-y:auto) resolves correctly and every panel element — including
+     the Vault import button — becomes visible.
+     The grid's overflow:hidden clips at the GRID CONTAINER boundary, which
+     is correctly sized by flex, so no panel content is lost to the container. */
+  height: calc(100dvh - var(--ras-header-h) - var(--ras-timeline-h) - var(--ras-banner-h) - var(--ras-grid-pad) * 2);
   min-height: 0;
   overflow: hidden;
   display: flex;
@@ -427,6 +447,8 @@
   .ras-panel-left {
     grid-column: 1 / -1;
     grid-row: 1;
+    /* XLII-C: left panel occupies the definite 180px first row */
+    height: 180px;
     flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;
@@ -443,7 +465,13 @@
     flex-shrink: 0;
   }
   .ras-center { grid-column: 1; grid-row: 2; }
-  .ras-panel-right { grid-column: 2; grid-row: 2; }
+  .ras-panel-right {
+    grid-column: 2;
+    grid-row: 2;
+    /* XLII-C: right panel height = viewport minus header/timeline/banner/padding
+       minus the 180px first row and its 8px gap */
+    height: calc(100dvh - var(--ras-header-h) - var(--ras-timeline-h) - var(--ras-banner-h) - var(--ras-grid-pad) * 2 - 180px - 8px);
+  }
 }
 
 /* ========================================= */
