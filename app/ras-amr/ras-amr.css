@@ -208,16 +208,22 @@
 .ras-body-grid {
   display: grid;
   grid-template-columns: 280px 1fr 300px;
-  /* XLII-B: explicit 1fr row forces the single row to fit within the grid
-     container's available height (from flex:1 parent). Without this, the
-     implicit row expands to the center column's intrinsic content height
-     (~600px), making height:100% on panels resolve to that oversized value
-     and the grid's overflow:hidden clips the bottom of the sidebars. */
   grid-template-rows: 1fr;
   gap: 8px;
   padding: 8px;
   flex: 1;
   min-height: 0;
+  /* XLII-D: explicit height makes the grid's block size definite for the CSS
+     Grid track-sizing algorithm. Without it, Chrome's fr-in-flex quirk causes
+     the 1fr row to resolve to the center column's intrinsic content height
+     (~270px) rather than the flex-allocated height (~366px at 125% DPI).
+     Result: panels overflow the incorrectly-sized 1fr track, the grid's
+     overflow:hidden clips the bottom ~96px of every sidebar, and container
+     query cqh units inside composition-surface resolve to zero.
+     The explicit height value equals what flex:1 would produce anyway, so
+     rendered size is unchanged — the only effect is providing a "definite"
+     block size for the grid engine and container query resolution. */
+  height: calc(100dvh - var(--ras-header-h) - var(--ras-timeline-h) - var(--ras-banner-h));
   overflow: hidden;
   box-sizing: border-box;
   position: relative;
@@ -571,6 +577,7 @@
     grid-template-columns: 1fr;
     grid-template-rows: none;   /* reset 1fr row — stacked layout uses content height */
     flex: none;
+    height: auto;               /* clear XLII-D explicit height — mobile uses content height */
     min-height: auto;
     overflow: visible;
     padding: 6px;
@@ -2670,15 +2677,20 @@
   z-index: 10;
 }
 
-/* Layer asset image / video — fills the layer element proportionally.
-   XLII-C: sizes relative to the composition-surface container so assets
-   appear at a visible fraction of the canvas rather than a fixed tiny cap. */
+/* Layer asset image / video — deterministic real sizing relative to the canvas.
+   XLII-D: use explicit width/height (not max-width/max-height) so small-intrinsic
+   images are ENLARGED to fill 90% of the canvas. max-* only prevents an image
+   from exceeding a cap — it cannot enlarge a 256×256px image on a 600px canvas.
+   width/height: 90cqw/90cqh fill the box regardless of intrinsic size;
+   object-fit:contain preserves aspect ratio within that box.
+   cqw/cqh resolve against .composition-surface (container-type:size), which now
+   has a definite block size because .ras-body-grid carries an explicit height. */
 .layer-asset-img {
   display: block;
-  max-width: 90cqw;
-  max-height: 90cqh;
-  width: auto;
-  height: auto;
+  width: 90cqw;
+  height: 90cqh;
+  max-width: none;
+  max-height: none;
   object-fit: contain;
   border-radius: 2px;
   pointer-events: none;
@@ -2805,8 +2817,11 @@
 /* Mobile touch: ensure composition surface handles work on small screens */
 @media (max-width: 680px) {
   .layer-asset-img {
-    max-width: min(200px, 55vw);
-    max-height: min(140px, 28vh);
+    /* On mobile the canvas is auto-height; use vw/vh instead of cqw/cqh */
+    width: min(200px, 55vw);
+    height: min(140px, 28vh);
+    max-width: none;
+    max-height: none;
   }
   .handle-nw { top: -18px; right: -18px; }
   .handle-ne { top: -18px; left: -18px; }
