@@ -64,6 +64,19 @@
   transition: filter 0.3s ease;
 }
 
+/* XLII-C: Override white browser scrollbars with AZMA dark/gold identity
+   for every scrollable element inside the chamber. */
+.ras-amr-viewport * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--neon-gold-dim) transparent;
+}
+.ras-amr-viewport *::-webkit-scrollbar { width: 4px; height: 4px; }
+.ras-amr-viewport *::-webkit-scrollbar-track { background: transparent; }
+.ras-amr-viewport *::-webkit-scrollbar-thumb {
+  background: var(--neon-gold-dim);
+  border-radius: 4px;
+}
+
 /* ========================================= */
 /* PHASE B: STICKY HEADER                    */
 /* ========================================= */
@@ -289,6 +302,55 @@
 .ras-tab-content::-webkit-scrollbar { width: 3px; }
 .ras-tab-content::-webkit-scrollbar-track { background: transparent; }
 .ras-tab-content::-webkit-scrollbar-thumb { background: var(--neon-gold-dim); border-radius: 3px; }
+
+/* XLII-C: Right-panel action zone — persistent controls relocated from center column.
+   Sits between the tab bar and tab content; always visible regardless of active tab. */
+.ras-panel-action-zone {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.6);
+  border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+/* Compact director-status-strip when inside the right panel action zone */
+.ras-panel-action-zone .director-status-strip {
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 9px;
+}
+
+/* Compact preview controls inside the right panel action zone */
+.ras-panel-action-zone .preview-playback-controls {
+  padding: 4px 6px;
+  border-radius: 6px;
+  margin: 0;
+}
+
+/* Mute toggle for per-node audio */
+.audio-node-mute-btn {
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  background: rgba(255, 215, 0, 0.07);
+  color: var(--neon-gold-primary);
+  font-family: inherit;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.audio-node-mute-btn.muted {
+  background: rgba(255, 80, 80, 0.15);
+  border-color: rgba(255, 80, 80, 0.4);
+  color: #ff7070;
+}
+.audio-node-mute-btn:hover:not(:disabled) {
+  background: rgba(255, 215, 0, 0.15);
+}
 
 /* Direction tab mode indicator */
 .ras-direction-mode-indicator {
@@ -2538,17 +2600,7 @@
 /* Multi-node composition surface + direct manipulation       */
 /* ========================================================= */
 
-/* Compact asset rail — canvas must own the dominant workspace. */
-.queue-item-card {
-  padding: 8px !important;
-}
-.item-title {
-  font-size: 11px !important;
-  margin: 0 0 6px 0 !important;
-}
-.item-footer {
-  font-size: 10px !important;
-}
+/* Asset cards — full readable presentation in the left sidebar. */
 
 /* Composition surface — replaces single-asset viewport when canvas has nodes. */
 .composition-surface {
@@ -2565,6 +2617,9 @@
      Without this, the scanlines' position:absolute at z-index 2 overlays all
      media layers, creating a visible dark-stripe filter over every image/video. */
   z-index: 3;
+  /* XLII-C: container query context so layer children can size relative to
+     the actual surface dimensions rather than fixed pixel caps. */
+  container-type: size;
 }
 
 /* Drop-zone active state — border flashes gold */
@@ -2615,11 +2670,13 @@
   z-index: 10;
 }
 
-/* Layer asset image / video — fills the layer element proportionally. */
+/* Layer asset image / video — fills the layer element proportionally.
+   XLII-C: sizes relative to the composition-surface container so assets
+   appear at a visible fraction of the canvas rather than a fixed tiny cap. */
 .layer-asset-img {
   display: block;
-  max-width: min(280px, 40%);
-  max-height: min(180px, 35vh);
+  max-width: 90cqw;
+  max-height: 90cqh;
   width: auto;
   height: auto;
   object-fit: contain;

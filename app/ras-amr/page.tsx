@@ -1208,6 +1208,26 @@ export default function RasAmrChamber() {
     setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
   };
 
+  // Per-node audio mute toggle — uses the same UPDATE_ADVANCED_DIRECTIVE path.
+  const handleToggleNodeMute = (nodeId: string) => {
+    if (!sessionCanvas) return;
+    const track = sessionCanvas.tracks.find((t) => t.nodes.some((n) => n.nodeId === nodeId));
+    if (!track) return;
+    const node = track.nodes.find((n) => n.nodeId === nodeId);
+    if (!node || node.isLocked) return;
+    const existing = node.customDirectives?.audio as AudioMixingDirective | undefined;
+    const mutation: UpdateNodeAdvancedPayload = {
+      actionType: CanvasActionType.UPDATE_ADVANCED_DIRECTIVE,
+      canvasId: sessionCanvas.canvasId,
+      subscriberTenantId: sessionCanvas.subscriberTenantId,
+      targetTrackId: track.trackId,
+      targetNodeId: nodeId,
+      directiveKey: 'audio',
+      directivePayload: { volumeDb: existing?.volumeDb ?? 0, panCenter: existing?.panCenter ?? 0, isMuted: !(existing?.isMuted ?? false) } as AudioMixingDirective,
+    };
+    setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
+  };
+
   // Z-order: bring the node one step forward or backward in the composition surface.
   const handleBringForward = (nodeId: string) => {
     if (!sessionCanvas) return;
@@ -4214,109 +4234,6 @@ export default function RasAmrChamber() {
             </div>
           </div>
 
-          {/* PREVIEW PLAYBACK CONTROLS
-              ▶ تشغيل المعاينة plays the composition in the browser using real Vault URIs
-              and existing temporal directives. NOT the final FFmpeg render.
-              Limitation: browser compositing only — blend modes and color grading
-              appear in the final تجميع المشهد output, not here. */}
-          {sessionCanvas && sessionCanvas.tracks.flatMap(t => t.nodes).length > 0 && (
-            <div className="preview-playback-controls">
-              {!isPlaying ? (
-                <button
-                  className="preview-play-btn"
-                  onClick={handleStartPreview}
-                  aria-label="تشغيل معاينة المشهد"
-                >
-                  ▶ تشغيل المعاينة
-                </button>
-              ) : (
-                <button
-                  className="preview-stop-btn"
-                  onClick={handleStopPreview}
-                  aria-label="إيقاف معاينة المشهد"
-                >
-                  ⏸ إيقاف المعاينة
-                </button>
-              )}
-              {isPlaying && (
-                <span
-                  className="preview-playhead-display"
-                  aria-live="polite"
-                  aria-label={`موضع المعاينة: ${playheadSec.toFixed(1)} ثانية`}
-                >
-                  {playheadSec.toFixed(1)} ث
-                </span>
-              )}
-              <span className="preview-limitation-note">
-                معاينة — الناتج النهائي يُنتَج في مكمن الغاية
-              </span>
-            </div>
-          )}
-
-          {/* QUICK ACTIONS — add to scene; render button is in header only */}
-          {/* PACKAGE XXXV: duplicate guard removed — same asset may appear in
-              multiple nodes (repeated appearance is valid direction). */}
-          {activeAsset && (
-            <div className="creator-quick-actions">
-              {activeAsset.isRealAsset && sessionCanvas && (
-                <button className="creator-action-btn creator-action-primary" onClick={handleAddActiveAssetToCanvas}>
-                  ➕ أضف إلى المشهد
-                </button>
-              )}
-              {activeAsset.isRealAsset && !sessionCanvas && (
-                <button className="creator-action-btn creator-action-primary" onClick={handleAddActiveAssetToCanvas}>
-                  ➕ ابدأ المشهد بهذا الأصل
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* FINDING 7 — Post-compile result panel: shown immediately after a successful
-              compilation so the creator knows exactly what was produced and what to do next.
-              Constitutional boundary: Ras Al Amr compiles → Makman renders/distributes.
-              The compile output is a structured assembly graph, not a media file — the MP4
-              is produced by Makman's Fleet materialization step. */}
-          {compiledGraph && compiledForAssetId === activeAsset?.id && (
-            <div className="compiled-result-panel">
-              <div className="compiled-result-header">
-                <span className="compiled-result-icon">✦</span>
-                <span className="compiled-result-title">المشهد مُجمَّع وجاهز</span>
-              </div>
-              <p className="compiled-result-summary">
-                {compiledGraph.metadata.totalNodes} {compiledGraph.metadata.totalNodes === 1 ? 'عنصر' : 'عناصر'} — مدة تقديرية {Math.round(compiledGraph.metadata.estimatedDurationSeconds ?? 0)} ث — نوع: {compiledGraph.canvasType}
-              </p>
-              <p className="compiled-result-hint">
-                الإخراج جاهز للإرسال إلى مكمن الغاية حيث يتحوّل إلى ملف نهائي قابل للتوزيع.
-              </p>
-              <button className="creator-action-btn creator-action-corridor" onClick={handleForwardToMakman}>
-                ✦ أرسل إلى مكمن الغاية
-              </button>
-            </div>
-          )}
-
-          {/* DIRECTOR STATUS STRIP
-              Three live cells: active operator, canvas summary, render state. */}
-          <div className="director-status-strip neon-border">
-            <div className="strip-cell strip-operator">
-              <span className={`strip-pulse${isRendering ? ' strip-pulse-active' : ''}`} aria-hidden="true" />
-              <span>{directingMode === 'smart' ? 'المخرج الآلي' : 'المخرج اليدوي'}</span>
-            </div>
-            <div className="strip-cell strip-canvas">
-              {sessionCanvas ? (() => {
-                const allN = sessionCanvas.tracks.flatMap(t => t.nodes);
-                const visualN = allN.filter(n => vaultAssets.find(a => a.assetId === n.assetId)?.capabilityTarget !== CapabilityTarget.AUDIO).length;
-                const audioN = allN.length - visualN;
-                if (allN.length === 0) return 'لوحة فارغة';
-                return audioN > 0
-                  ? `${visualN} مرئي · ${audioN} صوتي`
-                  : `${visualN} مرئي`;
-              })() : 'لا يوجد مشهد'}
-            </div>
-            <div className="strip-cell strip-render">
-              {renderStatus !== 'في وضع الاستعداد الإخراجي' ? renderStatus : '◉ جاهز'}
-            </div>
-          </div>
-
         </section>
 
         {/* RIGHT: 5-Tab Workspace */}
@@ -4337,6 +4254,81 @@ export default function RasAmrChamber() {
                 </button>
               );
             })}
+          </div>
+
+          {/* XLII-C: Action zone — relocated from center column so the canvas
+              is a pure visual surface. Always visible regardless of active tab. */}
+          <div className="ras-panel-action-zone">
+            {/* Director status strip: operator · canvas summary · render state */}
+            <div className="director-status-strip neon-border">
+              <div className="strip-cell strip-operator">
+                <span className={`strip-pulse${isRendering ? ' strip-pulse-active' : ''}`} aria-hidden="true" />
+                <span>{directingMode === 'smart' ? 'المخرج الآلي' : 'المخرج اليدوي'}</span>
+              </div>
+              <div className="strip-cell strip-canvas">
+                {sessionCanvas ? (() => {
+                  const allN = sessionCanvas.tracks.flatMap(t => t.nodes);
+                  const visualN = allN.filter(n => vaultAssets.find(a => a.assetId === n.assetId)?.capabilityTarget !== CapabilityTarget.AUDIO).length;
+                  const audioN = allN.length - visualN;
+                  if (allN.length === 0) return 'لوحة فارغة';
+                  return audioN > 0
+                    ? `${visualN} مرئي · ${audioN} صوتي`
+                    : `${visualN} مرئي`;
+                })() : 'لا يوجد مشهد'}
+              </div>
+              <div className="strip-cell strip-render">
+                {renderStatus !== 'في وضع الاستعداد الإخراجي' ? renderStatus : '◉ جاهز'}
+              </div>
+            </div>
+
+            {/* Quick actions: add active asset to scene */}
+            {activeAsset && (
+              <div className="creator-quick-actions">
+                {activeAsset.isRealAsset && sessionCanvas && (
+                  <button className="creator-action-btn creator-action-primary" onClick={handleAddActiveAssetToCanvas}>
+                    ➕ أضف إلى المشهد
+                  </button>
+                )}
+                {activeAsset.isRealAsset && !sessionCanvas && (
+                  <button className="creator-action-btn creator-action-primary" onClick={handleAddActiveAssetToCanvas}>
+                    ➕ ابدأ المشهد بهذا الأصل
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Preview playback controls */}
+            {sessionCanvas && sessionCanvas.tracks.flatMap(t => t.nodes).length > 0 && (
+              <div className="preview-playback-controls">
+                {!isPlaying ? (
+                  <button className="preview-play-btn" onClick={handleStartPreview} aria-label="تشغيل معاينة المشهد">
+                    ▶ تشغيل المعاينة
+                  </button>
+                ) : (
+                  <button className="preview-stop-btn" onClick={handleStopPreview} aria-label="إيقاف معاينة المشهد">
+                    ⏸ إيقاف المعاينة
+                  </button>
+                )}
+                {isPlaying && (
+                  <span className="preview-playhead-display" aria-live="polite">
+                    {playheadSec.toFixed(1)} ث
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Post-compile result: corridor to Makman */}
+            {compiledGraph && compiledForAssetId === activeAsset?.id && (
+              <div className="compiled-result-panel" style={{ margin: 0 }}>
+                <div className="compiled-result-header">
+                  <span className="compiled-result-icon">✦</span>
+                  <span className="compiled-result-title">المشهد مُجمَّع وجاهز</span>
+                </div>
+                <button className="creator-action-btn creator-action-corridor" onClick={handleForwardToMakman}>
+                  ✦ أرسل إلى مكمن الغاية
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Tab: المشهد */}
@@ -5001,9 +4993,18 @@ export default function RasAmrChamber() {
                                     </select>
                                   </div>
                                 )}
-                                <div className="ras-audio-node-row" style={{ marginTop: '4px' }} onClick={(e) => e.stopPropagation()}>
-                                  <span className="track-volume-label">🔊 {(nodeAudio?.volumeDb ?? 0).toFixed(0)} dB</span>
-                                  <input type="range" className="track-volume-slider" min={-60} max={12} step={1} value={nodeAudio?.volumeDb ?? 0} onChange={(e) => handleSetNodeVolume(node.nodeId, Number(e.target.value))} disabled={node.isLocked} aria-label={`مستوى صوت ${assetLabel}`} />
+                                <div className="ras-audio-node-row" style={{ marginTop: '4px', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    className={`audio-node-mute-btn${nodeAudio?.isMuted ? ' muted' : ''}`}
+                                    onClick={() => handleToggleNodeMute(node.nodeId)}
+                                    disabled={node.isLocked}
+                                    aria-label={nodeAudio?.isMuted ? 'إلغاء الكتم' : 'كتم الصوت'}
+                                    title={nodeAudio?.isMuted ? 'مكتوم — انقر للتشغيل' : 'انقر للكتم'}
+                                  >
+                                    {nodeAudio?.isMuted ? '🔇 مكتوم' : '🔊 مشغَّل'}
+                                  </button>
+                                  <span className="track-volume-label">{(nodeAudio?.volumeDb ?? 0).toFixed(0)} dB</span>
+                                  <input type="range" className="track-volume-slider" min={-60} max={12} step={1} value={nodeAudio?.volumeDb ?? 0} onChange={(e) => handleSetNodeVolume(node.nodeId, Number(e.target.value))} disabled={node.isLocked || (nodeAudio?.isMuted ?? false)} aria-label={`مستوى صوت ${assetLabel}`} />
                                 </div>
                               </div>
                             );
