@@ -434,12 +434,27 @@
 }
 
 /* ========================================= */
-/* PHASE H: TABLET (1200px > width >= 681px) */
+/* PHASE H1: MEDIUM VIEWPORT (900–1199px)    */
 /* ========================================= */
-@media (max-width: 1199px) and (min-width: 681px) {
-  /* XLII-A: grid-template-rows gives the first row a definite 180px so the
-     left-panel horizontal strip resolves height: 100% correctly.
-     Second row takes the remaining space so the right panel fills it. */
+/* XLII-D: Windows laptops at 125% DPI scaling (common for 1366×768 displays)
+   report a CSS viewport of ~1093px — inside the old 681–1199px tablet zone.
+   That triggered the horizontal-strip two-row layout even though the screen
+   physically had plenty of room. Fix: reserve the two-row layout for true
+   narrow viewports (≤899px); at 900–1199px keep the three-column desktop
+   layout with slightly narrower sidebars so the center column stays workable
+   (≥460px). Panel heights from the base rule are unchanged and still correct. */
+@media (max-width: 1199px) and (min-width: 900px) {
+  .ras-body-grid {
+    grid-template-columns: 220px 1fr 240px;  /* narrower sidebars, wider center */
+  }
+}
+
+/* ========================================= */
+/* PHASE H2: TABLET (899px > width >= 681px) */
+/* ========================================= */
+@media (max-width: 899px) and (min-width: 681px) {
+  /* Two-row horizontal layout for true tablet viewports.
+     XLII-A: 180px definite first row so the horizontal strip resolves. */
   .ras-body-grid {
     grid-template-columns: 1fr 280px;
     grid-template-rows: 180px 1fr;
