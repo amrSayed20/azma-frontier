@@ -6,7 +6,7 @@
 :root {
   /* XLII-F: cache-bust token — forces a new CSS chunk hash so the
      browser downloads fresh CSS instead of the immutable-cached copy. */
-  --ras-cache-bust: xlii-i;
+  --ras-cache-bust: xlii-j;
   --chamber-bg: #020202;
   --panel-bg: rgba(10, 10, 10, 0.85);
   /* Sovereign Color System's own PALETTE.gold / --azma-gold-* */
@@ -55,23 +55,25 @@ body:has(.ras-amr-viewport) {
 }
 
 /* ========================================= */
-/* PHASE A: ROOT SCROLL ARCHITECTURE         */
+/* PHASE A: SOVEREIGN VIEWPORT SHELL         */
 /* ========================================= */
-/* .ras-amr-viewport: page-scroll root (replaces position:fixed)          */
-/* XLII-A: App-shell model — viewport is a fixed-height container.
-   Header + body-grid + timeline stack as flex children that sum to 100dvh.
-   All scrolling happens inside each panel/column, not at the page level. */
+/* position:fixed + inset:0 pins the chamber to the EXACT browser viewport
+   boundary with no reliance on dvh/vh calculations that diverge from the
+   true viewport under DPI scaling, Chrome zoom, or taskbar constraints.
+   All three regions (header, body-grid, timeline) are flex children of this
+   fixed shell. Internal scrolling only — the page itself never scrolls. */
 
 .ras-amr-viewport {
-  position: relative;
-  height: 100dvh;
+  position: fixed;
+  inset: 0;              /* top:0; right:0; bottom:0; left:0 */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background-color: var(--chamber-bg);
   color: var(--text-main);
   font-family: var(--azma-font-family);
   direction: rtl;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  z-index: 1;
   transition: filter 0.3s ease;
 }
 
@@ -219,50 +221,34 @@ body:has(.ras-amr-viewport) {
 .ras-render-btn.rendering { opacity: 0.7; animation: pulseOpacity 1s infinite alternate; }
 
 /* ========================================= */
-/* PHASE C: DESKTOP BODY GRID                */
+/* PHASE C: WORKSPACE (3-COLUMN COMMAND ROOM)*/
 /* ========================================= */
+/* body-grid is a flex child of the fixed viewport shell. flex:1 makes it
+   consume ALL space between the header and timeline — no dvh math needed.
+   align-items:stretch (default) ensures all three columns fill this height
+   without explicit heights on the children. */
+
 .ras-body-grid {
-  /* XLII-D (final): display:flex instead of display:grid eliminates the
-     Chrome fr-in-flex quirk entirely. With display:grid + 1fr, Chrome
-     resolves the fr track against the center column's intrinsic content
-     height rather than the flex-allocated height, so both sidebars are
-     clipped short. With display:flex + flex-direction:row, align-items:stretch
-     (the default) stretches all three columns to the container's full height
-     directly — no fr unit, no quirk, no clipping.
-     display:grid is restored inside the tablet media query where a two-row
-     layout with definite 180px first row is needed. */
   display: flex;
   flex-direction: row;
+  align-items: stretch;
   gap: 8px;
   padding: 8px 8px 0;
   flex: 1;
   min-height: 0;
-  /* XLII-H: explicit height REMOVED. The dvh formula produced a value
-     that diverged from the actual flex-allocated height on touchscreen/
-     high-DPI laptops (HP Win10), leaving a dark gap below the panels.
-     flex:1 + flex-shrink:0 on header and timeline is the single source
-     of truth for body-grid height — no redundant dvh formula needed.
-     Container-query cqh units in .composition-surface still resolve
-     because a flex item's size from the flex algorithm IS a definite size
-     for containment purposes (per CSS Containment L2). */
   overflow: hidden;
   box-sizing: border-box;
   position: relative;
   z-index: 10;
 }
 
+/* Command Rail (left) and Intelligence Rail (right) */
 .ras-panel-left,
 .ras-panel-right {
-  flex: 0 0 280px;
-  /* XLII-H: explicit height REMOVED, align-self:stretch (the default) takes over.
-     XLII-D found stretch failed when body-grid had BOTH flex:1 AND an explicit
-     height with box-sizing:border-box. With XLII-H removing the body-grid explicit
-     height, that failure condition is gone — stretch now works correctly.
-     box-sizing:border-box ensures .neon-border's 1px border is INCLUDED in the
-     stretched height, so panel outer = body-grid content area exactly. */
-  align-self: stretch;
-  box-sizing: border-box;
+  flex: 0 0 220px;
+  min-width: 0;
   min-height: 0;
+  box-sizing: border-box;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -271,19 +257,14 @@ body:has(.ras-amr-viewport) {
   backdrop-filter: blur(25px);
 }
 
-.ras-panel-right {
-  flex-basis: 300px;
-}
-
+/* Main Command Workspace (center) */
 .ras-center {
   flex: 1;
   min-width: 0;
-  /* XLII-H: explicit height removed — align-self:stretch fills body-grid height. */
-  align-self: stretch;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-height: 0;
   overflow-y: auto;
 }
 
@@ -453,29 +434,23 @@ body:has(.ras-amr-viewport) {
 }
 
 /* ========================================= */
-/* PHASE G: STICKY TIMELINE                  */
+/* PHASE G: TIMELINE / EXECUTION REGION      */
 /* ========================================= */
+/* A flex child of the fixed viewport shell, below the workspace.
+   flex-shrink:0 keeps it at exactly 160px regardless of viewport height.
+   box-sizing:border-box includes the border-top:1px in that 160px so
+   body-grid receives the remaining space without 1px leakage. */
 .ras-timeline {
-  /* XLII-D: removed position:sticky — sticky inside overflow:hidden causes
-     Chrome to pull the element out of the flex flow, so body-grid gets
-     all the height and an 180px gap appears. position:relative keeps the
-     timeline as a normal 180px flex child. */
   position: relative;
   z-index: 40;
-  height: 180px;
-  /* XLII-G: border-box so border-top:1px and padding-bottom:env(...)
-     are INCLUDED in height:180px. Timeline outer = always exactly 180px,
-     matching --ras-timeline-h used in the body-grid and panel height
-     formulas. Without this, border-top added 1px outside the 180px,
-     shrinking body-grid by 1px and misaligning panel heights. */
+  height: 160px;
+  flex-shrink: 0;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   background: rgba(3, 3, 3, 0.98);
   border-top: 1px solid var(--neon-gold-dim);
   box-shadow: 0 0 15px var(--neon-gold-shadow), inset 0 0 10px rgba(0, 0, 0, 0.8);
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .ras-timeline-header {
@@ -535,180 +510,92 @@ body:has(.ras-amr-viewport) {
   box-shadow: 0 0 18px var(--neon-gold-shadow);
 }
 
-/* ========================================= */
-/* PHASE H1: MEDIUM VIEWPORT (900–1199px)    */
-/* ========================================= */
-/* XLII-D: Windows laptops at 125% DPI scaling (common for 1366×768 displays)
-   report a CSS viewport of ~1093px — inside the old 681–1199px tablet zone.
-   That triggered the horizontal-strip two-row layout even though the screen
-   physically had plenty of room. Fix: reserve the two-row layout for true
-   narrow viewports (≤899px); at 900–1199px keep the three-column desktop
-   layout with slightly narrower sidebars so the center column stays workable
-   (≥460px). Panel heights from the base rule are unchanged and still correct. */
-@media (max-width: 1199px) and (min-width: 900px) {
-  /* Narrower sidebars at medium viewports (e.g. Windows 125% DPI → ~1093px).
-     body-grid stays display:flex; only sidebar widths change. */
-  .ras-panel-left { flex-basis: 220px; }
-  .ras-panel-right { flex-basis: 240px; }
+/* ═══════════════════════════════════════════════════════════════
+   SOVEREIGN RESPONSIVE STRATEGY — XLII-J
+   Clean, non-overlapping breakpoints. Each range is deliberate.
+   No breakpoint inherits conflicting rules from another range.
+
+   ≥ 1200px   Wide desktop    — 260px / 300px rails
+   900–1199px Narrow desktop  — 180px / 200px rails (125% DPI laptops)
+   400–899px  Compact 3-col  — 120px rails, 3 columns always visible
+                                HP Win10 150% DPI (471px) lives here
+   < 400px    Phone           — single column, intentional stack
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Wide desktop (≥ 1200px) ─────────────────────────────────── */
+@media (min-width: 1200px) {
+  .ras-panel-left  { flex-basis: 260px; }
+  .ras-panel-right { flex-basis: 300px; }
 }
 
-/* ========================================= */
-/* PHASE H2: TABLET (899px > width >= 681px) */
-/* ========================================= */
-@media (max-width: 899px) and (min-width: 681px) {
-  /* Two-row layout for true tablet viewports. Switch back to display:grid here
-     because we need a two-row structure (left panel spans full width on row 1,
-     center + right share row 2). The first row is 180px (definite — no fr quirk),
-     the second row is 1fr which resolves correctly because the grid container has
-     an explicit height (inherited from the base .ras-body-grid rule). */
-  .ras-body-grid {
-    display: grid;
-    grid-template-columns: 1fr 280px;
-    grid-template-rows: 180px 1fr;
-  }
-  .ras-panel-left {
-    flex: none;              /* cancel flex shorthand from base rule */
-    grid-column: 1 / -1;
-    grid-row: 1;
-    height: 180px;
-    flex-direction: row;
-    overflow-x: auto;
-    overflow-y: hidden;
-    border-radius: 12px;
-  }
-  .ras-panel-left .queue-container {
-    flex-direction: row;
-    overflow-x: auto;
-    overflow-y: hidden;
-    flex: 1;
-  }
-  .ras-panel-left .queue-item-card {
-    min-width: 160px;
-    flex-shrink: 0;
-  }
-  .ras-center { grid-column: 1; grid-row: 2; height: auto; }
-  .ras-panel-right {
-    flex: none;              /* cancel flex shorthand from base rule */
-    grid-column: 2;
-    grid-row: 2;
-    height: calc(100dvh - var(--ras-header-h) - var(--ras-timeline-h) - var(--ras-banner-h) - var(--ras-grid-pad) * 2 - 180px - 8px);
-  }
+/* ── Narrow desktop (900–1199px) ─────────────────────────────── */
+/* Covers Windows 125% DPI laptops (~1093px CSS px at 1366×768). */
+@media (min-width: 900px) and (max-width: 1199px) {
+  .ras-panel-left  { flex-basis: 180px; }
+  .ras-panel-right { flex-basis: 200px; }
 }
 
-/* ========================================= */
-/* PHASE I: MOBILE (≤ 680px)                 */
-/* ========================================= */
-@media (max-width: 680px) {
-  /* XLII-E: viewport stays at 100dvh — no outer page scroll or white scrollbar.
-     Previous rule used height:auto + min-height:100dvh which allowed the
-     viewport to grow beyond the visible browser window and caused a 744px
-     shell inside a 431px viewport. */
+/* ── Compact 3-column (400–899px) ───────────────────────────────
+   Three columns always visible. Rails narrow to 120px each.
+   HP Win10 at 150% DPI reports ~471px CSS width — lives here.
+   Math at 471px: 471 - 12(pad) - 12(gap) - 120 - 120 = 207px center */
+@media (min-width: 400px) and (max-width: 899px) {
+  .ras-body-grid { padding: 6px 6px 0; gap: 6px; }
+  .ras-panel-left  { flex-basis: 120px; border-radius: 12px; }
+  .ras-panel-right { flex-basis: 120px; border-radius: 12px; }
+  .ras-header { padding: 0 10px; gap: 8px; }
+  .ras-timeline { height: 130px; }
+}
+
+/* ── Phone / narrow viewport (< 400px) ──────────────────────────
+   Intentional single-column stack. Timeline is compact and sticky. */
+@media (max-width: 399px) {
   .ras-amr-viewport {
-    height: 100dvh;
-    overflow: hidden;
-  }
-  .ras-header { height: auto; min-height: 52px; flex-wrap: wrap; padding: 8px 12px; gap: 8px; }
-  .ras-header-name { font-size: 12px; }
-  .ras-render-btn { font-size: 10px; padding: 5px 10px; }
-
-  /* XLII-E: columns stack vertically and scroll inside body-grid.
-     Previous rule used grid-template-columns:1fr on a display:flex container
-     (no effect) and kept flex-direction:row, so panels 280px+300px=580px
-     overflowed the 440px container and center collapsed to 0px. */
-  .ras-body-grid {
-    flex: 1;                 /* fill workspace height (cancel flex:none) */
-    flex-direction: column;  /* stack panels vertically */
-    overflow-y: auto;
-    overflow-x: hidden;
+    position: relative;   /* let the page scroll on tiny phones */
+    min-height: 100dvh;
+    inset: auto;
+    width: 100%;
     height: auto;
-    min-height: 0;
-    padding: 6px;
+  }
+  .ras-header {
+    height: auto;
+    min-height: 48px;
+    flex-wrap: wrap;
+    padding: 6px 10px;
     gap: 6px;
   }
-
-  /* XLII-E: panels become full-width stacked blocks — cancel the
-     flex-basis:280px/300px that forced side-by-side overflow. */
-  .ras-panel-left,
-  .ras-panel-right {
-    flex: 0 0 auto;
-    width: 100%;
-    height: auto;
+  .ras-body-grid {
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 6px;
+    gap: 6px;
+    flex: none;
     min-height: 0;
   }
-  .ras-panel-left { min-height: 200px; }
-  .ras-panel-right { min-height: 300px; }
-  .ras-center {
-    flex: 0 0 auto;
+  .ras-panel-left,
+  .ras-panel-right {
+    flex: none;
     width: 100%;
-    min-height: 280px;
+    height: auto;
+    min-height: 180px;
+    border-radius: 12px;
+  }
+  .ras-center {
+    flex: none;
+    width: 100%;
+    min-height: 260px;
     height: auto;
     overflow-y: visible;
   }
-
-  .ras-timeline { position: sticky; bottom: 0; height: auto; min-height: 140px; }
-  .ras-timeline-ruler { margin: 0 52px; }
-}
-
-/* ============================================== */
-/* PHASE I2: COMPACT 3-COLUMN (400 – 680px)      */
-/* Must come AFTER Phase I (max-width:680px) so   */
-/* these rules override the mobile stacking.      */
-/* Applies to narrow-but-non-phone viewports:     */
-/* HP Win10 at 150% DPI, Chrome half-screen snap, */
-/* any viewport between 400px and 680px wide.     */
-/* Three chambers must be simultaneously visible. */
-/* ============================================== */
-@media (min-width: 400px) and (max-width: 680px) {
-  /* Header: single-row, never wraps, stays at 52px */
-  .ras-header {
-    height: 52px;
-    flex-wrap: nowrap;
-    overflow: hidden;
-    padding: 0 8px;
-    gap: 6px;
-  }
-
-  /* Body-grid: restore 3-column row layout */
-  .ras-body-grid {
-    flex-direction: row;
-    overflow: hidden;
-    height: auto;         /* flex:1 on body-grid governs height */
-    padding: 6px 6px 0;
-    gap: 6px;
-  }
-
-  /* Panels: narrow fixed-width columns (130px each) that fit
-     the 400-680px viewport without overflowing center.
-     At 471px: 471 - 12(pad) - 12(gap) - 130 - 130 = 187px center. */
-  .ras-panel-left,
-  .ras-panel-right {
-    flex: 0 0 130px;
-    width: 130px;
-    height: auto;
-    min-height: 0;
-    align-self: stretch;
-  }
-  .ras-panel-left  { min-height: 0; }
-  .ras-panel-right { flex-basis: 130px; min-height: 0; }
-
-  /* Center: flex:1 fills remaining horizontal space */
-  .ras-center {
-    flex: 1;
-    width: auto;
-    min-width: 0;
-    min-height: 0;
-    height: auto;
-    align-self: stretch;
-    overflow-y: auto;
-  }
-
-  /* Timeline: compact height, out of sticky mode.
-     140px here vs 180px desktop — extra 40px goes to the panels. */
   .ras-timeline {
-    position: relative;
-    height: 140px;
-    min-height: 0;
+    position: sticky;
+    bottom: 0;
+    height: auto;
+    min-height: 110px;
+    flex-shrink: 0;
   }
+  .ras-timeline-ruler { margin: 0 16px; }
 }
 
 /* ========================================= */
