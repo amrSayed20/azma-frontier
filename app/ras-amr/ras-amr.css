@@ -6,7 +6,7 @@
 :root {
   /* XLII-F: cache-bust token — forces a new CSS chunk hash so the
      browser downloads fresh CSS instead of the immutable-cached copy. */
-  --ras-cache-bust: xlii-h;
+  --ras-cache-bust: xlii-i;
   --chamber-bg: #020202;
   --panel-bg: rgba(10, 10, 10, 0.85);
   /* Sovereign Color System's own PALETTE.gold / --azma-gold-* */
@@ -647,6 +647,68 @@ body:has(.ras-amr-viewport) {
 
   .ras-timeline { position: sticky; bottom: 0; height: auto; min-height: 140px; }
   .ras-timeline-ruler { margin: 0 52px; }
+}
+
+/* ============================================== */
+/* PHASE I2: COMPACT 3-COLUMN (400 – 680px)      */
+/* Must come AFTER Phase I (max-width:680px) so   */
+/* these rules override the mobile stacking.      */
+/* Applies to narrow-but-non-phone viewports:     */
+/* HP Win10 at 150% DPI, Chrome half-screen snap, */
+/* any viewport between 400px and 680px wide.     */
+/* Three chambers must be simultaneously visible. */
+/* ============================================== */
+@media (min-width: 400px) and (max-width: 680px) {
+  /* Header: single-row, never wraps, stays at 52px */
+  .ras-header {
+    height: 52px;
+    flex-wrap: nowrap;
+    overflow: hidden;
+    padding: 0 8px;
+    gap: 6px;
+  }
+
+  /* Body-grid: restore 3-column row layout */
+  .ras-body-grid {
+    flex-direction: row;
+    overflow: hidden;
+    height: auto;         /* flex:1 on body-grid governs height */
+    padding: 6px 6px 0;
+    gap: 6px;
+  }
+
+  /* Panels: narrow fixed-width columns (130px each) that fit
+     the 400-680px viewport without overflowing center.
+     At 471px: 471 - 12(pad) - 12(gap) - 130 - 130 = 187px center. */
+  .ras-panel-left,
+  .ras-panel-right {
+    flex: 0 0 130px;
+    width: 130px;
+    height: auto;
+    min-height: 0;
+    align-self: stretch;
+  }
+  .ras-panel-left  { min-height: 0; }
+  .ras-panel-right { flex-basis: 130px; min-height: 0; }
+
+  /* Center: flex:1 fills remaining horizontal space */
+  .ras-center {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+    min-height: 0;
+    height: auto;
+    align-self: stretch;
+    overflow-y: auto;
+  }
+
+  /* Timeline: compact height, out of sticky mode.
+     140px here vs 180px desktop — extra 40px goes to the panels. */
+  .ras-timeline {
+    position: relative;
+    height: 140px;
+    min-height: 0;
+  }
 }
 
 /* ========================================= */
