@@ -4,6 +4,9 @@
  */
 
 :root {
+  /* XLII-F: cache-bust token — forces a new CSS chunk hash so the
+     browser downloads fresh CSS instead of the immutable-cached copy. */
+  --ras-cache-bust: xlii-f;
   --chamber-bg: #020202;
   --panel-bg: rgba(10, 10, 10, 0.85);
   /* Sovereign Color System's own PALETTE.gold / --azma-gold-* */
