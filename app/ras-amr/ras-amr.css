@@ -1,75 +1,69 @@
 /**
  * AZMA OS – Ras Al-Amr Chamber (Hollywood Master Director Console Layout)
  * File: app/ras-amr/ras-amr.css
+ *
+ * CHAMBER REBIRTH — Grid Shell Architecture
+ * Viewport: CSS Grid with explicit row assignments.
+ * No height calc() formulas. No dvh dependencies.
+ * No flex min-height tricks. Panels fill by grid definition.
  */
 
 :root {
-  /* XLII-F: cache-bust token — forces a new CSS chunk hash so the
-     browser downloads fresh CSS instead of the immutable-cached copy. */
-  --ras-cache-bust: xlii-j;
-  --chamber-bg: #020202;
-  --panel-bg: rgba(10, 10, 10, 0.85);
-  /* Sovereign Color System's own PALETTE.gold / --azma-gold-* */
+  /* REBIRTH: cache-bust forces new CSS chunk hash */
+  --ras-cache-bust: rebirth-1;
+
+  /* ── Sovereign palette ──────────────────────── */
+  --chamber-bg: #050507;
+  --panel-bg: rgba(9, 9, 12, 0.94);
+  --workspace-bg: rgba(6, 6, 8, 0.98);
+  --timeline-bg: rgba(3, 3, 5, 0.99);
+  --header-bg: rgba(4, 4, 6, 0.97);
+
+  /* Gold system */
   --neon-gold-primary: var(--azma-gold-6);
   --neon-gold-dim: var(--azma-gold-3);
-  /* Distinct, more saturated bright highlight (not an imperial-gold value —
-     --azma-gold-8 is #F5D978). Kept unchanged; registered through the
-     constitutionally permitted per-chamber override slot instead of left
-     anonymous (EXTENSION.overridable, tokens.ts). */
-  --neon-gold-bright: #FFD700;
-  --neon-gold-shadow: rgba(255, 215, 0, 0.25);
-  --neon-gold-heavy-shadow: rgba(255, 215, 0, 0.6);
-  --azma-accent: 255, 215, 0;
-  --azma-accent-color: #FFD700;
+  --neon-gold-bright: #D4AF37;
+  --neon-gold-shadow: rgba(212, 175, 55, 0.22);
+  --neon-gold-heavy-shadow: rgba(212, 175, 55, 0.55);
+  --neon-gold-border: rgba(212, 175, 55, 0.18);
+  --neon-gold-border-strong: rgba(212, 175, 55, 0.38);
+  --azma-accent: 212, 175, 55;
+  --azma-accent-color: #D4AF37;
 
-  /* Restored from pure white / iOS system gray to the Sovereign Color
-     System's gold-register text hierarchy — "Text is never white"
-     (tokens.ts PALETTE.text). This is the one visible change in this
-     chamber's color reconnection; see Engineering Report. */
+  /* Text */
   --text-main: var(--azma-text-primary);
   --text-muted: var(--azma-text-muted);
   --os-surface-elevated: #0d0d0d;
   --os-surface-highlight: #151515;
 
-  /* XLII-C: App-shell height ledger — single source of truth for all
-     explicit height calculations that bypass fr-in-flex resolution quirks. */
-  --ras-header-h: 52px;
-  --ras-timeline-h: 180px;
-  --ras-grid-pad: 8px;
-  --ras-banner-h: 0px;   /* overridden below when template banner is visible */
+  /* Grid row heights */
+  --ras-header-row: 52px;
+  --ras-timeline-row: 120px;
 }
 
-/* XLII-C: When the template banner is present it consumes ~37px of viewport
-   height as a flex sibling of the body-grid. Update the ledger so panel
-   height calculations account for it automatically. */
-.ras-amr-viewport:has(.ras-template-banner) {
-  --ras-banner-h: 37px;
-}
-
-/* XLII-E: scoped body reset — ensures the chamber shell sits flush
-   against the browser chrome regardless of any global body margin. */
+/* Scoped body reset */
 body:has(.ras-amr-viewport) {
   margin: 0;
   padding: 0;
   overflow: hidden;
 }
 
-/* ========================================= */
-/* PHASE A: SOVEREIGN VIEWPORT SHELL         */
-/* ========================================= */
-/* position:fixed + inset:0 pins the chamber to the EXACT browser viewport
-   boundary with no reliance on dvh/vh calculations that diverge from the
-   true viewport under DPI scaling, Chrome zoom, or taskbar constraints.
-   All three regions (header, body-grid, timeline) are flex children of this
-   fixed shell. Internal scrolling only — the page itself never scrolls. */
+/* ═══════════════════════════════════════════════════════════════
+   CHAMBER SHELL — CSS GRID
+   Four rows: header | workspace | [template banner] | timeline
+   Explicit grid-row on every child eliminates auto-placement
+   conflicts. 1fr fills EXACTLY the available vertical space —
+   no flex min-height tricks required.
+   ═══════════════════════════════════════════════════════════════ */
 
 .ras-amr-viewport {
   position: fixed;
-  inset: 0;              /* top:0; right:0; bottom:0; left:0 */
-  display: flex;
-  flex-direction: column;
+  inset: 0;
+  display: grid;
+  grid-template-rows: var(--ras-header-row) 1fr auto var(--ras-timeline-row);
+  grid-template-columns: 1fr;
   overflow: hidden;
-  background-color: var(--chamber-bg);
+  background: var(--chamber-bg);
   color: var(--text-main);
   font-family: var(--azma-font-family);
   direction: rtl;
@@ -90,28 +84,23 @@ body:has(.ras-amr-viewport) {
   border-radius: 4px;
 }
 
-/* ========================================= */
-/* PHASE B: STICKY HEADER                    */
-/* ========================================= */
+/* ═══════════════════════════════════════════════
+   HEADER — Grid Row 1
+   ═══════════════════════════════════════════════ */
 .ras-header {
-  /* XLII-D: position:sticky removed — sticky inside overflow:hidden on
-     the flex container causes Chrome to pull this element out of the
-     flex flow (same issue as .ras-timeline). Since the viewport can't
-     scroll, position:relative is visually identical and keeps the header
-     as a normal 52px flex child so flex:1 on body-grid allocates the
-     correct remaining height. */
-  position: relative;
+  grid-row: 1;
+  grid-column: 1;
   z-index: 50;
-  background: rgba(2, 2, 2, 0.96);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--neon-gold-dim);
-  height: 52px;
+  position: relative;
+  background: var(--header-bg);
+  backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--neon-gold-border-strong);
+  height: var(--ras-header-row);
   display: flex;
   align-items: center;
   padding: 0 16px;
   gap: 10px;
-  flex-shrink: 0;
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 1px 0 var(--neon-gold-border), 0 2px 20px rgba(0,0,0,0.8);
 }
 
 .ras-exit-btn {
@@ -220,52 +209,57 @@ body:has(.ras-amr-viewport) {
 .ras-render-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .ras-render-btn.rendering { opacity: 0.7; animation: pulseOpacity 1s infinite alternate; }
 
-/* ========================================= */
-/* PHASE C: WORKSPACE (3-COLUMN COMMAND ROOM)*/
-/* ========================================= */
-/* body-grid is a flex child of the fixed viewport shell. flex:1 makes it
-   consume ALL space between the header and timeline — no dvh math needed.
-   align-items:stretch (default) ensures all three columns fill this height
-   without explicit heights on the children. */
-
+/* ═══════════════════════════════════════════════
+   WORKSPACE BODY — Grid Row 2
+   The grid row is 1fr: it fills EXACTLY the space
+   between header and timeline. No min-height needed.
+   ═══════════════════════════════════════════════ */
 .ras-body-grid {
+  grid-row: 2;
+  grid-column: 1;
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  gap: 8px;
-  padding: 8px 8px 0;
-  flex: 1;
-  min-height: 0;
   overflow: hidden;
-  box-sizing: border-box;
   position: relative;
   z-index: 10;
+  /* No gap here — dividers are border-inline on panels */
 }
 
-/* Command Rail (left) and Intelligence Rail (right) */
-.ras-panel-left,
-.ras-panel-right {
+/* ── Command Rail (left) ─────────────────────── */
+.ras-panel-left {
   flex: 0 0 220px;
   min-width: 0;
-  min-height: 0;
   box-sizing: border-box;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   background: var(--panel-bg);
-  border-radius: 16px;
-  backdrop-filter: blur(25px);
+  border-inline-end: 1px solid var(--neon-gold-border);
 }
 
-/* Main Command Workspace (center) */
+/* ── Intelligence Rail (right) ──────────────── */
+.ras-panel-right {
+  flex: 0 0 240px;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg);
+  border-inline-start: 1px solid var(--neon-gold-border);
+}
+
+/* ── Main Workspace (center — dominant) ─────── */
 .ras-center {
   flex: 1;
   min-width: 0;
-  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0;
   overflow-y: auto;
+  background: var(--workspace-bg);
+  box-shadow: inset 0 0 40px rgba(212, 175, 55, 0.04);
 }
 
 /* ========================================= */
@@ -433,24 +427,32 @@ body:has(.ras-amr-viewport) {
   color-scheme: dark;
 }
 
-/* ========================================= */
-/* PHASE G: TIMELINE / EXECUTION REGION      */
-/* ========================================= */
-/* A flex child of the fixed viewport shell, below the workspace.
-   flex-shrink:0 keeps it at exactly 160px regardless of viewport height.
-   box-sizing:border-box includes the border-top:1px in that 160px so
-   body-grid receives the remaining space without 1px leakage. */
+/* ═══════════════════════════════════════════════
+   TEMPLATE BANNER — Grid Row 3 (auto-height)
+   Collapses to 0 when not rendered.
+   ═══════════════════════════════════════════════ */
+.ras-template-structure {
+  grid-row: 3;
+  grid-column: 1;
+  z-index: 30;
+}
+
+/* ═══════════════════════════════════════════════
+   TIMELINE / EXECUTION — Grid Row 4
+   Exact height from --ras-timeline-row variable.
+   No flex-shrink needed — grid row controls it.
+   ═══════════════════════════════════════════════ */
 .ras-timeline {
+  grid-row: 4;
+  grid-column: 1;
   position: relative;
   z-index: 40;
-  height: 160px;
-  flex-shrink: 0;
-  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  background: rgba(3, 3, 3, 0.98);
-  border-top: 1px solid var(--neon-gold-dim);
-  box-shadow: 0 0 15px var(--neon-gold-shadow), inset 0 0 10px rgba(0, 0, 0, 0.8);
+  background: var(--timeline-bg);
+  border-top: 2px solid var(--neon-gold-border-strong);
+  box-shadow: 0 -4px 20px rgba(212, 175, 55, 0.08), inset 0 0 12px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
 }
 
 .ras-timeline-header {
@@ -511,67 +513,72 @@ body:has(.ras-amr-viewport) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SOVEREIGN RESPONSIVE STRATEGY — XLII-J
-   Clean, non-overlapping breakpoints. Each range is deliberate.
-   No breakpoint inherits conflicting rules from another range.
+   CHAMBER REBIRTH — RESPONSIVE COMPOSITIONS
+   Three deliberate compositions. Breakpoints are intentions,
+   not emergency patches. Grid shell adapts per composition.
 
-   ≥ 1200px   Wide desktop    — 260px / 300px rails
-   900–1199px Narrow desktop  — 180px / 200px rails (125% DPI laptops)
-   400–899px  Compact 3-col  — 120px rails, 3 columns always visible
-                                HP Win10 150% DPI (471px) lives here
-   < 400px    Phone           — single column, intentional stack
+   Desktop (≥ 900px)  — Full command room. Wide rails.
+   Compact (400–899px) — 3-col narrow. HP 150% DPI (471px) is here.
+   Phone   (< 400px)  — Scroll stack. Timeline sticky.
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Wide desktop (≥ 1200px) ─────────────────────────────────── */
+/* ── Desktop wide (≥ 1200px) ──────────────────────────────────── */
 @media (min-width: 1200px) {
   .ras-panel-left  { flex-basis: 260px; }
-  .ras-panel-right { flex-basis: 300px; }
+  .ras-panel-right { flex-basis: 280px; }
 }
 
-/* ── Narrow desktop (900–1199px) ─────────────────────────────── */
-/* Covers Windows 125% DPI laptops (~1093px CSS px at 1366×768). */
+/* ── Desktop standard (900–1199px) ──────────────────────────────
+   125% DPI Windows laptops report ~1093px CSS width → lives here. */
 @media (min-width: 900px) and (max-width: 1199px) {
-  .ras-panel-left  { flex-basis: 180px; }
-  .ras-panel-right { flex-basis: 200px; }
+  .ras-panel-left  { flex-basis: 200px; }
+  .ras-panel-right { flex-basis: 220px; }
 }
 
 /* ── Compact 3-column (400–899px) ───────────────────────────────
-   Three columns always visible. Rails narrow to 120px each.
-   HP Win10 at 150% DPI reports ~471px CSS width — lives here.
-   Math at 471px: 471 - 12(pad) - 12(gap) - 120 - 120 = 207px center */
+   Rails narrow to 110px each. Center stays dominant.
+   HP Win10 150% DPI (471px CSS width) lives in this range.
+   At 471px: 471 - 110 - 110 = 251px center (workable).
+   Timeline shrinks to 100px to give workspace more height. */
 @media (min-width: 400px) and (max-width: 899px) {
-  .ras-body-grid { padding: 6px 6px 0; gap: 6px; }
-  .ras-panel-left  { flex-basis: 120px; border-radius: 12px; }
-  .ras-panel-right { flex-basis: 120px; border-radius: 12px; }
-  .ras-header { padding: 0 10px; gap: 8px; }
-  .ras-timeline { height: 130px; }
+  .ras-amr-viewport {
+    --ras-timeline-row: 100px;
+    grid-template-rows: var(--ras-header-row) 1fr auto var(--ras-timeline-row);
+  }
+  .ras-panel-left  { flex-basis: 110px; }
+  .ras-panel-right { flex-basis: 110px; }
+  .ras-header { padding: 0 8px; gap: 6px; }
+  .ras-timeline-ruler { margin: 0 8px; }
 }
 
-/* ── Phone / narrow viewport (< 400px) ──────────────────────────
-   Intentional single-column stack. Timeline is compact and sticky. */
+/* ── Phone (< 400px) ─────────────────────────────────────────────
+   Single-column intentional stack. Chamber scrolls. */
 @media (max-width: 399px) {
   .ras-amr-viewport {
-    position: relative;   /* let the page scroll on tiny phones */
-    min-height: 100dvh;
+    position: relative;
     inset: auto;
     width: 100%;
+    min-height: 100dvh;
     height: auto;
+    display: flex;
+    flex-direction: column;
   }
   .ras-header {
+    grid-row: unset;
     height: auto;
     min-height: 48px;
     flex-wrap: wrap;
     padding: 6px 10px;
     gap: 6px;
+    flex-shrink: 0;
   }
   .ras-body-grid {
+    grid-row: unset;
     flex-direction: column;
-    overflow-y: auto;
+    overflow-y: visible;
     overflow-x: hidden;
-    padding: 6px;
-    gap: 6px;
     flex: none;
-    min-height: 0;
+    height: auto;
   }
   .ras-panel-left,
   .ras-panel-right {
@@ -579,7 +586,8 @@ body:has(.ras-amr-viewport) {
     width: 100%;
     height: auto;
     min-height: 180px;
-    border-radius: 12px;
+    border-inline: none;
+    border-block: 1px solid var(--neon-gold-border);
   }
   .ras-center {
     flex: none;
@@ -588,14 +596,16 @@ body:has(.ras-amr-viewport) {
     height: auto;
     overflow-y: visible;
   }
+  .ras-template-structure { grid-row: unset; }
   .ras-timeline {
+    grid-row: unset;
+    flex-shrink: 0;
+    height: auto;
+    min-height: 100px;
     position: sticky;
     bottom: 0;
-    height: auto;
-    min-height: 110px;
-    flex-shrink: 0;
   }
-  .ras-timeline-ruler { margin: 0 16px; }
+  .ras-timeline-ruler { margin: 0 8px; }
 }
 
 /* ========================================= */

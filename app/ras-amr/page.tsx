@@ -3463,6 +3463,11 @@ export default function RasAmrChamber() {
     <RasAmrExperience>
     <main className={`ras-amr-viewport ${injectionFlash ? 'neon-flash-active' : ''}`}>
 
+      {/* REBIRTH DIAGNOSTIC MARKER — remove after visual proof confirmed */}
+      <div style={{position:'fixed',top:0,left:0,right:0,zIndex:9999,background:'#D4AF37',color:'#050507',fontSize:'11px',fontFamily:'monospace',padding:'2px 8px',textAlign:'center',pointerEvents:'none',letterSpacing:'1px'}}>
+        RAS AL AMR — CHAMBER REBIRTH-1 — GRID SHELL DEPLOYED
+      </div>
+
       {/* Neon atmosphere — fixed behind all content */}
       <div className="neon-layer">
         <div className="cyber-grid" />
