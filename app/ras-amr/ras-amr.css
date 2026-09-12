@@ -43,6 +43,14 @@
   --ras-banner-h: 37px;
 }
 
+/* XLII-E: scoped body reset — ensures the chamber shell sits flush
+   against the browser chrome regardless of any global body margin. */
+body:has(.ras-amr-viewport) {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 /* ========================================= */
 /* PHASE A: ROOT SCROLL ARCHITECTURE         */
 /* ========================================= */
@@ -81,8 +89,13 @@
 /* PHASE B: STICKY HEADER                    */
 /* ========================================= */
 .ras-header {
-  position: sticky;
-  top: 0;
+  /* XLII-D: position:sticky removed — sticky inside overflow:hidden on
+     the flex container causes Chrome to pull this element out of the
+     flex flow (same issue as .ras-timeline). Since the viewport can't
+     scroll, position:relative is visually identical and keeps the header
+     as a normal 52px flex child so flex:1 on body-grid allocates the
+     correct remaining height. */
+  position: relative;
   z-index: 50;
   background: rgba(2, 2, 2, 0.96);
   backdrop-filter: blur(20px);
@@ -570,35 +583,51 @@
 /* PHASE I: MOBILE (≤ 680px)                 */
 /* ========================================= */
 @media (max-width: 680px) {
-  /* XLII-A: revert to stacked scrolling layout on mobile — viewport scrolls
-     as a page, panels are auto-height stacked. */
+  /* XLII-E: viewport stays at 100dvh — no outer page scroll or white scrollbar.
+     Previous rule used height:auto + min-height:100dvh which allowed the
+     viewport to grow beyond the visible browser window and caused a 744px
+     shell inside a 431px viewport. */
   .ras-amr-viewport {
-    height: auto;
-    min-height: 100dvh;
-    overflow-y: auto;
-    overflow-x: hidden;
+    height: 100dvh;
+    overflow: hidden;
   }
   .ras-header { height: auto; min-height: 52px; flex-wrap: wrap; padding: 8px 12px; gap: 8px; }
   .ras-header-name { font-size: 12px; }
   .ras-render-btn { font-size: 10px; padding: 5px 10px; }
 
+  /* XLII-E: columns stack vertically and scroll inside body-grid.
+     Previous rule used grid-template-columns:1fr on a display:flex container
+     (no effect) and kept flex-direction:row, so panels 280px+300px=580px
+     overflowed the 440px container and center collapsed to 0px. */
   .ras-body-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: none;   /* reset 1fr row — stacked layout uses content height */
-    flex: none;
-    height: auto;               /* clear XLII-D explicit height — mobile uses content height */
-    min-height: auto;
-    overflow: visible;
+    flex: 1;                 /* fill workspace height (cancel flex:none) */
+    flex-direction: column;  /* stack panels vertically */
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: auto;
+    min-height: 0;
     padding: 6px;
     gap: 6px;
   }
-  .ras-panel-left, .ras-panel-right {
+
+  /* XLII-E: panels become full-width stacked blocks — cancel the
+     flex-basis:280px/300px that forced side-by-side overflow. */
+  .ras-panel-left,
+  .ras-panel-right {
+    flex: 0 0 auto;
+    width: 100%;
     height: auto;
     min-height: 0;
   }
   .ras-panel-left { min-height: 200px; }
   .ras-panel-right { min-height: 300px; }
-  .ras-center { height: auto; min-height: 280px; overflow-y: visible; }
+  .ras-center {
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 280px;
+    height: auto;
+    overflow-y: visible;
+  }
 
   .ras-timeline { position: sticky; bottom: 0; height: auto; min-height: 140px; }
   .ras-timeline-ruler { margin: 0 52px; }
