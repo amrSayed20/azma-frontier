@@ -6,7 +6,7 @@
 :root {
   /* XLII-F: cache-bust token — forces a new CSS chunk hash so the
      browser downloads fresh CSS instead of the immutable-cached copy. */
-  --ras-cache-bust: xlii-f;
+  --ras-cache-bust: xlii-g;
   --chamber-bg: #020202;
   --panel-bg: rgba(10, 10, 10, 0.85);
   /* Sovereign Color System's own PALETTE.gold / --azma-gold-* */
@@ -254,8 +254,13 @@ body:has(.ras-amr-viewport) {
      flex:1 and an explicit height with box-sizing:border-box — the panel's
      cross-axis collapses to content height. Setting the height directly on
      the panels eliminates the stretch dependency. The -8px accounts for
-     body-grid's padding-top:8px (padding-bottom is 0). */
+     body-grid's padding-top:8px (padding-bottom is 0).
+     XLII-G: box-sizing:border-box added so the 1px border from .neon-border
+     is INCLUDED in the height formula (not added on top). Without this, the
+     panel outer height exceeded the body-grid content area by 2px, causing
+     overflow:hidden to clip the bottom of the panels. */
   height: calc(100dvh - var(--ras-header-h) - var(--ras-timeline-h) - var(--ras-banner-h) - 8px);
+  box-sizing: border-box;
   min-height: 0;
   overflow: hidden;
   display: flex;
@@ -456,6 +461,12 @@ body:has(.ras-amr-viewport) {
   position: relative;
   z-index: 40;
   height: 180px;
+  /* XLII-G: border-box so border-top:1px and padding-bottom:env(...)
+     are INCLUDED in height:180px. Timeline outer = always exactly 180px,
+     matching --ras-timeline-h used in the body-grid and panel height
+     formulas. Without this, border-top added 1px outside the 180px,
+     shrinking body-grid by 1px and misaligning panel heights. */
+  box-sizing: border-box;
   background: rgba(3, 3, 3, 0.98);
   border-top: 1px solid var(--neon-gold-dim);
   box-shadow: 0 0 15px var(--neon-gold-shadow), inset 0 0 10px rgba(0, 0, 0, 0.8);
