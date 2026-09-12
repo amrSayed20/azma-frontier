@@ -206,23 +206,23 @@
 /* PHASE C: DESKTOP BODY GRID                */
 /* ========================================= */
 .ras-body-grid {
-  display: grid;
-  grid-template-columns: 280px 1fr 300px;
-  grid-template-rows: 1fr;
+  /* XLII-D (final): display:flex instead of display:grid eliminates the
+     Chrome fr-in-flex quirk entirely. With display:grid + 1fr, Chrome
+     resolves the fr track against the center column's intrinsic content
+     height rather than the flex-allocated height, so both sidebars are
+     clipped short. With display:flex + flex-direction:row, align-items:stretch
+     (the default) stretches all three columns to the container's full height
+     directly — no fr unit, no quirk, no clipping.
+     display:grid is restored inside the tablet media query where a two-row
+     layout with definite 180px first row is needed. */
+  display: flex;
+  flex-direction: row;
   gap: 8px;
   padding: 8px;
   flex: 1;
   min-height: 0;
-  /* XLII-D: explicit height makes the grid's block size definite for the CSS
-     Grid track-sizing algorithm. Without it, Chrome's fr-in-flex quirk causes
-     the 1fr row to resolve to the center column's intrinsic content height
-     (~270px) rather than the flex-allocated height (~366px at 125% DPI).
-     Result: panels overflow the incorrectly-sized 1fr track, the grid's
-     overflow:hidden clips the bottom ~96px of every sidebar, and container
-     query cqh units inside composition-surface resolve to zero.
-     The explicit height value equals what flex:1 would produce anyway, so
-     rendered size is unchanged — the only effect is providing a "definite"
-     block size for the grid engine and container query resolution. */
+  /* Explicit height so container-query cqh units resolve correctly inside
+     .composition-surface (container-type:size needs a definite block size). */
   height: calc(100dvh - var(--ras-header-h) - var(--ras-timeline-h) - var(--ras-banner-h));
   overflow: hidden;
   box-sizing: border-box;
@@ -232,19 +232,13 @@
 
 .ras-panel-left,
 .ras-panel-right {
-  /* XLII-C: Explicit height derived directly from the viewport ledger.
-     This is the definitive fix for the fr-in-flex Chrome quirk:
-     grid-template-rows:1fr inside a flex:1 container may resolve the
-     fr track to 0/auto rather than the container's flex-allocated height,
-     because CSS Grid track sizing runs before the flex algorithm has
-     committed the container's definite block size in Chrome.
-     With an explicit height here, the panel's internal flex chain
-     (panel-header flex-shrink:0 + queue-container flex:1 min-height:0
-     overflow-y:auto) resolves correctly and every panel element — including
-     the Vault import button — becomes visible.
-     The grid's overflow:hidden clips at the GRID CONTAINER boundary, which
-     is correctly sized by flex, so no panel content is lost to the container. */
-  height: calc(100dvh - var(--ras-header-h) - var(--ras-timeline-h) - var(--ras-banner-h) - var(--ras-grid-pad) * 2);
+  /* flex:0 0 <width> — fixed width, no grow/shrink.
+     Height comes from align-items:stretch on .ras-body-grid:
+     the panel stretches to the full cross-axis (vertical) of the flex row,
+     which equals body-grid's inner height. No explicit height formula needed
+     and no fr track to resolve — height is always correct regardless of
+     Chrome version or DPI scaling. */
+  flex: 0 0 280px;
   min-height: 0;
   overflow: hidden;
   display: flex;
@@ -254,7 +248,13 @@
   backdrop-filter: blur(25px);
 }
 
+.ras-panel-right {
+  flex-basis: 300px;
+}
+
 .ras-center {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -512,25 +512,30 @@
    layout with slightly narrower sidebars so the center column stays workable
    (≥460px). Panel heights from the base rule are unchanged and still correct. */
 @media (max-width: 1199px) and (min-width: 900px) {
-  .ras-body-grid {
-    grid-template-columns: 220px 1fr 240px;  /* narrower sidebars, wider center */
-  }
+  /* Narrower sidebars at medium viewports (e.g. Windows 125% DPI → ~1093px).
+     body-grid stays display:flex; only sidebar widths change. */
+  .ras-panel-left { flex-basis: 220px; }
+  .ras-panel-right { flex-basis: 240px; }
 }
 
 /* ========================================= */
 /* PHASE H2: TABLET (899px > width >= 681px) */
 /* ========================================= */
 @media (max-width: 899px) and (min-width: 681px) {
-  /* Two-row horizontal layout for true tablet viewports.
-     XLII-A: 180px definite first row so the horizontal strip resolves. */
+  /* Two-row layout for true tablet viewports. Switch back to display:grid here
+     because we need a two-row structure (left panel spans full width on row 1,
+     center + right share row 2). The first row is 180px (definite — no fr quirk),
+     the second row is 1fr which resolves correctly because the grid container has
+     an explicit height (inherited from the base .ras-body-grid rule). */
   .ras-body-grid {
+    display: grid;
     grid-template-columns: 1fr 280px;
     grid-template-rows: 180px 1fr;
   }
   .ras-panel-left {
+    flex: none;              /* cancel flex shorthand from base rule */
     grid-column: 1 / -1;
     grid-row: 1;
-    /* XLII-C: left panel occupies the definite 180px first row */
     height: 180px;
     flex-direction: row;
     overflow-x: auto;
@@ -549,10 +554,9 @@
   }
   .ras-center { grid-column: 1; grid-row: 2; }
   .ras-panel-right {
+    flex: none;              /* cancel flex shorthand from base rule */
     grid-column: 2;
     grid-row: 2;
-    /* XLII-C: right panel height = viewport minus header/timeline/banner/padding
-       minus the 180px first row and its 8px gap */
     height: calc(100dvh - var(--ras-header-h) - var(--ras-timeline-h) - var(--ras-banner-h) - var(--ras-grid-pad) * 2 - 180px - 8px);
   }
 }
