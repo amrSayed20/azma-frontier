@@ -232,13 +232,14 @@
 
 .ras-panel-left,
 .ras-panel-right {
-  /* flex:0 0 <width> — fixed width, no grow/shrink.
-     Height comes from align-items:stretch on .ras-body-grid:
-     the panel stretches to the full cross-axis (vertical) of the flex row,
-     which equals body-grid's inner height. No explicit height formula needed
-     and no fr track to resolve — height is always correct regardless of
-     Chrome version or DPI scaling. */
   flex: 0 0 280px;
+  /* XLII-D (definitive): explicit height bypasses align-items:stretch entirely.
+     Chrome on Windows 10 fails to stretch panels when body-grid has both
+     flex:1 and an explicit height with box-sizing:border-box — the panel's
+     cross-axis collapses to content height. Setting the height directly on
+     the panels eliminates the stretch dependency. The -8px accounts for
+     body-grid's padding-top:8px (padding-bottom is 0). */
+  height: calc(100dvh - var(--ras-header-h) - var(--ras-timeline-h) - var(--ras-banner-h) - 8px);
   min-height: 0;
   overflow: hidden;
   display: flex;
@@ -255,6 +256,7 @@
 .ras-center {
   flex: 1;
   min-width: 0;
+  height: calc(100dvh - var(--ras-header-h) - var(--ras-timeline-h) - var(--ras-banner-h) - 8px);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -431,8 +433,11 @@
 /* PHASE G: STICKY TIMELINE                  */
 /* ========================================= */
 .ras-timeline {
-  position: sticky;
-  bottom: 0;
+  /* XLII-D: removed position:sticky — sticky inside overflow:hidden causes
+     Chrome to pull the element out of the flex flow, so body-grid gets
+     all the height and an 180px gap appears. position:relative keeps the
+     timeline as a normal 180px flex child. */
+  position: relative;
   z-index: 40;
   height: 180px;
   background: rgba(3, 3, 3, 0.98);
@@ -552,7 +557,7 @@
     min-width: 160px;
     flex-shrink: 0;
   }
-  .ras-center { grid-column: 1; grid-row: 2; }
+  .ras-center { grid-column: 1; grid-row: 2; height: auto; }
   .ras-panel-right {
     flex: none;              /* cancel flex shorthand from base rule */
     grid-column: 2;
@@ -593,7 +598,7 @@
   }
   .ras-panel-left { min-height: 200px; }
   .ras-panel-right { min-height: 300px; }
-  .ras-center { min-height: 280px; overflow-y: visible; }
+  .ras-center { height: auto; min-height: 280px; overflow-y: visible; }
 
   .ras-timeline { position: sticky; bottom: 0; height: auto; min-height: 140px; }
   .ras-timeline-ruler { margin: 0 52px; }
