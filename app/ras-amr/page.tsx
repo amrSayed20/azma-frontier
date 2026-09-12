@@ -3463,11 +3463,6 @@ export default function RasAmrChamber() {
     <RasAmrExperience>
     <main className={`ras-amr-viewport ${injectionFlash ? 'neon-flash-active' : ''}`}>
 
-      {/* REBIRTH DIAGNOSTIC MARKER — remove after visual proof confirmed */}
-      <div style={{position:'fixed',top:0,left:0,right:0,zIndex:9999,background:'#D4AF37',color:'#050507',fontSize:'11px',fontFamily:'monospace',padding:'2px 8px',textAlign:'center',pointerEvents:'none',letterSpacing:'1px'}}>
-        RAS AL AMR — CHAMBER REBIRTH-1 — GRID SHELL DEPLOYED
-      </div>
-
       {/* Neon atmosphere — fixed behind all content */}
       <div className="neon-layer">
         <div className="cyber-grid" />
@@ -5177,16 +5172,29 @@ export default function RasAmrChamber() {
       <div className="ras-timeline">
         <div className="ras-timeline-header">
           <span className="neon-tag" style={{ margin: 0 }}>الخط الزمني</span>
-          {sessionCanvas && (<span className="spatial-current-state">{sessionCanvas.tracks.flatMap(t => t.nodes).length} طبقة</span>)}
-          {compiledGraph && compiledForAssetId === activeAsset?.id && (
-            <button className="ras-corridor-btn" onClick={handleForwardToMakman}>
-              ✦ التجميع مكتمل — انتقل إلى مكمن الغاية
-            </button>
+          <span className="ras-timeline-phase-label">
+            {compiledGraph && compiledForAssetId === activeAsset?.id
+              ? 'مكتمل'
+              : sessionCanvas && sessionCanvas.tracks.flatMap(t => t.nodes).length > 0
+                ? 'إخراج نشط'
+                : 'في انتظار الأصول'}
+          </span>
+          {sessionCanvas && sessionCanvas.tracks.flatMap(t => t.nodes).length > 0 && (
+            <span className="ras-timeline-node-count">
+              {sessionCanvas.tracks.flatMap(t => t.nodes).length} طبقة
+            </span>
           )}
+          <div className="ras-timeline-corridor-zone">
+            {compiledGraph && compiledForAssetId === activeAsset?.id && (
+              <button className="ras-corridor-btn" onClick={handleForwardToMakman}>
+                ✦ التجميع مكتمل — انتقل إلى مكمن الغاية
+              </button>
+            )}
+          </div>
         </div>
         {!sessionCanvas || sessionCanvas.tracks.flatMap(t => t.nodes).length === 0 ? (
-          <p className="timeline-empty-hint" style={{ padding: '0 14px' }}>
-            {!sessionCanvas ? 'أضف أصلاً لبدء الإخراج' : 'المشهد جاهز — أضف أصلك'}
+          <p className="timeline-empty-hint">
+            {!sessionCanvas ? 'أضف أصلاً من الخزانة لبدء الإخراج' : 'المشهد جاهز — اسحب أصلاً إلى اللوحة'}
           </p>
         ) : (
           <>

@@ -10,7 +10,7 @@
 
 :root {
   /* REBIRTH: cache-bust forces new CSS chunk hash */
-  --ras-cache-bust: rebirth-1;
+  --ras-cache-bust: rebirth-2;
 
   /* ── Sovereign palette ──────────────────────── */
   --chamber-bg: #050507;
@@ -38,7 +38,7 @@
 
   /* Grid row heights */
   --ras-header-row: 52px;
-  --ras-timeline-row: 120px;
+  --ras-timeline-row: 160px;
 }
 
 /* Scoped body reset */
@@ -236,6 +236,7 @@ body:has(.ras-amr-viewport) {
   flex-direction: column;
   background: var(--panel-bg);
   border-inline-end: 1px solid var(--neon-gold-border);
+  box-shadow: inset -1px 0 0 rgba(212,175,55,0.06);
 }
 
 /* ── Intelligence Rail (right) ──────────────── */
@@ -259,7 +260,8 @@ body:has(.ras-amr-viewport) {
   gap: 0;
   overflow-y: auto;
   background: var(--workspace-bg);
-  box-shadow: inset 0 0 40px rgba(212, 175, 55, 0.04);
+  box-shadow: inset 0 0 60px rgba(212, 175, 55, 0.05), inset 0 1px 0 rgba(212,175,55,0.08);
+  z-index: 1;
 }
 
 /* ========================================= */
@@ -450,8 +452,8 @@ body:has(.ras-amr-viewport) {
   display: flex;
   flex-direction: column;
   background: var(--timeline-bg);
-  border-top: 2px solid var(--neon-gold-border-strong);
-  box-shadow: 0 -4px 20px rgba(212, 175, 55, 0.08), inset 0 0 12px rgba(0, 0, 0, 0.9);
+  border-top: 2px solid rgba(212, 175, 55, 0.45);
+  box-shadow: 0 -6px 28px rgba(212, 175, 55, 0.10), inset 0 0 20px rgba(0, 0, 0, 0.95);
   overflow: hidden;
 }
 
@@ -459,17 +461,45 @@ body:has(.ras-amr-viewport) {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 14px;
-  border-bottom: 1px solid rgba(255, 215, 0, 0.06);
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.12);
+  background: linear-gradient(180deg, rgba(212,175,55,0.04) 0%, transparent 100%);
   flex-shrink: 0;
+  min-height: 36px;
+}
+
+.ras-timeline-phase-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(212, 175, 55, 0.45);
+  font-family: monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ras-timeline-node-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--neon-gold-bright);
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+
+.ras-timeline-corridor-zone {
+  margin-right: auto;
+  display: flex;
+  align-items: center;
 }
 
 .ras-timeline-ruler {
   position: relative;
-  height: 18px;
+  height: 20px;
   flex-shrink: 0;
-  margin: 0 66px 0 66px;
-  border-bottom: 1px solid rgba(255, 215, 0, 0.08);
+  margin: 0 70px 0 70px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.14);
+  background: rgba(212, 175, 55, 0.02);
 }
 
 .ras-ruler-tick {
@@ -483,14 +513,15 @@ body:has(.ras-amr-viewport) {
 .ras-ruler-tick::before {
   content: '';
   width: 1px;
-  height: 6px;
-  background: rgba(255, 215, 0, 0.25);
+  height: 7px;
+  background: rgba(212, 175, 55, 0.35);
 }
 .ras-ruler-tick span {
   font-size: 8px;
-  color: rgba(255, 215, 0, 0.4);
+  color: rgba(212, 175, 55, 0.55);
   font-family: monospace;
-  margin-top: 2px;
+  margin-top: 1px;
+  letter-spacing: 0.3px;
 }
 
 .ras-corridor-btn {
@@ -539,16 +570,54 @@ body:has(.ras-amr-viewport) {
    Rails narrow to 110px each. Center stays dominant.
    HP Win10 150% DPI (471px CSS width) lives in this range.
    At 471px: 471 - 110 - 110 = 251px center (workable).
-   Timeline shrinks to 100px to give workspace more height. */
+   Timeline at 130px: enough for header + ruler + 2 track rows. */
 @media (min-width: 400px) and (max-width: 899px) {
   .ras-amr-viewport {
-    --ras-timeline-row: 100px;
+    --ras-timeline-row: 130px;
     grid-template-rows: var(--ras-header-row) 1fr auto var(--ras-timeline-row);
   }
   .ras-panel-left  { flex-basis: 110px; }
   .ras-panel-right { flex-basis: 110px; }
   .ras-header { padding: 0 8px; gap: 6px; }
   .ras-timeline-ruler { margin: 0 8px; }
+  .ras-timeline-header { padding: 6px 10px; }
+
+  /* Compact panel headers: suppress description, shrink title */
+  .ras-panel-left .panel-header,
+  .ras-panel-right .panel-header { padding: 8px 8px 6px; }
+  .ras-panel-left .panel-header h2,
+  .ras-panel-right .panel-header h2 {
+    font-size: 0.78rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ras-panel-left .panel-header p,
+  .ras-panel-right .panel-header p { display: none; }
+
+  /* Compact summon button */
+  .summon-bridge-trigger-btn {
+    font-size: 9px;
+    padding: 5px 6px;
+    white-space: normal;
+    line-height: 1.3;
+  }
+
+  /* Compact queue items */
+  .queue-item-card { padding: 8px; border-radius: 6px; }
+
+  /* Compact right tabs: fit 5 tabs in 110px */
+  .ras-tab-btn {
+    font-size: 8px;
+    padding: 8px 2px;
+    letter-spacing: 0;
+  }
+
+  /* Compact timeline tracks container */
+  .timeline-tracks-container { padding: 4px 8px; gap: 3px; }
+  .timeline-track-row { height: 26px; }
+  .timeline-nodes-bar { height: 20px; }
+  .timeline-track-label { min-width: 36px; max-width: 36px; font-size: 8px; }
 }
 
 /* ── Phone (< 400px) ─────────────────────────────────────────────
@@ -2154,15 +2223,18 @@ body:has(.ras-amr-viewport) {
   z-index: 1;
 }
 
-/* Empty state */
+/* Empty state — sovereign command room identity */
 .viewport-chamber-identity {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
   text-align: center;
-  padding: 20px;
+  padding: 32px 24px;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(212,175,55,0.04) 0%, transparent 70%);
 }
 
 .viewport-sigil {
@@ -2196,10 +2268,15 @@ body:has(.ras-amr-viewport) {
 }
 
 .viewport-summon-cue {
-  margin: 6px 0 0;
-  font-size: 11px;
-  color: rgba(255,215,0,0.55);
-  letter-spacing: 0.3px;
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(212, 175, 55, 0.70);
+  letter-spacing: 0.4px;
+  padding: 6px 16px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 20px;
+  background: rgba(212, 175, 55, 0.05);
 }
 
 /* Real image asset */
@@ -2364,23 +2441,34 @@ body:has(.ras-amr-viewport) {
 }
 
 .timeline-empty-hint {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   font-size: 11px;
-  color: var(--text-muted);
-  margin: 2px 0 4px;
+  color: rgba(212, 175, 55, 0.4);
   font-style: italic;
+  text-align: center;
+  padding: 0 24px;
+  letter-spacing: 0.3px;
 }
 
 .timeline-tracks-container {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
+  padding: 6px 16px;
+  flex: 1;
+  overflow: hidden;
 }
 
 .timeline-track-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 26px;
+  height: 32px;
 }
 
 .timeline-track-row.track-muted { opacity: 0.4; }
@@ -2400,11 +2488,11 @@ body:has(.ras-amr-viewport) {
 /* direction:ltr so time flows left-to-right naturally */
 .timeline-nodes-bar {
   flex: 1;
-  height: 22px;
+  height: 26px;
   position: relative;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.65);
   border-radius: 4px;
-  border: 1px solid rgba(255,215,0,0.06);
+  border: 1px solid rgba(212,175,55,0.10);
   direction: ltr;
   overflow: hidden;
 }
@@ -2438,7 +2526,13 @@ body:has(.ras-amr-viewport) {
   z-index: 10;
 }
 
-.node-block-active { border-color: var(--neon-gold-primary) !important; }
+.node-block-active {
+  background: linear-gradient(135deg, rgba(212,175,55,0.50), rgba(255,215,0,0.28)) !important;
+  border-color: var(--neon-gold-bright) !important;
+  border-width: 2px !important;
+  box-shadow: 0 0 10px rgba(212,175,55,0.55), inset 0 0 6px rgba(212,175,55,0.25) !important;
+  z-index: 3;
+}
 .node-block-locked { border-style: dashed; opacity: 0.7; }
 .node-block-inactive { opacity: 0.28; }
 
