@@ -51,3 +51,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# transient release artifact produced by scripts/deploy.sh
+.deploy-artifact.tar.gz
