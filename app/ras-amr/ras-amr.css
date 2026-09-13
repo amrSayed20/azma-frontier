@@ -10,7 +10,7 @@
 
 :root {
   /* REBIRTH: cache-bust forces new CSS chunk hash */
-  --ras-cache-bust: rebirth-2;
+  --ras-cache-bust: rebirth-3;
 
   /* ── Sovereign palette ──────────────────────── */
   --chamber-bg: #050507;
@@ -3794,6 +3794,7 @@ body:has(.ras-amr-viewport) {
   position: fixed;
   inset: 0;
   z-index: 200;
+  pointer-events: auto;
   background: #000;
   display: flex;
   align-items: flex-start;
@@ -4164,17 +4165,39 @@ body:has(.ras-amr-viewport) {
     #000;
 }
 
-/* ── Chamber seal — replaces plain ras-header-name in intent gate ───── */
-.ras-intent-chamber-seal {
-  font-size: 0.7rem;
+/* ── Chamber identity button — intent gate and template-preview gate ─── */
+/* Visually parallel to ras-exit-btn; direction and color distinguish it  */
+.ras-chamber-identity-btn {
+  background: transparent;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: var(--neon-gold-bright);
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(212, 175, 55, 0.45);
-  border: 1px solid rgba(212, 175, 55, 0.18);
-  border-radius: 3px;
-  padding: 4px 10px;
-  text-align: center;
+  padding: 5px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.10);
+  font-family: inherit;
+  white-space: nowrap;
+  flex-shrink: 0;
+  direction: rtl;
+}
+.ras-chamber-identity-btn:hover {
+  background: rgba(212, 175, 55, 0.10);
+  border-color: var(--neon-gold-bright);
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.40);
+  transform: scale(1.03);
+}
+.ras-chamber-identity-btn:focus-visible {
+  outline: 2px solid var(--neon-gold-bright);
+  outline-offset: 3px;
+}
+.ras-chamber-identity-btn:active {
+  transform: scale(0.97);
+  opacity: 0.85;
 }
 
 /* ── Intent grid: section-label rows (full-width dividers) ──────────── */
@@ -4256,9 +4279,13 @@ body:has(.ras-amr-viewport) {
   border-bottom-color: rgba(160, 120, 0, 0.12);
 }
 
-:root[data-theme="light"] .ras-intent-chamber-seal {
-  color: rgba(120, 90, 0, 0.5);
-  border-color: rgba(160, 120, 0, 0.2);
+:root[data-theme="light"] .ras-chamber-identity-btn {
+  color: rgba(120, 90, 0, 0.7);
+  border-color: rgba(160, 120, 0, 0.3);
+}
+:root[data-theme="light"] .ras-chamber-identity-btn:hover {
+  background: rgba(160, 120, 0, 0.08);
+  border-color: rgba(140, 100, 0, 0.7);
 }
 
 :root[data-theme="light"] .ras-intent-section-label span {
@@ -4650,6 +4677,7 @@ body:has(.ras-amr-viewport) {
   position: fixed;
   inset: 0;
   z-index: 200;
+  pointer-events: auto;
   background:
     radial-gradient(ellipse 60% 40% at 50% 25%, rgba(212, 175, 55, 0.05) 0%, transparent 70%),
     #000;

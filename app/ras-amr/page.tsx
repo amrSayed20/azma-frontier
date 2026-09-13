@@ -3482,7 +3482,13 @@ export default function RasAmrChamber() {
               }}>
                 ⮜ قلب الإمبراطورية
               </button>
-              <span className="ras-intent-chamber-seal">رأس الأمر</span>
+              <button
+                className="ras-chamber-identity-btn"
+                onClick={() => handleSelectIntent('blank')}
+                aria-label="الدخول المباشر إلى رأس الأمر"
+              >
+                رأس الأمر
+              </button>
             </div>
 
             {/* Hero question */}
@@ -3661,7 +3667,13 @@ export default function RasAmrChamber() {
               <button className="ras-exit-btn" onClick={() => setCreationPhase('intent')}>
                 ← قوالب الإنتاج
               </button>
-              <span className="ras-intent-chamber-seal">رأس الأمر</span>
+              <button
+                className="ras-chamber-identity-btn"
+                onClick={() => handleSelectIntent(selectedTemplate.id)}
+                aria-label="الدخول إلى رأس الأمر مع هذا القالب"
+              >
+                رأس الأمر
+              </button>
             </div>
 
             {/* Template identity — compact header */}

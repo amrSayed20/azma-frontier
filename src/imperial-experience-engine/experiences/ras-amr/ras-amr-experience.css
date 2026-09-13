@@ -13,6 +13,11 @@
 
 .ras-amr-reveal {
   opacity: 0;
+  /* z-index ensures the reveal subtree beats ras-amr-companion (z-index:150)
+     in the root stacking context during the 500ms opacity animation, so
+     position:fixed intent-gate children at z-index:200 are never occluded */
+  position: relative;
+  z-index: 160;
 }
 
 @media (prefers-reduced-motion: no-preference) {
