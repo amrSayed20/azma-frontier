@@ -10,11 +10,15 @@
  *
  *   ministry-human-knowledge       → GutenbergProvider (real HTTP, 50K+ books with full text)
  *                                  → OpenLibraryProvider (real HTTP, 20M+ books with descriptions)
- *   ministry-business-intelligence → GoogleTrendsProvider (real HTTP, Package XVII)
- *                                  → HackerNewsProvider (real HTTP, Ministry VI)
- *   ministry-media-intelligence    → RedditProvider (real HTTP, Package XVII)
- *                                  → WikipediaProvider (real HTTP, Ministry VII)
+ *   ministry-business-intelligence → GoogleTrendsProvider (real HTTP)
+ *                                  → HackerNewsProvider (real HTTP)
+ *   ministry-media-intelligence    → WikipediaProvider (real HTTP)
+ *                                  → ArabicWikipediaProvider (real HTTP)
  *   all other Ministries           → deferred (return empty results honestly)
+ *
+ *   Every repository here holds English text except the Arabic Wikipedia, so an
+ *   Arabic question reaches them through the language bridge in
+ *   sovereign-language-bridge.ts. Without it the library stays silent.
  *
  * ─── HOW TO ADD A PROVIDER ───────────────────────────────────────────────────
  *
@@ -29,7 +33,6 @@ import { GutenbergProvider } from './providers/gutenberg-provider';
 import { OpenLibraryProvider } from './providers/open-library-provider';
 import { GoogleTrendsProvider } from './providers/google-trends-provider';
 import { HackerNewsProvider } from './providers/hacker-news-provider';
-import { RedditProvider } from './providers/reddit-provider';
 import { WikipediaProvider } from './providers/wikipedia-provider';
 import { ArabicWikipediaProvider } from './providers/arabic-wikipedia-provider';
 import { MinistryRegistry } from './ministries/ministry-registry';
@@ -58,7 +61,11 @@ export class IntelligenceCompositionFactory {
     registry.attachProvider('ministry-human-knowledge', new OpenLibraryProvider());
     registry.attachProvider('ministry-business-intelligence', new GoogleTrendsProvider());
     registry.attachProvider('ministry-business-intelligence', new HackerNewsProvider());
-    registry.attachProvider('ministry-media-intelligence', new RedditProvider());
+    // Reddit is detached, not disabled. Measured from the production server it
+    // answers 403 in 32ms to every request, browser User-Agent included — the
+    // public JSON endpoint refuses this host outright. Leaving it attached
+    // meant every investigation paid a round trip for a provider that could
+    // never contribute a single piece of evidence.
     registry.attachProvider('ministry-media-intelligence', new WikipediaProvider());
     registry.attachProvider('ministry-media-intelligence', new ArabicWikipediaProvider());
 

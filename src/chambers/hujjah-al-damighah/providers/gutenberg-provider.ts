@@ -98,7 +98,12 @@ interface GutendexResponse {
 const GUTENDEX_SEARCH = 'https://gutendex.com/books/';
 const GUTENBERG_CACHE = 'https://www.gutenberg.org/cache/epub';
 const EVIDENCE_WINDOW_BYTES = 10240; // 10 KB — sufficient for EvidenceExtractor keyword scoring
-const FETCH_TIMEOUT_MS = 8_000; // Gutenberg CDN can be slow; abort rather than stall the investigation
+// Measured from the production server: Gutendex answers in ~130ms and the
+// Gutenberg cache in ~1.2s. Eight seconds was a ceiling no healthy request ever
+// approached, so a single stalled call held the whole investigation for eight
+// seconds while the Creator waited. Generous against the real numbers, not
+// against a guess.
+const FETCH_TIMEOUT_MS = 3_500;
 
 function buildBookSnippet(book: GutendexBook): string {
   const authorNames = book.authors

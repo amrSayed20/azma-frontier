@@ -1,7 +1,6 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import OpenAI from 'openai';
 import { verifySession } from '@/src/authentication';
 import { receiveCitizenKnowledgeRequest } from '@/src/chambers/hujjah-al-damighah/reception-engine';
 import { understandKnowledgeReception } from '@/src/chambers/hujjah-al-damighah/understanding-engine';
@@ -11,6 +10,7 @@ import { declareKnowledge } from '@/src/chambers/hujjah-al-damighah/knowledge-la
 import { formulateResponse } from '@/src/chambers/hujjah-al-damighah/knowledge-response-layer';
 import { exportKnowledgeResponse } from '@/src/chambers/hujjah-al-damighah/knowledge-export-layer';
 import { createPerceptionEndpointForOrgan } from '@/src/sovereign-nervous-system';
+import { toSearchLanguage, composeAnswer } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
 
 /**
  * Constitutional Nervous System integration.
@@ -41,6 +41,12 @@ export interface InvestigationDTO {
   error?: string;
 }
 
+/** The Creator declares a religious question by choosing this domain. The id
+    comes straight from KNOWLEDGE_DOMAINS in the chamber's own evidence-utils.
+    It is never inferred from wording: mistaking a historical question for a
+    religious one would rule on it, and that is not a detector's call. */
+const RELIGIOUS_CATEGORIES = new Set(['religious']);
+
 export async function runInvestigation(
   query: string,
   category: string,
@@ -65,8 +71,22 @@ export async function runInvestigation(
       return { success: false, evidence: [], totalSourcesScanned: 0, averageEvidenceScore: 0, error: 'Query could not be understood.' };
     }
 
+    // The Creator declares a religious question themselves, from the category
+    // they chose. Inferring it from the wording would mistake a historical
+    // question for a religious one and rule on it — a judgement no detector
+    // should make on a Creator's behalf.
+    const isReligious = RELIGIOUS_CATEGORIES.has(category.trim().toLowerCase());
+
+    // Stage 2b — Language bridge: most repositories hold nothing in Arabic, so
+    // an Arabic question reached them as an unmatched string and the library
+    // stayed silent. It is asked in the language each catalogue indexes.
+    const bridged = await toSearchLanguage(understandingOutcome.intent.normalizedQuery);
+    const intent = bridged
+      ? { ...understandingOutcome.intent, normalizedQuery: bridged }
+      : understandingOutcome.intent;
+
     // Stage 3 — Investigation: only stage authorised to invoke IntelligenceEngine
-    const investigationOutcome = await conductInvestigation(understandingOutcome.intent);
+    const investigationOutcome = await conductInvestigation(intent);
     if (!investigationOutcome.ok) {
       return { success: false, evidence: [], totalSourcesScanned: 0, averageEvidenceScore: 0, error: 'Investigation could not be conducted.' };
     }
@@ -77,41 +97,15 @@ export async function runInvestigation(
       return { success: false, evidence: [], totalSourcesScanned: 0, averageEvidenceScore: 0, error: 'Evidence collection failed.' };
     }
 
-    // Stage 4b — Synthesis: compose a real Arabic answer from collected evidence
-    let synthesizedAnswer: string | undefined;
-    try {
-      const openaiApiKey = process.env['OPENAI_API_KEY'];
-      if (openaiApiKey && evidenceOutcome.collection.items.length > 0) {
-        const openai = new OpenAI({ apiKey: openaiApiKey });
-        const evidenceSummary = evidenceOutcome.collection.items
-          .slice(0, 5)
-          .map((item, i) => `[${i + 1}] ${item.evidence.extractedText}`)
-          .join('\n\n');
-        const completion = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: [
-                'أنت نظام معرفة سيادي. مهمتك تقديم إجابة عربية واضحة وموثوقة على سؤال المستخدم بناءً على الأدلة المقدمة.',
-                'اكتب 3 إلى 5 جمل متماسكة تجيب مباشرة على السؤال.',
-                'لا تذكر مصادر المعرفة أو أسماء قواعد البيانات أو المنصات.',
-                'قدّم المعلومة كحقيقة موثوقة وبأسلوب رسمي واضح.',
-              ].join(' '),
-            },
-            {
-              role: 'user',
-              content: `السؤال: ${query}\n\nالأدلة:\n${evidenceSummary}`,
-            },
-          ],
-          max_tokens: 600,
-          temperature: 0.3,
-        });
-        synthesizedAnswer = completion.choices[0]?.message?.content ?? undefined;
-      }
-    } catch {
-      // Synthesis is non-fatal — investigation still returns evidence
-    }
+    // Stage 4b — Synthesis: compose the Arabic answer from the gathered
+    // evidence. Was OpenAI, whose key was never configured on the server, so
+    // this stage was skipped in silence and every Creator saw raw evidence and
+    // no answer. Gemini carries it now — the same key the Empire already uses.
+    const synthesizedAnswer = (await composeAnswer({
+      query,
+      evidenceTexts: evidenceOutcome.collection.items.map((item) => item.evidence.extractedText),
+      isReligious,
+    })) ?? undefined;
 
     // Stage 5 — Knowledge: declare the highest truthful conclusion
     const declaration = declareKnowledge(evidenceOutcome.collection);
