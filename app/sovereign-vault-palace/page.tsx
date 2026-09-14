@@ -14,10 +14,12 @@
  * — this Package replaced the treasure catalogue's data source, not the
  * interface. Real treasures carry isRealAsset: true.
  *
- * Seal and Archive were struck out by decree (2026-09-14): they only ever
- * moved a local status field, never reached a real asset, and were removed
- * whole rather than left disabled. Dispose and Duplicate remain disabled for
- * real assets — they still have no backend — and say so on the control.
+ * Seal, Archive, Duplicate and Dispose were all struck out by decree
+ * (2026-09-14). Every one of them only ever rewrote this page's own
+ * localStorage and was disabled outright for anything real, so a Creator met a
+ * dead control wherever it mattered. They are removed whole rather than left
+ * disabled. What remains acts on the real asset: download, transfer to a
+ * chamber, and delete from the Vault through the real API.
  */
 
 'use client';
@@ -70,9 +72,7 @@ interface SovereignTreasure {
   journey: JourneyStep[];
   /** INTEGRATION PACKAGE II: true for a treasure sourced from the real
       Sovereign Vault (src/vault/sovereign-vault-manager.ts) rather than
-      this page's own localStorage. Real treasures have no dispose or
-      duplicate backing yet — those actions are disabled, not silently
-      non-functional, for exactly this reason. */
+      this page's own localStorage. */
   isRealAsset?: boolean;
   /** Phase 3B Package I — N-1: actual asset URL for media preview.
       Undefined means the asset has no displayable URI (unavailable). */
@@ -329,6 +329,9 @@ export default function SovereignVaultPalace() {
   const [incomingTreasure, setIncomingTreasure] = useState<SovereignTreasure | null>(null);
   const [deleteConfirmId, setDeleteConfirmId]   = useState<string | null>(null);
   const [isDeletingAsset, setIsDeletingAsset]   = useState(false);
+  const [isUploading, setIsUploading]           = useState(false);
+  const [uploadError, setUploadError]           = useState<string | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   // Palace memory — familiarity grows with each return
   const [palaceMemory, setPalaceMemory] = useState<PalaceMemory>(() => readPalaceMemory());
@@ -621,6 +624,38 @@ export default function SovereignVaultPalace() {
     setTimeout(() => goTo(destination), 950);
   }
 
+  /** Deposits a file from the Creator's own device straight into the Vault,
+      through the same upload route Qiyamah and Ras Al Amr already use. The
+      route reads the MIME type and files the asset in the vault that matches
+      it, so an image, a recording and a clip each land where they belong. */
+  async function handleUploadFromDevice(file: File) {
+    setUploadError(null);
+    setIsUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/vault/assets/upload', { method: 'POST', body: form });
+      const data = await res.json() as { status?: string; message?: string; asset?: VaultAsset };
+
+      if (data.status === 'succeeded' && data.asset) {
+        const treasure = vaultAssetToTreasure(data.asset);
+        setTreasures((prev) => ({
+          ...prev,
+          [treasure.vaultId]: [treasure, ...(prev[treasure.vaultId] ?? [])],
+        }));
+        const vaultName = SOVEREIGN_VAULTS.find((v) => v.id === treasure.vaultId)?.nameAr ?? 'الخزانة';
+        setCompanionMsg(`وصل أصلك إلى ${vaultName}.`);
+      } else {
+        setUploadError(data.message ?? 'لم يُقبل هذا الملف.');
+      }
+    } catch {
+      setUploadError('تعذّر الوصول إلى الخزانة. حاول مرة أخرى.');
+    } finally {
+      setIsUploading(false);
+      if (uploadInputRef.current) uploadInputRef.current.value = '';
+    }
+  }
+
   async function handleDeleteVaultAsset(treasure: SovereignTreasure) {
     if (!treasure.isRealAsset) return;
     setIsDeletingAsset(true);
@@ -653,16 +688,6 @@ export default function SovereignVaultPalace() {
       const realStillInView = Object.values(prev).flat().filter((t) => t.isRealAsset);
       return mergeIntoVaultBuckets(readPalace(), realStillInView);
     });
-  }
-
-  function disposeTreasure(id: string) {
-    const data = readPalace();
-    for (const vaultId of Object.keys(data)) {
-      data[vaultId] = (data[vaultId] ?? []).filter((t) => t.id !== id);
-    }
-    writePalace(data);
-    refreshTreasuresAfterLocalMutation();
-    setSelectedTreasure(null);
   }
 
   function handleDownload(t: SovereignTreasure) {
@@ -707,23 +732,6 @@ export default function SovereignVaultPalace() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     setCompanionMsg('الكنز يتجه نحو الجهاز.');
-  }
-
-  function handleDuplicate(t: SovereignTreasure) {
-    const copy: SovereignTreasure = {
-      ...t,
-      id:      `dup-${Date.now()}`,
-      titleAr: `${t.titleAr} — نسخة`,
-      addedAt: Date.now(),
-      status:  'living',
-      journey: [
-        ...t.journey,
-        { actionAr: 'نسخ سيادي في القصر', chamberAr: 'القصر السيادي', at: Date.now() },
-      ],
-    };
-    depositToVault(copy);
-    refreshTreasuresAfterLocalMutation();
-    setCompanionMsg('نسخة من الكنز وجدت مكانها.');
   }
 
   // ── Derived ───────────────────────────────────────────────────────────────
@@ -1017,6 +1025,28 @@ export default function SovereignVaultPalace() {
                     <p className="atrium-subtitle">{atriumGreeting.subtitle}</p>
                   </div>
 
+                  {/* Deposit from the Creator's own device */}
+                  <div className="atrium-deposit">
+                    <input
+                      ref={uploadInputRef}
+                      type="file"
+                      accept="image/*,video/*,audio/*,text/plain,application/json"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUploadFromDevice(file);
+                      }}
+                      hidden
+                    />
+                    <button
+                      className="atrium-deposit-btn"
+                      onClick={() => uploadInputRef.current?.click()}
+                      disabled={isUploading}
+                    >
+                      {isUploading ? 'جارٍ الإيداع…' : '⬆ أودِع أصلاً من جهازك'}
+                    </button>
+                    {uploadError && <p className="atrium-deposit-error" role="alert">{uploadError}</p>}
+                  </div>
+
                   {/* Recent Arrivals */}
                   {totalTreasures > 0 && (
                     <div className="atrium-recent">
@@ -1237,18 +1267,6 @@ export default function SovereignVaultPalace() {
                           <button className="detail-action action-download"
                             onClick={() => handleDownload(selectedTreasure)}>
                             تحميل على الجهاز
-                          </button>
-                          <button className="detail-action action-duplicate"
-                            onClick={() => handleDuplicate(selectedTreasure)}
-                            disabled={selectedTreasure.isRealAsset}
-                            title={selectedTreasure.isRealAsset ? '◎ صلاحية كامنة — سلطة النسخ السيادي في انتظار استدعائها' : undefined}>
-                            نسخ سيادي
-                          </button>
-                          <button className="detail-action action-dispose"
-                            onClick={() => disposeTreasure(selectedTreasure.id)}
-                            disabled={selectedTreasure.isRealAsset}
-                            title={selectedTreasure.isRealAsset ? '◎ صلاحية كامنة — سلطة الإتلاف الدائم في انتظار استدعائها' : undefined}>
-                            إتلاف دائم
                           </button>
                           {selectedTreasure.isRealAsset && (
                             <button className="detail-action action-vault-delete"
