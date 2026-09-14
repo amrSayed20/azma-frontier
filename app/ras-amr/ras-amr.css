@@ -39,6 +39,8 @@
   /* Grid row heights */
   --ras-header-row: 52px;
   --ras-timeline-row: 160px;
+  --ras-rail-left: 220px;
+  --ras-rail-right: 240px;
 }
 
 /* Scoped body reset */
@@ -60,8 +62,13 @@ body:has(.ras-amr-viewport) {
   position: fixed;
   inset: 0;
   display: grid;
+  /* The side panels run the full height of the chamber and the timeline sits
+     between them, in the centre column. Previously the timeline was a
+     full-width row beneath everything: on a laptop it took 160px across the
+     whole screen, the panels were squeezed into what remained, and their
+     contents were unreadable. */
   grid-template-rows: var(--ras-header-row) 1fr auto var(--ras-timeline-row);
-  grid-template-columns: 1fr;
+  grid-template-columns: var(--ras-rail-left) 1fr var(--ras-rail-right);
   overflow: hidden;
   background: var(--chamber-bg);
   color: var(--text-main);
@@ -89,7 +96,7 @@ body:has(.ras-amr-viewport) {
    ═══════════════════════════════════════════════ */
 .ras-header {
   grid-row: 1;
-  grid-column: 1;
+  grid-column: 1 / -1;
   z-index: 50;
   position: relative;
   background: var(--header-bg);
@@ -214,17 +221,21 @@ body:has(.ras-amr-viewport) {
    The grid row is 1fr: it fills EXACTLY the space
    between header and timeline. No min-height needed.
    ═══════════════════════════════════════════════ */
+/* display:contents dissolves this wrapper so the two rails and the centre
+   become direct children of the chamber grid. That is what lets the rails span
+   every row while the timeline occupies only the centre column. The inline
+   display:none this element carries during the intent phase still hides the
+   whole workspace, because none beats contents. */
 .ras-body-grid {
-  grid-row: 2;
-  grid-column: 1;
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  overflow: hidden;
-  position: relative;
-  z-index: 10;
-  /* No gap here — dividers are border-inline on panels */
+  display: contents;
 }
+
+/* ── Command Rail (left) — full height, column 1 ── */
+.ras-panel-left  { grid-column: 1; grid-row: 2 / 5; }
+/* ── Assets Rail (right) — full height, column 3 ── */
+.ras-panel-right { grid-column: 3; grid-row: 2 / 5; }
+/* ── Stage — centre column, between the rails ── */
+.ras-center      { grid-column: 2; grid-row: 2; }
 
 /* ── Command Rail (left) ─────────────────────── */
 .ras-panel-left {
@@ -435,7 +446,7 @@ body:has(.ras-amr-viewport) {
    ═══════════════════════════════════════════════ */
 .ras-template-structure {
   grid-row: 3;
-  grid-column: 1;
+  grid-column: 2;
   z-index: 30;
 }
 
@@ -446,7 +457,7 @@ body:has(.ras-amr-viewport) {
    ═══════════════════════════════════════════════ */
 .ras-timeline {
   grid-row: 4;
-  grid-column: 1;
+  grid-column: 2;
   position: relative;
   z-index: 40;
   display: flex;
@@ -555,15 +566,13 @@ body:has(.ras-amr-viewport) {
 
 /* ── Desktop wide (≥ 1200px) ──────────────────────────────────── */
 @media (min-width: 1200px) {
-  .ras-panel-left  { flex-basis: 260px; }
-  .ras-panel-right { flex-basis: 280px; }
+  .ras-amr-viewport { --ras-rail-left: 260px; --ras-rail-right: 280px; }
 }
 
 /* ── Desktop standard (900–1199px) ──────────────────────────────
    125% DPI Windows laptops report ~1093px CSS width → lives here. */
 @media (min-width: 900px) and (max-width: 1199px) {
-  .ras-panel-left  { flex-basis: 200px; }
-  .ras-panel-right { flex-basis: 220px; }
+  .ras-amr-viewport { --ras-rail-left: 200px; --ras-rail-right: 220px; }
 }
 
 /* ── Compact 3-column (400–899px) ───────────────────────────────
@@ -641,7 +650,11 @@ body:has(.ras-amr-viewport) {
     gap: 6px;
     flex-shrink: 0;
   }
+  /* On a phone the chamber is a plain column, so the wrapper becomes a real
+     box again and stacks the rails rather than dissolving into a grid that
+     no longer exists here. */
   .ras-body-grid {
+    display: flex;
     grid-row: unset;
     flex-direction: column;
     overflow-y: visible;
@@ -649,6 +662,9 @@ body:has(.ras-amr-viewport) {
     flex: none;
     height: auto;
   }
+  .ras-panel-left,
+  .ras-panel-right,
+  .ras-center { grid-column: unset; grid-row: unset; }
   .ras-panel-left,
   .ras-panel-right {
     flex: none;
