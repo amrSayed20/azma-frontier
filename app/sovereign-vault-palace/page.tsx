@@ -12,10 +12,12 @@
  * production flow. The PIN/Face/Biometric "gate" and the localStorage
  * path for the separate Hujjah incoming-transfer ceremony are untouched
  * — this Package replaced the treasure catalogue's data source, not the
- * interface. Real treasures carry isRealAsset: true and cannot yet be
- * sealed, archived, disposed, or duplicated — those actions have no
- * real backend for real assets, so they're disabled with a visible
- * explanation rather than silently doing nothing.
+ * interface. Real treasures carry isRealAsset: true.
+ *
+ * Seal and Archive were struck out by decree (2026-09-14): they only ever
+ * moved a local status field, never reached a real asset, and were removed
+ * whole rather than left disabled. Dispose and Duplicate remain disabled for
+ * real assets — they still have no backend — and say so on the control.
  */
 
 'use client';
@@ -62,14 +64,15 @@ interface SovereignTreasure {
   vaultId: string;
   origin:  string;
   preview: string;
-  status:  'living' | 'sealed' | 'archived';
+  /* Seal and Archive were removed by decree; nothing can leave 'living'. */
+  status:  'living';
   addedAt: number;
   journey: JourneyStep[];
   /** INTEGRATION PACKAGE II: true for a treasure sourced from the real
       Sovereign Vault (src/vault/sovereign-vault-manager.ts) rather than
-      this page's own localStorage. Real treasures have no real seal/
-      archive/dispose/duplicate backing yet — those actions are disabled,
-      not silently non-functional, for exactly this reason. */
+      this page's own localStorage. Real treasures have no dispose or
+      duplicate backing yet — those actions are disabled, not silently
+      non-functional, for exactly this reason. */
   isRealAsset?: boolean;
   /** Phase 3B Package I — N-1: actual asset URL for media preview.
       Undefined means the asset has no displayable URI (unavailable). */
@@ -652,30 +655,6 @@ export default function SovereignVaultPalace() {
     });
   }
 
-  function sealTreasure(id: string) {
-    const data = readPalace();
-    for (const vaultId of Object.keys(data)) {
-      data[vaultId] = (data[vaultId] ?? []).map((t) =>
-        t.id === id ? { ...t, status: 'sealed' as const } : t,
-      );
-    }
-    writePalace(data);
-    refreshTreasuresAfterLocalMutation();
-    setSelectedTreasure(null);
-  }
-
-  function archiveTreasure(id: string) {
-    const data = readPalace();
-    for (const vaultId of Object.keys(data)) {
-      data[vaultId] = (data[vaultId] ?? []).map((t) =>
-        t.id === id ? { ...t, status: 'archived' as const } : t,
-      );
-    }
-    writePalace(data);
-    refreshTreasuresAfterLocalMutation();
-    setSelectedTreasure(null);
-  }
-
   function disposeTreasure(id: string) {
     const data = readPalace();
     for (const vaultId of Object.keys(data)) {
@@ -760,7 +739,7 @@ export default function SovereignVaultPalace() {
   // ── Legacy — Article IV (the Palace grows as the Citizen grows) ───────────
   const allTreasures     = Object.values(treasures).flat();
   const vaultsUsed       = SOVEREIGN_VAULTS.filter(v => (treasures[v.id] ?? []).length > 0).length;
-  const completedWork    = allTreasures.filter(t => t.status === 'sealed' || t.status === 'archived').length;
+  const completedWork    = 0;
 
   const legacyDepthClass = totalTreasures === 0     ? 'palace-empty'
                          : totalTreasures <= 3      ? 'palace-new'
@@ -775,10 +754,7 @@ export default function SovereignVaultPalace() {
   const completionClass  = completedWork > 0 && completedWork >= Math.ceil(totalTreasures * 0.40)
                          ? 'palace-completer' : '';
 
-  const selectedAuraClass = selectedTreasure
-    && selectedTreasure.status === 'sealed'
-    && selectedTreasure.journey.length >= 4
-    ? 'palace-masterpiece-selected' : '';
+  const selectedAuraClass = '';
 
   // ── Collection — Article VII ──────────────────────────────────────────────
   const relatedTreasures = selectedTreasure
@@ -1065,7 +1041,7 @@ export default function SovereignVaultPalace() {
                                   <span className="recent-origin">{t.origin}</span>
                                 </div>
                                 <span className={`recent-status status-${t.status}`}>
-                                  {t.status === 'living' ? 'حيّ' : t.status === 'sealed' ? 'محكم' : 'مؤرشف'}
+                                  {'حيّ'}
                                 </span>
                               </button>
                             );
@@ -1128,7 +1104,7 @@ export default function SovereignVaultPalace() {
                             <div className="record-meta">
                               <span className="record-origin">{t.origin}</span>
                               <span className={`record-status status-${t.status}`}>
-                                {t.status === 'living' ? '● حيّ' : t.status === 'sealed' ? '◉ محكم' : '○ مؤرشف'}
+                                {'● حيّ'}
                               </span>
                             </div>
                           </button>
@@ -1267,18 +1243,6 @@ export default function SovereignVaultPalace() {
                             disabled={selectedTreasure.isRealAsset}
                             title={selectedTreasure.isRealAsset ? '◎ صلاحية كامنة — سلطة النسخ السيادي في انتظار استدعائها' : undefined}>
                             نسخ سيادي
-                          </button>
-                          <button className="detail-action action-seal"
-                            onClick={() => sealTreasure(selectedTreasure.id)}
-                            disabled={selectedTreasure.isRealAsset}
-                            title={selectedTreasure.isRealAsset ? '◎ صلاحية كامنة — سلطة الإحكام في انتظار استدعائها' : undefined}>
-                            إحكام الكنز
-                          </button>
-                          <button className="detail-action action-archive"
-                            onClick={() => archiveTreasure(selectedTreasure.id)}
-                            disabled={selectedTreasure.isRealAsset}
-                            title={selectedTreasure.isRealAsset ? '◎ صلاحية كامنة — سلطة الأرشفة الملكية في انتظار استدعائها' : undefined}>
-                            أرشفة ملكية
                           </button>
                           <button className="detail-action action-dispose"
                             onClick={() => disposeTreasure(selectedTreasure.id)}

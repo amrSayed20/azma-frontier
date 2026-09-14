@@ -1312,8 +1312,6 @@
 
 .action-continue:hover { background: rgba(180,40,40,.06); border-color: rgba(180,40,40,.40); color: rgba(220,100,100,.80); }
 .action-creative:hover { background: rgba(120,40,200,.06); border-color: rgba(120,40,200,.40); color: rgba(160,100,220,.80); }
-.action-seal:hover     { background: rgba(212,175,55,.06); border-color: var(--ig-4); color: var(--ig-6); }
-.action-archive:hover  { background: rgba(80,70,60,.06); border-color: rgba(80,70,60,.40); color: var(--text-muted); }
 .action-dispose { border-color: rgba(180,40,40,.15); }
 .action-dispose:hover  { background: rgba(180,40,40,.08); border-color: rgba(180,40,40,.50); color: rgba(220,80,80,.80); font-weight: 600; }
 
