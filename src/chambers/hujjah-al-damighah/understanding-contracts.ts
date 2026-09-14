@@ -140,6 +140,19 @@ export interface InvestigationIntent {
   readonly inquiryType: InquiryType | null;
   readonly sovereignLineage: SovereignRequestLineage | null;
   readonly understoodAtMs: number;
+
+  /**
+   * The question rendered into the tongue the English catalogues index.
+   *
+   * It was once written over `normalizedQuery`, which made the intent claim the
+   * Creator had asked in a language they never used, and carried that untruth
+   * into evidence scoring. It travels beside the Creator's own words now, so a
+   * source that indexes Arabic — the Qur'an first among them — is still asked
+   * the question as it was actually asked.
+   *
+   * Absent when the question needed no rendering.
+   */
+  readonly catalogueQuery?: string;
 }
 
 /**

@@ -16,7 +16,10 @@ describe('Persistent Storage Foundation — database connection', () => {
       .all()
       .map((row) => row.name);
 
-    expect(tables).toEqual(['cinematic_ledger', 'consumption_records', 'creator_balances', 'creators', 'credit_ledger', 'fulfillment_assessments', 'generation_records', 'goals', 'knowledge_investigations', 'observations', 'operation_ledger', 'payment_transactions', 'sessions', 'sovereign_canvases', 'subscriptions', 'trial_entitlements', 'vault_assets']);
+    // vault_credentials holds the Creator's enrolled WebAuthn authenticators —
+    // the Vault's real biometric entry. It was added to the schema without this
+    // list being told, which is the whole point of asserting the list.
+    expect(tables).toEqual(['cinematic_ledger', 'consumption_records', 'creator_balances', 'creators', 'credit_ledger', 'fulfillment_assessments', 'generation_records', 'goals', 'knowledge_investigations', 'observations', 'operation_ledger', 'payment_transactions', 'sessions', 'sovereign_canvases', 'subscriptions', 'trial_entitlements', 'vault_assets', 'vault_credentials']);
     db.close();
   });
 

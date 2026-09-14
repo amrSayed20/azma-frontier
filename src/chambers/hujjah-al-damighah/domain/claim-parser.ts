@@ -20,7 +20,8 @@ export class ClaimParser {
    */
   public static parse(
     input: string,
-    targetCategory: string
+    targetCategory: string,
+    catalogueStatement?: string
   ): SovereignClaim {
 
     const trimmedInput = input.trim();
@@ -59,7 +60,18 @@ export class ClaimParser {
         Date.now(),
 
       keywords:
-        keywords
+        keywords,
+
+      // Carried so evidence written in the catalogues' tongue is scored against
+      // the wording those catalogues were actually asked, rather than against a
+      // question they never saw. See SovereignClaim.catalogueStatement.
+      catalogueStatement:
+        catalogueStatement?.trim() || undefined,
+
+      catalogueKeywords:
+        catalogueStatement?.trim()
+          ? this.extractKeywords(catalogueStatement.trim().replace(/\s+/g, ' '))
+          : undefined
     };
   }
 

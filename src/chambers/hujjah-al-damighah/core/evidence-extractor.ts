@@ -41,14 +41,21 @@ export class EvidenceExtractor {
       return [];
     }
 
+    // A document is judged against the claim in its own tongue. Scoring is
+    // keyword overlap, so an English passage measured against an Arabic
+    // question — or an Arabic verse measured against the English rendering sent
+    // to the catalogues — overlaps at zero and is graded as worthless no matter
+    // what it says.
+    const readingClaim = EvidenceExtractor.claimInTongueOf(document.content, claim);
+
     // Find the passage in the document most relevant to the claim, rather than
     // blindly taking the first characters. This is especially valuable for
     // document-rich sources like GutenbergProvider, which returns 10 KB of
     // actual book text: the relevant passage may be anywhere inside it.
-    const relevantPassage = EvidenceExtractor.findRelevantPassage(document.content, claim);
+    const relevantPassage = EvidenceExtractor.findRelevantPassage(document.content, readingClaim);
 
     // Score the relevant passage (not an arbitrary opening slice) against claim keywords.
-    const { confidenceScore } = EvidenceScoringEngine.score(relevantPassage, claim);
+    const { confidenceScore } = EvidenceScoringEngine.score(relevantPassage, readingClaim);
     const confidenceLevel = EvidenceExtractor.classifyConfidence(confidenceScore);
 
     const scoredEvidence: Evidence = {
@@ -63,6 +70,29 @@ export class EvidenceExtractor {
     };
 
     return [scoredEvidence];
+  }
+
+  /**
+   * Returns the claim in the tongue the document is written in.
+   *
+   * The claim holds the Creator's own words and, when the language bridge was
+   * used, the rendering that the English catalogues were actually asked. A
+   * document in Arabic script is judged against the Creator's words; anything
+   * else against the rendering, when one exists. Where there is no rendering the
+   * claim is returned untouched, so a chamber that never crossed a language
+   * boundary behaves exactly as it always did.
+   */
+  public static claimInTongueOf(content: string, claim: SovereignClaim): SovereignClaim {
+    if (!claim.catalogueStatement || !claim.catalogueKeywords?.length) return claim;
+
+    const ARABIC_LETTER = /[؀-ۿ]/;
+    if (ARABIC_LETTER.test(content)) return claim;
+
+    return {
+      ...claim,
+      normalizedStatement: claim.catalogueStatement,
+      keywords: claim.catalogueKeywords,
+    };
   }
 
   /**

@@ -20,13 +20,28 @@ export class IntelligenceEngine {
     this.repositoryManager = repositoryManager;
   }
 
-  public async investigate(input: string, targetCategory: string = 'general'): Promise<EvidenceBundle> {
+  /**
+   * @param input The Creator's own words.
+   * @param catalogueQuery The same question rendered into the tongue the
+   *   English catalogues index, when the language bridge produced one. Those
+   *   catalogues are searched with it; a source that indexes the Creator's own
+   *   tongue is searched with `input` instead.
+   */
+  public async investigate(
+    input: string,
+    targetCategory: string = 'general',
+    catalogueQuery?: string,
+  ): Promise<EvidenceBundle> {
     // 1. Transform raw input into a sovereign claim
-    const claim = ClaimParser.parse(input, targetCategory);
+    const claim = ClaimParser.parse(input, targetCategory, catalogueQuery);
     const bundleManager = new EvidenceBundleManager(claim.normalizedStatement, claim.id);
 
     // 2. Query infrastructure (Source Agnostic)
-    const searchResults = await this.repositoryManager.searchAll(claim.normalizedStatement, 10);
+    const searchResults = await this.repositoryManager.searchAll(
+      claim.catalogueStatement ?? claim.normalizedStatement,
+      10,
+      claim.normalizedStatement,
+    );
 
     // 3. Extract and compile intelligence — fetch all documents in parallel so
     // a single slow provider (e.g. Gutenberg CDN) does not stall the others.

@@ -139,13 +139,21 @@ function buildMinistryProvider(
   return {
     providerId: ministryId,
 
-    async search(query: string, limit: number): Promise<RepositorySearchResult[]> {
+    async search(
+      query: string,
+      limit: number,
+      // The Creator's own words. A Ministry holds sources in more than one
+      // tongue, so it hands each sub-provider both and lets it choose: the
+      // English catalogues take the rendered query, the Qur'an takes this.
+      // Dropping it here would silently starve every Arabic source.
+      nativeQuery?: string,
+    ): Promise<RepositorySearchResult[]> {
       if (subProviders.length === 0) return [];
 
       const allResults = await Promise.all(
         subProviders.map((p) =>
           p
-            .search(query, limit)
+            .search(query, limit, nativeQuery)
             .then((results) =>
               results.map((r) => ({
                 ...r,

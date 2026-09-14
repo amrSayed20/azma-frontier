@@ -75,7 +75,11 @@ export async function conductInvestigation(
 
   try {
     const engine = IntelligenceCompositionFactory.getEngine();
-    const rawBundle = await engine.investigate(intent.normalizedQuery, intent.domain);
+    const rawBundle = await engine.investigate(
+      intent.normalizedQuery,
+      intent.domain,
+      intent.catalogueQuery,
+    );
     const investigatedAtMs = Date.now();
 
     const result: InvestigationResult = {

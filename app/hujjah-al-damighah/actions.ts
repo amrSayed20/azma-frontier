@@ -80,9 +80,15 @@ export async function runInvestigation(
     // Stage 2b — Language bridge: most repositories hold nothing in Arabic, so
     // an Arabic question reached them as an unmatched string and the library
     // stayed silent. It is asked in the language each catalogue indexes.
+    //
+    // The rendering used to be written over normalizedQuery, which erased the
+    // Creator's own words from every stage downstream. Anything indexed in
+    // Arabic was then asked in English and could never answer, and any Arabic
+    // passage was graded against an English question and scored zero. It now
+    // travels beside the original rather than replacing it.
     const bridged = await toSearchLanguage(understandingOutcome.intent.normalizedQuery);
     const intent = bridged
-      ? { ...understandingOutcome.intent, normalizedQuery: bridged }
+      ? { ...understandingOutcome.intent, catalogueQuery: bridged }
       : understandingOutcome.intent;
 
     // Stage 3 — Investigation: only stage authorised to invoke IntelligenceEngine

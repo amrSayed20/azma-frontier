@@ -43,6 +43,23 @@ export interface SovereignClaim {
    * Used by heuristic evidence scoring engines.
    */
   readonly keywords: string[];
+
+  /**
+   * The claim as it was rendered for catalogues that index another tongue.
+   *
+   * Evidence is scored by keyword overlap against the claim. An Arabic question
+   * rendered into English scored every Arabic passage at zero overlap, which
+   * would have graded a Qur'anic verse — the one source the Founder named as
+   * authoritative — as the weakest evidence in the bundle, while an English
+   * catalogue entry outranked it. A claim therefore carries both tongues, and
+   * each passage is scored against the one it is actually written in.
+   *
+   * Absent when the question needed no rendering.
+   */
+  readonly catalogueStatement?: string;
+
+  /** Keywords of `catalogueStatement`, for scoring passages in that tongue. */
+  readonly catalogueKeywords?: string[];
 }
 
 // ==========================================

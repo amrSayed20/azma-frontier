@@ -8,7 +8,8 @@
  *
  * ─── MINISTRY → PROVIDER MAP (current) ──────────────────────────────────────
  *
- *   ministry-human-knowledge       → GutenbergProvider (real HTTP, 50K+ books with full text)
+ *   ministry-human-knowledge       → SovereignScriptureProvider (real HTTP, the Qur'an, Arabic)
+ *                                  → GutenbergProvider (real HTTP, 50K+ books with full text)
  *                                  → OpenLibraryProvider (real HTTP, 20M+ books with descriptions)
  *   ministry-business-intelligence → GoogleTrendsProvider (real HTTP)
  *                                  → HackerNewsProvider (real HTTP)
@@ -16,9 +17,11 @@
  *                                  → ArabicWikipediaProvider (real HTTP)
  *   all other Ministries           → deferred (return empty results honestly)
  *
- *   Every repository here holds English text except the Arabic Wikipedia, so an
- *   Arabic question reaches them through the language bridge in
- *   sovereign-language-bridge.ts. Without it the library stays silent.
+ *   Every repository here holds English text except the Arabic Wikipedia and the
+ *   Qur'an, so an Arabic question reaches them through the language bridge in
+ *   sovereign-language-bridge.ts. Without it the library stays silent. The two
+ *   Arabic sources receive the Creator's own words instead, carried alongside
+ *   the rendering as IRepositoryProvider.search()'s nativeQuery.
  *
  * ─── HOW TO ADD A PROVIDER ───────────────────────────────────────────────────
  *
@@ -35,6 +38,7 @@ import { GoogleTrendsProvider } from './providers/google-trends-provider';
 import { HackerNewsProvider } from './providers/hacker-news-provider';
 import { WikipediaProvider } from './providers/wikipedia-provider';
 import { ArabicWikipediaProvider } from './providers/arabic-wikipedia-provider';
+import { SovereignScriptureProvider } from './providers/sovereign-scripture-provider';
 import { MinistryRegistry } from './ministries/ministry-registry';
 
 export class IntelligenceCompositionFactory {
@@ -57,6 +61,14 @@ export class IntelligenceCompositionFactory {
     const registry = new MinistryRegistry();
 
     // 2. Attach launch providers to their Ministries
+    // The Qur'an, asked in Arabic. The Founder's standing rule is that for
+    // religious content it is the sole authority; until now the chamber had no
+    // access to it at all and answered a question about أصحاب الكهف out of an
+    // English media catalogue. No ninth Ministry was created to hold it — the
+    // eight are constitutional and not mine to extend — so it sits under the
+    // Ministry the library sits under, and whether revelation warrants a
+    // Ministry of its own is raised with the Founder rather than decided here.
+    registry.attachProvider('ministry-human-knowledge', new SovereignScriptureProvider());
     registry.attachProvider('ministry-human-knowledge', new GutenbergProvider());
     registry.attachProvider('ministry-human-knowledge', new OpenLibraryProvider());
     registry.attachProvider('ministry-business-intelligence', new GoogleTrendsProvider());

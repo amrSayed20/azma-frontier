@@ -29,8 +29,19 @@ export interface IRepositoryProvider {
   
   /**
    * Searches the specific provider for relevant documents.
+   *
+   * `nativeQuery` carries the Creator's own words, untranslated. Most
+   * catalogues here index English and are given `query`, which the language
+   * bridge has rendered for them; a catalogue that indexes the Creator's own
+   * tongue — the Qur'an above all — needs the words as they were asked and
+   * would be ruined by the rendering. Providers that do not care may take two
+   * parameters and ignore the third.
    */
-  search(query: string, limit: number): Promise<RepositorySearchResult[]>;
+  search(
+    query: string,
+    limit: number,
+    nativeQuery?: string,
+  ): Promise<RepositorySearchResult[]>;
   
   /**
    * Retrieves the full physical text of a specific document.
@@ -62,7 +73,11 @@ export class RepositoryManager {
    * @param limit The maximum number of aggregated results to return.
    * @returns An aggregated array of search results, sorted by relevance.
    */
-  public async searchAll(query: string, limit: number = 3): Promise<RepositorySearchResult[]> {
+  public async searchAll(
+    query: string,
+    limit: number = 3,
+    nativeQuery?: string,
+  ): Promise<RepositorySearchResult[]> {
     if (this.providers.size === 0) {
       console.warn('[RepositoryManager] No providers registered. Returning empty results.');
       return [];
@@ -80,7 +95,7 @@ export class RepositoryManager {
     const searchPromises = Array.from(this.providers.values()).map(async (provider) => {
       try {
         return await Promise.race([
-          provider.search(query, limit),
+          provider.search(query, limit, nativeQuery),
           new Promise<RepositorySearchResult[]>((resolve) =>
             setTimeout(() => {
               console.warn(`[RepositoryManager] Provider [${provider.providerId}] exceeded ${SEARCH_DEADLINE_MS}ms. Proceeding without it.`);
