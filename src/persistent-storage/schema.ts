@@ -85,6 +85,21 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     created_at INTEGER NOT NULL,
     expires_at INTEGER NOT NULL
   )`,
+  // VAULT BIOMETRIC ENTRY: one row per device a Creator has enrolled to open
+  // the Vault with their own fingerprint or face. Only the public key is kept
+  // — the biometric itself never leaves the Creator's device and is never
+  // transmitted, which is the whole point of WebAuthn over a stored template.
+  // counter guards against a cloned authenticator replaying an old assertion.
+  `CREATE TABLE IF NOT EXISTS vault_credentials (
+    credential_id TEXT PRIMARY KEY,
+    creator_id TEXT NOT NULL,
+    public_key TEXT NOT NULL,
+    counter INTEGER NOT NULL DEFAULT 0,
+    transports TEXT,
+    device_label TEXT,
+    created_at INTEGER NOT NULL,
+    last_used_at INTEGER
+  )`,
   `CREATE TABLE IF NOT EXISTS generation_records (
     record_id TEXT PRIMARY KEY,
     creator_id TEXT,
@@ -364,6 +379,8 @@ export const GOALS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly
 /** Run only after CREATORS_MIGRATION_COLUMNS has ensured the columns exist — SQLite cannot index a column that isn't there yet. */
 export const INDEX_STATEMENTS: readonly string[] = [
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_creators_email ON creators(email)',
+  // Every biometric entry looks up a Creator's enrolled devices by creator_id.
+  'CREATE INDEX IF NOT EXISTS idx_vault_credentials_creator ON vault_credentials(creator_id)',
   // Composite index for the two most common consumption_records queries:
   //   1. Monthly usage for one creator  → WHERE creator_id = ? AND month_key = ?
   //   2. Founder dashboard all creators → WHERE month_key = ? (partial scan, acceptable)

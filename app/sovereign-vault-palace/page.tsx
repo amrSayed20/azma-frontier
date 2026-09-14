@@ -9,10 +9,13 @@
  * Sovereign Vault (via app/api/vault/assets, session-gated, scoped to
  * the authenticated Creator) now genuinely appears here — Qiyamah ->
  * Real Vault -> Vault Palace is, for the first time, one observable
- * production flow. The PIN/Face/Biometric "gate" and the localStorage
- * path for the separate Hujjah incoming-transfer ceremony are untouched
- * — this Package replaced the treasure catalogue's data source, not the
- * interface. Real treasures carry isRealAsset: true.
+ * production flow. Real treasures carry isRealAsset: true.
+ *
+ * The gate is now genuinely three ways in. The PIN is checked server-side
+ * against a scrypt hash; fingerprint and face are real WebAuthn, where the
+ * device matches the biometric locally and proves it by signature, so nothing
+ * biometric ever reaches the Empire. Until 2026-09-14 the latter two were
+ * theatre with a bypass button, and the PIN they sat beside protected nothing.
  *
  * Seal, Archive, Duplicate and Dispose were all struck out by decree
  * (2026-09-14). Every one of them only ever rewrote this page's own
@@ -332,6 +335,8 @@ export default function SovereignVaultPalace() {
   const [isUploading, setIsUploading]           = useState(false);
   const [uploadError, setUploadError]           = useState<string | null>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const [isBiometricBusy, setIsBiometricBusy]       = useState(false);
+  const [hasBiometricDevice, setHasBiometricDevice] = useState(false);
 
   // Palace memory — familiarity grows with each return
   const [palaceMemory, setPalaceMemory] = useState<PalaceMemory>(() => readPalaceMemory());
@@ -349,7 +354,6 @@ export default function SovereignVaultPalace() {
   const [companionVisible]                 = useState(true);
 
   // Camera ref
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   // ── Auth Gate — redirect unauthenticated visitors to login ──────────────
   useEffect(() => {
@@ -373,18 +377,6 @@ export default function SovereignVaultPalace() {
 
   // ── Camera for Face Auth ─────────────────────────────────────────────────
 
-  // The camera is deliberately NOT opened. Nothing analyses the feed, so
-  // asking a Creator for camera access would be taking a permission for a
-  // capability that does not exist. It is requested again when face
-  // verification is real.
-  useEffect(() => {
-    const el = videoRef.current;
-    return () => {
-      const stream = el?.srcObject as MediaStream | null;
-      stream?.getTracks().forEach((t) => t.stop());
-    };
-  }, []);
-
   // IMPERIAL JOURNEY CONTINUITY — Package D:
   // Consume and remove the kernel session the Foyer wrote before launching
   // the Palace. The Palace gate is the first thing the Creator sees, so
@@ -407,6 +399,15 @@ export default function SovereignVaultPalace() {
   const enterPalace = useCallback(() => {
     setPhase('opening');
     setCompanionMsg(PALACE_COMPANION.opening);
+
+    // Whether this Creator already has a device enrolled decides if the Palace
+    // offers to enrol one. A failure here only hides an invitation.
+    fetch('/api/vault/biometric/devices')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { devices?: unknown[] } | null) => {
+        if (Array.isArray(d?.devices)) setHasBiometricDevice(d.devices.length > 0);
+      })
+      .catch(() => { /* the invitation simply stays hidden */ });
 
     // Real Vault fetch begins immediately, in parallel with the 900ms
     // opening ceremony, so it's ready (or close to it) by the time the
@@ -549,11 +550,83 @@ export default function SovereignVaultPalace() {
 
   function handleSetupClear() { setPin(''); }
 
-  // Biometric entry is not built yet. It previously waited 1.2s and opened the
-  // Palace outright — a silent bypass of the only real control on the Vault.
-  // Until WebAuthn is implemented it must refuse, not pretend.
-  function handleBiometric() {
-    setPinError('التحقق البيومتري قيد الإنشاء — ادخل برمز القصر.');
+  /** Opens the Vault with the device's own fingerprint or face. The biometric
+      is matched by the device and never reaches the Empire; what crosses the
+      wire is a signature the server checks against the enrolled public key. */
+  async function handleBiometric() {
+    if (isBiometricBusy) return;
+    setPinError(null);
+    setIsBiometricBusy(true);
+    try {
+      const challenge = await fetch('/api/vault/biometric/verify');
+      const data = await challenge.json() as { status: string; options?: unknown; message?: string };
+
+      if (data.status === 'no-device') {
+        setPinError('لا جهاز مسجَّل بعد — ادخل برمز القصر ثم سجّل هذا الجهاز.');
+        return;
+      }
+      if (data.status !== 'succeeded' || !data.options) {
+        setPinError(data.message ?? 'تعذّر بدء التحقق.');
+        return;
+      }
+
+      const { startAuthentication } = await import('@simplewebauthn/browser');
+      const response = await startAuthentication({ optionsJSON: data.options as never });
+
+      const verified = await fetch('/api/vault/biometric/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ response }),
+      });
+      const result = await verified.json() as { status: string; message?: string };
+
+      if (result.status === 'authenticated') {
+        enterPalace();
+      } else {
+        setPinError(result.message ?? 'لم يتحقّق الجهاز.');
+      }
+    } catch {
+      // The Creator cancelling the prompt lands here too; no alarm is warranted.
+      setPinError('لم يكتمل التحقق. جرّب مرة أخرى أو ادخل برمز القصر.');
+    } finally {
+      setIsBiometricBusy(false);
+    }
+  }
+
+  /** Enrols this device, once the Creator has proven who they are with the PIN. */
+  async function handleEnrolDevice() {
+    if (isBiometricBusy) return;
+    setPinError(null);
+    setIsBiometricBusy(true);
+    try {
+      const challenge = await fetch('/api/vault/biometric/enrol');
+      const data = await challenge.json() as { status: string; options?: unknown };
+      if (data.status !== 'succeeded' || !data.options) {
+        setPinError('تعذّر بدء التسجيل.');
+        return;
+      }
+
+      const { startRegistration } = await import('@simplewebauthn/browser');
+      const response = await startRegistration({ optionsJSON: data.options as never });
+
+      const saved = await fetch('/api/vault/biometric/enrol', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ response, deviceLabel: navigator.platform || null }),
+      });
+      const result = await saved.json() as { status: string; message?: string };
+
+      if (result.status === 'succeeded') {
+        setHasBiometricDevice(true);
+        setCompanionMsg('سُجّل هذا الجهاز — يفتح خزانتك ببصمتك.');
+      } else {
+        setPinError(result.message ?? 'لم يُسجَّل هذا الجهاز.');
+      }
+    } catch {
+      setPinError('لم يكتمل التسجيل. جرّب مرة أخرى.');
+    } finally {
+      setIsBiometricBusy(false);
+    }
   }
 
   // ── Deposit Ceremony ──────────────────────────────────────────────────────
@@ -836,33 +909,27 @@ export default function SovereignVaultPalace() {
             </div>
           )}
 
-          {/* Face Interface */}
-          {authMethod === 'face' && (
-            <div className="gate-biometric-zone">
-              <div className="biometric-frame face-frame">
-                <video ref={videoRef} autoPlay playsInline muted className="face-feed" />
-                <div className="biometric-overlay" />
-                <div className="biometric-scan-line" />
-              </div>
-              <p className="biometric-label">التحقق بالوجه قيد الإنشاء — ادخل برمز القصر.</p>
-            </div>
-          )}
-
-          {/* Biometric Interface */}
-          {authMethod === 'bio' && (
+          {/* Face and fingerprint are one ceremony: the device decides which
+              sensor to ask for. Both call the same WebAuthn verification. */}
+          {(authMethod === 'face' || authMethod === 'bio') && (
             <div className="gate-biometric-zone">
               <div
-                className="biometric-frame bio-frame"
+                className={`biometric-frame ${authMethod === 'face' ? 'face-frame' : 'bio-frame'}`}
                 role="button"
                 tabIndex={0}
                 onClick={handleBiometric}
                 onKeyDown={(e) => e.key === 'Enter' && handleBiometric()}
-                aria-label="انقر لتفعيل مستشعر البصمة"
+                aria-label={authMethod === 'face' ? 'انقر للتحقق بالوجه' : 'انقر لتفعيل مستشعر البصمة'}
               >
                 <div className="biometric-scan-line" />
-                <span className="bio-glyph" aria-hidden="true">◯</span>
+                <span className="bio-glyph" aria-hidden="true">{authMethod === 'face' ? '◈' : '◯'}</span>
               </div>
-              <p className="biometric-label">ضع إصبعك</p>
+              <p className="biometric-label">
+                {isBiometricBusy
+                  ? 'جارٍ التحقق…'
+                  : authMethod === 'face' ? 'انظر إلى جهازك' : 'ضع إصبعك'}
+              </p>
+              {pinError && <p className="pin-error" role="alert">{pinError}</p>}
             </div>
           )}
         </div>
@@ -1024,6 +1091,21 @@ export default function SovereignVaultPalace() {
                     <h1 className="atrium-title">{atriumGreeting.title}</h1>
                     <p className="atrium-subtitle">{atriumGreeting.subtitle}</p>
                   </div>
+
+                  {/* Enrol this device to open the Vault by fingerprint or face.
+                      Offered only inside the Palace — the Creator has already
+                      proven who they are with the PIN to get here. */}
+                  {!hasBiometricDevice && (
+                    <div className="atrium-deposit">
+                      <button
+                        className="atrium-deposit-btn"
+                        onClick={handleEnrolDevice}
+                        disabled={isBiometricBusy}
+                      >
+                        {isBiometricBusy ? 'جارٍ التسجيل…' : '◈ افتح خزانتك ببصمتك'}
+                      </button>
+                    </div>
+                  )}
 
                   {/* Deposit from the Creator's own device */}
                   <div className="atrium-deposit">

@@ -19,6 +19,15 @@ export { createCreator, getCreator, getCreatorByEmail, updateCreatorPreferredLoc
 export type { SessionRecord } from './session-repository';
 export { createSession, getActiveSession, deleteSession } from './session-repository';
 
+export type { VaultCredential } from './vault-credential-repository';
+export {
+  listVaultCredentials,
+  getVaultCredential,
+  saveVaultCredential,
+  recordVaultCredentialUse,
+  deleteVaultCredential,
+} from './vault-credential-repository';
+
 export type { GenerationRecord, NewGenerationRecord } from './generation-record-repository';
 export { recordGeneration, getGenerationRecord, deleteGenerationRecord, listGenerationsForCreator } from './generation-record-repository';
 
