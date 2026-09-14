@@ -187,9 +187,12 @@ export default function MakmanAlGhayah() {
     try {
       const r = await fetch('/api/sovereign/entry/purpose');
       if (r.ok) {
-        const data = await r.json() as { purpose: string | null };
-        setSovereignPurpose(data.purpose);
-        if (data.purpose) setPurposeInput(data.purpose);
+        // The route returns the whole SovereignPurpose record, not a bare
+        // string; only its statement is renderable text.
+        const data = await r.json() as { purpose: { purposeStatement?: string } | null };
+        const statement = data.purpose?.purposeStatement ?? null;
+        setSovereignPurpose(statement);
+        if (statement) setPurposeInput(statement);
       }
     } catch { /* silent — presence is enhancement */ }
   };
@@ -216,9 +219,10 @@ export default function MakmanAlGhayah() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ purposeStatement: purposeInput.trim() }),
       });
-      const data = await r.json() as { purpose?: string; error?: string };
-      if (r.ok && data.purpose) {
-        setSovereignPurpose(data.purpose);
+      const data = await r.json() as { purpose?: { purposeStatement?: string }; error?: string };
+      const savedStatement = data.purpose?.purposeStatement;
+      if (r.ok && savedStatement) {
+        setSovereignPurpose(savedStatement);
         setIsEditingPurpose(false);
       } else {
         setPurposeError(data.error ?? 'الغاية السيادية لم تُحفظ.');

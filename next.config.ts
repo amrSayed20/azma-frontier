@@ -16,6 +16,15 @@ const NO_CACHE_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
+  // Version-skew protection. Every build gives Server Actions new ids, so a tab
+  // left open across a deployment fires an action the new build has never heard
+  // of and Next.js replaces the whole app with its error screen — the black
+  // page reported after repeated sign-in/sign-out. With a deployment id, Next
+  // recognises the mismatch and reloads the client instead of breaking it.
+  // scripts/deploy.sh sets NEXT_DEPLOYMENT_ID per release; the timestamp
+  // fallback keeps local builds distinct from one another.
+  deploymentId: process.env.NEXT_DEPLOYMENT_ID || `local-${Date.now()}`,
+
   experimental: {
     workerThreads: false,
   },

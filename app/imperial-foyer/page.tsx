@@ -404,8 +404,12 @@ export default function ImperialFoyer() {
 
     fetch('/api/sovereign/entry/purpose')
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { purpose?: string | null } | null) => {
-        if (data?.purpose) setSovereignPurpose(data.purpose);
+      // The route returns the whole SovereignPurpose record, not a bare
+      // string. Rendering the record itself is what React refuses (#31), and
+      // it took down the whole Foyer for any Creator who had declared a purpose.
+      .then((data: { purpose?: { purposeStatement?: string } | null } | null) => {
+        const statement = data?.purpose?.purposeStatement;
+        if (typeof statement === 'string' && statement.length > 0) setSovereignPurpose(statement);
       })
       .catch(() => { /* purpose is enhancement — silence failures */ });
   }, []);

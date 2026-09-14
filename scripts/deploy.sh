@@ -180,8 +180,12 @@ cmd_deploy() {
     warn "using the existing build (--skip-build)"
   else
     step "Building"
-    ( cd "$REPO_ROOT" && npm run build >/dev/null 2>&1 ) || die "build failed — run 'npm run build' to see why"
-    ok "build completed"
+    # The release id becomes the deployment id, so a client left open across
+    # this release is reloaded rather than broken by Server Action ids it has
+    # never seen.
+    ( cd "$REPO_ROOT" && NEXT_DEPLOYMENT_ID="$release_id" npm run build >/dev/null 2>&1 ) \
+      || die "build failed — run 'npm run build' to see why"
+    ok "build completed (deployment id $release_id)"
   fi
   local build_id
   build_id="$(cat "$REPO_ROOT/.next/BUILD_ID")"

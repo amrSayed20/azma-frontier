@@ -54,3 +54,4 @@ next-env.d.ts
 
 # transient release artifact produced by scripts/deploy.sh
 .deploy-artifact.tar.gz
+.reference-pack/
