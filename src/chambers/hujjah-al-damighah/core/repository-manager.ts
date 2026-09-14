@@ -10,6 +10,12 @@
 import { RepositorySearchResult } from '../domain/evidence.types';
 import { SourceDocument } from './evidence-extractor';
 
+/** How long any one catalogue may hold the whole investigation. Measured from
+    the production server: Wikipedia answers in ~270ms and OpenLibrary in
+    ~770ms, so five seconds is generous to every healthy repository while
+    refusing to let a sluggish one decide how long a Creator waits. */
+const SEARCH_DEADLINE_MS = 5_000;
+
 // ==========================================
 // 1. PROVIDER CONTRACT
 // ==========================================
@@ -63,11 +69,25 @@ export class RepositoryManager {
     }
 
     const allResults: RepositorySearchResult[] = [];
-    
-    // Execute all searches in parallel for maximum operational speed
+
+    // Execute all searches in parallel for maximum operational speed. Parallel
+    // was never the problem: Promise.all waits for the slowest, and measured
+    // from the production server a Gutendex search for a real phrase takes
+    // nearly 29 seconds. One sluggish catalogue held every investigation for as
+    // long as it liked. Each provider now races a deadline of its own, and what
+    // has not answered by then simply contributes nothing — the Creator is
+    // waiting, and the evidence already in hand beats a wait with no end.
     const searchPromises = Array.from(this.providers.values()).map(async (provider) => {
       try {
-        return await provider.search(query, limit);
+        return await Promise.race([
+          provider.search(query, limit),
+          new Promise<RepositorySearchResult[]>((resolve) =>
+            setTimeout(() => {
+              console.warn(`[RepositoryManager] Provider [${provider.providerId}] exceeded ${SEARCH_DEADLINE_MS}ms. Proceeding without it.`);
+              resolve([]);
+            }, SEARCH_DEADLINE_MS),
+          ),
+        ]);
       } catch {
         // Architectural Defense: A failing provider must not crash the broader investigation
         console.warn(`[RepositoryManager] Search failed for provider [${provider.providerId}]. Bypassing.`);
