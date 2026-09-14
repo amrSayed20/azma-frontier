@@ -367,19 +367,17 @@ export default function SovereignVaultPalace() {
 
   // ── Camera for Face Auth ─────────────────────────────────────────────────
 
+  // The camera is deliberately NOT opened. Nothing analyses the feed, so
+  // asking a Creator for camera access would be taking a permission for a
+  // capability that does not exist. It is requested again when face
+  // verification is real.
   useEffect(() => {
-    let stream: MediaStream | null = null;
-    if (authMethod !== 'face' || phase !== 'gate') return;
-
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then((s) => {
-        stream = s;
-        if (videoRef.current) videoRef.current.srcObject = s;
-      })
-      .catch(() => { /* camera denied — graceful no-op */ });
-
-    return () => { stream?.getTracks().forEach((t) => t.stop()); };
-  }, [authMethod, phase]);
+    const el = videoRef.current;
+    return () => {
+      const stream = el?.srcObject as MediaStream | null;
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
 
   // IMPERIAL JOURNEY CONTINUITY — Package D:
   // Consume and remove the kernel session the Foyer wrote before launching
@@ -545,11 +543,11 @@ export default function SovereignVaultPalace() {
 
   function handleSetupClear() { setPin(''); }
 
-  async function handleBiometric() {
-    try {
-      await new Promise<void>((res) => setTimeout(res, 1_200));
-      enterPalace();
-    } catch { /* denied */ }
+  // Biometric entry is not built yet. It previously waited 1.2s and opened the
+  // Palace outright — a silent bypass of the only real control on the Vault.
+  // Until WebAuthn is implemented it must refuse, not pretend.
+  function handleBiometric() {
+    setPinError('التحقق البيومتري قيد الإنشاء — ادخل برمز القصر.');
   }
 
   // ── Deposit Ceremony ──────────────────────────────────────────────────────
@@ -862,8 +860,7 @@ export default function SovereignVaultPalace() {
                 <div className="biometric-overlay" />
                 <div className="biometric-scan-line" />
               </div>
-              <p className="biometric-label">مسح بصمة الوجه السيادية…</p>
-              <button className="gate-bypass-btn" onClick={enterPalace}>تخطّ التحقق</button>
+              <p className="biometric-label">التحقق بالوجه قيد الإنشاء — ادخل برمز القصر.</p>
             </div>
           )}
 

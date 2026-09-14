@@ -109,10 +109,18 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100vh;
+  /* A fixed 100vh clipped the keypad on short viewports: the seal, title,
+     method buttons and four keypad rows are taller than a laptop screen once
+     browser chrome is subtracted, and the lower digits simply vanished with no
+     way to reach them. min-height centres the gate when there is room and lets
+     it grow and scroll when there is not. */
+  min-height: 100vh;
   gap: 22px;
   padding: 40px 20px;
 }
+
+/* Nothing in the gate may be squeezed out of existence to fit. */
+.palace-gate > * { flex-shrink: 0; }
 
 @keyframes sealPulse {
   0%, 100% { opacity: 0.18; }
@@ -241,6 +249,23 @@
 
 .pin-key-clear  { color: rgba(200,80,80,.80); font-size: 14px; }
 .pin-key-enter  { color: var(--ig-7); font-size: 20px; }
+
+/* Short viewports — a laptop screen carrying browser chrome and a bookmarks
+   bar. The gate tightens rather than losing its lower rows. */
+@media (max-height: 760px) {
+  .palace-gate { gap: 14px; padding: 20px 16px; }
+  .gate-seal   { font-size: 52px; }
+  .gate-pin-zone { gap: 14px; }
+  .pin-keypad  { grid-template-columns: repeat(3, 48px); gap: 8px; }
+  .pin-key     { width: 48px; height: 48px; font-size: 17px; }
+}
+
+@media (max-height: 620px) {
+  .palace-gate { justify-content: flex-start; }
+  .gate-seal   { font-size: 40px; }
+  .pin-keypad  { grid-template-columns: repeat(3, 44px); gap: 6px; }
+  .pin-key     { width: 44px; height: 44px; font-size: 16px; }
+}
 .pin-key:disabled { opacity: 0.30; cursor: not-allowed; }
 
 /* PIN error and verifying states — Phase 3B Package II N-5 */
