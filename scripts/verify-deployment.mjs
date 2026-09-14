@@ -65,7 +65,13 @@ const TRANSPORT_FAULTS = [
   /ERR_CONNECTION_(RESET|REFUSED|CLOSED|TIMED_OUT)/i,
   /ERR_PROXY_CONNECTION_FAILED/i,
   /net::ERR_ABORTED/i,
-  /socket hang up|ECONNRESET|EAI_AGAIN/i,
+  /socket hang up|ECONNRESET|EAI_AGAIN|EHOSTUNREACH|ENETUNREACH/i,
+  // A navigation that never completes is indistinguishable from an
+  // unreachable host. Classifying it as a failed release once nearly rolled
+  // back a healthy deployment because the operator's own link dropped.
+  /page\.goto:\s*Timeout/i,
+  /Timeout \d+ms exceeded.*navigating/is,
+  /Navigation timeout/i,
 ];
 const isTransportFault = (text) => TRANSPORT_FAULTS.some((p) => p.test(String(text)));
 
@@ -254,6 +260,14 @@ try {
   record(`all ${EXPECTED_CARDS} cards responsive`, responsive === EXPECTED_CARDS,
     `${responsive} of ${names.length}`);
 } catch (err) {
+  // A transport fault anywhere in the run means the check could not be
+  // performed — not that the release is bad. Saying "failed" here is what
+  // triggers a rollback, so a dropped link must never reach that verdict.
+  if (isTransportFault(err?.message ?? err)) {
+    console.log(`    \x1b[33mINCONCLUSIVE\x1b[0m  ${String(err).split('\n')[0].slice(0, 140)}`);
+    await browser.close();
+    process.exit(2);
+  }
   record('verification completed', false, String(err).split('\n')[0].slice(0, 160));
 } finally {
   await browser.close();

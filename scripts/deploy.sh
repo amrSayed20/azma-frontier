@@ -110,6 +110,12 @@ cmd_verify() {
 cmd_rollback() {
   local target="${1:-}"
 
+  # An unreachable host and an empty state file are different emergencies, and
+  # a rollback is exactly when a misleading diagnosis costs the most. Prove the
+  # server answers before drawing any conclusion from what it reports.
+  remote "true" >/dev/null 2>&1 \
+    || die "cannot reach $REMOTE — the release was NOT rolled back. Restore connectivity, then: ./scripts/deploy.sh rollback"
+
   if [ -z "$target" ]; then
     target="$(remote "grep '^previous=' '$STATE_FILE' 2>/dev/null | cut -d= -f2" || true)"
     [ -n "$target" ] || die "no previous release recorded — pass a release id explicitly (see: deploy.sh status)"
