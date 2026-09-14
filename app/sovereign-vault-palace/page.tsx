@@ -41,13 +41,13 @@ interface SovereignVaultDef {
 
 const SOVEREIGN_VAULTS: SovereignVaultDef[] = [
   { id: 'investigations', nameAr: 'خزنة التحقيقات',    descAr: 'أدلة ونتائج بحوث حجرة المعرفة',         icon: '✦',  personality: 'crimson', accentRgb: '180,40,40'  },
-  { id: 'creative',       nameAr: 'خزنة الإبداع',       descAr: 'المنتجات الإبداعية والأعمال الفنية',    icon: '✦',  personality: 'violet',  accentRgb: '120,40,200' },
+  { id: 'creative',       nameAr: 'خزنة الصور',         descAr: 'الصور والأعمال البصرية',               icon: '✦',  personality: 'violet',  accentRgb: '120,40,200' },
   { id: 'characters',     nameAr: 'خزنة الشخصيات',     descAr: 'هويات الذكاء الاصطناعي والشخصيات',     icon: '◈',  personality: 'indigo',  accentRgb: '40,80,220'  },
-  { id: 'audiovisual',    nameAr: 'خزنة الصوت والصورة', descAr: 'اللقطات والأصوات السيادية المنجزة',   icon: '◎',  personality: 'teal',    accentRgb: '20,140,140' },
+  { id: 'audiovisual',    nameAr: 'خزنة الأصوات',       descAr: 'التسجيلات والسرد الصوتي السيادي',      icon: '◎',  personality: 'teal',    accentRgb: '20,140,140' },
   { id: 'documents',      nameAr: 'خزنة الوثائق',       descAr: 'السجلات والوثائق المكتوبة',            icon: '⬡',  personality: 'forest',  accentRgb: '30,100,50'  },
   { id: 'brands',         nameAr: 'خزنة العلامات',      descAr: 'الأختام والهويات التجارية',            icon: '◆',  personality: 'amber',   accentRgb: '180,130,20' },
   { id: 'prompts',        nameAr: 'خزنة البرومبتات',    descAr: 'أكواد النوايا والطلبات المحكمة',        icon: '⌘',  personality: 'pulse',   accentRgb: '100,20,180' },
-  { id: 'memories',       nameAr: 'خزنة الذكريات',      descAr: 'اللحظات والمعالم الإمبراطورية',         icon: '◇',  personality: 'memory',  accentRgb: '200,160,50' },
+  { id: 'memories',       nameAr: 'خزنة المشاهد',       descAr: 'المقاطع المرئية والمشاهد المنجزة',      icon: '◇',  personality: 'memory',  accentRgb: '200,160,50' },
   { id: 'projects',       nameAr: 'خزنة المشاريع',      descAr: 'المبادرات النشطة والمواد الجارية',      icon: '⬟',  personality: 'slate',   accentRgb: '40,60,140'  },
   { id: 'archive',        nameAr: 'الأرشيف الملكي',     descAr: 'الأعمال المكتملة والسجلات المحكمة',    icon: '⊛',  personality: 'stone',   accentRgb: '80,70,60'   },
 ];

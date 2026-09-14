@@ -247,8 +247,12 @@
 
 .pin-key:active:not(:disabled) { transform: scale(0.94); }
 
-.pin-key-clear  { color: rgba(200,80,80,.80); font-size: 14px; }
-.pin-key-enter  { color: var(--ig-7); font-size: 20px; }
+/* The bottom row reads as a dead strip next to the digits above it: clear was
+   a dim red, and enter sits disabled — and therefore at 30% opacity — until a
+   fourth digit lands. Both are given the same presence as the numerals. */
+.pin-key-clear  { color: rgba(228,120,120,.95); font-size: 18px; }
+.pin-key-enter  { color: var(--ig-7); font-size: 22px; }
+
 
 /* Short viewports — a laptop screen carrying browser chrome and a bookmarks
    bar. The gate tightens rather than losing its lower rows. */
@@ -267,6 +271,12 @@
   .pin-key     { width: 44px; height: 44px; font-size: 16px; }
 }
 .pin-key:disabled { opacity: 0.30; cursor: not-allowed; }
+
+/* Enter waits for a fourth digit on every single entry, so at 30% it reads as
+   a broken key rather than a waiting one and the bottom row looks switched
+   off. Declared after the rule above deliberately: both selectors weigh the
+   same, so order is what decides this, not a specificity trick. */
+.pin-key-enter:disabled { opacity: 0.62; cursor: default; }
 
 /* PIN error and verifying states — Phase 3B Package II N-5 */
 .pin-error {

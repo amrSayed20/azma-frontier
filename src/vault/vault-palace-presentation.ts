@@ -10,12 +10,24 @@ import { CapabilityTarget } from '../core/sovereign-orchestrator/qiyamah-intent-
 
 export type AssetMediaType = 'image' | 'video' | 'audio';
 
+/**
+ * Every asset is filed by what it actually is. Images, video and audio used to
+ * collapse into one vault while nine others stood empty, so a Creator looking
+ * for a single recording had to search a pile of unrelated media.
+ *
+ * The vault ids are deliberately left alone. They key the stored buckets, and
+ * renaming them would orphan everything a Creator has already filed; only the
+ * Arabic names the Creator reads were changed to match these contents.
+ *   audiovisual -> خزنة الأصوات    creative -> خزنة الصور    memories -> خزنة المشاهد
+ */
 export function capabilityTargetToVaultId(target: CapabilityTarget): string {
   switch (target) {
-    case CapabilityTarget.VISUAL:
-    case CapabilityTarget.MOTION:
     case CapabilityTarget.AUDIO:
       return 'audiovisual';
+    case CapabilityTarget.VISUAL:
+      return 'creative';
+    case CapabilityTarget.MOTION:
+      return 'memories';
     case CapabilityTarget.WRITING:
     case CapabilityTarget.DIRECTORIAL:
       return 'documents';

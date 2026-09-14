@@ -50,17 +50,23 @@ describe('detectMediaType', () => {
 // ── capabilityTargetToVaultId ──────────────────────────────────────────────
 
 describe('capabilityTargetToVaultId', () => {
-  it('VISUAL maps to audiovisual vault', () => {
-    expect(capabilityTargetToVaultId(CapabilityTarget.VISUAL)).toBe('audiovisual');
+  it('files an image in the images vault', () => {
+    expect(capabilityTargetToVaultId(CapabilityTarget.VISUAL)).toBe('creative');
   });
-  it('MOTION maps to audiovisual vault', () => {
-    expect(capabilityTargetToVaultId(CapabilityTarget.MOTION)).toBe('audiovisual');
+  it('files a video in the scenes vault', () => {
+    expect(capabilityTargetToVaultId(CapabilityTarget.MOTION)).toBe('memories');
   });
-  it('AUDIO maps to audiovisual vault', () => {
+  it('files a recording in the audio vault', () => {
     expect(capabilityTargetToVaultId(CapabilityTarget.AUDIO)).toBe('audiovisual');
   });
   it('WRITING maps to documents vault', () => {
     expect(capabilityTargetToVaultId(CapabilityTarget.WRITING)).toBe('documents');
+  });
+
+  it('never files two different media types together', () => {
+    const media = [CapabilityTarget.VISUAL, CapabilityTarget.MOTION, CapabilityTarget.AUDIO];
+    const vaults = media.map(capabilityTargetToVaultId);
+    expect(new Set(vaults).size).toBe(media.length);
   });
 });
 
