@@ -11,11 +11,12 @@
  * Real Vault -> Vault Palace is, for the first time, one observable
  * production flow. Real treasures carry isRealAsset: true.
  *
- * The gate is now genuinely three ways in. The PIN is checked server-side
- * against a scrypt hash; fingerprint and face are real WebAuthn, where the
- * device matches the biometric locally and proves it by signature, so nothing
- * biometric ever reaches the Empire. Until 2026-09-14 the latter two were
- * theatre with a bypass button, and the PIN they sat beside protected nothing.
+ * The gate is two real ways in. The PIN is checked server-side against a
+ * scrypt hash. Biometric entry is real WebAuthn: the device matches the
+ * fingerprint or face in its own secure hardware and proves it by signature,
+ * so nothing biometric ever reaches the Empire. Until 2026-09-14 both
+ * biometric options were theatre with a bypass button, and the PIN they sat
+ * beside protected nothing.
  *
  * Seal, Archive, Duplicate and Dispose were all struck out by decree
  * (2026-09-14). Every one of them only ever rewrote this page's own
@@ -305,7 +306,7 @@ const PALACE_COMPANION = {
 // ── Phase + Auth ──────────────────────────────────────────────────────────
 
 type PalacePhase = 'gate' | 'opening' | 'palace' | 'ceremony' | 'sealing' | 'setup';
-type AuthMethod  = 'pin' | 'face' | 'bio';
+type AuthMethod  = 'pin' | 'bio';
 
 // ── Main Component ────────────────────────────────────────────────────────
 
@@ -874,14 +875,20 @@ export default function SovereignVaultPalace() {
           <p className="gate-subtitle">هذا مكانك</p>
 
           {/* Auth method selector */}
+          {/* WebAuthn cannot choose a sensor. It asks the operating system to
+              verify the human, and the device offers whichever of its sensors
+              is enrolled — a fingerprint reader, an infrared camera, or both.
+              Two buttons promised a choice the standard does not give: on a
+              machine whose camera is not a Windows Hello camera, "بصمة الوجه"
+              could only ever fail. One honest control replaces them. */}
           <div className="gate-methods" role="group" aria-label="طريقة الدخول">
-            {(['pin', 'face', 'bio'] as AuthMethod[]).map((m) => (
+            {(['pin', 'bio'] as AuthMethod[]).map((m) => (
               <button
                 key={m}
                 className={`gate-method-btn ${authMethod === m ? 'method-active' : ''}`}
-                onClick={() => { setAuthMethod(m); setPin(''); }}
+                onClick={() => { setAuthMethod(m); setPin(''); setPinError(null); }}
               >
-                {m === 'pin' ? 'PIN' : m === 'face' ? 'بصمة الوجه' : 'البصمة'}
+                {m === 'pin' ? 'PIN' : 'بصمتك'}
               </button>
             ))}
           </div>
@@ -909,26 +916,23 @@ export default function SovereignVaultPalace() {
             </div>
           )}
 
-          {/* Face and fingerprint are one ceremony: the device decides which
-              sensor to ask for. Both call the same WebAuthn verification. */}
-          {(authMethod === 'face' || authMethod === 'bio') && (
+          {authMethod === 'bio' && (
             <div className="gate-biometric-zone">
               <div
-                className={`biometric-frame ${authMethod === 'face' ? 'face-frame' : 'bio-frame'}`}
+                className="biometric-frame bio-frame"
                 role="button"
                 tabIndex={0}
                 onClick={handleBiometric}
                 onKeyDown={(e) => e.key === 'Enter' && handleBiometric()}
-                aria-label={authMethod === 'face' ? 'انقر للتحقق بالوجه' : 'انقر لتفعيل مستشعر البصمة'}
+                aria-label="انقر للتحقق ببصمتك"
               >
                 <div className="biometric-scan-line" />
-                <span className="bio-glyph" aria-hidden="true">{authMethod === 'face' ? '◈' : '◯'}</span>
+                <span className="bio-glyph" aria-hidden="true">◯</span>
               </div>
               <p className="biometric-label">
-                {isBiometricBusy
-                  ? 'جارٍ التحقق…'
-                  : authMethod === 'face' ? 'انظر إلى جهازك' : 'ضع إصبعك'}
+                {isBiometricBusy ? 'جارٍ التحقق…' : 'أثبت أنك أنت'}
               </p>
+              <p className="biometric-hint">جهازك يسألك بما لديه — إصبعك أو وجهك</p>
               {pinError && <p className="pin-error" role="alert">{pinError}</p>}
             </div>
           )}

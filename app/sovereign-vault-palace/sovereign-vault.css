@@ -338,21 +338,14 @@
   border-radius: 4px;
 }
 
-.face-frame { border-radius: 50%; }
-
-.face-feed {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+/* One sensor, one frame. The face variant is gone: WebAuthn asks the operating
+   system to verify the human and the device chooses which of its sensors to
+   use, so a separate face control could only promise what it cannot deliver. */
+.biometric-hint {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
   opacity: 0.75;
-}
-
-.biometric-overlay {
-  position: absolute;
-  inset: 0;
-  border: 2px solid rgba(212,175,55,.30);
-  border-radius: inherit;
-  pointer-events: none;
 }
 
 @keyframes scanLine {
