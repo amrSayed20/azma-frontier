@@ -128,8 +128,10 @@ describe('retrieving the verse', () => {
 
     const doc = await provider.fetch('ayah-2149');
     expect(doc.content).toContain('أَمْ حَسِبْتَ');
-    expect(doc.content).toContain('سورة الكهف، الآية 9');
     expect(doc.content).toContain('المعنى: لا تظن أيها الرسول');
+    // The place rides apart from the text, so a window over a long reading of
+    // the meaning cannot cut the sura and verse away.
+    expect(doc.attributionAr).toContain('سورة الكهف، الآية 9');
   });
 
   it('still delivers the verse when no reading accompanies it', async () => {

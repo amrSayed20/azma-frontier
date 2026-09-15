@@ -136,10 +136,14 @@ describe('a narration the scholars did not grade', () => {
     mockFind.mockReturnValue(BUKHARI_NARRATION);
     const doc = await provider.fetch('hadith-ara-bukhari-2');
 
-    expect(doc.content).toContain('صحيح البخاري — الحديث 2');
-    expect(doc.content).toContain('درجة الحديث: غير متوفرة من المصدر');
+    // The citation rides in attributionAr, not in the text — a window over the
+    // text would otherwise cut the collection and the grading away entirely.
+    expect(doc.attributionAr).toContain('صحيح البخاري — الحديث 2');
+    expect(doc.attributionAr).toContain('درجة الحديث: غير متوفرة من المصدر');
     // The word the collection's title would have supplied, had we let it.
-    expect(doc.content).not.toMatch(/درجة الحديث:\s*صحيح\b/);
+    expect(doc.attributionAr).not.toMatch(/درجة الحديث:\s*صحيح\b/);
+    // The narration itself is the text, and nothing else is.
+    expect(doc.content).toBe(BUKHARI_NARRATION.textAr);
   });
 });
 
@@ -171,10 +175,10 @@ describe('a narration the scholars graded', () => {
     mockFind.mockReturnValue(ABUDAWUD_NARRATION);
     const doc = await provider.fetch('hadith-ara-abudawud-1');
 
-    expect(doc.content).toContain('سنن أبي داود — الحديث 1');
-    expect(doc.content).toContain('حسن صحيح — الألباني');
-    expect(doc.content).toContain('صحيح لغيره — شعيب الأرناؤوط');
-    expect(doc.content).toContain('واختلف أهل العلم');
+    expect(doc.attributionAr).toContain('سنن أبي داود — الحديث 1');
+    expect(doc.attributionAr).toContain('حسن صحيح — الألباني');
+    expect(doc.attributionAr).toContain('صحيح لغيره — شعيب الأرناؤوط');
+    expect(doc.attributionAr).toContain('واختلف أهل العلم');
   });
 });
 

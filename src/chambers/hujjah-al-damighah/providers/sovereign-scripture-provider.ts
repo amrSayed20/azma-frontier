@@ -232,13 +232,19 @@ export class SovereignScriptureProvider implements IRepositoryProvider {
         ? `${suraTitle(verse.surah.name)}، الآية ${verse.numberInSurah}`
         : 'القرآن الكريم';
 
-    // Verse first, then where to find it, then the reading of its meaning. The
-    // order matters: what is recited carries the authority, and the reading of
-    // it is a reading. Both travel with the Creator when they take the evidence.
+    // The verse and the reading of its meaning are the text; the place is
+    // attribution and travels apart from it, because a window over a long
+    // reading would otherwise cut the sura and verse away and leave a Creator
+    // holding a quotation they cannot check.
     const content = meaning
-      ? `﴿${verse.text}﴾ — ${place}.\n\nالمعنى: ${meaning}`
-      : `﴿${verse.text}﴾ — ${place}.`;
+      ? `﴿${verse.text}﴾\n\nالمعنى: ${meaning}`
+      : `﴿${verse.text}﴾`;
 
-    return { id: documentId, provider: this.providerId, content };
+    return {
+      id: documentId,
+      provider: this.providerId,
+      content,
+      attributionAr: place + '.',
+    };
   }
 }

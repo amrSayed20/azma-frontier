@@ -197,6 +197,10 @@ function buildMinistryProvider(
       // it also erased the only distinction a religious question depends on, so
       // the kind of source is resolved here, where the raw key is still known,
       // and travels upward while the name does not.
+      // The spread carries attributionAr through untouched — a citation is the
+      // evidence's own identity, not the name of the vendor that served it, and
+      // it is the one thing a Creator needs in order to check what they were
+      // shown.
       return {
         ...rawDoc,
         provider: ministryId,

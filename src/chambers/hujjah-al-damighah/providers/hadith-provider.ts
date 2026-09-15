@@ -222,12 +222,14 @@ export class HadithProvider implements IRepositoryProvider {
     const place = `${narration.collectionAr} — الحديث ${narration.narrationNumber}`;
     const grades = renderGrades(narration.grades);
 
-    // The narration, then where it is found, then what the scholars said of it —
-    // and when they said nothing, that silence is spoken plainly rather than
-    // filled in from the collection's name.
-    const content = [
-      narration.textAr,
-      '',
+    // Where it is found and what the scholars said of it travel as attribution,
+    // not as trailing prose. Appended to the text they were windowed away: the
+    // live page showed a long narration reaching the Creator with its
+    // collection, its number and its gradings all truncated off, which leaves
+    // an unsourced sentence about the Prophet ﷺ. When the scholars stated
+    // nothing, that silence is spoken plainly rather than filled in from the
+    // collection's name.
+    const attributionAr = [
       place + '.',
       grades ?? 'درجة الحديث: غير متوفرة من المصدر.',
     ].join('\n');
@@ -235,8 +237,9 @@ export class HadithProvider implements IRepositoryProvider {
     return {
       id: documentId,
       provider: this.providerId,
-      content,
+      content: narration.textAr,
       authority: SourceAuthority.DOCUMENTED,
+      attributionAr,
     };
   }
 }

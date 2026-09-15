@@ -34,6 +34,21 @@ export interface SourceDocument {
    * does not. Absent when the document came from no known source.
    */
   readonly authority?: SourceAuthority;
+
+  /**
+   * Where this text is found, and what the scholars said of it — carried apart
+   * from the text so that windowing cannot cut it off.
+   *
+   * It used to be appended to `content` as trailing prose, and the live page
+   * showed what that costs: a long narration was windowed to 420 characters and
+   * reached the Creator with its collection, its number and its gradings all
+   * truncated away. A narration without its attribution is an unsourced
+   * sentence about the Prophet ﷺ, and a grading the Creator never sees is a
+   * grading that was never displayed.
+   *
+   * This is metadata, not prose. It always travels whole.
+   */
+  readonly attributionAr?: string;
 }
 
 // ==========================================
@@ -69,6 +84,13 @@ export class EvidenceExtractor {
 
     // Score the relevant passage (not an arbitrary opening slice) against claim keywords.
     const { confidenceScore } = EvidenceScoringEngine.score(relevantPassage, readingClaim);
+
+    // The attribution rides past the window. Scoring happens on the passage
+    // alone, so a citation can never inflate a score — it only ensures that
+    // whatever the Creator is shown arrives with its source attached.
+    const attributedText = document.attributionAr
+      ? `${relevantPassage}\n\n${document.attributionAr}`
+      : relevantPassage;
     const confidenceLevel = EvidenceExtractor.classifyConfidence(confidenceScore);
 
     const scoredEvidence: Evidence = {
@@ -76,8 +98,8 @@ export class EvidenceExtractor {
       claimId: claim.id,
       sourceId: document.id,
       sourceProvider: document.provider,
-      extractedText: relevantPassage,
-      contextWindow: relevantPassage,
+      extractedText: attributedText,
+      contextWindow: attributedText,
       confidenceScore,
       confidenceLevel,
       // The Ministry resolves this before re-stamping the provider. The fallback
