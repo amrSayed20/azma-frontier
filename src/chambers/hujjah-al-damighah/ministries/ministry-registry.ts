@@ -159,7 +159,14 @@ function buildMinistryProvider(
       // places in a religious question went to a Ministry whose only sources
       // are contemporary trends and technology news.
       const qualified = subProviders.filter((p) => sourceServesDomain(p.providerId, domain));
-      if (qualified.length === 0) return [];
+      if (qualified.length === 0) {
+        // Said out loud, because silence here is indistinguishable from a
+        // Ministry that searched and found nothing — and those need different
+        // repairs. A medical question returned zero evidence and the log could
+        // not tell me which of the two had happened.
+        console.log(`[${ministryId}] no source serves domain=${domain ?? 'any'}`);
+        return [];
+      }
 
       const allResults = await Promise.all(
         qualified.map((p) =>
@@ -196,9 +203,11 @@ function buildMinistryProvider(
         perSource[at > 0 ? composite.slice(0, at) : 'unknown'] = group.length;
       }
       const selection = selectAcrossSources(allResults, limit);
-      if (Object.keys(perSource).length > 0) {
-        console.log(`[${ministryId}] found ${JSON.stringify(perSource)} → kept ${selection.length}`);
-      }
+      console.log(
+        Object.keys(perSource).length > 0
+          ? `[${ministryId}] found ${JSON.stringify(perSource)} → kept ${selection.length}`
+          : `[${ministryId}] searched ${qualified.length} source(s) for domain=${domain ?? 'any'}, found nothing`,
+      );
       return selection;
     },
 

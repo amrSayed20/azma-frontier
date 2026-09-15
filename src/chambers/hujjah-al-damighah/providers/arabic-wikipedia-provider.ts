@@ -50,14 +50,32 @@ function stripHtml(html: string): string {
     .trim();
 }
 
+const ARABIC_LETTER = /[؀-ۿ]/;
+
 export class ArabicWikipediaProvider implements IRepositoryProvider {
   public readonly providerId: string = 'arabic-wikipedia';
 
-  public async search(query: string, limit: number): Promise<RepositorySearchResult[]> {
+  /**
+   * Searched in the Creator's own words.
+   *
+   * This catalogue indexes Arabic and nothing else, and it was being handed the
+   * English rendering the language bridge makes for the catalogues that index
+   * English. Measured live: a medical question — «اشرح للمريض عملية استئصال
+   * المرارة» — reached it as English and returned nothing at all, so the whole
+   * medical domain answered with zero evidence. The Arabic encyclopedia is the
+   * chamber's only source for that domain, and it was being asked in a language
+   * it does not hold.
+   */
+  public async search(
+    query: string,
+    limit: number,
+    nativeQuery?: string,
+  ): Promise<RepositorySearchResult[]> {
+    const asked = nativeQuery && ARABIC_LETTER.test(nativeQuery) ? nativeQuery : query;
     const url = new URL(ARWIKI_SEARCH_URL);
     url.searchParams.set('action', 'query');
     url.searchParams.set('list', 'search');
-    url.searchParams.set('srsearch', query);
+    url.searchParams.set('srsearch', asked);
     url.searchParams.set('srlimit', String(Math.min(limit, 10)));
     url.searchParams.set('utf8', '1');
     url.searchParams.set('format', 'json');

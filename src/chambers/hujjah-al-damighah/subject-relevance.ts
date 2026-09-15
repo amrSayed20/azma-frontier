@@ -235,6 +235,12 @@ export async function judgeSubjectRelevance(
  * a degraded one.
  */
 export function sortingNoticeAr(verdict: SubjectVerdict): string {
+  // Nothing found is not a failure to sort. Saying «تعذّر فرز الأدلة» over an
+  // empty result told a Creator the chamber had stumbled when in truth it had
+  // simply found nothing — which is a different thing, and the one they need to
+  // know. Measured live on a medical question that returned no evidence at all.
+  if (verdict.onSubject.length === 0 && verdict.setAside.length === 0) return '';
+
   if (!verdict.judged) {
     return 'تعذّر فرز الأدلة على الموضوع، فعُرض كل ما وُجد — وفيه ما قد يكون خارج سؤالك.';
   }
