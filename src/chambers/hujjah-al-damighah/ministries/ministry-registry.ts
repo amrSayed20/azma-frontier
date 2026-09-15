@@ -63,7 +63,7 @@
  *   The registry is a bootstrap component only.
  */
 
-import { RepositoryManager, IRepositoryProvider } from '../core/repository-manager';
+import { RepositoryManager, IRepositoryProvider, selectAcrossSources } from '../core/repository-manager';
 import type { RepositorySearchResult } from '../domain/evidence.types';
 import type { SourceDocument } from '../core/evidence-extractor';
 import { authorityOfSourceKey } from '../domain/evidence-authority';
@@ -166,10 +166,14 @@ function buildMinistryProvider(
         ),
       );
 
-      return allResults
-        .flat()
-        .sort((a, b) => b.relevanceScore - a.relevanceScore)
-        .slice(0, limit);
+      // Each source inside this Ministry keeps a share before the rest is
+      // allotted by score. Measured live: the Qur'an scores 0.80–0.99 and the
+      // Sunnah 0.50–0.90, they sit in this same Ministry, and sorting by score
+      // alone handed the Qur'an all ten places — a Creator asking about الصبر
+      // received ten verses and not one of the 36,064 narrations the Empire
+      // holds. Two sources were being compared on a number that means something
+      // different in each of them.
+      return selectAcrossSources(allResults, limit);
     },
 
     async fetch(compositeId: string): Promise<SourceDocument> {

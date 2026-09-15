@@ -145,6 +145,31 @@ export async function runInvestigation(
       .filter((e): e is { item: typeof e.item; text: string; record: typeof e.record } =>
         typeof e.text === 'string' && e.text.length > 0);
 
+    // What the chamber actually assembled, counted where it can still be seen.
+    //
+    // The chamber had no way to say where evidence was lost. A Creator asking
+    // for a narration received verses and nothing else, and every stage between
+    // the search and the screen was equally plausible as the place it vanished
+    // — so the search was measured, the store was measured, the ranking was
+    // measured, and the answer was still not in hand. A room that cannot
+    // account for its own output cannot be trusted with a religious question.
+    //
+    // No repository, host or model is named. What is counted is what kind of
+    // evidence survived, which is the Empire's own business.
+    const authorityTally: Record<string, number> = {};
+    for (const item of evidenceOutcome.collection.items) {
+      const key = String(authorityOfEvidence(item.evidence));
+      authorityTally[key] = (authorityTally[key] ?? 0) + 1;
+    }
+    const withheldForLanguage = rendered.filter(
+      (r) => displayableText(r) === null,
+    ).length;
+    console.log(
+      `[Hujjah] domain=${category} gathered=${evidenceOutcome.collection.items.length} ` +
+      `carried=${carried.length} withheldForLanguage=${withheldForLanguage} ` +
+      `byAuthority=${JSON.stringify(authorityTally)}`,
+    );
+
     // Stage 4b — Synthesis: compose the Arabic answer from the gathered
     // evidence. Was OpenAI, whose key was never configured on the server, so
     // this stage was skipped in silence and every Creator saw raw evidence and

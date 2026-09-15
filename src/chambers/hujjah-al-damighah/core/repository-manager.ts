@@ -49,6 +49,60 @@ export interface IRepositoryProvider {
   fetch(documentId: string): Promise<SourceDocument>;
 }
 
+/**
+ * Chooses which results survive a limit, so that no source is silenced by
+ * another source's scoring scale.
+ *
+ * ─── WHY SORTING BY SCORE ALONE WAS NOT ENOUGH ──────────────────────────────
+ *
+ *   Measured live: a Creator asking «ما ورد في فضل الصبر» received ten pieces of
+ *   evidence, every one of them a verse, and not one narration — although the
+ *   Empire holds 36,064 of them and the search found them. The Qur'an provider
+ *   scores its matches 0.80–0.99 and the Sunnah provider 0.50–0.90, they share
+ *   a Ministry, and the Ministry keeps its ten best. So the Qur'an took the
+ *   whole quota and starved the Sunnah — not because the narrations were
+ *   irrelevant, but because two sources were compared on one number that means
+ *   something different in each of them.
+ *
+ *   A score orders results *within* a source honestly. Across sources it is not
+ *   a common currency, and treating it as one lets the most generous scorer
+ *   silence everyone else.
+ *
+ *   So selection goes round the sources in turn — each one's best, then each
+ *   one's second — until the limit is full. Every source that found something
+ *   is represented; a source with more to offer still fills more of what
+ *   remains. The survivors are then ordered by score as before, so the Creator
+ *   still reads the strongest first.
+ */
+export function selectAcrossSources(
+  groups: readonly RepositorySearchResult[][],
+  limit: number,
+): RepositorySearchResult[] {
+  if (limit <= 0) return [];
+
+  const queues = groups
+    .map((g) => [...g].sort((a, b) => b.relevanceScore - a.relevanceScore))
+    .filter((g) => g.length > 0);
+  if (queues.length === 0) return [];
+
+  const chosen: RepositorySearchResult[] = [];
+  let round = 0;
+  while (chosen.length < limit) {
+    let tookAny = false;
+    for (const queue of queues) {
+      if (chosen.length >= limit) break;
+      const next = queue[round];
+      if (next === undefined) continue;
+      chosen.push(next);
+      tookAny = true;
+    }
+    if (!tookAny) break;
+    round += 1;
+  }
+
+  return chosen.sort((a, b) => b.relevanceScore - a.relevanceScore);
+}
+
 // ==========================================
 // 2. THE REPOSITORY MANAGER
 // ==========================================
@@ -124,16 +178,13 @@ export class RepositoryManager {
     });
 
     const resultsArray = await Promise.all(searchPromises);
-    
-    // Flatten the array of arrays
-    for (const results of resultsArray) {
-      allResults.push(...results);
-    }
 
-    // Sort globally by relevance score (highest first) and strictly enforce the limit
-    return allResults
-      .sort((a, b) => b.relevanceScore - a.relevanceScore)
-      .slice(0, limit);
+    // Each Ministry keeps a share of the limit before the rest is allotted by
+    // score, so a Ministry that answered is never silenced by another
+    // Ministry's scoring scale. Ordering is still by score, so the Creator
+    // reads the strongest first.
+    allResults.push(...selectAcrossSources(resultsArray, limit));
+    return allResults;
   }
 
   /**

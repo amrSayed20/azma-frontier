@@ -43,6 +43,14 @@ export class IntelligenceEngine {
       claim.normalizedStatement,
     );
 
+    // Which Ministries answered, and with how much. The chamber could not
+    // previously say where evidence was lost between a search that found
+    // narrations and a screen that showed none — and every stage in between was
+    // equally plausible. Counting here closes the first half of that gap.
+    const perMinistry: Record<string, number> = {};
+    for (const r of searchResults) perMinistry[r.provider] = (perMinistry[r.provider] ?? 0) + 1;
+    console.log(`[Intelligence Engine] search returned ${searchResults.length} — ${JSON.stringify(perMinistry)}`);
+
     // 3. Extract and compile intelligence — fetch all documents in parallel so
     // a single slow provider (e.g. Gutenberg CDN) does not stall the others.
     const fetchResults = await Promise.allSettled(
@@ -62,8 +70,16 @@ export class IntelligenceEngine {
           bundleManager.addEvidence(evidence);
         }
       } else {
-        // Silent continuation: The Intelligence Engine must not crash if a single document fails
-        console.warn(`[Intelligence Engine] Failed to extract from document ID: ${searchResults[i]?.id ?? '?'}`);
+        // Silent continuation: The Intelligence Engine must not crash if a
+        // single document fails. But the reason travels with the warning now —
+        // a document that was found and then vanished is the exact gap the
+        // chamber could not previously account for, and "failed to extract"
+        // without a reason sends whoever reads it nowhere.
+        const reason = outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason);
+        console.warn(
+          `[Intelligence Engine] Could not retrieve '${searchResults[i]?.id ?? '?'}' ` +
+          `from ${searchResults[i]?.provider ?? '?'}: ${reason}`,
+        );
       }
     }
 
