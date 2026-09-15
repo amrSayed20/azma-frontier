@@ -93,20 +93,33 @@ export class RepositoryManager {
     // has not answered by then simply contributes nothing — the Creator is
     // waiting, and the evidence already in hand beats a wait with no end.
     const searchPromises = Array.from(this.providers.values()).map(async (provider) => {
+      // Promise.race does not cancel the loser. Without this handle the timer
+      // below kept running after a provider had already answered, and fired
+      // five seconds later announcing that it had "exceeded 5000ms" — for every
+      // provider, on every search, however fast it had been. Eight Ministries
+      // reporting a timeout in the same second is what a healthy investigation
+      // looked like in the log, and that false report cost a full misdiagnosis:
+      // it was read as the runtime being frozen, and a root cause was built on
+      // it that did not exist. A diagnostic that lies is worse than none.
+      let deadline: ReturnType<typeof setTimeout> | undefined;
       try {
         return await Promise.race([
           provider.search(query, limit, nativeQuery),
-          new Promise<RepositorySearchResult[]>((resolve) =>
-            setTimeout(() => {
+          new Promise<RepositorySearchResult[]>((resolve) => {
+            deadline = setTimeout(() => {
               console.warn(`[RepositoryManager] Provider [${provider.providerId}] exceeded ${SEARCH_DEADLINE_MS}ms. Proceeding without it.`);
               resolve([]);
-            }, SEARCH_DEADLINE_MS),
-          ),
+            }, SEARCH_DEADLINE_MS);
+          }),
         ]);
       } catch {
         // Architectural Defense: A failing provider must not crash the broader investigation
         console.warn(`[RepositoryManager] Search failed for provider [${provider.providerId}]. Bypassing.`);
         return [];
+      } finally {
+        // Whoever won, the timer stops. A deadline that has nothing left to
+        // guard must not still be able to speak.
+        if (deadline !== undefined) clearTimeout(deadline);
       }
     });
 
