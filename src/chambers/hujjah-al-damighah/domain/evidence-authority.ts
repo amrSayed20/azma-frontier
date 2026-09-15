@@ -88,6 +88,11 @@ export const SCRIPTURE_SOURCE_KEY = 'scripture';
  * outside this set is not assumed to be documented merely because it arrived.
  */
 const DOCUMENTED_SOURCE_KEYS: ReadonlySet<string> = new Set([
+  // The nine collections of the Sunnah. Documented, and deliberately not
+  // SCRIPTURE: the Founder's rule names the Qur'an the sole decisive text, and
+  // a narration's own standing is its grade — which belongs to the scholars who
+  // issued it and is carried separately. See sources/source-contracts.ts.
+  'hadith-collections',
   'gutenberg',
   'open-library',
   'openlibrary',

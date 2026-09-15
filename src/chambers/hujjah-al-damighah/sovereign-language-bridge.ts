@@ -20,6 +20,12 @@
  * the Creator holding the evidence.
  */
 
+import {
+  TranslationRecord,
+  TranslationType,
+  TranslationStatus,
+} from './sources/source-contracts';
+
 const GEMINI_MODEL = 'gemini-3.1-flash-lite';
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
@@ -148,4 +154,166 @@ export async function composeAnswer(input: SynthesisInput): Promise<string | nul
     700,
     0.3,
   );
+}
+
+// ─── CARRYING THE SOURCES' ANSWERS BACK ──────────────────────────────────────
+
+/**
+ * The bridge used to run one way only.
+ *
+ * The Creator's question was carried out to catalogues that index English, and
+ * what those catalogues returned was displayed exactly as it arrived. A Creator
+ * asking «قصة أصحاب الكهف» was shown `Media Topic: Seven Sleepers` — and the
+ * chamber speaks, so a passage like that is not merely awkward to read past: it
+ * is read aloud, in a language the Creator did not ask in.
+ *
+ * The Founder's rule is therefore absolute — «ولا يعرض النص باللغة الإنجليزية
+ * وكذلك لا ينطق فالحجرة ناطقة» — and translation belongs in the evidence path
+ * rather than at the moment of display, because the same text must be Arabic
+ * for the eye and for the voice.
+ *
+ * Against that stands the Founder's other rule, that an answer must not take
+ * long. So the passages cross together in a single call under one deadline, and
+ * when that deadline passes a passage is **withheld rather than shown in
+ * English**. The language rule is an identity; the speed rule is a comfort. A
+ * withheld passage costs the Creator one piece of evidence. A passage shown in
+ * English costs the chamber its voice.
+ */
+
+/** Everything crosses together, once. Measured against the chamber's own 5s. */
+const TRANSLATION_TIMEOUT_MS = 6_000;
+
+/** More than this in one call and the model starts dropping passages. */
+const MAX_PASSAGES_PER_CALL = 8;
+
+const PASSAGE_OPEN = '<<<';
+const PASSAGE_CLOSE = '>>>';
+
+/** A passage already in Arabic needs no crossing and is declared as original. */
+function asOriginal(text: string): TranslationRecord {
+  return {
+    originalLanguage: 'ar',
+    originalText: text,
+    translatedLanguage: 'ar',
+    translationText: text,
+    translationType: TranslationType.ORIGINAL,
+    translationStatus: TranslationStatus.NOT_REQUIRED,
+    translationConfidence: null,
+    translationWarnings: [],
+  };
+}
+
+/** A passage that could not cross. It is withheld, never shown as it was. */
+function asWithheld(text: string, reason: string): TranslationRecord {
+  return {
+    originalLanguage: 'en',
+    originalText: text,
+    translatedLanguage: 'ar',
+    translationText: null,
+    translationType: TranslationType.MACHINE_TRANSLATION,
+    translationStatus: TranslationStatus.WITHHELD,
+    translationConfidence: null,
+    translationWarnings: [reason],
+  };
+}
+
+const TRANSLATION_RULES = [
+  'أنت ناقلٌ أمين بين لسانين، ولستَ مفسّراً ولا شارحاً ولا مرجعاً في دين.',
+  'انقل كل مقطع إلى عربية فصيحة سليمة، تنقل المعنى كما هو دون زيادة ولا نقص.',
+  'أبقِ أسماء الأعلام والأماكن والمصطلحات الطبية والعلمية كما هي، وأضف الأصل بين قوسين إن كان المصطلح دقيقاً.',
+  'لا تُترجم نصاً قرآنياً ولا حديثاً نبوياً ولا تتصرف فيهما بحال — إن ورد شيء من ذلك فانقله كما هو.',
+  'لا تُضف تفسيراً ولا رأياً ولا حكماً.',
+  'لا تحذف مقطعاً ولا تدمج مقطعين.',
+  `أعِد كل مقطع مسبوقاً بعلامته هكذا: ${PASSAGE_OPEN}رقم${PASSAGE_CLOSE} ثم النص المترجم.`,
+  'ولا تكتب شيئاً غير ذلك.',
+];
+
+function parsePassages(reply: string, expected: number): (string | null)[] {
+  const out: (string | null)[] = new Array(expected).fill(null);
+  const pattern = new RegExp(`${PASSAGE_OPEN}\\s*(\\d+)\\s*${PASSAGE_CLOSE}([\\s\\S]*?)(?=${PASSAGE_OPEN}|$)`, 'g');
+  for (const m of reply.matchAll(pattern)) {
+    const index = parseInt(m[1], 10) - 1;
+    const text = m[2].trim();
+    if (index >= 0 && index < expected && text.length > 0) out[index] = text;
+  }
+  return out;
+}
+
+/**
+ * Carries a batch of passages into Arabic, preserving each original.
+ *
+ * Every returned record holds the original text whatever happened, so the
+ * reference survives and the Creator can be shown the source beside the
+ * rendering. `translationConfidence` is null in every record this function
+ * produces: nothing here computes a defensible number, and the Founder's rule
+ * is that an uncomputed confidence is declared, never invented.
+ */
+export async function toArabic(passages: readonly string[]): Promise<TranslationRecord[]> {
+  if (passages.length === 0) return [];
+
+  const records: TranslationRecord[] = passages.map((p) =>
+    isArabic(p) ? asOriginal(p) : asWithheld(p, 'لم تُطلب الترجمة بعد'),
+  );
+
+  const pending: { index: number; text: string }[] = [];
+  passages.forEach((text, index) => {
+    if (!isArabic(text)) pending.push({ index, text });
+  });
+  if (pending.length === 0) return records;
+
+  const batch = pending.slice(0, MAX_PASSAGES_PER_CALL);
+  for (const { index } of pending.slice(MAX_PASSAGES_PER_CALL)) {
+    records[index] = asWithheld(passages[index], 'تجاوز عدد المقاطع حدّ النقل الواحد');
+  }
+
+  const prompt = batch
+    .map((p, i) => `${PASSAGE_OPEN}${i + 1}${PASSAGE_CLOSE}\n${p.text}`)
+    .join('\n\n');
+
+  const reply = await askGemini(
+    TRANSLATION_RULES.join(' '),
+    prompt,
+    TRANSLATION_TIMEOUT_MS,
+    2_000,
+    0.1,
+  );
+
+  if (reply === null) {
+    for (const { index } of batch) {
+      records[index] = asWithheld(passages[index], 'تعذّر النقل إلى العربية');
+    }
+    return records;
+  }
+
+  const parsed = parsePassages(reply, batch.length);
+  batch.forEach((p, i) => {
+    const arabic = parsed[i];
+    records[p.index] = arabic
+      ? {
+          originalLanguage: 'en',
+          originalText: p.text,
+          translatedLanguage: 'ar',
+          translationText: arabic,
+          translationType: TranslationType.MACHINE_TRANSLATION,
+          translationStatus: TranslationStatus.TRANSLATED,
+          // Nothing here measures how faithful the crossing was, so nothing
+          // here claims to. The Creator is told it was not computed.
+          translationConfidence: null,
+          translationWarnings: [],
+        }
+      : asWithheld(p.text, 'لم يعد النقل بهذا المقطع');
+  });
+
+  return records;
+}
+
+/**
+ * The text a Creator may be shown — and, because the chamber speaks, the text
+ * it may say aloud. Null when the passage could not cross, and null means the
+ * passage is not displayed at all rather than displayed in its own tongue.
+ */
+export function displayableText(record: TranslationRecord): string | null {
+  return record.translationStatus === TranslationStatus.WITHHELD
+    ? null
+    : record.translationText;
 }

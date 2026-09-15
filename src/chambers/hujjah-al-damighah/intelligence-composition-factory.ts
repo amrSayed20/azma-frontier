@@ -39,6 +39,7 @@ import { HackerNewsProvider } from './providers/hacker-news-provider';
 import { WikipediaProvider } from './providers/wikipedia-provider';
 import { ArabicWikipediaProvider } from './providers/arabic-wikipedia-provider';
 import { SovereignScriptureProvider } from './providers/sovereign-scripture-provider';
+import { HadithProvider } from './providers/hadith-provider';
 import { MinistryRegistry } from './ministries/ministry-registry';
 
 export class IntelligenceCompositionFactory {
@@ -69,6 +70,13 @@ export class IntelligenceCompositionFactory {
     // Ministry the library sits under, and whether revelation warrants a
     // Ministry of its own is raised with the Founder rather than decided here.
     registry.attachProvider('ministry-human-knowledge', new SovereignScriptureProvider());
+    // The nine collections of the Sunnah, in Arabic. The three Hadith
+    // authorities the Founder named all refuse this host — measured 403, 403,
+    // and a challenge page — so the collections are reached by a route that
+    // answers, and the refusals stay recorded in the source registry so the
+    // Creator learns a named authority was consulted and could not be reached.
+    // Still the eighth Ministry: a standing was added, not a Ministry.
+    registry.attachProvider('ministry-human-knowledge', new HadithProvider());
     registry.attachProvider('ministry-human-knowledge', new GutenbergProvider());
     registry.attachProvider('ministry-human-knowledge', new OpenLibraryProvider());
     registry.attachProvider('ministry-business-intelligence', new GoogleTrendsProvider());
