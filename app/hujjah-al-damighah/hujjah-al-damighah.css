@@ -1449,6 +1449,26 @@
   margin: 0;
 }
 
+/* The source's own words, kept beside their rendering. dir="auto" on the
+   element lets a Latin-script original read left-to-right inside an RTL page
+   without the punctuation drifting to the wrong end of the line. */
+.gateway-original-text {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  margin: 0;
+  padding-right: 8px;
+  border-right: 1px dashed rgba(212,175,55,.2);
+  opacity: 0.85;
+}
+
+.gateway-translation-note {
+  font-size: 9.5px;
+  color: var(--ig-3);
+  letter-spacing: 0.4px;
+  margin: 6px 0 0;
+}
+
 .gateway-interpretation-text {
   font-size: 10.5px;
   color: var(--text-dim);

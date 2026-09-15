@@ -99,7 +99,20 @@ export function EvidenceGateway({
           </blockquote>
         </div>
 
-        {evidence.contextWindow && (
+        {/* A rendering that cannot be checked against its original is a claim
+            about a source rather than the source itself. The original is here
+            whenever what is displayed above was rendered. */}
+        {evidence.originalText && (
+          <div className="gateway-section">
+            <div className="gateway-section-label">النص في مصدره</div>
+            <p className="gateway-original-text" dir="auto">{evidence.originalText}</p>
+            {evidence.translationLabelAr && (
+              <p className="gateway-translation-note">{evidence.translationLabelAr}</p>
+            )}
+          </div>
+        )}
+
+        {!evidence.originalText && evidence.contextWindow && (
           <div className="gateway-section">
             <div className="gateway-section-label">السياق الأصلي</div>
             <p className="gateway-context-text">{evidence.contextWindow}</p>

@@ -10,7 +10,7 @@ import { declareKnowledge } from '@/src/chambers/hujjah-al-damighah/knowledge-la
 import { formulateResponse } from '@/src/chambers/hujjah-al-damighah/knowledge-response-layer';
 import { exportKnowledgeResponse } from '@/src/chambers/hujjah-al-damighah/knowledge-export-layer';
 import { createPerceptionEndpointForOrgan } from '@/src/sovereign-nervous-system';
-import { toSearchLanguage, composeAnswer } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
+import { toSearchLanguage, composeAnswer, toArabic, displayableText } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
 import { authorityOfEvidence } from '@/src/chambers/hujjah-al-damighah/domain/evidence-authority';
 
 /**
@@ -38,6 +38,16 @@ export interface EvidenceItemDTO {
    * instead of calling it weak. See domain/evidence-authority.ts.
    */
   sourceAuthority: string;
+  /**
+   * The text as its source held it, when what is displayed is a rendering of
+   * it. Absent when the source was already in the Creator's tongue.
+   *
+   * A rendering that cannot be checked against its original is a claim about a
+   * source rather than the source itself.
+   */
+  originalText?: string;
+  /** Declares the machine's hand. Absent only when nothing was rendered. */
+  translationLabelAr?: string;
 }
 
 export interface InvestigationDTO {
@@ -111,13 +121,37 @@ export async function runInvestigation(
       return { success: false, evidence: [], totalSourcesScanned: 0, averageEvidenceScore: 0, error: 'Evidence collection failed.' };
     }
 
+    // Stage 4a — The Creator's tongue.
+    //
+    // Measured on the live page: a Creator asking «قصة أصحاب الفيل» in Arabic
+    // was shown «Media Topic: Mecca», «Warfare in pre-Islamic Arabia» and three
+    // more English entries. The chamber speaks, so those were not merely
+    // awkward to read past — they were read aloud, in a language the Creator
+    // did not ask in.
+    //
+    // Everything crosses here, before display and therefore before speech, and
+    // a passage that cannot cross is withheld rather than shown in English. The
+    // Founder's two rules pull against each other at this exact point — «لا
+    // يعرض النص باللغة الإنجليزية» and «لا أريد أن يستغرق الحصول على الإجابة
+    // وقتاً طويلاً» — and the language rule wins, because it is an identity and
+    // the other is a comfort. Withholding costs a Creator one piece of
+    // evidence; showing English costs the chamber its voice.
+    const rendered = await toArabic(
+      evidenceOutcome.collection.items.map((item) => item.evidence.extractedText),
+    );
+
+    const carried = evidenceOutcome.collection.items
+      .map((item, i) => ({ item, text: displayableText(rendered[i]!), record: rendered[i]! }))
+      .filter((e): e is { item: typeof e.item; text: string; record: typeof e.record } =>
+        typeof e.text === 'string' && e.text.length > 0);
+
     // Stage 4b — Synthesis: compose the Arabic answer from the gathered
     // evidence. Was OpenAI, whose key was never configured on the server, so
     // this stage was skipped in silence and every Creator saw raw evidence and
     // no answer. Gemini carries it now — the same key the Empire already uses.
     const synthesizedAnswer = (await composeAnswer({
       query,
-      evidenceTexts: evidenceOutcome.collection.items.map((item) => item.evidence.extractedText),
+      evidenceTexts: carried.map((e) => e.text),
       isReligious,
     })) ?? undefined;
 
@@ -138,23 +172,32 @@ export async function runInvestigation(
       content: null,
     });
 
-    const { collection } = evidenceOutcome;
-    const scores = collection.items.map((item) => item.evidence.confidenceScore);
+    // The match rate is measured over the evidence the Creator actually
+    // receives, not over what was gathered — a withheld passage cannot be part
+    // of a number describing what they are looking at.
+    const scores = carried.map((e) => e.item.evidence.confidenceScore);
     const averageEvidenceScore = scores.length > 0
       ? scores.reduce((a, b) => a + b, 0) / scores.length
       : 0;
 
     return {
       success: true,
-      evidence: collection.items.map((item) => ({
+      evidence: carried.map(({ item, text, record }) => ({
         id: item.evidence.id,
-        extractedText: item.evidence.extractedText,
-        contextWindow: item.evidence.contextWindow ?? '',
+        extractedText: text,
+        contextWindow: text,
         confidenceScore: item.evidence.confidenceScore,
         confidenceLevel: String(item.evidence.confidenceLevel),
         sourceAuthority: String(authorityOfEvidence(item.evidence)),
+        // The original never travels as the displayed text, but it never
+        // disappears either: a Creator who wants to check a rendering must be
+        // able to see what it was rendered from.
+        originalText: record.translationType === 'ORIGINAL' ? undefined : record.originalText,
+        translationLabelAr: record.translationType === 'ORIGINAL'
+          ? undefined
+          : 'ترجمة آلية — والأصل محفوظ',
       })),
-      totalSourcesScanned: collection.totalSourcesScanned,
+      totalSourcesScanned: evidenceOutcome.collection.totalSourcesScanned,
       averageEvidenceScore,
       synthesizedAnswer,
     };
