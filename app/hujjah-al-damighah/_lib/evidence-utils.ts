@@ -132,6 +132,20 @@ export function bucketEvidence(dto: InvestigationDTO): EvidenceBuckets {
   };
 }
 
+/**
+ * Counts scripture the way Arabic counts.
+ *
+ * The chamber wrote «8 نص قرآني» on the live page. Arabic does not count that
+ * way: one and two have their own forms, three through ten take the plural, and
+ * eleven upward returns to the singular accusative. The Creator reads this.
+ */
+export function countScripture(count: number): string {
+  if (count === 1) return 'نص قرآني واحد';
+  if (count === 2) return 'نصان قرآنيان';
+  if (count >= 3 && count <= 10) return `${count} نصوص قرآنية`;
+  return `${count} نصاً قرآنياً`;
+}
+
 /** The scripture evidence in this investigation, strongest bearing first. */
 export function scriptureEvidence(dto: InvestigationDTO): EvidenceItemDTO[] {
   return dto.evidence
@@ -213,10 +227,10 @@ export function generateVerdictExplanation(dto: InvestigationDTO, domain: Domain
   const scripture = scriptureEvidence(dto);
   if (scripture.length > 0) {
     lines.push(
-      `حجّية المصدر: ${scripture.length} نص قرآني — قطعي الثبوت، ولا تتغير حجّيته بصياغة السؤال.`,
+      `حجّية المصدر: ${countScripture(scripture.length)} — قطعي الثبوت، ولا تتغير حجّيته بصياغة السؤال.`,
     );
     lines.push(
-      `صلة النص بالسؤال تُقاس وحدها: أقربها ${relevanceLabelAr(relevanceOf(scripture[0]!))}.`,
+      `وصلة النص بالسؤال تُقاس وحدها: أقربها ${relevanceLabelAr(relevanceOf(scripture[0]!))}.`,
     );
     lines.push(interpretationNoteAr(SourceAuthority.SCRIPTURE)!);
   }

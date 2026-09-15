@@ -20,6 +20,7 @@ import {
   authorityOf,
   relevanceOf,
   getConstitutionalTier,
+  countScripture,
 } from '../_lib/evidence-utils';
 import { EvidenceRelevance } from '@/src/chambers/hujjah-al-damighah/domain/evidence-authority';
 
@@ -109,6 +110,15 @@ describe('standing, bearing and interpretation are said separately', () => {
   it('states the standing of the source', () => {
     expect(explanation).toContain('حجّية المصدر');
     expect(explanation).toContain('قطعي الثبوت');
+  });
+
+  it('counts scripture the way Arabic counts', () => {
+    // The live page read «8 نص قرآني». The Creator reads this.
+    expect(countScripture(1)).toBe('نص قرآني واحد');
+    expect(countScripture(2)).toBe('نصان قرآنيان');
+    expect(countScripture(8)).toBe('8 نصوص قرآنية');
+    expect(countScripture(11)).toBe('11 نصاً قرآنياً');
+    expect(explanation).toContain('نص قرآني واحد');
   });
 
   it('states the bearing on the question as its own measurement', () => {
