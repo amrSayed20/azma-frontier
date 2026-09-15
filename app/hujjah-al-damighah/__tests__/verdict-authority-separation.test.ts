@@ -21,6 +21,7 @@ import {
   relevanceOf,
   getConstitutionalTier,
   countScripture,
+  evidenceForTaking,
 } from '../_lib/evidence-utils';
 import { EvidenceRelevance } from '@/src/chambers/hujjah-al-damighah/domain/evidence-authority';
 
@@ -182,6 +183,39 @@ describe('mixed evidence does not corrupt the classification', () => {
   it('keeps the strongest-bearing verse first when several are present', () => {
     const second = item({ id: 'verse2', confidenceScore: 0.8, sourceAuthority: SourceAuthority.SCRIPTURE });
     expect(scriptureEvidence(dtoOf(weakMatchVerse, second))[0]!.id).toBe('verse2');
+  });
+});
+
+describe('the proof the Creator carries out', () => {
+  const taken = evidenceForTaking(weakMatchVerse, 'ما هو فضل الصبر', 'religious');
+
+  it('carries the text itself', () => {
+    expect(taken).toContain('وَٱلصَّلَوٰةِ');
+    expect(taken).toContain('سورة البقرة، الآية 45');
+  });
+
+  it('carries its standing, so it cannot be quoted as more than it is', () => {
+    expect(taken).toContain('حجّية المصدر: القرآن الكريم — قطعي الثبوت');
+  });
+
+  it('carries how closely it bears on the question, separately', () => {
+    expect(taken).toContain('صلة النص بالسؤال: صلة بعيدة بالسؤال');
+  });
+
+  it('carries the question it was found for', () => {
+    expect(taken).toContain('الموضوع: ما هو فضل الصبر');
+  });
+
+  it('carries the refusal to interpret, when the source is scripture', () => {
+    expect(taken).toContain('لا تُفتي');
+  });
+
+  it('names no repository, anywhere in what leaves the chamber', () => {
+    expect(taken).not.toMatch(/gutenberg|wikipedia|openlibrary|gemini|alquran|reddit|hacker/i);
+  });
+
+  it('does not attach a refusal to interpret where none applies', () => {
+    expect(evidenceForTaking(englishEntry, 'س', 'scientific')).not.toContain('لا تُفتي');
   });
 });
 

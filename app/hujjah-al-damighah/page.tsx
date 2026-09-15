@@ -1293,6 +1293,7 @@ export default function HujjahAlDamighah() {
     <EvidenceGateway
       evidence={selectedEvidence}
       domain={activeDomain}
+      query={query}
       open={gatewayOpen}
       onClose={() => setGatewayOpen(false)}
       onNewInvestigation={handleNewInvestigationFromEvidence}

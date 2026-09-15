@@ -146,6 +146,41 @@ export function countScripture(count: number): string {
   return `${count} نصاً قرآنياً`;
 }
 
+/**
+ * The proof, written out so the Creator can take it anywhere.
+ *
+ * The chamber was built so that someone arguing a case can leave holding
+ * something they can actually use. Until now nothing left it: the gateway
+ * offered a new investigation and a deposit into the Vault, and no way at all to
+ * carry the proof out.
+ *
+ * What travels is the text, what kind of source it is, and how closely it bears
+ * on the question — because a quotation that arrives without its standing can be
+ * used to say anything, and the Creator would be the one holding it. Nothing
+ * here names a repository: what is named is the kind of thing the evidence is.
+ */
+export function evidenceForTaking(
+  item: EvidenceItemDTO,
+  query: string,
+  domain: DomainId,
+): string {
+  const authority = authorityOf(item);
+  const lines: string[] = [
+    `«${item.extractedText.trim()}»`,
+    '',
+    `حجّية المصدر: ${authorityLabelAr(authority)}`,
+    `صلة النص بالسؤال: ${relevanceLabelAr(relevanceOf(item))}`,
+    `طبقة الدليل: ${resolveKnowledgeLayer(item, domain).labelAr}`,
+    `الموضوع: ${query.trim()}`,
+  ];
+
+  const note = interpretationNoteAr(authority);
+  if (note) lines.push(note);
+
+  lines.push('', `— حجرة المعرفة السيادية، ${new Date().toLocaleDateString('ar-SA')}`);
+  return lines.join('\n');
+}
+
 /** The scripture evidence in this investigation, strongest bearing first. */
 export function scriptureEvidence(dto: InvestigationDTO): EvidenceItemDTO[] {
   return dto.evidence
