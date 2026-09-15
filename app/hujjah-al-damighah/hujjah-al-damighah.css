@@ -4841,3 +4841,55 @@
   }
 }
 
+
+/* ── The Ladder of Evidence ───────────────────────────────────────────────
+   Every rung says what kind of thing its evidence is and what that means,
+   because a Creator arguing a case needs to know which of ten passages is
+   decisive, which is narrated, and which is merely a reference. Standing
+   decides the rung; how closely a passage bore on the question decides the
+   order inside it. */
+.vd-ladder {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 4px;
+}
+
+.vd-rung {
+  border-right: 2px solid rgba(212,175,55,.25);
+  padding: 6px 9px 6px 0;
+}
+
+.vd-rung-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.vd-rung-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ig-6);
+}
+
+.vd-rung-count {
+  font-size: 9.5px;
+  color: var(--text-dim);
+  font-family: monospace;
+}
+
+.vd-rung-meaning {
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin: 3px 0 0;
+}
+
+/* The Qur'an is the only decisive rung, and reads as one. */
+.vd-rung-quran { border-right-color: var(--ig-6); }
+.vd-rung-quran .vd-rung-title { color: var(--ig-6); }
+
+/* A weak narration is shown, not hidden — and not dressed up either. */
+.vd-rung-sunnah-daif,
+.vd-rung-sunnah-ungraded,
+.vd-rung-israiliyyat { border-right-style: dashed; }

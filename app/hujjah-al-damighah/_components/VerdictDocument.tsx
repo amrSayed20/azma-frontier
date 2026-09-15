@@ -18,6 +18,7 @@ import {
   interpretationNoteAr,
   SourceAuthority,
 } from '../_lib/evidence-utils';
+import { buildLadder } from '../_lib/evidence-ladder';
 
 interface Props {
   dto:            InvestigationDTO;
@@ -79,6 +80,7 @@ export function VerdictDocument({ dto, query, domain, outputFormat, onFormatChan
   // question, and what the chamber says it means — which, for scripture, is
   // nothing at all.
   const authority = topAuthority(dto);
+  const ladder = buildLadder(dto, domain);
   const scripture = scriptureEvidence(dto);
   const interpretationNote = interpretationNoteAr(authority);
 
@@ -112,6 +114,30 @@ export function VerdictDocument({ dto, query, domain, outputFormat, onFormatChan
         )}
         {dto.evidence.length > 0 && (
           <VField label="حجّية أعلى مصدر" value={authorityLabelAr(authority)} />
+        )}
+
+        {/* The ladder. Ten passages in a flat list made a Creator work out
+            item by item what kind of thing each one was; ranked by kind, the
+            shape of the answer is visible before anything is opened. A rung
+            reports what a named scholar said — it never forms an opinion. */}
+        {ladder.length > 0 && (
+          <div className="vd-ladder">
+            <span className="vd-label">أنواع الأدلة في موضوعك</span>
+            {ladder.map((rung) => (
+              <div key={rung.id} className={`vd-rung vd-rung-${rung.id}`}>
+                <div className="vd-rung-head">
+                  <span className="vd-rung-title">{rung.titleAr}</span>
+                  <span className="vd-rung-count">{rung.items.length}</span>
+                </div>
+                <p className="vd-rung-meaning">{rung.meaningAr}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Evidence is never dropped in silence. */}
+        {dto.setAsideNoticeAr && (
+          <VField label="ما نُحّي" value={dto.setAsideNoticeAr} italic />
         )}
         <div className="vd-row-pair">
           {/* This figure has only ever measured how closely the retrieved texts

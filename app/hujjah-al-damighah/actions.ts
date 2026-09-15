@@ -11,7 +11,8 @@ import { formulateResponse } from '@/src/chambers/hujjah-al-damighah/knowledge-r
 import { exportKnowledgeResponse } from '@/src/chambers/hujjah-al-damighah/knowledge-export-layer';
 import { createPerceptionEndpointForOrgan } from '@/src/sovereign-nervous-system';
 import { toSearchLanguage, composeAnswer, toArabic, displayableText } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
-import { authorityOfEvidence } from '@/src/chambers/hujjah-al-damighah/domain/evidence-authority';
+import { authorityOfEvidence, SourceAuthority } from '@/src/chambers/hujjah-al-damighah/domain/evidence-authority';
+import { judgeSubjectRelevance, setAsideNoticeAr } from '@/src/chambers/hujjah-al-damighah/subject-relevance';
 
 /**
  * Constitutional Nervous System integration.
@@ -59,6 +60,11 @@ export interface EvidenceItemDTO {
 
 export interface InvestigationDTO {
   success: boolean;
+  /**
+   * What the chamber set aside as being about something else, in the Creator's
+   * words. Absent when nothing was set aside.
+   */
+  setAsideNoticeAr?: string;
   evidence: EvidenceItemDTO[];
   totalSourcesScanned: number;
   averageEvidenceScore: number;
@@ -128,6 +134,34 @@ export async function runInvestigation(
       return { success: false, evidence: [], totalSourcesScanned: 0, averageEvidenceScore: 0, error: 'Evidence collection failed.' };
     }
 
+    // Stage 4 ½ — On the subject, or merely carrying the word?
+    //
+    // Retrieval finds passages that carry a word, which is all it can do over
+    // thirty-six thousand narrations. But a word is not a subject: asked for
+    // the story of Yunus ﷺ the chamber returned the verse, then narrations
+    // transmitted by a man named Yunus, then a singer who shares the name.
+    // Separating the chain from the narration removed the transmitters; nothing
+    // in string matching removes the singer.
+    //
+    // So the candidates are read once and each is judged on one question — is
+    // this in the subject asked about? — and what is not is set aside and
+    // counted, never dropped in silence. The Qur'an and the Sunnah are marked
+    // keepAlways: they are the sources the Founder named for a religious
+    // question, and a chamber that quietly dropped a verse because a reader
+    // thought it off-topic would be overruling him.
+    const subjectVerdict = await judgeSubjectRelevance(
+      query,
+      evidenceOutcome.collection.items.map((item) => ({
+        id: item.evidence.id,
+        text: item.evidence.extractedText,
+        keepAlways:
+          authorityOfEvidence(item.evidence) === SourceAuthority.SCRIPTURE ||
+          Boolean(item.evidence.attributionAr),
+      })),
+    );
+    const onSubject = new Set(subjectVerdict.onSubject);
+    const subjectItems = evidenceOutcome.collection.items.filter((i) => onSubject.has(i.evidence.id));
+
     // Stage 4a — The Creator's tongue.
     //
     // Measured on the live page: a Creator asking «قصة أصحاب الفيل» in Arabic
@@ -143,11 +177,9 @@ export async function runInvestigation(
     // وقتاً طويلاً» — and the language rule wins, because it is an identity and
     // the other is a comfort. Withholding costs a Creator one piece of
     // evidence; showing English costs the chamber its voice.
-    const rendered = await toArabic(
-      evidenceOutcome.collection.items.map((item) => item.evidence.extractedText),
-    );
+    const rendered = await toArabic(subjectItems.map((item) => item.evidence.extractedText));
 
-    const carried = evidenceOutcome.collection.items
+    const carried = subjectItems
       .map((item, i) => ({ item, text: displayableText(rendered[i]!), record: rendered[i]! }))
       .filter((e): e is { item: typeof e.item; text: string; record: typeof e.record } =>
         typeof e.text === 'string' && e.text.length > 0);
@@ -164,7 +196,7 @@ export async function runInvestigation(
     // No repository, host or model is named. What is counted is what kind of
     // evidence survived, which is the Empire's own business.
     const authorityTally: Record<string, number> = {};
-    for (const item of evidenceOutcome.collection.items) {
+    for (const item of subjectItems) {
       const key = String(authorityOfEvidence(item.evidence));
       authorityTally[key] = (authorityTally[key] ?? 0) + 1;
     }
@@ -173,6 +205,7 @@ export async function runInvestigation(
     ).length;
     console.log(
       `[Hujjah] domain=${category} gathered=${evidenceOutcome.collection.items.length} ` +
+      `onSubject=${subjectItems.length} judged=${subjectVerdict.judged} ` +
       `carried=${carried.length} withheldForLanguage=${withheldForLanguage} ` +
       `byAuthority=${JSON.stringify(authorityTally)}`,
     );
@@ -237,6 +270,9 @@ export async function runInvestigation(
       totalSourcesScanned: evidenceOutcome.collection.totalSourcesScanned,
       averageEvidenceScore,
       synthesizedAnswer,
+      // Evidence is never dropped in silence. A Creator who asked about الصبر
+      // and is handed four passages instead of ten is owed the reason.
+      setAsideNoticeAr: setAsideNoticeAr(subjectVerdict.setAside.length) || undefined,
     };
   } catch (err) {
     hujjahPerception.report({
