@@ -19,7 +19,11 @@ describe('Persistent Storage Foundation — database connection', () => {
     // vault_credentials holds the Creator's enrolled WebAuthn authenticators —
     // the Vault's real biometric entry. It was added to the schema without this
     // list being told, which is the whole point of asserting the list.
-    expect(tables).toEqual(['cinematic_ledger', 'consumption_records', 'creator_balances', 'creators', 'credit_ledger', 'fulfillment_assessments', 'generation_records', 'goals', 'knowledge_investigations', 'observations', 'operation_ledger', 'payment_transactions', 'sessions', 'sovereign_canvases', 'subscriptions', 'trial_entitlements', 'vault_assets', 'vault_credentials']);
+    // hadith_narrations holds the collections of the Sunnah. They are ingested
+    // by a separate process because parsing nine megabytes of JSON inside the
+    // server froze the runtime for every Creator at once — see the note in
+    // schema.ts. The chamber reads rows.
+    expect(tables).toEqual(['cinematic_ledger', 'consumption_records', 'creator_balances', 'creators', 'credit_ledger', 'fulfillment_assessments', 'generation_records', 'goals', 'hadith_narrations', 'knowledge_investigations', 'observations', 'operation_ledger', 'payment_transactions', 'sessions', 'sovereign_canvases', 'subscriptions', 'trial_entitlements', 'vault_assets', 'vault_credentials']);
     db.close();
   });
 

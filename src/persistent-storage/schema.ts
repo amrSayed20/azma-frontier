@@ -168,6 +168,37 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   // provider URLs, and external service names by the constitutional chain.
   // record_count is denormalized from records_json length for fast queries.
   // creator_id is stored for tenant-isolated reads — no join required.
+  // THE SUNNAH, HELD BY THE EMPIRE ITSELF.
+  //
+  // The collections arrive as single JSON documents of nine megabytes each.
+  // Parsing one inside the server is synchronous, and the production log proved
+  // what that costs: on every investigation *every* Ministry exceeded its
+  // five-second deadline — including the four Ministries with no providers
+  // attached, which return an empty array immediately. They took five seconds
+  // because nothing was running at all. One Creator's search of the Sunnah
+  // froze the whole Empire for everyone else inside it.
+  //
+  // Moving the parse off the request path would only have moved the freeze.
+  // The parse now happens once, in a separate process, and what the chamber
+  // queries is this table: one row per narration, indexed, read in milliseconds
+  // and never held in memory.
+  //
+  // `normalised_text` carries the narration with diacritics and letterform
+  // variants removed, because two spellings of the same word must match.
+  // `grades_json` carries each grading exactly as its source gave it, with the
+  // name of the scholar who issued it — an empty array is a real answer,
+  // meaning the sources stated no grade, and it is never filled in from the
+  // reputation of a collection's title.
+  `CREATE TABLE IF NOT EXISTS hadith_narrations (
+    narration_id TEXT PRIMARY KEY,
+    edition TEXT NOT NULL,
+    collection_ar TEXT NOT NULL,
+    narration_number INTEGER NOT NULL,
+    text_ar TEXT NOT NULL,
+    normalised_text TEXT NOT NULL,
+    grades_json TEXT NOT NULL,
+    ingested_at_ms INTEGER NOT NULL
+  )`,
   `CREATE TABLE IF NOT EXISTS knowledge_investigations (
     investigation_id TEXT PRIMARY KEY,
     goal_id TEXT NOT NULL,
@@ -392,4 +423,7 @@ export const INDEX_STATEMENTS: readonly string[] = [
   // Payment transactions: reconciliation lookups by creator and by provider order
   'CREATE INDEX IF NOT EXISTS idx_payment_transactions_creator ON payment_transactions(creator_id, created_at)',
   'CREATE INDEX IF NOT EXISTS idx_payment_transactions_provider_order ON payment_transactions(provider_order_id)',
+  // The Sunnah is searched by subject across all collections, and fetched by
+  // collection and number once a narration has been chosen.
+  'CREATE INDEX IF NOT EXISTS idx_hadith_edition_number ON hadith_narrations(edition, narration_number)',
 ];
