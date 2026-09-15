@@ -11,6 +11,7 @@ import { formulateResponse } from '@/src/chambers/hujjah-al-damighah/knowledge-r
 import { exportKnowledgeResponse } from '@/src/chambers/hujjah-al-damighah/knowledge-export-layer';
 import { createPerceptionEndpointForOrgan } from '@/src/sovereign-nervous-system';
 import { toSearchLanguage, composeAnswer } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
+import { authorityOfEvidence } from '@/src/chambers/hujjah-al-damighah/domain/evidence-authority';
 
 /**
  * Constitutional Nervous System integration.
@@ -28,8 +29,15 @@ export interface EvidenceItemDTO {
   id: string;
   extractedText: string;
   contextWindow: string;
+  /** How directly this passage bears on the question. Not its standing. */
   confidenceScore: number;
   confidenceLevel: string;
+  /**
+   * What kind of source this is — a SourceAuthority value. Kept separate from
+   * the score so the chamber can show a decisive text with a distant bearing
+   * instead of calling it weak. See domain/evidence-authority.ts.
+   */
+  sourceAuthority: string;
 }
 
 export interface InvestigationDTO {
@@ -144,6 +152,7 @@ export async function runInvestigation(
         contextWindow: item.evidence.contextWindow ?? '',
         confidenceScore: item.evidence.confidenceScore,
         confidenceLevel: String(item.evidence.confidenceLevel),
+        sourceAuthority: String(authorityOfEvidence(item.evidence)),
       })),
       totalSourcesScanned: collection.totalSourcesScanned,
       averageEvidenceScore,

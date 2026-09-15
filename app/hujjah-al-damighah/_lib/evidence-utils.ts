@@ -1,4 +1,37 @@
 import type { InvestigationDTO, EvidenceItemDTO } from '../actions';
+import {
+  SourceAuthority,
+  EvidenceRelevance,
+  gradeRelevance,
+  authorityLabelAr,
+  relevanceLabelAr,
+  interpretationNoteAr,
+} from '@/src/chambers/hujjah-al-damighah/domain/evidence-authority';
+
+export { SourceAuthority, EvidenceRelevance, authorityLabelAr, relevanceLabelAr, interpretationNoteAr };
+
+/**
+ * The authority carried on a DTO item, as the policy's own type.
+ *
+ * The DTO crosses a server boundary and arrives as a plain string, so it is
+ * read back through the policy rather than trusted as one.
+ */
+export function authorityOf(item: EvidenceItemDTO): SourceAuthority {
+  return item.sourceAuthority === SourceAuthority.SCRIPTURE
+    ? SourceAuthority.SCRIPTURE
+    : item.sourceAuthority === SourceAuthority.DOCUMENTED
+      ? SourceAuthority.DOCUMENTED
+      : SourceAuthority.UNATTRIBUTED;
+}
+
+export function isScriptureItem(item: EvidenceItemDTO): boolean {
+  return authorityOf(item) === SourceAuthority.SCRIPTURE;
+}
+
+/** How directly this item bears on the question. */
+export function relevanceOf(item: EvidenceItemDTO): EvidenceRelevance {
+  return gradeRelevance(item.confidenceScore);
+}
 
 export const KNOWLEDGE_DOMAINS = [
   { id: 'religious',  nameAr: 'ديني',  fullAr: 'عقائدي / فقهي'      },
@@ -41,7 +74,25 @@ export interface EvidenceBuckets {
   unverified: EvidenceItemDTO[];
 }
 
-export function resolveKnowledgeLayer(score: number, level: string, domain: DomainId): KnowledgeLayer {
+/**
+ * The layer an evidence item is displayed at.
+ *
+ * Takes the item rather than its score so that no call site can resolve a layer
+ * without its authority. That was the shape of the original fault: twelve places
+ * asked for a label using only a keyword-match score, and a Qur'anic verse
+ * retrieved on a weak match came back labelled «مصدر مجهول».
+ */
+export function resolveKnowledgeLayer(item: EvidenceItemDTO, domain: DomainId): KnowledgeLayer {
+  const score = item.confidenceScore;
+  const level = item.confidenceLevel;
+
+  // Standing is a property of the text, not of how the question was worded. A
+  // verse is displayed as a verse whatever it scored; how well it bears on this
+  // particular question is shown separately and never folded in here.
+  if (authorityOf(item) === SourceAuthority.SCRIPTURE) {
+    return { labelAr: 'نص قرآني', tier: 'verified' };
+  }
+
   if (level === 'HIGH' && score >= 0.88) return { labelAr: 'دليل موثَّق',      tier: 'verified'     };
   if (level === 'HIGH' && score >= 0.75) return { labelAr: 'مصدر أوّلي',        tier: 'primary'      };
   if (level === 'HIGH' || score >= 0.65) {
@@ -63,13 +114,43 @@ export function resolveKnowledgeLayer(score: number, level: string, domain: Doma
 
 export function bucketEvidence(dto: InvestigationDTO): EvidenceBuckets {
   const ev = dto.evidence;
+
+  // Scripture is never bucketed by keyword score. These buckets feed the words
+  // «متعارض» and «غير محقَّق», and a verse whose wording did not overlap the
+  // question is neither: it is a documented text with a distant bearing, which
+  // the relevance line says in its own words. Sorting it into «unverified»
+  // would have the chamber call the Qur'an unverified.
+  const scripture = ev.filter(isScriptureItem);
+  const rest = ev.filter((e) => !isScriptureItem(e));
+
   return {
-    supported:  ev.filter(e => e.confidenceLevel === 'HIGH'     && e.confidenceScore >= 0.80),
-    narratives: ev.filter(e => (e.confidenceLevel === 'HIGH'    && e.confidenceScore <  0.80)
-                             || (e.confidenceLevel === 'MODERATE' && e.confidenceScore >= 0.60)),
-    disputed:   ev.filter(e =>  e.confidenceLevel === 'MODERATE' && e.confidenceScore <  0.60),
-    unverified: ev.filter(e =>  e.confidenceLevel === 'LOW'),
+    supported:  [...scripture, ...rest.filter(e => e.confidenceLevel === 'HIGH' && e.confidenceScore >= 0.80)],
+    narratives: rest.filter(e => (e.confidenceLevel === 'HIGH'    && e.confidenceScore <  0.80)
+                              || (e.confidenceLevel === 'MODERATE' && e.confidenceScore >= 0.60)),
+    disputed:   rest.filter(e =>  e.confidenceLevel === 'MODERATE' && e.confidenceScore <  0.60),
+    unverified: rest.filter(e =>  e.confidenceLevel === 'LOW'),
   };
+}
+
+/** The scripture evidence in this investigation, strongest bearing first. */
+export function scriptureEvidence(dto: InvestigationDTO): EvidenceItemDTO[] {
+  return dto.evidence
+    .filter(isScriptureItem)
+    .sort((a, b) => b.confidenceScore - a.confidenceScore);
+}
+
+/**
+ * The standing of the strongest source in this investigation.
+ *
+ * What the Creator is told about authority. Separate from the match rate, which
+ * is what the percentage has always actually measured.
+ */
+export function topAuthority(dto: InvestigationDTO): SourceAuthority {
+  if (dto.evidence.some(isScriptureItem)) return SourceAuthority.SCRIPTURE;
+  if (dto.evidence.some((e) => authorityOf(e) === SourceAuthority.DOCUMENTED)) {
+    return SourceAuthority.DOCUMENTED;
+  }
+  return SourceAuthority.UNATTRIBUTED;
 }
 
 export function verdictText(dto: InvestigationDTO, format: OutputFormat, _query: string, domain: DomainId): string {
@@ -78,23 +159,23 @@ export function verdictText(dto: InvestigationDTO, format: OutputFormat, _query:
   }
   const b   = bucketEvidence(dto);
   const pct = `${Math.round(dto.averageEvidenceScore * 100)}%`;
-  const top = resolveKnowledgeLayer(dto.evidence[0]!.confidenceScore, dto.evidence[0]!.confidenceLevel, domain);
+  const top = resolveKnowledgeLayer(dto.evidence[0]!, domain);
 
   if (format === 'short') {
     return b.supported.length > 0
-      ? `القضية تستند إلى ${b.supported.length} دليل قاطع — مستوى الثقة: ${pct}.`
-      : `القضية تستند إلى طبقات معرفية متعددة. أعلى طبقة: ${top.labelAr}. الثقة: ${pct}.`;
+      ? `القضية تستند إلى ${b.supported.length} دليل قاطع — مطابقة الأدلة للسؤال: ${pct}.`
+      : `القضية تستند إلى طبقات معرفية متعددة. أعلى طبقة: ${top.labelAr}. مطابقة الأدلة للسؤال: ${pct}.`;
   }
   if (format === 'medium') {
     return [
       `بعد التداول عبر ${dto.totalSourcesScanned} طبقة معرفية:`,
       b.supported.length  > 0 ? `وُجدت ${b.supported.length} أدلة قاطعة.`         : 'لم تُوجد أدلة قاطعة.',
       b.disputed.length   > 0 ? `${b.disputed.length} ادعاءات تحتاج إلى تمحيص.`   : null,
-      `معدل الثقة: ${pct}.`,
+      `معدل مطابقة الأدلة للسؤال: ${pct}.`,
     ].filter(Boolean).join('\n');
   }
   return [
-    `فُحصت عبر ${dto.totalSourcesScanned} طبقة — معدل الثقة: ${pct}`,
+    `فُحصت عبر ${dto.totalSourcesScanned} طبقة — معدل المطابقة: ${pct}`,
     b.supported.length  > 0 ? `● قاطع: ${b.supported.length}`       : '○ لا أدلة قاطعة',
     b.narratives.length > 0 ? `◐ داعم: ${b.narratives.length}`       : null,
     b.disputed.length   > 0 ? `◑ متنازع: ${b.disputed.length}`       : null,
@@ -109,10 +190,10 @@ export function generateReasoningSummary(dto: InvestigationDTO): string {
     const conflict = b.disputed.length > 0
       ? ` تعارضت ${b.disputed.length} روايات مع هذه الأدلة.`
       : '';
-    return `بناءً على ${dto.totalSourcesScanned} طبقة معرفية، وُجدت ${b.supported.length} أدلة قاطعة بنسبة ثقة ${pct}%.${conflict}`;
+    return `بناءً على ${dto.totalSourcesScanned} طبقة معرفية، وُجدت ${b.supported.length} أدلة قاطعة بنسبة مطابقة ${pct}%.${conflict}`;
   }
   if (b.narratives.length > 0) {
-    return `لا توجد أدلة قاطعة، لكن ${b.narratives.length} رواية داعمة تؤيد الموقف بثقة معتدلة (${pct}%).`;
+    return `لا توجد أدلة قاطعة، لكن ${b.narratives.length} رواية داعمة تؤيد الموقف بمطابقة معتدلة (${pct}%).`;
   }
   return `بعد مراجعة ${dto.totalSourcesScanned} طبقة معرفية، لم يُعثر على دليل موثَّق. القضية تحتاج إلى دراسة أعمق.`;
 }
@@ -124,22 +205,40 @@ export function generateVerdictExplanation(dto: InvestigationDTO, domain: Domain
   const pct = Math.round(dto.averageEvidenceScore * 100);
   const lines: string[] = [];
 
-  if (pct >= 75) {
-    lines.push('الثقة مرتفعة لأن الأدلة القاطعة تتفوق بوضوح على الادعاءات المتنازع عليها.');
-  } else if (pct >= 55) {
-    lines.push('الثقة معتدلة — الأدلة الداعمة موجودة لكنها لا ترقى بعد إلى مستوى اليقين الكامل.');
-  } else if (pct >= 40) {
-    lines.push('الثقة محدودة — المسألة تحتوي على خلافات جوهرية بين المصادر المتاحة.');
-  } else {
-    lines.push('الثقة ضعيفة — الأدلة متعارضة أو لم تُوثَّق بما يكفي لحكم قاطع.');
+  // The authority of the sources is stated before anything is said about match
+  // rate, because the two are different claims and the second used to be spoken
+  // in the first's name. A verse was displayed while the document announced
+  // «الثقة ضعيفة … لم تُوثَّق بما يكفي» — both sentences drawn from one number
+  // that measures neither standing nor documentation.
+  const scripture = scriptureEvidence(dto);
+  if (scripture.length > 0) {
+    lines.push(
+      `حجّية المصدر: ${scripture.length} نص قرآني — قطعي الثبوت، ولا تتغير حجّيته بصياغة السؤال.`,
+    );
+    lines.push(
+      `صلة النص بالسؤال تُقاس وحدها: أقربها ${relevanceLabelAr(relevanceOf(scripture[0]!))}.`,
+    );
+    lines.push(interpretationNoteAr(SourceAuthority.SCRIPTURE)!);
   }
 
-  if (b.supported.length > 0) {
-    const top = resolveKnowledgeLayer(b.supported[0]!.confidenceScore, b.supported[0]!.confidenceLevel, domain);
-    lines.push(`رفع الثقة: ${b.supported.length} دليل قاطع — أعلاها من مستوى "${top.labelAr}".`);
+  // What the percentage measures, said in the percentage's own name.
+  if (pct >= 75) {
+    lines.push('مطابقة الأدلة للسؤال مرتفعة — النصوص المسترجَعة تتناول المسألة مباشرة.');
+  } else if (pct >= 55) {
+    lines.push('مطابقة الأدلة للسؤال معتدلة — النصوص تتناول المسألة جزئياً.');
+  } else if (pct >= 40) {
+    lines.push('مطابقة الأدلة للسؤال محدودة — أكثر النصوص يتناول المسألة من طرف.');
+  } else {
+    lines.push('مطابقة الأدلة للسؤال ضعيفة — هذا وصف لقرب النصوص من سؤالك، لا حكم على حجّيتها.');
+  }
+
+  const nonScriptureSupported = b.supported.filter((e) => !isScriptureItem(e));
+  if (nonScriptureSupported.length > 0) {
+    const top = resolveKnowledgeLayer(nonScriptureSupported[0]!, domain);
+    lines.push(`رفع المطابقة: ${nonScriptureSupported.length} دليل قاطع — أعلاها من مستوى "${top.labelAr}".`);
   }
   if (b.disputed.length > 0) {
-    lines.push(`خفّض الثقة: ${b.disputed.length} ادعاء متنازع عليه يتطلب مزيداً من التمحيص.`);
+    lines.push(`خفّض المطابقة: ${b.disputed.length} ادعاء متنازع عليه يتطلب مزيداً من التمحيص.`);
   }
   if (b.unverified.length > 0) {
     lines.push(`ما يزال مجهولاً: ${b.unverified.length} رواية لم يتم التحقق منها في المستودعات المتاحة.`);

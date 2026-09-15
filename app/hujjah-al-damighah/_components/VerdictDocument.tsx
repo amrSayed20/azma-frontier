@@ -10,6 +10,13 @@ import {
   generateVerdictExplanation,
   generateUnknownRemains,
   generateNextInvestigation,
+  scriptureEvidence,
+  topAuthority,
+  relevanceOf,
+  authorityLabelAr,
+  relevanceLabelAr,
+  interpretationNoteAr,
+  SourceAuthority,
 } from '../_lib/evidence-utils';
 
 interface Props {
@@ -59,12 +66,21 @@ export function VerdictDocument({ dto, query, domain, outputFormat, onFormatChan
 
   const supportingLayers = Array.from(new Set(
     [...buckets.supported, ...buckets.narratives]
-      .map(e => resolveKnowledgeLayer(e.confidenceScore, e.confidenceLevel, domain).labelAr),
+      .map(e => resolveKnowledgeLayer(e, domain).labelAr),
   ));
   const conflictingLayers = Array.from(new Set(
     buckets.disputed
-      .map(e => resolveKnowledgeLayer(e.confidenceScore, e.confidenceLevel, domain).labelAr),
+      .map(e => resolveKnowledgeLayer(e, domain).labelAr),
   ));
+
+  // The four things the single «درجة الثقة» figure used to speak for. They are
+  // shown as four lines because they are four different claims: what the source
+  // is, whether its text was really retrieved, how closely it bears on this
+  // question, and what the chamber says it means — which, for scripture, is
+  // nothing at all.
+  const authority = topAuthority(dto);
+  const scripture = scriptureEvidence(dto);
+  const interpretationNote = interpretationNoteAr(authority);
 
   return (
     <div className="verdict-document living-frame-verdict">
@@ -94,10 +110,26 @@ export function VerdictDocument({ dto, query, domain, outputFormat, onFormatChan
         {!dto.synthesizedAnswer && (
           <VField label="الملخص"          value={vText}    large />
         )}
+        {dto.evidence.length > 0 && (
+          <VField label="حجّية أعلى مصدر" value={authorityLabelAr(authority)} />
+        )}
         <div className="vd-row-pair">
-          <VField label="درجة الثقة"  value={`${pct}%`}            mono />
-          <VField label="عدد الأدلة"  value={`${dto.evidence.length}`} mono />
+          {/* This figure has only ever measured how closely the retrieved texts
+              match the wording of the question. It is named for what it
+              measures now, so that a low number can no longer be read as a
+              verdict on a source's standing. */}
+          <VField label="مطابقة الأدلة للسؤال" value={`${pct}%`}            mono />
+          <VField label="عدد الأدلة"           value={`${dto.evidence.length}`} mono />
         </div>
+        {scripture.length > 0 && (
+          <VField
+            label="صلة النص القرآني بالسؤال"
+            value={`${relevanceLabelAr(relevanceOf(scripture[0]!))} — والحجّية قطعية لا تتغير بصياغة السؤال.`}
+          />
+        )}
+        {interpretationNote && authority === SourceAuthority.SCRIPTURE && (
+          <VField label="التفسير" value={interpretationNote} italic />
+        )}
         {supportingLayers.length > 0 && (
           <VField label="طبقات داعمة"     value={supportingLayers.join(' · ')}  />
         )}

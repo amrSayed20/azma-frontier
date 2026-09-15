@@ -8,6 +8,7 @@
 
 import * as crypto from 'crypto';
 import { Evidence, SovereignClaim, ConfidenceLevel } from '../domain/evidence.types';
+import { SourceAuthority, authorityOfSourceKey } from '../domain/evidence-authority';
 import { EvidenceScoringEngine } from './evidence-scoring';
 
 // ==========================================
@@ -21,6 +22,18 @@ export interface SourceDocument {
   readonly id: string;
   readonly provider: string;
   readonly content: string;
+
+  /**
+   * What kind of source this text came from.
+   *
+   * A Ministry re-stamps `provider` with its own constitutional ID before the
+   * document travels upward, which is what keeps repository names away from the
+   * Creator — but it also erased the one distinction that matters for a
+   * religious question. The Ministry resolves this from the raw provider key
+   * while it still knows it, so the class survives the re-stamp and the name
+   * does not. Absent when the document came from no known source.
+   */
+  readonly authority?: SourceAuthority;
 }
 
 // ==========================================
@@ -67,6 +80,10 @@ export class EvidenceExtractor {
       contextWindow: relevantPassage,
       confidenceScore,
       confidenceLevel,
+      // The Ministry resolves this before re-stamping the provider. The fallback
+      // covers a document that reached here without passing a Ministry — then
+      // the provider key is still raw and can answer for itself.
+      sourceAuthority: document.authority ?? authorityOfSourceKey(document.provider),
     };
 
     return [scoredEvidence];

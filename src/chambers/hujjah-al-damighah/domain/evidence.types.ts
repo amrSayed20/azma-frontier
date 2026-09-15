@@ -8,6 +8,8 @@
  * adheres to a standardized, sovereign format regardless of the source.
  */
 
+import type { SourceAuthority } from './evidence-authority';
+
 // ==========================================
 // 1. CONFIDENCE LEVELS
 // ==========================================
@@ -120,6 +122,22 @@ export interface Evidence {
    * Semantic confidence level.
    */
   readonly confidenceLevel: ConfidenceLevel;
+
+  /**
+   * What kind of source this evidence came from.
+   *
+   * Kept apart from confidenceScore on purpose. The score measures how directly
+   * a passage bears on the question asked; this says what the passage is. A
+   * Qur'anic verse retrieved on a weak keyword match is a decisive text with a
+   * distant bearing, and the chamber has to be able to say exactly that instead
+   * of collapsing both into one word. See domain/evidence-authority.ts.
+   *
+   * Absent means unknown, and unknown reads as UNATTRIBUTED — never as a
+   * standing the chamber cannot vouch for. Read it through
+   * authorityOfEvidence() rather than directly, so that absence resolves the
+   * same way everywhere.
+   */
+  readonly sourceAuthority?: SourceAuthority;
 }
 
 // ==========================================

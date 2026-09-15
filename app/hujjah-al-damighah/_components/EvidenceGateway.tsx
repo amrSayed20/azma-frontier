@@ -16,7 +16,7 @@ interface Props {
 
 export function EvidenceGateway({ evidence, domain, open, onClose, onNewInvestigation, onSaveToVault }: Props) {
   if (!evidence) return null;
-  const layer = resolveKnowledgeLayer(evidence.confidenceScore, evidence.confidenceLevel, domain);
+  const layer = resolveKnowledgeLayer(evidence, domain);
 
   return (
     <div className={`evidence-gateway ${open ? 'gateway-open' : ''}`} role="complementary" aria-label="بوابة الدليل">

@@ -252,7 +252,7 @@ function CompetingPositions({ supported, disputed, domain, onSelect }: Competing
         <div className="cp-side cp-supporting">
           <div className="cp-side-label">المنظور الأول</div>
           {topS.map((ev) => {
-            const layer = resolveKnowledgeLayer(ev.confidenceScore, ev.confidenceLevel, domain);
+            const layer = resolveKnowledgeLayer(ev, domain);
             return (
               <button key={ev.id} className="cp-ev-btn cp-ev-support" onClick={() => onSelect(ev)}>
                 <span className={`cp-tier tier-${layer.tier as KnowledgeTier}`}>{layer.labelAr}</span>
@@ -269,7 +269,7 @@ function CompetingPositions({ supported, disputed, domain, onSelect }: Competing
         <div className="cp-side cp-opposing">
           <div className="cp-side-label">المنظور الآخر</div>
           {topD.map((ev) => {
-            const layer = resolveKnowledgeLayer(ev.confidenceScore, ev.confidenceLevel, domain);
+            const layer = resolveKnowledgeLayer(ev, domain);
             return (
               <button key={ev.id} className="cp-ev-btn cp-ev-oppose" onClick={() => onSelect(ev)}>
                 <span className={`cp-tier tier-${layer.tier as KnowledgeTier}`}>{layer.labelAr}</span>
@@ -325,7 +325,7 @@ function HearingBlock({
             <span className="hsl-mark">●</span> الاتهام — أقوى الأدلة
           </div>
           {topS.length > 0 ? topS.map((ev) => {
-            const layer = resolveKnowledgeLayer(ev.confidenceScore, ev.confidenceLevel, domain);
+            const layer = resolveKnowledgeLayer(ev, domain);
             return (
               <button key={ev.id} className="hearing-ev-btn hev-support" onClick={() => onEvidenceSelect(ev)}>
                 <span className="hev-tier">{layer.labelAr}</span>
@@ -346,7 +346,7 @@ function HearingBlock({
             <span className="hsl-mark">◑</span> الدفاع — أقوى الاعتراضات
           </div>
           {topD.length > 0 ? topD.map((ev) => {
-            const layer = resolveKnowledgeLayer(ev.confidenceScore, ev.confidenceLevel, domain);
+            const layer = resolveKnowledgeLayer(ev, domain);
             return (
               <button key={ev.id} className="hearing-ev-btn hev-oppose" onClick={() => onEvidenceSelect(ev)}>
                 <span className="hev-tier">{layer.labelAr}</span>
@@ -414,7 +414,7 @@ interface MinorityViewProps {
 function MinorityView({ disputed, domain, onSelect }: MinorityViewProps) {
   if (disputed.length === 0) return null;
   const top   = disputed[0]!;
-  const layer = resolveKnowledgeLayer(top.confidenceScore, top.confidenceLevel, domain);
+  const layer = resolveKnowledgeLayer(top, domain);
   return (
     <div className="minority-view">
       <div className="mv-header">
@@ -453,7 +453,7 @@ function EvidenceCategory({ titleAr, type, items, domain, onSelect }: EvCatProps
       </div>
       <div className="category-items">
         {items.map((ev, idx) => {
-          const layer = resolveKnowledgeLayer(ev.confidenceScore, ev.confidenceLevel, domain);
+          const layer = resolveKnowledgeLayer(ev, domain);
           return (
             <button
               key={ev.id}
@@ -1430,7 +1430,7 @@ export default function HujjahAlDamighah() {
                   <div className="archive-records custom-scroll">
                     <div className="archive-records-label">سجلات الجلسة</div>
                     {result!.evidence.map((ev, idx) => {
-                      const layer = resolveKnowledgeLayer(ev.confidenceScore, ev.confidenceLevel, activeDomain);
+                      const layer = resolveKnowledgeLayer(ev, activeDomain);
                       return (
                         <button
                           key={ev.id}
@@ -1619,7 +1619,7 @@ export default function HujjahAlDamighah() {
                       <div className="margin-evidence custom-scroll">
                         <div className="margin-ev-label">أدلة البحث</div>
                         {top.map((ev) => {
-                          const layer = resolveKnowledgeLayer(ev.confidenceScore, ev.confidenceLevel, activeDomain);
+                          const layer = resolveKnowledgeLayer(ev, activeDomain);
                           return (
                             <button
                               key={ev.id}
@@ -1817,7 +1817,7 @@ export default function HujjahAlDamighah() {
                     return cards.length > 0 ? (
                       <div className="silent-evidence-board">
                         {cards.map((ev) => {
-                          const layer = resolveKnowledgeLayer(ev.confidenceScore, ev.confidenceLevel, activeDomain);
+                          const layer = resolveKnowledgeLayer(ev, activeDomain);
                           return (
                             <button
                               key={ev.id}

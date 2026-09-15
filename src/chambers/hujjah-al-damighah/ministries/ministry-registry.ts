@@ -66,6 +66,7 @@
 import { RepositoryManager, IRepositoryProvider } from '../core/repository-manager';
 import type { RepositorySearchResult } from '../domain/evidence.types';
 import type { SourceDocument } from '../core/evidence-extractor';
+import { authorityOfSourceKey } from '../domain/evidence-authority';
 import {
   CONSTITUTIONAL_MINISTRIES,
   type KnowledgeMinistryId,
@@ -191,7 +192,16 @@ function buildMinistryProvider(
       }
 
       const rawDoc = await subProvider.fetch(rawDocumentId);
-      return { ...rawDoc, provider: ministryId };
+      // The provider's name is replaced by the Ministry's constitutional ID —
+      // that re-stamp is what keeps repository names away from the Creator. But
+      // it also erased the only distinction a religious question depends on, so
+      // the kind of source is resolved here, where the raw key is still known,
+      // and travels upward while the name does not.
+      return {
+        ...rawDoc,
+        provider: ministryId,
+        authority: rawDoc.authority ?? authorityOfSourceKey(rawProviderId),
+      };
     },
   };
 }
