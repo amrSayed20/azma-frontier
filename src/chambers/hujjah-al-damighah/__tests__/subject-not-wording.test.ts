@@ -25,44 +25,53 @@ import { EvidenceScoringEngine, normaliseArabic } from '../core/evidence-scoring
 import { extractMatn, hasDistinguishableMatn } from '../providers/isnad';
 import { ClaimParser } from '../domain/claim-parser';
 
+/**
+ * Fixtures carry full diacritics, because the collections do.
+ *
+ * They did not at first, and the separation therefore passed every test while
+ * separating the chain in exactly zero of 36,064 real narrations. A test built
+ * on data the Empire does not hold is worse than no test: it reports success
+ * and buys nothing.
+ */
+
 /** A real narration whose chain carries a transmitter named Yunus. */
 const NARRATION_WITH_YUNUS_IN_CHAIN =
   'حَدَّثَنَا عَبْدُ اللَّهِ بْنُ وَهْبٍ، قَالَ أَخْبَرَنِي يُونُسُ، عَنِ ابْنِ شِهَابٍ، ' +
-  'عَنْ أَبِي سَلَمَةَ، عَنْ أَبِي هُرَيْرَةَ، قَالَ رسول الله صلى الله عليه وسلم ' +
+  'عَنْ أَبِي سَلَمَةَ، عَنْ أَبِي هُرَيْرَةَ، قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ ' +
   'إِذَا أَقْبَلَ رَمَضَانُ فُتِحَتْ أَبْوَابُ الْجَنَّةِ وَغُلِّقَتْ أَبْوَابُ النَّارِ';
 
 /** A narration that is actually about Yunus ﷺ. */
 const NARRATION_ABOUT_YUNUS =
-  'حَدَّثَنَا آدَمُ، حَدَّثَنَا شُعْبَةُ، عَنِ ابْنِ عَبَّاسٍ، عن النبي صلى الله عليه وسلم ' +
+  'حَدَّثَنَا آدَمُ، حَدَّثَنَا شُعْبَةُ، عَنِ ابْنِ عَبَّاسٍ، عَنِ النَّبِيِّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ ' +
   'قَالَ مَا يَنْبَغِي لِعَبْدٍ أَنْ يَقُولَ أَنَا خَيْرٌ مِنْ يُونُسَ بْنِ مَتَّى';
 
 describe('telling the chain from what was carried', () => {
   it('cuts at the handover to what was said', () => {
     const matn = extractMatn(NARRATION_WITH_YUNUS_IN_CHAIN);
-    expect(matn).toContain('إِذَا أَقْبَلَ رَمَضَانُ');
+    expect(matn).toContain('اذا اقبل رمضان');
     expect(hasDistinguishableMatn(NARRATION_WITH_YUNUS_IN_CHAIN)).toBe(true);
   });
 
   it('leaves the transmitters behind', () => {
     // This is the whole point: the narrator named Yunus is in the chain.
     expect(NARRATION_WITH_YUNUS_IN_CHAIN).toContain('يُونُسُ');
-    expect(extractMatn(NARRATION_WITH_YUNUS_IN_CHAIN)).not.toContain('يُونُس');
+    expect(extractMatn(NARRATION_WITH_YUNUS_IN_CHAIN)).not.toContain('يونس');
   });
 
   it('keeps a name that belongs to what was actually said', () => {
-    expect(extractMatn(NARRATION_ABOUT_YUNUS)).toContain('يُونُسَ بْنِ مَتَّى');
+    expect(extractMatn(NARRATION_ABOUT_YUNUS)).toContain('يونس بن متي');
   });
 
   it('keeps the whole text when it cannot find a handover', () => {
-    const noChain = 'إنما الأعمال بالنيات وإنما لكل امرئ ما نوى';
-    expect(extractMatn(noChain)).toBe(noChain);
+    const noChain = 'إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ وَإِنَّمَا لِكُلِّ امْرِئٍ مَا نَوَى';
+    expect(extractMatn(noChain)).toBe('انما الاعمال بالنيات وانما لكل امرئ ما نوي');
     expect(hasDistinguishableMatn(noChain)).toBe(false);
   });
 
   it('does not cut when the handover sits at the very end', () => {
     // A mention of the Prophet ﷺ inside the chain, with no content after it.
-    const trailing = 'حدثنا فلان عن فلان عن النبي صلى الله عليه وسلم';
-    expect(extractMatn(trailing)).toBe(trailing);
+    const trailing = 'حَدَّثَنَا فُلَانٌ عَنْ فُلَانٍ عَنِ النَّبِيِّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ';
+    expect(extractMatn(trailing)).toBe('حدثنا فلان عن فلان عن النبي صلي الله عليه وسلم');
   });
 
   it('survives an empty narration without inventing one', () => {

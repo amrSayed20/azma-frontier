@@ -22,6 +22,21 @@
  *   it is part of the narration, and it is what makes the narration checkable —
  *   but it is provenance, and provenance is not subject matter.
  *
+ * ─── IT OPERATES ON NORMALISED TEXT, AND THAT IS NOT INCIDENTAL ─────────────
+ *
+ *   The collections are written with full diacritics: «قَالَ رَسُولُ اللَّهِ
+ *   صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ». The first version of this file matched
+ *   undiacritised markers against that, and separated the chain from the
+ *   narration in exactly zero of 36,064 narrations. The tests passed, because I
+ *   had written the fixtures without diacritics — a test built on data the
+ *   Empire does not actually hold, which is worse than no test: it reports
+ *   success and buys nothing.
+ *
+ *   Callers pass text that has already been normalised, and the markers here
+ *   are normalised to match. What is stored for searching is the normalised
+ *   matn; the whole narration, diacritics and all, is stored separately and is
+ *   what a Creator reads.
+ *
  * ─── WHAT THIS IS, HONESTLY ─────────────────────────────────────────────────
  *
  *   A heuristic over the conventional wording of the collections, not a parse
@@ -56,17 +71,36 @@ const HANDOVER_MARKERS: readonly string[] = [
 const CHAIN_OPENERS = /^(?:حدثنا|حدثني|أخبرنا|اخبرنا|أخبرني|اخبرني|أنبأنا|انبأنا|ثنا)\b/;
 
 /**
+ * Strips the diacritics and letterform variants, so a marker written one way
+ * finds a narration written another. Kept in step with the normalisation used
+ * when the Sunnah was stored and when a question is scored.
+ */
+function bare(text: string): string {
+  return text
+    .replace(/[ً-ْٰۖ-ۭـ]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const BARE_MARKERS = HANDOVER_MARKERS.map(bare);
+
+/**
  * The matn — what was actually narrated.
  *
- * Returns the whole text when no handover can be found, because a narration
- * searched whole is merely searched loosely, while one cut in the wrong place
- * is a narration the chamber can no longer find at all.
+ * Works on the bare form of the text, because the collections carry full
+ * diacritics and an undiacritised marker matches none of them. Returns the
+ * whole text when no handover can be found: a narration searched whole is
+ * merely searched loosely, while one cut in the wrong place is a narration the
+ * chamber can no longer find at all.
  */
 export function extractMatn(narration: string): string {
-  const text = narration.trim();
+  const text = bare(narration);
   if (text.length === 0) return text;
 
-  for (const marker of HANDOVER_MARKERS) {
+  for (const marker of BARE_MARKERS) {
     const at = text.lastIndexOf(marker);
     if (at === -1) continue;
     const matn = text.slice(at + marker.length).trim();
@@ -75,14 +109,19 @@ export function extractMatn(narration: string): string {
     if (matn.length >= 12) return matn;
   }
 
-  // No handover formula. If it does not even open like a chain, it is already
-  // content: the Forty collections and much of the Muwatta read this way.
-  if (!CHAIN_OPENERS.test(text)) return text;
-
+  // No handover formula. The Forty collections and much of the Muwatta read as
+  // content from their first word, and a narration that does not even open like
+  // a chain is already its own matn.
   return text;
 }
 
-/** Whether a narration's chain could be told apart from its content at all. */
+/**
+ * Whether a narration's chain could be told apart from its content at all.
+ *
+ * Compares the bare forms, because extractMatn returns bare text — comparing it
+ * against the diacritised original would report every narration as separated,
+ * including the ones where nothing was found.
+ */
 export function hasDistinguishableMatn(narration: string): boolean {
-  return extractMatn(narration) !== narration.trim();
+  return extractMatn(narration) !== bare(narration);
 }

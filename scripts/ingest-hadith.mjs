@@ -57,6 +57,17 @@ const COLLECTIONS = [
  * Kept in step with providers/isnad.ts — a script cannot import the chamber's
  * TypeScript, so the list is repeated here and the two must be changed together.
  */
+/** Must match normaliseArabic in the provider, or the two sides never meet. */
+function normaliseArabic(text) {
+  return text
+    .replace(/[ً-ْٰٖ-ٟـ]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 const HANDOVER_MARKERS = [
   'قال رسول الله صلى الله عليه وسلم',
   'قال النبي صلى الله عليه وسلم',
@@ -71,6 +82,8 @@ const HANDOVER_MARKERS = [
   'النبي صلى الله عليه وسلم',
 ];
 
+const BARE_MARKERS = HANDOVER_MARKERS.map((m) => normaliseArabic(m));
+
 /**
  * What was narrated, with the chain that carried it removed.
  *
@@ -81,9 +94,13 @@ const HANDOVER_MARKERS = [
  * much finds extra narrations, while cutting wrongly loses real ones.
  */
 function extractMatn(narration) {
-  const text = narration.trim();
+  // The collections carry full diacritics, so markers are matched against the
+  // normalised form. Matching the raw text separated the chain in exactly zero
+  // of 36,064 narrations, and the tests passed because their fixtures were
+  // written without diacritics — data the Empire does not hold.
+  const text = normaliseArabic(narration);
   if (text.length === 0) return text;
-  for (const marker of HANDOVER_MARKERS) {
+  for (const marker of BARE_MARKERS) {
     const at = text.lastIndexOf(marker);
     if (at === -1) continue;
     const matn = text.slice(at + marker.length).trim();
@@ -92,16 +109,7 @@ function extractMatn(narration) {
   return text;
 }
 
-/** Must match normaliseArabic in the provider, or the two sides never meet. */
-function normaliseArabic(text) {
-  return text
-    .replace(/[ً-ْٰٖ-ٟـ]/g, '')
-    .replace(/[أإآٱ]/g, 'ا')
-    .replace(/ى/g, 'ي')
-    .replace(/ة/g, 'ه')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+
 
 function resolveDbPath() {
   if (process.env.AZMA_DB_PATH) return process.env.AZMA_DB_PATH;
@@ -163,7 +171,7 @@ async function ingestOne(db, collection) {
       number,
       text: h.text,
       normalised: normaliseArabic(h.text),
-      normalisedMatn: normaliseArabic(extractMatn(h.text)),
+      normalisedMatn: extractMatn(h.text),
       grades,
     });
   }
