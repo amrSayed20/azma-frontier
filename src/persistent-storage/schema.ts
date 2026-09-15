@@ -189,6 +189,15 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   // name of the scholar who issued it — an empty array is a real answer,
   // meaning the sources stated no grade, and it is never filled in from the
   // reputation of a collection's title.
+  // `normalised_matn` holds only what was narrated, with the chain of
+  // transmission removed. A narration is two things joined: the isnad names who
+  // carried it, and the matn is what was said. The isnad is often the longer
+  // half and is made entirely of names — so searching a narration whole is
+  // searching a roll of names. Asked for the story of Yunus, the chamber
+  // returned the verse and then every narration carrying a transmitter named
+  // Yunus, in which his name appears the way a postman's appears on a letter.
+  // Subjects are searched in the matn; the whole narration is still displayed,
+  // because the chain is what makes it checkable.
   `CREATE TABLE IF NOT EXISTS hadith_narrations (
     narration_id TEXT PRIMARY KEY,
     edition TEXT NOT NULL,
@@ -196,6 +205,7 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     narration_number INTEGER NOT NULL,
     text_ar TEXT NOT NULL,
     normalised_text TEXT NOT NULL,
+    normalised_matn TEXT NOT NULL DEFAULT '',
     grades_json TEXT NOT NULL,
     ingested_at_ms INTEGER NOT NULL
   )`,
@@ -357,6 +367,19 @@ export const GENERATION_RECORDS_MIGRATION_COLUMNS: readonly { readonly name: str
   // can render <video> elements correctly. DEFAULT 'image' keeps all pre-existing
   // rows valid without data migration.
   { name: 'media_type', ddl: "media_type TEXT NOT NULL DEFAULT 'image'" },
+];
+
+/**
+ * Columns added to `hadith_narrations` after its original creation.
+ *
+ * The production store already holds 36,064 narrations, so the matn column
+ * arrives by ALTER TABLE rather than by recreating the table. It defaults to an
+ * empty string, and an empty matn falls back to the whole narration at search
+ * time — so a database that has the column but has not been re-ingested behaves
+ * exactly as it did before, rather than finding nothing.
+ */
+export const HADITH_NARRATIONS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
+  { name: 'normalised_matn', ddl: "normalised_matn TEXT NOT NULL DEFAULT ''" },
 ];
 
 /** Columns added to `cinematic_ledger` after its original creation — applied via ALTER TABLE for pre-existing databases. */

@@ -167,15 +167,18 @@ export class EvidenceExtractor {
       return content.length > MAX_LENGTH ? raw + '...' : raw;
     }
 
-    // Score each sentence by keyword density (number of distinct keyword hits).
+    // Score each sentence by keyword density, through the same scoring engine
+    // the evidence itself is graded by — rather than a second, blinder copy of
+    // the same idea living here. That copy compared raw substrings, so it never
+    // found an Arabic word written with diacritics and it found a Prophet's
+    // name inside every narrator who shared it.
     let bestScore = -1;
     let bestIdx = 0;
 
     for (let i = 0; i < sentences.length; i++) {
-      const lower = sentences[i].toLowerCase();
-      const score = keywords.filter((kw) => lower.includes(kw)).length;
-      if (score > bestScore) {
-        bestScore = score;
+      const { confidenceScore } = EvidenceScoringEngine.score(sentences[i], claim);
+      if (confidenceScore > bestScore) {
+        bestScore = confidenceScore;
         bestIdx = i;
       }
     }

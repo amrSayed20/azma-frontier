@@ -82,10 +82,12 @@ function toNarration(row: Row): StoredNarration {
 /**
  * Narrations whose text contains every one of the given subject words.
  *
- * Words are matched against `normalised_text`, so a question spelled without
- * diacritics finds a narration written with them. Requiring all words rather
- * than any keeps a two-word subject from returning every narration that happens
- * to contain its commonest half.
+ * Words are matched against the normalised matn — what was narrated, with the
+ * chain that carried it removed — so a question spelled without diacritics
+ * finds a narration written with them, and a question about a person does not
+ * find every narration transmitted by someone who shares that person's name.
+ * Requiring all words rather than any keeps a two-word subject from returning
+ * every narration that happens to contain its commonest half.
  */
 export function searchNarrations(
   normalisedWords: readonly string[],
@@ -94,7 +96,14 @@ export function searchNarrations(
   if (normalisedWords.length === 0 || limit <= 0) return [];
 
   const db = getDb();
-  const conditions = normalisedWords.map(() => 'normalised_text LIKE ?').join(' AND ');
+  // Searched in the matn — what was narrated — and not in the chain that
+  // carried it. The chain is a roll of names, and searching it turned a
+  // question about the Prophet Yunus into every narration with a transmitter
+  // who shared his name. COALESCE keeps a store that has the column but has not
+  // been re-ingested behaving exactly as it did before, rather than silently
+  // finding nothing.
+  const field = "COALESCE(NULLIF(normalised_matn, ''), normalised_text)";
+  const conditions = normalisedWords.map(() => `${field} LIKE ?`).join(' AND ');
   const params = normalisedWords.map((w) => `%${w}%`);
 
   const rows = db
@@ -118,7 +127,8 @@ export function searchNarrationsAny(
   if (normalisedWords.length === 0 || limit <= 0) return [];
 
   const db = getDb();
-  const conditions = normalisedWords.map(() => 'normalised_text LIKE ?').join(' OR ');
+  const field = "COALESCE(NULLIF(normalised_matn, ''), normalised_text)";
+  const conditions = normalisedWords.map(() => `${field} LIKE ?`).join(' OR ');
   const params = normalisedWords.map((w) => `%${w}%`);
 
   const rows = db
@@ -186,6 +196,8 @@ export function replaceCollection(
     number: number;
     text: string;
     normalised: string;
+    /** The narration with its chain of transmission removed, normalised. */
+    normalisedMatn: string;
     grades: readonly StoredGrade[];
   }[],
 ): number {
@@ -194,8 +206,8 @@ export function replaceCollection(
 
   const insert = db.prepare(
     `INSERT INTO hadith_narrations
-       (narration_id, edition, collection_ar, narration_number, text_ar, normalised_text, grades_json, ingested_at_ms)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (narration_id, edition, collection_ar, narration_number, text_ar, normalised_text, normalised_matn, grades_json, ingested_at_ms)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
 
   const now = Date.now();
@@ -210,6 +222,7 @@ export function replaceCollection(
         n.number,
         n.text,
         n.normalised,
+        n.normalisedMatn,
         JSON.stringify(n.grades),
         now,
       );

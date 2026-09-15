@@ -52,6 +52,46 @@ const COLLECTIONS = [
   { edition: 'ara-qudsi', titleAr: 'الأربعون القدسية' },
 ];
 
+/**
+ * The formulae that hand over from the chain of transmission to what was said.
+ * Kept in step with providers/isnad.ts — a script cannot import the chamber's
+ * TypeScript, so the list is repeated here and the two must be changed together.
+ */
+const HANDOVER_MARKERS = [
+  'قال رسول الله صلى الله عليه وسلم',
+  'قال النبي صلى الله عليه وسلم',
+  'أن رسول الله صلى الله عليه وسلم',
+  'ان رسول الله صلى الله عليه وسلم',
+  'عن رسول الله صلى الله عليه وسلم',
+  'عن النبي صلى الله عليه وسلم',
+  'سمعت رسول الله صلى الله عليه وسلم',
+  'أن النبي صلى الله عليه وسلم',
+  'ان النبي صلى الله عليه وسلم',
+  'رسول الله صلى الله عليه وسلم',
+  'النبي صلى الله عليه وسلم',
+];
+
+/**
+ * What was narrated, with the chain that carried it removed.
+ *
+ * The isnad is a roll of names and is often longer than the matn, so searching
+ * a narration whole searches the names of its transmitters. Asked for the story
+ * of Yunus, the chamber returned every narration carrying a transmitter named
+ * Yunus. Returns the whole text when no handover can be found: searching too
+ * much finds extra narrations, while cutting wrongly loses real ones.
+ */
+function extractMatn(narration) {
+  const text = narration.trim();
+  if (text.length === 0) return text;
+  for (const marker of HANDOVER_MARKERS) {
+    const at = text.lastIndexOf(marker);
+    if (at === -1) continue;
+    const matn = text.slice(at + marker.length).trim();
+    if (matn.length >= 12) return matn;
+  }
+  return text;
+}
+
 /** Must match normaliseArabic in the provider, or the two sides never meet. */
 function normaliseArabic(text) {
   return text
@@ -81,9 +121,13 @@ const SCHEMA = `CREATE TABLE IF NOT EXISTS hadith_narrations (
   narration_number INTEGER NOT NULL,
   text_ar TEXT NOT NULL,
   normalised_text TEXT NOT NULL,
+  normalised_matn TEXT NOT NULL DEFAULT '',
   grades_json TEXT NOT NULL,
   ingested_at_ms INTEGER NOT NULL
 )`;
+
+/** For a store that already holds narrations from before the matn existed. */
+const MIGRATION = "ALTER TABLE hadith_narrations ADD COLUMN normalised_matn TEXT NOT NULL DEFAULT ''";
 
 const INDEX = 'CREATE INDEX IF NOT EXISTS idx_hadith_edition_number ON hadith_narrations(edition, narration_number)';
 
@@ -119,6 +163,7 @@ async function ingestOne(db, collection) {
       number,
       text: h.text,
       normalised: normaliseArabic(h.text),
+      normalisedMatn: normaliseArabic(extractMatn(h.text)),
       grades,
     });
   }
@@ -127,8 +172,8 @@ async function ingestOne(db, collection) {
 
   const insert = db.prepare(
     `INSERT OR REPLACE INTO hadith_narrations
-       (narration_id, edition, collection_ar, narration_number, text_ar, normalised_text, grades_json, ingested_at_ms)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (narration_id, edition, collection_ar, narration_number, text_ar, normalised_text, normalised_matn, grades_json, ingested_at_ms)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
 
   const now = Date.now();
@@ -136,7 +181,7 @@ async function ingestOne(db, collection) {
   try {
     for (const r of rows) {
       insert.run(r.id, collection.edition, collection.titleAr, r.number, r.text,
-                 r.normalised, JSON.stringify(r.grades), now);
+                 r.normalised, r.normalisedMatn, JSON.stringify(r.grades), now);
     }
     db.exec('COMMIT');
   } catch (err) {
@@ -145,10 +190,12 @@ async function ingestOne(db, collection) {
   }
 
   const graded = rows.filter((r) => r.grades.length > 0).length;
+  const separated = rows.filter((r) => r.normalisedMatn !== r.normalised).length;
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
   console.log(
     `  ok       ${collection.titleAr.padEnd(22)} ${String(rows.length).padStart(5)} حديثاً` +
-    `  · منها ${String(graded).padStart(5)} بدرجة منسوبة  · ${seconds}s`,
+    `  · بدرجة منسوبة ${String(graded).padStart(5)}` +
+    `  · فُصل سندها ${String(separated).padStart(5)}  · ${seconds}s`,
   );
   return { edition: collection.edition, written: rows.length, graded, blocked: false };
 }
@@ -168,6 +215,7 @@ async function main() {
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
   db.exec(SCHEMA);
+  try { db.exec(MIGRATION); } catch { /* the column is already there */ }
   db.exec(INDEX);
 
   let total = 0;
