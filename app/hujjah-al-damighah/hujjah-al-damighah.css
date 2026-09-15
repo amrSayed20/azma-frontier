@@ -4893,3 +4893,34 @@
 .vd-rung-sunnah-daif,
 .vd-rung-sunnah-ungraded,
 .vd-rung-israiliyyat { border-right-style: dashed; }
+
+/* ── Choosing a domain ────────────────────────────────────────────────────
+   There is no default. The five are equal — none outranks another — and each
+   carries its own research path and its own kinds of evidence, so the chamber
+   cannot pick one on a Creator's behalf without deciding what their question
+   is. Until they choose, the cards say so. */
+.archive-domains-prompt,
+.margin-domains-prompt {
+  font-size: 9.5px;
+  color: var(--ig-3);
+  letter-spacing: 0.4px;
+  line-height: 1.6;
+  margin: 0 0 8px;
+}
+
+/* Awaiting a choice: the cards lift slightly, so the eye goes to them before
+   it goes to the input. Nothing is hidden and nothing is disabled. */
+.archive-domains-awaiting,
+.margin-domains-awaiting {
+  animation: domain-awaiting 2.6s ease-in-out infinite;
+}
+
+@keyframes domain-awaiting {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.74; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .archive-domains-awaiting,
+  .margin-domains-awaiting { animation: none; }
+}

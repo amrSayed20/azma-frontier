@@ -625,9 +625,29 @@ export default function HujjahAlDamighah() {
   const [phase, setPhase]             = useState<Phase>('idle');
   const [invStage, setInvStage]       = useState<InvStage>('idle');
   const [query, setQuery]             = useState('');
-  const [activeDomain, setActiveDomain] = useState<DomainId>(
-    () => getPreferredDomain(readMemory()) ?? 'religious',
+  // No default domain. The five are equal — «كلهم مجالات متساوية الأهمية ولا
+  // يوجد مجال منهم أهم من الآخر» — and each has its own research path and its
+  // own kinds of evidence. A silent fallback to «ديني» meant a doctor's first
+  // question was put to the collections of the Sunnah, and that is the chamber
+  // choosing on the Creator's behalf. Null until they say.
+  const [activeDomain, setActiveDomain] = useState<DomainId | null>(
+    () => getPreferredDomain(readMemory()) ?? null,
   );
+
+  // The domain a result was actually searched in. A verdict describes the
+  // search that produced it, not whichever card happens to be lit now.
+  const [resultDomain, setResultDomain] = useState<DomainId | null>(null);
+  /**
+   * The domain the screen is currently describing.
+   *
+   * Everything that renders evidence sits downstream of a completed search, so
+   * the domain that search ran in is the truthful answer; the chosen card
+   * covers the moment before one has run. There is no third case, because a
+   * search cannot start without a domain.
+   */
+  const shownDomainOf = (searched: DomainId | null, chosen: DomainId | null): DomainId =>
+    searched ?? chosen ?? 'culture';
+
   const [outputFormat, setOutputFormat] = useState<OutputFormat>(
     () => getPreferredFormat(readMemory()) ?? 'short',
   );
@@ -867,6 +887,7 @@ export default function HujjahAlDamighah() {
 
   // ── Core Investigation Submit ─────────────────────────────────────
   async function handleSubmitQuery(q: string, domain: DomainId) {
+    setResultDomain(domain);
     const trimmed = q.trim();
     if (!trimmed || phaseRef.current === 'examining' || phaseRef.current === 'stillness') return;
 
@@ -973,14 +994,25 @@ export default function HujjahAlDamighah() {
     }
   }
 
+  /** The Creator has not yet said which kind of question this is. */
+  function askForDomain() {
+    showCompanion('اختر مجال بحثك أولاً — لكل مجال مسارُه وأدلتُه.');
+    setTimeout(() => {
+      document.querySelector('.archive-domain, .margin-domain-btn')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 120);
+  }
+
   async function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault();
+    if (!activeDomain) { askForDomain(); return; }
     await handleSubmitQuery(query, activeDomain);
   }
 
   // ── Voice Transcript ──────────────────────────────────────────────
   const handleVoiceTranscript = useCallback((text: string) => {
     setQuery(text);
+    if (!activeDomain) { askForDomain(); return; }
     setTimeout(() => { void handleSubmitQuery(text, activeDomain); }, 50);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeDomain]);
@@ -1024,6 +1056,7 @@ export default function HujjahAlDamighah() {
   function handleWritingKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
+      if (!activeDomain) { askForDomain(); return; }
       void handleSubmitQuery(query, activeDomain);
     }
   }
@@ -1123,6 +1156,7 @@ export default function HujjahAlDamighah() {
     setShowProbing(false);
     setPhase('idle');
     phaseRef.current = 'idle';
+    if (!activeDomain) { askForDomain(); return; }
     setTimeout(() => { void handleSubmitQuery(expandQuery, activeDomain); }, 80);
   }
 
@@ -1152,12 +1186,12 @@ export default function HujjahAlDamighah() {
               : stance === 'support' ? 'موقفك موثَّق. المحكمة تمضي في المداولة.'
               :                        'الحكم موقوف بناءً على طلبك. الأسئلة تبقى مفتوحة.';
     showCompanion(msg);
-    setTimeout(() => { void proceedToVerdict(result, query.trim(), activeDomain); }, 900);
+    setTimeout(() => { void proceedToVerdict(result, query.trim(), shownDomain); }, 900);
   }
 
   function handleProceedToVerdict() {
     if (!result) return;
-    void proceedToVerdict(result, query.trim(), activeDomain);
+    void proceedToVerdict(result, query.trim(), shownDomain);
   }
 
   // ── Appeal — Article VIII ─────────────────────────────────────────
@@ -1176,6 +1210,7 @@ export default function HujjahAlDamighah() {
     setPhase('idle');
     phaseRef.current = 'idle';
     showCompanion('أدلة جديدة تفتح التحقيق من جديد…');
+    if (!activeDomain) { askForDomain(); return; }
     setTimeout(() => { void handleSubmitQuery(appealQ, activeDomain); }, 300);
   }
 
@@ -1191,6 +1226,7 @@ export default function HujjahAlDamighah() {
     setPhase('idle');
     phaseRef.current = 'idle';
     showCompanion('الحجرة تعيد الفحص من زاوية مختلفة…');
+    if (!activeDomain) { askForDomain(); return; }
     setTimeout(() => { void handleSubmitQuery(challengeQ, activeDomain); }, 300);
   }
 
@@ -1232,6 +1268,7 @@ export default function HujjahAlDamighah() {
   }
 
   // ── Derived ───────────────────────────────────────────────────────
+  const shownDomain = shownDomainOf(resultDomain, activeDomain);
   const isExamining = phase === 'examining';
   const hasVerdict  = (phase === 'revealing' || phase === 'complete') && result !== null;
   const isHearing   = phase === 'hearing' && result !== null;
@@ -1270,7 +1307,7 @@ export default function HujjahAlDamighah() {
     hasVerdict,
     result,
     query: query.trim(),
-    activeDomain,
+    activeDomain: shownDomain,
     outputFormat,
     onFormatChange:    setOutputFormat,
     showProbing,
@@ -1295,7 +1332,7 @@ export default function HujjahAlDamighah() {
   const sharedGateway = (
     <EvidenceGateway
       evidence={selectedEvidence}
-      domain={activeDomain}
+      domain={shownDomain}
       query={query}
       open={gatewayOpen}
       onClose={() => setGatewayOpen(false)}
@@ -1410,7 +1447,12 @@ export default function HujjahAlDamighah() {
                     <div className="archives-session-docket">جلسة #{sessionCount}</div>
                   )}
                 </div>
-                <div className="archive-domains">
+                <div className="archive-domains-prompt">
+                  {activeDomain
+                    ? 'مجال بحثك — لكلٍّ مسارُه وأدلتُه'
+                    : 'اختر مجال بحثك — خمسة مجالات متساوية، ولكلٍّ مسارُه وأدلتُه'}
+                </div>
+                <div className={`archive-domains ${activeDomain ? '' : 'archive-domains-awaiting'}`}>
                   {KNOWLEDGE_DOMAINS.map((domain) => (
                     <div
                       key={domain.id}
@@ -1434,7 +1476,7 @@ export default function HujjahAlDamighah() {
                   <div className="archive-records custom-scroll">
                     <div className="archive-records-label">سجلات الجلسة</div>
                     {result!.evidence.map((ev, idx) => {
-                      const layer = resolveKnowledgeLayer(ev, activeDomain);
+                      const layer = resolveKnowledgeLayer(ev, shownDomain);
                       return (
                         <button
                           key={ev.id}
@@ -1587,7 +1629,10 @@ export default function HujjahAlDamighah() {
                     <span className="margin-glyph" aria-hidden="true">◈</span>
                     <span className="margin-label">هوامش الحجرة</span>
                   </div>
-                  <div className="margin-domains">
+                  <div className="margin-domains-prompt">
+                    {activeDomain ? 'مجال بحثك' : 'اختر مجال بحثك'}
+                  </div>
+                  <div className={`margin-domains ${activeDomain ? '' : 'margin-domains-awaiting'}`}>
                     {KNOWLEDGE_DOMAINS.map((domain) => (
                       <button
                         key={domain.id}
@@ -1623,7 +1668,7 @@ export default function HujjahAlDamighah() {
                       <div className="margin-evidence custom-scroll">
                         <div className="margin-ev-label">أدلة البحث</div>
                         {top.map((ev) => {
-                          const layer = resolveKnowledgeLayer(ev, activeDomain);
+                          const layer = resolveKnowledgeLayer(ev, shownDomain);
                           return (
                             <button
                               key={ev.id}
@@ -1822,7 +1867,7 @@ export default function HujjahAlDamighah() {
                     return cards.length > 0 ? (
                       <div className="silent-evidence-board">
                         {cards.map((ev) => {
-                          const layer = resolveKnowledgeLayer(ev, activeDomain);
+                          const layer = resolveKnowledgeLayer(ev, shownDomain);
                           return (
                             <button
                               key={ev.id}
