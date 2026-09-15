@@ -85,12 +85,12 @@ export class EvidenceExtractor {
     // Score the relevant passage (not an arbitrary opening slice) against claim keywords.
     const { confidenceScore } = EvidenceScoringEngine.score(relevantPassage, readingClaim);
 
-    // The attribution rides past the window. Scoring happens on the passage
-    // alone, so a citation can never inflate a score — it only ensures that
-    // whatever the Creator is shown arrives with its source attached.
-    const attributedText = document.attributionAr
-      ? `${relevantPassage}\n\n${document.attributionAr}`
-      : relevantPassage;
+    // The citation travels as a field of its own rather than as the tail of the
+    // passage. Appended to the text it sat exactly where every truncation falls
+    // — the window here, and the hundred-character preview on the evidence
+    // board — and the live page showed narrations with no collection, no number
+    // and no grading. Scoring runs on the passage alone either way, so a
+    // citation can never inflate a score.
     const confidenceLevel = EvidenceExtractor.classifyConfidence(confidenceScore);
 
     const scoredEvidence: Evidence = {
@@ -98,8 +98,9 @@ export class EvidenceExtractor {
       claimId: claim.id,
       sourceId: document.id,
       sourceProvider: document.provider,
-      extractedText: attributedText,
-      contextWindow: attributedText,
+      extractedText: relevantPassage,
+      contextWindow: relevantPassage,
+      attributionAr: document.attributionAr,
       confidenceScore,
       confidenceLevel,
       // The Ministry resolves this before re-stamping the provider. The fallback

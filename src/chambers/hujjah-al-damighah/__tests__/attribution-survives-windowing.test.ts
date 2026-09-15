@@ -58,13 +58,17 @@ describe('a narration too long for the window', () => {
 
   it('keeps its collection when the citation rides apart from the text', () => {
     const withAttribution = extract(LONG_NARRATION, ATTRIBUTION);
-    expect(withAttribution.extractedText).toContain('صحيح البخاري');
-    expect(withAttribution.extractedText).toContain('الحديث 2731');
+    expect(withAttribution.attributionAr).toContain('صحيح البخاري');
+    expect(withAttribution.attributionAr).toContain('الحديث 2731');
+    // And the passage itself stays free of it, so the hundred-character
+    // preview on the evidence board quotes the narration rather than the
+    // citation — the board is where most Creators meet the evidence.
+    expect(withAttribution.extractedText).not.toContain('صحيح البخاري');
   });
 
   it('keeps what the scholars said of it, or that they said nothing', () => {
     const withAttribution = extract(LONG_NARRATION, ATTRIBUTION);
-    expect(withAttribution.extractedText).toContain('درجة الحديث: غير متوفرة من المصدر');
+    expect(withAttribution.attributionAr).toContain('درجة الحديث: غير متوفرة من المصدر');
   });
 
   it('keeps a disagreement between scholars rather than windowing it away', () => {
@@ -72,8 +76,8 @@ describe('a narration too long for the window', () => {
       LONG_NARRATION,
       'سنن أبي داود — الحديث 1.\nدرجة الحديث:\nحسن صحيح — الألباني\nصحيح لغيره — شعيب الأرناؤوط\nواختلف أهل العلم في درجته، وقد عُرضت أقوالهم كما هي.',
     );
-    expect(graded.extractedText).toContain('حسن صحيح — الألباني');
-    expect(graded.extractedText).toContain('واختلف أهل العلم');
+    expect(graded.attributionAr).toContain('حسن صحيح — الألباني');
+    expect(graded.attributionAr).toContain('واختلف أهل العلم');
   });
 });
 
@@ -106,7 +110,7 @@ describe('a verse', () => {
       },
       verseClaim,
     );
-    expect(evidence.extractedText).toContain('سورة الفيل، الآية 1');
+    expect(evidence.attributionAr).toContain('سورة الفيل، الآية 1');
     expect(evidence.sourceAuthority).toBe(SourceAuthority.SCRIPTURE);
   });
 });

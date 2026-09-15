@@ -138,6 +138,20 @@ export interface Evidence {
    * same way everywhere.
    */
   readonly sourceAuthority?: SourceAuthority;
+
+  /**
+   * Where this text is found, and what the scholars said of it.
+   *
+   * A field of its own, because everything that touches evidence text truncates
+   * it: the board shows a hundred characters, the extractor windows to four
+   * hundred and twenty. Appending a citation to the end of the text put it
+   * exactly where every one of those cuts falls, and the live page showed the
+   * result — narrations displayed with no collection, no number and no grading,
+   * which is an unsourced sentence about the Prophet ﷺ.
+   *
+   * A citation is not the tail of a passage. It is a fact about it.
+   */
+  readonly attributionAr?: string;
 }
 
 // ==========================================

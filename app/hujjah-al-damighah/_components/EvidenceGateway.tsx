@@ -97,6 +97,12 @@ export function EvidenceGateway({
           <blockquote className="gateway-full-text">
             {evidence.extractedText}
           </blockquote>
+          {/* Where it is found, and what the scholars said of it — whole, with
+              room for scholars who disagree. The board above has space for the
+              first line only. */}
+          {evidence.attributionAr && (
+            <p className="gateway-attribution">{evidence.attributionAr}</p>
+          )}
         </div>
 
         {/* A rendering that cannot be checked against its original is a claim

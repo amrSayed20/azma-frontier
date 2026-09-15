@@ -21,6 +21,7 @@ import {
   type OutputFormat,
   type KnowledgeTier,
   resolveKnowledgeLayer,
+  sourceLineOf,
   bucketEvidence,
   getConstitutionalTier,
 } from './_lib/evidence-utils';
@@ -330,6 +331,7 @@ function HearingBlock({
               <button key={ev.id} className="hearing-ev-btn hev-support" onClick={() => onEvidenceSelect(ev)}>
                 <span className="hev-tier">{layer.labelAr}</span>
                 <p className="hev-text">{ev.extractedText.slice(0, 100)}…</p>
+                {ev.attributionAr && <span className="hev-source">{sourceLineOf(ev)}</span>}
               </button>
             );
           }) : (
@@ -351,6 +353,7 @@ function HearingBlock({
               <button key={ev.id} className="hearing-ev-btn hev-oppose" onClick={() => onEvidenceSelect(ev)}>
                 <span className="hev-tier">{layer.labelAr}</span>
                 <p className="hev-text">{ev.extractedText.slice(0, 100)}…</p>
+                {ev.attributionAr && <span className="hev-source">{sourceLineOf(ev)}</span>}
               </button>
             );
           }) : (
@@ -1629,6 +1632,7 @@ export default function HujjahAlDamighah() {
                             >
                               <span className={`mev-tier tier-${layer.tier}`}>{layer.labelAr}</span>
                               <span className="mev-text">{ev.extractedText.slice(0, 60)}…</span>
+                              {ev.attributionAr && <span className="mev-source">{sourceLineOf(ev)}</span>}
                             </button>
                           );
                         })}
@@ -1827,6 +1831,7 @@ export default function HujjahAlDamighah() {
                             >
                               <span className="sev-tier">{layer.labelAr}</span>
                               <p className="sev-text">{ev.extractedText.slice(0, 80)}</p>
+                              {ev.attributionAr && <span className="sev-source">{sourceLineOf(ev)}</span>}
                               <span className="sev-score">{Math.round(ev.confidenceScore * 100)}%</span>
                             </button>
                           );

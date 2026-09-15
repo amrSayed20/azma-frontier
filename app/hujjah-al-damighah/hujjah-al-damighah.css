@@ -1449,6 +1449,34 @@
   margin: 0;
 }
 
+/* Where a piece of evidence is found. On the boards there is room for one
+   line — the collection and number, or the sura and verse — because a citation
+   a Creator must open an item to see is a citation most of them never see. */
+.hev-source,
+.mev-source,
+.sev-source {
+  display: block;
+  font-size: 9px;
+  color: var(--ig-3);
+  letter-spacing: 0.3px;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* In the gateway there is room for the whole of it, gradings included, and for
+   scholars who disagree with one another. */
+.gateway-attribution {
+  font-size: 10.5px;
+  color: var(--ig-6);
+  line-height: 1.7;
+  margin: 10px 0 0;
+  padding-right: 8px;
+  border-right: 2px solid rgba(212,175,55,.35);
+  white-space: pre-line;
+}
+
 /* The source's own words, kept beside their rendering. dir="auto" on the
    element lets a Latin-script original read left-to-right inside an RTL page
    without the punctuation drifting to the wrong end of the line. */

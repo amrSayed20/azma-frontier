@@ -82,6 +82,27 @@ export interface EvidenceBuckets {
  * asked for a label using only a keyword-match score, and a Qur'anic verse
  * retrieved on a weak match came back labelled «مصدر مجهول».
  */
+/**
+ * The collections of the Sunnah, by the names the chamber itself writes into an
+ * attribution. A closed list the Empire authored — not a guess at free text.
+ */
+const SUNNAH_COLLECTIONS = [
+  'صحيح البخاري', 'صحيح مسلم', 'سنن أبي داود', 'جامع الترمذي',
+  'سنن النسائي', 'سنن ابن ماجه', 'موطأ الإمام مالك',
+  'الأربعون النووية', 'الأربعون القدسية',
+] as const;
+
+/** Whether this evidence is a Prophetic narration from a named collection. */
+export function isNarration(item: EvidenceItemDTO): boolean {
+  const first = item.attributionAr?.split('\n')[0] ?? '';
+  return SUNNAH_COLLECTIONS.some((c) => first.includes(c));
+}
+
+/** Whether the chamber can say where this text came from. */
+export function isAttributed(item: EvidenceItemDTO): boolean {
+  return Boolean(item.attributionAr?.trim());
+}
+
 export function resolveKnowledgeLayer(item: EvidenceItemDTO, domain: DomainId): KnowledgeLayer {
   const score = item.confidenceScore;
   const level = item.confidenceLevel;
@@ -91,6 +112,18 @@ export function resolveKnowledgeLayer(item: EvidenceItemDTO, domain: DomainId): 
   // particular question is shown separately and never folded in here.
   if (authorityOf(item) === SourceAuthority.SCRIPTURE) {
     return { labelAr: 'نص قرآني', tier: 'verified' };
+  }
+
+  // A narration is displayed as a narration from its own collection, whatever
+  // the match score. The score measures how closely its wording touches the
+  // question; it says nothing about what the text is. Left to the bands below,
+  // a narration from صحيح البخاري whose words happened not to overlap the
+  // question would have been labelled «تراث شفهي», «مصدر مجهول», or
+  // «موروث وأسطورة». The chamber must never put those words on the Sunnah.
+  // What the scholars said of a narration is its grade, and the grade travels
+  // in its attribution with the name of whoever issued it.
+  if (isNarration(item)) {
+    return { labelAr: 'حديث نبوي', tier: 'primary' };
   }
 
   if (level === 'HIGH' && score >= 0.88) return { labelAr: 'دليل موثَّق',      tier: 'verified'     };
@@ -104,6 +137,16 @@ export function resolveKnowledgeLayer(item: EvidenceItemDTO, domain: DomainId): 
     if (domain === 'history')            return { labelAr: 'سجل تاريخي',         tier: 'historical'   };
     return                                      { labelAr: 'تفسير أكاديمي',      tier: 'scholarly'    };
   }
+  // Below this line sit the words the chamber uses for material whose origin it
+  // cannot name: oral tradition, circulated claim, unknown source, folklore.
+  // They describe a *source*, and this is a *match* score — so a text the
+  // chamber can point to in a named book must never fall into them however
+  // loosely its wording touched the question. It is a documented source with a
+  // distant bearing, and the bearing is reported in its own words elsewhere.
+  if (isAttributed(item)) {
+    return { labelAr: 'مصدر موثَّق', tier: 'historical' };
+  }
+
   if (score >= 0.35) {
     if (domain === 'religious')          return { labelAr: 'تراث شفهي',           tier: 'oral'         };
     return                                      { labelAr: 'ادعاء منتشر',         tier: 'circulated'   };
@@ -120,11 +163,16 @@ export function bucketEvidence(dto: InvestigationDTO): EvidenceBuckets {
   // question is neither: it is a documented text with a distant bearing, which
   // the relevance line says in its own words. Sorting it into «unverified»
   // would have the chamber call the Qur'an unverified.
-  const scripture = ev.filter(isScriptureItem);
-  const rest = ev.filter((e) => !isScriptureItem(e));
+  // Neither is a narration. These buckets feed the words «متعارض» and «غير
+  // محقَّق», and a narration from a named collection whose wording did not
+  // overlap the question is neither of those — it is a documented text with a
+  // distant bearing, which the relevance line says in its own words. Sorting it
+  // into «unverified» would have the chamber call صحيح البخاري unverified.
+  const carried = ev.filter((e) => isScriptureItem(e) || isNarration(e));
+  const rest = ev.filter((e) => !isScriptureItem(e) && !isNarration(e));
 
   return {
-    supported:  [...scripture, ...rest.filter(e => e.confidenceLevel === 'HIGH' && e.confidenceScore >= 0.80)],
+    supported:  [...carried, ...rest.filter(e => e.confidenceLevel === 'HIGH' && e.confidenceScore >= 0.80)],
     narratives: rest.filter(e => (e.confidenceLevel === 'HIGH'    && e.confidenceScore <  0.80)
                               || (e.confidenceLevel === 'MODERATE' && e.confidenceScore >= 0.60)),
     disputed:   rest.filter(e =>  e.confidenceLevel === 'MODERATE' && e.confidenceScore <  0.60),
@@ -168,17 +216,40 @@ export function evidenceForTaking(
   const lines: string[] = [
     `«${item.extractedText.trim()}»`,
     '',
+  ];
+
+  // Where it is found travels first, above the gradings the chamber reports —
+  // a quotation a Creator cannot trace is one they cannot defend.
+  if (item.attributionAr?.trim()) lines.push(item.attributionAr.trim(), '');
+
+  lines.push(
     `حجّية المصدر: ${authorityLabelAr(authority)}`,
     `صلة النص بالسؤال: ${relevanceLabelAr(relevanceOf(item))}`,
     `طبقة الدليل: ${resolveKnowledgeLayer(item, domain).labelAr}`,
     `الموضوع: ${query.trim()}`,
-  ];
+  );
 
   const note = interpretationNoteAr(authority);
   if (note) lines.push(note);
 
   lines.push('', `— حجرة المعرفة السيادية، ${new Date().toLocaleDateString('ar-SA')}`);
   return lines.join('\n');
+}
+
+/**
+ * The one line an evidence board has room for: where this text is found.
+ *
+ * The board shows sixty to a hundred characters of a passage, so a citation
+ * that lives only inside the gateway is a citation most Creators never see —
+ * they would have to open every item to learn which of them is a narration and
+ * which a verse. This is the first line of the attribution: the collection and
+ * number, or the sura and verse. The gradings follow in the gateway, where
+ * there is room for scholars who disagree.
+ */
+export function sourceLineOf(item: EvidenceItemDTO): string {
+  const attribution = item.attributionAr?.trim();
+  if (!attribution) return '';
+  return attribution.split('\n')[0]!.replace(/\.$/, '').trim();
 }
 
 /** The scripture evidence in this investigation, strongest bearing first. */

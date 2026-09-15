@@ -48,6 +48,13 @@ export interface EvidenceItemDTO {
   originalText?: string;
   /** Declares the machine's hand. Absent only when nothing was rendered. */
   translationLabelAr?: string;
+  /**
+   * Where this text is found, and what the scholars said of it — carried as its
+   * own field so that no preview or window can cut it off. The evidence board
+   * shows a hundred characters; a citation at the end of the text never
+   * survived that.
+   */
+  attributionAr?: string;
 }
 
 export interface InvestigationDTO {
@@ -176,7 +183,11 @@ export async function runInvestigation(
     // no answer. Gemini carries it now — the same key the Empire already uses.
     const synthesizedAnswer = (await composeAnswer({
       query,
-      evidenceTexts: carried.map((e) => e.text),
+      // The citation travels with the passage, so the composed answer can say
+      // which collection a narration is in and what the scholars said of it
+      // instead of paraphrasing an unattributed sentence.
+      evidenceTexts: carried.map((e) =>
+        e.item.evidence.attributionAr ? `${e.text}\n[${e.item.evidence.attributionAr}]` : e.text),
       isReligious,
     })) ?? undefined;
 
@@ -221,6 +232,7 @@ export async function runInvestigation(
         translationLabelAr: record.translationType === 'ORIGINAL'
           ? undefined
           : 'ترجمة آلية — والأصل محفوظ',
+        attributionAr: item.evidence.attributionAr,
       })),
       totalSourcesScanned: evidenceOutcome.collection.totalSourcesScanned,
       averageEvidenceScore,
