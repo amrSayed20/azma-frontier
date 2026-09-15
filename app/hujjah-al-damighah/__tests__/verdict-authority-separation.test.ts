@@ -70,8 +70,11 @@ describe('a verse is displayed as a verse', () => {
   });
 
   it('is not labelled «مصدر مجهول», which is what its score alone would have earned', () => {
-    const asIfOrdinary = item({ ...weakMatchVerse, sourceAuthority: SourceAuthority.DOCUMENTED });
-    expect(resolveKnowledgeLayer(asIfOrdinary, 'religious').labelAr).toBe('مصدر مجهول');
+    // The same text and score with nothing to place it by. A documented source
+    // is protected from this label too, so the counterfactual has to be a text
+    // the chamber genuinely cannot place.
+    const asIfUnplaceable = item({ ...weakMatchVerse, sourceAuthority: 'UNATTRIBUTED' });
+    expect(resolveKnowledgeLayer(asIfUnplaceable, 'religious').labelAr).toBe('مصدر مجهول');
     expect(resolveKnowledgeLayer(weakMatchVerse, 'religious').labelAr).not.toBe('مصدر مجهول');
   });
 

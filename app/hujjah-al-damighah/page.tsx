@@ -467,7 +467,7 @@ function EvidenceCategory({ titleAr, type, items, domain, onSelect }: EvCatProps
             >
               <span className={`entry-tier tier-${layer.tier as KnowledgeTier} ctier-${getConstitutionalTier(layer.tier)}`}>{layer.labelAr}</span>
               <p className="entry-text">&ldquo;{ev.extractedText}&rdquo;</p>
-              <span className="entry-score">{Math.round(ev.confidenceScore * 100)}%</span>
+              <span className="entry-score" title="مطابقة النص للسؤال — لا حكم على حجّيته">مطابقة {Math.round(ev.confidenceScore * 100)}%</span>
               <span className="entry-gateway-hint" aria-hidden="true">← بوابة</span>
             </button>
           );
@@ -1447,7 +1447,7 @@ export default function HujjahAlDamighah() {
                           <p className="archive-record-excerpt">
                             {(ev.contextWindow || ev.extractedText).slice(0, 55)}…
                           </p>
-                          <span className="archive-record-score">{Math.round(ev.confidenceScore * 100)}%</span>
+                          <span className="archive-record-score" title="مطابقة النص للسؤال — لا حكم على حجّيته">مطابقة {Math.round(ev.confidenceScore * 100)}%</span>
                         </button>
                       );
                     })}
@@ -1832,7 +1832,7 @@ export default function HujjahAlDamighah() {
                               <span className="sev-tier">{layer.labelAr}</span>
                               <p className="sev-text">{ev.extractedText.slice(0, 80)}</p>
                               {ev.attributionAr && <span className="sev-source">{sourceLineOf(ev)}</span>}
-                              <span className="sev-score">{Math.round(ev.confidenceScore * 100)}%</span>
+                              <span className="sev-score" title="مطابقة النص للسؤال — لا حكم على حجّيته">مطابقة {Math.round(ev.confidenceScore * 100)}%</span>
                             </button>
                           );
                         })}

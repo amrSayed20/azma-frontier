@@ -61,7 +61,7 @@ const gradedNarration = item({
     'سنن أبي داود — الحديث 1.\nدرجة الحديث:\nحسن صحيح — الألباني\nصحيح لغيره — شعيب الأرناؤوط\nواختلف أهل العلم في درجته، وقد عُرضت أقوالهم كما هي.',
 });
 
-const unattributed = item({ id: 'u1', confidenceScore: 0.11, confidenceLevel: 'LOW' });
+const unattributed = item({ id: 'u1', confidenceScore: 0.11, confidenceLevel: 'LOW', sourceAuthority: 'UNATTRIBUTED' });
 
 describe('recognising a narration', () => {
   it('knows one by the collection its attribution names', () => {
@@ -86,9 +86,15 @@ describe('a narration that barely matched the question', () => {
     expect(layer.labelAr).toBe('حديث نبوي');
   });
 
-  it('is what the score alone would have called folklore', () => {
-    const asIfUnattributed = item({ ...distantNarration, attributionAr: undefined });
-    expect(resolveKnowledgeLayer(asIfUnattributed, 'religious').labelAr).toBe('مصدر مجهول');
+  it('carries the same words a score alone would have condemned', () => {
+    // The same text and the same score, with nothing to place it by. That is
+    // the label the chamber used to put on this narration.
+    const asIfUnplaceable = item({
+      ...distantNarration,
+      attributionAr: undefined,
+      sourceAuthority: 'UNATTRIBUTED',
+    });
+    expect(resolveKnowledgeLayer(asIfUnplaceable, 'religious').labelAr).toBe('مصدر مجهول');
   });
 
   it('is never given any of the four words reserved for unplaceable material', () => {
@@ -109,8 +115,27 @@ describe('any source the chamber can place', () => {
     expect(resolveKnowledgeLayer(encyclopedia, 'history').labelAr).toBe('مصدر موثَّق');
   });
 
-  it('leaves the unplaceable words for material that really is unplaceable', () => {
-    expect(resolveKnowledgeLayer(unattributed, 'religious').labelAr).toBe('مصدر مجهول');
+  it('is documented even when its source writes no citation line', () => {
+    // The live page: entries from the Arabic encyclopedia carry no citation,
+    // and were shown as «مصدر مجهول» — the chamber calling an encyclopedia it
+    // deliberately consulted an unknown source.
+    const encyclopedia = item({
+      extractedText: 'موضوع: مملكة سبأ وصف: مملكة',
+      confidenceScore: 0.02,
+      confidenceLevel: 'LOW',
+      sourceAuthority: SourceAuthority.DOCUMENTED,
+    });
+    expect(isAttributed(encyclopedia)).toBe(true);
+    expect(resolveKnowledgeLayer(encyclopedia, 'religious').labelAr).toBe('مصدر موثَّق');
+  });
+
+  it('leaves the unplaceable words for material the chamber truly cannot place', () => {
+    const nameless = item({
+      confidenceScore: 0.05,
+      confidenceLevel: 'LOW',
+      sourceAuthority: 'UNATTRIBUTED',
+    });
+    expect(resolveKnowledgeLayer(nameless, 'religious').labelAr).toBe('مصدر مجهول');
   });
 });
 

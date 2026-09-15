@@ -98,9 +98,19 @@ export function isNarration(item: EvidenceItemDTO): boolean {
   return SUNNAH_COLLECTIONS.some((c) => first.includes(c));
 }
 
-/** Whether the chamber can say where this text came from. */
+/**
+ * Whether the chamber can say where this text came from.
+ *
+ * Two ways it can. Either the source wrote a citation — a collection and a
+ * number, a sura and a verse — or the chamber classified it as a documented
+ * source when it arrived, which is what DOCUMENTED means. The live page showed
+ * why both count: entries from the Arabic encyclopedia carry no citation line,
+ * so a check on the citation alone let them fall to «مصدر مجهول» — the chamber
+ * calling an encyclopedia it deliberately consulted an unknown source.
+ */
 export function isAttributed(item: EvidenceItemDTO): boolean {
-  return Boolean(item.attributionAr?.trim());
+  if (item.attributionAr?.trim()) return true;
+  return authorityOf(item) === SourceAuthority.DOCUMENTED;
 }
 
 export function resolveKnowledgeLayer(item: EvidenceItemDTO, domain: DomainId): KnowledgeLayer {
