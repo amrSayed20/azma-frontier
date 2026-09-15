@@ -83,9 +83,22 @@ describe('two sources sharing a limit', () => {
     expect(scripture.map((r) => r.relevanceScore)).toEqual([0.99, 0.97, 0.95, 0.93, 0.91]);
   });
 
-  it('still hands the Creator the strongest first', () => {
-    const scores = chosen.map((r) => r.relevanceScore);
-    expect(scores).toEqual([...scores].sort((a, b) => b - a));
+  it('hands its choices back in the order it made them, not sorted', () => {
+    // This is load-bearing. The first version sorted before returning, and a
+    // Ministry's fair selection was then re-sorted by the Manager, which took
+    // its top five — the top five by score again, every one a verse. Selection
+    // order and reading order are different things, and only the last hand
+    // before the Creator decides reading order.
+    expect(chosen[0]!.provider).toBe('scripture');
+    expect(chosen[1]!.provider).toBe('hadith');
+    expect(chosen[2]!.provider).toBe('scripture');
+    expect(chosen[3]!.provider).toBe('hadith');
+  });
+
+  it('survives being taken from the top, which is how a caller consumes it', () => {
+    // A caller that keeps only the first half must still get both sources.
+    const half = chosen.slice(0, 5);
+    expect(half.some((r) => r.provider === 'hadith')).toBe(true);
   });
 
   it('never exceeds the limit', () => {

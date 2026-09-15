@@ -177,13 +177,29 @@ function buildMinistryProvider(
       );
 
       // Each source inside this Ministry keeps a share before the rest is
-      // allotted by score. Measured live: the Qur'an scores 0.80–0.99 and the
-      // Sunnah 0.50–0.90, they sit in this same Ministry, and sorting by score
-      // alone handed the Qur'an all ten places — a Creator asking about الصبر
-      // received ten verses and not one of the 36,064 narrations the Empire
-      // holds. Two sources were being compared on a number that means something
-      // different in each of them.
-      return selectAcrossSources(allResults, limit);
+      // allotted by score, and the choices are handed upward in the order they
+      // were made. Sorting them here by score is what undid the fairness the
+      // first time: the Ministry chose evenly, sorted, and the Manager then
+      // took this Ministry's top five — which were the top five by score again,
+      // every one of them a verse, while the 36,064 narrations the Empire holds
+      // waited below the cut. The single sort belongs to whoever hands the
+      // evidence to the Creator, and to nobody in between.
+      // The raw source key is read back out of the composite document id,
+      // because `provider` has already been re-stamped with this Ministry's own
+      // name by the time these groups exist — reading it here would report
+      // every source as the Ministry and tell nobody anything.
+      const perSource: Record<string, number> = {};
+      for (const group of allResults) {
+        const composite = group[0]?.id;
+        if (!composite) continue;
+        const at = composite.indexOf('::');
+        perSource[at > 0 ? composite.slice(0, at) : 'unknown'] = group.length;
+      }
+      const selection = selectAcrossSources(allResults, limit);
+      if (Object.keys(perSource).length > 0) {
+        console.log(`[${ministryId}] found ${JSON.stringify(perSource)} → kept ${selection.length}`);
+      }
+      return selection;
     },
 
     async fetch(compositeId: string): Promise<SourceDocument> {

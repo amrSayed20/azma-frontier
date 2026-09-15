@@ -72,8 +72,20 @@ export interface IRepositoryProvider {
  *   So selection goes round the sources in turn — each one's best, then each
  *   one's second — until the limit is full. Every source that found something
  *   is represented; a source with more to offer still fills more of what
- *   remains. The survivors are then ordered by score as before, so the Creator
- *   still reads the strongest first.
+ *   remains.
+ *
+ * ─── SELECTION ORDER IS NOT DISPLAY ORDER ───────────────────────────────────
+ *
+ *   This returns its choices in the order it made them, deliberately unsorted,
+ *   and that is the whole point. The first version sorted them by score before
+ *   returning, and the fairness died one line later: a Ministry would select
+ *   evenly across its sources, sort the result by score, and the Manager would
+ *   then take that Ministry's top five — which were the top five by score
+ *   again, every one of them a verse. Two rounds of fair selection produced an
+ *   unfair outcome because the ordering between them threw the fairness away.
+ *
+ *   Whoever finally hands evidence to a Creator sorts it for reading. Nothing
+ *   in between does.
  */
 export function selectAcrossSources(
   groups: readonly RepositorySearchResult[][],
@@ -101,7 +113,7 @@ export function selectAcrossSources(
     round += 1;
   }
 
-  return chosen.sort((a, b) => b.relevanceScore - a.relevanceScore);
+  return chosen;
 }
 
 // ==========================================
@@ -187,10 +199,15 @@ export class RepositoryManager {
 
     // Each Ministry keeps a share of the limit before the rest is allotted by
     // score, so a Ministry that answered is never silenced by another
-    // Ministry's scoring scale. Ordering is still by score, so the Creator
-    // reads the strongest first.
+    // Ministry's scoring scale. Each Ministry's own results arrive already in
+    // its own fair order, so taking them in turn preserves the fairness it
+    // made rather than undoing it.
     allResults.push(...selectAcrossSources(resultsArray, limit));
-    return allResults;
+
+    // The one sort. This is the last hand the evidence passes through before
+    // the chamber, so this is where reading order is decided — and nowhere
+    // earlier, because a sort before a selection throws the selection away.
+    return allResults.sort((a, b) => b.relevanceScore - a.relevanceScore);
   }
 
   /**
