@@ -128,6 +128,19 @@ export function scriptureSearchCandidates(query: string): string[] {
   return candidates.slice(0, MAX_ATTEMPTS);
 }
 
+/**
+ * Names a sura once.
+ *
+ * The retrieved name already carries the word «سورة» — sometimes with its full
+ * diacritics — so prefixing another produced «سورة سُورَةُ البَقَرَةِ» in text a
+ * Creator copied out and carried into an argument. Found by reading what was
+ * actually on the clipboard, not what the code appeared to build.
+ */
+export function suraTitle(name: string): string {
+  const bareName = bare(name).trim();
+  return bareName.startsWith('سورة') ? name.trim() : `سورة ${name.trim()}`;
+}
+
 async function getJson(url: string, budgetMs = FETCH_TIMEOUT_MS): Promise<unknown | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Math.max(1, budgetMs));
@@ -216,7 +229,7 @@ export class SovereignScriptureProvider implements IRepositoryProvider {
     const meaning = editions[1]?.text;
     const place =
       verse.surah?.name && verse.numberInSurah
-        ? `سورة ${verse.surah.name}، الآية ${verse.numberInSurah}`
+        ? `${suraTitle(verse.surah.name)}، الآية ${verse.numberInSurah}`
         : 'القرآن الكريم';
 
     // Verse first, then where to find it, then the reading of its meaning. The

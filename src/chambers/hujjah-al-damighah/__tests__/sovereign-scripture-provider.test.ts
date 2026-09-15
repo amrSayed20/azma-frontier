@@ -13,6 +13,7 @@ global.fetch = mockFetch as typeof fetch;
 import {
   SovereignScriptureProvider,
   scriptureSearchCandidates,
+  suraTitle,
 } from '../providers/sovereign-scripture-provider';
 
 function replies(body: unknown, ok = true) {
@@ -100,6 +101,19 @@ describe('the weight the verse carries', () => {
     const results = await provider.search('x', 3, 'أصحاب الكهف');
     // The strongest score any English catalogue assigns itself is 0.95.
     for (const r of results) expect(r.relevanceScore).toBeGreaterThan(0.95);
+  });
+});
+
+describe('naming the sura once', () => {
+  it('does not repeat a word the name already carries', () => {
+    // What a Creator actually copied out: «سورة سُورَةُ البَقَرَةِ».
+    expect(suraTitle('سُورَةُ البَقَرَةِ')).toBe('سُورَةُ البَقَرَةِ');
+    expect(suraTitle('سورة الكهف')).toBe('سورة الكهف');
+  });
+
+  it('supplies the word when the name lacks it', () => {
+    expect(suraTitle('الكهف')).toBe('سورة الكهف');
+    expect(suraTitle('  البقرة ')).toBe('سورة البقرة');
   });
 });
 
