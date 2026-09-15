@@ -49,6 +49,9 @@ const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models
 /** One pass over the candidates. The Creator is waiting. */
 const JUDGEMENT_TIMEOUT_MS = 8_000;
 
+/** Long enough for a demand spike to pass, short enough not to be felt. */
+const RETRY_PAUSE_MS = 700;
+
 /** Beyond this the judgement itself becomes the slow part of the chamber. */
 const MAX_CANDIDATES = 12;
 
@@ -110,6 +113,57 @@ export function parseJudgements(reply: string, expected: number): (Judgement | n
 }
 
 /**
+ * Ask once, and once more if the refusal was the kind that passes.
+ *
+ * Measured from the production host: the judge returned nothing on a live
+ * question, and the reason was `503 UNAVAILABLE — This model is currently
+ * experiencing high demand. Spikes in demand are usually temporary.` A refusal
+ * that describes itself as temporary is worth one more attempt; a refusal that
+ * does not — a bad key, a malformed request — is not, and retrying it only
+ * makes the Creator wait twice for the same answer.
+ */
+async function askOnce(key: string, prompt: string): Promise<string | null> {
+  const attempt = async (): Promise<{ text: string | null; transient: boolean }> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), JUDGEMENT_TIMEOUT_MS);
+    try {
+      const response = await fetch(`${GEMINI_ENDPOINT}?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: RULES.join(' ') }] },
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0, maxOutputTokens: 800 },
+        }),
+      });
+      if (!response.ok) {
+        // Overloaded or rate-limited: the service is telling us to come back.
+        return { text: null, transient: response.status === 503 || response.status === 429 };
+      }
+      const data = await response.json() as {
+        candidates?: { content?: { parts?: { text?: string }[] } }[];
+      };
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      return {
+        text: typeof text === 'string' && text.trim().length > 0 ? text.trim() : null,
+        transient: false,
+      };
+    } catch {
+      return { text: null, transient: false };
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  const first = await attempt();
+  if (first.text !== null || !first.transient) return first.text;
+
+  await new Promise((resolve) => setTimeout(resolve, RETRY_PAUSE_MS));
+  return (await attempt()).text;
+}
+
+/**
  * Judge which candidates bear on the subject.
  *
  * `keepAlways` candidates are judged like any other and reported like any other,
@@ -139,32 +193,7 @@ export async function judgeSubjectRelevance(
     ...batch.map((c, i) => `[${i + 1}] ${c.text.slice(0, PASSAGE_WINDOW)}`),
   ].join('\n');
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), JUDGEMENT_TIMEOUT_MS);
-  let reply: string | null = null;
-  try {
-    const response = await fetch(`${GEMINI_ENDPOINT}?key=${key}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: RULES.join(' ') }] },
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 500 },
-      }),
-    });
-    if (response.ok) {
-      const data = await response.json() as {
-        candidates?: { content?: { parts?: { text?: string }[] } }[];
-      };
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (typeof text === 'string' && text.trim().length > 0) reply = text.trim();
-    }
-  } catch {
-    reply = null;
-  } finally {
-    clearTimeout(timer);
-  }
+  const reply = await askOnce(key, prompt);
 
   // Unreadable, unreachable, or refused: keep everything. A Creator holding an
   // extra passage can see it is off the subject; a Creator holding none because
@@ -195,8 +224,21 @@ export async function judgeSubjectRelevance(
   return { onSubject, setAside, judged: true };
 }
 
-/** What the Creator is told about evidence that was set aside. */
-export function setAsideNoticeAr(count: number): string {
+/**
+ * What the Creator is told about the sorting of the evidence.
+ *
+ * Including when it did not happen. Measured live: the judge was refused with
+ * `503 — high demand`, so nothing was sorted and the Creator was shown a
+ * narration about Ramadan as evidence for the story of Yunus ﷺ with no word of
+ * explanation. Failing open is right; failing open in silence is not, because
+ * the Creator then reads the chamber's ordinary behaviour into what is actually
+ * a degraded one.
+ */
+export function sortingNoticeAr(verdict: SubjectVerdict): string {
+  if (!verdict.judged) {
+    return 'تعذّر فرز الأدلة على الموضوع، فعُرض كل ما وُجد — وفيه ما قد يكون خارج سؤالك.';
+  }
+  const count = verdict.setAside.length;
   if (count <= 0) return '';
   if (count === 1) return 'نُحّي دليلٌ واحد لأنه خارج موضوع سؤالك.';
   if (count === 2) return 'نُحّي دليلان لأنهما خارج موضوع سؤالك.';

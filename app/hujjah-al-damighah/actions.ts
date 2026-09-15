@@ -12,7 +12,7 @@ import { exportKnowledgeResponse } from '@/src/chambers/hujjah-al-damighah/knowl
 import { createPerceptionEndpointForOrgan } from '@/src/sovereign-nervous-system';
 import { toSearchLanguage, composeAnswer, toArabic, displayableText } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
 import { authorityOfEvidence, SourceAuthority } from '@/src/chambers/hujjah-al-damighah/domain/evidence-authority';
-import { judgeSubjectRelevance, setAsideNoticeAr } from '@/src/chambers/hujjah-al-damighah/subject-relevance';
+import { judgeSubjectRelevance, sortingNoticeAr } from '@/src/chambers/hujjah-al-damighah/subject-relevance';
 
 /**
  * Constitutional Nervous System integration.
@@ -145,18 +145,22 @@ export async function runInvestigation(
     //
     // So the candidates are read once and each is judged on one question — is
     // this in the subject asked about? — and what is not is set aside and
-    // counted, never dropped in silence. The Qur'an and the Sunnah are marked
-    // keepAlways: they are the sources the Founder named for a religious
-    // question, and a chamber that quietly dropped a verse because a reader
-    // thought it off-topic would be overruling him.
+    // counted, never dropped in silence.
+    //
+    // Only the Qur'an is kept regardless. I first protected the Sunnah the same
+    // way and it defeated the whole purpose: a narration about Ramadan cannot
+    // be set aside from a question about Yunus ﷺ if narrations are exempt, and
+    // narrations reaching a question they have nothing to do with is precisely
+    // what the Founder reported. A narration's *standing* is protected — it is
+    // never labelled folklore, and its grade is never invented — but whether it
+    // is on the subject is a different question, and authenticity does not
+    // answer it. A sound hadith about fasting is still not about Yunus.
     const subjectVerdict = await judgeSubjectRelevance(
       query,
       evidenceOutcome.collection.items.map((item) => ({
         id: item.evidence.id,
         text: item.evidence.extractedText,
-        keepAlways:
-          authorityOfEvidence(item.evidence) === SourceAuthority.SCRIPTURE ||
-          Boolean(item.evidence.attributionAr),
+        keepAlways: authorityOfEvidence(item.evidence) === SourceAuthority.SCRIPTURE,
       })),
     );
     const onSubject = new Set(subjectVerdict.onSubject);
@@ -272,7 +276,7 @@ export async function runInvestigation(
       synthesizedAnswer,
       // Evidence is never dropped in silence. A Creator who asked about الصبر
       // and is handed four passages instead of ten is owed the reason.
-      setAsideNoticeAr: setAsideNoticeAr(subjectVerdict.setAside.length) || undefined,
+      setAsideNoticeAr: sortingNoticeAr(subjectVerdict) || undefined,
     };
   } catch (err) {
     hujjahPerception.report({
