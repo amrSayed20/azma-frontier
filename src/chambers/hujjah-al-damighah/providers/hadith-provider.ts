@@ -51,6 +51,7 @@ import { IRepositoryProvider } from '../core/repository-manager';
 import { RepositorySearchResult } from '../domain/evidence.types';
 import { SourceDocument } from '../core/evidence-extractor';
 import { SourceAuthority } from '../domain/evidence-authority';
+import { subjectWordsOf } from '../domain/question-subject';
 import {
   searchNarrations,
   searchNarrationsAny,
@@ -80,21 +81,19 @@ export function normaliseArabic(text: string): string {
     .trim();
 }
 
-/** Words a Creator uses to frame a question rather than to name its subject. */
-const FRAMING_WORDS = new Set([
-  'ما', 'ماذا', 'من', 'هل', 'كيف', 'لماذا', 'متي', 'اين', 'هي', 'هو',
-  'التي', 'الذي', 'عن', 'في', 'علي', 'الي', 'مع', 'قصه', 'حديث', 'احاديث',
-  'اذكر', 'حدثني', 'اخبرني', 'معني', 'تفسير', 'شرح', 'ملخص', 'نبذه',
-  'كل', 'بعض', 'هذه', 'هذا', 'وما', 'وهل', 'ان', 'قال', 'يقول', 'سيره',
-  'ورد', 'جاء', 'باب', 'كتاب', 'يخص', 'حول',
-]);
-
-/** The words of a question a collection could actually be searched for. */
+/**
+ * The words of a question a collection could actually be searched for.
+ *
+ * This file kept its own list of framing words for a while, and the
+ * encyclopedias went without one — so «اشرح للمريض عملية استئصال المرارة»
+ * reached them whole and the medical domain answered with nothing. There is one
+ * notion of what a subject is now, in domain/question-subject.ts, and this
+ * normalises what it returns for the store's own spelling.
+ */
 export function subjectWords(query: string): string[] {
-  return normaliseArabic(query)
-    .replace(/[،؛؟.,!?:;"'()[\]{}]/g, ' ')
-    .split(/\s+/)
-    .filter((w) => w.length >= 3 && !FRAMING_WORDS.has(w));
+  return subjectWordsOf(query)
+    .map((w) => normaliseArabic(w))
+    .filter((w) => w.length >= 3);
 }
 
 // ─── A NARRATION'S GRADE, AS THE SCHOLARS GAVE IT ────────────────────────────

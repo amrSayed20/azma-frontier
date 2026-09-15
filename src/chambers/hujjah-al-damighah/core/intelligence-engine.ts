@@ -12,6 +12,7 @@ import { ClaimParser } from '../domain/claim-parser';
 import { EvidenceBundleManager } from '../domain/evidence-bundle';
 import { EvidenceBundle } from '../domain/evidence.types';
 import { EvidenceExtractor, SourceDocument } from './evidence-extractor';
+import { subjectOf } from '../domain/question-subject';
 
 export class IntelligenceEngine {
   private repositoryManager: RepositoryManager;
@@ -37,10 +38,21 @@ export class IntelligenceEngine {
     const bundleManager = new EvidenceBundleManager(claim.normalizedStatement, claim.id);
 
     // 2. Query infrastructure (Source Agnostic)
+    // Catalogues are asked the subject, not the asking.
+    //
+    // Measured on the live Arabic encyclopedia: «اشرح للمريض عملية استئصال
+    // المرارة» returns nothing at all, while «استئصال المرارة» returns ten
+    // results led by the article of that exact name. The whole medical domain
+    // answered a doctor with silence because the words they used to *ask* were
+    // searched as part of what they asked *about*.
+    //
+    // Done here, once, rather than in each provider: the Sunnah provider
+    // learned this first and kept its own copy, and the encyclopedias went
+    // without it for as long as nobody noticed.
     const searchResults = await this.repositoryManager.searchAll(
-      claim.catalogueStatement ?? claim.normalizedStatement,
+      subjectOf(claim.catalogueStatement ?? claim.normalizedStatement),
       10,
-      claim.normalizedStatement,
+      subjectOf(claim.normalizedStatement),
       claim.targetCategory,
     );
 

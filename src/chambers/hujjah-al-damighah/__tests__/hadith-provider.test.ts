@@ -118,7 +118,7 @@ describe('making Arabic comparable', () => {
   });
 
   it('keeps the words of the subject and sets aside the asking', () => {
-    expect(subjectWords('ما ورد في فضل الصبر')).toEqual(['فضل', 'الصبر']);
+    expect(subjectWords('ما ورد في فضل الصبر')).toEqual(['الصبر']);
   });
 
   it('asks nothing when a question is all framing', () => {
@@ -225,7 +225,7 @@ describe('searching the collections', () => {
     mockSearch.mockReturnValue([]);
     mockSearchAny.mockReturnValue([BUKHARI_NARRATION]);
 
-    const results = await provider.search('x', 5, 'فضل الصبر');
+    const results = await provider.search('x', 5, 'الصبر والصلاة');
     expect(mockSearch).toHaveBeenCalled();
     expect(mockSearchAny).toHaveBeenCalled();
     expect(results.length).toBe(1);
@@ -244,11 +244,11 @@ describe('searching the collections', () => {
 
   it('ranks a narration matching the whole subject above one matching a part', async () => {
     mockSearch.mockReturnValue([BUKHARI_NARRATION]);
-    const [whole] = await provider.search('x', 5, 'فضل الصبر');
+    const [whole] = await provider.search('x', 5, 'الصبر والصلاة');
 
     mockSearch.mockReturnValue([]);
     mockSearchAny.mockReturnValue([BUKHARI_NARRATION]);
-    const [part] = await provider.search('x', 5, 'فضل الصبر');
+    const [part] = await provider.search('x', 5, 'الصبر والصلاة');
 
     expect(whole.relevanceScore).toBeGreaterThan(part.relevanceScore);
   });

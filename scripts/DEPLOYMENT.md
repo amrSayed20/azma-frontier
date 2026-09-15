@@ -24,6 +24,19 @@ back on its own if verification fails.
 Requires `ssh`, `scp`, `tar`, `sha256sum`, `node`, and Playwright's Chromium
 (already a dev dependency).
 
+## Nothing else may run while it builds
+
+`deploy` runs `next build`, which owns `.next` for the duration. Running `tsc`,
+`jest`, or a second build alongside it corrupts that directory and the build
+fails — once, mid-session, with a green `tsc` and a green test suite taken a
+minute earlier, which makes the failure look like a code fault when it is a
+collision.
+
+The script caught it and refused to ship: `FAILED build failed — the live
+release was not touched`. That refusal is the design working, and the fix is to
+run the deploy alone rather than to retry it harder. Check `.next` is idle before
+starting, and wait for `DEPLOYED` before running anything else in the repo.
+
 ## Not approved
 
 ```bash
