@@ -32,7 +32,7 @@
  */
 
 import { IntelligenceEngine } from './core/intelligence-engine';
-import { GutenbergProvider } from './providers/gutenberg-provider';
+import { SovereignLibraryProvider } from './providers/sovereign-library-provider';
 import { OpenLibraryProvider } from './providers/open-library-provider';
 import { GoogleTrendsProvider } from './providers/google-trends-provider';
 import { HackerNewsProvider } from './providers/hacker-news-provider';
@@ -40,6 +40,8 @@ import { WikipediaProvider } from './providers/wikipedia-provider';
 import { ArabicWikipediaProvider } from './providers/arabic-wikipedia-provider';
 import { SovereignScriptureProvider } from './providers/sovereign-scripture-provider';
 import { HadithProvider } from './providers/hadith-provider';
+import { MedicalLiteratureProvider } from './providers/medical-literature-provider';
+import { TransmittedProvider } from './providers/transmitted-provider';
 import { MinistryRegistry } from './ministries/ministry-registry';
 
 export class IntelligenceCompositionFactory {
@@ -77,7 +79,23 @@ export class IntelligenceCompositionFactory {
     // Creator learns a named authority was consulted and could not be reached.
     // Still the eighth Ministry: a standing was added, not a Ministry.
     registry.attachProvider('ministry-human-knowledge', new HadithProvider());
-    registry.attachProvider('ministry-human-knowledge', new GutenbergProvider());
+    // The medical layer. A doctor explaining an operation was answered from a
+    // general encyclopedia; the hierarchy of clinical evidence is now read from
+    // what each record's publisher declared it to be. Under the Ministry of
+    // Scientific Knowledge, which had no provider at all until now — still the
+    // eighth Ministry, no ninth.
+    registry.attachProvider('ministry-scientific-knowledge', new MedicalLiteratureProvider());
+    // What «الإسرائيليات» was drawn from, searched for and added at the
+    // Founder's instruction. It carries provenance and refuses classification:
+    // see providers/transmitted-provider.ts for what was measured first.
+    registry.attachProvider('ministry-human-knowledge', new TransmittedProvider());
+    // The library, indexed by the Empire itself. Its old provider asked an
+    // index service that answers 403 to this host, and for weeks a blocked
+    // route was mistaken for a poor library — so the chamber searched the
+    // outside world for 78,130 volumes it already owned. It reads 200KB of a
+    // book now and finds the passage that bears on the question, rather than
+    // handing back a title page.
+    registry.attachProvider('ministry-human-knowledge', new SovereignLibraryProvider());
     registry.attachProvider('ministry-human-knowledge', new OpenLibraryProvider());
     registry.attachProvider('ministry-business-intelligence', new GoogleTrendsProvider());
     registry.attachProvider('ministry-business-intelligence', new HackerNewsProvider());

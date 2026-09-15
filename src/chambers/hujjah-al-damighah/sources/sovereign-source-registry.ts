@@ -150,6 +150,45 @@ export const SOVEREIGN_SOURCES: readonly SovereignSource[] = [
     lastMeasuredAtMs: MEASURED_AT,
   },
 
+  // ─── THE TRANSMITTED CORPUS — what «الإسرائيليات» was drawn from ──────────
+  {
+    sourceId: 'transmitted-corpus',
+    titleAr: 'التراث المنقول عن أهل الكتاب',
+    sourceType: SourceType.HISTORY,
+    sourceRole: SourceRole.NARRATIVE,
+    language: 'en',
+    // Deliberately UNATTRIBUTED. Not because the books are unknown — they are
+    // named and located — but because an unclassified report establishes
+    // nothing, and DOCUMENTED would place it beside sources that do.
+    authorityClass: SourceAuthority.UNATTRIBUTED,
+    verificationStatus: VerificationStatus.VERIFIED,
+    accessStatus: AccessStatus.OPEN,
+    coverage: CoverageStatus.FULLY_REVIEWED,
+    copyrightStatus: CopyrightStatus.PUBLIC_DOMAIN,
+    edition: 'أساطير اليهود لغينزبرغ (٤ مجلدات) · أخبار شخصيات العهد القديم عن التلمود · الأدب العبري · أخبار العهد القديم',
+    domains: ['religious'],
+    note: 'Searched for «الإسرائيليات» before it was added, twice: zero occurrences in 507 verses of al-Qurtubi and al-Baghawi, and zero of the 79,381 volumes in the library carry the word in a title or subject. These seven carry the MATERIAL those reports came from — 5,435 passages — and not the CLASSIFICATION. Every passage is stored UNCLASSIFIED because no source in the Empire issues the ruling that makes a report compatible, contrary or suspended, and inferring one would be this chamber issuing a religious judgement.',
+    lastMeasuredAtMs: MEASURED_AT,
+  },
+
+  // ─── THE MEDICAL LAYER ────────────────────────────────────────────────────
+  {
+    sourceId: 'medical-literature',
+    titleAr: 'الأدب الطبي المحكَّم',
+    sourceType: SourceType.MEDICAL_SCIENTIFIC,
+    sourceRole: SourceRole.PRIMARY_TEXT,
+    language: 'en',
+    authorityClass: SourceAuthority.DOCUMENTED,
+    verificationStatus: VerificationStatus.VERIFIED,
+    accessStatus: AccessStatus.OPEN,
+    coverage: CoverageStatus.PARTIALLY_REVIEWED,
+    copyrightStatus: CopyrightStatus.PERMITTED_REFERENCE,
+    edition: 'إرشادات سريرية · مراجعات منهجية · تحليلات بعدية · تجارب مُعشّاة · دراسات سريرية',
+    domains: ['medical', 'scientific'],
+    note: 'The hierarchy is READ, not inferred: each record states its own publication types. Measured for cholecystectomy alone — 169 records typed as guidelines, 1,578 as systematic reviews, 1,113 as meta-analyses; a search answers in 220ms. Abstracts only, never full text, so coverage is partial and says so.',
+    lastMeasuredAtMs: MEASURED_AT,
+  },
+
   // ─── LAYER 3 — SIRAH, BIOGRAPHY, HISTORY ──────────────────────────────────
   {
     sourceId: 'arabic-wikipedia',
@@ -169,18 +208,18 @@ export const SOVEREIGN_SOURCES: readonly SovereignSource[] = [
 
   // ─── THE LIBRARY AND THE REST ─────────────────────────────────────────────
   {
-    sourceId: 'gutenberg',
+    sourceId: 'sovereign-library',
     titleAr: 'مكتبة الكتب الحرّة',
     sourceType: SourceType.LIBRARY,
     sourceRole: SourceRole.NARRATIVE,
     language: 'en',
     authorityClass: SourceAuthority.DOCUMENTED,
-    verificationStatus: VerificationStatus.UNVERIFIED,
-    accessStatus: AccessStatus.BLOCKED,
-    coverage: CoverageStatus.EXCERPT_ONLY,
+    verificationStatus: VerificationStatus.VERIFIED,
+    accessStatus: AccessStatus.OPEN,
+    coverage: CoverageStatus.PARTIALLY_REVIEWED,
     copyrightStatus: CopyrightStatus.PUBLIC_DOMAIN,
-    domains: ['history', 'culture', 'scientific'],
-    note: 'Its catalogue index answers 403 to this host while answering 200 in 0.89s to an ordinary connection, so the library is silent in production though the service is healthy. Its book text remains reachable. Even when reachable, only the opening ten kilobytes of a volume is ever read — the Creator is told this rather than left to assume a whole book was searched. Measured: 79,381 volumes, of which exactly one is in Arabic.',
+    domains: ['history', 'culture', 'scientific', 'medical', 'religious'],
+    note: 'The Empire holds its own catalogue: 78,130 works ingested from the published index, which downloads in 1.6s even though the third-party search service answers 403 to this host. A blocked route was mistaken for a poor library for weeks. Measured over the catalogue — 11,877 works touching history, 11,988 philosophy and literature, 675 medicine, 1,087 natural science, 146 touching Islam and the orientalists who wrote on it, 163 by authors of antiquity. Only one work is in Arabic, so everything crosses the translation layer. 200KB of a volume is read and the passage bearing on the question is found within it, rather than the opening ten kilobytes that used to be returned as though it were evidence. At most two works per author, so ten results are ten voices.',
     lastMeasuredAtMs: MEASURED_AT,
   },
   {

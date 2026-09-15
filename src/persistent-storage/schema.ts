@@ -209,6 +209,31 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     grades_json TEXT NOT NULL,
     ingested_at_ms INTEGER NOT NULL
   )`,
+  // THE TRANSMITTED CORPUS — what «الإسرائيليات» was drawn FROM.
+  //
+  // Measured before this table existed: the word «الإسرائيليات» appears in zero
+  // of 507 verses of al-Qurtubi and al-Baghawi, and in zero of the library's
+  // 79,381 volumes. What the library does hold is the material itself —
+  // Ginzberg's Legends of the Jews in four volumes and three related
+  // compilations, 4.8 MB of public-domain text.
+  //
+  // So `status` is UNCLASSIFIED on every row, and that is a measurement rather
+  // than a default: these works carry provenance, not the scholarly ruling that
+  // makes a report «موافق» or «مخالف». The Empire holds no source that issues
+  // that ruling, and the chamber says so rather than inferring one.
+  `CREATE TABLE IF NOT EXISTS transmitted_reports (
+    report_id TEXT PRIMARY KEY,
+    work_id TEXT NOT NULL,
+    work_title TEXT NOT NULL,
+    compiler TEXT,
+    location TEXT NOT NULL,
+    text_en TEXT NOT NULL,
+    searchable_text TEXT NOT NULL,
+    provenance_ar TEXT NOT NULL,
+    status TEXT NOT NULL,
+    scholarly_note_ar TEXT,
+    ingested_at_ms INTEGER NOT NULL
+  )`,
   `CREATE TABLE IF NOT EXISTS knowledge_investigations (
     investigation_id TEXT PRIMARY KEY,
     goal_id TEXT NOT NULL,
@@ -449,4 +474,5 @@ export const INDEX_STATEMENTS: readonly string[] = [
   // The Sunnah is searched by subject across all collections, and fetched by
   // collection and number once a narration has been chosen.
   'CREATE INDEX IF NOT EXISTS idx_hadith_edition_number ON hadith_narrations(edition, narration_number)',
+  'CREATE INDEX IF NOT EXISTS idx_transmitted_work ON transmitted_reports(work_id)',
 ];

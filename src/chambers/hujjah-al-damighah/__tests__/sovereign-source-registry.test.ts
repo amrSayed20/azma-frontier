@@ -74,7 +74,7 @@ describe('a source that refuses this host', () => {
   });
 
   it('is never claimed as verified when it was never reached', () => {
-    for (const id of ['dorar', 'sunnah-com', 'alifta-sunna', 'gutenberg']) {
+    for (const id of ['dorar', 'sunnah-com', 'alifta-sunna']) {
       expect(findSource(id)?.verificationStatus).not.toBe(VerificationStatus.VERIFIED);
     }
   });
@@ -108,8 +108,23 @@ describe('a source that refuses this host', () => {
 });
 
 describe('the library’s partial reading is not hidden', () => {
-  it('records that only an excerpt of each volume is read', () => {
-    expect(findSource('gutenberg')?.coverage).toBe(CoverageStatus.EXCERPT_ONLY);
+  it('records that a volume is read in part, not whole', () => {
+    // It used to be EXCERPT_ONLY — ten kilobytes, which is a title page. The
+    // Empire holds its own catalogue now and reads 200KB looking for the
+    // passage that bears on the question, so the coverage claim changed with
+    // the behaviour rather than ahead of it.
+    expect(findSource('sovereign-library')?.coverage).toBe(CoverageStatus.PARTIALLY_REVIEWED);
+  });
+
+  it('is reachable, because only its index service was ever blocked', () => {
+    expect(findSource('sovereign-library')?.accessStatus).toBe(AccessStatus.OPEN);
+  });
+
+  it('serves every domain, because the library holds every subject', () => {
+    const library = findSource('sovereign-library');
+    for (const d of ['history', 'culture', 'scientific', 'medical', 'religious']) {
+      expect(library?.domains).toContain(d);
+    }
   });
 
   it('says so in the Creator’s own language', () => {
