@@ -258,6 +258,48 @@ export function sourceTitleAr(sourceId: string): string | null {
   return findSource(sourceId)?.titleAr ?? null;
 }
 
+/**
+ * Whether a source has any business answering a question in this domain.
+ *
+ * The registry has recorded each source's domains since it was built, and the
+ * chamber was not consulting that record — so a religious question was put to
+ * the register of contemporary public attention and to a forum of technical
+ * discourse, and they took places that the Qur'an and the Sunnah did not get.
+ * Measured live: of ten pieces of evidence for a religious question, three came
+ * from a Ministry whose only sources are trends and technology news.
+ *
+ * An unregistered source is allowed through rather than silently dropped: the
+ * registry governs what it knows about, and a source it has never heard of is
+ * a gap in the registry, not grounds to silence a provider the Empire
+ * deliberately attached.
+ */
+export function sourceServesDomain(sourceId: string, domain?: string | null): boolean {
+  if (!domain) return true;
+  const wanted = domain.trim().toLowerCase();
+
+  // A domain no source declares is a domain this registry does not govern —
+  // the Sovereign path carries 'observation', 'fulfillment' and 'general',
+  // which describe why an investigation was raised rather than what body of
+  // knowledge answers it. Filtering on one of those would have silenced every
+  // source in the Empire and severed a bridge that already works. The registry
+  // governs what it models; where it models nothing, it rules nothing.
+  if (!GOVERNED_DOMAINS.has(wanted)) return true;
+
+  const source = findSource(sourceId);
+  if (!source) return true;
+  return source.domains.includes(wanted);
+}
+
+/** Every domain any registered source declares. Derived, never hand-listed. */
+const GOVERNED_DOMAINS: ReadonlySet<string> = new Set(
+  SOVEREIGN_SOURCES.flatMap((s) => s.domains),
+);
+
+/** The domains the registry actually governs, for inspection and for tests. */
+export function governedDomains(): string[] {
+  return [...GOVERNED_DOMAINS].sort();
+}
+
 /** Sources the chamber can actually reach, for a given domain. */
 export function reachableSourcesFor(domain: string): readonly SovereignSource[] {
   return SOVEREIGN_SOURCES.filter(

@@ -41,6 +41,7 @@ export class IntelligenceEngine {
       claim.catalogueStatement ?? claim.normalizedStatement,
       10,
       claim.normalizedStatement,
+      claim.targetCategory,
     );
 
     // Which Ministries answered, and with how much. The chamber could not

@@ -41,6 +41,7 @@ export interface IRepositoryProvider {
     query: string,
     limit: number,
     nativeQuery?: string,
+    domain?: string,
   ): Promise<RepositorySearchResult[]>;
   
   /**
@@ -131,6 +132,11 @@ export class RepositoryManager {
     query: string,
     limit: number = 3,
     nativeQuery?: string,
+    // The domain the Creator declared. Sources are consulted only where the
+    // registry says they have business answering — a register of contemporary
+    // public attention has none in a religious question, and took places the
+    // Qur'an and the Sunnah did not get.
+    domain?: string,
   ): Promise<RepositorySearchResult[]> {
     if (this.providers.size === 0) {
       console.warn('[RepositoryManager] No providers registered. Returning empty results.');
@@ -158,7 +164,7 @@ export class RepositoryManager {
       let deadline: ReturnType<typeof setTimeout> | undefined;
       try {
         return await Promise.race([
-          provider.search(query, limit, nativeQuery),
+          provider.search(query, limit, nativeQuery, domain),
           new Promise<RepositorySearchResult[]>((resolve) => {
             deadline = setTimeout(() => {
               console.warn(`[RepositoryManager] Provider [${provider.providerId}] exceeded ${SEARCH_DEADLINE_MS}ms. Proceeding without it.`);

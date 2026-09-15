@@ -67,6 +67,7 @@ import { RepositoryManager, IRepositoryProvider, selectAcrossSources } from '../
 import type { RepositorySearchResult } from '../domain/evidence.types';
 import type { SourceDocument } from '../core/evidence-extractor';
 import { authorityOfSourceKey } from '../domain/evidence-authority';
+import { sourceServesDomain } from '../sources/sovereign-source-registry';
 import {
   CONSTITUTIONAL_MINISTRIES,
   type KnowledgeMinistryId,
@@ -148,13 +149,22 @@ function buildMinistryProvider(
       // English catalogues take the rendered query, the Qur'an takes this.
       // Dropping it here would silently starve every Arabic source.
       nativeQuery?: string,
+      domain?: string,
     ): Promise<RepositorySearchResult[]> {
       if (subProviders.length === 0) return [];
 
+      // Only the sources the registry says have business in this domain. A
+      // Ministry left with none of them contributes nothing rather than
+      // contributing whatever it happens to hold — measured live, three of ten
+      // places in a religious question went to a Ministry whose only sources
+      // are contemporary trends and technology news.
+      const qualified = subProviders.filter((p) => sourceServesDomain(p.providerId, domain));
+      if (qualified.length === 0) return [];
+
       const allResults = await Promise.all(
-        subProviders.map((p) =>
+        qualified.map((p) =>
           p
-            .search(query, limit, nativeQuery)
+            .search(query, limit, nativeQuery, domain)
             .then((results) =>
               results.map((r) => ({
                 ...r,
