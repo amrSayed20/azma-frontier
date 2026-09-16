@@ -28,7 +28,26 @@ import { SCHEMA_STATEMENTS, GENERATION_RECORDS_MIGRATION_COLUMNS, CINEMATIC_LEDG
 // Economy Foundation: no migration columns needed for new tables — they are
 // created fresh via CREATE TABLE IF NOT EXISTS in SCHEMA_STATEMENTS.
 
-const DEFAULT_DB_PATH = join(process.cwd(), 'data', 'azma-os.db');
+/**
+ * Where the database lives.
+ *
+ * `AZMA_DB_PATH` is honoured because the ingest scripts already honour it —
+ * scripts/ingest-hadith.mjs, ingest-library.mjs and ingest-transmitted.mjs all
+ * read it to decide which store they are filling. The application ignoring the
+ * same variable was an inconsistency with a real cost: a test that wanted a
+ * real database rather than a mock had no way to ask for an isolated one, and
+ * silently wrote into the developer's own store instead. Measured — 73 rows of
+ * test data in data/azma-os.db before this line existed.
+ *
+ * Production sets nothing and is unaffected: it runs from /root/azma-os, so the
+ * cwd-relative default resolves exactly as it always did.
+ */
+function defaultDbPath(): string {
+  // Read at call time, not at import time: a caller that sets the variable
+  // before opening a connection must be obeyed, and a module-level constant
+  // would have been frozen before it ever got the chance.
+  return process.env.AZMA_DB_PATH ?? join(process.cwd(), 'data', 'azma-os.db');
+}
 
 /**
  * ALTER TABLE ADD COLUMN for any column CREATORS_MIGRATION_COLUMNS names
@@ -122,7 +141,7 @@ function migrateGenerationRecordsTable(db: DatabaseSync): void {
   }
 }
 
-export function createDatabase(path: string = DEFAULT_DB_PATH): DatabaseSync {
+export function createDatabase(path: string = defaultDbPath()): DatabaseSync {
   if (path !== ':memory:') {
     mkdirSync(dirname(path), { recursive: true });
   }

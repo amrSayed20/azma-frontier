@@ -173,6 +173,69 @@ export interface SovereignVaultDeposit {
   assetFamily: AssetFamily;
   secureStorageUri: string;          // Cloud URL for media, or direct document URI for structural
   metadata: VaultAssetMetadata;
+
+  // ── PHASE C: provenance at the moment of creation ─────────────────────────
+  //
+  // `creationChamber` is REQUIRED, and that is the whole mechanism. Every asset
+  // in this Empire enters through depositAsset() — measured: `insertVaultAsset`
+  // has exactly one caller, and it is that method. Making this field mandatory
+  // turns the type checker into the enforcement: a new creation path cannot
+  // compile without stating which chamber made the thing.
+  //
+  // Article 10 of the directive: the chamber must be the one that MATERIALLY
+  // produced the asset, not one the request merely passed through. An optional
+  // field would have been filled with whatever was convenient at each call site.
+
+  /** The chamber that actually produced this asset. Article 10. */
+  creationChamber: SourceChamber;
+
+  /** How it came to exist. Defaults to GENERATED — an asset with no parent. */
+  derivation?: DerivationKind;
+
+  /**
+   * The asset this was derived from. Its presence is what makes this a
+   * derivation, and `depositAsset` validates it: ownership, existence, and the
+   * parent's own right to be derived from. Article 7 of the directive.
+   */
+  parentAssetId?: string | null;
+
+  /** The Sovereign Project this belongs to. Ownership is checked. Article 9. */
+  projectId?: string | null;
+
+  /** Declared, never inferred. Defaults to INTERMEDIATE. Article 11. */
+  lifecycleState?: LifecycleState;
+
+  /** Who performed the act. Defaults to the owning Creator. Article 5. */
+  createdBy?: string | null;
+}
+
+/**
+ * Why a deposit was refused.
+ *
+ * Article 7 of the directive: «Reject invalid cases rather than correcting them
+ * silently». Each of these is a refusal the caller must handle, not a condition
+ * this layer quietly repairs.
+ */
+export type DepositRejection =
+  /** A parent was named that does not exist. */
+  | 'PARENT_NOT_FOUND'
+  /** The parent belongs to another Creator. Cross-owner derivation. */
+  | 'PARENT_NOT_OWNED'
+  /** The parent is legacy or otherwise not yet adoptable-from. Article 5.5. */
+  | 'PARENT_NOT_DERIVABLE'
+  /** An asset cannot be its own parent. */
+  | 'CIRCULAR_LINEAGE'
+  /** The named project does not exist or belongs to another Creator. */
+  | 'PROJECT_NOT_OWNED';
+
+/** Thrown by `depositAsset` when a deposit violates the constitution. */
+export class SovereignDepositError extends Error {
+  public readonly rejection: DepositRejection;
+  constructor(rejection: DepositRejection, detail: string) {
+    super(`[SovereignVault] ${rejection}: ${detail}`);
+    this.name = 'SovereignDepositError';
+    this.rejection = rejection;
+  }
 }
 
 // ==========================================

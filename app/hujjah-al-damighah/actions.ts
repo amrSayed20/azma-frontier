@@ -18,7 +18,7 @@ import { getDb } from '@/src/persistent-storage/db';
 import { InvestigationFailure, failureSpokenAr } from './_lib/investigation-failure';
 import { SovereignVaultManager } from '@/src/vault/sovereign-vault-manager';
 import { persistUploadedAsset } from '@/src/vault/vault-asset-upload-storage';
-import { AssetFamily } from '@/src/vault/sovereign-vault-types';
+import { AssetFamily, SourceChamber } from '@/src/vault/sovereign-vault-types';
 import { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
 
 /**
@@ -436,6 +436,8 @@ export async function depositEvidenceToVault(
     const persisted = await persistUploadedAsset(Buffer.from(document, 'utf-8'), '.txt');
 
     const asset = await new SovereignVaultManager().depositAsset({
+      // The Chamber of Evidence produced this text. Article 10.
+      creationChamber: SourceChamber.HUJJAH_AL_DAMIGHAH,
       operationId: persisted.assetId,
       subscriberTenantId: session.creatorId,
       capabilityTarget: CapabilityTarget.WRITING,
@@ -500,6 +502,8 @@ export async function depositInvestigationToVault(
     const persisted = await persistUploadedAsset(Buffer.from(lines.join('\n'), 'utf-8'), '.txt');
 
     const asset = await new SovereignVaultManager().depositAsset({
+      // The Chamber of Evidence produced this text. Article 10.
+      creationChamber: SourceChamber.HUJJAH_AL_DAMIGHAH,
       operationId: persisted.assetId,
       subscriberTenantId: session.creatorId,
       capabilityTarget: CapabilityTarget.WRITING,

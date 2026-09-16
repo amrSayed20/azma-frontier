@@ -10,7 +10,7 @@
 import { AZMAPolymorphicIntent, CapabilityTarget } from '../../../core/sovereign-orchestrator/qiyamah-intent-types';
 import { OperationLedgerEntry, OperationState } from '../ledger/operation-ledger-types';
 import { IFleetRegistry, IProviderAdapter, ProviderResolutionResponse } from './fleet-types';
-import { SovereignVaultDeposit, AssetFamily, VaultAsset } from '../../../vault/sovereign-vault-types';
+import { SovereignVaultDeposit, AssetFamily, VaultAsset, SourceChamber } from '../../../vault/sovereign-vault-types';
 
 // ==========================================
 // DEPENDENCY INJECTION CONTRACTS
@@ -120,6 +120,10 @@ export class FleetDispatcher {
       capabilityTarget: ledgerEntry.capabilityTarget,
       assetFamily: isStructural ? AssetFamily.STRUCTURAL : AssetFamily.MEDIA,
       secureStorageUri: resolution.assetUrl,
+      // The dispatcher is infrastructure, not a chamber. What it resolves is a
+      // provider fulfilling asset CREATION — Qiyamah's responsibility. Article 10:
+      // the chamber that materially produced it, not the one it passed through.
+      creationChamber: SourceChamber.QIYAMAH,
       metadata: resolution.rawMetadata || {}
     };
 

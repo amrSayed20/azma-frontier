@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { verifySession } from '../../../../../src/authentication';
 import { SovereignVaultManager } from '../../../../../src/vault/sovereign-vault-manager';
-import { AssetFamily } from '../../../../../src/vault/sovereign-vault-types';
+import { AssetFamily, SourceChamber } from '../../../../../src/vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../../../../src/core/sovereign-orchestrator/qiyamah-intent-types';
 import { synthesizeSpeechWithClonedVoice } from '../../../../../src/chambers/ras-al-amr/voice-cloning-provider';
 import { persistUploadedAsset } from '../../../../../src/vault/vault-asset-upload-storage';
@@ -202,6 +202,9 @@ export async function POST(request: NextRequest) {
     const persisted = await persistUploadedAsset(synthResult.bytes, '.mp3');
 
     const asset = await vaultManager.depositAsset({
+      // Voice and speech belong to Ras Al Amr by the Founder's own ruling,
+      // and Article 1.3 names «الصوت المركب» among its responsibilities.
+      creationChamber: SourceChamber.RAS_AL_AMR,
       operationId: persisted.assetId,
       subscriberTenantId: session.creatorId,
       capabilityTarget: CapabilityTarget.AUDIO,

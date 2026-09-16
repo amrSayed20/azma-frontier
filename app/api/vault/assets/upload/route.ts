@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '../../../../../src/authentication';
 import { SovereignVaultManager } from '../../../../../src/vault/sovereign-vault-manager';
-import { AssetFamily } from '../../../../../src/vault/sovereign-vault-types';
+import { AssetFamily, SourceChamber, DerivationKind } from '../../../../../src/vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../../../../src/core/sovereign-orchestrator/qiyamah-intent-types';
 import { persistUploadedAsset } from '../../../../../src/vault/vault-asset-upload-storage';
 import { validateUploadContent, rejectionSpokenAr, MAX_UPLOAD_BYTES } from '../../../../../src/vault/upload-content-validation';
@@ -122,6 +122,13 @@ export async function POST(request: NextRequest) {
       : undefined;
 
   const asset = await vaultManager.depositAsset({
+    // No chamber CREATED this — the Creator did, on their own device. The
+    // Khazain are where it materially enters the Empire, and `derivation`
+    // states the truth that generation had no part in it. Article 10 forbids
+    // naming a chamber that merely handled the request; it does not forbid
+    // naming the one that actually received the bytes.
+    creationChamber: SourceChamber.KHAZAIN,
+    derivation: DerivationKind.UPLOADED,
     operationId: persisted.assetId,
     subscriberTenantId: session.creatorId,
     capabilityTarget: capability.capabilityTarget,

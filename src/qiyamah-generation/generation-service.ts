@@ -34,7 +34,7 @@ import { getGenerationOrchestrator } from '../core/sovereign-ai-integration/prov
 import { isRateLimited, recordGeneration as recordRateLimitedGeneration } from './rate-limiter';
 import { getDb, recordGeneration as persistGenerationRecord } from '../persistent-storage';
 import { SovereignVaultManager } from '../vault/sovereign-vault-manager';
-import { AssetFamily } from '../vault/sovereign-vault-types';
+import { AssetFamily, SourceChamber } from '../vault/sovereign-vault-types';
 import { CapabilityTarget } from '../core/sovereign-orchestrator/qiyamah-intent-types';
 import { buildImageCreationIntent, buildVideoCreationIntent, getProductionSelector } from '../sovereign-model-selection';
 import type { GenerationRequest, GenerationResult, VideoGenerationRequest, VideoGenerationResult } from './types';
@@ -76,6 +76,9 @@ async function depositGeneratedAssetIntoVault(params: {
       capabilityTarget: CapabilityTarget.VISUAL,
       assetFamily: AssetFamily.MEDIA,
       secureStorageUri: params.assetUrl,
+      // The chamber that materially produced this asset. Article 10.
+      creationChamber: SourceChamber.QIYAMAH,
+
       metadata: {
         providerId: params.resolvedProviderId,
         generationPrompt: params.prompt,
@@ -105,6 +108,9 @@ async function depositVideoAssetIntoVault(params: {
       capabilityTarget: CapabilityTarget.MOTION,
       assetFamily: AssetFamily.MEDIA,
       secureStorageUri: params.assetUrl,
+      // The chamber that materially produced this asset. Article 10.
+      creationChamber: SourceChamber.QIYAMAH,
+
       metadata: {
         providerId: params.resolvedProviderId,
         generationPrompt: params.prompt,

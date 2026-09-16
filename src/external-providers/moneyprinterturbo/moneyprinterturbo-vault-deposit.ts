@@ -13,7 +13,7 @@
  */
 
 import { SovereignVaultManager } from '../../vault/sovereign-vault-manager';
-import { AssetFamily } from '../../vault/sovereign-vault-types';
+import { AssetFamily, SourceChamber } from '../../vault/sovereign-vault-types';
 import type { VaultAsset } from '../../vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 import { persistUploadedAsset } from '../../vault/vault-asset-upload-storage';
@@ -65,6 +65,9 @@ export async function depositProductionIntoVault(input: DepositProductionInput):
   const persisted = await persistUploadedAsset(production.bytes, '.mp4');
 
   return vaultManager.depositAsset({
+    // A generated video. The provider is an external hand; the chamber whose
+    // responsibility it fulfils is Qiyamah. Article 10.
+    creationChamber: SourceChamber.QIYAMAH,
     operationId: persisted.assetId,
     subscriberTenantId: creatorId,
     capabilityTarget: CapabilityTarget.MOTION,

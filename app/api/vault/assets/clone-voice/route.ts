@@ -4,7 +4,7 @@ import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { verifySession } from '../../../../../src/authentication';
 import { SovereignVaultManager } from '../../../../../src/vault/sovereign-vault-manager';
-import { AssetFamily, isVoiceAsset } from '../../../../../src/vault/sovereign-vault-types';
+import { AssetFamily, isVoiceAsset, SourceChamber } from '../../../../../src/vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../../../../src/core/sovereign-orchestrator/qiyamah-intent-types';
 import { cloneVoiceViaProvider } from '../../../../../src/chambers/ras-al-amr/voice-cloning-provider';
 import { getDb } from '../../../../../src/persistent-storage';
@@ -223,6 +223,8 @@ export async function POST(request: NextRequest) {
     // playable audio. The Creator generates real speech separately via
     // POST /api/vault/assets/generate-cloned-speech.
     const asset = await vaultManager.depositAsset({
+      // A cloned voice is a Ras Al Amr asset — the Voice Ministry lives there.
+      creationChamber: SourceChamber.RAS_AL_AMR,
       operationId: referenceAsset.assetId,
       subscriberTenantId: session.creatorId,
       capabilityTarget: CapabilityTarget.AUDIO,

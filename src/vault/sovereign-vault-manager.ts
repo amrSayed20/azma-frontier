@@ -16,21 +16,105 @@
  * instances (each with its own private Map) no longer occurs.
  */
 
-import { SovereignVaultDeposit, VaultAsset } from './sovereign-vault-types';
+import {
+  SovereignVaultDeposit, VaultAsset, SovereignDepositError,
+  DerivationKind, DerivationPermission, LifecycleState, isDerivable,
+} from './sovereign-vault-types';
 import { IVaultManager } from '../orchestrator/fleet-materialization/fleet/fleet-dispatcher';
-import { getDb, insertVaultAsset, getVaultAsset, listVaultAssetsForTenant, linkGoalToVaultAsset } from '../persistent-storage';
+import { getDb, insertVaultAsset, getVaultAsset, listVaultAssetsForTenant, linkGoalToVaultAsset, getProject } from '../persistent-storage';
 
 export class SovereignVaultManager implements IVaultManager {
   /**
    * The final act of the materialization loop.
    * Transforms the fleet deposit into a permanent, tenant-bound Sovereign Asset.
    */
+  /**
+   * The one place an asset enters this Empire — and therefore the one place
+   * provenance can be guaranteed.
+   *
+   * ─── WHY THE RULES LIVE HERE AND NOWHERE ELSE ─────────────────────────────
+   *
+   *   Measured in the Phase C audit: `insertVaultAsset` has exactly ONE caller
+   *   in the entire repository, and it is this method. Ten call sites across
+   *   eight files deposit through it — generation, upload, speech, voice
+   *   cloning, fleet materialisation, the video provider, and the Chamber of
+   *   Evidence.
+   *
+   *   That makes this a genuine chokepoint rather than a hopeful convention.
+   *   Every lineage rule the constitution states is checked here, so no future
+   *   creation path can bypass them by forgetting to.
+   *
+   * ─── WHAT IT REFUSES ──────────────────────────────────────────────────────
+   *
+   *   It throws rather than repairs. Article 7 of the directive: «Reject
+   *   invalid cases rather than correcting them silently». A deposit naming a
+   *   parent owned by someone else is not quietly reparented — it fails, and
+   *   the caller learns that it tried to cross a tenant boundary.
+   */
   public async depositAsset(deposit: SovereignVaultDeposit): Promise<VaultAsset> {
     const now = Date.now();
+    const db = getDb();
 
     // Generates the universal asset ID representing the user's sovereign ownership
     // (Using standard generation logic in place of a full crypto package dependency)
     const newAssetId = `asset_${now}_${Math.random().toString(36).substring(2, 9)}`;
+
+    // ── Lineage resolution — Articles 5.3, 5.5, and directive Article 7 ─────
+    //
+    // An asset with no parent is an ORIGINAL: its own root, version 1. An asset
+    // with a parent inherits that parent's root and sits one version above it,
+    // which is what makes «كل نسخ هذا الأصل» a single query rather than a walk.
+    const parentAssetId: string | null = deposit.parentAssetId ?? null;
+    let rootAssetId = newAssetId;
+    let version = 1;
+    let derivation = deposit.derivation ?? DerivationKind.GENERATED;
+
+    if (parentAssetId !== null) {
+      if (parentAssetId === newAssetId) {
+        throw new SovereignDepositError('CIRCULAR_LINEAGE', 'an asset cannot be its own parent');
+      }
+
+      const parent = getVaultAsset(db, parentAssetId);
+      if (!parent) {
+        throw new SovereignDepositError('PARENT_NOT_FOUND', `no asset '${parentAssetId}'`);
+      }
+      // THE CROSS-TENANT BOUNDARY, at creation time. Deriving from another
+      // Creator's asset would copy their work into this one's lineage.
+      if (parent.subscriberTenantId !== deposit.subscriberTenantId) {
+        throw new SovereignDepositError('PARENT_NOT_OWNED', 'the parent belongs to another Creator');
+      }
+      // Article 5.5 — a legacy asset has no lineage to record, so nothing may
+      // be built on it until its owner adopts it.
+      if (!isDerivable(parent)) {
+        throw new SovereignDepositError(
+          'PARENT_NOT_DERIVABLE',
+          'the parent requires adoption before it can be derived from',
+        );
+      }
+
+      rootAssetId = parent.rootAssetId ?? parent.assetId;
+      version = (parent.version ?? 1) + 1;
+      // A deposit that names a parent but calls itself GENERATED is corrected
+      // to MODIFIED only when it left the field unset — an explicit ANIMATED or
+      // RENDERED is the caller's own true statement and is kept.
+      if (deposit.derivation === undefined) derivation = DerivationKind.MODIFIED;
+    }
+
+    // ── Project ownership — directive Article 9 ────────────────────────────
+    //
+    // Enforced at this boundary, not in a caller. The security closure proved
+    // that an ownership check living only in a caller is one a new caller
+    // forgets.
+    const projectId = deposit.projectId ?? null;
+    if (projectId !== null) {
+      const project = getProject(db, projectId, deposit.subscriberTenantId);
+      if (!project) {
+        throw new SovereignDepositError(
+          'PROJECT_NOT_OWNED',
+          'the project does not exist or belongs to another Creator',
+        );
+      }
+    }
 
     const asset: VaultAsset = {
       assetId: newAssetId,
@@ -41,11 +125,28 @@ export class SovereignVaultManager implements IVaultManager {
       secureStorageUri: deposit.secureStorageUri,
       metadata: deposit.metadata,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+
+      // Provenance, established at birth rather than upgraded later — the
+      // directive forbids creating an asset and "upgrading" it afterwards
+      // through a separate untracked process.
+      parentAssetId,
+      rootAssetId,
+      version,
+      derivation,
+      creationChamber: deposit.creationChamber,
+      projectId,
+      lifecycleState: deposit.lifecycleState ?? LifecycleState.INTERMEDIATE,
+      // An asset born under the constitution knows its own lineage, so it may
+      // be built upon. Only legacy assets require adoption.
+      derivationPermission: DerivationPermission.ALLOWED,
+      createdBy: deposit.createdBy ?? deposit.subscriberTenantId,
+      lastModifiedBy: null,
+      lastModifiedAt: null,
     };
 
     // Commit to the structural ownership layer
-    insertVaultAsset(getDb(), asset);
+    insertVaultAsset(db, asset);
 
     return asset;
   }

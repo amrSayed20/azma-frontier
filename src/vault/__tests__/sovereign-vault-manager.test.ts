@@ -8,7 +8,7 @@ jest.mock('../../persistent-storage', () => ({
 
 import { getDb, insertVaultAsset, getVaultAsset, listVaultAssetsForTenant, linkGoalToVaultAsset } from '../../persistent-storage';
 import { SovereignVaultManager } from '../sovereign-vault-manager';
-import { AssetFamily } from '../sovereign-vault-types';
+import { AssetFamily, SourceChamber } from '../sovereign-vault-types';
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 import type { SovereignVaultDeposit, VaultAsset } from '../sovereign-vault-types';
 
@@ -30,7 +30,8 @@ describe('SovereignVaultManager — migrated to Persistent Storage Foundation', 
     const deposit: SovereignVaultDeposit = {
       operationId: 'op-1',
       subscriberTenantId: 'tenant-1',
-      capabilityTarget: CapabilityTarget.VISUAL,
+      creationChamber: SourceChamber.QIYAMAH,
+    capabilityTarget: CapabilityTarget.VISUAL,
       assetFamily: AssetFamily.MEDIA,
       secureStorageUri: 's3://bucket/x.png',
       metadata: {},
