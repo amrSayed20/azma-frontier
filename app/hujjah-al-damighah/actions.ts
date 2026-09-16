@@ -16,6 +16,10 @@ import { judgeSubjectRelevance, sortingNoticeAr } from '@/src/chambers/hujjah-al
 import { KnowledgeInvestigationRepository } from '@/src/persistent-storage/knowledge-investigation-repository';
 import { getDb } from '@/src/persistent-storage/db';
 import { InvestigationFailure, failureSpokenAr } from './_lib/investigation-failure';
+import { SovereignVaultManager } from '@/src/vault/sovereign-vault-manager';
+import { persistUploadedAsset } from '@/src/vault/vault-asset-upload-storage';
+import { AssetFamily } from '@/src/vault/sovereign-vault-types';
+import { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
 
 /**
  * A failed investigation, said to the Creator in their own tongue.
@@ -359,5 +363,158 @@ export async function runInvestigation(
     // line reads it here; the Creator never does.
     console.error('[Hujjah] Investigation failed:', err);
     return failed(InvestigationFailure.CHAMBER_FAULT);
+  }
+}
+
+/**
+ * What the Creator gets back when they keep a piece of evidence.
+ *
+ * `ok: false` carries the Creator's own words for why, never the machine's —
+ * the same rule the failure vocabulary enforces above.
+ */
+export interface VaultDepositDTO {
+  ok: boolean;
+  /** The Vault's own id for what was kept. Present only on success. */
+  assetId?: string;
+  /** Why not, in the Creator's tongue. Present only on failure. */
+  reasonAr?: string;
+}
+
+/**
+ * Keep a piece of evidence in the Creator's Vault — really.
+ *
+ * ─── WHAT WAS MEASURED ──────────────────────────────────────────────────────
+ *
+ *   The chamber told the Creator «محفوظ في الخزانة» while writing to
+ *   `sessionStorage`, inside a try/catch that swallowed the error and showed
+ *   the message anyway. Evidence a Creator chose to keep died when the tab
+ *   closed, and they were told twice over that it had not. A false success is
+ *   worse than a refusal: a refusal can be retried.
+ *
+ * ─── WHY THIS IS A CONNECTION, NOT A NEW CAPABILITY ─────────────────────────
+ *
+ *   `SovereignVaultManager.depositAsset()` is the boundary every other chamber
+ *   already deposits through, backed by the vault_assets table and bound to the
+ *   Creator by tenant. Al Hujjah was the only chamber that had not been wired
+ *   to it. Building a chamber-local store beside it would have been the
+ *   architectural failure the Sovereign Spine rule names outright.
+ *
+ * ─── WHAT IS KEPT, AND WHAT IS NOT ──────────────────────────────────────────
+ *
+ *   The evidence and its citation — «صحيح البخاري، كتاب بدء الوحي، رقم ١» —
+ *   because that is الحجّة and it is what makes the text checkable later.
+ *   Never the provider, the repository, or the document's machine identifier:
+ *   the Creator sees the proof, not the source.
+ */
+export async function depositEvidenceToVault(
+  evidenceText: string,
+  attributionAr: string | undefined,
+  questionAr: string,
+): Promise<VaultDepositDTO> {
+  const jar = await cookies();
+  const sessionId = jar.get('azma_session')?.value;
+  const session = sessionId ? verifySession(sessionId) : null;
+  if (!session) {
+    return { ok: false, reasonAr: failureSpokenAr(InvestigationFailure.NOT_ADMITTED) };
+  }
+
+  const text = evidenceText.trim();
+  if (text.length === 0) {
+    return { ok: false, reasonAr: 'لا يوجد نصٌّ لحفظه.' };
+  }
+
+  try {
+    // The kept document reads as the Creator will read it months from now:
+    // what they asked, the text itself, and where it is found.
+    const document = [
+      `السؤال: ${questionAr.trim()}`,
+      '',
+      text,
+      ...(attributionAr ? ['', attributionAr] : []),
+    ].join('\n');
+
+    const persisted = await persistUploadedAsset(Buffer.from(document, 'utf-8'), '.txt');
+
+    const asset = await new SovereignVaultManager().depositAsset({
+      operationId: persisted.assetId,
+      subscriberTenantId: session.creatorId,
+      capabilityTarget: CapabilityTarget.WRITING,
+      assetFamily: AssetFamily.STRUCTURAL,
+      secureStorageUri: persisted.assetUrl,
+      metadata: {
+        // Named for what the Creator kept, not for the machinery that found it.
+        originChamber: 'hujjah-al-damighah',
+        questionAr: questionAr.trim().slice(0, 300),
+        ...(attributionAr ? { attributionAr } : {}),
+      },
+    });
+
+    return { ok: true, assetId: asset.assetId };
+  } catch (err) {
+    console.error('[Hujjah] Vault deposit failed:', err);
+    return { ok: false, reasonAr: 'تعذّر الحفظ في الخزانة. لم يُحفظ شيء، فأعد المحاولة.' };
+  }
+}
+
+/**
+ * Keep the whole investigation — the question, the answer, and every piece of
+ * evidence with its citation — as one document in the Creator's Vault.
+ *
+ * The chamber's «احفظ في الخزانة» wrote a summary line to `sessionStorage`
+ * under the chamber-to-chamber transfer key and said it was saved. That key is
+ * real and still used, but it is a HANDOFF: Vault Palace and Qiyamah read it
+ * once on arrival and delete it. Nothing was ever kept. A Creator who spent an
+ * hour assembling evidence and pressed save had, by the next morning, nothing.
+ *
+ * Deposited through the same boundary as a single piece of evidence, for the
+ * same reason, carrying citations and never a source.
+ */
+export async function depositInvestigationToVault(
+  questionAr: string,
+  synthesizedAnswer: string | undefined,
+  evidence: readonly EvidenceItemDTO[],
+): Promise<VaultDepositDTO> {
+  const jar = await cookies();
+  const sessionId = jar.get('azma_session')?.value;
+  const session = sessionId ? verifySession(sessionId) : null;
+  if (!session) {
+    return { ok: false, reasonAr: failureSpokenAr(InvestigationFailure.NOT_ADMITTED) };
+  }
+
+  if (evidence.length === 0) {
+    return { ok: false, reasonAr: 'لا توجد أدلة لحفظها.' };
+  }
+
+  try {
+    const lines: string[] = [`السؤال: ${questionAr.trim()}`, ''];
+    if (synthesizedAnswer && synthesizedAnswer.trim().length > 0) {
+      lines.push('الجواب المركَّب:', synthesizedAnswer.trim(), '');
+    }
+    lines.push(`الأدلة (${evidence.length}):`, '');
+    evidence.forEach((item, index) => {
+      lines.push(`— [${index + 1}] ${item.extractedText.trim()}`);
+      if (item.attributionAr) lines.push(`   ${item.attributionAr.replace(/\n/g, '\n   ')}`);
+      lines.push('');
+    });
+
+    const persisted = await persistUploadedAsset(Buffer.from(lines.join('\n'), 'utf-8'), '.txt');
+
+    const asset = await new SovereignVaultManager().depositAsset({
+      operationId: persisted.assetId,
+      subscriberTenantId: session.creatorId,
+      capabilityTarget: CapabilityTarget.WRITING,
+      assetFamily: AssetFamily.STRUCTURAL,
+      secureStorageUri: persisted.assetUrl,
+      metadata: {
+        originChamber: 'hujjah-al-damighah',
+        questionAr: questionAr.trim().slice(0, 300),
+        evidenceCount: evidence.length,
+      },
+    });
+
+    return { ok: true, assetId: asset.assetId };
+  } catch (err) {
+    console.error('[Hujjah] Investigation deposit failed:', err);
+    return { ok: false, reasonAr: 'تعذّر الحفظ في الخزانة. لم يُحفظ شيء، فأعد المحاولة.' };
   }
 }

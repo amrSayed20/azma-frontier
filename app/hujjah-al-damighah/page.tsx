@@ -10,7 +10,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation';
 import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import './hujjah-al-damighah.css';
-import { runInvestigation, type InvestigationDTO, type EvidenceItemDTO } from './actions';
+import { runInvestigation, depositEvidenceToVault, depositInvestigationToVault, type InvestigationDTO, type EvidenceItemDTO } from './actions';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
 import { EvidenceGateway }   from './_components/EvidenceGateway';
 import { VerdictDocument }   from './_components/VerdictDocument';
@@ -121,6 +121,9 @@ const COMPANION_MSGS: Record<string, string> = {
   departure:    'تفكيرك الآن مختلف. هذا هو المقصود.',
   gatewayOpen:  'بوابة الدليل مفتوحة.',
   vaultSaved:   'محفوظ في الخزانة.',
+  // A refusal can be retried; a false success cannot. This is said only when
+  // nothing was kept, and it never claims otherwise.
+  vaultFailed:  'لم يُحفظ. أعد المحاولة.',
 };
 
 // ── Chamber Curiosity — meaningful broadening questions ────────────
@@ -1109,14 +1112,18 @@ export default function HujjahAlDamighah() {
     setTimeout(() => document.getElementById('hujjah-input')?.focus(), 100);
   }
 
-  function handleSaveEvidenceToVault(ev: EvidenceItemDTO) {
-    try {
-      const existing = JSON.parse(sessionStorage.getItem('azma.vault.evidence') ?? '[]') as EvidenceItemDTO[];
-      sessionStorage.setItem('azma.vault.evidence', JSON.stringify(
-        [...existing.filter((e) => e.id !== ev.id), ev],
-      ));
-    } catch { /* ignore */ }
-    showCompanion(COMPANION_MSGS.vaultSaved);
+  /**
+   * Keep a piece of evidence — in the Vault, not in the tab.
+   *
+   * This wrote to sessionStorage inside a try/catch that swallowed the error,
+   * then said «محفوظ في الخزانة» unconditionally. The evidence died when the
+   * tab closed and the Creator was told otherwise twice over. It now goes
+   * through the Vault boundary every other chamber deposits through, and the
+   * Creator is told what actually happened — including when it did not.
+   */
+  async function handleSaveEvidenceToVault(ev: EvidenceItemDTO) {
+    const outcome = await depositEvidenceToVault(ev.extractedText, ev.attributionAr, query);
+    showCompanion(outcome.ok ? COMPANION_MSGS.vaultSaved : (outcome.reasonAr ?? COMPANION_MSGS.vaultFailed));
   }
 
   // ── Investigation File Actions ────────────────────────────────────
@@ -1160,7 +1167,17 @@ export default function HujjahAlDamighah() {
     setTimeout(() => { void handleSubmitQuery(expandQuery, activeDomain); }, 80);
   }
 
-  function handleSaveVault() {
+  /**
+   * Keep the whole investigation.
+   *
+   * The sessionStorage write below is a HANDOFF, not a save — Vault Palace and
+   * Qiyamah read that key once on arrival and delete it — and it was the only
+   * thing this did while telling the Creator it was «محفوظ في الخزانة». The
+   * handoff stays, because the next chamber genuinely needs it. What is new is
+   * that the file is now actually kept, and the Creator is told the truth
+   * either way.
+   */
+  async function handleSaveVault() {
     if (!result) return;
     sessionVaultedRef.current = true;
     try {
@@ -1169,8 +1186,10 @@ export default function HujjahAlDamighah() {
         averageScore: result.averageEvidenceScore, timestamp: Date.now(), sessionNumber: sessionCount,
       }));
     } catch { /* ignore */ }
-    setSavedToVault(true);
-    showCompanion(COMPANION_MSGS.vaultSaved);
+
+    const outcome = await depositInvestigationToVault(query, result.synthesizedAnswer, result.evidence);
+    setSavedToVault(outcome.ok);
+    showCompanion(outcome.ok ? COMPANION_MSGS.vaultSaved : (outcome.reasonAr ?? COMPANION_MSGS.vaultFailed));
   }
 
   // ── Citizen Stance — Article V ────────────────────────────────────
