@@ -4,6 +4,7 @@ import { SovereignVaultManager } from '../../../../../src/vault/sovereign-vault-
 import { AssetFamily } from '../../../../../src/vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../../../../src/core/sovereign-orchestrator/qiyamah-intent-types';
 import { persistUploadedAsset } from '../../../../../src/vault/vault-asset-upload-storage';
+import { validateUploadContent, rejectionSpokenAr, MAX_UPLOAD_BYTES } from '../../../../../src/vault/upload-content-validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,14 +31,9 @@ function resolveCapability(mimeType: string) {
   return MIME_CAPABILITY_MAP.find((entry) => mimeType.startsWith(entry.prefix)) ?? null;
 }
 
-// A resource-exhaustion guard, not a constitutional decision — an
-// unbounded upload target would be a real denial-of-service surface.
-const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
-
-function fileExtensionOf(fileName: string): string {
-  const lastDot = fileName.lastIndexOf('.');
-  return lastDot === -1 ? '' : fileName.slice(lastDot);
-}
+// The ceiling and the extension now both live with the content validator, so
+// the byte check and the size check cannot drift apart — one file decides what
+// an acceptable upload is.
 
 /**
  * PACKAGE XIX — MEDIA INGESTION LAYER: the real, honest Creator-upload
@@ -78,16 +74,41 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const capability = resolveCapability(file.type);
-  if (!capability) {
+  // ── SECURITY CLOSURE — the type is decided by the bytes ───────────────────
+  //
+  // This route used to decide everything from `file.type`, a string the browser
+  // supplies and the uploader controls, and took the extension from the
+  // filename. Nothing ever read the file. That is what let arbitrary bytes be
+  // stored as an image and later handed to an image decoder.
+  //
+  // The content is now identified by its signature, and the declared type and
+  // the filename must agree with what the bytes say. Both the capability and
+  // the stored extension come from the identified content — never from the
+  // request.
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const validation = validateUploadContent(bytes, file.type ?? '', file.name ?? '');
+  if (!validation.ok) {
     return NextResponse.json(
-      { status: 'failed', reason: 'unsupported-file-type', message: `Unsupported file type: ${file.type || 'unknown'}.` },
+      {
+        status: 'failed',
+        reason: validation.rejection,
+        // The Creator's own tongue, saying what to do. It names no decoder, no
+        // library and no advisory.
+        message: rejectionSpokenAr(validation.rejection),
+      },
       { status: 400 },
     );
   }
 
-  const bytes = Buffer.from(await file.arrayBuffer());
-  const persisted = await persistUploadedAsset(bytes, fileExtensionOf(file.name));
+  const capability = resolveCapability(validation.identity.mimeType);
+  if (!capability) {
+    return NextResponse.json(
+      { status: 'failed', reason: 'unsupported-file-type', message: rejectionSpokenAr('unsupported-format') },
+      { status: 400 },
+    );
+  }
+
+  const persisted = await persistUploadedAsset(bytes, validation.identity.extension);
 
   // MINISTRY I — VOICE ECOSYSTEM: a real, Creator-declared "this is a
   // voice" flag, only ever meaningful for real audio uploads — never

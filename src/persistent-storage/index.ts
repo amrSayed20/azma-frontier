@@ -31,7 +31,7 @@ export {
 export type { GenerationRecord, NewGenerationRecord } from './generation-record-repository';
 export { recordGeneration, getGenerationRecord, deleteGenerationRecord, listGenerationsForCreator } from './generation-record-repository';
 
-export { insertVaultAsset, getVaultAsset, listVaultAssetsForTenant, linkGoalToVaultAsset, deleteVaultAssetByStorageUri, deleteVaultAssetById } from './vault-asset-repository';
+export { insertVaultAsset, getVaultAsset, findVaultAssetByStorageUri, listVaultAssetsForTenant, linkGoalToVaultAsset, deleteVaultAssetByStorageUri, deleteVaultAssetById } from './vault-asset-repository';
 
 export type { SubscriptionRecord, NewSubscription, SubscriptionPatch, SubscriptionStatus } from './subscription-repository';
 export {

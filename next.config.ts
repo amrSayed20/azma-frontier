@@ -25,6 +25,39 @@ const nextConfig: NextConfig = {
   // fallback keeps local builds distinct from one another.
   deploymentId: process.env.NEXT_DEPLOYMENT_ID || `local-${Date.now()}`,
 
+  // ── SECURITY CLOSURE — the image optimizer is shut off ────────────────────
+  //
+  // MEASURED, ON PRODUCTION, BEFORE THIS LINE EXISTED:
+  //
+  //   GET /_next/image?url=/favicon.ico&w=64&q=75   → 200, 25,931 bytes
+  //   GET /_next/image?url=/uploads/<file>&w=64&q=75 → 400 "isn't a valid image"
+  //
+  // The second response is the dangerous one: it is a refusal about the file's
+  // CONTENT, which means the optimizer had already fetched the uploaded file
+  // and handed it to the decoder. Any unauthenticated visitor could aim that
+  // decoder at bytes an attacker had planted, and the decoder was sharp 0.34.5
+  // over libheif — GHSA-rgj7-g3m4-5g8c — behind Next 16.2.6's own
+  // GHSA-2xp9-vwfh-vxw4, unauthenticated RCE on AVIF input.
+  //
+  // WHY SHUTTING IT OFF COSTS NOTHING:
+  //
+  //   Not one file in this repository imports `next/image`, and not one imports
+  //   `sharp`. Measured: zero matches in app/ and src/. The route was a public
+  //   attack surface serving a capability the Empire does not use.
+  //
+  // `unoptimized` makes every <Image> pass its source through untouched and
+  // takes /_next/image out of service. Nginx refuses the path as well, so the
+  // route is closed at two layers rather than one — see the server block.
+  images: {
+    unoptimized: true,
+    // Belt and braces: even if the optimizer were re-enabled by a future edit,
+    // no remote host is permitted and the formats that reach libheif are not
+    // offered. An empty remotePatterns list is the default, stated here so the
+    // absence is deliberate and visible rather than inherited.
+    remotePatterns: [],
+    formats: ['image/webp'],
+  },
+
   experimental: {
     workerThreads: false,
   },

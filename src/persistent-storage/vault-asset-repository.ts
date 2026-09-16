@@ -41,6 +41,31 @@ export function getVaultAsset(db: DatabaseSync, assetId: string): VaultAsset | n
 }
 
 /**
+ * SECURITY CLOSURE — find an asset by the address its bytes are served from.
+ *
+ * The upload authorisation gate (`app/uploads/[...path]/route.ts`) is handed a
+ * URL, not an asset id, because the browser asks for `/uploads/<file>` — the
+ * address `depositAsset` recorded as `secure_storage_uri`. It must learn who
+ * owns that file before nginx is allowed to send it.
+ *
+ * Returns the asset without filtering by tenant ON PURPOSE: the caller compares
+ * the owner itself and answers 404 either way, so that "not yours" and "does
+ * not exist" are indistinguishable from outside. A query that filtered by
+ * tenant here would give the same answer, but it would hide the ownership
+ * decision inside SQL where no test can see it.
+ */
+export function findVaultAssetByStorageUri(db: DatabaseSync, secureStorageUri: string): VaultAsset | null {
+  const row = db
+    .prepare(
+      `SELECT asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at
+       FROM vault_assets WHERE secure_storage_uri = ? LIMIT 1`,
+    )
+    .get(secureStorageUri);
+  if (!row) return null;
+  return rowToVaultAsset(row);
+}
+
+/**
  * PACKAGE IX — FORMAL GOAL CONTRACT TRIAD CLOSURE: writes the goalId
  * linkage back onto an already-deposited asset's own metadata, at Goal-
  * creation time. Reads the current metadata, merges in goalId, and

@@ -137,6 +137,26 @@ cmd_rollback() {
   "
   ok "symlink switched (atomic rename)"
 
+  # SECURITY CLOSURE: a build and the tree it was built against belong
+  # together. When the last deployment replaced node_modules, rolling the build
+  # back without the tree would leave an old build running against new
+  # dependencies — a state neither version was ever tested in. The previous
+  # tree is restored when one was kept, and its absence is reported rather than
+  # passed over in silence.
+  remote "
+    set -e
+    cd '$APP_DIR'
+    if [ -d node_modules.previous ]; then
+      rm -rf node_modules.rollback-discard
+      [ -d node_modules ] && mv -T node_modules node_modules.rollback-discard
+      mv -T node_modules.previous node_modules
+      rm -rf node_modules.rollback-discard
+      echo '    ok   previous dependency tree restored'
+    else
+      echo '    ..   no previous dependency tree kept — the installed tree is unchanged'
+    fi
+  " || warn "dependency rollback failed — check the tree on the server before trusting this rollback"
+
   restart_service
   wait_for_http
   ok "rolled back to $target"
@@ -201,8 +221,17 @@ cmd_deploy() {
   #      than a half-written directory
   step "Packaging one release artifact"
   rm -f "$ARTIFACT"
+  # SECURITY CLOSURE: the manifest and the lockfile travel with the build.
+  #
+  # The audit found production running a node_modules directory installed by
+  # hand at some forgotten moment and never refreshed — its lockfile did not
+  # even match the repository's (md5 ecfcf47d… against 67c4f151…). This script
+  # contained zero references to node_modules, so no dependency fix could ever
+  # reach the server through the approved path. A security patch that cannot be
+  # deployed is not a patch.
   tar "${TAR_FLAGS[@]}" -czf "$ARTIFACT" -C "$REPO_ROOT" \
-      --exclude='.next/dev' --exclude='.next/cache' .next
+      --exclude='.next/dev' --exclude='.next/cache' \
+      .next package.json package-lock.json
   local local_sum
   local_sum="$(sha256sum "$ARTIFACT" | cut -d' ' -f1)"
   info "size   $(du -h "$ARTIFACT" | cut -f1)"
@@ -234,6 +263,8 @@ cmd_deploy() {
     mkdir -p '$STAGING_DIR' '$RELEASES_DIR'
     tar -xzf /tmp/azma-release.tar.gz -C '$STAGING_DIR'
     rm -f /tmp/azma-release.tar.gz
+    test -f '$STAGING_DIR/package.json' || { echo '    staged release has no package.json'; exit 1; }
+    test -f '$STAGING_DIR/package-lock.json' || { echo '    staged release has no lockfile'; exit 1; }
     test -f '$STAGING_DIR/.next/BUILD_ID' || { echo '    staged build has no BUILD_ID'; exit 1; }
     staged_id=\$(cat '$STAGING_DIR/.next/BUILD_ID')
     [ \"\$staged_id\" = '$build_id' ] || { echo \"    staged BUILD_ID \$staged_id != '$build_id'\"; exit 1; }
@@ -241,6 +272,65 @@ cmd_deploy() {
     [ \"\$chunks\" -gt 0 ] || { echo '    staged build has no client chunks'; exit 1; }
     echo \"    ok   BUILD_ID \$staged_id, \$chunks chunks\"
   " || die "staging failed — the live release was not touched"
+
+  # 5b ── SECURITY CLOSURE: install the declared dependencies, from the
+  #       lockfile, and prove what landed.
+  #
+  #       `npm ci` is used rather than `npm install` because it installs
+  #       exactly what the lockfile says and fails if the manifest and the
+  #       lockfile disagree — the only way the server's tree can be made to
+  #       match the tree that was audited.
+  #
+  #       The install happens into a directory of its own and is moved into
+  #       place by rename, so the running application never sees a half-built
+  #       node_modules, and the previous tree is kept beside it for rollback.
+  #
+  #       It is skipped when the lockfile on the server is already identical,
+  #       which keeps an ordinary content deployment as fast as it was.
+  step "Dependencies"
+  remote "
+    set -e
+    cd '$APP_DIR'
+    staged_lock='$STAGING_DIR/package-lock.json'
+    if [ -f package-lock.json ] && cmp -s package-lock.json \"\$staged_lock\" && [ -d node_modules ]; then
+      echo '    ok   lockfile unchanged — installed tree already matches'
+    else
+      echo '    ..   lockfile differs (or no tree present) — installing from lockfile'
+      rm -rf .npm-install
+      mkdir -p .npm-install
+      cp '$STAGING_DIR/package.json' '$STAGING_DIR/package-lock.json' .npm-install/
+      ( cd .npm-install && npm ci --omit=dev --no-audit --no-fund ) \
+        || { echo '    npm ci failed — the live release was not touched'; exit 1; }
+      test -d .npm-install/node_modules || { echo '    npm ci produced no node_modules'; exit 1; }
+
+      # Swap by rename on the same filesystem. The old tree is kept as the
+      # rollback target rather than deleted.
+      rm -rf node_modules.previous
+      [ -d node_modules ] && mv -T node_modules node_modules.previous
+      mv -T .npm-install/node_modules node_modules
+      cp '$STAGING_DIR/package.json' '$STAGING_DIR/package-lock.json' ./
+      rm -rf .npm-install
+      echo '    ok   dependencies installed from the approved lockfile'
+    fi
+  " || die "dependency installation failed — the live release was not touched"
+
+  # 5c ── prove the tree that landed is the tree that was approved. A version
+  #       read from disk, not from the lockfile that asked for it.
+  step "Verifying installed versions"
+  local expected_next expected_sharp
+  expected_next="$(node -p "require('$REPO_ROOT/node_modules/next/package.json').version")"
+  expected_sharp="$(node -p "try{require('$REPO_ROOT/node_modules/sharp/package.json').version}catch(e){'(none)'}")"
+  info "expected next $expected_next · sharp $expected_sharp"
+  remote "
+    set -e
+    cd '$APP_DIR'
+    actual_next=\$(node -p \"require('./node_modules/next/package.json').version\")
+    actual_sharp=\$(node -p \"try{require('./node_modules/sharp/package.json').version}catch(e){'(none)'}\")
+    echo \"    on server next \$actual_next · sharp \$actual_sharp\"
+    [ \"\$actual_next\" = '$expected_next' ] || { echo \"    next mismatch: \$actual_next != $expected_next\"; exit 1; }
+    [ \"\$actual_sharp\" = '$expected_sharp' ] || { echo \"    sharp mismatch: \$actual_sharp != $expected_sharp\"; exit 1; }
+  " || die "installed versions do not match the approved build — the live release was not switched"
+  ok "server is running the approved dependency versions"
 
   # 6 ── move staged into its own immutable release directory (same
   #      filesystem, so this is a real atomic rename)
