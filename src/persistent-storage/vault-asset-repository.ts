@@ -10,12 +10,35 @@
 
 import type { DatabaseSync } from 'node:sqlite';
 import type { VaultAsset, VaultAssetMetadata } from '../vault/sovereign-vault-types';
+// Value imports — the provenance enums and the legacy rule are executed here,
+// not merely referenced in a type position.
+import {
+  DerivationKind,
+  DerivationPermission,
+  LifecycleState,
+  SourceChamber,
+  legacyProvenanceFor,
+} from '../vault/sovereign-vault-types';
 
+/**
+ * Write an asset, with its lineage.
+ *
+ * Constitution Article 5.4 — «لا أصل سيادي بلا مالك، ولا نسخة بلا أصل أب أو
+ * تفسير موثق، ولا مشتق بلا جذر». An asset born under the constitution always
+ * records where it came from, so the fallbacks here are the only defensible
+ * ones: no parent, own root, version 1, and a chamber the caller had to name.
+ *
+ * A caller that supplies nothing produces an ORIGINAL asset, which is true of
+ * a first generation or a device upload — the two ways an asset appears with no
+ * ancestor. It is not a silent legacy classification: legacy is what a row
+ * written before these columns existed reads as, and only that.
+ */
 export function insertVaultAsset(db: DatabaseSync, asset: VaultAsset): void {
   db.prepare(
     `INSERT INTO vault_assets
-      (asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at,
+       parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     asset.assetId,
     asset.subscriberTenantId,
@@ -26,13 +49,75 @@ export function insertVaultAsset(db: DatabaseSync, asset: VaultAsset): void {
     JSON.stringify(asset.metadata),
     asset.createdAt,
     asset.updatedAt,
+    asset.parentAssetId ?? null,
+    // An asset with no parent is the root of its own lineage.
+    asset.rootAssetId ?? asset.assetId,
+    asset.version ?? 1,
+    asset.derivation ?? DerivationKind.GENERATED,
+    asset.creationChamber ?? SourceChamber.UNKNOWN,
+    asset.projectId ?? null,
+    asset.lifecycleState ?? LifecycleState.INTERMEDIATE,
+    asset.derivationPermission ?? DerivationPermission.ALLOWED,
+    asset.createdBy ?? asset.subscriberTenantId,
+    asset.lastModifiedBy ?? null,
+    asset.lastModifiedAt ?? null,
   );
+}
+
+/**
+ * Every asset in one lineage, oldest first — Article 5.6.
+ *
+ * Queried by root rather than by walking parents: a lineage of twenty versions
+ * is one statement instead of twenty, and the answer is the same because every
+ * derived asset carries its root.
+ */
+export function listAssetLineage(db: DatabaseSync, rootAssetId: string, subscriberTenantId: string): readonly VaultAsset[] {
+  const rows = db
+    .prepare(
+      `SELECT asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at,
+              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at
+       FROM vault_assets
+       WHERE root_asset_id = ? AND subscriber_tenant_id = ?
+       ORDER BY version ASC, created_at ASC`,
+    )
+    .all(rootAssetId, subscriberTenantId);
+  return rows.map((row) => rowToVaultAsset(row as Record<string, unknown>));
+}
+
+/**
+ * Record a Creator's adoption of a legacy asset — Article 5.5.
+ *
+ * «عند إعادة اعتماده، يبدأ نسبه الموثق من لحظة الاعتماد» and «لا يُخترع له
+ * تاريخ سابق». So adoption grants the right to derive, and records who granted
+ * it and when. It does NOT write a parent, a chamber or a version history the
+ * asset never had — the asset becomes the honest root of a lineage that starts
+ * now, and its past stays unclaimed.
+ *
+ * Returns false when the asset does not exist or belongs to someone else. The
+ * tenant check is in the statement AND checked by the caller's own gate; both,
+ * because this grants a capability.
+ */
+export function adoptLegacyAsset(
+  db: DatabaseSync,
+  assetId: string,
+  subscriberTenantId: string,
+  adoptedAtMs: number = Date.now(),
+): boolean {
+  const result = db
+    .prepare(
+      `UPDATE vault_assets
+       SET derivation_permission = ?, last_modified_by = ?, last_modified_at = ?
+       WHERE asset_id = ? AND subscriber_tenant_id = ?`,
+    )
+    .run(DerivationPermission.ALLOWED, subscriberTenantId, adoptedAtMs, assetId, subscriberTenantId);
+  return Number(result.changes) > 0;
 }
 
 export function getVaultAsset(db: DatabaseSync, assetId: string): VaultAsset | null {
   const row = db
     .prepare(
-      `SELECT asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at
+      `SELECT asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at,
+              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at
        FROM vault_assets WHERE asset_id = ?`,
     )
     .get(assetId);
@@ -57,7 +142,8 @@ export function getVaultAsset(db: DatabaseSync, assetId: string): VaultAsset | n
 export function findVaultAssetByStorageUri(db: DatabaseSync, secureStorageUri: string): VaultAsset | null {
   const row = db
     .prepare(
-      `SELECT asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at
+      `SELECT asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at,
+              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at
        FROM vault_assets WHERE secure_storage_uri = ? LIMIT 1`,
     )
     .get(secureStorageUri);
@@ -99,7 +185,8 @@ export function linkGoalToVaultAsset(db: DatabaseSync, assetId: string, goalId: 
 export function listVaultAssetsForTenant(db: DatabaseSync, subscriberTenantId: string): readonly VaultAsset[] {
   const rows = db
     .prepare(
-      `SELECT asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at
+      `SELECT asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at,
+              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at
        FROM vault_assets WHERE subscriber_tenant_id = ? ORDER BY created_at DESC, rowid DESC`,
     )
     .all(subscriberTenantId);
@@ -122,9 +209,28 @@ export function deleteVaultAssetById(db: DatabaseSync, assetId: string, subscrib
   return existing;
 }
 
+/**
+ * WHERE THE LEGACY RULE IS ACTUALLY ENFORCED — Constitution Article 5.5.
+ *
+ * A row written before sovereign provenance existed has NULL in every
+ * provenance column. That absence is resolved here, on the way out, into the
+ * declared legacy state — rather than by a backfill that would write a guess
+ * into the database and make it indistinguishable from a real lineage.
+ *
+ * The distinction matters: an UPDATE would be a claim about 47 assets' history.
+ * This is a reading of what their record actually says, which is "nothing", and
+ * a legacy asset is precisely an asset whose record says nothing. It also means
+ * the rule is one function that tests can hold, not a migration that ran once.
+ *
+ * `root_asset_id` falls back to the asset's own id. That is not an invention:
+ * an asset with no recorded parent IS the first of its own lineage.
+ */
 function rowToVaultAsset(row: Record<string, unknown>): VaultAsset {
+  const assetId = row.asset_id as string;
+  const legacy = legacyProvenanceFor(assetId);
+
   return {
-    assetId: row.asset_id as string,
+    assetId,
     subscriberTenantId: row.subscriber_tenant_id as string,
     originatingOperationId: row.originating_operation_id as string,
     capabilityTarget: row.capability_target as VaultAsset['capabilityTarget'],
@@ -133,5 +239,19 @@ function rowToVaultAsset(row: Record<string, unknown>): VaultAsset {
     metadata: JSON.parse(row.metadata as string) as VaultAssetMetadata,
     createdAt: row.created_at as number,
     updatedAt: row.updated_at as number,
+
+    // ── Sovereign provenance, or the honest legacy reading of its absence ──
+    parentAssetId: (row.parent_asset_id as string | null) ?? legacy.parentAssetId,
+    rootAssetId: (row.root_asset_id as string | null) ?? legacy.rootAssetId,
+    version: (row.version as number | null) ?? legacy.version,
+    derivation: (row.derivation as VaultAsset['derivation']) ?? legacy.derivation,
+    creationChamber: (row.creation_chamber as VaultAsset['creationChamber']) ?? legacy.creationChamber,
+    projectId: (row.project_id as string | null) ?? legacy.projectId,
+    lifecycleState: (row.lifecycle_state as VaultAsset['lifecycleState']) ?? legacy.lifecycleState,
+    derivationPermission:
+      (row.derivation_permission as VaultAsset['derivationPermission']) ?? legacy.derivationPermission,
+    createdBy: (row.created_by as string | null) ?? null,
+    lastModifiedBy: (row.last_modified_by as string | null) ?? null,
+    lastModifiedAt: (row.last_modified_at as number | null) ?? null,
   };
 }

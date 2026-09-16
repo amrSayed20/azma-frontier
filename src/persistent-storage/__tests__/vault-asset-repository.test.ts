@@ -31,7 +31,15 @@ describe('Persistent Storage Foundation — Vault asset metadata', () => {
 
     insertVaultAsset(db, asset);
     const fetched = getVaultAsset(db, 'asset-1');
-    expect(fetched).toEqual(asset);
+
+    // PHASE B1: a stored asset now comes back with its sovereign provenance
+    // resolved, so a blanket toEqual against the nine fields written would
+    // fail on the eleven it gained. This asserts the stronger pair of facts:
+    // every original field survives unchanged, AND the lineage is now there.
+    expect(fetched).toMatchObject(asset);
+    expect(fetched!.rootAssetId).toBe('asset-1');   // its own root — no parent
+    expect(fetched!.parentAssetId).toBeNull();
+    expect(fetched!.version).toBe(1);
   });
 
   it('returns null for an asset that does not exist', () => {

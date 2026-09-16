@@ -255,6 +255,127 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     searchable TEXT NOT NULL,
     ingested_at_ms INTEGER NOT NULL
   )`,
+  // ══ CONSTITUTIONAL FOUNDATION — Phase B3 ═══════════════════════════════════
+  //
+  // PROJECTS — Constitution Article 7.
+  //
+  // ONE table, four types. The directive is explicit: «لا تنشئ خمسة أنظمة
+  // مشاريع منفصلة غير متوافقة» — one coherent foundation with explicit type
+  // semantics. Four tables would mean four ownership checks, four lifecycle
+  // vocabularies, and four places for the next rule to be forgotten.
+  //
+  // `parent_project_id` is how Article 7.4's umbrella actually holds: a
+  // Knowledge, Asset-Collection or Composition project points at the Sovereign
+  // Project that gathers it. A Sovereign Project has none — it is the top.
+  //
+  // Deliberately NOT modelled as an extension of `goals`: Article 7.4 forbids
+  // it, and the two have different lifetimes. `goals` is SOEL's contract for
+  // purpose; this is the Creator's creative work.
+  `CREATE TABLE IF NOT EXISTS sovereign_projects (
+    project_id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL,
+    project_type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    lifecycle_state TEXT NOT NULL,
+    parent_project_id TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
+
+  // STORYBOARD — Constitution Article 2.2.
+  //
+  // «ليس نصًا طويلًا فقط، وليس prompt منفردًا». The structure lives in
+  // `storyboard_scenes` below; this row is the identity, the ownership and the
+  // two project relationships that make it the hinge between meaning and
+  // production — born in the Hujjah, read by Qiyamah and Ras Al Amr.
+  `CREATE TABLE IF NOT EXISTS storyboards (
+    storyboard_id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL,
+    knowledge_project_id TEXT,
+    composition_project_id TEXT,
+    title TEXT NOT NULL,
+    lifecycle_state TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
+
+  // SCENE — Constitution Article 2.2, and the boundary drawn inside it.
+  //
+  // Two fields belong to Qiyamah (`direction_notes`, and the visual the scene
+  // asks for) and two to Ras Al Amr (`scene_order`, `duration_seconds`,
+  // `transition_intent`). The constitutional line between "inside the asset"
+  // and "on the timeline" runs through this row, which is why it is one row
+  // and not two tables.
+  //
+  // `scene_order` is an integer the Creator controls, not a position in an
+  // array: an unordered list is not a storyboard, and the directive says so.
+  `CREATE TABLE IF NOT EXISTS storyboard_scenes (
+    scene_id TEXT PRIMARY KEY,
+    storyboard_id TEXT NOT NULL,
+    owner_id TEXT NOT NULL,
+    scene_order INTEGER NOT NULL,
+    description TEXT NOT NULL,
+    visual_asset_id TEXT,
+    audio_asset_id TEXT,
+    duration_seconds REAL,
+    transition_intent TEXT,
+    direction_notes TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
+
+  // TOMBSTONE — Constitution Articles 6.2, 6.3.
+  //
+  // WHAT IS DELIBERATELY ABSENT: `secure_storage_uri`. Article 7.5 of the
+  // directive forbids a tombstone exposing raw storage paths, and the path adds
+  // nothing an audit needs that `asset_id` does not already give. A column that
+  // cannot be safely returned is a column that should not be written.
+  //
+  // The lineage columns are the reason this table exists at all. Article A-5
+  // («لا أصل يتيم») and Article 5.6 collide the moment an asset with children is
+  // destroyed: the children point at a parent that no longer exists. Keeping
+  // the parent and root here means the tombstone answers for the vanished
+  // asset, and no derived asset is orphaned by its ancestor's destruction.
+  `CREATE TABLE IF NOT EXISTS asset_tombstones (
+    tombstone_id TEXT PRIMARY KEY,
+    asset_id TEXT NOT NULL,
+    owner_id TEXT NOT NULL,
+    asset_family TEXT,
+    capability_target TEXT,
+    parent_asset_id TEXT,
+    root_asset_id TEXT,
+    project_id TEXT,
+    creation_chamber TEXT,
+    deleted_by TEXT NOT NULL,
+    deleted_at INTEGER NOT NULL,
+    deletion_reason TEXT,
+    published_protection TEXT NOT NULL,
+    metadata_snapshot TEXT NOT NULL
+  )`,
+
+  // SOVEREIGN PUBLIC LINK — Constitution Articles 9.2, 9.3.
+  //
+  // The data foundation only. The public page and the publishing flow are
+  // Phase F; this phase builds the record they will need and nothing more.
+  //
+  // `public_token` is UNIQUE and is minted from a cryptographic source, never
+  // from a counter or a timestamp — Article 9.3 requires an identifier that
+  // cannot be guessed, because the link is the only thing standing between a
+  // published work and the whole internet.
+  //
+  // It points at a FINAL WORK asset, never at a storage path. Article 9.3:
+  // «لا يفتح وصولًا عامًا إلى مجلدات الأصول».
+  `CREATE TABLE IF NOT EXISTS sovereign_public_links (
+    link_id TEXT PRIMARY KEY,
+    public_token TEXT NOT NULL UNIQUE,
+    owner_id TEXT NOT NULL,
+    final_work_asset_id TEXT NOT NULL,
+    publication_state TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    revoked_at INTEGER,
+    revoked_by TEXT
+  )`,
+
   `CREATE TABLE IF NOT EXISTS knowledge_investigations (
     investigation_id TEXT PRIMARY KEY,
     goal_id TEXT NOT NULL,
@@ -437,6 +558,47 @@ export const CINEMATIC_LEDGER_MIGRATION_COLUMNS: readonly { readonly name: strin
   { name: 'goal_id', ddl: 'goal_id TEXT' },
 ];
 
+/**
+ * SOVEREIGN PROVENANCE — Constitution Articles 5.3–5.6, Phase B1.
+ *
+ * ─── WHY ALTER TABLE AND NOT A NEW TABLE ────────────────────────────────────
+ *
+ *   `vault_assets` holds 47 rows in production, owned by 2 Creators, with zero
+ *   orphans — measured before this was written. Article 15 forbids a second
+ *   asset model and a parallel vault, and every existing query, the two
+ *   authorisation gates and the deposit boundary read this table. So provenance
+ *   arrives as columns beside the original nine.
+ *
+ * ─── WHY EVERY COLUMN IS NULLABLE WITH NO DEFAULT ───────────────────────────
+ *
+ *   SQLite can only ADD COLUMN with a constant default, and the honest default
+ *   for `root_asset_id` is the row's own `asset_id` — which is not a constant.
+ *   More importantly, Article 5.5 forbids inventing provenance: a column that
+ *   silently filled itself with a guess would be exactly the fabrication the
+ *   constitution names.
+ *
+ *   NULL therefore means one true thing — "this row predates provenance" — and
+ *   the repository resolves it to the declared legacy state on read, where the
+ *   rule is visible and testable rather than buried in a DDL default.
+ */
+export const VAULT_ASSETS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
+  // Lineage — Article 5.3
+  { name: 'parent_asset_id', ddl: 'parent_asset_id TEXT' },
+  { name: 'root_asset_id', ddl: 'root_asset_id TEXT' },
+  { name: 'version', ddl: 'version INTEGER' },
+  { name: 'derivation', ddl: 'derivation TEXT' },
+  // Place in the system — Articles 5.3, 7.4
+  { name: 'creation_chamber', ddl: 'creation_chamber TEXT' },
+  { name: 'project_id', ddl: 'project_id TEXT' },
+  // State — Articles 8, 5.5
+  { name: 'lifecycle_state', ddl: 'lifecycle_state TEXT' },
+  { name: 'derivation_permission', ddl: 'derivation_permission TEXT' },
+  // Audit — Article 8.4
+  { name: 'created_by', ddl: 'created_by TEXT' },
+  { name: 'last_modified_by', ddl: 'last_modified_by TEXT' },
+  { name: 'last_modified_at', ddl: 'last_modified_at INTEGER' },
+];
+
 /** Columns added to `creators` after its original creation — applied via ALTER TABLE for pre-existing databases. */
 export const CREATORS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
   { name: 'email', ddl: 'email TEXT' },
@@ -499,4 +661,27 @@ export const INDEX_STATEMENTS: readonly string[] = [
   // The library is filtered by language on every search; its index belonged
   // here beside its table, for the same reason the table did.
   'CREATE INDEX IF NOT EXISTS idx_library_language ON library_works(language)',
+
+  // ── Constitutional foundation, Phase B3 ──────────────────────────────────
+  // Every index here exists because an ownership check or a constitutional
+  // relationship reads through it on a hot path.
+  //
+  // Lineage: "every version of this asset" is Article 5.6's central question,
+  // and it is asked by root. Without this index it is a table scan.
+  'CREATE INDEX IF NOT EXISTS idx_vault_assets_root ON vault_assets(root_asset_id, subscriber_tenant_id)',
+  'CREATE INDEX IF NOT EXISTS idx_vault_assets_project ON vault_assets(project_id)',
+  // Projects: a Creator's own projects, and an umbrella's children (Article 7.4).
+  'CREATE INDEX IF NOT EXISTS idx_projects_owner_type ON sovereign_projects(owner_id, project_type)',
+  'CREATE INDEX IF NOT EXISTS idx_projects_parent ON sovereign_projects(parent_project_id)',
+  // Scenes are always read as one storyboard in Creator-declared order.
+  'CREATE INDEX IF NOT EXISTS idx_scenes_storyboard_order ON storyboard_scenes(storyboard_id, scene_order)',
+  'CREATE INDEX IF NOT EXISTS idx_storyboards_owner ON storyboards(owner_id)',
+  // Tombstones are looked up by the asset that vanished, so a derived asset can
+  // still answer "where did I come from?" — Article 6.3.
+  'CREATE INDEX IF NOT EXISTS idx_tombstones_asset ON asset_tombstones(asset_id)',
+  'CREATE INDEX IF NOT EXISTS idx_tombstones_owner ON asset_tombstones(owner_id)',
+  // The public token is the lookup a visitor's request performs. UNIQUE in the
+  // table already implies an index; this names the owner path instead.
+  'CREATE INDEX IF NOT EXISTS idx_public_links_owner ON sovereign_public_links(owner_id)',
+  'CREATE INDEX IF NOT EXISTS idx_public_links_work ON sovereign_public_links(final_work_asset_id)',
 ];

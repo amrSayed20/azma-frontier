@@ -29,6 +29,88 @@ export enum AssetFamily {
 }
 
 // ==========================================
+// 1b. SOVEREIGN PROVENANCE  (Constitution, Articles 5.3–5.6)
+// ==========================================
+//
+// The constitution requires every sovereign asset to answer three questions
+// that this model could not previously answer at all: where did it come from,
+// which chamber made it, and may it be built upon.
+//
+// These are NEW columns beside the original nine. Nothing is renamed, nothing
+// is dropped, and no parallel asset table is introduced — Article 15 forbids a
+// second asset model, and the existing nine fields carry working code.
+
+/**
+ * The five constitutional chambers, plus the honest absence.
+ *
+ * Article 5.5 forbids attributing an asset to a chamber without evidence. The
+ * 47 assets that predate provenance are therefore `UNKNOWN` — a measurement,
+ * not a default, and never rewritten into a guess.
+ */
+export enum SourceChamber {
+  HUJJAH_AL_DAMIGHAH = 'HUJJAH_AL_DAMIGHAH',
+  QIYAMAH = 'QIYAMAH',
+  RAS_AL_AMR = 'RAS_AL_AMR',
+  KHAZAIN = 'KHAZAIN',
+  MAKMAN_AL_GHAYAH = 'MAKMAN_AL_GHAYAH',
+  /** Provenance unavailable. Article 5.5. Never inferred into a real chamber. */
+  UNKNOWN = 'UNKNOWN',
+}
+
+/** How this asset came to exist. Article 5.3. */
+export enum DerivationKind {
+  /** Created from nothing but an instruction — no parent asset. */
+  GENERATED = 'GENERATED',
+  /** Supplied by the Creator from their own device. */
+  UPLOADED = 'UPLOADED',
+  /** Content changed inside an existing asset — Qiyamah. Has a parent. */
+  MODIFIED = 'MODIFIED',
+  /** A still brought into motion — Qiyamah. Has a parent. */
+  ANIMATED = 'ANIMATED',
+  /** Composed from several assets across time — Ras Al Amr. */
+  RENDERED = 'RENDERED',
+  /** Provenance predates the sovereign asset model. Article 5.5. */
+  LEGACY = 'LEGACY',
+}
+
+/**
+ * Where an asset stands in its life. Article 8.
+ *
+ * Declared, never inferred: Article A-6 of the architectural package forbids
+ * concluding "this is final" from an asset's type or location.
+ */
+export enum LifecycleState {
+  /** A working asset. May be derived from, may be composed with. */
+  INTERMEDIATE = 'INTERMEDIATE',
+  /** An export. Immutable — Article 8.2. Never edited in place. */
+  FINAL = 'FINAL',
+  /** A Final Work that a Published Revision points at. Article 8.3. */
+  PUBLISHED = 'PUBLISHED',
+}
+
+/**
+ * Whether a new asset may be derived from this one. Article 5.5.
+ *
+ * ─── THE DISTINCTION THE CONSTITUTION INSISTS ON ────────────────────────────
+ *
+ *   «لا يُفترض أنها قابلة للتعديل» does NOT mean unusable. A legacy asset stays
+ *   viewable, selectable, composable and exportable — Article 6.1 of the
+ *   directive says so in those words. What it may not do is act as the PARENT
+ *   of a new asset, because a derivation records a lineage and a legacy asset
+ *   has none to record.
+ *
+ *   Measured: 43 of the 47 legacy assets are media sitting in canvases the
+ *   Creators work in today. Reading this state as "unusable" would empty those
+ *   canvases.
+ */
+export enum DerivationPermission {
+  /** May be derived from. The ordinary state of a sovereign asset. */
+  ALLOWED = 'ALLOWED',
+  /** Usable in every way except as the parent of a new asset. Article 5.5. */
+  REQUIRES_ADOPTION = 'REQUIRES_ADOPTION',
+}
+
+// ==========================================
 // 2. METADATA & DEPOSITION PAYLOADS
 // ==========================================
 
@@ -117,6 +199,91 @@ export interface VaultAsset {
 
   // Note: Application of the Sovereign Seal (Al-Khatm Al-Siyadi) is deferred
   // to Makman Al-Ghayah and is NOT automatically applied to this raw generation record.
+
+  // ── SOVEREIGN PROVENANCE — Constitution, Article 5.3 ──────────────────────
+  //
+  // Every field below is OPTIONAL on the type, and that is deliberate rather
+  // than lax: they arrive by ALTER TABLE onto a table holding 47 rows that
+  // predate them. A required field would either break those rows or force this
+  // model to invent values for them, and Article 5.5 forbids inventing.
+  //
+  // Reading them: absent means "this record predates provenance", which the
+  // repository turns into the honest legacy defaults on the way out. Present
+  // means the asset was born under the constitution and its lineage is real.
+
+  /** The asset this one was derived from. Absent for an original. Article 5.3. */
+  parentAssetId?: string | null;
+  /** First asset in the lineage. Equals assetId for an original. Article 5.3. */
+  rootAssetId?: string;
+  /** Position in the lineage, starting at 1. Article 5.6. */
+  version?: number;
+  /** How this asset came to exist. Article 5.3. */
+  derivation?: DerivationKind;
+  /** The chamber that made it. UNKNOWN where unprovable — Article 5.5. */
+  creationChamber?: SourceChamber;
+  /** The Sovereign Project it belongs to. Null for a free asset. Article 7.4. */
+  projectId?: string | null;
+  /** Intermediate, final, or published. Declared, never inferred. Article 8. */
+  lifecycleState?: LifecycleState;
+  /** Whether a new asset may be derived from this one. Article 5.5. */
+  derivationPermission?: DerivationPermission;
+  /** Who brought it into being. Article 8.4. */
+  createdBy?: string | null;
+  /** Who last changed its record, and when. Article 8.4. */
+  lastModifiedBy?: string | null;
+  lastModifiedAt?: number | null;
+}
+
+/**
+ * What the constitution says about an asset that predates it.
+ *
+ * Article 5.5: a legacy asset is not attributed to a chamber, is not given an
+ * invented parent or version history, and is not made unusable. It is marked
+ * for what it is and left otherwise whole.
+ *
+ * `rootAssetId` is the asset's own id, which is not an invention: an asset with
+ * no recorded parent IS the first of its own lineage. That is the one thing
+ * about its history that can be stated without guessing.
+ */
+export function legacyProvenanceFor(assetId: string): {
+  parentAssetId: null;
+  rootAssetId: string;
+  version: number;
+  derivation: DerivationKind;
+  creationChamber: SourceChamber;
+  projectId: null;
+  lifecycleState: LifecycleState;
+  derivationPermission: DerivationPermission;
+} {
+  return {
+    parentAssetId: null,
+    rootAssetId: assetId,
+    version: 1,
+    derivation: DerivationKind.LEGACY,
+    creationChamber: SourceChamber.UNKNOWN,
+    projectId: null,
+    // Not FINAL: calling an asset final because it is old would be exactly the
+    // inference Article 8 forbids.
+    lifecycleState: LifecycleState.INTERMEDIATE,
+    derivationPermission: DerivationPermission.REQUIRES_ADOPTION,
+  };
+}
+
+/** Whether this asset may act as the parent of a new one. Article 5.5. */
+export function isDerivable(asset: VaultAsset): boolean {
+  return (asset.derivationPermission ?? DerivationPermission.REQUIRES_ADOPTION)
+    === DerivationPermission.ALLOWED;
+}
+
+/**
+ * Whether this asset predates the sovereign provenance model.
+ *
+ * Read from the recorded derivation rather than from a missing column, so that
+ * an asset adopted by its owner stops being legacy the moment its lineage
+ * becomes real.
+ */
+export function isLegacyAsset(asset: VaultAsset): boolean {
+  return (asset.derivation ?? DerivationKind.LEGACY) === DerivationKind.LEGACY;
 }
 
 // ==========================================

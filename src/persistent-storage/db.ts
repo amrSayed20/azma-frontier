@@ -24,7 +24,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
-import { SCHEMA_STATEMENTS, GENERATION_RECORDS_MIGRATION_COLUMNS, CINEMATIC_LEDGER_MIGRATION_COLUMNS, CREATORS_MIGRATION_COLUMNS, GOALS_MIGRATION_COLUMNS, HADITH_NARRATIONS_MIGRATION_COLUMNS, INDEX_STATEMENTS } from './schema';
+import { SCHEMA_STATEMENTS, GENERATION_RECORDS_MIGRATION_COLUMNS, CINEMATIC_LEDGER_MIGRATION_COLUMNS, CREATORS_MIGRATION_COLUMNS, GOALS_MIGRATION_COLUMNS, HADITH_NARRATIONS_MIGRATION_COLUMNS, VAULT_ASSETS_MIGRATION_COLUMNS, INDEX_STATEMENTS } from './schema';
 // Economy Foundation: no migration columns needed for new tables — they are
 // created fresh via CREATE TABLE IF NOT EXISTS in SCHEMA_STATEMENTS.
 
@@ -63,6 +63,28 @@ function migrateHadithNarrationsTable(db: DatabaseSync): void {
   for (const column of HADITH_NARRATIONS_MIGRATION_COLUMNS) {
     if (!existingColumns.has(column.name)) {
       db.exec(`ALTER TABLE hadith_narrations ADD COLUMN ${column.ddl}`);
+    }
+  }
+}
+
+/**
+ * Sovereign provenance reaches a table that already holds 47 assets owned by
+ * real Creators, so it arrives by ALTER TABLE — never by recreating the table,
+ * which would destroy them.
+ *
+ * The columns land empty. That is correct and is not a gap to be filled later
+ * by a backfill: Article 5.5 forbids attributing an asset to a chamber or a
+ * lineage without evidence, and no evidence exists for rows created before the
+ * model did. `rowToVaultAsset` resolves an empty provenance to the declared
+ * legacy state, so an un-backfilled row reads as exactly what it is.
+ */
+function migrateVaultAssetsTable(db: DatabaseSync): void {
+  const existingColumns = new Set(
+    (db.prepare('PRAGMA table_info(vault_assets)').all() as { name: string }[]).map((row) => row.name),
+  );
+  for (const column of VAULT_ASSETS_MIGRATION_COLUMNS) {
+    if (!existingColumns.has(column.name)) {
+      db.exec(`ALTER TABLE vault_assets ADD COLUMN ${column.ddl}`);
     }
   }
 }
@@ -116,6 +138,10 @@ export function createDatabase(path: string = DEFAULT_DB_PATH): DatabaseSync {
   migrateGoalsTable(db);
   migrateHadithNarrationsTable(db);
   migrateGenerationRecordsTable(db);
+  // Provenance must exist before INDEX_STATEMENTS runs — SQLite cannot index a
+  // column that is not there yet, the same ordering CREATORS_MIGRATION_COLUMNS
+  // already depends on.
+  migrateVaultAssetsTable(db);
   for (const statement of INDEX_STATEMENTS) {
     db.exec(statement);
   }

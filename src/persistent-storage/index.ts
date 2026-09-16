@@ -31,7 +31,7 @@ export {
 export type { GenerationRecord, NewGenerationRecord } from './generation-record-repository';
 export { recordGeneration, getGenerationRecord, deleteGenerationRecord, listGenerationsForCreator } from './generation-record-repository';
 
-export { insertVaultAsset, getVaultAsset, findVaultAssetByStorageUri, listVaultAssetsForTenant, linkGoalToVaultAsset, deleteVaultAssetByStorageUri, deleteVaultAssetById } from './vault-asset-repository';
+export { insertVaultAsset, getVaultAsset, findVaultAssetByStorageUri, listVaultAssetsForTenant, linkGoalToVaultAsset, deleteVaultAssetByStorageUri, deleteVaultAssetById, listAssetLineage, adoptLegacyAsset } from './vault-asset-repository';
 
 export type { SubscriptionRecord, NewSubscription, SubscriptionPatch, SubscriptionStatus } from './subscription-repository';
 export {
@@ -48,3 +48,12 @@ export type { CinematicProductionRecord } from './cinematic-ledger-repository';
 export { CinematicLedger } from './cinematic-ledger-repository';
 
 export { ConsumptionRepository } from './consumption-repository';
+
+// ── Constitutional foundation, Phase B3 — Articles 2.2, 6.3, 7, 9.3 ────────
+export {
+  createProject, getProject, listProjectsForOwner, listProjectsUnderUmbrella,
+  createStoryboard, getStoryboard, listStoryboardsForOwner,
+  addScene, listScenes, setSceneOrder, assignSceneAsset,
+  recordTombstone, findTombstoneByAssetId, listTombstonesForOwner,
+  mintPublicToken, createPublicLink, findPublicLinkByToken, revokePublicLink, listPublicLinksForOwner,
+} from './sovereign-project-repository';

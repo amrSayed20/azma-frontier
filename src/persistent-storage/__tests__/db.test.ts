@@ -35,7 +35,11 @@ describe('Persistent Storage Foundation — database connection', () => {
     //
     // This assertion is therefore not pedantry about a list. It is the only
     // place that checks the schema creates every table the application reads.
-    expect(tables).toEqual(['cinematic_ledger', 'consumption_records', 'creator_balances', 'creators', 'credit_ledger', 'fulfillment_assessments', 'generation_records', 'goals', 'hadith_narrations', 'knowledge_investigations', 'library_works', 'observations', 'operation_ledger', 'payment_transactions', 'sessions', 'sovereign_canvases', 'subscriptions', 'transmitted_reports', 'trial_entitlements', 'vault_assets', 'vault_credentials']);
+    // Phase B3 added five constitutional tables — asset_tombstones,
+    // sovereign_projects, sovereign_public_links, storyboards,
+    // storyboard_scenes. This assertion caught all five the moment they
+    // landed, which is the third time it has earned its keep.
+    expect(tables).toEqual(['asset_tombstones', 'cinematic_ledger', 'consumption_records', 'creator_balances', 'creators', 'credit_ledger', 'fulfillment_assessments', 'generation_records', 'goals', 'hadith_narrations', 'knowledge_investigations', 'library_works', 'observations', 'operation_ledger', 'payment_transactions', 'sessions', 'sovereign_canvases', 'sovereign_projects', 'sovereign_public_links', 'storyboard_scenes', 'storyboards', 'subscriptions', 'transmitted_reports', 'trial_entitlements', 'vault_assets', 'vault_credentials']);
     db.close();
   });
 
