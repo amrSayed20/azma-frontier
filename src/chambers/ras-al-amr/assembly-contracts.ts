@@ -93,9 +93,25 @@ export interface TemporalDirective {
  */
 export interface SpatialDirective {
   zIndex: number;
+  /** Fraction of the output canvas, not pixels: 1 is full width, 0.5 is half. */
   scaleX: number;
+  /** Fraction of the output canvas, not pixels: 1 is full height, 0.5 is half. */
   scaleY: number;
+  /**
+   * PERCENTAGE-POINT OFFSET FROM THE CANVAS CENTRE — not pixels.
+   *
+   * 0 is the centre; +25 is a quarter of the canvas width to the right; −50 is
+   * the left edge. The layer's centre is placed, not its corner.
+   *
+   * The unit was documented in the encoder alone and nowhere on the contract
+   * that governs it, so the encoder and its own test drifted into two different
+   * coordinate systems for three weeks without either being wrong on its face
+   * (Package XLII redefined the conversion; the VI-C test kept asserting raw
+   * pixels). A number whose unit lives only in one consumer will be read
+   * differently by the next one. It is written here now.
+   */
   positionX: number;
+  /** Percentage-point offset from the canvas centre. See `positionX`. */
   positionY: number;
   rotationDegrees: number;
 }

@@ -234,6 +234,27 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     scholarly_note_ar TEXT,
     ingested_at_ms INTEGER NOT NULL
   )`,
+  // THE LIBRARY CATALOGUE — 78,130 public-domain works.
+  //
+  // This table was read by `library-repository.ts` and created by nothing but
+  // `scripts/ingest-library.mjs`. Production held it only because that script
+  // had been run: a database built from this schema alone had no such table,
+  // and `hasWorks()` throws on a missing table rather than returning false, so
+  // a rebuilt Empire would have lost the whole library to an exception on the
+  // first question asked of it. Declared here so the schema creates every table
+  // the application reads. The DDL is character-for-character the ingest
+  // script's, since both are `IF NOT EXISTS` and whichever runs first wins —
+  // two definitions that disagreed would break the ingest's INSERT instead.
+  `CREATE TABLE IF NOT EXISTS library_works (
+    work_id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    authors TEXT,
+    subjects TEXT,
+    language TEXT NOT NULL,
+    issued TEXT,
+    searchable TEXT NOT NULL,
+    ingested_at_ms INTEGER NOT NULL
+  )`,
   `CREATE TABLE IF NOT EXISTS knowledge_investigations (
     investigation_id TEXT PRIMARY KEY,
     goal_id TEXT NOT NULL,
@@ -475,4 +496,7 @@ export const INDEX_STATEMENTS: readonly string[] = [
   // collection and number once a narration has been chosen.
   'CREATE INDEX IF NOT EXISTS idx_hadith_edition_number ON hadith_narrations(edition, narration_number)',
   'CREATE INDEX IF NOT EXISTS idx_transmitted_work ON transmitted_reports(work_id)',
+  // The library is filtered by language on every search; its index belonged
+  // here beside its table, for the same reason the table did.
+  'CREATE INDEX IF NOT EXISTS idx_library_language ON library_works(language)',
 ];

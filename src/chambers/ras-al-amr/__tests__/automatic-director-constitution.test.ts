@@ -49,13 +49,24 @@ describe('The Cinematic Judgment Constitution — Article III/IV, Narrative Inte
     ).toBe(true);
   });
 
-  it('rejects the same asset occupying more than one node', () => {
+  /**
+   * Package XXXV repealed the duplicate-asset rule and did not touch this
+   * file, so these two tests asserted a law that no longer stood and had been
+   * red ever since (108301e).
+   *
+   * The rule is not being restored. A repeated asset is real storytelling — a
+   * ghost reappears, a product cycles, a face returns at the end — and each
+   * Direction Node carries its own temporal window. Reinstating the check to
+   * make a test pass would reject canvases the Creator legitimately built.
+   * What is repaired is the assertion, which now states the standing law.
+   */
+  it('allows the same asset to recur across nodes — a ghost may reappear', () => {
     const result = validateNarrativeIntegrity([
       { nodeId: 'n1', assetId: 'a1' },
       { nodeId: 'n2', assetId: 'a1' },
     ]);
-    expect(result.valid).toBe(false);
-    expect(result.violations[0]).toMatch(/appears in more than one node/);
+    expect(result.valid).toBe(true);
+    expect(result.violations).toEqual([]);
   });
 
   it('rejects a negative start time', () => {
@@ -75,11 +86,26 @@ describe('The Cinematic Judgment Constitution — Article III/IV, Narrative Inte
   });
 
   it('reports every real violation at once, not just the first', () => {
+    // One node breaking two structural rules reports both. The recurring asset
+    // on n2 contributes nothing, because recurrence is not a violation.
     const result = validateNarrativeIntegrity([
       { nodeId: 'n1', assetId: 'a1', temporal: { globalStartTimeSeconds: -1, playDurationSeconds: 0 } },
       { nodeId: 'n2', assetId: 'a1' },
     ]);
-    expect(result.violations.length).toBeGreaterThanOrEqual(3);
+    expect(result.valid).toBe(false);
+    expect(result.violations).toHaveLength(2);
+    expect(result.violations[0]).toMatch(/negative start time/);
+    expect(result.violations[1]).toMatch(/non-positive duration/);
+  });
+
+  it('reports a violation for every offending node, not only the first node', () => {
+    const result = validateNarrativeIntegrity([
+      { nodeId: 'n1', assetId: 'a1', temporal: { globalStartTimeSeconds: -1, playDurationSeconds: 5 } },
+      { nodeId: 'n2', assetId: 'a2', temporal: { globalStartTimeSeconds: 0, playDurationSeconds: -3 } },
+    ]);
+    expect(result.violations).toHaveLength(2);
+    expect(result.violations[0]).toContain('n1');
+    expect(result.violations[1]).toContain('n2');
   });
 });
 

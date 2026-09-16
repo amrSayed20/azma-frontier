@@ -328,14 +328,40 @@ describe('decideMultiNodeCinematicDirection', () => {
     expect(result.primaryNodeId).toBeNull();
   });
 
-  it('reuses validateNarrativeIntegrity to flag the same asset appearing in more than one node', () => {
+  /**
+   * This asserted the duplicate-asset rule, which Package XXXV repealed
+   * without touching this file — red ever since (108301e). The rule is not
+   * restored: a recurring asset is real storytelling, and reinstating the
+   * check to green a test would reject canvases the Creator legitimately
+   * built.
+   *
+   * What the test was really for — that the director REUSES
+   * validateNarrativeIntegrity instead of reimplementing integrity — is kept,
+   * and now asserted against what the director actually hands the validator:
+   * its own decided temporal windows.
+   */
+  it('reuses validateNarrativeIntegrity over its own decided temporal windows', () => {
     const result = decideMultiNodeCinematicDirection([
       { nodeId: 'n1', asset: makeAsset({ assetId: 'shared-asset' }) },
       { nodeId: 'n2', asset: makeAsset({ assetId: 'shared-asset' }) },
     ]);
 
-    expect(result.narrativeIntegrity.valid).toBe(false);
-    expect(result.narrativeIntegrity.violations[0]).toMatch(/more than one node/);
+    // A recurring asset is not a violation, and the decided windows are sound.
+    expect(result.narrativeIntegrity.valid).toBe(true);
+    expect(result.narrativeIntegrity.violations).toEqual([]);
+
+    // The proof of reuse: the windows the validator passed are the decided
+    // ones — sequential, each starting where the previous ended, so no two
+    // nodes claim the same instant.
+    let expectedStart = 0;
+    for (const nodeDecision of result.nodeDecisions) {
+      const temporal = nodeDecision.decision.temporal;
+      if (!temporal) continue;
+      expect(temporal.globalStartTimeSeconds).toBe(expectedStart);
+      expect(temporal.playDurationSeconds).toBeGreaterThan(0);
+      expectedStart += temporal.playDurationSeconds;
+    }
+    expect(expectedStart).toBeGreaterThan(0);
   });
 
   it('reports valid narrative integrity for a genuinely well-formed multi-node set', () => {

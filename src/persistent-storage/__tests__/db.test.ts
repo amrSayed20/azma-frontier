@@ -23,7 +23,19 @@ describe('Persistent Storage Foundation — database connection', () => {
     // by a separate process because parsing nine megabytes of JSON inside the
     // server froze the runtime for every Creator at once — see the note in
     // schema.ts. The chamber reads rows.
-    expect(tables).toEqual(['cinematic_ledger', 'consumption_records', 'creator_balances', 'creators', 'credit_ledger', 'fulfillment_assessments', 'generation_records', 'goals', 'hadith_narrations', 'knowledge_investigations', 'observations', 'operation_ledger', 'payment_transactions', 'sessions', 'sovereign_canvases', 'subscriptions', 'trial_entitlements', 'vault_assets', 'vault_credentials']);
+    //
+    // It happened twice more. transmitted_reports — the corpus «الإسرائيليات»
+    // was drawn from — was added to the schema and this list was not told, and
+    // library_works was worse: read by library-repository.ts and created by
+    // nothing but scripts/ingest-library.mjs, so a database built from the
+    // schema alone had no such table at all. Production held it only because
+    // the ingest had been run, and hasWorks() throws on a missing table rather
+    // than returning false — a rebuilt Empire would have lost 78,130 works to
+    // an exception on the first question asked.
+    //
+    // This assertion is therefore not pedantry about a list. It is the only
+    // place that checks the schema creates every table the application reads.
+    expect(tables).toEqual(['cinematic_ledger', 'consumption_records', 'creator_balances', 'creators', 'credit_ledger', 'fulfillment_assessments', 'generation_records', 'goals', 'hadith_narrations', 'knowledge_investigations', 'library_works', 'observations', 'operation_ledger', 'payment_transactions', 'sessions', 'sovereign_canvases', 'subscriptions', 'transmitted_reports', 'trial_entitlements', 'vault_assets', 'vault_credentials']);
     db.close();
   });
 

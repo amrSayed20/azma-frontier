@@ -491,11 +491,30 @@ function makeMultiNodeGraph(
 }
 
 describe('VI-C — Full Cinematic Overlay Composition', () => {
-  it('A — positionX/positionY propagate to overlay=x=<posX>:y=<posY> in filter_complex', () => {
-    const graph = makeMultiNodeGraph([{ nodeId: 'n-a', positionX: 100, positionY: 200 }]);
-    spawnEncoding('op-vic-a', graph);
-    const fc = getFilterComplex(mockSpawn.mock.calls[0][1] as string[]);
-    expect(fc).toContain('overlay=x=100:y=200');
+  /**
+   * Written 2026-08-29 (VI-C) when positionX/positionY were raw FFmpeg pixels.
+   * Package XLII (2026-09-11) redefined them as percentage-point offsets from
+   * the canvas centre and did not update this file, so it asserted a
+   * coordinate system the encoder had stopped using and has been red since.
+   *
+   * The encoder is right and is not being changed: overlay x/y is the layer's
+   * TOP-LEFT pixel, while the canvas contract puts 0,0 at the centre, so the
+   * conversion is what makes a centred layer actually centre.
+   */
+  it('A — positionX/positionY are percentage-point offsets from the canvas centre', () => {
+    // 0,0 is the centre: a full-size layer lands flush at the top-left origin.
+    const centred = makeMultiNodeGraph([{ nodeId: 'n-a', positionX: 0, positionY: 0 }]);
+    spawnEncoding('op-vic-a', centred);
+    expect(getFilterComplex(mockSpawn.mock.calls[0][1] as string[])).toContain('overlay=x=0:y=0');
+
+    mockSpawn.mockClear();
+
+    // +25 percentage points right, −10 down, on a 1920×1080 canvas:
+    //   x = 1920 × (50 + 25) / 100 − 1920/2 =  480
+    //   y = 1080 × (50 − 10) / 100 − 1080/2 = −108
+    const offset = makeMultiNodeGraph([{ nodeId: 'n-a', positionX: 25, positionY: -10 }]);
+    spawnEncoding('op-vic-a2', offset);
+    expect(getFilterComplex(mockSpawn.mock.calls[0][1] as string[])).toContain('overlay=x=480:y=-108');
   });
 
   it('B — scaleX=0.5, scaleY=0.5 → scale=960:540 (half of 1920×1080) in filter_complex', () => {
@@ -706,7 +725,10 @@ describe('Repair C — spawnEncoding throws synchronously on invalid graph', () 
       compiledAt: 0,
     };
 
-    expect(() => spawnEncoding('op-empty-nodes', emptyGraph)).toThrow('no active image nodes');
+    // The encoder learned to accept video nodes and its message widened from
+    // «image» to «visual» accordingly; this assertion was not told. Matching
+    // the standing wording, and the refusal itself — which is the point.
+    expect(() => spawnEncoding('op-empty-nodes', emptyGraph)).toThrow('no active visual nodes');
     expect(mockSpawn).not.toHaveBeenCalled();
   });
 
