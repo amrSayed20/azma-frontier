@@ -40,6 +40,7 @@ import { WikipediaProvider } from './providers/wikipedia-provider';
 import { ArabicWikipediaProvider } from './providers/arabic-wikipedia-provider';
 import { SovereignScriptureProvider } from './providers/sovereign-scripture-provider';
 import { HadithProvider } from './providers/hadith-provider';
+import { TafsirProvider } from './providers/tafsir-provider';
 import { MedicalLiteratureProvider } from './providers/medical-literature-provider';
 import { TransmittedProvider } from './providers/transmitted-provider';
 import { MinistryRegistry } from './ministries/ministry-registry';
@@ -84,6 +85,14 @@ export class IntelligenceCompositionFactory {
     // what each record's publisher declared it to be. Under the Ministry of
     // Scientific Knowledge, which had no provider at all until now — still the
     // eighth Ministry, no ninth.
+    // Six Arabic commentaries. The Founder asked why an Arabic library would be
+    // needed; the honest answer is that it is not — these were measured hours
+    // earlier while searching for Isra'iliyyat and then left unconnected, and
+    // the chamber answered questions about the stories of the Prophets from an
+    // English encyclopedia while they sat reachable and unasked. A commentary
+    // is DOCUMENTED, never SCRIPTURE: it is a scholar's reading of a verse, not
+    // the verse, and «التفسير مرجعه أهله».
+    registry.attachProvider('ministry-human-knowledge', new TafsirProvider());
     registry.attachProvider('ministry-scientific-knowledge', new MedicalLiteratureProvider());
     // What «الإسرائيليات» was drawn from, searched for and added at the
     // Founder's instruction. It carries provenance and refuses classification:

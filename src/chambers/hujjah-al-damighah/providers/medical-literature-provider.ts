@@ -211,7 +211,15 @@ export class MedicalLiteratureProvider implements IRepositoryProvider {
     const attribution = [
       `${medicalKindLabelAr(kind)} — ${recencyLabelAr(recency, year)}.`,
       r.journalInfo?.journal?.title ? `المنشور فيه: ${r.journalInfo.journal.title}.` : null,
-      r.doi ? `المعرّف: ${r.doi}` : (r.pmid ? `المعرّف: PMID ${r.pmid}` : null),
+      // A DOI is the work's own permanent citation, minted by its publisher, and
+      // the Founder's medical decision requires the citation be recorded. A PMID
+      // is not that: it is the shelf number a repository the Empire consulted
+      // files the paper under, and printing it tells the Creator which
+      // repository was asked. «المستخدم يرى الدليل والحجة ولا يرى المصدر.»
+      // Where there is no DOI the citation stands on the journal, the year and
+      // the publisher's own classification — a missing identifier is a fact
+      // about this paper, not a reason to name the index that holds it.
+      r.doi ? `المعرّف: ${r.doi}` : null,
       statedTypes.length ? `نوعه كما صنّفه ناشره: ${statedTypes.join('، ')}.` : null,
     ].filter(Boolean).join('\n');
 

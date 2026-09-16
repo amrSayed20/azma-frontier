@@ -100,6 +100,31 @@ function stripBoilerplate(raw) {
 }
 
 /**
+ * Whether a passage is the furniture of a book rather than a report from it.
+ *
+ * Measured: the first three passages ingested from Ginzberg's first volume were
+ * its title page and two stretches of its table of contents, and the chamber
+ * translated them faithfully into «المقدمة، أولاً: خلق العالم، اليوم الأول،
+ * اليوم الثاني...» and offered that to a Creator asking about the creation. A
+ * contents page is a map of a book, not evidence from it.
+ *
+ * A list is recognised by what it lacks: prose of this length ends sentences,
+ * and a run of chapter titles almost never does. Capitalised fragments are the
+ * second tell — «The First Things Created The Alphabet The First Day».
+ */
+function isBookFurniture(text) {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length < 40) return false;
+
+  const sentenceEnds = (text.match(/[.!?](?:\s|$)/g) ?? []).length;
+  const capitalised = words.filter((w) => /^[A-Z][a-z]/.test(w)).length;
+
+  // Fewer than one sentence ending per hundred words, or more than a third of
+  // the words starting with a capital: a title list, not a paragraph.
+  return sentenceEnds < words.length / 100 || capitalised > words.length / 3;
+}
+
+/**
  * Cut into passages a Creator could actually read and cite.
  *
  * Paragraph boundaries, then merged until each passage is substantial enough to
@@ -113,15 +138,23 @@ function toPassages(body) {
 
   const passages = [];
   let buffer = '';
+  let dropped = 0;
   for (const p of paragraphs) {
     buffer = buffer ? `${buffer} ${p}` : p;
     if (buffer.length >= MIN) {
-      passages.push(buffer.slice(0, MAX));
+      const passage = buffer.slice(0, MAX);
+      // A contents page is a map of a book, not a report from it.
+      if (isBookFurniture(passage)) dropped += 1;
+      else passages.push(passage);
       buffer = '';
     }
   }
-  if (buffer.length >= MIN) passages.push(buffer.slice(0, MAX));
-  return passages;
+  if (buffer.length >= MIN) {
+    const tail = buffer.slice(0, MAX);
+    if (isBookFurniture(tail)) dropped += 1;
+    else passages.push(tail);
+  }
+  return { passages, dropped };
 }
 
 function resolveDbPath() {
@@ -142,7 +175,7 @@ async function ingestOne(db, work) {
     return 0;
   }
 
-  const passages = toPassages(stripBoilerplate(await response.text()));
+  const { passages, dropped } = toPassages(stripBoilerplate(await response.text()));
   db.prepare('DELETE FROM transmitted_reports WHERE work_id = ?').run(work.id);
 
   const insert = db.prepare(
@@ -179,7 +212,10 @@ async function ingestOne(db, work) {
   }
 
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
-  console.log(`  ok       ${work.title.slice(0, 46).padEnd(48)} ${String(passages.length).padStart(5)} مقطعاً · ${seconds}s`);
+  console.log(
+    `  ok       ${work.title.slice(0, 46).padEnd(48)} ${String(passages.length).padStart(5)} مقطعاً` +
+    `  · أُسقط من الفهارس ${String(dropped).padStart(4)}  · ${seconds}s`,
+  );
   return passages.length;
 }
 

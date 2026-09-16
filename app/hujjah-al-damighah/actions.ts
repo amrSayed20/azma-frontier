@@ -13,6 +13,45 @@ import { createPerceptionEndpointForOrgan } from '@/src/sovereign-nervous-system
 import { toSearchLanguage, composeAnswer, toArabic, displayableText } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
 import { authorityOfEvidence, SourceAuthority } from '@/src/chambers/hujjah-al-damighah/domain/evidence-authority';
 import { judgeSubjectRelevance, sortingNoticeAr } from '@/src/chambers/hujjah-al-damighah/subject-relevance';
+import { KnowledgeInvestigationRepository } from '@/src/persistent-storage/knowledge-investigation-repository';
+import { getDb } from '@/src/persistent-storage/db';
+import { InvestigationFailure, failureSpokenAr } from './_lib/investigation-failure';
+
+/**
+ * A failed investigation, said to the Creator in their own tongue.
+ *
+ * Every early return in this action used to build its own object by hand, and
+ * three of them put machine text in the one field the screen prints. There is
+ * now one way to fail, and it cannot carry an exception's words.
+ */
+function failed(failure: InvestigationFailure): InvestigationDTO {
+  return {
+    success: false,
+    evidence: [],
+    totalSourcesScanned: 0,
+    averageEvidenceScore: 0,
+    error: failureSpokenAr(failure),
+  };
+}
+
+/**
+ * Marks an investigation as the chamber's own rather than a Milestone Goal's.
+ *
+ * The investigation store is keyed by goal because it was built for the
+ * Sovereign path, where every investigation answers one. A Creator typing a
+ * question has no goal, and inventing a plausible-looking id would put records
+ * that belong to no goal into the Sovereign path's own history. This is
+ * explicit and searchable instead.
+ */
+const CHAMBER_INVESTIGATION_GOAL_ID = 'citizen-chamber';
+
+let investigationStore: KnowledgeInvestigationRepository | null = null;
+function knowledgeInvestigationStore(): KnowledgeInvestigationRepository {
+  // Built on the Empire's own connection, the same one every other repository
+  // uses — not a second one opened beside it.
+  investigationStore ??= new KnowledgeInvestigationRepository(getDb());
+  return investigationStore;
+}
 
 /**
  * Constitutional Nervous System integration.
@@ -86,20 +125,20 @@ export async function runInvestigation(
   const sessionId = jar.get('azma_session')?.value;
   const session = sessionId ? verifySession(sessionId) : null;
   if (!session) {
-    return { success: false, evidence: [], totalSourcesScanned: 0, averageEvidenceScore: 0, error: 'AUTH_REQUIRED' };
+    return failed(InvestigationFailure.NOT_ADMITTED);
   }
 
   try {
     // Stage 1 — Reception: constitutional entry boundary
     const reception = receiveCitizenKnowledgeRequest(query, category);
     if (reception.status !== 'RECEIVED') {
-      return { success: false, evidence: [], totalSourcesScanned: 0, averageEvidenceScore: 0, error: 'Query rejected at the reception boundary.' };
+      return failed(InvestigationFailure.QUESTION_NOT_ACCEPTED);
     }
 
     // Stage 2 — Understanding: classify and normalise the inquiry
     const understandingOutcome = understandKnowledgeReception(reception);
     if (!understandingOutcome.ok) {
-      return { success: false, evidence: [], totalSourcesScanned: 0, averageEvidenceScore: 0, error: 'Query could not be understood.' };
+      return failed(InvestigationFailure.QUESTION_NOT_UNDERSTOOD);
     }
 
     // The Creator declares a religious question themselves, from the category
@@ -125,13 +164,13 @@ export async function runInvestigation(
     // Stage 3 — Investigation: only stage authorised to invoke IntelligenceEngine
     const investigationOutcome = await conductInvestigation(intent);
     if (!investigationOutcome.ok) {
-      return { success: false, evidence: [], totalSourcesScanned: 0, averageEvidenceScore: 0, error: 'Investigation could not be conducted.' };
+      return failed(InvestigationFailure.NOTHING_FOUND);
     }
 
     // Stage 4 — Evidence: wrap raw bundle with constitutional lineage
     const evidenceOutcome = collectEvidence(investigationOutcome.result);
     if (!evidenceOutcome.ok) {
-      return { success: false, evidence: [], totalSourcesScanned: 0, averageEvidenceScore: 0, error: 'Evidence collection failed.' };
+      return failed(InvestigationFailure.NOTHING_FOUND);
     }
 
     // Stage 4 ½ — On the subject, or merely carrying the word?
@@ -235,7 +274,34 @@ export async function runInvestigation(
     const response = formulateResponse(declaration);
 
     // Stage 7 — Export: seal the constitutional exit receipt for the CITIZEN destination
-    exportKnowledgeResponse(response, 'CITIZEN');
+    const exportRecord = exportKnowledgeResponse(response, 'CITIZEN');
+
+    // Stage 7b — Remember it.
+    //
+    // The store, the contract and the repository were all built and wired to
+    // SOEL, and the chamber never wrote a line to them: a Creator's own
+    // investigation died with their session while a table sat ready for it.
+    // Using what exists rather than building beside it.
+    //
+    // The store is keyed by goal, and a Creator asking a question in the
+    // chamber has no goal — so a reserved id marks these as the chamber's own
+    // rather than a Milestone Goal's. Inventing a plausible-looking goalId
+    // would corrupt the Sovereign path's records with investigations that
+    // belong to no goal at all.
+    try {
+      knowledgeInvestigationStore().save({
+        investigationId: exportRecord.exportId,
+        goalId: CHAMBER_INVESTIGATION_GOAL_ID,
+        creatorId: session.creatorId,
+        records: [exportRecord],
+        recordCount: 1,
+        investigatedAtMs: Date.now(),
+      });
+    } catch (err) {
+      // A memory that fails must not cost the Creator the answer they already
+      // have. It is reported, not swallowed silently.
+      console.warn(`[Hujjah] investigation not persisted: ${String(err).slice(0, 120)}`);
+    }
 
     hujjahPerception.report({
       signalType: 'State',
@@ -286,12 +352,12 @@ export async function runInvestigation(
       purpose: 'An investigation failed.',
       content: null,
     });
-    return {
-      success: false,
-      evidence: [],
-      totalSourcesScanned: 0,
-      averageEvidenceScore: 0,
-      error: String(err),
-    };
+    // The exception's own words stay on this side of the wire. Every provider
+    // stamps its name and the document's identifier into what it throws —
+    // «[SovereignLibraryProvider] Cannot read 'book-1513': HTTP 403» — and this
+    // field is printed to the Creator unaltered. The engineer who needs that
+    // line reads it here; the Creator never does.
+    console.error('[Hujjah] Investigation failed:', err);
+    return failed(InvestigationFailure.CHAMBER_FAULT);
   }
 }

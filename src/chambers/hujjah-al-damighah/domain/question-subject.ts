@@ -34,6 +34,41 @@
 const ARABIC_LETTER = /[؀-ۿ]/;
 
 /**
+ * Honorifics said after a name, which are reverence and not subject matter.
+ *
+ * Measured live: «قصة يوسف عليه السلام» reached the Qur'an as the words «يوسف
+ * عليه السلام», failed to match, fell back to word pairs, and matched «عليه
+ * السلام» — returning ﴿ٱدْخُلُوا۟ فِى ٱلسِّلْمِ كَآفَّةً﴾ and ﴿إِنَّ ٱلدِّينَ
+ * عِندَ ٱللَّهِ ٱلْإِسْلَٰمُ﴾ to a Creator who had asked about Yusuf.
+ *
+ * Removed as whole phrases rather than word by word, because «السلام» and
+ * «الله» are subjects in their own right and a Creator may be asking about
+ * either. It is the phrase that is honorific, never the words alone.
+ */
+const HONORIFIC_PHRASES: readonly RegExp[] = [
+  /عليه\s+الس(?:َّ)?لام/g,
+  /عليها\s+الس(?:َّ)?لام/g,
+  /عليهم(?:ا)?\s+الس(?:َّ)?لام/g,
+  /صلى\s+الله\s+عليه\s+و\s?سلم/g,
+  /صلي\s+الله\s+عليه\s+وسلم/g,
+  /رضي\s+الله\s+عنه(?:م|ا|ما)?/g,
+  /رحمه\s+الله/g,
+  /سبحانه\s+و\s?تعالى/g,
+  /عز\s+و\s?جل/g,
+  /جل\s+جلاله/g,
+  /سيدنا/g,
+  /نبينا/g,
+  /مولانا/g,
+];
+
+/** Strips the reverence, keeps the name. */
+export function withoutHonorifics(question: string): string {
+  let text = question;
+  for (const phrase of HONORIFIC_PHRASES) text = text.replace(phrase, ' ');
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+/**
  * Words that carry the asking rather than the subject.
  *
  * Every one of these is here because it appeared in a real question and cost
@@ -85,7 +120,7 @@ function isFraming(word: string): boolean {
  * is nothing.
  */
 export function subjectWordsOf(question: string): string[] {
-  return question
+  return withoutHonorifics(question)
     .replace(/[،؛؟.,!?:;"'()[\]{}«»]/g, ' ')
     .split(/\s+/)
     .map((w) => w.trim())

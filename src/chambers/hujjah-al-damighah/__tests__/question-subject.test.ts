@@ -23,7 +23,9 @@ describe('the questions that cost a Creator an answer', () => {
   });
 
   it('reduces the Founder’s question to its subject', () => {
-    expect(subjectOf('قصة صاحب الحوت سيدنا يونس')).toBe('صاحب الحوت سيدنا يونس');
+    // «سيدنا» is reverence, not subject. Measured live: leaving «عليه السلام»
+    // in a question about Yusuf returned verses about ٱلسِّلْم and ٱلْإِسْلَٰم.
+    expect(subjectOf('قصة صاحب الحوت سيدنا يونس')).toBe('صاحب الحوت يونس');
   });
 
   it('reduces a question about merit to the thing itself', () => {
@@ -78,5 +80,34 @@ describe('recognising that a question carries framing at all', () => {
 describe('diacritics do not hide a framing word', () => {
   it('strips one written with them', () => {
     expect(subjectOf('قِصَّةُ أَصْحَابِ الفِيل')).not.toContain('قِصَّةُ');
+  });
+});
+
+describe('reverence is not subject matter', () => {
+  it('strips the honorific after a prophet’s name', () => {
+    // Measured live: «قصة يوسف عليه السلام» matched «عليه السلام» against the
+    // Qur'an and returned ﴿ٱدْخُلُوا۟ فِى ٱلسِّلْمِ كَآفَّةً﴾ — verses about
+    // peace and Islam — to a Creator asking about Yusuf.
+    expect(subjectOf('قصة يوسف عليه السلام')).toBe('يوسف');
+  });
+
+  it('strips the honorific after the Prophet ﷺ', () => {
+    expect(subjectOf('سيرة النبي صلى الله عليه وسلم')).toBe('النبي');
+  });
+
+  it('strips it after a Companion', () => {
+    expect(subjectOf('سيرة أبي بكر رضي الله عنه')).toContain('بكر');
+    expect(subjectOf('سيرة أبي بكر رضي الله عنه')).not.toContain('رضي');
+  });
+
+  it('keeps «السلام» when a Creator is actually asking about it', () => {
+    // The phrase is the honorific, never the word — someone may be asking
+    // about peace, or about the divine name.
+    expect(subjectOf('السلام في الإسلام')).toContain('السلام');
+    expect(subjectOf('أسماء الله الحسنى')).toContain('الله');
+  });
+
+  it('keeps the name when the honorific is all that surrounds it', () => {
+    expect(subjectOf('يونس عليه السلام')).toBe('يونس');
   });
 });

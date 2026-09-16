@@ -150,6 +150,24 @@ export const SOVEREIGN_SOURCES: readonly SovereignSource[] = [
     lastMeasuredAtMs: MEASURED_AT,
   },
 
+  {
+    sourceId: 'tafsir',
+    titleAr: 'كتب التفسير',
+    sourceType: SourceType.TAFSIR,
+    sourceRole: SourceRole.SCHOLARLY_APPARATUS,
+    language: 'ar',
+    // A reading of a text is not the text. Never SCRIPTURE.
+    authorityClass: SourceAuthority.DOCUMENTED,
+    verificationStatus: VerificationStatus.VERIFIED,
+    accessStatus: AccessStatus.OPEN,
+    coverage: CoverageStatus.FULLY_REVIEWED,
+    copyrightStatus: CopyrightStatus.PUBLIC_DOMAIN,
+    edition: 'التفسير الميسّر · الجلالين · القرطبي · البغوي · الوسيط · تنوير المقباس',
+    domains: ['religious'],
+    note: 'Six Arabic commentaries, complete, indexed by verse. Measured reachable while searching for Isra’iliyyat and then left unconnected for hours while the chamber answered questions about the Prophets from an English encyclopedia. A commentary is reached by first finding the verses a subject appears in, because a tafsir is indexed by verse and not by subject. Two readings per verse are offered rather than one, so a Creator sees «الرأي والرأي الآخر» among scholars.',
+    lastMeasuredAtMs: MEASURED_AT,
+  },
+
   // ─── THE TRANSMITTED CORPUS — what «الإسرائيليات» was drawn from ──────────
   {
     sourceId: 'transmitted-corpus',
