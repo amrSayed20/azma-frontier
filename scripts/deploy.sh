@@ -317,9 +317,15 @@ cmd_deploy() {
   # 5c ── prove the tree that landed is the tree that was approved. A version
   #       read from disk, not from the lockfile that asked for it.
   step "Verifying installed versions"
+  # Read through a RELATIVE path from the repository root. An absolute path
+  # cannot be used here: on Git Bash $REPO_ROOT is POSIX-shaped (/c/Users/…)
+  # and the Windows node that runs it cannot resolve that as a module path —
+  # measured, it aborted this very step with MODULE_NOT_FOUND after the server
+  # had already installed. Failing here is safe by design (the symlink had not
+  # switched), but failing for a path-shape reason is noise, not a finding.
   local expected_next expected_sharp
-  expected_next="$(node -p "require('$REPO_ROOT/node_modules/next/package.json').version")"
-  expected_sharp="$(node -p "try{require('$REPO_ROOT/node_modules/sharp/package.json').version}catch(e){'(none)'}")"
+  expected_next="$( cd "$REPO_ROOT" && node -p "require('./node_modules/next/package.json').version" )"
+  expected_sharp="$( cd "$REPO_ROOT" && node -p "try{require('./node_modules/sharp/package.json').version}catch(e){'(none)'}" )"
   info "expected next $expected_next · sharp $expected_sharp"
   remote "
     set -e
