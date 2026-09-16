@@ -45,9 +45,26 @@ const nextConfig: NextConfig = {
   //   `sharp`. Measured: zero matches in app/ and src/. The route was a public
   //   attack surface serving a capability the Empire does not use.
   //
-  // `unoptimized` makes every <Image> pass its source through untouched and
-  // takes /_next/image out of service. Nginx refuses the path as well, so the
-  // route is closed at two layers rather than one — see the server block.
+  // WHAT `unoptimized` ACTUALLY DOES — measured, after this was first written
+  // claiming more than was true:
+  //
+  //   It makes every <Image> pass its source through untouched. It does NOT
+  //   take the /_next/image endpoint out of service. Measured on the server,
+  //   bypassing nginx: http://127.0.0.1:3000/_next/image?url=/favicon.ico → 200.
+  //
+  // So the route is closed by nginx (`return 404`), and that is the first
+  // layer. The second layer is real but is not this setting — it is that
+  // /uploads/ now requires a session, and the optimizer's own internal fetch
+  // carries none. Measured, again on the node directly:
+  //
+  //   before:  400 "The requested resource isn't a valid image"
+  //            → it HAD fetched the file and handed it to the decoder
+  //   after:   400 "url parameter is valid but internal response is invalid"
+  //            → it never obtained the file at all
+  //
+  // That change of wording is the evidence that the chain is broken at the
+  // source and not merely at the edge: even with nginx removed entirely, no
+  // uploaded byte reaches an image decoder.
   images: {
     unoptimized: true,
     // Belt and braces: even if the optimizer were re-enabled by a future edit,
