@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { ingestCirculatedSignal } from '@/src/sovereign-circulation';
+import { verifySession } from '@/src/authentication';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,10 +18,32 @@ export const dynamic = 'force-dynamic';
  * This route interprets nothing about the signal's content — it is
  * transport, not a business endpoint, per Phase III's Constitutional
  * Rules ("the Circulation shall never interpret").
+ *
+ * ─── A SESSION IS REQUIRED, AND WAS NOT ─────────────────────────────────────
+ *
+ *   This route accepted a body from anyone and fed it into the Perception Bus,
+ *   whose signal log had no ceiling. Found by hunting: an unauthenticated
+ *   visitor could push entries into the live process until it exhausted memory
+ *   and PM2 restarted it — an unauthenticated denial of service.
+ *
+ *   Transport is not the same as public. Every browser that legitimately calls
+ *   circulateFromClient() is a signed-in Creator, so requiring a session costs
+ *   no real caller anything and closes the path to everyone else. The signal
+ *   log is bounded as well — see perception-bus.ts — because one layer is a
+ *   hope and two are a guard.
  */
 const REQUIRED_FIELDS = ['origin', 'signalType', 'reportingAuthority', 'purpose'] as const;
 
-export async function POST(request: Request) {
+const SESSION_COOKIE = 'azma_session';
+
+export async function POST(request: NextRequest) {
+  const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
+  if (!sessionId || !verifySession(sessionId)) {
+    // No detail: a transport endpoint tells an anonymous caller nothing about
+    // itself beyond the refusal.
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body: unknown = await request.json();
 

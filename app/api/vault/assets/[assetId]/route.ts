@@ -19,7 +19,18 @@ const SESSION_COOKIE = 'azma_session';
 
 // Uploaded files are stored directly in UPLOADS_DIR (no subdirectory),
 // served at /uploads/filename.
-const UPLOADS_DIR = process.env.UPLOADS_DIR ?? path.join(process.cwd(), 'public', 'uploads');
+/**
+ * Read at CALL time, never frozen into a module constant.
+ *
+ * An environment variable captured at import time is a latent bug by
+ * construction: whatever sets it afterwards is ignored, and the module keeps
+ * the value it happened to see first. It cost eight failing tests in the image
+ * edit route, after the same mistake had already been found and fixed in db.ts.
+ * Four places in this repository held the pattern; this is one of them.
+ */
+function uploadsDir(): string {
+  return process.env.UPLOADS_DIR ?? path.join(process.cwd(), 'public', 'uploads');
+}
 
 /**
  * DELETE /api/vault/assets/[assetId]
@@ -158,7 +169,7 @@ export async function DELETE(
   // Uploaded files are stored at UPLOADS_DIR/basename(secureStorageUri).
   // secureStorageUri = /uploads/uuid.ext → basename = uuid.ext → UPLOADS_DIR/uuid.ext.
   const filename = path.basename(deleted.secureStorageUri);
-  const filePath = path.join(UPLOADS_DIR, filename);
+  const filePath = path.join(uploadsDir(), filename);
   try { unlinkSync(filePath); } catch { /* file may already be absent */ }
 
   // Proof, not assumption: the response says a tombstone exists because one was

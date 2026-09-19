@@ -178,8 +178,27 @@ export async function POST(request: NextRequest) {
   // Strips the leading "/" so path.join works correctly cross-platform.
   let referenceAudioBytes: Buffer;
   try {
-    const relativePath = referenceAsset.secureStorageUri.replace(/^\//, '');
-    const filePath = join(process.cwd(), 'public', relativePath);
+    // ── A live production defect, found and proven by measurement ───────────
+    //
+    //   This read `join(process.cwd(), 'public', relativePath)` — with no
+    //   UPLOADS_DIR at all. In production UPLOADS_DIR=/var/www/azma-uploads and
+    //   public/uploads holds only a stale remnant from before that variable
+    //   existed. Measured on the live server:
+    //
+    //     3 of 3 voice assets present in UPLOADS_DIR
+    //     1 of 3 present in public/uploads
+    //
+    //   So two of every three Creator voices could not be used as a cloning
+    //   reference at all, and the route answered 'source-unavailable' as though
+    //   the Creator's own file were at fault.
+    //
+    //   Resolved the way the ffmpeg encoder already resolves it — the one place
+    //   in the repository that had this right from the start.
+    const uploadsBase = process.env.UPLOADS_DIR ?? join(process.cwd(), 'public', 'uploads');
+    const uri = referenceAsset.secureStorageUri;
+    const filePath = uri.startsWith('/generated-assets/')
+      ? join(uploadsBase, 'generated-assets', uri.slice('/generated-assets/'.length))
+      : join(uploadsBase, uri.replace(/^\/uploads\//, ''));
     referenceAudioBytes = await readFile(filePath);
   } catch {
     return NextResponse.json(

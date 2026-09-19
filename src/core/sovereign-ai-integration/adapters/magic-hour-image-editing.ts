@@ -45,7 +45,10 @@
  *   declared sovereign image engine, and this is the one already declared.
  */
 
-const MAGIC_HOUR_BASE = process.env.MAGIC_HOUR_BASE_URL ?? 'https://api.magichour.ai';
+function engineBase(): string {
+  // Read at call time — see the note in vault-asset-upload-storage.ts.
+  return process.env.MAGIC_HOUR_BASE_URL ?? 'https://api.magichour.ai';
+}
 
 /** Extensions the provider accepts, as it stated them in its own refusal. */
 const ACCEPTED_EXTENSIONS = new Set([
@@ -98,7 +101,7 @@ async function uploadSource(bytes: Buffer, extension: string): Promise<string> {
     throw new ImageEditError('UNSUPPORTED_EXTENSION', `'${ext}' is not an image extension the engine reads`);
   }
 
-  const response = await fetch(`${MAGIC_HOUR_BASE}/v1/files/upload-urls`, {
+  const response = await fetch(`${engineBase()}/v1/files/upload-urls`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ items: [{ extension: ext, type: 'image' }] }),
@@ -146,7 +149,7 @@ export async function editImageViaProvider(
   const headers = authHeaders();
   const filePath = await uploadSource(sourceBytes, sourceExtension);
 
-  const submitted = await fetch(`${MAGIC_HOUR_BASE}/v1/ai-image-editor`, {
+  const submitted = await fetch(`${engineBase()}/v1/ai-image-editor`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -171,7 +174,7 @@ export async function editImageViaProvider(
   while (Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
 
-    const polled = await fetch(`${MAGIC_HOUR_BASE}/v1/image-projects/${job.id}`, { headers });
+    const polled = await fetch(`${engineBase()}/v1/image-projects/${job.id}`, { headers });
     if (!polled.ok) continue;
 
     const state = (await polled.json()) as JobResponse;

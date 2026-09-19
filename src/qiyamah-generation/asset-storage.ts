@@ -20,9 +20,12 @@ import { randomUUID } from 'crypto';
 
 // In production UPLOADS_DIR=/var/www/azma-uploads (Nginx-served, www-data accessible).
 // In development fallback: public/generated-assets (Next.js static, dev only).
-const GENERATED_ASSETS_DIR = process.env['UPLOADS_DIR']
-  ? join(process.env['UPLOADS_DIR'], 'generated-assets')
-  : join(process.cwd(), 'public', 'generated-assets');
+/** Read at call time — see the note in vault-asset-upload-storage.ts. */
+function generatedAssetsDir(): string {
+  return process.env['UPLOADS_DIR']
+    ? join(process.env['UPLOADS_DIR'], 'generated-assets')
+    : join(process.cwd(), 'public', 'generated-assets');
+}
 
 export interface PersistedAsset {
   readonly assetId: string;
@@ -43,8 +46,9 @@ export async function persistGeneratedImage(
   const ext = MIME_TO_EXT[mimeType] ?? 'png';
   const fileName = `${assetId}.${ext}`;
 
-  await mkdir(GENERATED_ASSETS_DIR, { recursive: true });
-  await writeFile(join(GENERATED_ASSETS_DIR, fileName), bytes);
+  const dir = generatedAssetsDir();
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, fileName), bytes);
 
   return {
     assetId,

@@ -23,7 +23,18 @@ import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 
-const UPLOADED_ASSETS_DIR = process.env.UPLOADS_DIR ?? join(process.cwd(), 'public', 'uploads');
+/**
+ * Read at CALL time, never frozen into a module constant.
+ *
+ * An environment variable captured at import time is a latent bug by
+ * construction: whatever sets it afterwards is ignored, and the module keeps
+ * the value it happened to see first. It cost eight failing tests in the image
+ * edit route, after the same mistake had already been found and fixed in db.ts.
+ * Four places in this repository held the pattern; this is one of them.
+ */
+function uploadedAssetsDir(): string {
+  return process.env.UPLOADS_DIR ?? join(process.cwd(), 'public', 'uploads');
+}
 
 /** Only a short, alphanumeric extension is honored — anything else (including path-traversal attempts hidden in a Creator-supplied filename) is dropped rather than trusted. */
 const SAFE_EXTENSION_PATTERN = /^\.[a-zA-Z0-9]{1,10}$/;
@@ -38,8 +49,9 @@ export async function persistUploadedAsset(bytes: Buffer, fileExtension: string)
   const safeExtension = SAFE_EXTENSION_PATTERN.test(fileExtension) ? fileExtension : '';
   const fileName = `${assetId}${safeExtension}`;
 
-  await mkdir(UPLOADED_ASSETS_DIR, { recursive: true });
-  await writeFile(join(UPLOADED_ASSETS_DIR, fileName), bytes);
+  const dir = uploadedAssetsDir();
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, fileName), bytes);
 
   return {
     assetId,

@@ -35,6 +35,27 @@ import { assertLegitimateSignalOrigin } from './signal-origin-registry';
 import { recordOrganState } from './state-registry';
 import type { ConstitutionalSignal, ConstitutionalSignalType, SignalListener } from './types';
 
+/**
+ * The Empire's own memory of what its organs reported.
+ *
+ * ─── WHY IT IS BOUNDED, AND WHEN THAT BECAME URGENT ─────────────────────────
+ *
+ *   This array grew without any ceiling, and `POST /api/sovereign/nervous-
+ *   system/circulate` fed it WITHOUT A SESSION CHECK. Found by hunting: an
+ *   unauthenticated visitor could push entries into a live production process
+ *   until it exhausted memory and PM2 restarted it — a denial of service
+ *   reachable by anyone who knew the path.
+ *
+ *   The route now requires a session. This ceiling is the second layer: even a
+ *   legitimate Creator, or a client stuck in a retry loop, cannot grow the
+ *   Empire's memory without limit. A nervous system that remembers everything
+ *   forever is not a nervous system; it is a leak.
+ *
+ *   The OLDEST signals are dropped, never the newest — the most recent state of
+ *   an organ is what any observer actually needs.
+ */
+const MAX_SIGNAL_LOG = 5_000;
+
 const signalLog: ConstitutionalSignal[] = [];
 
 const organListeners = new Map<string, Set<SignalListener>>();
@@ -68,6 +89,11 @@ export function emitSignal(
   };
 
   signalLog.push(signal);
+  // Drop the oldest rather than refusing the newest: a full log must never
+  // silence an organ that is reporting right now.
+  if (signalLog.length > MAX_SIGNAL_LOG) {
+    signalLog.splice(0, signalLog.length - MAX_SIGNAL_LOG);
+  }
   recordOrganState(signal);
 
   for (const listener of organListeners.get(signal.origin) ?? []) listener(signal);
