@@ -110,6 +110,23 @@ export function QiyamahChamberClient({
   // ── Delete confirmation ─────────────────────────────────────────────────────
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
+  // ── PHASE D CLOSURE — editing an asset the Creator already owns ──────────
+  //
+  // The capability existed at POST /api/vault/assets/[assetId]/edit and nothing
+  // in the Creator's experience could reach it. This is the entry, placed on
+  // the card where the Creator already sees the asset — no new page, no second
+  // engine, no second API. Article 3.1: editing inside an asset is Qiyamah's,
+  // and this is Qiyamah.
+  //
+  // `editState` is one of: null (not editing) | 'ready' | 'running' | 'failed'.
+  // Success is never shown from here — it is shown by the derived asset
+  // appearing in the gallery, which only happens after it is really saved.
+  const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
+  const [editInstruction, setEditInstruction] = useState('');
+  const [editState, setEditState] = useState<'ready' | 'running' | 'failed'>('ready');
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editedAssetId, setEditedAssetId] = useState<string | null>(null);
+
   // ── Upload ──────────────────────────────────────────────────────────────────
   const [isDragging,    setIsDragging]    = useState(false);
   const [isUploading,   setIsUploading]   = useState(false);
@@ -376,6 +393,62 @@ export function QiyamahChamberClient({
       </div>
     </div>
   );
+
+  /**
+   * Send an edit to the sovereign path and show only what actually happened.
+   *
+   * It does NOT construct an asset, a lineage or a storage path — the route
+   * does all of that through deriveAsset and depositAsset. This function's only
+   * jobs are to ask, to wait honestly, and to refresh the gallery so the
+   * Creator sees the real derived asset rather than a claim about it.
+   */
+  async function handleEditAsset(assetId: string) {
+    const instruction = editInstruction.trim();
+    if (instruction.length === 0) return;
+
+    setEditState('running');
+    setEditError(null);
+    setEditedAssetId(null);
+
+    try {
+      const res = await fetch(`/api/vault/assets/${assetId}/edit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instruction }),
+      });
+      const result = await res.json();
+
+      if (result.status !== 'succeeded') {
+        // The route already speaks Arabic and names no engine. Shown as it is.
+        setEditError(result.message ?? 'تعذّر تنفيذ التعديل.');
+        setEditState('failed');
+        return;
+      }
+
+      // The derived asset is real and saved. Re-read the Vault rather than
+      // inserting a local guess — what the Creator sees is what was stored.
+      const listed = await fetch('/api/vault/assets').then((r) => r.json());
+      if (listed.status === 'succeeded') {
+        const items: UploadedItem[] = listed.assets
+          .filter((a: { secureStorageUri?: string }) => Boolean(a.secureStorageUri))
+          .map((a: { assetId: string; secureStorageUri: string; capabilityTarget: string; createdAt: number }) => ({
+            assetId: a.assetId,
+            url: a.secureStorageUri,
+            capabilityTarget: a.capabilityTarget,
+            uploadedAt: a.createdAt,
+          }));
+        setUploadedItems(items);
+      }
+
+      setEditedAssetId(result.asset.assetId);
+      setEditState('ready');
+      setEditingAssetId(null);
+      setEditInstruction('');
+    } catch {
+      setEditError('تعذّر الاتصال. لم يُحفظ شيء.');
+      setEditState('failed');
+    }
+  }
 
   return (
     <main className="qiyamah-viewport">
@@ -1026,6 +1099,23 @@ export function QiyamahChamberClient({
                           ↓
                         </a>
                       )}
+                      {/* Offered only for images, because only images can be
+                          edited today. A control for a capability that does not
+                          exist is a promise the Empire cannot keep. */}
+                      {u.capabilityTarget === 'VISUAL' && (
+                        <button
+                          className="gallery-edit-btn"
+                          aria-label="تعديل هذه الصورة"
+                          onClick={() => {
+                            setEditingAssetId(u.assetId);
+                            setEditInstruction('');
+                            setEditState('ready');
+                            setEditError(null);
+                          }}
+                        >
+                          ✎
+                        </button>
+                      )}
                       <button
                         className="delete-btn"
                         aria-label="حذف هذا الأصل"
@@ -1034,6 +1124,59 @@ export function QiyamahChamberClient({
                         ✕
                       </button>
                     </div>
+                  )}
+
+                  {editingAssetId === u.assetId && (
+                    <div className="asset-edit-panel">
+                      <label className="asset-edit-label" htmlFor={`edit-${u.assetId}`}>
+                        ما الذي تريد تغييره في هذه الصورة؟
+                      </label>
+                      <textarea
+                        id={`edit-${u.assetId}`}
+                        className="asset-edit-input"
+                        value={editInstruction}
+                        onChange={(e) => setEditInstruction(e.target.value)}
+                        placeholder="مثال: غيّر الخلفية إلى رفوف مكتبة خشبية، وأبقِ الباقي كما هو."
+                        rows={3}
+                        maxLength={1000}
+                        disabled={editState === 'running'}
+                      />
+
+                      {editState === 'running' && (
+                        <p className="asset-edit-status" role="status">
+                          التعديل قيد التنفيذ… لا تغلق الصفحة.
+                        </p>
+                      )}
+
+                      {editState === 'failed' && editError && (
+                        <p className="asset-edit-error" role="alert">{editError}</p>
+                      )}
+
+                      <div className="asset-edit-actions">
+                        <button
+                          className="asset-edit-run"
+                          disabled={editState === 'running' || editInstruction.trim().length === 0}
+                          onClick={() => void handleEditAsset(u.assetId)}
+                        >
+                          {editState === 'running' ? 'جارٍ…' : 'نفّذ التعديل'}
+                        </button>
+                        <button
+                          className="asset-edit-cancel"
+                          disabled={editState === 'running'}
+                          onClick={() => { setEditingAssetId(null); setEditError(null); }}
+                        >
+                          إلغاء
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Said only after the derived asset is really in the Vault —
+                      the gallery above has already been re-read from it. */}
+                  {editedAssetId && editedAssetId === u.assetId && (
+                    <p className="asset-edit-saved" role="status">
+                      حُفظت النسخة الجديدة في خزائنك.
+                    </p>
                   )}
                 </div>
               </div>

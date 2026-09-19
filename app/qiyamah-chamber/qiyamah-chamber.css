@@ -1223,3 +1223,136 @@
   .media-type-btn { font-size: 11px; padding: 8px 8px; }
   .duration-btn   { font-size: 12px; }
 }
+
+/* ── PHASE D CLOSURE — editing an asset the Creator already owns ───────────
+ *
+ * Deliberately written in the idiom already on these cards: the same
+ * transparent action button, the same gold hover, the same muted 10px
+ * confirmation text. A new capability should look like it always belonged to
+ * the chamber, not like a panel bolted onto it.
+ */
+
+.gallery-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgba(168, 159, 145, 0.4);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+  line-height: 1;
+  font-family: inherit;
+}
+
+.gallery-edit-btn:hover {
+  color: var(--gold-dim);
+  background: rgba(212, 175, 55, 0.08);
+}
+
+.asset-edit-panel {
+  width: 100%;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(212, 175, 55, 0.12);
+}
+
+.asset-edit-label {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+
+.asset-edit-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: 4px;
+  color: var(--text-soft, #d8d2c6);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.7;
+  padding: 7px 9px;
+  resize: vertical;
+  direction: rtl;
+}
+
+.asset-edit-input:focus {
+  outline: none;
+  border-color: rgba(212, 175, 55, 0.42);
+}
+
+.asset-edit-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Running and failed are stated plainly. There is no "succeeded" style here:
+ * success is the derived asset appearing in the gallery, which only happens
+ * after it has really been saved. */
+.asset-edit-status {
+  font-size: 10px;
+  color: var(--gold-dim);
+  margin: 6px 0 0;
+}
+
+.asset-edit-error {
+  font-size: 10px;
+  color: var(--crimson-neon);
+  margin: 6px 0 0;
+  line-height: 1.6;
+}
+
+.asset-edit-saved {
+  font-size: 10px;
+  color: var(--gold-dim);
+  margin: 6px 0 0;
+  text-align: center;
+}
+
+.asset-edit-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.asset-edit-run,
+.asset-edit-cancel {
+  flex: 1;
+  font-family: inherit;
+  font-size: 10px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+
+.asset-edit-run {
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: var(--gold-dim);
+}
+
+.asset-edit-run:hover:not(:disabled) {
+  background: rgba(212, 175, 55, 0.18);
+}
+
+.asset-edit-run:disabled,
+.asset-edit-cancel:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.asset-edit-cancel {
+  background: transparent;
+  border: 1px solid rgba(168, 159, 145, 0.18);
+  color: var(--text-muted);
+}
+
+.asset-edit-cancel:hover:not(:disabled) {
+  border-color: rgba(168, 159, 145, 0.34);
+}
