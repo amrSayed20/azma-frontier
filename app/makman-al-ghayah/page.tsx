@@ -149,6 +149,21 @@ export default function MakmanAlGhayah() {
   // canvases (NARRATIVE/DIRECTORIAL produce DYNAMIC results with no opId).
   const [renderOperationId,   setRenderOperationId]   = useState<string | null>(null);
   const [renderPollingStatus, setRenderPollingStatus] = useState<'idle' | 'polling' | 'succeeded' | 'failed'>('idle');
+
+  // ── Publication of the finished film — Article 9 ───────────────────────────
+  //
+  // Phase E closed /renders/ behind an ownership gate: a finished film is the
+  // Creator's, and nobody else's, until they say otherwise. This is where they
+  // say otherwise. Without it the protection would be a wall — the same defect
+  // found in Phase D, where a constitutional rule had a condition the Creator
+  // had no way to satisfy.
+  //
+  // Publishing and withdrawing are offered together, always. A Creator handed a
+  // door they cannot shut has been handed a hazard.
+  const [shareState, setShareState] = useState<'idle' | 'working'>('idle');
+  const [shareUrl,   setShareUrl]   = useState<string | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
   const [renderVaultAssetId,  setRenderVaultAssetId]  = useState<string | null>(null);
 
   // ── Fulfillment + Gap + Investigation (per selected goal) ──────────
@@ -612,7 +627,73 @@ export default function MakmanAlGhayah() {
                   >
                     📥 عرض في القصر السيادي
                   </button>
+
+                  {renderOperationId && !shareUrl && (
+                    <button
+                      className="import-btn"
+                      disabled={shareState === 'working'}
+                      onClick={async () => {
+                        setShareState('working'); setShareError(null);
+                        try {
+                          const r = await fetch(`/api/renders/${encodeURIComponent(renderOperationId)}/publish`, { method: 'POST' });
+                          const d = await r.json();
+                          if (d.status === 'succeeded') setShareUrl(`${window.location.origin}${d.publicUrl}`);
+                          else setShareError(d.message ?? 'تعذّر النشر.');
+                        } catch { setShareError('تعذّر النشر.'); }
+                        setShareState('idle');
+                      }}
+                    >
+                      {shareState === 'working' ? '…' : '🔗 انشر برابط'}
+                    </button>
+                  )}
+
+                  {renderOperationId && shareUrl && (
+                    <button
+                      className="import-btn"
+                      disabled={shareState === 'working'}
+                      onClick={async () => {
+                        setShareState('working'); setShareError(null);
+                        try {
+                          const r = await fetch(`/api/renders/${encodeURIComponent(renderOperationId)}/publish`, { method: 'DELETE' });
+                          const d = await r.json();
+                          if (d.status === 'succeeded') { setShareUrl(null); setShareCopied(false); }
+                          else setShareError(d.message ?? 'تعذّر السحب.');
+                        } catch { setShareError('تعذّر السحب.'); }
+                        setShareState('idle');
+                      }}
+                    >
+                      🚫 اسحب النشر
+                    </button>
+                  )}
                 </div>
+
+                {shareUrl && (
+                  <div className="cinematic-share-panel">
+                    <p className="makman-capability-hint">
+                      من يحمل هذا الرابط يرى عملك. ما عداه لا يراه أحد — ولك سحبه متى شئت.
+                    </p>
+                    <div className="action-row">
+                      <input className="cinematic-share-link" readOnly value={shareUrl} aria-label="رابط النشر" />
+                      <button
+                        className="import-btn"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(shareUrl);
+                            setShareCopied(true);
+                          } catch {
+                            // Clipboard access can be refused; the link is on
+                            // screen and selectable, so nothing is lost.
+                            setShareCopied(false);
+                          }
+                        }}
+                      >
+                        {shareCopied ? '✓ نُسخ' : '⧉ انسخ'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {shareError && <p className="project-status narrative-integrity-violation">{shareError}</p>}
               </div>
             )}
 

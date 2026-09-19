@@ -10,9 +10,10 @@
  * Encoding is asynchronous — spawnEncoding() returns immediately.
  * Completion is polled via isEncodingComplete() / getEncodingError().
  *
- * Output paths:
- *   public/renders/<operationId>.mp4   — final MP4
- *   public/renders/<operationId>.srt   — temporary SRT (when subtitles present)
+ * Output paths (see rendersDir() — NOT under public/, which would let Next.js's
+ * static handler serve finished films past the authorisation gate):
+ *   $UPLOADS_DIR/renders/<operationId>.mp4   — final MP4
+ *   $UPLOADS_DIR/renders/<operationId>.srt   — temporary SRT (when subtitles present)
  */
 
 import { spawn } from 'node:child_process';
@@ -36,7 +37,40 @@ const jobs = new Map<string, JobState>();
 // 2. PATH & MEDIA-TYPE HELPERS
 // ==========================================
 
-const RENDERS_DIR = join(process.cwd(), 'public', 'renders');
+/**
+ * Where finished films are written.
+ *
+ * ─── WHY THIS IS NO LONGER `public/renders` ─────────────────────────────────
+ *
+ *   Anything under `public/` is served by Next.js's own static handler, which
+ *   runs BEFORE any route. Phase E built an authorisation gate at
+ *   `app/renders/[...path]/route.ts`, and with the films still in `public/` the
+ *   gate was unreachable code. MEASURED, against a planted file:
+ *
+ *       GET /renders/op_shadowtest_probe.mp4  →  200 · 33 bytes · raw file
+ *
+ *   The route never ran. Closing this at nginx alone would have proxied the
+ *   request to Node, and Node would have handed the film over exactly as
+ *   before — a vulnerability reported as closed while fully open. The one
+ *   thing that caught it was planting a file and asking for it.
+ *
+ *   So films now live beside every other protected byte in the Empire, in
+ *   UPLOADS_DIR, which `public/` cannot shadow because Next.js does not serve
+ *   it. This also means a film outlives a deployment instead of sitting inside
+ *   the release tree.
+ *
+ * ─── AND WHY IT IS A FUNCTION ───────────────────────────────────────────────
+ *
+ *   Read at CALL time, never frozen at import. A module-level `const` reading
+ *   an environment variable has now caused three separate production defects in
+ *   this repository — db.ts, the image-edit route, and clone-voice. The lesson
+ *   is not "remember"; it is that the const form is a latent bug by
+ *   construction, so the value is never available in that form.
+ */
+function rendersDir(): string {
+  const base = process.env.UPLOADS_DIR;
+  return base ? join(base, 'renders') : join(process.cwd(), 'public', 'renders');
+}
 
 /** XLII — output dimensions per profile.  Default = landscape when profile is absent. */
 const PROFILE_DIMENSIONS: Record<string, { w: number; h: number }> = {
@@ -97,7 +131,7 @@ function isAudioUri(uri: string): boolean {
 }
 
 export function getOutputPath(operationId: string): string {
-  return join(RENDERS_DIR, `${operationId}.mp4`);
+  return join(rendersDir(), `${operationId}.mp4`);
 }
 
 // ==========================================
@@ -122,7 +156,7 @@ export function spawnEncoding(
   graph: CompiledAssemblyGraph,
   resolvedVoicePaths: ReadonlyMap<string, string> = new Map(),
 ): void {
-  mkdirSync(RENDERS_DIR, { recursive: true });
+  mkdirSync(rendersDir(), { recursive: true });
 
   // MAG-LF-001C fix: buildFfmpegArgs() throws synchronously on graph validation
   // failure (missing secureStorageUri, asset not on disk, no active image nodes,
@@ -712,7 +746,7 @@ function buildAudioNodeFilter(
 // ==========================================
 
 function writeSrtFile(operationId: string, graph: CompiledAssemblyGraph): string {
-  const srtPath = join(RENDERS_DIR, `${operationId}.srt`);
+  const srtPath = join(rendersDir(), `${operationId}.srt`);
   const cues = graph.subtitlePlan.absoluteCues;
 
   const lines: string[] = [];

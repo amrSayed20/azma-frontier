@@ -365,6 +365,44 @@
 }
 :root[data-theme="light"] .cinematic-final-video { border-color: rgba(180, 140, 0, 0.5); }
 
+/* ── PHASE E — Publication of the finished film (Article 9) ──────────────
+   The film is the Creator's alone until they open this door, and this panel
+   only ever appears once they have. It keeps the chamber's own idiom — gold
+   on dark, the same dim border as the player above it — because publishing is
+   part of finishing a work, not a separate administrative act. */
+
+.cinematic-share-panel {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--neon-gold-dim);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cinematic-share-link {
+  flex: 1 1 auto;
+  min-width: 0;            /* so a long token shrinks instead of stretching the row */
+  padding: 6px 10px;
+  border: 1px solid var(--neon-gold-dim);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--neon-gold-bright);
+  font-size: 0.78rem;
+  font-family: inherit;
+  direction: ltr;          /* a URL is left-to-right inside a right-to-left page */
+  text-align: left;
+  overflow-x: auto;
+}
+
+:root[data-theme="light"] .cinematic-share-panel { border-color: rgba(180, 140, 0, 0.5); }
+:root[data-theme="light"] .cinematic-share-link {
+  border-color: rgba(180, 140, 0, 0.5);
+  background: rgba(0, 0, 0, 0.04);
+  color: #7a5c00;
+}
+
 .makman-channel-row {
   display: flex;
   gap: 12px;
