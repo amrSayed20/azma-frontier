@@ -126,6 +126,9 @@ export function QiyamahChamberClient({
   const [editState, setEditState] = useState<'ready' | 'running' | 'failed'>('ready');
   const [editError, setEditError] = useState<string | null>(null);
   const [editedAssetId, setEditedAssetId] = useState<string | null>(null);
+  // Set only when the route refuses with 'requires-adoption' — Article 5.5.
+  // The Creator is then offered the act that lifts it, rather than a dead end.
+  const [needsAdoption, setNeedsAdoption] = useState(false);
 
   // ── Upload ──────────────────────────────────────────────────────────────────
   const [isDragging,    setIsDragging]    = useState(false);
@@ -395,6 +398,35 @@ export function QiyamahChamberClient({
   );
 
   /**
+   * The Creator takes responsibility for an asset whose history predates the
+   * sovereign model — Constitution Article 5.5.
+   *
+   * It invents no past. It records that the owner accepts building on it from
+   * here, which is the one thing that can honestly be said about an asset
+   * whose origin nobody can prove.
+   */
+  async function handleAdoptAsset(assetId: string) {
+    setEditState('running');
+    setEditError(null);
+    try {
+      const res = await fetch(`/api/vault/assets/${assetId}/adopt`, { method: 'POST' });
+      const result = await res.json();
+      if (result.status !== 'succeeded') {
+        setEditError(result.message ?? 'تعذّر الاعتماد.');
+        setEditState('failed');
+        return;
+      }
+      // Adopted — the edit the Creator already asked for may now proceed.
+      setNeedsAdoption(false);
+      setEditState('ready');
+      setEditError(null);
+    } catch {
+      setEditError('تعذّر الاتصال. لم يتغيّر شيء.');
+      setEditState('failed');
+    }
+  }
+
+  /**
    * Send an edit to the sovereign path and show only what actually happened.
    *
    * It does NOT construct an asset, a lineage or a storage path — the route
@@ -409,6 +441,7 @@ export function QiyamahChamberClient({
     setEditState('running');
     setEditError(null);
     setEditedAssetId(null);
+    setNeedsAdoption(false);
 
     try {
       const res = await fetch(`/api/vault/assets/${assetId}/edit`, {
@@ -421,6 +454,9 @@ export function QiyamahChamberClient({
       if (result.status !== 'succeeded') {
         // The route already speaks Arabic and names no engine. Shown as it is.
         setEditError(result.message ?? 'تعذّر تنفيذ التعديل.');
+        // A legacy asset is not a failure — it is a consent the owner has not
+        // yet given. Offer the act instead of leaving them at a wall.
+        setNeedsAdoption(result.reason === 'requires-adoption');
         setEditState('failed');
         return;
       }
@@ -1150,6 +1186,15 @@ export function QiyamahChamberClient({
 
                       {editState === 'failed' && editError && (
                         <p className="asset-edit-error" role="alert">{editError}</p>
+                      )}
+
+                      {needsAdoption && (
+                        <button
+                          className="asset-adopt-btn"
+                          onClick={() => void handleAdoptAsset(u.assetId)}
+                        >
+                          اعتمد هذا الأصل
+                        </button>
                       )}
 
                       <div className="asset-edit-actions">

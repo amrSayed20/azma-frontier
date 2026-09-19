@@ -1356,3 +1356,24 @@
 .asset-edit-cancel:hover:not(:disabled) {
   border-color: rgba(168, 159, 145, 0.34);
 }
+
+/* Offered only where the refusal appears — Article 5.5. A protection the
+ * Creator cannot lift is a wall, not a protection. */
+.asset-adopt-btn {
+  width: 100%;
+  margin-top: 7px;
+  font-family: inherit;
+  font-size: 10px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  background: rgba(212, 175, 55, 0.08);
+  border: 1px dashed rgba(212, 175, 55, 0.35);
+  color: var(--gold-dim);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.asset-adopt-btn:hover {
+  background: rgba(212, 175, 55, 0.16);
+  border-color: rgba(212, 175, 55, 0.55);
+}
