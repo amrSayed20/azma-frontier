@@ -64,6 +64,16 @@ export interface EditedImageResult {
 
 export type ImageEditRejection =
   | 'NO_CREDENTIAL'
+  /**
+   * The engine accepted the request and refused to bill it — HTTP 402.
+   *
+   * Separated from SUBMIT_FAILED because it is not a failure of the request,
+   * the asset, or the Creator: it is the Empire's own account. Reporting it as
+   * a generic engine error told the Creator "تعذّر تنفيذ التعديل" while the
+   * server knew exactly why, which is a lie by vagueness. Found when the live
+   * proof hit it.
+   */
+  | 'NO_CREDIT'
   | 'UNSUPPORTED_EXTENSION'
   | 'UPLOAD_FAILED'
   | 'SUBMIT_FAILED'
@@ -159,6 +169,9 @@ export async function editImageViaProvider(
     }),
   });
   if (!submitted.ok) {
+    if (submitted.status === 402) {
+      throw new ImageEditError('NO_CREDIT', 'the image engine has no remaining credit');
+    }
     throw new ImageEditError('SUBMIT_FAILED', `editor returned HTTP ${submitted.status}`);
   }
 

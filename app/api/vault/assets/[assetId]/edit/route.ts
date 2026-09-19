@@ -202,14 +202,29 @@ export async function POST(
   } catch (err) {
     // The engine's own words stay server-side; they name a provider.
     console.error('[ImageEdit] engine failed:', err);
-    const timedOut = err instanceof ImageEditError && err.rejection === 'TIMED_OUT';
+    // Each cause is told apart, because a Creator who is told "it failed" when
+    // the truth is "the Empire is out of credit" will retry forever and blame
+    // their own image. The engine is never named in any of them.
+    const rejection = err instanceof ImageEditError ? err.rejection : null;
+    if (rejection === 'NO_CREDIT') {
+      return NextResponse.json(
+        {
+          status: 'failed',
+          reason: 'capability-unavailable',
+          message: 'تعديل الصور متوقّفٌ مؤقّتاً لنفاد رصيد الإمبراطوريّة. لا شأن لصورتك بذلك.',
+        },
+        { status: 503 },
+      );
+    }
+    if (rejection === 'TIMED_OUT') {
+      return NextResponse.json(
+        { status: 'failed', reason: 'timed-out', message: 'استغرق التعديل وقتاً طويلاً. أعد المحاولة.' },
+        { status: 504 },
+      );
+    }
     return NextResponse.json(
-      {
-        status: 'failed',
-        reason: timedOut ? 'timed-out' : 'edit-failed',
-        message: timedOut ? 'استغرق التعديل وقتاً طويلاً. أعد المحاولة.' : 'تعذّر تنفيذ التعديل. لم يُحفظ شيء.',
-      },
-      { status: timedOut ? 504 : 502 },
+      { status: 'failed', reason: 'edit-failed', message: 'تعذّر تنفيذ التعديل. لم يُحفظ شيء.' },
+      { status: 502 },
     );
   }
 
