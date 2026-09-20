@@ -64,11 +64,33 @@ const CIRCULATION_ENDPOINT = '/api/sovereign/nervous-system/circulate';
 let crossRuntimeRefused = false;
 
 /**
+ * Whether a circulation request is in the air with its answer still unknown.
+ *
+ * ─── WHY A LATCH ALONE WAS NOT ENOUGH ───────────────────────────────────────
+ *
+ *   The first repair set `crossRuntimeRefused` inside the response handler,
+ *   and MEASURED IN THE BROWSER AFTER DEPLOYING IT, the console still showed:
+ *
+ *       401 .../circulate
+ *       401 .../circulate
+ *
+ *   Both requests leave before either answer arrives, so both pass a flag that
+ *   cannot possibly be set yet. The unit test passed only because it awaited
+ *   between the two calls — production does not await, and the test was once
+ *   again describing my assumption instead of the deployment.
+ *
+ *   So the question this runtime must answer is not "was I refused?" but "do I
+ *   already know?". Until the first answer lands, nobody else flies.
+ */
+let answerPending = false;
+
+/**
  * Test seam. Module state persists across a browser's page life by design,
  * which is exactly what makes it useless to a test that runs twice.
  */
 export function resetCirculationRefusalForTests(): void {
   crossRuntimeRefused = false;
+  answerPending = false;
 }
 
 /**
@@ -105,7 +127,16 @@ export function circulateFromClient(
 ): ConstitutionalSignal {
   const localSignal = emitSignal(draft);
 
-  if (typeof window !== 'undefined' && typeof fetch === 'function' && !crossRuntimeRefused) {
+  if (
+    typeof window !== 'undefined'
+    && typeof fetch === 'function'
+    && !crossRuntimeRefused
+    // Nobody flies while the first answer is still in the air. This is what
+    // makes two signals emitted in the same tick produce ONE request instead
+    // of two 401s — the defect the latch alone did not fix.
+    && !answerPending
+  ) {
+    answerPending = true;
     void fetch(CIRCULATION_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -122,6 +153,9 @@ export function circulateFromClient(
       // Circulation never blocks and never surfaces a failure to the
       // caller — a lost cross-runtime hop is a Health-flow concern for a
       // future observer, never a thrown error here.
+    }).finally(() => {
+      // Whatever the answer was, it is no longer unknown.
+      answerPending = false;
     });
   }
 

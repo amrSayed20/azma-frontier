@@ -55,13 +55,51 @@ beforeEach(() => {
   fetchMock.mockReset();
 });
 
+describe('two signals in the same tick produce ONE request', () => {
+  /**
+   * THE TEST THAT WAS MISSING, AND THE REASON THE FIRST REPAIR SHIPPED BROKEN.
+   *
+   * The first version set the latch inside the response handler and was tested
+   * with an `await` between the two calls. It passed. Deployed, the browser
+   * still showed:
+   *
+   *     401 .../circulate
+   *     401 .../circulate
+   *
+   * Both requests leave before either answer arrives. Production does not
+   * await between signals, so the test was describing my assumption rather
+   * than the deployment — the same mistake, twice, in the same week.
+   *
+   * No await here. This is how DirectorStage actually emits.
+   */
+  it('does not fly twice while the first answer is unknown', () => {
+    let resolveIt: (v: unknown) => void = () => {};
+    fetchMock.mockReturnValue(new Promise((r) => { resolveIt = r; }));
+
+    circulateFromClient(draft('one'));
+    circulateFromClient(draft('two'));
+    circulateFromClient(draft('three'));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    resolveIt({ status: 200 });
+  });
+
+  it('flies again once the answer has landed and was acceptance', async () => {
+    fetchMock.mockResolvedValue({ status: 200 });
+    circulateFromClient(draft('a'));
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    circulateFromClient(draft('b'));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('a refusal is believed once', () => {
   it('stops circulating after the server answers 401', async () => {
     fetchMock.mockResolvedValue({ status: 401 });
 
     circulateFromClient(draft('first'));
     // The latch is set by the fetch's own resolution, so let it settle.
-    await Promise.resolve(); await Promise.resolve();
+    for (let i = 0; i < 4; i += 1) await Promise.resolve();
 
     circulateFromClient(draft('second'));
     circulateFromClient(draft('third'));
@@ -72,17 +110,18 @@ describe('a refusal is believed once', () => {
   it('stops on 403 as well', async () => {
     fetchMock.mockResolvedValue({ status: 403 });
     circulateFromClient(draft('a'));
-    await Promise.resolve(); await Promise.resolve();
+    for (let i = 0; i < 4; i += 1) await Promise.resolve();
     circulateFromClient(draft('b'));
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('keeps circulating for a Creator the server accepts', async () => {
     fetchMock.mockResolvedValue({ status: 200 });
+    const settle = async () => { for (let i = 0; i < 4; i += 1) await Promise.resolve(); };
     circulateFromClient(draft('one'));
-    await Promise.resolve(); await Promise.resolve();
+    await settle();
     circulateFromClient(draft('two'));
-    await Promise.resolve(); await Promise.resolve();
+    await settle();
     circulateFromClient(draft('three'));
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
@@ -92,7 +131,7 @@ describe('a refusal is believed once', () => {
     // silence a signed-in Creator's signals for the rest of the page's life.
     fetchMock.mockRejectedValue(new Error('offline'));
     circulateFromClient(draft('x'));
-    await Promise.resolve(); await Promise.resolve();
+    for (let i = 0; i < 4; i += 1) await Promise.resolve();
     circulateFromClient(draft('y'));
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -104,7 +143,7 @@ describe('local emission is untouched', () => {
 
     const before = getSignalLog().length;
     const signal = circulateFromClient(draft('seen locally'));
-    await Promise.resolve(); await Promise.resolve();
+    for (let i = 0; i < 4; i += 1) await Promise.resolve();
     circulateFromClient(draft('also seen locally'));
 
     expect(signal.purpose).toBe('seen locally');
@@ -114,7 +153,7 @@ describe('local emission is untouched', () => {
   it('returns a real signal to its caller, refused or not', async () => {
     fetchMock.mockResolvedValue({ status: 401 });
     const first = circulateFromClient(draft('p'));
-    await Promise.resolve(); await Promise.resolve();
+    for (let i = 0; i < 4; i += 1) await Promise.resolve();
     const second = circulateFromClient(draft('q'));
 
     for (const s of [first, second]) {
