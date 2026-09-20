@@ -413,8 +413,17 @@ export default function SovereignVaultPalace() {
   useEffect(() => {
     fetch('/api/auth/me')
       .then((r) => r.json())
-      .then((data: { authenticated?: boolean }) => { if (!data.authenticated) goTo('/creator-access'); })
-      .catch(() => goTo('/creator-access'));
+      // '/creator-access' — a route that has never existed. MEASURED on
+      // production: https://azmaos.com/creator-access -> 404. Every visitor who
+      // opened this chamber without a session was sent to «هذا المسار غير موجود
+      // داخل الإمبراطورية» — stranded at the door by the guard meant to direct
+      // them. Found by sweeping the journey adversarially rather than by any
+      // test, because a guard that redirects somewhere wrong still "guards".
+      //
+      // '/signup' is the door: it carries the Google gate, and links to /login
+      // for an account made before it.
+      .then((data: { authenticated?: boolean }) => { if (!data.authenticated) goTo('/signup'); })
+      .catch(() => goTo('/signup'));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
