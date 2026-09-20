@@ -3461,16 +3461,7 @@ export default function RasAmrChamber() {
 
   return (
     <RasAmrExperience>
-    <main className={`ras-amr-viewport ${injectionFlash ? 'neon-flash-active' : ''}`}>
-
-      {/* Neon atmosphere — fixed behind all content */}
-      <div className="neon-layer">
-        <div className="cyber-grid" />
-        <div className="neon-pulse-glow np-left" />
-        <div className="neon-pulse-glow np-right" />
-      </div>
-
-      {/* PACKAGE XXXVI — INTENT GATE: shown before workspace when no prior session */}
+      {/* PACKAGE XXXVI — INTENT GATE: outside viewport so z-index:200 is in reveal SC */}
       {creationPhase === 'intent' && (
         <div className="ras-intent-gate">
           <div className="ras-intent-gate-inner">
@@ -3602,61 +3593,7 @@ export default function RasAmrChamber() {
         </div>
       )}
 
-      {/* STICKY HEADER — Phase B */}
-      <header className="ras-header" style={{ display: (creationPhase === 'intent' || creationPhase === 'template-preview') ? 'none' : undefined }}>
-        <button className="ras-exit-btn" onClick={() => {
-          try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'ras-amr', constitutionalAct: 'direction' })); } catch { /* ignore */ }
-          goTo('/imperial-foyer');
-        }}>
-          ⮜ قلب الإمبراطورية
-        </button>
-        {/* AMENDMENT — creator navigation: change-start + new-scene */}
-        <div className="ras-nav-actions">
-          <button className="ras-nav-btn" onClick={handleChangeIntent} title="العودة إلى اختيار البداية — يبقى مشهدك محفوظاً">
-            تغيير البداية
-          </button>
-          <button className="ras-nav-btn ras-nav-new-scene" onClick={() => void handleNewScene()} title="بدء مشهد جديد — يُحفظ المشهد الحالي تلقائياً">
-            🎬 مشهد جديد
-          </button>
-        </div>
-        <span className="ras-header-name">رأس الأمر</span>
-        <div className="ras-mode-toggle" role="group" aria-label="وضع التوجيه">
-          <button
-            className={`ras-mode-btn ${directingMode === 'manual' ? 'ras-mode-active' : ''}`}
-            onClick={() => setDirectingMode('manual')}
-            aria-pressed={directingMode === 'manual'}
-          >يدوي</button>
-          <button
-            className={`ras-mode-btn ${directingMode === 'smart' ? 'ras-mode-active' : ''}`}
-            onClick={() => setDirectingMode('smart')}
-            aria-pressed={directingMode === 'smart'}
-          >آلي</button>
-        </div>
-        {selectedNodeId && sessionCanvas && (() => {
-          const _badgeNode = sessionCanvas.tracks.flatMap(t => t.nodes).find(n => n.nodeId === selectedNodeId);
-          const _badgeAsset = _badgeNode ? vaultAssets.find(a => a.assetId === _badgeNode.assetId) : null;
-          const _badgeLabel = _badgeAsset
-            ? ((_badgeAsset.metadata?.voiceDisplayName ?? _badgeAsset.metadata?.generationPrompt ?? '') as string).slice(0, 22) || typeLabelForCapability(_badgeAsset.capabilityTarget)
-            : typeLabelForCapability(_badgeNode?.capabilityOrigin ?? '');
-          return <span className="ras-selected-node-badge" title="الطبقة المحددة حالياً">✦ {_badgeLabel}</span>;
-        })()}
-        <div className="ras-header-status">
-          <span className={`strip-pulse${isRendering ? ' strip-pulse-active' : ''}`} aria-hidden="true" />
-          <span className="ras-header-render-status">
-            {isRendering ? renderStatus : (compiledGraph && compiledForAssetId === activeAsset?.id ? '✓ مُجمَّع' : '◉ جاهز')}
-          </span>
-        </div>
-        <button
-          className={`ras-render-btn ${isRendering ? 'rendering' : ''}`}
-          onClick={triggerMasterRender}
-          disabled={isRendering || !canCompile}
-          title={!canCompile ? 'استدعِ أصلاً حقيقياً من الخزانة السيادية أولاً' : undefined}
-        >
-          {isRendering ? '⏳ تجميع…' : '🎬 تجميع المشهد'}
-        </button>
-      </header>
-
-      {/* TEMPLATE PREVIEW SCREEN — intermediate step between intent gate and workspace.
+      {/* TEMPLATE PREVIEW SCREEN — outside viewport so z-index:200 is in reveal SC.
           Creator sees the production body before committing. Section 3-4 of directive. */}
       {creationPhase === 'template-preview' && selectedTemplate && (
         <div className="ras-template-preview-gate">
@@ -3842,6 +3779,72 @@ export default function RasAmrChamber() {
           </div>
         </div>
       )}
+
+    <main className={`ras-amr-viewport ${injectionFlash ? 'neon-flash-active' : ''}`}>
+
+      {/* Neon atmosphere — fixed behind all content */}
+      <div className="neon-layer">
+        <div className="cyber-grid" />
+        <div className="neon-pulse-glow np-left" />
+        <div className="neon-pulse-glow np-right" />
+      </div>
+
+
+      {/* STICKY HEADER — Phase B */}
+      <header className="ras-header" style={{ display: (creationPhase === 'intent' || creationPhase === 'template-preview') ? 'none' : undefined }}>
+        <button className="ras-exit-btn" onClick={() => {
+          try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'ras-amr', constitutionalAct: 'direction' })); } catch { /* ignore */ }
+          goTo('/imperial-foyer');
+        }}>
+          ⮜ قلب الإمبراطورية
+        </button>
+        {/* AMENDMENT — creator navigation: change-start + new-scene */}
+        <div className="ras-nav-actions">
+          <button className="ras-nav-btn" onClick={handleChangeIntent} title="العودة إلى اختيار البداية — يبقى مشهدك محفوظاً">
+            تغيير البداية
+          </button>
+          <button className="ras-nav-btn ras-nav-new-scene" onClick={() => void handleNewScene()} title="بدء مشهد جديد — يُحفظ المشهد الحالي تلقائياً">
+            🎬 مشهد جديد
+          </button>
+        </div>
+        <span className="ras-header-name">رأس الأمر</span>
+        <div className="ras-mode-toggle" role="group" aria-label="وضع التوجيه">
+          <button
+            className={`ras-mode-btn ${directingMode === 'manual' ? 'ras-mode-active' : ''}`}
+            onClick={() => setDirectingMode('manual')}
+            aria-pressed={directingMode === 'manual'}
+          >يدوي</button>
+          <button
+            className={`ras-mode-btn ${directingMode === 'smart' ? 'ras-mode-active' : ''}`}
+            onClick={() => setDirectingMode('smart')}
+            aria-pressed={directingMode === 'smart'}
+          >آلي</button>
+        </div>
+        {selectedNodeId && sessionCanvas && (() => {
+          const _badgeNode = sessionCanvas.tracks.flatMap(t => t.nodes).find(n => n.nodeId === selectedNodeId);
+          const _badgeAsset = _badgeNode ? vaultAssets.find(a => a.assetId === _badgeNode.assetId) : null;
+          const _badgeLabel = _badgeAsset
+            ? ((_badgeAsset.metadata?.voiceDisplayName ?? _badgeAsset.metadata?.generationPrompt ?? '') as string).slice(0, 22) || typeLabelForCapability(_badgeAsset.capabilityTarget)
+            : typeLabelForCapability(_badgeNode?.capabilityOrigin ?? '');
+          return <span className="ras-selected-node-badge" title="الطبقة المحددة حالياً">✦ {_badgeLabel}</span>;
+        })()}
+        <div className="ras-header-status">
+          <span className={`strip-pulse${isRendering ? ' strip-pulse-active' : ''}`} aria-hidden="true" />
+          <span className="ras-header-render-status">
+            {isRendering ? renderStatus : (compiledGraph && compiledForAssetId === activeAsset?.id ? '✓ مُجمَّع' : '◉ جاهز')}
+          </span>
+        </div>
+        <button
+          className={`ras-render-btn ${isRendering ? 'rendering' : ''}`}
+          onClick={triggerMasterRender}
+          disabled={isRendering || !canCompile}
+          title={!canCompile ? 'استدعِ أصلاً حقيقياً من الخزانة السيادية أولاً' : undefined}
+        >
+          {isRendering ? '⏳ تجميع…' : '🎬 تجميع المشهد'}
+        </button>
+      </header>
+
+      {/* template-preview-gate rendered outside viewport above */}
 
       {/* TEMPLATE BANNER — workspace only */}
       {selectedTemplate && creationPhase === 'workspace' && (

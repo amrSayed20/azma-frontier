@@ -49,6 +49,17 @@
   border: 1px solid rgba(var(--azma-gold-rgb), 0.35);
   box-shadow: var(--azma-shadow-glow-soft);
   opacity: 0;
+  /* Prevent companion from intercepting clicks on the intent gate cards */
+  pointer-events: none;
+}
+
+/* Restore interactivity only to the companion's own interactive children */
+.ras-amr-companion .companion-mode-cluster,
+.ras-amr-companion .companion-mode-btn,
+.ras-amr-companion .companion-voice-zone,
+.ras-amr-companion .voice-listen-btn,
+.ras-amr-companion .voice-listen-btn:disabled {
+  pointer-events: auto;
 }
 
 @media (prefers-reduced-motion: no-preference) {
