@@ -93,24 +93,72 @@ interface SovereignTreasure {
 
 // ── Palace Storage ────────────────────────────────────────────────────────
 
-function readPalace(): Record<string, SovereignTreasure[]> {
+/**
+ * ─── WHY THIS STORE IS NAMED AFTER ITS OWNER ────────────────────────────────
+ *
+ *   REPORTED BY THE FOUNDER, ON A BRAND-NEW ACCOUNT'S FIRST SIGN-IN:
+ *   «وجدت داخل الخزانه اصلان لا ينتميان الى هذا الحساب».
+ *
+ *   The key was `azma.palace.treasures`, bucketed by vaultId and by NOTHING
+ *   ELSE. So whatever any Creator had carried through the Hujjah transfer
+ *   ceremony on that device stayed in the browser, and `mergeIntoVaultBuckets`
+ *   showed it to whoever signed in next.
+ *
+ *   The server was never wrong: /api/vault/assets returned 0 assets for the new
+ *   account, and vault_assets is correctly partitioned — measured, 44 and 8 to
+ *   the two older accounts, 0 to both Google accounts. The leak was entirely on
+ *   the device, which is why no server test could have found it and why it
+ *   looked to the Creator exactly like the Empire handing them someone else's
+ *   work.
+ *
+ *   The key now carries the creator id. Two consequences, both deliberate:
+ *   a Creator sees only their own ceremony remnants, and — because the id is
+ *   unknown until the server says who this is — an unidentified visitor reads
+ *   NOTHING rather than inheriting whatever the last person left.
+ */
+const PALACE_KEY_PREFIX = 'azma.palace.treasures';
+
+function palaceKey(creatorId: string | null): string | null {
+  return creatorId ? `${PALACE_KEY_PREFIX}.${creatorId}` : null;
+}
+
+function readPalace(creatorId: string | null): Record<string, SovereignTreasure[]> {
   if (typeof window === 'undefined') return {};
+  const key = palaceKey(creatorId);
+  // No identity, no reading. An empty Palace is the honest answer while the
+  // Empire is still establishing who is at the door.
+  if (!key) return {};
   try {
-    const raw = localStorage.getItem('azma.palace.treasures');
+    const raw = localStorage.getItem(key);
     return raw ? (JSON.parse(raw) as Record<string, SovereignTreasure[]>) : {};
   } catch { return {}; }
 }
 
-function writePalace(data: Record<string, SovereignTreasure[]>) {
+function writePalace(creatorId: string | null, data: Record<string, SovereignTreasure[]>) {
   if (typeof window === 'undefined') return;
-  try { localStorage.setItem('azma.palace.treasures', JSON.stringify(data)); } catch { /* ignore */ }
+  const key = palaceKey(creatorId);
+  if (!key) return;
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch { /* ignore */ }
 }
 
-function depositToVault(treasure: SovereignTreasure) {
-  const data = readPalace();
+/**
+ * Remove the un-owned store this defect was written into.
+ *
+ * Left in place it would keep showing one Creator's ceremony to the next
+ * person on the device — and unlike a server row, nobody can reach a stranger's
+ * browser to clean it. It is cleared the first time any Creator opens the
+ * Palace after this fix ships.
+ */
+function purgeUnownedPalace() {
+  if (typeof window === 'undefined') return;
+  try { localStorage.removeItem(PALACE_KEY_PREFIX); } catch { /* ignore */ }
+}
+
+function depositToVault(creatorId: string | null, treasure: SovereignTreasure) {
+  const data = readPalace(creatorId);
   const existing = data[treasure.vaultId] ?? [];
   data[treasure.vaultId] = [treasure, ...existing.filter((t) => t.id !== treasure.id)];
-  writePalace(data);
+  writePalace(creatorId, data);
 }
 
 // ── INTEGRATION PACKAGE II — The Real Sovereign Vault ────────────────────
@@ -328,6 +376,11 @@ export default function SovereignVaultPalace() {
 
   // Palace state
   const [treasures, setTreasures]               = useState<Record<string, SovereignTreasure[]>>({});
+  /**
+   * Who the server says is here. Null until it answers, and null is the state
+   * in which the Palace reads nothing from the device — see readPalace.
+   */
+  const [creatorId, setCreatorId]               = useState<string | null>(null);
   const [activeVault, setActiveVault]           = useState<string | null>(null);
   const [selectedTreasure, setSelectedTreasure] = useState<SovereignTreasure | null>(null);
   const [incomingTreasure, setIncomingTreasure] = useState<SovereignTreasure | null>(null);
@@ -410,6 +463,16 @@ export default function SovereignVaultPalace() {
       })
       .catch(() => { /* the invitation simply stays hidden */ });
 
+    // WHO IS AT THE DOOR. Asked of the server, never assumed — and the local
+    // Palace stays empty until it answers, so a new Creator never inherits the
+    // previous one's ceremony remnants for even a single frame.
+    purgeUnownedPalace();
+    const identityPromise = fetch('/api/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { authenticated?: boolean; creatorId?: string } | null) =>
+        (d?.authenticated && typeof d.creatorId === 'string' ? d.creatorId : null))
+      .catch(() => null);
+
     // Real Vault fetch begins immediately, in parallel with the 900ms
     // opening ceremony, so it's ready (or close to it) by the time the
     // doors finish — same ceremonial timing as before Integration
@@ -417,10 +480,15 @@ export default function SovereignVaultPalace() {
     const realTreasuresPromise = fetchRealVaultTreasures();
 
     setTimeout(() => {
-      const stored   = readPalace();
       const incoming = popIncomingTransfer();
 
-      setTreasures(stored);
+      // Deliberately NOT `setTreasures(readPalace(...))` here: the identity has
+      // not arrived yet, and showing a store before knowing whose it is was the
+      // whole defect. The Palace opens empty and fills in below.
+      identityPromise.then((id) => {
+        setCreatorId(id);
+        setTreasures(readPalace(id));
+      });
       setPhase('palace');
       setCompanionMsg(PALACE_COMPANION.atrium);
       setPalaceMemory(prev => recordPalaceVisit(prev));
@@ -634,7 +702,7 @@ export default function SovereignVaultPalace() {
 
   function completeCeremony() {
     if (!incomingTreasure) { setPhase('palace'); return; }
-    depositToVault(incomingTreasure);
+    depositToVault(creatorId, incomingTreasure);
     refreshTreasuresAfterLocalMutation();
     setIncomingTreasure(null);
     setPhase('palace');
@@ -760,7 +828,7 @@ export default function SovereignVaultPalace() {
   function refreshTreasuresAfterLocalMutation() {
     setTreasures((prev) => {
       const realStillInView = Object.values(prev).flat().filter((t) => t.isRealAsset);
-      return mergeIntoVaultBuckets(readPalace(), realStillInView);
+      return mergeIntoVaultBuckets(readPalace(creatorId), realStillInView);
     });
   }
 
