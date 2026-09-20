@@ -85,6 +85,62 @@ export function digestOf(bytes: Uint8Array): string {
 }
 
 /**
+ * Metadata fields that describe HOW AN ASSET'S OWN BYTES CAME TO BE.
+ *
+ * ─── WHY A DERIVED ASSET MUST NOT INHERIT THESE ─────────────────────────────
+ *
+ *   Derivation used to copy the parent's metadata wholesale — `...parent.metadata`
+ *   — which carried these forward unchanged. FOUND IN THE PHASE D LIVE PROOF, by
+ *   reading what the derived asset actually said about itself:
+ *
+ *     the Creator's instruction : «اجعل الخلفية زرقاء داكنة كليل صافٍ»
+ *     the asset's own metadata  : generationPrompt = «مدينة إمبراطورية فوق
+ *                                 النيل، عمارة عظيمة، أجواء سينمائية…»
+ *                                 generationModel  = flux-schnell
+ *
+ *   The asset testified that it had been generated from a prompt it was never
+ *   generated from, by a model that never made it. The true fields sat beside
+ *   the false ones, contradicting them.
+ *
+ *   That is not cosmetic. `automatic-director.ts` reads `generationPrompt` and
+ *   turns it into the Creator's GOAL — `deriveCreatorGoalFromPrompt`, whose own
+ *   constitution says it "echoes it verbatim, never interprets". So the
+ *   Automatic Director would have taken a stale prompt the Creator never stated
+ *   for this asset and directed an entire film by it, while believing itself to
+ *   be echoing the Creator faithfully. The Vault Palace displays the same field
+ *   back to the Creator as their own words.
+ *
+ *   A falsehood the machine sincerely believes is worse than one it knows.
+ *
+ *   The parent's record still holds all of this, one hop away through
+ *   `derivedFromAssetId`, so nothing is lost — it is simply no longer asserted
+ *   by an asset it is not true of. A derived asset's own account of itself is
+ *   `mutationInstructionAr` plus the two content digests, and those are written
+ *   here by the derivation itself.
+ */
+const CREATION_EVENT_KEYS = [
+  'generationPrompt',
+  'generationModel',
+  'generationStyle',
+  // The provider that made the PARENT. The editor may be an entirely different
+  // engine, and a derived asset claiming its parent's provider would misname
+  // the thing that actually produced its bytes.
+  'providerId',
+] as const;
+
+/** The parent's metadata minus every claim about the parent's own creation. */
+export function inheritableMetadata(
+  parentMetadata: Readonly<Record<string, unknown>>,
+): Record<string, unknown> {
+  const kept: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(parentMetadata)) {
+    if ((CREATION_EVENT_KEYS as readonly string[]).includes(key)) continue;
+    kept[key] = value;
+  }
+  return kept;
+}
+
+/**
  * What the caller must supply to turn produced bytes into a derived asset.
  *
  * `parentBytes` is required, and that is deliberate: the identity check cannot
@@ -190,7 +246,7 @@ export async function deriveAsset(request: MutationRequest): Promise<MutationOut
     lifecycleState: LifecycleState.INTERMEDIATE,
     createdBy: request.actorId ?? request.ownerId,
     metadata: {
-      ...parent.metadata,
+      ...inheritableMetadata(parent.metadata),
       // Provenance of the CONTENT, beside the provenance of the record: an
       // auditor can prove later that this asset's bytes are not its parent's.
       derivedFromAssetId: parent.assetId,

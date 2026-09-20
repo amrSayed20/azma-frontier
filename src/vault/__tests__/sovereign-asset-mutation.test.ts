@@ -25,6 +25,9 @@ import {
   createProject, adoptLegacyAsset,
 } from '../../persistent-storage';
 import { ProjectType } from '../../sovereign-projects/sovereign-project-contracts';
+// The real consumer of generationPrompt, imported so the assertion below is
+// about what the Director actually does — not about what this test imagines it does.
+import { deriveCreatorGoalFromPrompt } from '../../chambers/ras-al-amr/automatic-director-constitution';
 
 const OWNER = 'creator-alpha';
 const OTHER = 'creator-beta';
@@ -337,5 +340,88 @@ describe('Phase D — the derived asset is usable downstream', () => {
     if (!outcome.ok) throw new Error('fixture');
 
     expect(listAssetLineage(getDb(), parent.assetId, OTHER)).toHaveLength(0);
+  });
+});
+
+describe('a derived asset never claims its parent’s creation as its own', () => {
+  /**
+   * ─── THE DEFECT THIS HOLDS SHUT ───────────────────────────────────────────
+   *
+   *   Derivation copied `...parent.metadata` wholesale. Found by reading what a
+   *   real derived asset said about itself during the Phase D live proof:
+   *
+   *     instruction given  : «اجعل الخلفية زرقاء داكنة كليل صافٍ»
+   *     metadata asserted  : generationPrompt = «مدينة إمبراطورية فوق النيل…»
+   *                          generationModel  = flux-schnell
+   *
+   *   `automatic-director.ts` turns generationPrompt into the Creator's GOAL and
+   *   its constitution says it echoes that "verbatim, never interprets" — so the
+   *   Director would have directed a film from words the Creator never said
+   *   about that asset, sincerely believing it was quoting them.
+   */
+  const PARENT_CREATION = {
+    generationPrompt: 'مدينة إمبراطورية فوق النيل',
+    generationModel: 'flux-schnell',
+    generationStyle: 'imaginative',
+    providerId: 'some-other-engine',
+  };
+
+  it('drops every claim about how the PARENT’s bytes were made', async () => {
+    const parent = await seedParent({
+      metadata: { ...PARENT_CREATION, fileSizeBytes: PARENT_BYTES.length },
+    });
+
+    const outcome = await deriveAsset(request(parent.assetId, {
+      instructionAr: 'اجعل الخلفية زرقاء داكنة',
+    }));
+    if (!outcome.ok) throw new Error('expected success');
+
+    const stored = getVaultAsset(getDb(), outcome.asset.assetId)!;
+    for (const key of Object.keys(PARENT_CREATION)) {
+      expect(stored.metadata[key]).toBeUndefined();
+    }
+  });
+
+  it('keeps metadata that is genuinely about the asset, not its creation event', async () => {
+    const parent = await seedParent({
+      metadata: { ...PARENT_CREATION, isVoiceAsset: false, fileSizeBytes: 123 },
+    });
+
+    const outcome = await deriveAsset(request(parent.assetId));
+    if (!outcome.ok) throw new Error('expected success');
+
+    const stored = getVaultAsset(getDb(), outcome.asset.assetId)!;
+    expect(stored.metadata.isVoiceAsset).toBe(false);
+  });
+
+  it('states its OWN account of itself instead', async () => {
+    const parent = await seedParent({
+      metadata: { ...PARENT_CREATION, fileSizeBytes: PARENT_BYTES.length },
+    });
+
+    const outcome = await deriveAsset(request(parent.assetId, {
+      instructionAr: 'اجعل الخلفية زرقاء داكنة',
+    }));
+    if (!outcome.ok) throw new Error('expected success');
+
+    const stored = getVaultAsset(getDb(), outcome.asset.assetId)!;
+    expect(stored.metadata.mutationInstructionAr).toBe('اجعل الخلفية زرقاء داكنة');
+    expect(stored.metadata.derivedFromAssetId).toBe(parent.assetId);
+    expect(stored.metadata.parentContentDigest).toBe(digestOf(PARENT_BYTES));
+    expect(stored.metadata.contentDigest).toBe(digestOf(OUTPUT_BYTES));
+  });
+
+  it('the Automatic Director finds NO stated goal on a derived asset', async () => {
+    const parent = await seedParent({
+      metadata: { ...PARENT_CREATION, fileSizeBytes: PARENT_BYTES.length },
+    });
+    const outcome = await deriveAsset(request(parent.assetId));
+    if (!outcome.ok) throw new Error('expected success');
+
+    const stored = getVaultAsset(getDb(), outcome.asset.assetId)!;
+    // Exactly what automatic-director.ts reads at the point of decision.
+    const goal = deriveCreatorGoalFromPrompt(stored.metadata.generationPrompt);
+    expect(goal.stated).toBe(false);
+    expect(goal.statedIntent).not.toBe(PARENT_CREATION.generationPrompt);
   });
 });
