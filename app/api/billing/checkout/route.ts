@@ -19,6 +19,9 @@ import { getDb } from '../../../../src/persistent-storage/db';
 import { getCreditPack } from '../../../../src/economy/payment/credit-packs';
 import { getPaymobPaymentGateway } from '../../../../src/economy/payment/paymob-payment-gateway';
 import type { CreditPackId } from '../../../../src/economy/payment/credit-packs';
+import { internalReturnPath, returnUrl } from '../../../../src/economy/payment/return-destination';
+import { verificationStateForCreator } from '../../../../src/persistent-storage/authentication-identity-repository';
+import { isVerified } from '../../../../src/identity/sovereign-identity-contract';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +37,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { status: 'failed', message: 'Sign in to purchase AZMA Units.' },
       { status: 401 },
+    );
+  }
+
+  // ── The trust point, moved ───────────────────────────────────────────────
+  //
+  // This gate used to be "a session exists". A session existed the instant
+  // anyone POSTed an arbitrary email to /api/auth/signup, so the gate admitted
+  // a stranger who had proven nothing. The session check is still necessary and
+  // is no longer sufficient: the Empire must hold proof of who is paying.
+  //
+  // Nothing about the payment itself changed — same gateway, same packs, same
+  // server-derived amounts. Only the question asked before reaching them.
+  if (!isVerified({ verificationState: verificationStateForCreator(getDb(), session.creatorId) })) {
+    return NextResponse.json(
+      {
+        status: 'failed',
+        reason: 'identity-not-verified',
+        message: 'وثّق حسابك عبر جوجل قبل الاشتراك.',
+        verifyAt: '/api/auth/google/start',
+      },
+      { status: 403 },
     );
   }
 
@@ -56,12 +80,28 @@ export async function POST(request: NextRequest) {
   const packId = rawPackId as CreditPackId;
   const pack = getCreditPack(packId);
 
-  // Resolve URLs — default to sovereign-vault-palace (natural post-purchase destination)
+  // ── Where the Creator lands afterwards ───────────────────────────────────
+  //
+  // These were taken from the request body with no check whatsoever, so a
+  // crafted checkout could return a Creator — arriving from the payment
+  // gateway, at the least suspicious moment there is — to a page an attacker
+  // controls. Only an internal PATH is accepted now; the origin is the
+  // server's own. See return-destination.ts for why a path, and not a
+  // validated URL.
   const origin = request.nextUrl.origin;
   const rawSuccessUrl = (body as { successUrl?: unknown })?.successUrl;
   const rawCancelUrl = (body as { cancelUrl?: unknown })?.cancelUrl;
-  const successUrl = typeof rawSuccessUrl === 'string' ? rawSuccessUrl : `${origin}/sovereign-vault-palace`;
-  const cancelUrl = typeof rawCancelUrl === 'string' ? rawCancelUrl : `${origin}/sovereign-vault-palace`;
+
+  for (const [field, raw] of [['successUrl', rawSuccessUrl], ['cancelUrl', rawCancelUrl]] as const) {
+    if (raw !== undefined && internalReturnPath(raw) === null) {
+      // Never echoed back to the client, and the refusal is silent: the
+      // Creator asked to buy credit and still gets to, landing somewhere safe.
+      console.warn(`[Checkout] refused external ${field} for creator ${session.creatorId}`);
+    }
+  }
+
+  const successUrl = returnUrl(origin, rawSuccessUrl);
+  const cancelUrl = returnUrl(origin, rawCancelUrl);
 
   // Resolve Paymob gateway — null if credentials not yet configured
   const db = getDb();

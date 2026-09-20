@@ -79,6 +79,33 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     vault_pin_hash TEXT,
     created_at INTEGER NOT NULL
   )`,
+  // ══ GOOGLE IDENTITY GATE — the binding between an AZMA account and an
+  //    external authentication provider.
+  //
+  //    A SEPARATE TABLE, not columns on `creators`, and that is a constitutional
+  //    choice rather than a normalisation one: the Empire's own account must
+  //    survive the removal of every provider it has ever used. Dropping this
+  //    table would cost the Empire its ability to authenticate people; it would
+  //    cost it not one asset, project, subscription or ownership relation.
+  //
+  //    provider_subject is the provider's permanent id for the person — Google's
+  //    `sub`. Never the email: an address can be reassigned by a workspace
+  //    administrator or relinquished and re-registered, and an account keyed on
+  //    an address changes hands when the address does.
+  //
+  //    UNIQUE(provider, provider_subject) is the duplicate-account guarantee. It
+  //    is enforced by the database, not by a check in a route, because a check
+  //    in a route loses a race and an index does not.
+  `CREATE TABLE IF NOT EXISTS authentication_identities (
+    identity_id TEXT PRIMARY KEY,
+    creator_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    provider_subject TEXT NOT NULL,
+    provider_email TEXT,
+    linked_at INTEGER NOT NULL,
+    last_authenticated_at INTEGER,
+    UNIQUE(provider, provider_subject)
+  )`,
   `CREATE TABLE IF NOT EXISTS sessions (
     session_id TEXT PRIMARY KEY,
     creator_id TEXT NOT NULL,
@@ -620,6 +647,21 @@ export const CREATORS_MIGRATION_COLUMNS: readonly { readonly name: string; reado
   // NULL until the Creator completes the one-time PIN setup flow.
   // NEVER store a plaintext PIN — only the scrypt output lands here.
   { name: 'vault_pin_hash', ddl: 'vault_pin_hash TEXT' },
+  // GOOGLE IDENTITY GATE: whether the Empire holds proof that this person
+  // controls the address on their account.
+  //
+  // DEFAULT 'UNVERIFIED' is the whole point of the column. Every row that
+  // existed when it was added — all three, the Founder's among them — takes
+  // that value, because no mechanism for producing such proof has ever existed
+  // in this system, so no row can have it. Defaulting to VERIFIED, or
+  // backfilling it, would have invented a history: the same thing Article 5.5
+  // forbids for legacy assets, in the place where it matters most.
+  { name: 'verification_state', ddl: "verification_state TEXT NOT NULL DEFAULT 'UNVERIFIED'" },
+  // When verification was recorded, and by which provider binding. NULL while
+  // unverified — and NULL is not a state to be guessed at, it is the absence
+  // of the event.
+  { name: 'verified_at', ddl: 'verified_at INTEGER' },
+  { name: 'verified_via_provider', ddl: 'verified_via_provider TEXT' },
 ];
 
 /**
@@ -641,6 +683,12 @@ export const GOALS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly
 /** Run only after CREATORS_MIGRATION_COLUMNS has ensured the columns exist — SQLite cannot index a column that isn't there yet. */
 export const INDEX_STATEMENTS: readonly string[] = [
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_creators_email ON creators(email)',
+  // One AZMA account per provider identity, enforced where a race cannot beat
+  // it. The table's UNIQUE(provider, provider_subject) already does this; the
+  // index is named here too so a database created before that table gained the
+  // constraint still acquires it.
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_auth_identity_provider_subject ON authentication_identities(provider, provider_subject)',
+  'CREATE INDEX IF NOT EXISTS idx_auth_identity_creator ON authentication_identities(creator_id)',
   // Every biometric entry looks up a Creator's enrolled devices by creator_id.
   'CREATE INDEX IF NOT EXISTS idx_vault_credentials_creator ON vault_credentials(creator_id)',
   // Composite index for the two most common consumption_records queries:

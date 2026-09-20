@@ -98,6 +98,26 @@
   transition: box-shadow 0.25s ease, transform 0.25s ease;
 }
 
+/* GOOGLE IDENTITY GATE — the same gold entrance as the old submit button, made
+   to sit correctly as an anchor rather than a <button>. It is a full page
+   navigation because verification leaves this origin entirely. */
+.creator-access-google {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+/* Why the Creator is being asked to verify at all — stated once, quietly,
+   under the door rather than as a warning above it. */
+.creator-access-why {
+  margin-top: 0.85rem;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  opacity: 0.72;
+  text-align: center;
+}
+
 .creator-access-submit:hover:not(:disabled) {
   box-shadow: var(--azma-shadow-glow-bright, var(--azma-glow-bright));
   transform: translateY(-1px);

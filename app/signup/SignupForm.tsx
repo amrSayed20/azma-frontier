@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import '../creator-access.css';
 import { t } from '@/src/creator-language';
 import type { Dictionary } from '@/src/creator-language';
@@ -10,61 +10,51 @@ import { ConstitutionalLink } from '@/src/constitutional-navigation';
 interface Props {
   readonly dict: Dictionary;
   /**
-   * REGISTRATION GATEWAY, PACKAGE II (2026-07-23): called instead of
-   * navigating directly on successful registration, so the parent
-   * (SignupExperience) can carry out the ceremonial handoff — the same
-   * beginHandoff() mechanism Arrival already uses for its own threshold
-   * — before the actual route change occurs. Optional, falling back to
-   * the original direct navigation, so this file still works standalone
-   * if ever rendered without that wrapper. The form's own fields,
-   * validation, and submit mechanics are otherwise unchanged.
+   * REGISTRATION GATEWAY, PACKAGE II (2026-07-23): the ceremonial handoff the
+   * parent performs before the route changes.
+   *
+   * It is no longer called from here. Verification leaves this application
+   * entirely — the Creator goes to Google and returns to
+   * /api/auth/google/callback, which redirects them onward — so there is no
+   * moment on this page at which a handoff could be performed. The prop is
+   * kept so the parent's contract is unchanged.
    */
   readonly onSuccess?: () => void;
 }
 
-export function SignupForm({ dict, onSuccess }: Props) {
-  const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+/**
+ * ─── WHY THIS IS A DOOR AND NOT A FORM ──────────────────────────────────────
+ *
+ *   This page used to collect an address, a password, and a confirmation, and
+ *   POST them to /api/auth/signup — which created the account and set a session
+ *   cookie in the same response. The only check on the address was a regular
+ *   expression testing that it LOOKED like one.
+ *
+ *   The fields are gone rather than hidden. Leaving an address field on the
+ *   page would say, in the most direct way an interface can, that typing an
+ *   address is what establishes it as yours — and that is the precise belief
+ *   this gate exists to end.
+ */
+export function SignupForm({ dict }: Props) {
+  const params = useSearchParams();
+  const [leaving, setLeaving] = useState(false);
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setError(null);
-
-    if (password !== confirmPassword) {
-      setError(t(dict, 'signup.errorPasswordMismatch'));
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, displayName: displayName || undefined }),
-      });
-      const result = await response.json();
-
-      if (result.status !== 'succeeded') {
-        setError(result.message ?? t(dict, 'signup.errorFallback'));
-        return;
-      }
-
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        router.push('/imperial-foyer');
-      }
-    } catch {
-      setError(t(dict, 'signup.errorUnreachable'));
-    } finally {
-      setSubmitting(false);
-    }
+  /**
+   * The callback sends the Creator back here with a short reason when
+   * verification did not complete. The reason is a code, never the provider's
+   * own words — those name an issuer, an audience or a token and stay on the
+   * server.
+   */
+  const identityOutcome = params?.get('identity') ?? null;
+  const ERRORS: Record<string, string> = {
+    unavailable: t(dict, 'signup.identityUnavailable'),
+    cancelled: t(dict, 'signup.identityCancelled'),
+    'verification-failed': t(dict, 'signup.identityFailed'),
+    'invalid-callback': t(dict, 'signup.identityFailed'),
+    'email-not-verified': t(dict, 'signup.identityEmailUnverified'),
+    'email-belongs-to-existing-account': t(dict, 'signup.identityEmailTaken'),
   };
+  const error = identityOutcome ? ERRORS[identityOutcome] ?? null : null;
 
   return (
     <main className="creator-access-viewport">
@@ -75,27 +65,20 @@ export function SignupForm({ dict, onSuccess }: Props) {
 
         {error && <div className="creator-access-error">{error}</div>}
 
-        <form onSubmit={handleSubmit}>
-          <div className="creator-access-field">
-            <label htmlFor="email">{t(dict, 'signup.emailLabel')}</label>
-            <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-          <div className="creator-access-field">
-            <label htmlFor="displayName">{t(dict, 'signup.displayNameLabel')}</label>
-            <input id="displayName" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-          </div>
-          <div className="creator-access-field">
-            <label htmlFor="password">{t(dict, 'signup.passwordLabel')}</label>
-            <input id="password" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
-          </div>
-          <div className="creator-access-field">
-            <label htmlFor="confirmPassword">{t(dict, 'signup.confirmPasswordLabel')}</label>
-            <input id="confirmPassword" type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-          </div>
-          <button type="submit" className="creator-access-submit" disabled={submitting}>
-            {submitting ? t(dict, 'signup.submitBusy') : t(dict, 'signup.submitIdle')}
-          </button>
-        </form>
+        {/*
+          A full page navigation, not fetch(). The verification leaves this
+          origin for Google and comes back to a route that sets the session
+          cookie — a flow no in-page request can carry out.
+        */}
+        <a
+          className="creator-access-submit creator-access-google"
+          href="/api/auth/google/start"
+          onClick={() => setLeaving(true)}
+        >
+          {leaving ? t(dict, 'signup.googleBusy') : t(dict, 'signup.googleContinue')}
+        </a>
+
+        <p className="creator-access-why">{t(dict, 'signup.whyVerify')}</p>
 
         <p className="creator-access-footer">
           {t(dict, 'signup.footerPrompt')} <ConstitutionalLink to="/login">{t(dict, 'signup.footerLink')}</ConstitutionalLink>

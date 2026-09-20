@@ -37,6 +37,17 @@ export const ar: Dictionary = {
   'signup.submitBusy': 'البوابة تستقبلك…',
   'signup.footerPrompt': 'لديك حساب بالفعل؟',
   'signup.footerLink': 'تسجيل الدخول',
+  // GOOGLE IDENTITY GATE: registration is a verification, not a form. Nothing
+  // shown to the Creator may imply that typing an address proves it is theirs.
+  'signup.googleContinue': 'المتابعة باستخدام Google',
+  'signup.googleBusy': 'البوابة تتحقّق…',
+  'signup.verifiedWelcome': 'تم التحقق من حسابك',
+  'signup.whyVerify': 'نتحقّق من بريدك مرّةً واحدة، فيصير الحساب لك وحدك ولا يُنتحل.',
+  'signup.identityUnavailable': 'الدخول عبر جوجل غير متاحٍ حالياً.',
+  'signup.identityCancelled': 'أُلغي التحقّق. لم يُنشأ شيء.',
+  'signup.identityFailed': 'تعذّر التحقّق من هويّتك. أعد المحاولة.',
+  'signup.identityEmailUnverified': 'هذا البريد غير مُوثَّقٍ لدى جوجل نفسها.',
+  'signup.identityEmailTaken': 'يوجد حسابٌ بهذا البريد أُنشئ بطريقةٍ أخرى. ادخل به أوّلاً.',
   'signup.errorPasswordMismatch': 'المفتاحان لا يتطابقان.',
   'signup.errorUnreachable': 'البوابة لا تستجيب. عُد بعد لحظة.',
   'signup.errorFallback': 'البوابة لم تُفتَح. تأكد من بياناتك.',

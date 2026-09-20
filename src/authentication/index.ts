@@ -12,7 +12,7 @@
  */
 
 export type { AuthResult, AuthOutcome, AuthSuccess, AuthFailure, AuthFailureReason, VerifiedSession, CreatorRole } from './types';
-export { signUp, logIn, logOut, verifySession } from './auth-service';
+export { logIn, logOut, verifySession } from './auth-service';
 export { ensureFounderAccountExists } from './founder-bootstrap';
 export { hashPassword, verifyPassword } from './password-hashing';
 export { generateSessionId } from './session-token';

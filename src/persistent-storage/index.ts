@@ -57,3 +57,15 @@ export {
   recordTombstone, findTombstoneByAssetId, listTombstonesForOwner,
   mintPublicToken, createPublicLink, findPublicLinkByToken, revokePublicLink, listPublicLinksForOwner,
 } from './sovereign-project-repository';
+
+// GOOGLE IDENTITY GATE — the binding between an AZMA account and an external
+// authentication provider, and the one place verification state is written.
+export type { AuthenticationIdentityRecord } from './authentication-identity-repository';
+export {
+  findIdentityByProviderSubject,
+  listIdentitiesForCreator,
+  verificationStateForCreator,
+  linkVerifiedIdentity,
+  touchIdentity,
+  resolveIdentity,
+} from './authentication-identity-repository';

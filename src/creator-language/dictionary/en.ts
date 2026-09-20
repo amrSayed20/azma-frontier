@@ -43,6 +43,17 @@ export const en: Dictionary = {
   'signup.submitBusy': 'Creating account…',
   'signup.footerPrompt': 'Already have an account?',
   'signup.footerLink': 'Sign in',
+  // GOOGLE IDENTITY GATE — see the Arabic dictionary for why registration is a
+  // verification rather than a form.
+  'signup.googleContinue': 'Continue with Google',
+  'signup.googleBusy': 'Verifying…',
+  'signup.verifiedWelcome': 'Your account is verified',
+  'signup.whyVerify': 'We verify your address once, so the account is yours alone and cannot be claimed by anyone else.',
+  'signup.identityUnavailable': 'Signing in with Google is unavailable right now.',
+  'signup.identityCancelled': 'Verification was cancelled. Nothing was created.',
+  'signup.identityFailed': 'We could not verify your identity. Please try again.',
+  'signup.identityEmailUnverified': 'Google itself has not confirmed this address.',
+  'signup.identityEmailTaken': 'An account with this address was created another way. Sign in with it first.',
   'signup.errorPasswordMismatch': 'Passwords do not match.',
   'signup.errorUnreachable': 'Could not reach the server. Please try again.',
   'signup.errorFallback': 'Sign up failed.',
