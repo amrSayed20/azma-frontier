@@ -9,7 +9,7 @@
 
 export type { ConstitutionalFlowId, ConstitutionalFlow, CirculationEnvelope, CirculationResult } from './types';
 export { CONSTITUTIONAL_FLOWS } from './flow-registry';
-export { circulateFromClient, ingestCirculatedSignal } from './transport';
+export { circulateFromClient, ingestCirculatedSignal, resetCirculationRefusalForTests } from './transport';
 export { observeStateFlow } from './state-flow';
 export { observeContextFlow } from './context-flow';
 export { observeCapabilityFlow } from './capability-flow';

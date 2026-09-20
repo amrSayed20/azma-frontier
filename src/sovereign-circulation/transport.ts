@@ -30,6 +30,48 @@ import type { CirculationEnvelope, CirculationResult } from './types';
 const CIRCULATION_ENDPOINT = '/api/sovereign/nervous-system/circulate';
 
 /**
+ * Whether this browser runtime has been told it may not circulate.
+ *
+ * ─── WHAT WAS MEASURED ──────────────────────────────────────────────────────
+ *
+ *   Walking the Creator journey with Playwright against production, every
+ *   visitor who opened /signup without a session got this in their console:
+ *
+ *       401 https://azmaos.com/api/sovereign/nervous-system/circulate
+ *       401 https://azmaos.com/api/sovereign/nervous-system/circulate
+ *
+ *   The 401 is correct and stays. The route was given a session requirement
+ *   when an unauthenticated denial of service was found in it — anyone could
+ *   push entries into the live process's Perception Bus until it exhausted
+ *   memory. That closure was right.
+ *
+ *   The defect is on this side. The route's own comment claimed "every browser
+ *   that legitimately calls circulateFromClient() is a signed-in Creator", and
+ *   that was simply untrue: DirectorStage is mounted in the root layout, so it
+ *   circulates for anonymous visitors on the very first page they see. The
+ *   Empire was asking a door it had itself locked, twice, in front of every
+ *   newcomer.
+ *
+ *   A latch rather than a session check, deliberately: the session cookie is
+ *   httpOnly and unreadable here by design, and adding a "am I signed in?"
+ *   request would put back the very chatter this removes. The server's own
+ *   refusal is the authority — asked once, believed thereafter.
+ *
+ *   LOCAL emission is untouched. Same-tab observers still see every signal
+ *   with zero delay; only the cross-runtime hop stops, and a signal that
+ *   cannot legitimately reach the server was never going to reach it.
+ */
+let crossRuntimeRefused = false;
+
+/**
+ * Test seam. Module state persists across a browser's page life by design,
+ * which is exactly what makes it useless to a test that runs twice.
+ */
+export function resetCirculationRefusalForTests(): void {
+  crossRuntimeRefused = false;
+}
+
+/**
  * Server-side ingestion point — called directly by the API route that
  * receives a circulated signal from a browser. Delegates entirely to
  * emitSignal(); performs no interpretation of its own.
@@ -63,12 +105,19 @@ export function circulateFromClient(
 ): ConstitutionalSignal {
   const localSignal = emitSignal(draft);
 
-  if (typeof window !== 'undefined' && typeof fetch === 'function') {
+  if (typeof window !== 'undefined' && typeof fetch === 'function' && !crossRuntimeRefused) {
     void fetch(CIRCULATION_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(draft),
       keepalive: true,
+    }).then((response) => {
+      // The server says this runtime may not circulate. Believed once and
+      // not argued with — every later signal in this page's life emits
+      // locally and stops there.
+      if (response.status === 401 || response.status === 403) {
+        crossRuntimeRefused = true;
+      }
     }).catch(() => {
       // Circulation never blocks and never surfaces a failure to the
       // caller — a lost cross-runtime hop is a Health-flow concern for a
