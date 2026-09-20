@@ -162,3 +162,31 @@ describe('local emission is untouched', () => {
     }
   });
 });
+
+describe('a signed-in Creator loses no signal', () => {
+  /**
+   * THE REGRESSION THE FIRST GATE INTRODUCED.
+   *
+   * Gating on "a request is in flight" suppresses the cross-runtime hop for
+   * every signal emitted in the same tick as another — including for a Creator
+   * the server is perfectly willing to accept. Their second signal simply never
+   * reaches the server, which is worse than the console noise being fixed.
+   *
+   * The gate must apply ONLY while the answer is unknown. Once the server has
+   * said yes, nothing is held back.
+   */
+  it('circulates EVERY signal once the server has accepted this runtime', async () => {
+    fetchMock.mockResolvedValue({ status: 200 });
+
+    // First signal establishes that this runtime may circulate.
+    circulateFromClient(draft('establish'));
+    for (let i = 0; i < 4; i += 1) await Promise.resolve();
+
+    // Three more in the SAME tick, as a busy chamber actually emits.
+    circulateFromClient(draft('a'));
+    circulateFromClient(draft('b'));
+    circulateFromClient(draft('c'));
+
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+});

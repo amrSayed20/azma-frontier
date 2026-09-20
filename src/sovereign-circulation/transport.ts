@@ -85,12 +85,30 @@ let crossRuntimeRefused = false;
 let answerPending = false;
 
 /**
+ * Whether the server has already told this runtime where it stands.
+ *
+ * ─── THE REGRESSION THIS EXISTS TO UNDO ─────────────────────────────────────
+ *
+ *   `answerPending` alone gated EVERY concurrent request, not just the first
+ *   unknown one. Proven by test: a Creator the server accepts, emitting four
+ *   signals, got two of them across. The other two were dropped — not queued,
+ *   dropped — which is a worse fault than the console noise being repaired,
+ *   and it would have been invisible in production because a missing signal
+ *   looks exactly like a chamber that had nothing to say.
+ *
+ *   The gate belongs only to the UNKNOWN. Once the answer has landed, this
+ *   runtime either circulates everything or nothing, and never something.
+ */
+let answerKnown = false;
+
+/**
  * Test seam. Module state persists across a browser's page life by design,
  * which is exactly what makes it useless to a test that runs twice.
  */
 export function resetCirculationRefusalForTests(): void {
   crossRuntimeRefused = false;
   answerPending = false;
+  answerKnown = false;
 }
 
 /**
@@ -131,10 +149,12 @@ export function circulateFromClient(
     typeof window !== 'undefined'
     && typeof fetch === 'function'
     && !crossRuntimeRefused
-    // Nobody flies while the first answer is still in the air. This is what
-    // makes two signals emitted in the same tick produce ONE request instead
-    // of two 401s — the defect the latch alone did not fix.
-    && !answerPending
+    // Nobody flies while the FIRST answer is still in the air — that is what
+    // turns two signals in one tick into one request instead of two 401s.
+    // Once the answer is known and was acceptance, this stops applying and
+    // every signal flies, because holding a Creator's signals back would lose
+    // them rather than delay them.
+    && (answerKnown || !answerPending)
   ) {
     answerPending = true;
     void fetch(CIRCULATION_ENDPOINT, {
@@ -149,6 +169,9 @@ export function circulateFromClient(
       if (response.status === 401 || response.status === 403) {
         crossRuntimeRefused = true;
       }
+      // Refused or accepted, this runtime now knows. Only an unanswered
+      // question justifies holding anything back.
+      answerKnown = true;
     }).catch(() => {
       // Circulation never blocks and never surfaces a failure to the
       // caller — a lost cross-runtime hop is a Health-flow concern for a
