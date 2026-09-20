@@ -47,7 +47,18 @@ const OAUTH_TTL_SECONDS = 600;
  *   URI in any case, which this directive forbids — so there is nothing for a
  *   branch to serve.
  */
-const AUTHORIZED_CALLBACK = 'https://azmaos.com/api/auth/google/callback';
+/**
+ * The Empire's public origin.
+ *
+ * Exported because the callback needs it for exactly the same reason: behind
+ * nginx, `request.nextUrl.origin` is the private origin Next.js was proxied to,
+ * and a redirect built from it sends the Creator to http://localhost:3000 —
+ * which is what a Creator actually saw after a successful sign-in, while their
+ * account was being created and verified correctly behind them.
+ */
+export const PUBLIC_ORIGIN = 'https://azmaos.com';
+
+const AUTHORIZED_CALLBACK = `${PUBLIC_ORIGIN}/api/auth/google/callback`;
 
 export function redirectUriFor(): string {
   // Takes nothing, on purpose. Nothing a request carries — not its origin, not

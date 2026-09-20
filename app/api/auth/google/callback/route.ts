@@ -7,7 +7,7 @@ import {
   GoogleIdentityError,
 } from '@/src/identity/providers/google-identity-binding';
 import { signInWithVerifiedIdentity } from '@/src/identity/identity-gate';
-import { OAUTH_STATE_COOKIE, OAUTH_NONCE_COOKIE, redirectUriFor } from '../start/route';
+import { OAUTH_STATE_COOKIE, OAUTH_NONCE_COOKIE, redirectUriFor, PUBLIC_ORIGIN } from '../start/route';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,9 +36,18 @@ const SESSION_COOKIE = 'azma_session';
  *   is a debugging aid for us and an inventory for anyone probing.
  */
 
-/** Send the Creator somewhere real, with a reason they can act on. */
+/**
+ * Send the Creator somewhere real, with a reason they can act on.
+ *
+ * PUBLIC_ORIGIN, not request.nextUrl.origin. MEASURED on production: a
+ * genuine sign-in completed — account created, identity verified, binding
+ * recorded, session cookie set — and the Creator was then redirected to
+ * http://localhost:3000, where their browser showed ERR_CONNECTION_REFUSED.
+ * Behind nginx that is the private origin Next.js was proxied to. The whole
+ * journey worked and the last instruction sent them nowhere.
+ */
 function refuse(request: NextRequest, reason: string): NextResponse {
-  const url = new URL('/signup', request.nextUrl.origin);
+  const url = new URL('/signup', PUBLIC_ORIGIN);
   url.searchParams.set('identity', reason);
   const response = NextResponse.redirect(url);
   clearOAuthCookies(response);
@@ -88,7 +97,7 @@ export async function GET(request: NextRequest) {
     return refuse(request, outcome.reason);
   }
 
-  const destination = new URL('/imperial-foyer', request.nextUrl.origin);
+  const destination = new URL('/imperial-foyer', PUBLIC_ORIGIN);
   destination.searchParams.set('identity', outcome.accountCreated ? 'welcome' : 'verified');
 
   const response = NextResponse.redirect(destination);

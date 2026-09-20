@@ -20,6 +20,8 @@
  *   pointed at an attacker's callback.
  */
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { redirectUriFor } from '../../../app/api/auth/google/start/route';
 import { authorizationUrl } from '../providers/google-identity-binding';
 
@@ -76,5 +78,36 @@ describe('the authorization URL', () => {
     const url = authorizationUrl({ redirectUri: AUTHORIZED, state: 'S', nonce: 'N' });
     expect(url).not.toContain('a-secret-that-must-not-travel');
     expect(url).not.toContain('client_secret');
+  });
+});
+
+describe('no identity route may build a redirect from the proxied origin', () => {
+  /**
+   * ─── THE DEFECT THIS HOLDS SHUT ───────────────────────────────────────────
+   *
+   *   `redirectUriFor` was fixed and the same mistake stayed two functions
+   *   away. MEASURED on production, on a real sign-in: the account was created,
+   *   the identity verified, the binding recorded and the session cookie set —
+   *   and the Creator was then sent to http://localhost:3000, where the browser
+   *   showed ERR_CONNECTION_REFUSED. The entire journey worked and the last
+   *   instruction pointed nowhere.
+   *
+   *   Behind nginx, `request.nextUrl.origin` is the private origin Next.js was
+   *   proxied to. This asserts on the source itself, because the failure is
+   *   invisible to any test that builds its own request from a public URL —
+   *   which is exactly how the first version passed.
+   */
+  const IDENTITY_ROUTES = [
+    'app/api/auth/google/start/route.ts',
+    'app/api/auth/google/callback/route.ts',
+  ];
+
+  it('uses PUBLIC_ORIGIN, never nextUrl.origin', () => {
+    for (const route of IDENTITY_ROUTES) {
+      const source = readFileSync(join(process.cwd(), route), 'utf8');
+      // Strip comments: this file's own explanation names the defect.
+      const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+      expect(code).not.toContain('nextUrl.origin');
+    }
   });
 });
