@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
 
   let identity;
   try {
-    const idToken = await exchangeCodeForIdToken(code, redirectUriFor(request));
+    const idToken = await exchangeCodeForIdToken(code, redirectUriFor());
     // The token is verified even though it came straight from Google over the
     // back channel. A check that is skipped when the source "looks trusted" is
     // a check that disappears the first time the source changes.

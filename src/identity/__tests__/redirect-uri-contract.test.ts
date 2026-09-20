@@ -20,7 +20,6 @@
  *   pointed at an attacker's callback.
  */
 
-import { NextRequest } from 'next/server';
 import { redirectUriFor } from '../../../app/api/auth/google/start/route';
 import { authorizationUrl } from '../providers/google-identity-binding';
 
@@ -28,15 +27,30 @@ const AUTHORIZED = 'https://azmaos.com/api/auth/google/callback';
 
 describe('the redirect URI', () => {
   it('matches the authorized value EXACTLY', () => {
-    const request = new NextRequest('https://azmaos.com/api/auth/google/start');
-    expect(redirectUriFor(request)).toBe(AUTHORIZED);
+    expect(redirectUriFor()).toBe(AUTHORIZED);
   });
 
-  it('comes from the server, never from the query string', () => {
-    const request = new NextRequest(
-      'https://azmaos.com/api/auth/google/start?redirect_uri=https://evil.example/cb',
-    );
-    expect(redirectUriFor(request)).toBe(AUTHORIZED);
+  /**
+   * THE TEST THAT WAS MISSING, AND THE REASON THE FIRST VERSION SHIPPED BROKEN.
+   *
+   * The original derived the URI from `request.nextUrl.origin` and was tested
+   * with a NextRequest built from the public URL — so it asserted an assumption
+   * about the deployment rather than the deployment. Behind nginx, Next.js sees
+   * the private origin it was proxied to, and production actually produced:
+   *
+   *     https://localhost:3000/api/auth/google/callback
+   *
+   * which Google refuses as redirect_uri_mismatch. This reproduces exactly that
+   * request shape.
+   */
+  it('cannot be influenced by the request at all — it takes no input', () => {
+    // The strongest form of the guarantee. There is no origin, no Host, no
+    // X-Forwarded-Host and no query parameter to poison, because there is no
+    // parameter. Behind nginx the first version produced
+    // https://localhost:3000/... from nextUrl.origin; this cannot.
+    expect(redirectUriFor()).toBe(AUTHORIZED);
+    expect(redirectUriFor()).not.toContain('localhost');
+    expect(redirectUriFor.length).toBe(0);
   });
 });
 
