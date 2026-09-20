@@ -27,15 +27,15 @@
  *
  *   A film is served to exactly two kinds of requester, and no third:
  *
- *     1. ITS OWNER, proven by session against `resolveRenderOwner`.
- *     2. ANYONE HOLDING A LIVE PUBLIC LINK — `?t=<token>` matching a
- *        `sovereign_public_links` row that is PUBLISHED, not revoked, owned by
- *        the film's owner, and issued for this exact film.
+ *     1. ITS OWNER, proven by session against `resolveRenderOwner` — here.
+ *     2. ANYONE HOLDING A LIVE PUBLIC LINK — at `/w/<token>`, its own route,
+ *        because the CDN strips query strings and a `?t=` door could never
+ *        have opened. See the note where the second door used to be.
  *
- *   The second door is why this is a gate and not a wall. Article 9 gives the
+ *   That second door is why this is a gate and not a wall. Article 9 gives the
  *   Creator the right to publish their work; a protection that made export
  *   impossible would have replaced one defect with another. The Creator opens
- *   that door themselves, for one film at a time, and can shut it again.
+ *   it themselves, for one film at a time, and can shut it again.
  *
  *   Nginx still sends the bytes, via `X-Accel-Redirect` into an `internal`
  *   location it will only enter on its own instruction. Node never streams a
@@ -59,8 +59,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/src/authentication';
 import { getDb } from '@/src/persistent-storage';
 import { resolveRenderOwner, renderOperationIdFromFilename } from '@/src/persistent-storage/render-ownership';
-import { findPublicLinkByToken } from '@/src/persistent-storage/sovereign-project-repository';
-import { PublicationState } from '@/src/sovereign-projects/sovereign-project-contracts';
 
 export const dynamic = 'force-dynamic';
 
@@ -125,25 +123,18 @@ export async function GET(
     return serve(filename);
   }
 
-  // ── Door 2 · a live public link the owner minted ─────────────────────────
-  const token = request.nextUrl.searchParams.get('t');
-  if (token) {
-    const link = findPublicLinkByToken(db, token);
-    if (
-      link
-      && link.publicationState === PublicationState.PUBLISHED
-      && link.revokedAt === null
-      // The token is bound to ONE film. Without this a link minted for a
-      // Creator's public trailer would open every film they own.
-      && link.finalWorkAssetId === operationId
-      // And to that film's owner, so a link cannot outlive a change of hands.
-      && link.ownerId === ownership.ownerId
-    ) {
-      return serve(filename);
-    }
-  }
-
-  // A signed-in stranger, a revoked token, a token for another film, and no
-  // credential at all all arrive here, and all receive the same answer.
+  // ── There is no second door here ─────────────────────────────────────────
+  //
+  // A published link is served by `app/w/[token]`, not by this path. The first
+  // build accepted `?t=<token>` here and it could never have worked: the CDN in
+  // front of this Empire strips query strings from static-looking requests, so
+  // the token was gone before the request arrived. Measured in the nginx log:
+  //
+  //     GET /renders/op_render_1788003786797_08yy3tm9.mp4  404
+  //
+  // — the `?t=` the viewer sent is simply absent. Keeping that branch would
+  // leave a door that looks open, passes every test, and is shut in reality.
+  //
+  // So this route answers exactly one question: are you this film's owner?
   return refuse();
 }

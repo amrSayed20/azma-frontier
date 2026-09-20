@@ -100,7 +100,7 @@ export async function POST(
       status: 'succeeded',
       alreadyPublished: true,
       linkId: existing.linkId,
-      publicUrl: `/renders/${operationId}.mp4?t=${existing.publicToken}`,
+      publicUrl: `/w/${existing.publicToken}`,
       message: 'هذا العمل منشورٌ بالفعل.',
     });
   }
@@ -111,7 +111,7 @@ export async function POST(
     status: 'succeeded',
     alreadyPublished: false,
     linkId: link.linkId,
-    publicUrl: `/renders/${operationId}.mp4?t=${link.publicToken}`,
+    publicUrl: `/w/${link.publicToken}`,
     message: 'نُشر العمل. من يحمل الرابط يراه، ولك سحبه متى شئت.',
   });
 }

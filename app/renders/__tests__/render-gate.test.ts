@@ -21,6 +21,7 @@
  */
 
 import { GET } from '../[...path]/route';
+import { GET as PUBLIC_GET } from '../../w/[token]/route';
 import { POST as PUBLISH, DELETE as REVOKE } from '../../api/renders/[operationId]/publish/route';
 import { NextRequest } from 'next/server';
 import { join } from 'path';
@@ -38,13 +39,24 @@ jest.mock('@/src/authentication', () => ({
 import { getDb, resetDbSingletonForTests } from '@/src/persistent-storage';
 import { resolveRenderOwner } from '@/src/persistent-storage/render-ownership';
 
-function request(file: string, opts: { session?: boolean; token?: string } = {}) {
-  const url = new URL(`http://localhost/renders/${file}`);
-  if (opts.token) url.searchParams.set('t', opts.token);
+function request(file: string, opts: { session?: boolean } = {}) {
   return GET(
-    new NextRequest(url, opts.session ? { headers: { Cookie: 'azma_session=s1' } } : {}),
+    new NextRequest(`http://localhost/renders/${file}`, opts.session ? { headers: { Cookie: 'azma_session=s1' } } : {}),
     { params: Promise.resolve({ path: [file] }) },
   );
+}
+
+/** The published door — a token in the PATH, because the CDN strips query strings. */
+function publicRequest(token: string) {
+  return PUBLIC_GET(
+    new NextRequest(`http://localhost/w/${token}`),
+    { params: Promise.resolve({ token }) },
+  );
+}
+
+/** Pull the token out of a publish response's /w/<token> URL. */
+function tokenOf(publicUrl: string): string {
+  return publicUrl.split('/w/')[1];
 }
 
 /** Seed one film into operation_ledger, the way a real encode records itself. */
@@ -142,37 +154,56 @@ describe('the owner may publish, and may withdraw', () => {
   it('a published link opens the film for someone with NO session', async () => {
     const link = await publish(FILM);
     expect(link.status).toBe('succeeded');
-    const token = new URL(`http://x${link.publicUrl}`).searchParams.get('t')!;
 
     sessionMock.mockReturnValue(null);
-    const response = await request(`${FILM}.mp4`, { token });
+    const response = await publicRequest(tokenOf(link.publicUrl));
     expect(response.status).toBe(200);
     expect(response.headers.get('X-Accel-Redirect')).toBe(`/protected-renders/${FILM}.mp4`);
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+  });
+
+  /**
+   * The defect that every other test in this file would have missed. The first
+   * build put the token in `?t=` and passed everything here, while the CDN
+   * stripped it before the request ever reached the Empire — measured in the
+   * nginx access log, with no `?t=` in the request line at all.
+   */
+  it('the published URL carries its token in the PATH, never the query string', async () => {
+    const link = await publish(FILM);
+    expect(link.publicUrl).toMatch(/^\/w\/[A-Za-z0-9_-]+$/);
+    expect(link.publicUrl).not.toContain('?');
   });
 
   it('a REVOKED link opens nothing — Article 9.3', async () => {
     const link = await publish(FILM);
-    const token = new URL(`http://x${link.publicUrl}`).searchParams.get('t')!;
+    const token = tokenOf(link.publicUrl);
 
     const withdrawal = await revoke(FILM);
     expect(withdrawal.status).toBe('succeeded');
     expect(withdrawal.revoked).toBe(1);
 
     sessionMock.mockReturnValue(null);
-    const response = await request(`${FILM}.mp4`, { token });
-    expect(response.status).toBe(404);
+    expect((await publicRequest(token)).status).toBe(404);
   });
 
-  it('a token minted for ONE film does not open another', async () => {
+  it('a token opens ONLY the film it was minted for', async () => {
     const other = 'op_render_1788003786797_08yy3tm9';
     seedViaOperationLedger(other, OWNER);
 
     const link = await publish(FILM);
-    const token = new URL(`http://x${link.publicUrl}`).searchParams.get('t')!;
-
     sessionMock.mockReturnValue(null);
-    const response = await request(`${other}.mp4`, { token });
-    expect(response.status).toBe(404);
+
+    // The token names its own film; it cannot be pointed at a different one.
+    const served = await publicRequest(tokenOf(link.publicUrl));
+    expect(served.headers.get('X-Accel-Redirect')).toBe(`/protected-renders/${FILM}.mp4`);
+    expect(served.headers.get('X-Accel-Redirect')).not.toContain(other);
+  });
+
+  it('a made-up token opens nothing', async () => {
+    sessionMock.mockReturnValue(null);
+    for (const bad of ['x', 'a'.repeat(43), '../../etc/passwd', '']) {
+      expect((await publicRequest(bad)).status).toBe(404);
+    }
   });
 
   it('a stranger cannot publish another Creator’s film', async () => {
@@ -189,14 +220,13 @@ describe('the owner may publish, and may withdraw', () => {
     expect(second.linkId).toBe(first.linkId);
 
     await revoke(FILM);
-    const token = new URL(`http://x${first.publicUrl}`).searchParams.get('t')!;
     sessionMock.mockReturnValue(null);
-    expect((await request(`${FILM}.mp4`, { token })).status).toBe(404);
+    expect((await publicRequest(tokenOf(first.publicUrl))).status).toBe(404);
   });
 
   it('the minted token is not guessable — 32 bytes, base64url', async () => {
     const link = await publish(FILM);
-    const token = new URL(`http://x${link.publicUrl}`).searchParams.get('t')!;
+    const token = tokenOf(link.publicUrl);
     expect(token).toMatch(/^[A-Za-z0-9_-]+$/);
     expect(Buffer.from(token, 'base64url').length).toBe(32);
   });
