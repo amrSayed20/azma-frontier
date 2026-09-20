@@ -99,3 +99,50 @@ removes. Local emission is untouched: same-tab observers still see every signal
 with zero delay.
 
 Proven in the browser: 2 x 401 before, 0 after.
+
+---
+
+## OD-003 — Two chambers admit an anonymous visitor, then fail in front of them
+
+**Found:** 2026-09-21, sweeping the journey adversarially on the Founder's
+instruction that no real user should ever enter and find a deficiency.
+**Scope:** chamber entry guards. A constitutional question, not a bug fix.
+
+Measured with Playwright against production, anonymous browser contexts:
+
+```
+/qiyamah-chamber         -> redirects to /signup     0 failed requests
+/sovereign-vault-palace  -> redirects to /signup     0 failed requests
+/hujjah-al-damighah      -> redirects to /login      0 failed requests
+/imperial-foyer          -> redirects to /login      0 failed requests
+
+/makman-al-ghayah        -> STAYS                    3 x 401
+    401 /api/sovereign/entry/purpose
+    401 /api/sovereign/entry/creator-goal
+    401 /api/sovereign/nervous-system/circulate
+
+/ras-amr                 -> STAYS                    3 x 401
+    401 /api/vault/assets
+    401 /api/ras-amr/canvas
+    401 /api/sovereign/nervous-system/circulate
+```
+
+Four chambers turn a visitor toward a door. Two let them in and then fetch data
+they are not entitled to, fail, and render a chamber with nothing in it. The
+refusals are correct — the routes are doing their job. What the visitor
+experiences is a room of the Empire that is simply broken.
+
+**Why it is recorded and not repaired:** which chambers require a session is a
+decision about what the Empire offers a stranger, and the Living-city principle
+(free chamber choice after Welcome and Registration) points one way while the
+existence of two unguarded chambers points another. The charter is explicit that
+a constitutional question is never settled unilaterally by the Chief Engineer.
+
+**What a repair must decide:** whether Ras Al Amr and Makman Al-Ghayah join the
+guarded chambers and redirect to /signup, or whether they are meant to be
+enterable and must render an honest empty state instead of failing requests.
+Either is defensible. Choosing is the Founder's.
+
+**Not a stranding defect:** unlike the `/creator-access` 404 repaired in
+4fe4b62, nobody is sent to a page that does not exist. The visitor is somewhere
+real; it just does not work for them.
