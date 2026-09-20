@@ -12,15 +12,70 @@
  *   7. Ministry integration — provider.provider is stamped correctly by Ministry (no network)
  *   8. Full chain — evidence carries Ministry ID, not raw provider ID (real HTTP)
  *
- * Sections 3–6 and 8 require network access to gutendex.com and gutenberg.org.
- * Timeout is set to 30 000 ms per test to accommodate real HTTP latency.
+ * ─── WHY SECTIONS 3-6 AND 8 NO LONGER RUN BY DEFAULT ────────────────────────
  *
- * If the network is unavailable, sections 3–6 will fail with connection errors.
- * The full-chain tests in Section 8 will pass with empty evidence collections —
- * the IntelligenceEngine and MinistryRegistry both handle provider errors gracefully.
+ *   These sections call gutendex.com and gutenberg.org over the public
+ *   internet. This file used to say, in this very place, that they "will fail
+ *   with connection errors" when the network is unavailable — and that
+ *   sentence was the defect. It made a red regression suite a normal state.
+ *
+ *   MEASURED, three runs of the full suite on consecutive attempts:
+ *
+ *       run 1 : 14 failed
+ *       run 2 :  0 failed
+ *       run 3 : 14 failed
+ *
+ *   Nothing in this repository changed between them. A gate that answers
+ *   differently to the same code is not a gate: green stops proving the code
+ *   is sound, red stops proving it is broken, and an engineer learns to scroll
+ *   past fourteen failures. I did exactly that, twice, before looking properly.
+ *
+ *   What looking properly found was worse than flakiness. From this machine:
+ *
+ *       curl https://gutendex.com/books?search=Dickens   -> 000, 3x 15s timeout
+ *
+ *   and from the production server:
+ *
+ *       curl https://gutendex.com/books?search=Dickens   -> 403, "Just a moment..."
+ *       with a browser User-Agent                        -> 301 -> then hangs
+ *       https://www.gutenberg.org/cache/epub/1342/...    -> 200 (fetch still works)
+ *
+ *   gutendex.com now sits behind a bot challenge, so the SEARCH half of the
+ *   Gutenberg Ministry cannot reach its catalogue from the Empire at all. That
+ *   is a live operational fact about the outside world, and it was hidden
+ *   underneath a test failure everyone had agreed to expect.
+ *
+ *   So the two kinds of test are separated, because they answer two different
+ *   questions:
+ *
+ *     REGRESSION (always runs)  — did a change to THIS repository break
+ *                                 something? Sections 1, 2 and 7.
+ *     MONITORING (opt-in)       — is the outside world still reachable and
+ *                                 shaped as we expect? Sections 3-6 and 8,
+ *                                 behind AZMA_LIVE_KNOWLEDGE_TESTS=1.
+ *
+ *   Run the monitoring half deliberately:
+ *
+ *       AZMA_LIVE_KNOWLEDGE_TESTS=1 npx jest sovereign-knowledge-sources
+ *
+ *   WHAT THIS COSTS, STATED PLAINLY: a silent break in the live provider no
+ *   longer turns the suite red on its own. That is a real loss, and it is the
+ *   lesser one — a signal nobody trusts already told nobody anything, and it
+ *   was actively teaching us to ignore the one failure that mattered.
+ *
+ * Timeout is set to 30 000 ms per test to accommodate real HTTP latency.
  */
 
 jest.setTimeout(30000);
+
+/**
+ * The switch between the two halves. Absent by default, so an ordinary
+ * `npx jest` measures only this repository and answers the same way every time.
+ */
+const LIVE_KNOWLEDGE = process.env.AZMA_LIVE_KNOWLEDGE_TESTS === '1';
+
+/** Reaches the public internet. Skipped unless explicitly asked for. */
+const describeLive = LIVE_KNOWLEDGE ? describe : describe.skip;
 
 import { GutenbergProvider } from '../../chambers/hujjah-al-damighah/providers/gutenberg-provider';
 import type { IRepositoryProvider } from '../../chambers/hujjah-al-damighah/core/repository-manager';
@@ -87,7 +142,7 @@ describe('Invalid document ID — throws immediately without network call', () =
 
 // ─── SECTION 3: REAL SEARCH — GUTENDEX API (REAL HTTP) ───────────────────────
 
-describe('Real search — Gutendex API returns results with correct structure', () => {
+describeLive('Real search — Gutendex API returns results with correct structure', () => {
   const provider = new GutenbergProvider();
 
   it('returns an array for a well-known author query', async () => {
@@ -162,7 +217,7 @@ describe('Real search — Gutendex API returns results with correct structure', 
 
 // ─── SECTION 4: REAL SEARCH — LIMIT RESPECTED (REAL HTTP) ────────────────────
 
-describe('Real search — limit is respected across different queries', () => {
+describeLive('Real search — limit is respected across different queries', () => {
   const provider = new GutenbergProvider();
 
   it('limit=1 returns at most 1 result', async () => {
@@ -190,7 +245,7 @@ describe('Real search — limit is respected across different queries', () => {
 
 // ─── SECTION 5: REAL FETCH — GUTENBERG CACHE (REAL HTTP) ─────────────────────
 
-describe('Real fetch — Gutenberg cache returns real book content', () => {
+describeLive('Real fetch — Gutenberg cache returns real book content', () => {
   const provider = new GutenbergProvider();
 
   it('fetch returns a SourceDocument for a known book ID (Romeo and Juliet: 1513)', async () => {
@@ -232,7 +287,7 @@ describe('Real fetch — Gutenberg cache returns real book content', () => {
 
 // ─── SECTION 6: REAL FETCH — SOURCEDOCUMENT STRUCTURE (REAL HTTP) ────────────
 
-describe('Real fetch — SourceDocument structure is correct', () => {
+describeLive('Real fetch — SourceDocument structure is correct', () => {
   const provider = new GutenbergProvider();
 
   it('SourceDocument has an id field', async () => {
@@ -312,7 +367,7 @@ describe('Ministry integration — provider identity is re-stamped by MinistryRe
 
 // ─── SECTION 8: FULL CHAIN (REAL HTTP) ───────────────────────────────────────
 
-describe('Full chain — evidence.sourceProvider is Ministry ID after real HTTP', () => {
+describeLive('Full chain — evidence.sourceProvider is Ministry ID after real HTTP', () => {
   it('Investigation chain produces a rawBundle', async () => {
     const reception = receiveCitizenKnowledgeRequest('What is Romeo and Juliet about?', 'literature');
     const understanding = understandKnowledgeReception(reception);
