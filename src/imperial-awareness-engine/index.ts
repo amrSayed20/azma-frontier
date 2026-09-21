@@ -17,3 +17,7 @@ export {
   IAE_NON_RESPONSIBILITIES,
   IAE_NOT_TO_BE_CONFUSED_WITH,
 } from './CONSTITUTIONAL_CONTRACT';
+
+// Which Chamber the Creator stands in — resolved from the sovereign registry,
+// never from a pathname taken at its word. See resolve-chamber.ts.
+export { resolveChamberFromPath } from './resolve-chamber';

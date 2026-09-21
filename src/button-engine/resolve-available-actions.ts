@@ -24,6 +24,10 @@ function toAwarenessContext(context: ButtonContext): AwarenessContext {
     creator: { authenticated: context.authenticated ?? false, role: context.role ?? null },
     workflowStage: context.threshold,
     chamberState: context.threshold === 'chamber' ? context.chamberState : undefined,
+    // Carried through, not yet consulted. resolveCapabilityIds does not read
+    // it, so every existing caller resolves exactly as before — the Chamber
+    // is simply no longer invisible to the engine that will need it.
+    chamber: context.chamber ?? null,
   };
 }
 

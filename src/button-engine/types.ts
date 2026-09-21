@@ -15,6 +15,8 @@
  * already-certified answers as input.
  */
 
+import type { ChamberDestination } from '@/src/constitutional-navigation';
+
 export type Threshold = 'gate' | 'subscribe' | 'chamber';
 
 export type ChamberState = 'idle' | 'unauthorized' | 'payment-required' | 'error' | 'complete';
@@ -25,6 +27,16 @@ export interface ButtonContext {
   readonly authenticated?: boolean;
   readonly role?: 'creator' | 'founder' | null;
   readonly chamberState?: ChamberState;
+  /**
+   * Which Chamber this Creator stands in, when the consumer knows.
+   *
+   * Optional on purpose. The three existing call sites pass none, and their
+   * behaviour is identical with and without it — this carries the Chamber
+   * through the layer so Awareness can begin to see it, and changes no
+   * decision today. A decision that used it would be a widening of what
+   * Awareness decides, which is a separate, owner-gated question.
+   */
+  readonly chamber?: ChamberDestination | null;
 }
 
 /**
