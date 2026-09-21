@@ -79,3 +79,61 @@ describe('the Palace store belongs to one Creator', () => {
     expect(CODE).not.toMatch(/(readPalace|writePalace|depositToVault)\(\s*\)/);
   });
 });
+
+describe('the Palace remembers one Creator at a time', () => {
+  /**
+   * ─── THE HALF THE FIRST REPAIR LEFT BEHIND ────────────────────────────────
+   *
+   *   `azma.palace.memory` was the same defect and survived the treasures fix:
+   *   localStorage, keyed by nothing, read at mount. It holds {visits, firstAt,
+   *   lastAt}, and those three decide the greeting — «هذا مكانك» for a first
+   *   arrival, a returning Creator's welcome otherwise — and `palace-returned`,
+   *   which dresses the Palace for someone coming back after three days.
+   *
+   *   So on a shared device a Creator who had never been here was told the
+   *   Empire remembered them. No sovereign work crossed, which is exactly why
+   *   it was missed: the leak was a claim about the Creator's own history, and
+   *   a false claim is what this Empire treats as the graver defect.
+   */
+  it('never reads or writes the un-owned memory key', () => {
+    const bareKeyUses = CODE.match(/localStorage\.(get|set)Item\(\s*['"]azma\.palace\.memory['"]/g) ?? [];
+    expect(bareKeyUses).toHaveLength(0);
+  });
+
+  it('composes the memory key from the creator id', () => {
+    expect(CODE).toMatch(/\$\{PALACE_MEMORY_PREFIX\}\.\$\{creatorId\}/);
+  });
+
+  it('an unidentified visitor reads no history and writes none', () => {
+    expect(CODE).toMatch(/function palaceMemoryKey\(creatorId: string \| null\)[\s\S]{0,120}creatorId \?/);
+    expect(CODE).toMatch(/function readPalaceMemory\([\s\S]{0,220}if \(!key\) return NO_MEMORY;/);
+    // The write refuses too: a visit by nobody must not be recorded on the
+    // device for the next person to inherit.
+    expect(CODE).toMatch(/function recordPalaceVisit\([\s\S]{0,300}if \(!key\) return updated;/);
+  });
+
+  it('does not read the memory before the identity arrives', () => {
+    // The original called readPalaceMemory() twice in useState initializers,
+    // at mount, with no owner and no argument.
+    expect(CODE).not.toMatch(/readPalaceMemory\(\s*\)/);
+    expect(CODE).toMatch(/identityPromise\.then\(\(id\) => \{[\s\S]{0,600}readPalaceMemory\(id\)/);
+  });
+
+  it('the returning-Creator dressing is decided on this Creator’s own memory', () => {
+    // `returnClass` was a useState initializer reading the shared key; it must
+    // now be set from the memory that arrived with the identity.
+    expect(CODE).toMatch(/setReturnClass\('palace-returned'\)/);
+    expect(CODE).not.toMatch(/const \[returnClass\]\s*=\s*useState<string>\(\(\) =>/);
+  });
+
+  it('purges the old un-owned memory', () => {
+    expect(CODE).toMatch(/localStorage\.removeItem\(PALACE_MEMORY_PREFIX\)/);
+    expect(CODE).toContain('purgeUnownedPalaceMemory();');
+  });
+
+  it('every remaining memory call site carries an owner', () => {
+    expect(CODE).not.toMatch(/(readPalaceMemory|recordPalaceVisit)\(\s*\)/);
+    // recordPalaceVisit(prev) — the old single-argument form — must be gone.
+    expect(CODE).not.toMatch(/recordPalaceVisit\(\s*prev\s*\)/);
+  });
+});

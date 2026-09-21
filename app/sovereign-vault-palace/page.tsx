@@ -298,19 +298,58 @@ function getTreasureClasses(t: SovereignTreasure): string {
 
 interface PalaceMemory { visits: number; firstAt: number | null; lastAt: number | null }
 
-function readPalaceMemory(): PalaceMemory {
-  if (typeof window === 'undefined') return { visits: 0, firstAt: null, lastAt: null };
-  try {
-    const raw = localStorage.getItem('azma.palace.memory');
-    return raw ? (JSON.parse(raw) as PalaceMemory) : { visits: 0, firstAt: null, lastAt: null };
-  } catch { return { visits: 0, firstAt: null, lastAt: null }; }
+/**
+ * ─── THE SECOND HALF OF THE SAME DEFECT ─────────────────────────────────────
+ *
+ *   `azma.palace.treasures` was repaired above and THIS KEY WAS NOT. It is the
+ *   same class exactly: localStorage, bucketed by nothing, read on mount.
+ *
+ *   What it decides is the greeting. `getAtriumGreeting` shows «هذا مكانك» on a
+ *   first visit and a returning Creator's welcome afterwards, and `returnClass`
+ *   dresses the Palace differently for someone coming back after three days. So
+ *   on a shared device a Creator who has genuinely never been here was told the
+ *   Empire remembered them — the Empire asserting a history that belongs to
+ *   someone else, which is the same lie the treasures leak told, in words
+ *   instead of assets.
+ *
+ *   It is smaller than the treasures leak — a count and two timestamps, no
+ *   sovereign work — and that is precisely why it survived the first repair. It
+ *   is fixed the same way: keyed by creator, unreadable before the server says
+ *   who this is, and the un-owned key removed from the device.
+ */
+const PALACE_MEMORY_PREFIX = 'azma.palace.memory';
+
+const NO_MEMORY: PalaceMemory = { visits: 0, firstAt: null, lastAt: null };
+
+function palaceMemoryKey(creatorId: string | null): string | null {
+  return creatorId ? `${PALACE_MEMORY_PREFIX}.${creatorId}` : null;
 }
 
-function recordPalaceVisit(prev: PalaceMemory): PalaceMemory {
+function readPalaceMemory(creatorId: string | null): PalaceMemory {
+  if (typeof window === 'undefined') return NO_MEMORY;
+  const key = palaceMemoryKey(creatorId);
+  // No identity, no memory. An unidentified visitor is a first visit, which is
+  // the truth, rather than inheriting the last person's history.
+  if (!key) return NO_MEMORY;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as PalaceMemory) : NO_MEMORY;
+  } catch { return NO_MEMORY; }
+}
+
+function recordPalaceVisit(creatorId: string | null, prev: PalaceMemory): PalaceMemory {
   const now     = Date.now();
   const updated: PalaceMemory = { visits: prev.visits + 1, firstAt: prev.firstAt ?? now, lastAt: now };
-  try { localStorage.setItem('azma.palace.memory', JSON.stringify(updated)); } catch { /* ignore */ }
+  const key = palaceMemoryKey(creatorId);
+  if (!key) return updated;
+  try { localStorage.setItem(key, JSON.stringify(updated)); } catch { /* ignore */ }
   return updated;
+}
+
+/** Remove the un-owned key this defect was written into. See purgeUnownedPalace. */
+function purgeUnownedPalaceMemory() {
+  if (typeof window === 'undefined') return;
+  try { localStorage.removeItem(PALACE_MEMORY_PREFIX); } catch { /* ignore */ }
 }
 
 function getAtriumGreeting(visits: number, treasureCount: number): { title: string; subtitle: string } {
@@ -392,16 +431,15 @@ export default function SovereignVaultPalace() {
   const [isBiometricBusy, setIsBiometricBusy]       = useState(false);
   const [hasBiometricDevice, setHasBiometricDevice] = useState(false);
 
-  // Palace memory — familiarity grows with each return
-  const [palaceMemory, setPalaceMemory] = useState<PalaceMemory>(() => readPalaceMemory());
-  // Computed once at mount from previous lastAt — never re-derived in render
-  const [returnClass]                   = useState<string>(() => {
-    const m = readPalaceMemory();
-    if (m.lastAt === null) return '';
-    const DAY        = 1000 * 60 * 60 * 24;
-    const daysSince  = (Date.now() - m.lastAt) / DAY;
-    return daysSince > 3 ? 'palace-returned' : '';
-  });
+  // Palace memory — familiarity grows with each return, per Creator.
+  //
+  // It cannot be read at mount any more: at mount the Empire does not yet know
+  // who is at the door, and reading a history before knowing whose it is was
+  // the defect. The Palace opens as a first visit and the real memory arrives
+  // with the identity, exactly as the treasures do.
+  const [palaceMemory, setPalaceMemory] = useState<PalaceMemory>(NO_MEMORY);
+  // Settled once, when identity arrives — never re-derived in render.
+  const [returnClass, setReturnClass]   = useState<string>('');
 
   // Companion — lazy initializer avoids setState-in-effect
   const [companionMsg, setCompanionMsg]    = useState<string>(() => PALACE_COMPANION.gate);
@@ -476,6 +514,7 @@ export default function SovereignVaultPalace() {
     // Palace stays empty until it answers, so a new Creator never inherits the
     // previous one's ceremony remnants for even a single frame.
     purgeUnownedPalace();
+    purgeUnownedPalaceMemory();
     const identityPromise = fetch('/api/auth/me')
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { authenticated?: boolean; creatorId?: string } | null) =>
@@ -497,10 +536,21 @@ export default function SovereignVaultPalace() {
       identityPromise.then((id) => {
         setCreatorId(id);
         setTreasures(readPalace(id));
+
+        // The greeting and the returning-Creator dressing are decided here, on
+        // this Creator's own memory, and the visit is recorded only once the
+        // Empire knows whose visit it is. An unidentified visitor writes
+        // nothing and is greeted as a first arrival — which is true.
+        const remembered = readPalaceMemory(id);
+        if (remembered.lastAt !== null) {
+          const DAY       = 1000 * 60 * 60 * 24;
+          const daysSince = (Date.now() - remembered.lastAt) / DAY;
+          if (daysSince > 3) setReturnClass('palace-returned');
+        }
+        setPalaceMemory(recordPalaceVisit(id, remembered));
       });
       setPhase('palace');
       setCompanionMsg(PALACE_COMPANION.atrium);
-      setPalaceMemory(prev => recordPalaceVisit(prev));
 
       if (incoming) {
         setIncomingTreasure(incoming);
