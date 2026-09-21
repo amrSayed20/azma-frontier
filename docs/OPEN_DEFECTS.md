@@ -220,3 +220,28 @@ package's scope, so it is recorded rather than touched.
 
 **What a repair looks like:** assert on an injected clock, or on the ordering
 the service actually guarantees, rather than on elapsed real time.
+
+## OD-005 — A unit test reaches the public internet and fails when it is slow
+
+**Found:** 2026-09-21, in the full regression for the Executive Construction
+Mandate closure (3724 passed, 1 failed; the same suite re-run alone: 39/39).
+**Scope:** `src/persistent-storage/__tests__/sovereign-knowledge-investigation-foundation.test.ts`.
+
+`citizenChain('What is nuclear fusion?', 'physics')` calls the real
+`conductInvestigation`, which asks `IntelligenceCompositionFactory` for the
+real engine — and that factory attaches WikipediaProvider, HackerNewsProvider,
+OpenLibraryProvider and GoogleTrendsProvider. So `outcome.ok` depends on the
+network being fast enough during the run. Under the full suite's load it was
+not; alone it was.
+
+The failing assertion is `expect(outcome.ok).toBe(true)` on the origin check,
+which has nothing to do with the network — the test wants to know that a
+Citizen result is stamped CITIZEN, and could establish that with any provider
+that answers at all.
+
+Not caused by, and not touched by, the closure it surfaced in.
+
+**What a repair looks like:** compose the engine for this suite from the
+sovereign in-process providers only (Scripture, Hadith, Tafsir, the Library),
+or attach a fixture provider — the origin stamp is decided before any
+provider is consulted.
