@@ -121,3 +121,30 @@ describe('no second Chamber vocabulary was introduced', () => {
     }
   });
 });
+
+describe('the resolver has a real consumer on a real journey', () => {
+  /**
+   * Verification of the first deployment found the resolver built, exported
+   * and tested — and called by nobody at runtime. AwarenessContext.chamber was
+   * carried through ButtonContext and populated by no call site, which is
+   * authority without a consumer: the exact shape the Construction Mandate
+   * forbids. This holds the wiring shut: the one call site that stands inside
+   * a Chamber must ask the resolver for the real pathname's answer.
+   */
+  it('the Chamber call site passes the resolved Chamber into Awareness', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/qiyamah-chamber/QiyamahChamberClient.tsx'),
+      'utf8',
+    );
+    const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(code).toContain('resolveChamberFromPath(usePathname())');
+    // Every chamber-threshold resolution carries it — none is left blind.
+    const chamberCalls = code.match(/resolveAvailableActions\(\{ threshold: 'chamber'[^}]*\}/g) ?? [];
+    expect(chamberCalls.length).toBeGreaterThan(0);
+    for (const call of chamberCalls) expect(call).toContain('chamber');
+    // And no Chamber id is written by hand there: the registry answers, not the page.
+    for (const entry of CHAMBER_DIRECTORY) {
+      expect(code).not.toContain(`chamber: '${entry.chamber}'`);
+    }
+  });
+});

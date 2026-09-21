@@ -30,9 +30,11 @@ export interface ButtonContext {
   /**
    * Which Chamber this Creator stands in, when the consumer knows.
    *
-   * Optional on purpose. The three existing call sites pass none, and their
-   * behaviour is identical with and without it — this carries the Chamber
-   * through the layer so Awareness can begin to see it, and changes no
+   * Optional on purpose. The Gate and Subscribe call sites stand in no Chamber
+   * and pass none; the Qiyamah call site — the one standing inside a Chamber —
+   * passes what resolveChamberFromPath answers for the real pathname. Its
+   * behaviour is identical with and without it: this carries the Chamber
+   * through the layer so Awareness sees it on a real journey, and changes no
    * decision today. A decision that used it would be a widening of what
    * Awareness decides, which is a separate, owner-gated question.
    */

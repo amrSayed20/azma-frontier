@@ -13,11 +13,13 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import './qiyamah-chamber.css';
 import { t } from '@/src/creator-language';
 import type { Dictionary } from '@/src/creator-language';
 import { resolveAvailableActions } from '@/src/button-engine';
+import { resolveChamberFromPath } from '@/src/imperial-awareness-engine';
 import type { ChamberState } from '@/src/button-engine';
 import { useInstallInvitation } from '@/src/install-experience';
 import type { ImperialVisionDocument } from '@/src/chamber-vision';
@@ -79,6 +81,14 @@ export function QiyamahChamberClient({
 }: QiyamahChamberClientProps) {
   const { goTo } = useConstitutionalNavigation();
   const { triggerInvitation } = useInstallInvitation();
+
+  // Which Chamber the Creator is standing in, asked of the sovereign registry
+  // rather than written here. This is the one call site that stands inside a
+  // Chamber, so it is where the Awareness Engine actually learns the answer on
+  // a real journey — a resolver nobody calls would be authority without a
+  // consumer. It changes no decision: Awareness receives the Chamber, and what
+  // it may decide with it remains the owner's question.
+  const chamber = resolveChamberFromPath(usePathname());
 
   // ── Identity ────────────────────────────────────────────────────────────────
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -374,10 +384,10 @@ export function QiyamahChamberClient({
     : 'error';
 
   const [errorAction]    = (stage === 'error' && generationError)
-    ? resolveAvailableActions({ threshold: 'chamber', chamberState: errorChamberState })
+    ? resolveAvailableActions({ threshold: 'chamber', chamberState: errorChamberState, chamber })
     : [];
   const [completeAction] = (stage === 'result')
-    ? resolveAvailableActions({ threshold: 'chamber', chamberState: 'complete' })
+    ? resolveAvailableActions({ threshold: 'chamber', chamberState: 'complete', chamber })
     : [];
 
   const hasGalleryContent = generations.length > 0 || uploadedItems.length > 0;

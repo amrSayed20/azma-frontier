@@ -25,8 +25,9 @@ function toAwarenessContext(context: ButtonContext): AwarenessContext {
     workflowStage: context.threshold,
     chamberState: context.threshold === 'chamber' ? context.chamberState : undefined,
     // Carried through, not yet consulted. resolveCapabilityIds does not read
-    // it, so every existing caller resolves exactly as before — the Chamber
-    // is simply no longer invisible to the engine that will need it.
+    // it, so every caller resolves exactly as before — the Chamber is simply
+    // no longer invisible to the engine that will need it. It is populated on
+    // a real journey by the Qiyamah call site, from the resolver.
     chamber: context.chamber ?? null,
   };
 }
