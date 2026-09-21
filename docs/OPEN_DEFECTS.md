@@ -146,3 +146,43 @@ Either is defensible. Choosing is the Founder's.
 **Not a stranding defect:** unlike the `/creator-access` 404 repaired in
 4fe4b62, nobody is sent to a page that does not exist. The visitor is somewhere
 real; it just does not work for them.
+
+---
+
+**Disposition (2026-09-21): CLOSED.** The Founder decided: a visitor with no
+creator identity who reaches a chamber requiring one is sent to /signup, the
+unified identity entry.
+
+Both chambers now ask `/api/auth/me` and navigate on the answer, exactly as
+Qiyamah and the Vault Palace already did. The server-side authorization is
+untouched — all four routes still call `verifySession` and still refuse an
+unauthenticated caller. This is not a suppression of 401s; it is the chamber
+telling a stranger where the door is instead of leaving them in an empty room.
+
+Proven in the browser against production:
+
+```
+anonymous  /ras-amr           -> /signup   404=0  stranded=false
+anonymous  /makman-al-ghayah  -> /signup   404=0  stranded=false
+creator    /ras-amr           -> /ras-amr  404=0  console errors=0
+creator    /makman-al-ghayah  -> /makman…  404=0  console errors=0
+
+no loop:   /ras-amr -> /ras-amr -> /signup -> /signup   (2 unique locations)
+still protected: 401 on ras-amr/canvas, vault/assets,
+                 entry/purpose, entry/creator-goal
+```
+
+Two things this uncovered, both repaired, both recorded in their own commits:
+
+  · `deploy.sh` had skipped every dependency install since 16 Sep, because it
+    compared the lockfile on the server against the staged one and never
+    checked that the INSTALLED TREE matched either. node_modules held
+    next@16.2.6 while every build was made by 16.3.5. It took production down
+    with HTTP 500 and `Cannot read properties of undefined (reading
+    'validationLevel')`. Repaired in 8751ef7 with a fingerprint written into
+    the tree at install time.
+
+  · `verify-deployment.mjs` proved hydration by finding a live onClick on a
+    `.ras-intent-card` while loading /ras-amr ANONYMOUSLY — the exact thing
+    this fix retires. It reported a working page as inert and would have
+    blocked every future deployment. Repaired in f570bd3.
