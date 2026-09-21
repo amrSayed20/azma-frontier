@@ -186,3 +186,37 @@ Two things this uncovered, both repaired, both recorded in their own commits:
     `.ras-intent-card` while loading /ras-amr ANONYMOUSLY — the exact thing
     this fix retires. It reported a working page as inert and would have
     blocked every future deployment. Repaired in f570bd3.
+
+---
+
+## OD-004 — A test bets on the wall clock and loses under load
+
+**Found:** 2026-09-21, in the final regression for OD-003.
+**Scope:** `src/core/constitution-runtime/wp-021-028-agent-decision.test.ts`.
+**Unrelated to any change in this package.**
+
+```
+● WP-025: Agent Runtime State Service › should track uptime for agent
+```
+
+The assertion:
+
+```ts
+await layer.agentStateService.setState('agent-state-003', 'IDLE');
+await new Promise(resolve => setTimeout(resolve, 50));
+expect(state?.uptime_ms).toBeGreaterThanOrEqual(50);
+```
+
+`setTimeout(50)` guarantees *at least* 50ms of wall time before the callback is
+scheduled — it does not guarantee that 50 whole milliseconds are measurable on
+the other side, and under 205 suites running in parallel the margin vanishes.
+
+Measured: **1 failure in the full run, 3 of 3 passes in isolation.**
+
+This is the same class as the knowledge suites repaired earlier — a gate that
+answers differently to identical code, which trains everyone to scroll past a
+red line. It is smaller (one assertion, not fourteen) and it is not in this
+package's scope, so it is recorded rather than touched.
+
+**What a repair looks like:** assert on an injected clock, or on the ordering
+the service actually guarantees, rather than on elapsed real time.
