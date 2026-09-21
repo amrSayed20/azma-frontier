@@ -8,8 +8,10 @@
  * exist, what can it do, when should the Creator enter it, and what will
  * the Creator leave with. These are constitutional assets, not UI copy —
  * this module owns none of the underlying truth (voice/tone stays with
- * src/core/tongue/, capability enumeration stays with
- * src/sovereign-capability/, implementation status stays with
+ * src/core/tongue/, executable capability enumeration stays with
+ * src/chamber-truth/ — the sole authority since the Sovereign Journey
+ * ruling of 2026-09-21; the Diwan in src/sovereign-capability/ is a
+ * governance record, not an authority — implementation status stays with
  * src/sovereign-body/'s organ-registry.ts) and instead synthesizes a
  * single, honest, citable answer to five questions none of those sources
  * answer directly. Not yet consumed by any route or UI — this package

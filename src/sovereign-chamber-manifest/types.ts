@@ -13,11 +13,11 @@
  *   canonical chamber-identifier type in the Empire; Diwan reuses it;
  *   this module follows the same discipline rather than inventing
  *   a parallel scheme.
- * - capabilityId strings cross-reference the Sovereign Capability
- *   Diwan (src/sovereign-capability/diwan.ts) where the capability
- *   already has a governance record there. They are strings, not
- *   typed references, so that new production capabilities may be
- *   declared here before they complete Diwan certification.
+ * - capabilityId strings ARE Chamber Truth ids (src/chamber-truth/),
+ *   projected by derive.ts — the Manifest declares no capability of its
+ *   own since the Sovereign Journey ruling of 2026-09-21. They once
+ *   cross-referenced the Sovereign Capability Diwan; the Diwan is a
+ *   governance record and no longer an authority any id answers to.
  *
  * Not reused and why:
  * - ChamberManifest (src/core/chamber-integration) — that type is the

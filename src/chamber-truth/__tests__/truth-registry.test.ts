@@ -155,3 +155,34 @@ describe('this is an authority layer, not a second interface', () => {
     }
   });
 });
+
+describe('no other capability list can be mistaken for the authority', () => {
+  /**
+   * Diwan Authority Closure, 2026-09-21. src/sovereign-capability holds a
+   * governance-era capability list whose ids name no boundary. It was
+   * measured to have no importer and no runtime reader; this keeps it so.
+   * If a future module imports it to decide what a Creator can do, this
+   * fails and names the file.
+   */
+  it('nothing outside src/sovereign-capability imports the Diwan', () => {
+    // The filesystem, not `git ls-files`: a freshly written, not-yet-tracked
+    // module is exactly the one this must catch — the first draft of this
+    // guard used git and passed with an importer planted on disk.
+    const { readdirSync, statSync } = require('fs') as typeof import('fs');
+    const walk = (dir: string, out: string[] = []): string[] => {
+      for (const name of readdirSync(dir)) {
+        if (name === 'node_modules' || name === '.next') continue;
+        const full = join(dir, name);
+        if (statSync(full).isDirectory()) walk(full, out);
+        else if (/\.tsx?$/.test(name)) out.push(full);
+      }
+      return out;
+    };
+    const files = [...walk(join(ROOT, 'src')), ...walk(join(ROOT, 'app'))]
+      .filter((f) => !f.replace(/\\/g, '/').includes('/src/sovereign-capability/'));
+    const importers = files
+      .filter((f) => /(^|\n)\s*(import|export)[^;]*['"][^'"]*sovereign-capability['"]/.test(readFileSync(f, 'utf8')))
+      .map((f) => f.replace(ROOT, '').replace(/\\/g, '/'));
+    expect(importers).toEqual([]);
+  });
+});

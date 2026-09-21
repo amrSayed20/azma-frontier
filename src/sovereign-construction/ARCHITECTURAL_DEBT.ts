@@ -8,8 +8,11 @@
  * informally"), Article VI (classification), Article VII (priority).
  *
  * This file is NOT part of the Sovereign Capability Diwan (src/
- * sovereign-capability/) — the Diwan governs Creator-visible abilities;
- * this registers UNREACHED IMPLEMENTATION discovered while excavating
+ * sovereign-capability/) — the Diwan was the governance record of
+ * Creator-visible abilities when this was written; since the Sovereign
+ * Journey ruling of 2026-09-21 the authority for executable capability is
+ * src/chamber-truth/ and the Diwan authorizes nothing. This registers
+ * UNREACHED IMPLEMENTATION discovered while excavating
  * the Diwan's capabilities, which is a different constitutional concern
  * entirely (Ch. IX, not the Diwan Dossier). Per this campaign's explicit
  * instruction: registered only. Not restored. Not activated. Not
