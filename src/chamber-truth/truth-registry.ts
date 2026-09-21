@@ -130,7 +130,13 @@ export const CHAMBER_TRUTH: Record<ChamberId, ChamberTruth> = {
       {
         id: 'keep-canvas',
         performs: 'Saves and reloads the Creator\'s composition canvas.',
-        boundary: { kind: 'route', at: 'app/api/ras-amr/canvas', methods: ['POST'] },
+        // GET and POST. The first draft declared POST alone — an UNDER-claim,
+        // which the boundary test of that day could not see because it only
+        // asked whether declared verbs exist. Production answered GET with 401
+        // during live verification; the test now demands equality, so a verb
+        // the handler exports and this file omits is refused as loudly as the
+        // reverse.
+        boundary: { kind: 'route', at: 'app/api/ras-amr/canvas', methods: ['GET', 'POST'] },
         requiresExistingAsset: false,
       },
       {

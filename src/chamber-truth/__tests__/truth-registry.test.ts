@@ -48,11 +48,16 @@ describe('every capability resolves to something that exists', () => {
           return;
         }
 
-        // A route: every declared verb must be a real exported handler.
+        // A route: the declared verbs must be EXACTLY the exported handlers.
+        // Not a subset — live verification of the first deployment found
+        // keep-canvas declaring POST while the handler also exported GET, an
+        // under-claim a subset check is blind to. A model of what a Chamber
+        // can do must be wrong in neither direction.
         expect(capability.boundary.methods?.length).toBeGreaterThan(0);
-        for (const method of capability.boundary.methods ?? []) {
-          expect(source).toMatch(new RegExp(`export\\s+async\\s+function\\s+${method}\\b`));
-        }
+        const exported = [...source.matchAll(/export\s+async\s+function\s+(GET|POST|PUT|PATCH|DELETE)\b/g)]
+          .map((m) => m[1])
+          .sort();
+        expect([...(capability.boundary.methods ?? [])].sort()).toEqual(exported);
       });
     }
   }
