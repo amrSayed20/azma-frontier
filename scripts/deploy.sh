@@ -285,15 +285,44 @@ cmd_deploy() {
   #       place by rename, so the running application never sees a half-built
   #       node_modules, and the previous tree is kept beside it for rollback.
   #
-  #       It is skipped when the lockfile on the server is already identical,
-  #       which keeps an ordinary content deployment as fast as it was.
+  #       It is skipped only when the INSTALLED TREE itself was built from the
+  #       staged lockfile — proven by a fingerprint written into the tree at
+  #       install time, not inferred.
+  #
+  #       WHY A FINGERPRINT, AND NOT A LOCKFILE COMPARISON. This step used to
+  #       skip when `cmp` found the server's package-lock.json identical to the
+  #       staged one and a node_modules directory merely EXISTED. That is a
+  #       different claim from the one it printed. On 16 Sep the lockfile moved
+  #       to next@16.3.5 and was copied here; node_modules had last been
+  #       installed on 14 Sep and held next@16.2.6. From that moment every
+  #       deployment compared the new lockfile against the new lockfile, found
+  #       them identical, and skipped the install forever.
+  #
+  #       MEASURED when it finally broke production, five days later:
+  #
+  #           package.json          next 16.3.5
+  #           package-lock.json     next 16.3.5
+  #           node_modules/next     next 16.2.6   (mtime 14/Sep)
+  #
+  #       Every build shipped here was produced by 16.3.5 and executed by
+  #       16.2.6. It worked until a build emitted a manifest field the older
+  #       runtime could not read, and then answered HTTP 500 to every request
+  #       with `TypeError: Cannot read properties of undefined (reading
+  #       'validationLevel')` — including on releases that had served fine for
+  #       hours, because the release was never the variable.
+  #
+  #       'lockfile unchanged' is not 'the installed tree matches the lockfile'.
+  #       The marker below records which lockfile a tree was actually built
+  #       from, so the question asked is the question meant.
   step "Dependencies"
   remote "
     set -e
     cd '$APP_DIR'
     staged_lock='$STAGING_DIR/package-lock.json'
-    if [ -f package-lock.json ] && cmp -s package-lock.json \"\$staged_lock\" && [ -d node_modules ]; then
-      echo '    ok   lockfile unchanged — installed tree already matches'
+    staged_sum=\$(sha256sum \"\$staged_lock\" | cut -d' ' -f1)
+    installed_sum=\$(cat node_modules/.azma-lockfile-sha256 2>/dev/null || echo none)
+    if [ -d node_modules ] && [ \"\$installed_sum\" = \"\$staged_sum\" ]; then
+      echo '    ok   installed tree was built from this exact lockfile'
     else
       echo '    ..   lockfile differs (or no tree present) — installing from lockfile'
       rm -rf .npm-install
@@ -309,8 +338,12 @@ cmd_deploy() {
       [ -d node_modules ] && mv -T node_modules node_modules.previous
       mv -T .npm-install/node_modules node_modules
       cp '$STAGING_DIR/package.json' '$STAGING_DIR/package-lock.json' ./
+      # The fingerprint of the lockfile this tree was actually built from.
+      # Written last, so a tree is only ever claimed once it is complete.
+      printf '%s' \"\$staged_sum\" > node_modules/.azma-lockfile-sha256
       rm -rf .npm-install
-      echo '    ok   dependencies installed from the approved lockfile'
+      echo \"    ok   dependencies installed from the approved lockfile (\$staged_sum)\"
+      echo \"    ok   next \$(node -p \"require('./node_modules/next/package.json').version\" 2>/dev/null || echo unknown)\" 
     fi
   " || die "dependency installation failed — the live release was not touched"
 
