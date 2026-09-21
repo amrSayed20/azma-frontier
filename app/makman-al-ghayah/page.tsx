@@ -172,6 +172,35 @@ export default function MakmanAlGhayah() {
   const [investigationResult, setInvestigationResult] = useState<Record<string, unknown> | null>(null);
   const [isAssessing,         setIsAssessing]         = useState(false);
 
+  // ── The door, for a visitor the Empire does not yet know ──────────────────
+  //
+  //   OD-003. MEASURED with Playwright against production: an anonymous
+  //   visitor who opened this chamber was not turned toward anything. The page
+  //   loaded and then fetched data they are not entitled to:
+  //
+  //       401 /api/sovereign/entry/purpose  ·  401 /api/sovereign/entry/creator-goal
+  //
+  //   Every refusal was correct — the server-side authorization is intentional
+  //   and is untouched by this. What the visitor experienced was a room of the
+  //   Empire that simply did not work, while four other chambers already turned
+  //   a stranger toward the door.
+  //
+  //   This asks the server who is here and, if nobody, sends them to /signup —
+  //   the unified identity entry, where the Google gate is. It is not a
+  //   suppression of the 401s: the requests below still run for a Creator, and
+  //   still fail for anyone else. It is the chamber telling a stranger where
+  //   the door is instead of letting them stand in an empty room.
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((data: { authenticated?: boolean }) => {
+        if (!data.authenticated) goTo('/signup');
+      })
+      // A guard that cannot reach the server does not strand anyone either.
+      .catch(() => goTo('/signup'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     void fetchPurpose();
     void fetchGoals();
