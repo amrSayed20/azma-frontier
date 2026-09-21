@@ -133,9 +133,60 @@ async function withRetry(action, attempts = 3) {
   return { ok: false, fault: 'transport', error: last };
 }
 
+/**
+ * An optional Creator session.
+ *
+ * ─── WHY THIS APPEARED ──────────────────────────────────────────────────────
+ *
+ *   This verifier drove /ras-amr anonymously: it loaded the chamber, checked
+ *   that React had hydrated by finding a live onClick on a `.ras-intent-card`,
+ *   and clicked all fourteen. That was a correct thing to check for as long as
+ *   an anonymous visitor could see those cards.
+ *
+ *   OD-003 ended that by the Founder's decision: a visitor with no creator
+ *   identity who reaches a chamber requiring one is now sent to /signup. So
+ *   `.ras-intent-card` no longer exists for this browser, the check fell back
+ *   to document.body, and the gate reported
+ *
+ *       FAIL  react hydrated  fiber=true onClick=false
+ *
+ *   — "the page is inert" — about a page that was working exactly as ordered.
+ *   The gate was not detecting broken hydration. It was detecting an
+ *   assumption of its own that had been deliberately retired, and it would have
+ *   blocked every deployment from here on.
+ *
+ *   Pass a session id to exercise the chamber as a Creator. Without one the
+ *   chamber half is SKIPPED and said to be skipped, because a check that
+ *   quietly tests nothing is worse than a check that is absent.
+ */
+const SESSION = process.argv[3] ?? process.env.AZMA_VERIFY_SESSION ?? null;
+const HOSTNAME = new URL(BASE).hostname;
+
 try {
+  // 0 ── A chamber that needs a Creator turns a stranger toward the door.
+  //      Asserted FIRST, because it is the behaviour everything below depends
+  //      on knowing about.
+  {
+    const guest = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    try {
+      await guest.goto(`${BASE}/ras-amr`, { waitUntil: 'load', timeout: 90_000 });
+      await guest.waitForTimeout(2500);
+      const landed = new URL(guest.url()).pathname;
+      record('a chamber sends a stranger to the door', landed === '/signup', landed);
+    } finally {
+      await guest.close();
+    }
+  }
+
+  if (SESSION) {
+    await page.context().addCookies([{
+      name: 'azma_session', value: SESSION,
+      domain: HOSTNAME, path: '/', httpOnly: true, secure: true,
+    }]);
+  }
+
   // 1 ── HTTP
-  const nav = await withRetry(() => page.goto(`${BASE}/ras-amr`, { waitUntil: 'load', timeout: 90_000 }));
+  const nav = await withRetry(() => page.goto(`${BASE}/${SESSION ? 'ras-amr' : 'signup'}`, { waitUntil: 'load', timeout: 90_000 }));
   if (!nav.ok && nav.fault === 'transport') {
     console.log(`    \x1b[33mINCONCLUSIVE\x1b[0m  cannot reach ${BASE} — ${String(nav.error).split('\n')[0].slice(0, 110)}`);
     await browser.close();
@@ -166,7 +217,13 @@ try {
 
   // 4 ── React actually booted
   const boot = await page.evaluate(() => {
-    const el = document.querySelector('.ras-intent-card') || document.body;
+    // With a session this is a chamber card; without one it is the Google door
+    // on /signup, which carries a real React onClick. Either way the element
+    // is one a Creator actually presses — never document.body, whose fiber
+    // exists on any page and whose missing handler proves nothing.
+    const el = document.querySelector('.ras-intent-card')
+      || document.querySelector('.creator-access-google')
+      || document.body;
     const propsKey = Object.keys(el).find((k) => k.startsWith('__reactProps$'));
     return {
       fiber: Boolean(Object.keys(el).find((k) => k.startsWith('__reactFiber$'))),
@@ -178,87 +235,104 @@ try {
     `fiber=${boot.fiber} onClick=${boot.handler}`);
   if (!boot.fiber || !boot.handler) throw new Error('React did not hydrate — the page is inert');
 
-  // 5 ── every card present and unobstructed
-  record('card count', boot.cards === EXPECTED_CARDS, `${boot.cards} of ${EXPECTED_CARDS}`);
-
-  const obstructed = await page.evaluate(() =>
-    Array.from(document.querySelectorAll('.ras-intent-card')).flatMap((card) => {
-      const name = card.querySelector('.ras-intent-card-name')?.textContent?.trim() ?? '(unnamed)';
-      const style = getComputedStyle(card);
-      if (style.pointerEvents === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
-        return [`${name}: pointer-events=${style.pointerEvents} visibility=${style.visibility} opacity=${style.opacity}`];
-      }
-      card.scrollIntoView({ block: 'center' });
-      const r = card.getBoundingClientRect();
-      const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-      return top && card.contains(top) ? [] : [`${name}: covered by ${top ? top.tagName + '.' + top.className : 'nothing'}`];
-    }),
-  );
-  record('no card is obstructed', obstructed.length === 0,
-    obstructed.length ? `\n          ${obstructed.join('\n          ')}` : '');
-
-  // 6 ── each card actually does something, from a clean page each time
-  console.log(`    ---- clicking ${boot.cards} cards ----`);
-  const names = await page.evaluate(() =>
-    Array.from(document.querySelectorAll('.ras-intent-card')).map(
-      (c) => c.querySelector('.ras-intent-card-name')?.textContent?.trim() ?? '(unnamed)',
-    ),
-  );
-
-  let responsive = 0;
-  for (let i = 0; i < names.length; i += 1) {
-    const attempt = await withRetry(async () => {
-      const p = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-      try {
-        await p.goto(`${BASE}/ras-amr`, { waitUntil: 'load', timeout: 90_000 });
-        await p.waitForTimeout(2200);
-        const card = p.locator('.ras-intent-card').nth(i);
-        await card.scrollIntoViewIfNeeded();
-        await card.click({ timeout: 10_000 });
-        await p.waitForTimeout(2200);
-        return await p.evaluate(() => ({
-          gate: Boolean(document.querySelector('.ras-intent-gate')),
-          preview: Boolean(document.querySelector('.ras-template-preview-gate')),
-          workspace: Boolean(document.querySelector('.ras-amr-viewport')),
-          header: (() => {
-            const h = document.querySelector('.ras-header');
-            return h ? getComputedStyle(h).display !== 'none' : false;
-          })(),
-        }));
-      } finally {
-        await p.close();
-      }
-    });
-
-    if (!attempt.ok && attempt.fault === 'transport') {
-      inconclusive += 1;
-      console.log(`      \x1b[33m????\x1b[0m [${String(i).padStart(2)}] ${names[i]} — network unavailable, not a verdict on the release`);
-      continue;
-    }
-
-    let outcome;
-    if (!attempt.ok) {
-      outcome = `threw: ${String(attempt.error).split('\n')[0].slice(0, 80)}`;
-    } else {
-      const a = attempt.value;
-      if (a.preview) outcome = 'template preview';
-      else if (!a.gate && (a.workspace || a.header)) outcome = 'workspace';
-      else outcome = 'no reaction';
-    }
-
-    const passed = outcome === 'template preview' || outcome === 'workspace';
-    if (passed) responsive += 1;
-    console.log(`      ${passed ? '\x1b[32mok  \x1b[0m' : '\x1b[31mdead\x1b[0m'} [${String(i).padStart(2)}] ${names[i]}${passed ? '' : ` — ${outcome}`}`);
+  // Sections 5 and 6 exercise the chamber itself, which a stranger is now
+  // correctly refused. Skipped LOUDLY without a session — a check that quietly
+  // tests nothing is worse than one that is absent.
+  if (!SESSION) {
+    console.log('    [33mSKIP[0m  chamber cards — no session supplied, and the chamber');
+    console.log('          correctly refuses a stranger. Pass a session id as the second');
+    console.log('          argument to exercise it as a Creator.');
   }
 
-  if (inconclusive > 0) {
-    console.log(`\n    \x1b[33mINCONCLUSIVE\x1b[0m  ${inconclusive} card(s) could not be reached — the network dropped, not the release`);
-    await browser.close();
-    process.exit(2);
-  }
+  if (SESSION) {
+    // 5 ── every card present and unobstructed
+    record('card count', boot.cards === EXPECTED_CARDS, `${boot.cards} of ${EXPECTED_CARDS}`);
 
-  record(`all ${EXPECTED_CARDS} cards responsive`, responsive === EXPECTED_CARDS,
-    `${responsive} of ${names.length}`);
+    const obstructed = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.ras-intent-card')).flatMap((card) => {
+        const name = card.querySelector('.ras-intent-card-name')?.textContent?.trim() ?? '(unnamed)';
+        const style = getComputedStyle(card);
+        if (style.pointerEvents === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+          return [`${name}: pointer-events=${style.pointerEvents} visibility=${style.visibility} opacity=${style.opacity}`];
+        }
+        card.scrollIntoView({ block: 'center' });
+        const r = card.getBoundingClientRect();
+        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return top && card.contains(top) ? [] : [`${name}: covered by ${top ? top.tagName + '.' + top.className : 'nothing'}`];
+      }),
+    );
+    record('no card is obstructed', obstructed.length === 0,
+      obstructed.length ? `\n          ${obstructed.join('\n          ')}` : '');
+
+    // 6 ── each card actually does something, from a clean page each time
+    console.log(`    ---- clicking ${boot.cards} cards ----`);
+    const names = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.ras-intent-card')).map(
+        (c) => c.querySelector('.ras-intent-card-name')?.textContent?.trim() ?? '(unnamed)',
+      ),
+    );
+
+    let responsive = 0;
+    for (let i = 0; i < names.length; i += 1) {
+      const attempt = await withRetry(async () => {
+        const p = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+        try {
+          if (SESSION) {
+            await p.context().addCookies([{
+              name: 'azma_session', value: SESSION,
+              domain: HOSTNAME, path: '/', httpOnly: true, secure: true,
+            }]);
+          }
+          await p.goto(`${BASE}/ras-amr`, { waitUntil: 'load', timeout: 90_000 });
+          await p.waitForTimeout(2200);
+          const card = p.locator('.ras-intent-card').nth(i);
+          await card.scrollIntoViewIfNeeded();
+          await card.click({ timeout: 10_000 });
+          await p.waitForTimeout(2200);
+          return await p.evaluate(() => ({
+            gate: Boolean(document.querySelector('.ras-intent-gate')),
+            preview: Boolean(document.querySelector('.ras-template-preview-gate')),
+            workspace: Boolean(document.querySelector('.ras-amr-viewport')),
+            header: (() => {
+              const h = document.querySelector('.ras-header');
+              return h ? getComputedStyle(h).display !== 'none' : false;
+            })(),
+          }));
+        } finally {
+          await p.close();
+        }
+      });
+
+      if (!attempt.ok && attempt.fault === 'transport') {
+        inconclusive += 1;
+        console.log(`      \x1b[33m????\x1b[0m [${String(i).padStart(2)}] ${names[i]} — network unavailable, not a verdict on the release`);
+        continue;
+      }
+
+      let outcome;
+      if (!attempt.ok) {
+        outcome = `threw: ${String(attempt.error).split('\n')[0].slice(0, 80)}`;
+      } else {
+        const a = attempt.value;
+        if (a.preview) outcome = 'template preview';
+        else if (!a.gate && (a.workspace || a.header)) outcome = 'workspace';
+        else outcome = 'no reaction';
+      }
+
+      const passed = outcome === 'template preview' || outcome === 'workspace';
+      if (passed) responsive += 1;
+      console.log(`      ${passed ? '\x1b[32mok  \x1b[0m' : '\x1b[31mdead\x1b[0m'} [${String(i).padStart(2)}] ${names[i]}${passed ? '' : ` — ${outcome}`}`);
+    }
+
+    if (inconclusive > 0) {
+      console.log(`\n    \x1b[33mINCONCLUSIVE\x1b[0m  ${inconclusive} card(s) could not be reached — the network dropped, not the release`);
+      await browser.close();
+      process.exit(2);
+    }
+
+    record(`all ${EXPECTED_CARDS} cards responsive`, responsive === EXPECTED_CARDS,
+      `${responsive} of ${names.length}`);
+  }
 } catch (err) {
   // A transport fault anywhere in the run means the check could not be
   // performed — not that the release is bad. Saying "failed" here is what
