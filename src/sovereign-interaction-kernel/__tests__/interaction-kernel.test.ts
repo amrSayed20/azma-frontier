@@ -9,7 +9,7 @@ describe('Sovereign Interaction Kernel', () => {
       };
       const session = prepareInteractionSession(request);
       expect(session.status).toBe('RESOLVED');
-      expect(session.resolvedCapability?.capabilityId).toBe('hujjah-investigate-a-question');
+      expect(session.resolvedCapability?.capabilityId).toBe('run-investigation');
       expect(session.resolvedCapability?.chamberId).toBe('hujjah-al-damighah');
     });
 
@@ -19,7 +19,7 @@ describe('Sovereign Interaction Kernel', () => {
       };
       const session = prepareInteractionSession(request);
       expect(session.status).toBe('RESOLVED');
-      expect(session.resolvedCapability?.capabilityId).toBe('qiyamah-generate-image');
+      expect(session.resolvedCapability?.capabilityId).toBe('generate-image');
     });
 
     it('resolves ras-amr to its primary capability', () => {
@@ -28,7 +28,7 @@ describe('Sovereign Interaction Kernel', () => {
       };
       const session = prepareInteractionSession(request);
       expect(session.status).toBe('RESOLVED');
-      expect(session.resolvedCapability?.capabilityId).toBe('ras-amr-create-direction-canvas');
+      expect(session.resolvedCapability?.capabilityId).toBe('keep-canvas');
     });
 
     it('resolves makman-al-ghayah to its primary capability', () => {
@@ -37,7 +37,7 @@ describe('Sovereign Interaction Kernel', () => {
       };
       const session = prepareInteractionSession(request);
       expect(session.status).toBe('RESOLVED');
-      expect(session.resolvedCapability?.capabilityId).toBe('makman-set-sovereign-purpose');
+      expect(session.resolvedCapability?.capabilityId).toBe('declare-purpose');
     });
 
     it('resolves sovereign-vault-palace to its primary capability', () => {
@@ -46,7 +46,7 @@ describe('Sovereign Interaction Kernel', () => {
       };
       const session = prepareInteractionSession(request);
       expect(session.status).toBe('RESOLVED');
-      expect(session.resolvedCapability?.capabilityId).toBe('vault-list-assets');
+      expect(session.resolvedCapability?.capabilityId).toBe('review-assets');
     });
   });
 
@@ -56,12 +56,12 @@ describe('Sovereign Interaction Kernel', () => {
         intent: {
           kind: 'navigate',
           targetChamber: 'qiyamah-chamber',
-          capabilityId: 'qiyamah-list-generations',
+          capabilityId: 'review-generations',
         },
       };
       const session = prepareInteractionSession(request);
       expect(session.status).toBe('RESOLVED');
-      expect(session.resolvedCapability?.capabilityId).toBe('qiyamah-list-generations');
+      expect(session.resolvedCapability?.capabilityId).toBe('review-generations');
     });
 
     it('returns NO_MATCHING_CAPABILITY for an unknown capabilityId', () => {
@@ -85,7 +85,7 @@ describe('Sovereign Interaction Kernel', () => {
       };
       const session = prepareInteractionSession(request);
       expect(session.status).toBe('RESOLVED');
-      expect(session.resolvedCapability?.capabilityId).toBe('hujjah-investigate-a-question');
+      expect(session.resolvedCapability?.capabilityId).toBe('run-investigation');
       expect(session.resolvedCapability?.chamberId).toBe('hujjah-al-damighah');
     });
 
@@ -95,16 +95,16 @@ describe('Sovereign Interaction Kernel', () => {
       };
       const session = prepareInteractionSession(request);
       expect(session.status).toBe('RESOLVED');
-      expect(session.resolvedCapability?.capabilityId).toBe('qiyamah-generate-image');
+      expect(session.resolvedCapability?.capabilityId).toBe('generate-image');
     });
 
-    it('resolves "compile canvas" in browse mode to assembly compilation', () => {
+    it('resolves "compile production" in browse mode to assembly compilation', () => {
       const request: KernelRequest = {
-        intent: { kind: 'text', rawText: 'compile canvas', preferredMode: 'browse' },
+        intent: { kind: 'text', rawText: 'compile production', preferredMode: 'browse' },
       };
       const session = prepareInteractionSession(request);
       expect(session.status).toBe('RESOLVED');
-      expect(session.resolvedCapability?.capabilityId).toBe('ras-amr-compile-production-into-assembly');
+      expect(session.resolvedCapability?.capabilityId).toBe('compile-production');
     });
 
     it('resolves "purpose" in write mode to Makman sovereign purpose declaration', () => {
@@ -113,7 +113,7 @@ describe('Sovereign Interaction Kernel', () => {
       };
       const session = prepareInteractionSession(request);
       expect(session.status).toBe('RESOLVED');
-      expect(session.resolvedCapability?.capabilityId).toBe('makman-set-sovereign-purpose');
+      expect(session.resolvedCapability?.capabilityId).toBe('declare-purpose');
     });
 
     it('resolves "list" in browse mode to Qiyamah list-generations', () => {
@@ -122,7 +122,7 @@ describe('Sovereign Interaction Kernel', () => {
       };
       const session = prepareInteractionSession(request);
       expect(session.status).toBe('RESOLVED');
-      expect(session.resolvedCapability?.capabilityId).toBe('qiyamah-list-generations');
+      expect(session.resolvedCapability?.capabilityId).toBe('review-generations');
     });
 
     it('returns NEEDS_CLARIFICATION when "generate" matches two write-mode capabilities equally', () => {
@@ -134,8 +134,8 @@ describe('Sovereign Interaction Kernel', () => {
       expect(session.resolvedCapability).toBeNull();
       expect(session.candidates.length).toBeGreaterThanOrEqual(2);
       const ids = session.candidates.map((c) => c.capabilityId);
-      expect(ids).toContain('qiyamah-generate-image');
-      expect(ids).toContain('vault-generate-speech-asset');
+      expect(ids).toContain('generate-image');
+      expect(ids).toContain('give-voice');
     });
 
     it('returns NO_MATCHING_CAPABILITY for empty text', () => {
@@ -170,7 +170,7 @@ describe('Sovereign Interaction Kernel', () => {
       };
       const session = prepareInteractionSession(request);
       expect(session.status).toBe('RESOLVED');
-      expect(session.resolvedCapability?.capabilityId).toBe('hujjah-investigate-a-question');
+      expect(session.resolvedCapability?.capabilityId).toBe('run-investigation');
       expect(session.activeInteractionMode).toBe('listen');
     });
 
@@ -180,7 +180,7 @@ describe('Sovereign Interaction Kernel', () => {
       };
       const session = prepareInteractionSession(request);
       expect(session.status).toBe('RESOLVED');
-      expect(session.resolvedCapability?.capabilityId).toBe('qiyamah-generate-image');
+      expect(session.resolvedCapability?.capabilityId).toBe('generate-image');
     });
 
     it('returns NO_MATCHING_CAPABILITY for voice targeting browse-only capabilities', () => {
@@ -193,24 +193,30 @@ describe('Sovereign Interaction Kernel', () => {
   });
 
   describe('InteractionSession contract', () => {
-    it('RESOLVED session carries required inputs from the manifest', () => {
+    it('RESOLVED session carries no inputs — the Manifest no longer describes them', () => {
+      // Since the Sovereign Journey ruling the Manifest is derived from
+      // Chamber Truth, which declares boundaries, not inputs. Inputs are
+      // empty by derivation; the boundary handler is the authority on them.
       const request: KernelRequest = {
         intent: { kind: 'navigate', targetChamber: 'hujjah-al-damighah' },
       };
       const session = prepareInteractionSession(request);
       expect(session.status).toBe('RESOLVED');
-      expect(session.requiredInputs.length).toBe(2);
-      expect(session.requiredInputs[0].name).toBe('query');
-      expect(session.requiredInputs[1].name).toBe('category');
+      expect(session.requiredInputs).toEqual([]);
+      expect(session.optionalInputs).toEqual([]);
     });
 
-    it('RESOLVED session carries preconditions from the manifest', () => {
-      const request: KernelRequest = {
-        intent: { kind: 'navigate', targetChamber: 'qiyamah-chamber' },
-      };
-      const session = prepareInteractionSession(request);
-      expect(session.status).toBe('RESOLVED');
-      expect(session.preconditions.length).toBeGreaterThan(0);
+    it('RESOLVED session carries the one precondition Truth declares', () => {
+      const needsAsset = prepareInteractionSession({
+        intent: { kind: 'navigate', targetChamber: 'qiyamah-chamber', capabilityId: 'edit-inside-asset' },
+      });
+      expect(needsAsset.status).toBe('RESOLVED');
+      expect(needsAsset.preconditions).toHaveLength(1);
+
+      const needsNothing = prepareInteractionSession({
+        intent: { kind: 'navigate', targetChamber: 'qiyamah-chamber', capabilityId: 'generate-image' },
+      });
+      expect(needsNothing.preconditions).toEqual([]);
     });
 
     it('each session receives a unique sessionId', () => {

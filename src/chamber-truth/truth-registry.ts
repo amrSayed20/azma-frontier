@@ -4,14 +4,17 @@ import type { ChamberTruth } from './types';
 /**
  * AZMA OS — CHAMBER TRUTH REGISTRY
  *
- * Every entry below was measured against the repository on 2026-09-21 by
- * reading the handler and the verbs it exports — not by reading a page.
+ * Every entry below was measured against the repository by reading the
+ * handler and the verbs it exports — not by reading a page. First survey
+ * 2026-09-21; a second survey the same day, ordered by the Sovereign Journey
+ * ruling, walked 14 chamber-domain boundaries the first had not and
+ * declared the thirteen that are Creator capabilities.
  *
  * A `Record<ChamberId, …>` on purpose: the compiler refuses the file if a
  * Chamber is missing, so a sixth Chamber cannot appear and a fifth cannot
  * quietly vanish.
  */
-export const CHAMBER_TRUTH: Record<ChamberId, ChamberTruth> = {
+export const CHAMBER_TRUTH = {
   // ── الحُجّة الدامغة ───────────────────────────────────────────────────────
   //
   // No API routes at all. Its entire surface is three Server Actions, which a
@@ -119,6 +122,55 @@ export const CHAMBER_TRUTH: Record<ChamberId, ChamberTruth> = {
         boundary: { kind: 'route', at: 'app/api/renders/[operationId]/publish', methods: ['POST', 'DELETE'] },
         requiresExistingAsset: true,
       },
+      {
+        id: 'discard-asset',
+        performs:
+          'Removes a sovereign asset the Creator owns, recording a tombstone that carries its lineage '
+          + 'before the row and the file are destroyed (Constitution Article 6.3).',
+        boundary: { kind: 'route', at: 'app/api/vault/assets/[assetId]', methods: ['DELETE'] },
+        requiresExistingAsset: true,
+      },
+      // ── Custody of identity — how the Vault opens ────────────────────────
+      //
+      // These are Creator actions in the Vault, not machinery: a Creator sets
+      // the PIN, opens the Vault with it, enrols a device to open it with a
+      // fingerprint or face, and withdraws a lost device. Identity and
+      // permissions are the Vault's constitutional responsibility (Sovereign
+      // Journey Mandate §VIII), so they are declared here and nowhere else.
+      {
+        id: 'set-pin',
+        performs: 'Sets the PIN that opens this Creator\'s Vault.',
+        boundary: { kind: 'route', at: 'app/api/vault/pin/setup', methods: ['POST'] },
+        requiresExistingAsset: false,
+      },
+      {
+        id: 'open-with-pin',
+        performs: 'Opens the Vault by verifying the Creator\'s PIN.',
+        boundary: { kind: 'route', at: 'app/api/vault/pin/verify', methods: ['POST'] },
+        requiresExistingAsset: false,
+      },
+      {
+        id: 'enrol-device',
+        performs:
+          'Enrols the Creator\'s own device to open the Vault with its fingerprint or face: GET issues '
+          + 'the registration challenge, POST verifies what the device signed and keeps only its public key.',
+        boundary: { kind: 'route', at: 'app/api/vault/biometric/enrol', methods: ['GET', 'POST'] },
+        requiresExistingAsset: false,
+      },
+      {
+        id: 'open-with-device',
+        performs:
+          'Opens the Vault with an enrolled device: GET issues the authentication challenge, POST '
+          + 'verifies the signed assertion.',
+        boundary: { kind: 'route', at: 'app/api/vault/biometric/verify', methods: ['GET', 'POST'] },
+        requiresExistingAsset: false,
+      },
+      {
+        id: 'review-devices',
+        performs: 'Lists the devices enrolled to open this Vault, and withdraws one that is lost or no longer trusted.',
+        boundary: { kind: 'route', at: 'app/api/vault/biometric/devices', methods: ['GET', 'DELETE'] },
+        requiresExistingAsset: false,
+      },
     ],
     deferred: [],
   },
@@ -174,6 +226,20 @@ export const CHAMBER_TRUTH: Record<ChamberId, ChamberTruth> = {
         performs: 'Takes a subtitle file into the production as a sovereign asset.',
         boundary: { kind: 'route', at: 'app/api/vault/assets/import-subtitles', methods: ['POST'] },
         requiresExistingAsset: false,
+      },
+      {
+        id: 'restore-canvas',
+        performs: 'Restores one specific saved canvas by its id, for this Creator only.',
+        boundary: { kind: 'route', at: 'app/api/ras-amr/canvas/[canvasId]', methods: ['GET'] },
+        requiresExistingAsset: false,
+      },
+      {
+        id: 'give-cloned-voice',
+        performs:
+          'Generates real speech in a voice the Creator has already cloned, as a new sovereign audio '
+          + 'asset with its own lineage.',
+        boundary: { kind: 'route', at: 'app/api/vault/assets/generate-cloned-speech', methods: ['POST'] },
+        requiresExistingAsset: true,
       },
     ],
     deferred: [
@@ -270,6 +336,60 @@ export const CHAMBER_TRUTH: Record<ChamberId, ChamberTruth> = {
         },
         requiresExistingAsset: false,
       },
+      {
+        id: 'read-goal',
+        performs: 'Reads one goal the Creator created.',
+        boundary: { kind: 'route', at: 'app/api/sovereign/entry/creator-goal/[goalId]', methods: ['GET'] },
+        requiresExistingAsset: false,
+      },
+      {
+        id: 'mark-milestone',
+        performs:
+          'Designates a goal as a milestone serving the Creator\'s sovereign purpose, snapshotting the '
+          + 'purpose wording so the relationship survives later edits.',
+        boundary: { kind: 'route', at: 'app/api/sovereign/entry/creator-goal/[goalId]/milestone', methods: ['PUT'] },
+        requiresExistingAsset: false,
+      },
+      {
+        id: 'name-knowledge-requirements',
+        performs:
+          'Derives, from the latest fulfilment assessment, what the Empire must learn to understand '
+          + 'each open gap.',
+        boundary: {
+          kind: 'route',
+          at: 'app/api/sovereign/entry/creator-goal/[goalId]/gap-investigation',
+          methods: ['GET'],
+        },
+        requiresExistingAsset: false,
+      },
+      {
+        id: 'investigate-for-goal',
+        // Makman's boundary, consulting the Chamber of Evidence's engine: the
+        // constitutional bridge between the two. Declared here because the
+        // Creator exercises it from a goal, not from an investigation.
+        performs: 'Conducts the full sovereign knowledge investigation for a milestone goal\'s open gaps.',
+        boundary: {
+          kind: 'route',
+          at: 'app/api/sovereign/entry/creator-goal/[goalId]/knowledge-investigation',
+          methods: ['GET'],
+        },
+        requiresExistingAsset: false,
+      },
+      {
+        id: 'issue-knowledge-requests',
+        performs: 'Issues the formal batch of typed knowledge requests for a goal\'s active requirements.',
+        boundary: {
+          kind: 'route',
+          at: 'app/api/sovereign/entry/creator-goal/[goalId]/knowledge-requests',
+          methods: ['GET'],
+        },
+        requiresExistingAsset: false,
+      },
+      // NOT declared: app/api/sovereign/entry/consumption (GET). Real and
+      // executable, but its actor is the AUDIENCE consuming a published work
+      // through Makman's public boundary — not a Creator standing in the
+      // Chamber. This model records what a Creator can do; an audience
+      // capability belongs to a different question.
     ],
     deferred: [
       {
@@ -283,7 +403,24 @@ export const CHAMBER_TRUTH: Record<ChamberId, ChamberTruth> = {
       },
     ],
   },
-};
+} as const satisfies Record<ChamberId, ChamberTruth>;
+
+/**
+ * The closed set of capability ids, one literal per declared capability.
+ *
+ * `as const satisfies` keeps every id a literal type while still checking
+ * the whole registry against ChamberTruth. The consequence is the one that
+ * matters for the Sovereign Journey ruling: any structure that must cover
+ * every capability — the Manifest's delivery table, a guide — can be typed
+ * `Record<TruthCapabilityId, …>`, and the compiler refuses it the moment a
+ * capability is added here without it, or it names one that is not here.
+ * ONE source of capability truth, ONE derivation path, enforced by the
+ * type-checker rather than by discipline.
+ */
+export type TruthCapabilityId = (typeof CHAMBER_TRUTH)[ChamberId]['capabilities'][number]['id'];
+
+/** The capability ids one Chamber declares. */
+export type CapabilityIdOf<C extends ChamberId> = (typeof CHAMBER_TRUTH)[C]['capabilities'][number]['id'];
 
 /** What this Chamber can genuinely do right now. */
 export function getChamberTruth(chamberId: ChamberId): ChamberTruth {

@@ -16,3 +16,4 @@ export type {
 } from './types';
 
 export { CHAMBER_TRUTH, getChamberTruth, getExercisableCapabilities } from './truth-registry';
+export type { TruthCapabilityId, CapabilityIdOf } from './truth-registry';

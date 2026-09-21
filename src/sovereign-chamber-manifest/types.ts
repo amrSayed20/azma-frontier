@@ -78,9 +78,7 @@ export interface SovereignChamberCapability {
   readonly purpose: string;
   readonly requiredInputs: readonly ManifestInput[];
   readonly optionalInputs: readonly ManifestInput[];
-  readonly outputType: string;
   readonly preconditions: readonly string[];
-  readonly failureConditions: readonly string[];
   readonly interactionModes: readonly ManifestInteractionMode[];
   readonly operatingModes: readonly ManifestOperatingMode[];
 }
