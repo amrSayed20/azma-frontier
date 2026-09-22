@@ -233,11 +233,15 @@ function popIncomingTransfer(): SovereignTreasure | null {
     const raw = sessionStorage.getItem('azma.transfer.investigation');
     if (!raw) return null;
     sessionStorage.removeItem('azma.transfer.investigation');
-    const d = JSON.parse(raw) as { query?: string; evidenceCount?: number; averageScore?: number; timestamp?: number };
-    if (!d.query) return null;
+    const d = JSON.parse(raw) as { assetId?: string; questionAr?: string; query?: string; evidenceCount?: number; averageScore?: number; timestamp?: number };
+    const question = d.questionAr ?? d.query;
+    if (!question) return null;
     return {
-      id:      `inv-${Date.now()}`,
-      titleAr: d.query.slice(0, 80),
+      // The real asset's identity when the envelope carries one (every
+      // envelope written since 2026-09-22 does); the old placeholder only
+      // for an envelope written before that.
+      id:      d.assetId ?? `inv-${Date.now()}`,
+      titleAr: question.slice(0, 80),
       vaultId: 'investigations',
       origin:  'حجرة المعرفة السيادية',
       preview: `${d.evidenceCount ?? 0} أدلة · ثقة ${Math.round((d.averageScore ?? 0) * 100)}%`,

@@ -666,6 +666,14 @@ export default function HujjahAlDamighah() {
   // ── Session-level behavior tracking (refs to avoid re-renders) ───
   const sessionExpandedRef      = useRef(false);
   const sessionVaultedRef       = useRef(false);
+  /**
+   * The sovereign identity of this investigation once it is kept in the
+   * Vault — the assetId the deposit returned. Null until deposited. It is
+   * what crosses into Qiyamah: an identity the receiving Chamber resolves
+   * through the Vault's own ownership boundary, never the material itself.
+   */
+  const vaultAssetIdRef         = useRef<string | null>(null);
+  const lastDepositFailureRef   = useRef<string | null>(null);
 
   // ── Rhythm observation refs ────────────────────────────────────────
   const queryLengthRef          = useRef(0);
@@ -901,6 +909,7 @@ export default function HujjahAlDamighah() {
     setShowCourtQuestions(false);
     sessionExpandedRef.current    = false;
     sessionVaultedRef.current     = false;
+    vaultAssetIdRef.current       = null;
     sessionDomainChangesRef.current = 0;
 
     // Quick-submit detection: submitted within 8s of starting to type
@@ -1180,16 +1189,43 @@ export default function HujjahAlDamighah() {
   async function handleSaveVault() {
     if (!result) return;
     sessionVaultedRef.current = true;
-    try {
-      sessionStorage.setItem('azma.transfer.investigation', JSON.stringify({
-        query: query.trim(), evidenceCount: result.evidence.length,
-        averageScore: result.averageEvidenceScore, timestamp: Date.now(), sessionNumber: sessionCount,
-      }));
-    } catch { /* ignore */ }
+    const assetId = await ensureKeptInVault();
+    setSavedToVault(assetId !== null);
+    showCompanion(assetId !== null ? COMPANION_MSGS.vaultSaved : (lastDepositFailureRef.current ?? COMPANION_MSGS.vaultFailed));
+  }
+
+  /**
+   * Keep the investigation in the Vault ONCE and answer with its identity.
+   *
+   * Both the «حفظ في الخزانة» button and the crossing into Qiyamah come here,
+   * so a Creator who saves and then crosses does not deposit twice, and a
+   * Creator who crosses without saving still leaves sovereign material behind
+   * them — the only kind the next Chamber can resolve. The envelope written
+   * to sessionStorage carries the identity and a summary for the Vault's
+   * arrival ceremony; it carries no evidence, because evidence lives in the
+   * asset, under the Creator's ownership, where a refresh cannot lose it.
+   */
+  async function ensureKeptInVault(): Promise<string | null> {
+    if (!result) return null;
+    if (vaultAssetIdRef.current) return vaultAssetIdRef.current;
 
     const outcome = await depositInvestigationToVault(query, result.synthesizedAnswer, result.evidence);
-    setSavedToVault(outcome.ok);
-    showCompanion(outcome.ok ? COMPANION_MSGS.vaultSaved : (outcome.reasonAr ?? COMPANION_MSGS.vaultFailed));
+    if (!outcome.ok || !outcome.assetId) {
+      lastDepositFailureRef.current = outcome.reasonAr ?? null;
+      return null;
+    }
+    vaultAssetIdRef.current = outcome.assetId;
+    try {
+      sessionStorage.setItem('azma.transfer.investigation', JSON.stringify({
+        assetId: outcome.assetId,
+        questionAr: query.trim(),
+        evidenceCount: result.evidence.length,
+        averageScore: result.averageEvidenceScore,
+        timestamp: Date.now(),
+        sessionNumber: sessionCount,
+      }));
+    } catch { /* the asset is kept either way; only the arrival ceremony is lost */ }
+    return outcome.assetId;
   }
 
   // ── Citizen Stance — Article V ────────────────────────────────────
@@ -1249,13 +1285,23 @@ export default function HujjahAlDamighah() {
     setTimeout(() => { void handleSubmitQuery(challengeQ, activeDomain); }, 300);
   }
 
-  function handleCinematicExit(destination: string) {
-    if (result) {
-      try {
-        sessionStorage.setItem('azma.transfer.investigation', JSON.stringify({
-          query: query.trim(), evidence: result.evidence, timestamp: Date.now(),
-        }));
-      } catch { /* ignore */ }
+  async function handleCinematicExit(destination: string) {
+    // Crossing into Qiyamah with an investigation: the material must be
+    // sovereign BEFORE the crossing. Until 2026-09-22 this wrote the evidence
+    // itself into sessionStorage, and Qiyamah read it, deleted it, and showed
+    // a companion message — the material evaporated at the door. Now the
+    // investigation is kept in the Vault (once) and only its identity
+    // travels. If it cannot be kept, the Creator stays here with their
+    // result intact and is told why: a crossing that loses the work is not
+    // a crossing.
+    if (destination === '/qiyamah-chamber' && result) {
+      const assetId = await ensureKeptInVault();
+      if (assetId === null) {
+        showCompanion(lastDepositFailureRef.current ?? COMPANION_MSGS.vaultFailed);
+        return;
+      }
+      setSavedToVault(true);
+      try { sessionStorage.setItem('azma.transfer.origin', 'hujjah-al-damighah'); } catch { /* ignore */ }
     }
     // IMPERIAL JOURNEY CONTINUITY — Package D: when returning to the Foyer,
     // write return context so the Foyer can acknowledge the Creator's return.
@@ -1342,7 +1388,7 @@ export default function HujjahAlDamighah() {
     onExpand:          handleExpand,
     onChallenge:       handleChallengeVerdict,
     onAppeal:          handleAppeal,
-    onTransferQiyamah: () => handleCinematicExit('/qiyamah-chamber'),
+    onTransferQiyamah: () => { void handleCinematicExit('/qiyamah-chamber'); },
     onSaveVault:       handleSaveVault,
     savedToVault,
   };

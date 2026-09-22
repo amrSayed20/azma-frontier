@@ -20,6 +20,12 @@ import { t } from '@/src/creator-language';
 import type { Dictionary } from '@/src/creator-language';
 import { resolveAvailableActions } from '@/src/button-engine';
 import { resolveChamberFromPath } from '@/src/imperial-awareness-engine';
+import {
+  MATERIAL_KEY,
+  takeMaterialIdentity,
+  pickInvestigationAsset,
+  composeIdeaFromInvestigation,
+} from './_lib/material-from-investigation';
 import type { ChamberState } from '@/src/button-engine';
 import { useInstallInvitation } from '@/src/install-experience';
 import type { ImperialVisionDocument } from '@/src/chamber-vision';
@@ -103,6 +109,8 @@ export function QiyamahChamberClient({
   // ── Journey state machine ───────────────────────────────────────────────────
   const [stage,              setStage]              = useState<JourneyStage>('idea');
   const [idea,               setIdea]               = useState('');
+  /** The Vault asset the current idea was taken from, when it came from Hujjah. */
+  const [materialAssetId,    setMaterialAssetId]    = useState<string | null>(null);
   const [externalPrompt,     setExternalPrompt]     = useState('');
   const [qiyamahReading,     setQiyamahReading]     = useState('');
   const [style,              setStyle]              = useState('cinematic');
@@ -173,6 +181,48 @@ export function QiyamahChamberClient({
       .catch(() => { /* silent */ });
   };
 
+  /**
+   * ─── MATERIAL FROM THE CHAMBER OF EVIDENCE ────────────────────────────────
+   *
+   *   Hujjah keeps an investigation in the Vault and crosses here with only
+   *   its identity in `azma.transfer.investigation`. That envelope is journey
+   *   state: read once, removed once. The material itself is the Vault asset,
+   *   owned by the Creator, and it is resolved through the Vault's own list —
+   *   `/api/vault/assets` answers only with what THIS session owns — so a
+   *   stale or forged envelope naming someone else's asset resolves to
+   *   nothing, and an anonymous visitor never gets this far (the identity
+   *   check above sends them to the door first).
+   *
+   *   Where it lands is the one place Qiyamah can genuinely take text up:
+   *   the idea input, from which the existing path — expand, then generate —
+   *   turns it into an image or a video. Nothing is added to the interface;
+   *   the material arrives inside a workflow that already exists.
+   *
+   *   `azma.qiyamah.material` keeps the identity for this tab so a refresh
+   *   re-resolves the same asset instead of losing it. Identity only: the
+   *   text is re-read from the Vault, never from the browser.
+   */
+  const resolveMaterialIntoIdea = (assetId: string) => {
+    fetch('/api/vault/assets')
+      .then((r) => r.json())
+      .then((result: { status?: string; assets?: Array<{ assetId: string; metadata?: Record<string, unknown> }> }) => {
+        if (result.status !== 'succeeded' || !Array.isArray(result.assets)) return;
+        // Ownership is decided by the Vault: the asset is either in this
+        // Creator's list or it does not exist for them.
+        const asset = pickInvestigationAsset(result.assets, assetId);
+        if (!asset) {
+          try { sessionStorage.removeItem(MATERIAL_KEY); } catch { /* ignore */ }
+          return;
+        }
+        const composed = composeIdeaFromInvestigation(asset.metadata);
+        if (!composed) return;
+        setInputMode('idea');
+        setIdea(composed);
+        setMaterialAssetId(assetId);
+      })
+      .catch(() => { /* the material stays in the Vault; only this arrival's shortcut is lost */ });
+  };
+
   useEffect(() => {
     fetch('/api/auth/me')
       .then((r) => r.json())
@@ -190,6 +240,9 @@ export function QiyamahChamberClient({
         setDisplayName(data.displayName ?? null);
         fetchGenerations();
         fetchUploadedItems();
+        let materialAssetId: string | null = null;
+        try { materialAssetId = takeMaterialIdentity(sessionStorage); } catch { /* no storage, no material shortcut */ }
+        if (materialAssetId) resolveMaterialIntoIdea(materialAssetId);
       })
       .catch(() => goTo('/signup'));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -613,14 +666,14 @@ export function QiyamahChamberClient({
                   </p>
                   <div className="idea-field-group">
                     <label className="idea-field-label" htmlFor="qiyamah-idea">
-                      فكرتك
+                      {materialAssetId && idea.trim().length > 0 ? 'فكرتك — من تحقيقك في حجّة الدامغة' : 'فكرتك'}
                     </label>
                     <textarea
                       id="qiyamah-idea"
                       className="idea-textarea"
                       placeholder="أي فكرة بسيطة — في جملة أو جملتين…"
                       value={idea}
-                      onChange={(e) => setIdea(e.target.value)}
+                      onChange={(e) => { setIdea(e.target.value); if (e.target.value.trim().length === 0) setMaterialAssetId(null); }}
                       rows={3}
                       disabled={stage === 'constructing'}
                     />

@@ -512,6 +512,13 @@ export async function depositInvestigationToVault(
       metadata: {
         originChamber: 'hujjah-al-damighah',
         questionAr: questionAr.trim().slice(0, 300),
+        // The synthesized answer, bounded: this is what the next Chamber can
+        // actually take up as material for creation (Constitution 10.1 — the
+        // purpose and the brief), and Qiyamah's idea accepts 1000 characters.
+        // The full text, with every piece of evidence, is the asset itself.
+        answerAr: synthesizedAnswer && synthesizedAnswer.trim().length > 0
+          ? synthesizedAnswer.trim().slice(0, 700)
+          : undefined,
         evidenceCount: evidence.length,
       },
     });

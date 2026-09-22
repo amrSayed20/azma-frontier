@@ -69,24 +69,29 @@ export function QiyamahChamberExperience({ children, dict, locale }: Props) {
   const [companionMsg, setCompanionMsg] = useState<string>(() => t(dict, 'qiyamah.companionMessage'));
 
   // IMPERIAL JOURNEY CONTINUITY — Package D:
-  // Consume the kernel session the Foyer wrote before launching this chamber,
-  // the investigation context Hujjah wrote when transferring here,
+  // Consume the kernel session the Foyer wrote before launching this chamber
   // and the treasure context the Palace wrote when directing here.
-  // All three keys are consumed (removed) immediately — they must not linger.
+  //
+  // The investigation envelope Hujjah writes is NOT consumed here any more.
+  // Until 2026-09-22 this wrapper read it, deleted it, and set a companion
+  // message — and the material the Creator had produced vanished at the door,
+  // because the only thing that could use it, the Client's idea input, never
+  // saw it. The Client now consumes that envelope and resolves the material
+  // through the Vault's ownership boundary; this wrapper learns that a
+  // Creator came from Hujjah the same way it learns of every other origin —
+  // from `azma.transfer.origin`.
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const kernelRaw = sessionStorage.getItem('azma.kernel.session');
     if (kernelRaw) sessionStorage.removeItem('azma.kernel.session');
 
-    const investigationRaw = sessionStorage.getItem('azma.transfer.investigation');
-    if (investigationRaw) sessionStorage.removeItem('azma.transfer.investigation');
-
     const treasureRaw = sessionStorage.getItem('azma.transfer.treasure');
     if (treasureRaw) sessionStorage.removeItem('azma.transfer.treasure');
+    const origin = sessionStorage.getItem('azma.transfer.origin');
     sessionStorage.removeItem('azma.transfer.origin');
 
-    if (investigationRaw) {
+    if (origin === 'hujjah-al-damighah') {
       // Creator arrived from Hujjah after an investigation — the most specific context
       setCompanionMsg('قادم من حجرة المعرفة — القيامة تحوّل ما تعلمته إلى وجود');
     } else if (treasureRaw) {
