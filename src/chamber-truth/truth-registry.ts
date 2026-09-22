@@ -58,6 +58,11 @@ export const CHAMBER_TRUTH = {
     capabilities: [
       {
         id: 'generate-image',
+        // Deliberately NOT widened to "image or video". The boundary below also
+        // carries a video verb (mediaType === 'video'), and that verb has no
+        // declared Truth capability — it is recorded in `deferred` under
+        // Constitution §3.1. Saying "visual original" here is the narrower and
+        // therefore the true statement: this capability declares the image.
         performs: 'Generates a new visual original from a described intent.',
         boundary: { kind: 'route', at: 'app/api/qiyamah/generate', methods: ['POST'] },
         requiresExistingAsset: false,
@@ -104,7 +109,28 @@ export const CHAMBER_TRUTH = {
         requiresExistingAsset: true,
       },
     ],
-    deferred: [],
+    deferred: [
+      {
+        responsibility:
+          'Generating a time-based sovereign asset from a described intent alone — video generation.',
+        constitutionalSource:
+          'Five-Chamber Constitution §3.1. Qiyamah\'s enumerated abilities close with '
+          + '«إنتاج الأصول السمعية أو المرئية التي يُصرح لها بها لاحقًا، دون امتلاك الإخراج النهائي» — '
+          + 'audiovisual production is PERMITTED THROUGH LATER AUTHORIZATION, not prohibited. '
+          + 'That later authorization has not been declared, so no active capability exists. '
+          + '«ليس بعدُ مأذوناً» ليس «ممنوعاً أبداً».',
+        missing:
+          'An active Truth capability. The machinery exists and is deliberately undeclared: '
+          + 'app/api/qiyamah/generate branches on mediaType === \'video\' and would deposit a MOTION '
+          + 'asset, but no Truth capability declares that verb, so none is derived into the Manifest '
+          + 'and none reaches kernel delivery. Deferred here means neither prohibited nor active: '
+          + 'constitutional permission is not a declared capability, and a declared capability is '
+          + 'what an interface may offer. Measured 2026-09-22: no asset has ever been produced '
+          + 'through that branch — 30 generation records, 2 of them video, both from animate-asset. '
+          + 'Declaring it would take a separate authorization under §3.1 and a production proof '
+          + '(§3.4 forbids announcing a capability that was not measured).',
+      },
+    ],
   },
 
   // ── الخزائن ──────────────────────────────────────────────────────────────
