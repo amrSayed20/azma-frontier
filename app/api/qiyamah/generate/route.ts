@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
       try { creditRepo.settle(videoReservationId, videoResolvedCostEstimate.estimatedAzmaUnits); } catch { /* non-fatal */ }
     }
 
-    return NextResponse.json(videoResult, { status: 200 });
+    return NextResponse.json({ ...videoResult, operationId }, { status: 200 });
   }
 
   // ─── IMAGE PATH ─────────────────────────────────────────────────────────────
@@ -275,5 +275,7 @@ export async function POST(request: NextRequest) {
     } catch { /* non-fatal */ }
   }
 
-  return NextResponse.json(result, { status: 200 });
+  // The operation id rides on success too: a Creator who reports «it generated
+  // the wrong thing» can be answered from the same trail as a failure.
+  return NextResponse.json({ ...result, operationId }, { status: 200 });
 }

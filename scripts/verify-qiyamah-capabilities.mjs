@@ -79,24 +79,30 @@ try {
   const generateResponse = page.waitForResponse((r) => r.url().endsWith('/api/qiyamah/generate') && r.request().method() === 'POST', { timeout: 240000 });
   await page.locator('.review-form .trigger-genesis-btn').first().click();
   const gen = await (await generateResponse).json();
-  check('generate answered with an operation id', typeof gen.operationId === 'string', gen.operationId);
+  const operationId = gen.operationId ?? gen.asset?.operationId;
+  check('generate answered with an operation id', typeof operationId === 'string', operationId);
   if (gen.status !== 'succeeded') {
     check(`generation succeeded`, false, `${gen.status} ${gen.reason} @${gen.stage}: ${gen.detail ?? gen.message}`);
     throw new Error('generation failed — nothing recorded, nothing to clean');
   }
   check('generation succeeded', true, `asset ${gen.asset.assetId}`);
+  {
+    const first = await bytesOf(page, gen.asset.assetUrl);
+    const b = Buffer.from(first.b64 ?? '', 'base64');
+    if (b.length > 0) { const pth = join(OUT, `${TEST_RUN_ID}-infographic-raw.${isJpeg(b) ? 'jpg' : 'png'}`); writeFileSync(pth, b); console.log(`  saved for inspection: ${pth}`); }
+  }
   check('the model executed is Nano Banana 2 — as the binding reported it', gen.asset.providerModelId === 'nano-banana-2', gen.asset.providerModelId);
 
   // Exact ids → ledger. The generation record by exact assetUrl; the vault asset by exact operation id.
   const gens = (await api(page, '/api/qiyamah/generations')).json.generations;
   const record = gens.filter((g) => g.assetUrl === gen.asset.assetUrl);
   check('exactly one generation record carries this run\'s assetUrl', record.length === 1);
-  ledger.record({ resourceType: 'generation', resourceId: record[0].recordId, operationId: gen.operationId, createdAt: record[0].generatedAt });
+  ledger.record({ resourceType: 'generation', resourceId: record[0].recordId, operationId, createdAt: record[0].generatedAt });
   const assets = (await api(page, '/api/vault/assets')).json.assets;
   const vaultRows = assets.filter((a) => a.originatingOperationId === gen.asset.assetId);
   check('exactly one Vault asset was deposited for it', vaultRows.length === 1);
   const infographic = vaultRows[0];
-  check('Vault provenance: provider, executed model, operation', infographic.metadata?.providerId === 'magic-hour-image' && infographic.metadata?.generationModel === 'nano-banana-2' && infographic.metadata?.generationOperationId === gen.operationId, JSON.stringify({ p: infographic.metadata?.providerId, m: infographic.metadata?.generationModel }));
+  check('Vault provenance: provider, executed model, operation', infographic.metadata?.providerId === 'magic-hour-image' && infographic.metadata?.generationModel === 'nano-banana-2' && infographic.metadata?.generationOperationId === operationId, JSON.stringify({ p: infographic.metadata?.providerId, m: infographic.metadata?.generationModel }));
   check('Vault lineage: root of its own line, version 1, GENERATED', infographic.parentAssetId == null && infographic.rootAssetId === infographic.assetId && infographic.version === 1 && infographic.derivation === 'GENERATED', `${infographic.version} ${infographic.derivation}`);
 
   // The file, the real one.
