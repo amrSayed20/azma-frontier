@@ -229,7 +229,7 @@ export default function SovereignHighCouncilPage() {
               to="/imperial-foyer"
               data-testid="council-enter-platform"
               aria-label="ادخل أزما أو إس — قلب الإمبراطورية، حيث تختار الحجرة"
-              className="inline-flex items-center gap-2 rounded-md border border-amber-400/40 px-4 py-2 text-sm text-amber-200 transition-colors hover:border-amber-300 hover:text-amber-100"
+              className="council-platform-entry"
             >
               <span aria-hidden="true">⌂</span>
               ادخل أزما أو إس

@@ -61,6 +61,30 @@ export default function SovereignHighCouncilStyles() {
         }
       }
 
+      /* The entrance into AZMA OS (2026-09-22). Tailwind utilities do not
+         reach this page — it styles itself through this component — so the
+         door is dressed here, in the Council's own gold, and nowhere else. */
+      .council-platform-entry {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.55rem 1.1rem;
+        border: 1px solid rgba(251, 191, 36, 0.45);
+        border-radius: 4px;
+        color: var(--color-gold-light);
+        font-size: 0.95rem;
+        letter-spacing: 0.01em;
+        text-decoration: none;
+        background: rgba(251, 191, 36, 0.05);
+        transition: border-color 200ms ease, background 200ms ease, color 200ms ease;
+      }
+      .council-platform-entry:hover,
+      .council-platform-entry:focus-visible {
+        border-color: rgba(251, 206, 78, 0.9);
+        background: rgba(251, 191, 36, 0.12);
+        color: rgb(254, 226, 160);
+      }
+
       .gold {
         color: var(--color-gold);
       }
