@@ -27,9 +27,16 @@ export default async function QiyamahChamberPage() {
   // at render time, never written in the interface: production-authorized,
   // active, and VERIFIED to take an image. Today that is Seedance 2.0 alone;
   // Veo joins when its own proof activates it. Zero models → no control.
+  // Each model's duration is the fleet's, not the interface's: the first of
+  // the provider's discrete list when it has one, else a short duration
+  // inside its range. Veo refuses 5 s; Seedance has taken it.
   const animationModels = VIDEO_MODEL_FLEET
     .filter((m) => m.productionAuthorized && m.active && m.supportsImageToVideo === true)
-    .map((m) => ({ modelId: m.modelId, displayName: m.displayName }));
+    .map((m) => ({
+      modelId: m.modelId,
+      displayName: m.displayName,
+      durationSeconds: m.supportedDurationsSeconds?.[0] ?? Math.min(5, m.maxDurationSeconds ?? 5),
+    }));
   return (
     <QiyamahChamberExperience dict={dict} locale={locale}>
       <QiyamahChamberClient

@@ -133,7 +133,8 @@ try {
   const reqBody = JSON.parse(req.postData() ?? '{}');
   check(`the request names the source by its exact id and ${DISPLAY} by its fleet id`, req.url().includes(`/api/vault/assets/${src.assetId}/animate`) && reqBody.modelId === REQUESTED_MODEL_ID, `${reqBody.modelId} @${req.url().split('/assets/')[1]}`);
   const res = await animateResponse;
-  const out = await res.json();
+  let out;
+  try { out = await res.json(); } catch { const text = await res.text(); out = { status: 'non-json', reason: `HTTP ${res.status()}`, stage: 'edge', message: text.slice(0, 120).replace(/\s+/g, ' ') }; }
   if (!check('animate-asset completed (route answered succeeded)', res.status() === 200 && out.status === 'succeeded', `${res.status()} ${out.reason ?? ''} @${out.stage ?? ''} ${out.message ?? ''}`)) {
     throw new Error('generation did not complete — nothing recorded, nothing searched, nothing cleaned');
   }

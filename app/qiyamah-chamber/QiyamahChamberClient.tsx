@@ -80,7 +80,7 @@ interface QiyamahChamberClientProps {
   readonly chamberVision?:      ImperialVisionDocument;
   readonly generationAvailable?: boolean;
   /** Models verified and active for animating an image — derived by the page from the fleet. */
-  readonly animationModels?:    readonly { readonly modelId: string; readonly displayName: string }[];
+  readonly animationModels?:    readonly { readonly modelId: string; readonly displayName: string; readonly durationSeconds: number }[];
 }
 
 export function QiyamahChamberClient({
@@ -568,7 +568,12 @@ export function QiyamahChamberClient({
       const res = await fetch(`/api/vault/assets/${animateAssetId}/animate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ instruction, modelId: animateModelId, durationSeconds: 5 }),
+        body: JSON.stringify({
+          instruction,
+          modelId: animateModelId,
+          // The chosen model's own verified duration — the fleet's, not a number written here.
+          durationSeconds: animationModels.find((m) => m.modelId === animateModelId)?.durationSeconds ?? 5,
+        }),
       });
       const result = await res.json();
       if (result.status !== 'succeeded') {

@@ -145,7 +145,10 @@ export class SovereignModelSelector {
           m.minDurationSeconds !== undefined &&
           m.maxDurationSeconds !== undefined &&
           intent.durationSeconds! >= m.minDurationSeconds &&
-          intent.durationSeconds! <= m.maxDurationSeconds,
+          intent.durationSeconds! <= m.maxDurationSeconds &&
+          // A provider that accepts only certain durations is asked for one of
+          // them or not at all — the request is refused, never rounded.
+          (m.supportedDurationsSeconds === undefined || m.supportedDurationsSeconds.includes(intent.durationSeconds!)),
       );
       if (withDuration.length === 0) {
         return {

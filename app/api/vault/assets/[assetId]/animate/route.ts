@@ -91,7 +91,7 @@ export async function POST(
     sourceAssetId: assetId,
   });
   const refuse = (http: number, reason: string, message: string, stage: string, detail: string) => {
-    const f = trail.fail(stage, http === 503 ? 'provider-unavailable' : http >= 500 ? 'provider-failed' : 'invalid-input', detail);
+    const f = trail.fail(stage, http === 503 ? 'provider-unavailable' : http === 422 || http === 408 ? 'provider-failed' : 'invalid-input', detail);
     return NextResponse.json({ status: 'failed', reason, message, operationId: f.operationId, stage: f.stage }, { status: http });
   };
 
@@ -169,15 +169,18 @@ export async function POST(
       return refuse(503, 'capability-unavailable', 'تحريك الصور متوقّفٌ مؤقّتاً لنفاد رصيد الإمبراطوريّة. لا شأن لصورتك بذلك.', 'provider', safeDetail(err));
     }
     if (rejection === 'TIMED_OUT') {
-      return refuse(504, 'timed-out', 'استغرق التحريك وقتاً طويلاً. أعد المحاولة.', 'provider', safeDetail(err));
+      return refuse(408, 'timed-out', 'استغرق التحريك وقتاً طويلاً. أعد المحاولة.', 'provider', safeDetail(err));
     }
-    return refuse(502, 'animation-failed', 'تعذّر تنفيذ التحريك. لم يُحفظ شيء.', 'provider', safeDetail(err));
+    // 422, not 502: the edge replaces a 5xx with its own HTML page and the
+    // Creator never sees the operation id or the provider's words. Measured
+    // 2026-09-22 — the Veo refusal reached the browser as «<!DOCTYPE».
+    return refuse(422, 'animation-failed', 'تعذّر تنفيذ التحريك. لم يُحفظ شيء.', 'provider', safeDetail(err));
   }
   trail.stage('provider-done', { providerJobId: produced.providerJobId, providerModelId: produced.providerModelId, bytes: produced.bytes.length });
 
   const videoFormat = detectVideoFormat(produced.bytes);
   if (!videoFormat) {
-    return refuse(502, 'animation-failed', 'أعاد المزوّد ما ليس فيديو. لم يُحفظ شيء.', 'validate-output', `${produced.bytes.length} bytes, no MP4/WebM signature`);
+    return refuse(422, 'animation-failed', 'أعاد المزوّد ما ليس فيديو. لم يُحفظ شيء.', 'validate-output', `${produced.bytes.length} bytes, no MP4/WebM signature`);
   }
 
   // ── Ours from here ─────────────────────────────────────────────────────────

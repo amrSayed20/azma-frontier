@@ -144,9 +144,15 @@ describe('9–10 · the provider identifiers are the verified ones', () => {
     expect(seedance.selected).toBe(true);
     if (seedance.selected) expect(seedance.selection.providerModelId).toBe('seedance-2.0');
     // Veo: activated by its production-proof order (2026-09-22); the exact identifier, nothing else.
-    const veo = selector.select(buildAnimationIntent('slow push in', 'veo-3-1', 5));
+    const veo = selector.select(buildAnimationIntent('slow push in', 'veo-3-1', 4));
     expect(veo.selected).toBe(true);
     if (veo.selected) expect(veo.selection.providerModelId).toBe('veo3.1');
+    // Veo accepts only certain durations (provider 422 on 5 s, 2026-09-22): 4 is answered, 5 is refused — never rounded.
+    const veo4 = selector.select(buildAnimationIntent('slow push in', 'veo-3-1', 4));
+    expect(veo4.selected).toBe(true);
+    const veo5 = selector.select(buildAnimationIntent('slow push in', 'veo-3-1', 5));
+    expect(veo5.selected).toBe(false);
+    if (!veo5.selected) expect(veo5.reason).toBe('duration-unavailable');
     // An inactive or unknown model is still refused, never substituted.
     const sora = selector.select(buildAnimationIntent('slow push in', 'sora-2', 5));
     expect(sora.selected).toBe(false);

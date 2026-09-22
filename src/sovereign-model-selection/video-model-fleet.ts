@@ -135,8 +135,9 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
     qualityTier: 'ultra',                       // REQUIRES_VERIFICATION
     maxVideoResolution: '1080p',                // REQUIRES_VERIFICATION
     supportedAspectRatios: ['16:9', '9:16'],   // REQUIRES_VERIFICATION
-    minDurationSeconds: 1,                      // REQUIRES_VERIFICATION
-    maxDurationSeconds: 8,                      // REQUIRES_VERIFICATION
+    minDurationSeconds: 4,                      // VERIFIED 2026-09-22: provider 422 on 5s — «Possible values are 4, 6, 8, 16, 24, 32, 40, 48, 56»
+    maxDurationSeconds: 56,                     // VERIFIED 2026-09-22 (same refusal)
+    supportedDurationsSeconds: [4, 6, 8, 16, 24, 32, 40, 48, 56], // VERIFIED 2026-09-22: the provider's own list
     supportsTextToVideo: true,                  // REQUIRES_VERIFICATION
     supportsImageToVideo: true,                 // VERIFIED 2026-09-22: listed in the /v1/image-to-video model enum
     supportsAudio: undefined,                   // REQUIRES_VERIFICATION ('veo3.1-audio' is a separate enum value)

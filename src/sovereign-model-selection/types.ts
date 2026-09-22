@@ -128,6 +128,14 @@ export interface SovereignMediaModelDescriptor {
   // ── Video-specific (undefined = not applicable / not verified) ────────────
   readonly minDurationSeconds?: number;
   readonly maxDurationSeconds?: number;
+  /**
+   * The exact durations the provider accepts for this model, when it accepts
+   * only a discrete set rather than a range. Veo 3.1 answered a 5-second
+   * request with HTTP 422 «Possible values are 4, 6, 8, 16, 24, 32, 40, 48,
+   * 56» (2026-09-22). When declared, the selector refuses any other duration
+   * — a Creator's duration is never quietly altered to fit.
+   */
+  readonly supportedDurationsSeconds?: readonly number[];
   readonly supportsTextToVideo?: boolean;
   readonly supportsImageToVideo?: boolean;
   readonly supportsAudio?: boolean;
