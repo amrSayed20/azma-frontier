@@ -8,6 +8,7 @@ import { deriveAsset, mutationRejectionSpokenAr } from '@/src/vault/sovereign-as
 import { SourceChamber, DerivationKind, isDerivable, isLegacyAsset } from '@/src/vault/sovereign-vault-types';
 import {
   editImageViaProvider,
+  IMAGE_EDIT_MODEL_ID,
   imageEditingIsConfigured,
   ImageEditError,
 } from '@/src/core/sovereign-ai-integration/adapters/magic-hour-image-editing';
@@ -198,7 +199,7 @@ export async function POST(
   // ── The edit itself. Qiyamah's work, on the declared sovereign engine ─────
   let produced;
   try {
-    produced = await editImageViaProvider(parentBytes, extensionOf(parent.secureStorageUri), instruction);
+    produced = await editImageViaProvider(parentBytes, extensionOf(parent.secureStorageUri), instruction, { model: IMAGE_EDIT_MODEL_ID });
   } catch (err) {
     // The engine's own words stay server-side; they name a provider.
     console.error('[ImageEdit] engine failed:', err);
@@ -246,6 +247,11 @@ export async function POST(
     instructionAr: instruction,
     operationId: persisted.assetId,
     actorId: session.creatorId,
+    providerProvenance: {
+      providerId: produced.providerId,
+      providerModelId: produced.providerModelId,
+      providerJobId: produced.providerJobId,
+    },
   });
 
   if (!outcome.ok) {

@@ -70,15 +70,16 @@ export const IMAGE_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
     modelId: 'nano-banana-2',
     providerId: MAGIC_HOUR_IMAGE_PROVIDER_ID,
     gatewayId: 'magic-hour',
-    providerModelId: 'nano-banana-2',           // REQUIRES_VERIFICATION
+    providerModelId: 'nano-banana-2',           // VERIFIED 2026-09-22: docs.magichour.ai /v1/ai-image-generator AND /v1/ai-image-editor model enums
     displayName: 'Nano Banana 2',
     mediaType: 'image',
     capabilities: ['image-generation'],
     qualityTier: 'standard',                    // REQUIRES_VERIFICATION
-    maxImageResolution: '1k',                   // REQUIRES_VERIFICATION
-    supportedAspectRatios: ['16:9', '1:1', '9:16'],  // REQUIRES_VERIFICATION
-    characteristicHints: [],
-    supportedStyleIds: [],
+    maxImageResolution: '1k',                   // REQUIRES_VERIFICATION (the endpoint accepts up to 4k; per-model cap not documented)
+    supportedAspectRatios: ['16:9', '1:1', '9:16'],  // VERIFIED 2026-09-22: the generator's aspect_ratio enum
+    characteristicHints: ['legible-text', 'structured-layout', 'iconography', 'clean-background'],
+    // The infographic style REQUIRES this model (intent-builder.ts).
+    supportedStyleIds: ['infographic'],
     costCatalogKey: {
       gatewayId: 'magic-hour',
       capabilityTarget: 'image-generation',

@@ -134,6 +134,13 @@ export interface NormalizedAIResponse {
   readonly latencyMs: number;
   readonly costEstimate: number;
   readonly generatedAt: Date;
+  /**
+   * What the binding reported about its own execution — job id, the provider
+   * model actually sent, the provider's error words. Carried through since
+   * 2026-09-22 so an attempt can record the model it executed and explain a
+   * failure; before that the normalizer dropped it on the floor.
+   */
+  readonly providerMetadata?: Readonly<Record<string, unknown>>;
   readonly immutable: true;
 }
 

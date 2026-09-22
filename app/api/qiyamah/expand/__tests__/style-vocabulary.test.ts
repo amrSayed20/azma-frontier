@@ -1,9 +1,10 @@
 /**
  * Qiyamah Style Vocabulary — validation tests
  *
- * All 13 styles are now fully operational. No LOCKED_STYLES set exists.
+ * All 14 styles are now fully operational. No LOCKED_STYLES set exists.
+ * 'infographic' joined on 2026-09-22 — the one style that requires a model.
  * Tests verify: every expected style is present, each has a non-empty
- * prefix and suffix, and the total count is exactly 13.
+ * prefix and suffix, and the total count is exactly 14.
  */
 
 import { STYLE_VOCABULARY } from '../route';
@@ -13,13 +14,13 @@ const STYLE_IDS = Object.keys(STYLE_VOCABULARY);
 const EXPECTED_STYLES = [
   'cinematic', 'realistic', 'advertising', 'documentary', 'creative',
   'scifi', 'animation', 'fantasy', 'portrait', 'fashion',
-  'architecture', 'historical', 'abstract',
+  'architecture', 'historical', 'abstract', 'infographic',
 ];
 
 describe('Qiyamah Sovereign Style Registry', () => {
 
-  it('exactly 13 styles exist in STYLE_VOCABULARY', () => {
-    expect(STYLE_IDS).toHaveLength(13);
+  it('exactly 14 styles exist in STYLE_VOCABULARY', () => {
+    expect(STYLE_IDS).toHaveLength(14);
   });
 
   it('all expected style IDs are present', () => {

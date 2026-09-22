@@ -6,7 +6,11 @@ const mockInsertVaultAssetVideo = jest.fn();
 jest.mock('../../core/sovereign-ai-integration/provider-bootstrap', () => ({
   getGenerationOrchestrator: () => ({ orchestrate: mockOrchestrate }),
 }));
-jest.mock('../asset-storage');
+jest.mock('../asset-storage', () => ({
+  ...jest.requireActual('../asset-storage'),
+  persistGeneratedImage: jest.fn(),
+  persistGeneratedVideo: jest.fn(),
+}));
 jest.mock('../../persistent-storage', () => ({
   getDb: jest.fn(() => 'fake-db-handle'),
   recordGeneration: jest.fn(),
@@ -15,7 +19,7 @@ jest.mock('../../persistent-storage', () => ({
 
 // ─── IMPORTS ──────────────────────────────────────────────────────────────────
 
-import { persistGeneratedImage } from '../asset-storage';
+import { persistGeneratedImage, persistGeneratedVideo } from '../asset-storage';
 import { resetRateLimiterForTests, recordGeneration } from '../rate-limiter';
 import { recordGeneration as persistGenerationRecord, insertVaultAsset } from '../../persistent-storage';
 import { generateImage, generateVideo } from '../generation-service';
@@ -23,6 +27,7 @@ import { AssetFamily } from '../../vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 
 const mockPersistGeneratedImage = persistGeneratedImage as jest.Mock;
+const mockPersistGeneratedVideo = persistGeneratedVideo as jest.Mock;
 const mockPersistGenerationRecord = persistGenerationRecord as jest.Mock;
 const mockInsertVaultAsset = insertVaultAsset as jest.Mock;
 
@@ -309,11 +314,24 @@ describe('Qiyamah First Generation Path — Generation Service', () => {
 // ─── VIDEO GENERATION SUITE ───────────────────────────────────────────────────
 
 const VIDEO_URL = 'https://cdn.magichour.ai/cmt5gsbae00kvkh013ovj7w4w/video.mp4';
+const STORED_VIDEO_URL = '/generated-assets/vid-0001.mp4';
+// A minimal ISO BMFF header: size + 'ftyp' at offset 4 — what detectVideoFormat needs.
+const MP4_BYTES = Buffer.concat([Buffer.from([0x00, 0x00, 0x00, 0x18]), Buffer.from('ftypisom'), Buffer.alloc(16, 0)]);
 
+/**
+ * Since 2026-09-22 the service DOWNLOADS the provider's video and keeps the
+ * bytes — the provider URL expires in 24h and was never a sovereign asset.
+ * So a successful orchestration is followed by a fetch of that URL.
+ */
 function successVideoOrchestration(content = VIDEO_URL) {
   mockOrchestrate.mockResolvedValue({
-    response: { finishReason: 'completed', content, providerId: 'magic-hour-video' },
+    response: { finishReason: 'completed', content, providerId: 'magic-hour-video', providerMetadata: { providerModelId: 'seedance-2.0', magicHourJobId: 'job-1' } },
   });
+  (global as unknown as { fetch: jest.Mock }).fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    arrayBuffer: async () => MP4_BYTES.buffer.slice(MP4_BYTES.byteOffset, MP4_BYTES.byteOffset + MP4_BYTES.byteLength),
+  });
+  mockPersistGeneratedVideo.mockResolvedValue({ assetId: 'vid-0001', assetUrl: STORED_VIDEO_URL });
 }
 
 describe('Qiyamah Video Generation Path — generateVideo()', () => {
@@ -323,6 +341,7 @@ describe('Qiyamah Video Generation Path — generateVideo()', () => {
     mockPersistGenerationRecord.mockReset();
     mockInsertVaultAsset.mockReset();
     mockInsertVaultAssetVideo.mockReset();
+    mockPersistGeneratedVideo.mockReset();
   });
 
   // ── Validation ────────────────────────────────────────────────────────────
@@ -362,17 +381,39 @@ describe('Qiyamah Video Generation Path — generateVideo()', () => {
 
   // ── URL contract — NOT base64 ─────────────────────────────────────────────
 
-  it('takes the video URL directly from content — never calls Buffer.from(content, base64)', async () => {
+  it('downloads the bytes from the provider URL and keeps them as our own file — the asset is never the provider URL', async () => {
     successVideoOrchestration();
 
     const result = await generateVideo({ prompt: 'a sovereign scene', durationSeconds: 6, creatorId: 'creator-v3' });
 
     expect(result.status).toBe('succeeded');
     if (result.status === 'succeeded') {
-      expect(result.asset.assetUrl).toBe(VIDEO_URL);
+      expect(result.asset.assetUrl).toBe(STORED_VIDEO_URL);
+      expect(result.asset.assetUrl).not.toBe(VIDEO_URL);
     }
-    // persistGeneratedImage is the file-writer — must NOT be called for video
+    expect((global as unknown as { fetch: jest.Mock }).fetch).toHaveBeenCalledWith(VIDEO_URL);
+    expect(mockPersistGeneratedVideo).toHaveBeenCalledTimes(1);
+    // persistGeneratedImage is the image file-writer — must NOT be called for video
     expect(mockPersistGeneratedImage).not.toHaveBeenCalled();
+  });
+
+  it('refuses provider bytes that are not a video, and keeps nothing', async () => {
+    successVideoOrchestration();
+    (global as unknown as { fetch: jest.Mock }).fetch = jest.fn().mockResolvedValue({
+      ok: true, arrayBuffer: async () => new ArrayBuffer(64),
+    });
+    const result = await generateVideo({ prompt: 'a sovereign scene', durationSeconds: 6, creatorId: 'creator-v3' });
+    expect(result).toEqual(expect.objectContaining({ status: 'failed', reason: 'provider-error', stage: 'validate-output' }));
+    expect(mockPersistGeneratedVideo).not.toHaveBeenCalled();
+    expect(mockPersistGenerationRecord).not.toHaveBeenCalled();
+  });
+
+  it('records the executed provider model on the deposited asset', async () => {
+    successVideoOrchestration();
+    await generateVideo({ prompt: 'a sovereign scene', durationSeconds: 6, creatorId: 'creator-v3' });
+    expect(mockInsertVaultAsset).toHaveBeenCalledWith('fake-db-handle', expect.objectContaining({
+      metadata: expect.objectContaining({ generationModel: 'seedance-2.0' }),
+    }));
   });
 
   it('rejects an empty content string — no URL returned from provider', async () => {
@@ -400,7 +441,7 @@ describe('Qiyamah Video Generation Path — generateVideo()', () => {
     await generateVideo({ prompt: 'a sovereign scene', durationSeconds: 6, creatorId: 'creator-v4' });
 
     expect(mockPersistGenerationRecord).toHaveBeenCalledWith('fake-db-handle', expect.objectContaining({
-      assetUrl: VIDEO_URL,
+      assetUrl: STORED_VIDEO_URL,
       mediaType: 'video',
       creatorId: 'creator-v4',
     }));
@@ -414,7 +455,7 @@ describe('Qiyamah Video Generation Path — generateVideo()', () => {
     expect(mockInsertVaultAsset).toHaveBeenCalledWith('fake-db-handle', expect.objectContaining({
       capabilityTarget: CapabilityTarget.MOTION,
       assetFamily: AssetFamily.MEDIA,
-      secureStorageUri: VIDEO_URL,
+      secureStorageUri: STORED_VIDEO_URL,
       subscriberTenantId: 'creator-v5',
     }));
   });
@@ -435,7 +476,7 @@ describe('Qiyamah Video Generation Path — generateVideo()', () => {
     expect(result.status).toBe('succeeded');
     if (result.status === 'succeeded') {
       expect(result.asset.durationSeconds).toBe(8);
-      expect(result.asset.assetUrl).toBe(VIDEO_URL);
+      expect(result.asset.assetUrl).toBe(STORED_VIDEO_URL);
     }
   });
 

@@ -25,6 +25,16 @@ const STYLE_QUALITY_MAP: Readonly<Record<string, QualityTier>> = {
   fantasy:      'standard',
   animation:    'standard',
   abstract:     'standard',
+  infographic:  'standard',
+};
+
+// Style → the one model the style REQUIRES. Most styles require none and
+// the selector chooses among the authorized pool. An infographic is text and
+// structure, and the provider model verified to render both is Nano Banana 2
+// (Magic Hour /v1/ai-image-generator enum, verified 2026-09-22) — so the style
+// requires it, and the selector refuses rather than substitutes.
+const STYLE_REQUIRED_MODEL_MAP: Readonly<Record<string, string>> = {
+  infographic: 'nano-banana-2',
 };
 
 // Quality tier → default resolution.
@@ -53,6 +63,7 @@ const STYLE_CHARACTERISTIC_MAP: Readonly<Record<string, readonly string[]>> = {
   fantasy:      ['painterly', 'imaginative', 'magical'],
   animation:    ['illustrated', 'stylized', 'vibrant'],
   abstract:     ['non-representational', 'geometric', 'expressive'],
+  infographic:  ['legible-text', 'structured-layout', 'iconography', 'clean-background'],
 };
 
 // ─── Public builders ──────────────────────────────────────────────────────────
@@ -85,6 +96,7 @@ export function buildImageCreationIntent(
     aspectRatio,
     characteristicHints: STYLE_CHARACTERISTIC_MAP[resolvedStyle] ?? [],
     platformTarget,
+    ...(STYLE_REQUIRED_MODEL_MAP[resolvedStyle] ? { requiredModelId: STYLE_REQUIRED_MODEL_MAP[resolvedStyle] } : {}),
   };
 }
 

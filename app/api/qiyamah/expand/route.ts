@@ -84,6 +84,12 @@ export const STYLE_VOCABULARY: Record<string, { prefix: string; suffix: string }
     prefix: 'تعبير تجريدي بصري، ',
     suffix: '، أشكال هندسية ولونية حرة، إيقاع بصري، تكوين فني مبتكر، طاقة إبداعية',
   },
+  // Text and structure, not a scene: the one style whose model is required
+  // (Nano Banana 2 — intent-builder.ts), because it must render the words.
+  infographic: {
+    prefix: 'إنفوغرافيك احترافي واضح، ',
+    suffix: '، تخطيط منظّم بأقسام مرقّمة، عناوين ونصوص عربية مقروءة ودقيقة الإملاء، أيقونات بسيطة، خلفية نظيفة، تسلسل بصري واضح من الأعلى إلى الأسفل',
+  },
 };
 
 function buildSovereignPrompt(input: string, style: string): string {

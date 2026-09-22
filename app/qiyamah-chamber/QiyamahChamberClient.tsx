@@ -30,7 +30,7 @@ import type { ChamberState } from '@/src/button-engine';
 import { useInstallInvitation } from '@/src/install-experience';
 import type { ImperialVisionDocument } from '@/src/chamber-vision';
 
-// All 13 styles — operational, none locked
+// All 14 styles — operational, none locked. 'infographic' (2026-09-22) requires Nano Banana 2 server-side.
 const ALL_STYLES: Array<{ id: string; nameAr: string; tagline: string }> = [
   { id: 'cinematic',    nameAr: 'سينمائي',      tagline: 'ملحمي 35mm' },
   { id: 'realistic',    nameAr: 'واقعي',         tagline: 'دقة فائقة 8K' },
@@ -45,6 +45,7 @@ const ALL_STYLES: Array<{ id: string; nameAr: string; tagline: string }> = [
   { id: 'architecture', nameAr: 'معماري',        tagline: 'هندسة بصرية' },
   { id: 'historical',   nameAr: 'تاريخي',        tagline: 'توثيق الحقب' },
   { id: 'abstract',     nameAr: 'تجريدي',        tagline: 'حرية بصرية' },
+  { id: 'infographic',  nameAr: 'إنفوغرافيك',    tagline: 'معلومات مرئية' },
 ];
 
 type JourneyStage =
@@ -362,7 +363,13 @@ export function QiyamahChamberClient({
         fetchGenerations();
         triggerInvitation();
       } else {
-        setGenerationError(result.message ?? 'التوليد لم ينجح.');
+        // The attempt's own id and the stage it broke at, so a failure the
+        // Creator reports can be found in the server's trail rather than
+        // reduced to «التوليد لم ينجح».
+        const trace = typeof result.operationId === 'string'
+          ? ` — العملية ${result.operationId.slice(0, 8)}${typeof result.stage === 'string' ? ` · ${result.stage}` : ''}`
+          : '';
+        setGenerationError((result.message ?? 'التوليد لم ينجح.') + trace);
         setGenerationErrorReason(result.reason ?? null);
         setStage('error');
       }

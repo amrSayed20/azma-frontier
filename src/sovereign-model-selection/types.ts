@@ -62,6 +62,15 @@ export interface SovereignCreationIntent {
   readonly resolution: string;
   readonly aspectRatio: string;
   readonly characteristicHints: readonly string[];
+  /**
+   * A model the Creator or the capability REQUIRES, by AZMA model id. When
+   * set, the selector considers that model alone: authorized and active, it
+   * is selected; otherwise the selection fails with 'required-model-unavailable'.
+   * Nothing is substituted underneath a requirement — a «Veo» choice is Veo
+   * or a refusal, never Seedance, never the provider default. (Sovereign
+   * Journey construction order §12, 2026-09-22.)
+   */
+  readonly requiredModelId?: string;
   // Video-specific (undefined for image)
   readonly durationSeconds?: number;
   readonly platformTarget?: string;
@@ -146,7 +155,8 @@ export type ModelSelectionFailure = {
     | 'quality-unavailable'
     | 'resolution-unavailable'
     | 'duration-unavailable'
-    | 'capability-unavailable';
+    | 'capability-unavailable'
+    | 'required-model-unavailable';
   readonly detail: string;
 };
 

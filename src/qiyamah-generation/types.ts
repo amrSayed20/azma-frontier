@@ -16,6 +16,8 @@ export interface GenerationRequest {
   readonly creatorId?: string;
   /** The Creator's verbatim idea, stored separately from the constructed production prompt. */
   readonly originalIdea?: string | null;
+  /** One id per attempt, minted by the route; threaded to the provider and back. */
+  readonly operationId?: string;
 }
 
 export interface GeneratedAsset {
@@ -26,6 +28,9 @@ export interface GeneratedAsset {
   readonly generatedAt: string;
   /** The Creator's original idea as entered. Null for assets generated before this field was added. */
   readonly originalIdea: string | null;
+  readonly operationId?: string;
+  /** The provider model that actually produced these bytes, as the binding reports it. */
+  readonly providerModelId?: string | null;
 }
 
 export type GenerationErrorReason =
@@ -38,6 +43,10 @@ export interface GenerationFailure {
   readonly status: 'failed';
   readonly reason: GenerationErrorReason;
   readonly message: string;
+  /** Where and why it broke — see generation-observability.ts. */
+  readonly operationId?: string;
+  readonly stage?: string;
+  readonly detail?: string;
 }
 
 export interface GenerationSuccess {
@@ -55,6 +64,8 @@ export interface VideoGenerationRequest {
   readonly durationSeconds: number;
   readonly creatorId?: string;
   readonly originalIdea?: string | null;
+  /** One id per attempt, minted by the route; threaded to the provider and back. */
+  readonly operationId?: string;
 }
 
 export interface VideoGeneratedAsset {

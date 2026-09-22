@@ -29,7 +29,7 @@
  */
 
 import { randomUUID } from 'crypto';
-import { persistGeneratedImage } from './asset-storage';
+import { persistGeneratedImage, persistGeneratedVideo, detectVideoFormat } from './asset-storage';
 import { getGenerationOrchestrator } from '../core/sovereign-ai-integration/provider-bootstrap';
 import { isRateLimited, recordGeneration as recordRateLimitedGeneration } from './rate-limiter';
 import { getDb, recordGeneration as persistGenerationRecord } from '../persistent-storage';
@@ -37,7 +37,9 @@ import { SovereignVaultManager } from '../vault/sovereign-vault-manager';
 import { AssetFamily, SourceChamber } from '../vault/sovereign-vault-types';
 import { CapabilityTarget } from '../core/sovereign-orchestrator/qiyamah-intent-types';
 import { buildImageCreationIntent, buildVideoCreationIntent, getProductionSelector } from '../sovereign-model-selection';
-import type { GenerationRequest, GenerationResult, VideoGenerationRequest, VideoGenerationResult } from './types';
+import { beginOperation, safeDetail } from './generation-observability';
+import type { OperationTrail, FailureCategory } from './generation-observability';
+import type { GenerationRequest, GenerationResult, GenerationFailure, VideoGenerationRequest, VideoGenerationResult } from './types';
 
 // ─── IMAGE FORMAT INTEGRITY GATE ─────────────────────────────────────────────
 
@@ -61,6 +63,20 @@ function detectImageFormat(buf: Buffer): 'image/png' | 'image/jpeg' | 'image/web
 
 const vaultManager = new SovereignVaultManager();
 
+/** A failure that knows where it happened. `message` stays Creator-safe. */
+function failAt(
+  trail: OperationTrail,
+  reason: GenerationFailure['reason'],
+  stage: string,
+  category: FailureCategory,
+  message: string,
+  detail: string,
+  data?: Record<string, unknown>,
+): GenerationFailure {
+  const f = trail.fail(stage, category, detail, data);
+  return { status: 'failed', reason, message, operationId: f.operationId, stage: f.stage, detail: f.detail };
+}
+
 async function depositGeneratedAssetIntoVault(params: {
   readonly assetId: string;
   readonly creatorId: string;
@@ -68,6 +84,9 @@ async function depositGeneratedAssetIntoVault(params: {
   readonly prompt: string;
   readonly style: string | null;
   readonly resolvedProviderId: string;
+  /** The provider model that produced the bytes — recorded, never assumed. */
+  readonly providerModelId: string | null;
+  readonly operationId: string;
 }): Promise<void> {
   try {
     await vaultManager.depositAsset({
@@ -81,6 +100,8 @@ async function depositGeneratedAssetIntoVault(params: {
 
       metadata: {
         providerId: params.resolvedProviderId,
+        ...(params.providerModelId ? { generationModel: params.providerModelId } : {}),
+        generationOperationId: params.operationId,
         generationPrompt: params.prompt,
         ...(params.style ? { generationStyle: params.style } : {}),
       },
@@ -100,6 +121,8 @@ async function depositVideoAssetIntoVault(params: {
   readonly style: string | null;
   readonly durationSeconds: number;
   readonly resolvedProviderId: string;
+  readonly providerModelId: string | null;
+  readonly operationId: string;
 }): Promise<void> {
   try {
     await vaultManager.depositAsset({
@@ -113,6 +136,8 @@ async function depositVideoAssetIntoVault(params: {
 
       metadata: {
         providerId: params.resolvedProviderId,
+        ...(params.providerModelId ? { generationModel: params.providerModelId } : {}),
+        generationOperationId: params.operationId,
         generationPrompt: params.prompt,
         durationSeconds: params.durationSeconds,
         ...(params.style ? { generationStyle: params.style } : {}),
@@ -133,17 +158,19 @@ function validate(request: GenerationRequest): string | null {
 }
 
 export async function generateImage(request: GenerationRequest): Promise<GenerationResult> {
+  const trail = beginOperation({
+    operationId: request.operationId ?? crypto.randomUUID(),
+    kind: 'image-generation',
+    ownerId: request.creatorId ?? null,
+  });
   const validationError = validate(request);
   if (validationError) {
-    return { status: 'failed', reason: 'invalid-prompt', message: validationError };
+    return failAt(trail, 'invalid-prompt', 'validate', 'invalid-input', validationError, validationError);
   }
 
   if (isRateLimited()) {
-    return {
-      status: 'failed',
-      reason: 'rate-limited',
-      message: 'The interim generation limit has been reached. Please try again later.',
-    };
+    return failAt(trail, 'rate-limited', 'rate-limit', 'rate-limited',
+      'The interim generation limit has been reached. Please try again later.', 'interim rate limit reached');
   }
 
   const style = request.style?.trim() || null;
@@ -161,6 +188,9 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
   // silently downgrades a Creator requirement.
   const creationIntent = buildImageCreationIntent(request.prompt.trim(), style);
   const selectionResult = getProductionSelector().select(creationIntent);
+  trail.stage('selected', selectionResult.selected
+    ? { providerId: selectionResult.selection.providerId, modelId: selectionResult.selection.modelId, providerModelId: selectionResult.selection.providerModelId }
+    : { selected: false, reason: selectionResult.reason });
 
   // Production observability — internal only, never Creator-facing
   console.log(
@@ -197,13 +227,10 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
   } else if (selectionResult.reason !== 'all-candidates-unverified') {
     // Hard requirement not satisfiable — quality or resolution cannot be met.
     // Do NOT silently fall back to a lower-quality model.
-    return {
-      status: 'failed',
-      reason: 'provider-error',
-      message:
-        'The requested quality or resolution is not currently available. ' +
+    return failAt(trail, 'provider-error', 'select', 'selection',
+      'The requested quality or resolution is not currently available. ' +
         'Please try a different style or check back later.',
-    };
+      `${selectionResult.reason}: ${selectionResult.detail}`);
   }
   // 'all-candidates-unverified': fall through without model preference (legacy path).
 
@@ -215,7 +242,7 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
   let orchestrationResult: Awaited<ReturnType<ReturnType<typeof getGenerationOrchestrator>['orchestrate']>>;
   try {
     orchestrationResult = await getGenerationOrchestrator().orchestrate({
-      requestId: crypto.randomUUID(),
+      requestId: trail.operationId,
       requestedBy: request.creatorId ?? 'azma-anonymous',
       prompt: request.prompt.trim(),
       taskHint: 'image',
@@ -225,13 +252,13 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
       preferredModelId,
       metadata: orchestrationMetadata,
     });
-  } catch {
-    return {
-      status: 'failed',
-      reason: 'provider-error',
-      message:
-        'No image generation provider was available. The capability may require an API credential to be configured.',
-    };
+  } catch (err) {
+    // Until 2026-09-22 this was `catch {}` — the one place a provider's own
+    // words were thrown away, and the reason a failed attempt could not be
+    // explained. The words are kept now, trimmed and without secrets.
+    return failAt(trail, 'provider-error', 'submit', 'provider-unavailable',
+      'No image generation provider was available. The capability may require an API credential to be configured.',
+      safeDetail(err));
   }
 
   // Log orchestration result for post-test audit (job ID + credits logged by adapter)
@@ -246,24 +273,29 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
     }),
   );
 
+  const providerMeta = orchestrationResult.response.providerMetadata ?? {};
+  const executedModel = typeof providerMeta['providerModelId'] === 'string' ? (providerMeta['providerModelId'] as string) : null;
+  trail.stage('provider-done', {
+    providerId: orchestrationResult.response.providerId,
+    providerModelId: executedModel,
+    providerJobId: providerMeta['magicHourJobId'] ?? null,
+    finishReason: orchestrationResult.response.finishReason,
+    latencyMs: orchestrationResult.response.latencyMs,
+  });
   if (orchestrationResult.response.finishReason !== 'completed') {
-    return {
-      status: 'failed',
-      reason: 'provider-error',
-      message:
-        'No image generation provider was available. The capability may require an API credential to be configured.',
-    };
+    const providerWords = [providerMeta['magicHourErrorCode'], providerMeta['magicHourErrorMessage']].filter(Boolean).join(': ');
+    return failAt(trail, 'provider-error', 'provider', 'provider-failed',
+      'No image generation provider was available. The capability may require an API credential to be configured.',
+      providerWords || `finishReason=${orchestrationResult.response.finishReason}`,
+      { providerJobId: providerMeta['magicHourJobId'] ?? null });
   }
 
   let rawBytes: Buffer;
   try {
     rawBytes = Buffer.from(orchestrationResult.response.content, 'base64');
-  } catch {
-    return {
-      status: 'failed',
-      reason: 'provider-error',
-      message: 'The image generation response could not be decoded.',
-    };
+  } catch (err) {
+    return failAt(trail, 'provider-error', 'download', 'download',
+      'The image generation response could not be decoded.', safeDetail(err));
   }
 
   // Integrity gate: reject URL-as-bytes corruption, empty content, and unrecognized formats.
@@ -271,17 +303,16 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
   // Catches MagicHourVideoAdapter misrouting (video URL decoded as base64 = small garbage buffer).
   const detectedFormat = detectImageFormat(rawBytes);
   if (!detectedFormat) {
-    return {
-      status: 'failed',
-      reason: 'provider-error',
-      message: 'The provider returned invalid or corrupted image data.',
-    };
+    return failAt(trail, 'provider-error', 'validate-output', 'invalid-output',
+      'The provider returned invalid or corrupted image data.', `${rawBytes.length} bytes, no known image signature`);
   }
+  trail.stage('downloaded', { bytes: rawBytes.length, mimeType: detectedFormat });
 
   const providerResult = { bytes: rawBytes, mimeType: detectedFormat };
 
   try {
     const persisted = await persistGeneratedImage(providerResult.bytes, providerResult.mimeType);
+    trail.stage('file-persisted', { assetId: persisted.assetId });
     recordRateLimitedGeneration();
     persistGenerationRecord(getDb(), {
       creatorId: request.creatorId ?? null,
@@ -313,8 +344,12 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
         prompt: request.prompt.trim(),
         style,
         resolvedProviderId,
+        providerModelId: executedModel,
+        operationId: trail.operationId,
       });
+      trail.stage('asset-deposited', { assetId: persisted.assetId, providerModelId: executedModel });
     }
+    trail.done({ assetId: persisted.assetId });
     return {
       status: 'succeeded',
       asset: {
@@ -324,32 +359,40 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
         style,
         generatedAt: new Date().toISOString(),
         originalIdea: request.originalIdea ?? null,
+        operationId: trail.operationId,
+        providerModelId: executedModel,
       },
     };
   } catch (error) {
-    return {
-      status: 'failed',
-      reason: 'storage-error',
-      message: error instanceof Error ? error.message : 'Failed to persist the generated image.',
-    };
+    return failAt(trail, 'storage-error', 'persist', 'storage',
+      error instanceof Error ? error.message : 'Failed to persist the generated image.', safeDetail(error));
   }
 }
 
 // ─── VIDEO GENERATION ─────────────────────────────────────────────────────────
 
 export async function generateVideo(request: VideoGenerationRequest): Promise<VideoGenerationResult> {
+  const trail = beginOperation({
+    operationId: request.operationId ?? crypto.randomUUID(),
+    kind: 'video-generation',
+    ownerId: request.creatorId ?? null,
+  });
   const trimmedPrompt = request.prompt.trim();
   if (!trimmedPrompt) {
-    return { status: 'failed', reason: 'invalid-prompt', message: 'A prompt is required to generate a video.' };
+    return failAt(trail, 'invalid-prompt', 'validate', 'invalid-input', 'A prompt is required to generate a video.', 'empty prompt');
   }
   if (trimmedPrompt.length > MAX_PROMPT_LENGTH) {
-    return { status: 'failed', reason: 'invalid-prompt', message: `Prompt exceeds the maximum length of ${MAX_PROMPT_LENGTH} characters.` };
+    return failAt(trail, 'invalid-prompt', 'validate', 'invalid-input',
+      `Prompt exceeds the maximum length of ${MAX_PROMPT_LENGTH} characters.`, `prompt length ${trimmedPrompt.length}`);
   }
 
   const style = request.style?.trim() || null;
 
   const creationIntent = buildVideoCreationIntent(trimmedPrompt, style, request.durationSeconds);
   const selectionResult = getProductionSelector().select(creationIntent);
+  trail.stage('selected', selectionResult.selected
+    ? { providerId: selectionResult.selection.providerId, modelId: selectionResult.selection.modelId, providerModelId: selectionResult.selection.providerModelId }
+    : { selected: false, reason: selectionResult.reason });
 
   console.log(
     '[SovereignGeneration] video-model-selection',
@@ -377,17 +420,15 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
     preferredModelId = selectionResult.selection.modelId;
     orchestrationMetadata['providerModelId'] = selectionResult.selection.providerModelId;
   } else if (selectionResult.reason !== 'all-candidates-unverified') {
-    return {
-      status: 'failed',
-      reason: 'provider-error',
-      message: 'The requested video quality or duration is not currently available. Please try a different duration.',
-    };
+    return failAt(trail, 'provider-error', 'select', 'selection',
+      'The requested video quality or duration is not currently available. Please try a different duration.',
+      `${selectionResult.reason}: ${selectionResult.detail}`);
   }
 
   let orchestrationResult: Awaited<ReturnType<ReturnType<typeof getGenerationOrchestrator>['orchestrate']>>;
   try {
     orchestrationResult = await getGenerationOrchestrator().orchestrate({
-      requestId: crypto.randomUUID(),
+      requestId: trail.operationId,
       requestedBy: request.creatorId ?? 'azma-anonymous',
       prompt: trimmedPrompt,
       taskHint: 'video',
@@ -397,12 +438,10 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
       preferredModelId,
       metadata: orchestrationMetadata,
     });
-  } catch {
-    return {
-      status: 'failed',
-      reason: 'provider-error',
-      message: 'No video generation provider was available. The capability may require an API credential to be configured.',
-    };
+  } catch (err) {
+    return failAt(trail, 'provider-error', 'submit', 'provider-unavailable',
+      'No video generation provider was available. The capability may require an API credential to be configured.',
+      safeDetail(err));
   }
 
   console.log(
@@ -415,36 +454,67 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
     }),
   );
 
+  const providerMeta = orchestrationResult.response.providerMetadata ?? {};
+  const executedModel = typeof providerMeta['providerModelId'] === 'string' ? (providerMeta['providerModelId'] as string) : null;
+  trail.stage('provider-done', {
+    providerId: orchestrationResult.response.providerId,
+    providerModelId: executedModel,
+    providerJobId: providerMeta['magicHourJobId'] ?? null,
+    finishReason: orchestrationResult.response.finishReason,
+    latencyMs: orchestrationResult.response.latencyMs,
+  });
   if (orchestrationResult.response.finishReason !== 'completed') {
-    return {
-      status: 'failed',
-      reason: 'provider-error',
-      message: 'No video generation provider was available. The capability may require an API credential to be configured.',
-    };
+    const providerWords = [providerMeta['magicHourErrorCode'], providerMeta['magicHourErrorMessage']].filter(Boolean).join(': ');
+    return failAt(trail, 'provider-error', 'provider', 'provider-failed',
+      'No video generation provider was available. The capability may require an API credential to be configured.',
+      providerWords || `finishReason=${orchestrationResult.response.finishReason}`,
+      { providerJobId: providerMeta['magicHourJobId'] ?? null });
   }
 
   // VIDEO CONTRACT: The MagicHourVideoAdapter returns the CDN download URL directly in
   // content — NOT base64-encoded bytes. Never call Buffer.from(content, 'base64') here.
   const videoUrl = orchestrationResult.response.content;
   if (!videoUrl || !videoUrl.startsWith('http')) {
-    return {
-      status: 'failed',
-      reason: 'provider-error',
-      message: 'The provider returned an invalid video URL.',
-    };
+    return failAt(trail, 'provider-error', 'download', 'download', 'The provider returned an invalid video URL.', 'content is not an http url');
   }
 
-  const assetId = randomUUID();
+  // The bytes are OURS from here. Until 2026-09-22 the provider's 24-hour
+  // download URL was stored as the asset itself — see persistGeneratedVideo.
+  let videoBytes: Buffer;
+  try {
+    const download = await fetch(videoUrl);
+    if (!download.ok) throw new Error(`HTTP ${download.status}`);
+    videoBytes = Buffer.from(await download.arrayBuffer());
+  } catch (err) {
+    return failAt(trail, 'provider-error', 'download', 'download', 'The generated video could not be retrieved from the provider.', safeDetail(err));
+  }
+  const videoFormat = detectVideoFormat(videoBytes);
+  if (!videoFormat) {
+    return failAt(trail, 'provider-error', 'validate-output', 'invalid-output',
+      'The provider returned data that is not a video.', `${videoBytes.length} bytes, no MP4/WebM signature`);
+  }
+  trail.stage('downloaded', { bytes: videoBytes.length, mimeType: videoFormat });
+
+  let persisted: { assetId: string; assetUrl: string };
+  try {
+    persisted = await persistGeneratedVideo(videoBytes, videoFormat);
+  } catch (err) {
+    return failAt(trail, 'storage-error', 'persist', 'storage', 'Failed to keep the generated video.', safeDetail(err));
+  }
+  trail.stage('file-persisted', { assetId: persisted.assetId });
+  const assetId = persisted.assetId;
+  const storedUrl = persisted.assetUrl;
 
   try {
     persistGenerationRecord(getDb(), {
       creatorId: request.creatorId ?? null,
       prompt: trimmedPrompt,
       style,
-      assetUrl: videoUrl,
+      assetUrl: storedUrl,
       originalIdea: request.originalIdea ?? null,
       mediaType: 'video',
     });
+    trail.stage('record-inserted', { assetId });
 
     console.log(
       '[SovereignGeneration] video-generation-record',
@@ -452,7 +522,7 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
         status: 'succeeded',
         creatorId: request.creatorId ?? null,
         assetId,
-        assetUrl: videoUrl.slice(0, 80),
+        assetUrl: storedUrl,
         style,
         durationSeconds: request.durationSeconds,
       }),
@@ -463,19 +533,23 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
       await depositVideoAssetIntoVault({
         assetId,
         creatorId: request.creatorId,
-        assetUrl: videoUrl,
+        assetUrl: storedUrl,
         prompt: trimmedPrompt,
         style,
         durationSeconds: request.durationSeconds,
         resolvedProviderId,
+        providerModelId: executedModel,
+        operationId: trail.operationId,
       });
+      trail.stage('asset-deposited', { assetId, providerModelId: executedModel });
     }
+    trail.done({ assetId });
 
     return {
       status: 'succeeded',
       asset: {
         assetId,
-        assetUrl: videoUrl,
+        assetUrl: storedUrl,
         prompt: trimmedPrompt,
         style,
         durationSeconds: request.durationSeconds,
@@ -484,10 +558,7 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
       },
     };
   } catch (error) {
-    return {
-      status: 'failed',
-      reason: 'storage-error',
-      message: error instanceof Error ? error.message : 'Failed to record the generated video.',
-    };
+    return failAt(trail, 'storage-error', 'record', 'record',
+      error instanceof Error ? error.message : 'Failed to record the generated video.', safeDetail(error));
   }
 }

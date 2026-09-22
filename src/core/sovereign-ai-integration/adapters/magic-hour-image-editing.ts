@@ -56,6 +56,10 @@ const ACCEPTED_EXTENSIONS = new Set([
 ]);
 
 export interface EditedImageResult {
+  /** The binding and the exact provider model that produced the bytes. */
+  readonly providerId: string;
+  readonly providerModelId: string;
+  readonly providerJobId: string;
   readonly bytes: Buffer;
   readonly mimeType: string;
   /** What the provider charged. Recorded so a batch can be costed honestly. */
@@ -132,6 +136,7 @@ async function uploadSource(bytes: Buffer, extension: string): Promise<string> {
 }
 
 interface JobResponse {
+  error?: { code?: string; message?: string } | null;
   readonly id?: string;
   readonly status?: string;
   readonly credits_charged?: number;
@@ -150,22 +155,40 @@ interface JobResponse {
  * is that the Creator directs in their own tongue, and the engine took Arabic
  * in the live proof above.
  */
+/**
+ * The provider model every sovereign image edit executes.
+ *
+ * VERIFIED 2026-09-22 against docs.magichour.ai /v1/ai-image-editor `model`
+ * enum: "default, nano-banana-2, gpt-image-2, gpt-image-2.5-flare,
+ * flux-2-klein, nano-banana-2-lite, qwen-edit, krea-2, seedream-v4,
+ * seedream-v4.5, seedream-v5-pro, nano-banana, nano-banana-pro". Before
+ * this date the binding sent no model and the provider's default did the
+ * work, unrecorded. Now the model is named here, sent, and written into the
+ * derived asset's provenance as executed — never assumed.
+ */
+export const IMAGE_EDIT_PROVIDER_ID = 'magic-hour-image-editor' as const;
+export const IMAGE_EDIT_MODEL_ID = 'nano-banana-2' as const;
+
 export async function editImageViaProvider(
   sourceBytes: Buffer,
   sourceExtension: string,
   instruction: string,
-  options: { readonly timeoutMs?: number; readonly pollIntervalMs?: number } = {},
+  options: { readonly timeoutMs?: number; readonly pollIntervalMs?: number; readonly model?: string } = {},
 ): Promise<EditedImageResult> {
   const headers = authHeaders();
+  const model = options.model ?? IMAGE_EDIT_MODEL_ID;
   const filePath = await uploadSource(sourceBytes, sourceExtension);
-
   const submitted = await fetch(`${engineBase()}/v1/ai-image-editor`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
       name: 'azma-sovereign-edit',
+      model,
       style: { prompt: instruction },
-      assets: { image_file_path: filePath },
+      // `image_file_paths` (array) is the current contract (docs 2026-09-22);
+      // the singular form this binding sent before is kept beside it for
+      // the older accepted shape, and the live proof decides which survives.
+      assets: { image_file_paths: [filePath], image_file_path: filePath },
     }),
   });
   if (!submitted.ok) {
@@ -193,7 +216,8 @@ export async function editImageViaProvider(
     const state = (await polled.json()) as JobResponse;
     if (state.status === 'complete') { finished = state; break; }
     if (state.status === 'error' || state.status === 'canceled') {
-      throw new ImageEditError('RENDER_FAILED', `the engine reported '${state.status}'`);
+      const words = state.error?.message ? `: ${state.error.message.slice(0, 200)}` : '';
+      throw new ImageEditError('RENDER_FAILED', `the engine reported '${state.status}'${words}`);
     }
   }
   if (!finished) throw new ImageEditError('TIMED_OUT', `no result within ${timeoutMs}ms`);
@@ -208,6 +232,9 @@ export async function editImageViaProvider(
     bytes: Buffer.from(await downloaded.arrayBuffer()),
     mimeType: downloaded.headers.get('content-type')?.split(';')[0]?.trim() ?? 'application/octet-stream',
     creditsCharged: typeof finished.credits_charged === 'number' ? finished.credits_charged : null,
+    providerId: IMAGE_EDIT_PROVIDER_ID,
+    providerModelId: model,
+    providerJobId: job.id,
   };
 }
 

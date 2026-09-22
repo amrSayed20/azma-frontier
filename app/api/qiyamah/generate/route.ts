@@ -47,6 +47,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'failed', reason: 'unauthorized', message: 'Sign in to generate.' }, { status: 401 });
   }
 
+  // One id per attempt. It is threaded through the service to the provider
+  // binding and back, and returned to the Creator on success and on failure,
+  // so «generation failed» can always be traced to exactly where it failed.
+  const operationId = crypto.randomUUID();
+
   const db = getDb();
   const creditRepo = new CreatorCreditRepository(db);
   const costEngine = new AzmaUnitCostEngine();
@@ -64,8 +69,7 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         if (err instanceof CostUnavailableError) {
           return NextResponse.json(
-            {
-              status: 'failed',
+            { status: 'failed', operationId, stage: 'gate',
               reason: 'cost-unavailable',
               message: 'Video generation requires a subscription plan. Paid video is coming soon — pricing is being finalized.',
             },
@@ -78,8 +82,7 @@ export async function POST(request: NextRequest) {
       const balance = creditRepo.getBalance(session.creatorId);
       if (balance.availableUnits < videoResolvedCostEstimate.estimatedAzmaUnits) {
         return NextResponse.json(
-          {
-            status: 'failed',
+          { status: 'failed', operationId, stage: 'gate',
             reason: 'payment-required',
             message: 'Insufficient AZMA Units for video generation. Purchase a credit pack to continue.',
             estimatedCost: videoResolvedCostEstimate.estimatedAzmaUnits,
@@ -100,7 +103,7 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         if (err instanceof InsufficientBalanceError) {
           return NextResponse.json(
-            { status: 'failed', reason: 'payment-required', message: 'Insufficient AZMA Units.' },
+            { status: 'failed', operationId, stage: 'gate', reason: 'payment-required', message: 'Insufficient AZMA Units.' },
             { status: 402 },
           );
         }
@@ -114,6 +117,7 @@ export async function POST(request: NextRequest) {
         : 6;
 
     const videoResult = await generateVideo({
+      operationId,
       prompt,
       style: typeof style === 'string' ? style : undefined,
       creatorId: session.creatorId,
@@ -169,7 +173,7 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         if (err instanceof TrialExhaustedError) {
           return NextResponse.json(
-            { status: 'failed', reason: 'payment-required', message: 'Trial entitlement exhausted. Purchase a credit pack to continue.' },
+            { status: 'failed', operationId, stage: 'gate', reason: 'payment-required', message: 'Trial entitlement exhausted. Purchase a credit pack to continue.' },
             { status: 402 },
           );
         }
@@ -183,8 +187,7 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         if (err instanceof CostUnavailableError) {
           return NextResponse.json(
-            {
-              status: 'failed',
+            { status: 'failed', operationId, stage: 'gate',
               reason: 'cost-unavailable',
               message: 'Your free generation has been used. Paid image generation is coming soon — pricing is being finalized.',
             },
@@ -199,8 +202,7 @@ export async function POST(request: NextRequest) {
 
       if (!hasPaidBalance) {
         return NextResponse.json(
-          {
-            status: 'failed',
+          { status: 'failed', operationId, stage: 'gate',
             reason: 'payment-required',
             message: 'Insufficient AZMA Units. Purchase a credit pack to continue.',
             estimatedCost: resolvedCostEstimate.estimatedAzmaUnits,
@@ -222,7 +224,7 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         if (err instanceof InsufficientBalanceError) {
           return NextResponse.json(
-            { status: 'failed', reason: 'payment-required', message: 'Insufficient AZMA Units.' },
+            { status: 'failed', operationId, stage: 'gate', reason: 'payment-required', message: 'Insufficient AZMA Units.' },
             { status: 402 },
           );
         }
@@ -232,6 +234,7 @@ export async function POST(request: NextRequest) {
   }
 
   const result = await generateImage({
+    operationId,
     prompt,
     style: typeof style === 'string' ? style : undefined,
     creatorId: session.creatorId,

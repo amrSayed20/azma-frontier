@@ -165,6 +165,17 @@ export interface MutationRequest {
   readonly instructionAr?: string;
   readonly operationId: string;
   readonly actorId?: string;
+  /**
+   * Which binding and which exact provider model produced the output bytes,
+   * as the binding reported after execution — never the parent's generation
+   * metadata, which inheritableMetadata already strips. Keys are namespaced
+   * to the mutation so they cannot be mistaken for the parent's own origin.
+   */
+  readonly providerProvenance?: {
+    readonly providerId: string;
+    readonly providerModelId: string;
+    readonly providerJobId?: string;
+  };
 }
 
 /**
@@ -253,6 +264,14 @@ export async function deriveAsset(request: MutationRequest): Promise<MutationOut
       parentContentDigest: parentDigest,
       contentDigest: outputDigest,
       ...(request.instructionAr ? { mutationInstructionAr: request.instructionAr } : {}),
+      ...(request.providerProvenance
+        ? {
+            mutationProviderId: request.providerProvenance.providerId,
+            mutationProviderModelId: request.providerProvenance.providerModelId,
+            ...(request.providerProvenance.providerJobId ? { mutationProviderJobId: request.providerProvenance.providerJobId } : {}),
+          }
+        : {}),
+      mutationOperationId: request.operationId,
     },
   });
 

@@ -30,6 +30,7 @@ export class ResponseNormalizer {
       latencyMs: response.latencyMs,
       costEstimate: this.costAnalyzer.estimateResponse(provider, response),
       generatedAt: new Date(),
+      providerMetadata: response.metadata,
       immutable: true,
     };
   }

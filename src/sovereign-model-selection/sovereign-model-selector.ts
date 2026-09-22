@@ -81,9 +81,26 @@ export class SovereignModelSelector {
       };
     }
 
+    // ── Step 1b: a required model is the whole pool, or a refusal ─────────────
+    // The Creator's choice of model is not a preference to be weighed against
+    // health or cost; it is the model, or it is nothing.
+    let pool = authorized;
+    if (intent.requiredModelId) {
+      pool = authorized.filter((m) => m.modelId === intent.requiredModelId);
+      if (pool.length === 0) {
+        return {
+          selected: false,
+          reason: 'required-model-unavailable',
+          detail:
+            `The required model '${intent.requiredModelId}' is not production-authorized and active ` +
+            `for ${intent.mediaType} generation. Nothing is substituted for a required model.`,
+        };
+      }
+    }
+
     // ── Step 2: filter by quality tier ────────────────────────────────────────
     const requiredTierRank = QUALITY_TIER_RANK[intent.qualityRequirement];
-    const qualityEligible = authorized.filter(
+    const qualityEligible = pool.filter(
       (m) => QUALITY_TIER_RANK[m.qualityTier] >= requiredTierRank,
     );
 

@@ -176,6 +176,10 @@ function buildRawResponse(
         magicHourCreditsCharged: job.credits_charged,
         // credits_charged on error = what was refunded (may be 0)
         magicHourRefunded: true,
+        // The provider's own words for the failure, so an attempt that broke
+        // here can say why. Never a URL, never a credential.
+        magicHourErrorCode: job.error?.code ?? null,
+        magicHourErrorMessage: job.error?.message?.slice(0, 240) ?? null,
         ...extra,
       },
     };
@@ -266,7 +270,10 @@ export class MagicHourImageAdapter implements AIProviderAdapter {
       MAGIC_HOUR_IMAGE_MODEL_ID,
       job,
       startedAt,
-      { aspectRatio, resolution },
+      // `providerModelId` is the model this binding actually sent — the
+      // generic MAGIC_HOUR_IMAGE_MODEL_ID above names the binding, not the
+      // model, and provenance must record what was executed.
+      { aspectRatio, resolution, providerModelId: modelToUse },
     );
 
     // The generation-service contract requires content to be base64-encoded binary.
@@ -360,6 +367,7 @@ export class MagicHourVideoAdapter implements AIProviderAdapter {
       startedAt,
       {
         aspectRatio, resolution, endSeconds,
+        providerModelId: selectedProviderModelId ?? 'default',
         magicHourEstimatedCredits: estimatedCredits,
         magicHourCreditAdjustment: creditAdjustment,
         magicHourFps: job.fps,
