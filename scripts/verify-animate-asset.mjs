@@ -1,7 +1,11 @@
 /**
- * AZMA OS — Seedance image→video production proof (animate-asset).
+ * AZMA OS — animate-asset image→video production proof, one model at a time.
  *
- *   node scripts/verify-seedance-animate.mjs <base-url> <password-file> <out-dir> <SOURCE_ASSET_ID> [ssh-target]
+ *   node scripts/verify-animate-asset.mjs <base-url> <password-file> <out-dir> <SOURCE_ASSET_ID> [ssh-target] [modelId]
+ *
+ *   modelId = seedance-2-0 (default) | veo-3-1 — the AZMA fleet id the Creator
+ *   chooses; the script knows which exact provider identifier each MUST map to
+ *   and fails if requested, selected and executed disagree.
  *
  * ─── WHAT IT PROVES, AND HOW ─────────────────────────────────────────────────
  *
@@ -34,9 +38,13 @@ const SSH = process.argv[6] ?? 'root@2.28.52.180';
 if (!SOURCE_ASSET_ID) { console.error('SOURCE_ASSET_ID is required — by exact id, decided by a person'); process.exit(2); }
 mkdirSync(OUT, { recursive: true });
 
-const TEST_RUN_ID = `seedance-proof-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}`;
-const REQUESTED_MODEL_ID = 'seedance-2-0';            // AZMA fleet id the Creator chooses
-const VERIFIED_PROVIDER_MODEL = 'seedance-2.0';      // the exact enum value the binding must send
+// AZMA fleet id → the exact provider enum value the binding must send (verified 2026-09-22).
+const VERIFIED = { 'seedance-2-0': 'seedance-2.0', 'veo-3-1': 'veo3.1' };
+const REQUESTED_MODEL_ID = process.argv[7] ?? 'seedance-2-0';
+const VERIFIED_PROVIDER_MODEL = VERIFIED[REQUESTED_MODEL_ID];
+if (!VERIFIED_PROVIDER_MODEL) { console.error(`unknown model ${REQUESTED_MODEL_ID} — this proof knows only ${Object.keys(VERIFIED).join(', ')}`); process.exit(2); }
+const DISPLAY = { 'seedance-2-0': 'Seedance 2.0', 'veo-3-1': 'Veo 3.1' }[REQUESTED_MODEL_ID];
+const TEST_RUN_ID = `${REQUESTED_MODEL_ID}-proof-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}`;
 const INSTRUCTION = 'أبقِ الشخص والتكوين كما هما بينما تتقدّم الكاميرا ببطء إلى الأمام، مع حركة طبيعية خفيفة في الضوء والظلال والعناصر المحيطة';
 
 let pass = 0, fail = 0;
@@ -92,9 +100,10 @@ try {
   // found nothing, and failed a proof whose facts were sound.
   const deployedCommit = (evidence.deployment.match(/-([0-9a-f]{7})$/) ?? [])[1];
   const fleetSource = execFileSync('git', ['show', `${deployedCommit}:src/sovereign-model-selection/video-model-fleet.ts`], { encoding: 'utf8' });
-  const seedanceEntry = fleetSource.slice(fleetSource.indexOf("modelId: 'seedance-2-0'"));
-  const mapped = (seedanceEntry.match(/providerModelId:\s*'([^']+)'/) ?? [])[1];
-  check(`the deployed fleet (${deployedCommit}) maps seedance-2-0 → the verified provider identifier`, mapped === VERIFIED_PROVIDER_MODEL, mapped);
+  const fleetEntry = fleetSource.slice(fleetSource.indexOf(`modelId: '${REQUESTED_MODEL_ID}'`));
+  const mapped = (fleetEntry.match(/providerModelId:\s*'([^']+)'/) ?? [])[1];
+  const activeFlag = (fleetEntry.match(/active:\s*(true|false)/) ?? [])[1];
+  check(`the deployed fleet (${deployedCommit}) maps ${REQUESTED_MODEL_ID} → the verified provider identifier, active`, mapped === VERIFIED_PROVIDER_MODEL && activeFlag === 'true', `${mapped} active=${activeFlag}`);
 
   // ── §24 · the browser journey ─────────────────────────────────────────────
   console.log('\n== BROWSER · Qiyamah → the source\'s card → animate → Seedance → instruction → run ==');
@@ -105,8 +114,16 @@ try {
   check('the source image is the one on the card (exact stored URI)', (await card.locator('img.generation-thumb').getAttribute('src')) === src.secureStorageUri);
   await card.locator('.gallery-animate-btn').click();
   await card.locator('.asset-animate-panel').waitFor({ timeout: 20000 });
-  const modelLine = (await card.locator('.asset-animate-model').textContent())?.trim();
-  check('the interface offers Seedance 2.0 as the model — stated, not a menu of futures', modelLine?.includes('Seedance 2.0') === true, modelLine);
+  // One model: stated. More than one: the Creator chooses among real ones only.
+  const single = await card.locator('.asset-animate-model').count();
+  if (single === 1) {
+    const modelLine = (await card.locator('.asset-animate-model').textContent())?.trim();
+    check(`the interface states ${DISPLAY} as the model`, modelLine?.includes(DISPLAY) === true, modelLine);
+  } else {
+    const options = await card.locator('.asset-animate-model-option').allTextContents();
+    check(`the interface offers ${DISPLAY} among real choices only`, options.some((o) => o.includes(DISPLAY)), options.join(' | '));
+    await card.locator(`.asset-animate-model-option input[value="${REQUESTED_MODEL_ID}"]`).check();
+  }
   await card.locator('.asset-edit-input').fill(INSTRUCTION);
 
   const animateRequest = page.waitForRequest((r) => r.url().includes('/animate') && r.method() === 'POST', { timeout: 30000 });
@@ -114,7 +131,7 @@ try {
   await card.locator('.asset-animate-run').click();
   const req = await animateRequest;
   const reqBody = JSON.parse(req.postData() ?? '{}');
-  check('the request names the source by its exact id and Seedance by its fleet id', req.url().includes(`/api/vault/assets/${src.assetId}/animate`) && reqBody.modelId === REQUESTED_MODEL_ID, `${reqBody.modelId} @${req.url().split('/assets/')[1]}`);
+  check(`the request names the source by its exact id and ${DISPLAY} by its fleet id`, req.url().includes(`/api/vault/assets/${src.assetId}/animate`) && reqBody.modelId === REQUESTED_MODEL_ID, `${reqBody.modelId} @${req.url().split('/assets/')[1]}`);
   const res = await animateResponse;
   const out = await res.json();
   if (!check('animate-asset completed (route answered succeeded)', res.status() === 200 && out.status === 'succeeded', `${res.status()} ${out.reason ?? ''} @${out.stage ?? ''} ${out.message ?? ''}`)) {
@@ -127,7 +144,7 @@ try {
   console.log('  ' + JSON.stringify(evidence.provider));
   check('provider job id captured', typeof out.provider?.providerJobId === 'string' && out.provider.providerJobId.length > 0);
   check('binding is the Magic Hour image-to-video binding', out.provider?.providerId === 'magic-hour-image-to-video');
-  check('requested == executed == verified Seedance identifier', out.provider?.providerModelId === VERIFIED_PROVIDER_MODEL, `${reqBody.modelId} → ${out.provider?.providerModelId}`);
+  check(`requested == executed == verified ${DISPLAY} identifier`, out.provider?.providerModelId === VERIFIED_PROVIDER_MODEL, `${reqBody.modelId} → ${out.provider?.providerModelId}`);
 
   const derivedId = out.asset?.assetId;
   check('a NEW derived asset id, different from the source', typeof derivedId === 'string' && derivedId !== src.assetId, derivedId);
@@ -196,7 +213,7 @@ try {
   check('Y.rootAssetId = X.rootAssetId', d.rootAssetId === src.rootAssetId);
   check('derivation = ANIMATED', d.derivation === 'ANIMATED');
   check('capability target = MOTION', d.capabilityTarget === 'MOTION');
-  check('provenance: binding + exact Seedance model + job id, persisted', d.metadata?.mutationProviderId === 'magic-hour-image-to-video' && d.metadata?.mutationProviderModelId === VERIFIED_PROVIDER_MODEL && typeof d.metadata?.mutationProviderJobId === 'string');
+  check(`provenance: binding + exact ${DISPLAY} model + job id, persisted`, d.metadata?.mutationProviderId === 'magic-hour-image-to-video' && d.metadata?.mutationProviderModelId === VERIFIED_PROVIDER_MODEL && typeof d.metadata?.mutationProviderJobId === 'string');
   check('no generation metadata inherited from the source (providerId/generationPrompt/generationModel/generationOperationId absent)', d.metadata?.providerId === undefined && d.metadata?.generationPrompt === undefined && d.metadata?.generationModel === undefined && d.metadata?.generationOperationId === undefined, JSON.stringify(Object.keys(d.metadata ?? {})));
   check('the animation instruction is recorded on the derived asset', d.metadata?.mutationInstructionAr === INSTRUCTION);
   evidence.ownership = { sourceOwner: src.subscriberTenantId, derivedOwner: d.subscriberTenantId, proofOwner: me.creatorId };

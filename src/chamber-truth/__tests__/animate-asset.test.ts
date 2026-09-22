@@ -143,10 +143,14 @@ describe('9–10 · the provider identifiers are the verified ones', () => {
     const seedance = selector.select(buildAnimationIntent('slow push in', 'seedance-2-0', 5));
     expect(seedance.selected).toBe(true);
     if (seedance.selected) expect(seedance.selection.providerModelId).toBe('seedance-2.0');
-    // Veo is dispatchable but not yet active — its activation is the Veo proof step.
+    // Veo: activated by its production-proof order (2026-09-22); the exact identifier, nothing else.
     const veo = selector.select(buildAnimationIntent('slow push in', 'veo-3-1', 5));
-    expect(veo.selected).toBe(false);
-    if (!veo.selected) expect(veo.reason).toBe('required-model-unavailable');
+    expect(veo.selected).toBe(true);
+    if (veo.selected) expect(veo.selection.providerModelId).toBe('veo3.1');
+    // An inactive or unknown model is still refused, never substituted.
+    const sora = selector.select(buildAnimationIntent('slow push in', 'sora-2', 5));
+    expect(sora.selected).toBe(false);
+    if (!sora.selected) expect(sora.reason).toBe('required-model-unavailable');
     // A model that cannot take an image is refused even if active.
     const ltx = selector.select(buildAnimationIntent('slow push in', 'ltx-2-3', 5));
     expect(ltx.selected).toBe(false);

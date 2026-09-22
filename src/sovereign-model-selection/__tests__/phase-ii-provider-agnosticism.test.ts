@@ -233,15 +233,16 @@ describe('Phase II Test 22 — Fallback discipline and fleet authorization state
     }
   });
 
-  it('Phase III: all 5 video fleet models are production-authorized (veo+sora remain active:false)', () => {
+  it('Phase III: all 5 video fleet models are production-authorized (sora remains active:false; veo activated 2026-09-22)', () => {
     expect(VIDEO_MODEL_FLEET.length).toBe(5);
     for (const model of VIDEO_MODEL_FLEET) {
       expect(model.productionAuthorized).toBe(true);
       expect(model.verificationStatus).toBe('production-authorized');
     }
-    // veo and sora are authorized but have no adapter — active:false prevents selection
+    // sora is authorized but has no adapter — active:false prevents selection.
+    // veo was activated under the Veo 3.1 production-proof order (Magic Hour-hosted).
     const inactive = VIDEO_MODEL_FLEET.filter((m) => !m.active);
-    expect(inactive.map((m) => m.modelId).sort()).toEqual(['sora-2', 'veo-3-1']);
+    expect(inactive.map((m) => m.modelId).sort()).toEqual(['sora-2']);
   });
 
   it('Phase III: all ten fleet models are production-authorized', () => {

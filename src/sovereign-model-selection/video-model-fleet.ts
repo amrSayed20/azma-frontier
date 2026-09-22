@@ -123,8 +123,8 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
     // providerModelId 'veo-3.1', which is not an identifier any provider
     // accepts: the verified Magic Hour enum is 'veo3.1' (and 'veo3.1-lite',
     // 'veo3.1-audio'). Corrected to the binding that can actually dispatch it.
-    // active: false remains — activation is the controlled Veo production-proof
-    // step, not a side effect of fixing the identifier.
+    // Activated under the Veo 3.1 production-proof order (2026-09-22), not as a
+    // side effect of fixing the identifier.
     modelId: 'veo-3-1',
     providerId: MAGIC_HOUR_VIDEO_PROVIDER_ID,
     gatewayId: 'magic-hour',
@@ -150,11 +150,11 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
     },
     verificationStatus: 'production-authorized',
     productionAuthorized: true,
-    active: false,  // Dispatchable through Magic Hour; activation deferred to the Veo production-proof step
+    active: true,   // ACTIVATED 2026-09-22 by the Veo 3.1 image→video production-proof order
     internalNotes:
       'Production authorized by Chief Architect 2026-08-27 (Phase III). Magic Hour-hosted since the ' +
-      'identifier correction of 2026-09-22 (providerModelId veo3.1). active: false until the controlled ' +
-      'Veo image-to-video production proof activates it.',
+      'identifier correction of 2026-09-22 (providerModelId veo3.1). Activated the same day under the ' +
+      'Veo 3.1 production-proof order; the proof record is the evidence it dispatches.',
   },
   {
     // Sora 2 is OpenAI's video model. No AZMA provider adapter exists for video.

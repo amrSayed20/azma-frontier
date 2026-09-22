@@ -133,7 +133,7 @@ describe('Point 1 — All ten fleet models have productionAuthorized: true', () 
     expect(stillCandidate).toHaveLength(0);
   });
 
-  it('veo-3-1 and sora-2 are production-authorized but remain active: false (no adapter)', () => {
+  it('veo-3-1 is production-authorized and active (Magic Hour-hosted, proof order 2026-09-22); sora-2 is authorized but inactive (no adapter)', () => {
     const veo = VIDEO_MODEL_FLEET.find((m) => m.modelId === 'veo-3-1');
     const sora = VIDEO_MODEL_FLEET.find((m) => m.modelId === 'sora-2');
 
@@ -144,8 +144,8 @@ describe('Point 1 — All ten fleet models have productionAuthorized: true', () 
     expect(veo!.productionAuthorized).toBe(true);
     expect(sora!.productionAuthorized).toBe(true);
 
-    // But inactive — no adapter exists — cannot be dispatched
-    expect(veo!.active).toBe(false);
+    // Veo dispatches through the Magic Hour binding; Sora still has no adapter.
+    expect(veo!.active).toBe(true);
     expect(sora!.active).toBe(false);
   });
 });
@@ -170,12 +170,12 @@ describe('Point 2 — Production registry exposes authorized models', () => {
     }
   });
 
-  it('findProductionAuthorized("video") returns 3 active authorized video models (excludes veo+sora)', () => {
+  it('findProductionAuthorized("video") returns the 4 active authorized video models (excludes sora)', () => {
     const authorized = getProductionRegistry().findProductionAuthorized('video');
-    // ltx-2-3, kling-3-0, seedance-2-0 are active; veo-3-1 and sora-2 are active:false
-    expect(authorized).toHaveLength(3);
+    // ltx-2-3, kling-3-0, seedance-2-0, veo-3-1 are active; sora-2 is active:false
+    expect(authorized).toHaveLength(4);
     const ids = authorized.map((m) => m.modelId).sort();
-    expect(ids).toEqual(['kling-3-0', 'ltx-2-3', 'seedance-2-0']);
+    expect(ids).toEqual(['kling-3-0', 'ltx-2-3', 'seedance-2-0', 'veo-3-1']);
   });
 });
 
@@ -753,7 +753,7 @@ describe('Point 19 — No fake provider integration has been introduced', () => 
     }
   });
 
-  it('veo-3-1 is Magic Hour-hosted under its verified identifier and inactive until its proof; sora-2 references a non-existent provider and is inactive', () => {
+  it('veo-3-1 is Magic Hour-hosted under its verified identifier and active since its proof order; sora-2 references a non-existent provider and is inactive', () => {
     const veo = VIDEO_MODEL_FLEET.find((m) => m.modelId === 'veo-3-1');
     const sora = VIDEO_MODEL_FLEET.find((m) => m.modelId === 'sora-2');
 
@@ -763,7 +763,7 @@ describe('Point 19 — No fake provider integration has been introduced', () => 
     // controlled Veo production-proof step, not a side effect of this fix.
     expect(veo!.gatewayId).toBe('magic-hour');
     expect(veo!.providerModelId).toBe('veo3.1');
-    expect(veo!.active).toBe(false);
+    expect(veo!.active).toBe(true); // Veo 3.1 production-proof order, 2026-09-22
 
     // Sora: still no adapter, still inactive.
     expect(sora!.gatewayId).not.toBe('magic-hour');
