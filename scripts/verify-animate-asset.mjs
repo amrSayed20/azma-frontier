@@ -232,7 +232,7 @@ try {
 
   // ── §18–19 · refusals that never reach the provider ───────────────────────
   console.log('\n== REFUSALS ==');
-  const foreign = await api(page, `/api/vault/assets/not-owned-by-this-creator-0000/animate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ instruction: INSTRUCTION, modelId: REQUESTED_MODEL_ID, durationSeconds: 5 }) });
+  const foreign = await api(page, `/api/vault/assets/not-owned-by-this-creator-0000/animate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ instruction: INSTRUCTION, modelId: REQUESTED_MODEL_ID, durationSeconds: reqBody.durationSeconds }) });
   check('an asset id this creator does not own is refused at the ownership stage, before any provider call', foreign.status === 404 && foreign.json?.stage === 'ownership', `${foreign.status} ${foreign.json?.reason} @${foreign.json?.stage}`);
   const anonCtx = await browser.newContext(); const anonPage = await anonCtx.newPage();
   await anonPage.goto(BASE + '/signup', { waitUntil: 'domcontentloaded' });
