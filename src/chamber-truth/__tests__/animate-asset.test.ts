@@ -154,22 +154,30 @@ describe('9–10 · the provider identifiers are the verified ones', () => {
   });
 });
 
-describe('11 · no interface exposes the capability before its production proof', () => {
-  it('no page or client component calls the animate boundary or names the capability', () => {
-    const walk = (dir: string, out: string[] = []): string[] => {
-      for (const name of readdirSync(dir)) {
-        if (name === 'node_modules' || name === '.next' || name === '__tests__' || name === 'api') continue;
-        const full = join(dir, name);
-        if (statSync(full).isDirectory()) walk(full, out);
-        else if (/\.tsx$/.test(name)) out.push(full);
-      }
-      return out;
-    };
-    const ui = [...walk(join(ROOT, 'app')), ...walk(join(ROOT, 'src'))];
-    const offenders = ui.filter((f) => {
-      const code = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-      return /\/animate['"`]/.test(code) || code.includes('animate-asset');
-    }).map((f) => f.replace(ROOT, '').replace(/\\/g, '/'));
-    expect(offenders).toEqual([]);
+describe('11 · the interface offers the capability only through fleet-derived, image-verified models', () => {
+  /**
+   * The Seedance production-proof order (2026-09-22) is the moment exposure
+   * became legitimate: Truth boundary + service boundary + binding readiness
+   * all stood. What stays forbidden is a model written into the interface:
+   * the page derives the offer from the fleet, and the client names none.
+   */
+  it('the page derives animation models from the fleet — authorized, active, verified image-to-video', () => {
+    const page = strip('app/qiyamah-chamber/page.tsx');
+    expect(page).toMatch(/VIDEO_MODEL_FLEET[\s\S]*?productionAuthorized && m\.active && m\.supportsImageToVideo === true/);
+  });
+
+  it('the client hardcodes no provider or model identifier', () => {
+    const client = strip('app/qiyamah-chamber/QiyamahChamberClient.tsx');
+    for (const forbidden of ["'seedance", "'veo", "'ltx", "'kling", "'sora", "'grok", "magic-hour"]) {
+      expect(client).not.toContain(forbidden);
+    }
+    // And it calls the one boundary Truth declares, sending the model the page derived.
+    expect(client).toMatch(/\/api\/vault\/assets\/\$\{animateAssetId\}\/animate/);
+    expect(client).toMatch(/modelId:\s*animateModelId/);
+  });
+
+  it('with no eligible model there is no control at all', () => {
+    const client = strip('app/qiyamah-chamber/QiyamahChamberClient.tsx');
+    expect(client).toMatch(/animationModels\.length > 0 && \(/);
   });
 });

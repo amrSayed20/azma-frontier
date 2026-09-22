@@ -1377,3 +1377,14 @@
   background: rgba(212, 175, 55, 0.16);
   border-color: rgba(212, 175, 55, 0.55);
 }
+
+/* ── animate-asset — the panel reuses the edit panel's bones ───────────────── */
+.asset-animate-model {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  color: var(--qiyamah-text-dim, #b9ad8c);
+}
+.asset-animate-models { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.35rem; }
+.asset-animate-model-option { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; cursor: pointer; }
+.asset-animate-result { margin-top: 0.5rem; }
+.asset-animate-video { width: 100%; max-height: 260px; background: #000; border-radius: 6px; }

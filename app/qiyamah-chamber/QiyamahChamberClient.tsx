@@ -79,12 +79,15 @@ interface QiyamahChamberClientProps {
   readonly dict:                Dictionary;
   readonly chamberVision?:      ImperialVisionDocument;
   readonly generationAvailable?: boolean;
+  /** Models verified and active for animating an image — derived by the page from the fleet. */
+  readonly animationModels?:    readonly { readonly modelId: string; readonly displayName: string }[];
 }
 
 export function QiyamahChamberClient({
   dict,
   chamberVision,
   generationAvailable = true,
+  animationModels = [],
 }: QiyamahChamberClientProps) {
   const { goTo } = useConstitutionalNavigation();
   const { triggerInvitation } = useInstallInvitation();
@@ -142,6 +145,21 @@ export function QiyamahChamberClient({
   // appearing in the gallery, which only happens after it is really saved.
   const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
   const [editInstruction, setEditInstruction] = useState('');
+
+  // ── animate-asset — a still brought into motion ──────────────────────────
+  //
+  // Chamber Truth: animate-asset, POST /api/vault/assets/[assetId]/animate.
+  // Offered on the card where the image already is, like editing — and only
+  // when the fleet has a model verified to take an image (animationModels).
+  // The asset behind a generation card is found by exact equality of its
+  // stored URI in the Creator's own Vault list, never by position.
+  const [animatingRecordId, setAnimatingRecordId] = useState<string | null>(null);
+  const [animateAssetId, setAnimateAssetId] = useState<string | null>(null);
+  const [animateInstruction, setAnimateInstruction] = useState('');
+  const [animateModelId, setAnimateModelId] = useState<string>(animationModels[0]?.modelId ?? '');
+  const [animateState, setAnimateState] = useState<'ready' | 'running' | 'failed'>('ready');
+  const [animateError, setAnimateError] = useState<string | null>(null);
+  const [animatedResult, setAnimatedResult] = useState<{ forRecordId: string; assetId: string; url: string } | null>(null);
   const [editState, setEditState] = useState<'ready' | 'running' | 'failed'>('ready');
   const [editError, setEditError] = useState<string | null>(null);
   const [editedAssetId, setEditedAssetId] = useState<string | null>(null);
@@ -513,6 +531,64 @@ export function QiyamahChamberClient({
    * jobs are to ask, to wait honestly, and to refresh the gallery so the
    * Creator sees the real derived asset rather than a claim about it.
    */
+  async function openAnimate(record: GenerationRecord) {
+    setAnimateError(null);
+    setAnimateState('ready');
+    setAnimateInstruction('');
+    setAnimatedResult(null);
+    // The sovereign identity behind this card: the Vault asset whose stored
+    // URI equals this generation's. Owner-scoped list; exact key; no guess.
+    try {
+      const listed = await fetch('/api/vault/assets').then((r) => r.json());
+      const match = listed.status === 'succeeded'
+        ? (listed.assets as { assetId: string; secureStorageUri?: string }[]).filter((a) => a.secureStorageUri === record.assetUrl)
+        : [];
+      if (match.length !== 1) {
+        setAnimateAssetId(null);
+        setAnimateError('لم تُعثر على هذه الصورة في خزائنك.');
+        setAnimateState('failed');
+        setAnimatingRecordId(record.recordId);
+        return;
+      }
+      setAnimateAssetId(match[0].assetId);
+      setAnimatingRecordId(record.recordId);
+    } catch {
+      setAnimateError('البوابة لا تستجيب. أعِد المحاولة.');
+      setAnimateState('failed');
+      setAnimatingRecordId(record.recordId);
+    }
+  }
+
+  async function handleAnimateAsset() {
+    const instruction = animateInstruction.trim();
+    if (!animateAssetId || instruction.length === 0 || !animateModelId) return;
+    setAnimateState('running');
+    setAnimateError(null);
+    try {
+      const res = await fetch(`/api/vault/assets/${animateAssetId}/animate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instruction, modelId: animateModelId, durationSeconds: 5 }),
+      });
+      const result = await res.json();
+      if (result.status !== 'succeeded') {
+        const trace = typeof result.operationId === 'string' ? ` — العملية ${result.operationId.slice(0, 8)}` : '';
+        setAnimateError((result.message ?? 'تعذّر تنفيذ التحريك.') + trace);
+        setAnimateState('failed');
+        return;
+      }
+      // Said only once the derived asset is really in the Vault: the gallery
+      // is re-read from the server, and the video shown is the stored file.
+      fetchGenerations();
+      setAnimatedResult({ forRecordId: animatingRecordId ?? '', assetId: result.asset.assetId, url: result.asset.secureStorageUri });
+      setAnimateState('ready');
+      setAnimatingRecordId(null);
+    } catch {
+      setAnimateError('البوابة لا تستجيب. أعِد المحاولة.');
+      setAnimateState('failed');
+    }
+  }
+
   async function handleEditAsset(assetId: string) {
     const instruction = editInstruction.trim();
     if (instruction.length === 0) return;
@@ -1135,6 +1211,18 @@ export function QiyamahChamberClient({
                       >
                         ↓
                       </a>
+                      {/* Offered only for images, and only when a model verified to
+                          animate an image is active — the page derives that from the
+                          fleet. No model, no control. */}
+                      {g.mediaType !== 'video' && animationModels.length > 0 && (
+                        <button
+                          className="gallery-edit-btn gallery-animate-btn"
+                          aria-label="حرّك هذه الصورة"
+                          onClick={() => void openAnimate(g)}
+                        >
+                          ▶
+                        </button>
+                      )}
                       <button
                         className="delete-btn"
                         aria-label="حذف هذا التوليد"
@@ -1142,6 +1230,78 @@ export function QiyamahChamberClient({
                       >
                         ✕
                       </button>
+                    </div>
+                  )}
+
+                  {animatingRecordId === g.recordId && (
+                    <div className="asset-edit-panel asset-animate-panel">
+                      <label className="asset-edit-label" htmlFor={`animate-${g.recordId}`}>
+                        كيف تريد أن تتحرّك هذه الصورة؟
+                      </label>
+                      <textarea
+                        id={`animate-${g.recordId}`}
+                        className="asset-edit-input"
+                        value={animateInstruction}
+                        onChange={(e) => setAnimateInstruction(e.target.value)}
+                        placeholder="مثال: أبقِ التكوين كما هو بينما تتقدّم الكاميرا ببطء ويتغيّر الضوء طبيعياً."
+                        rows={3}
+                        maxLength={1000}
+                        disabled={animateState === 'running'}
+                      />
+                      {/* The model is a real choice only when the fleet offers more
+                          than one; a single model is stated, not dressed as a menu. */}
+                      {animationModels.length === 1 ? (
+                        <p className="asset-animate-model">النموذج: {animationModels[0].displayName}</p>
+                      ) : (
+                        <div className="asset-animate-models" role="radiogroup" aria-label="نموذج الحركة">
+                          {animationModels.map((m) => (
+                            <label key={m.modelId} className="asset-animate-model-option">
+                              <input
+                                type="radio"
+                                name={`animate-model-${g.recordId}`}
+                                value={m.modelId}
+                                checked={animateModelId === m.modelId}
+                                onChange={() => setAnimateModelId(m.modelId)}
+                                disabled={animateState === 'running'}
+                              />
+                              {m.displayName}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                      {animateState === 'running' && (
+                        <p className="asset-edit-status" role="status">
+                          التحريك قيد التنفيذ — قد يستغرق دقائق. لا تغلق الصفحة.
+                        </p>
+                      )}
+                      {animateState === 'failed' && animateError && (
+                        <p className="asset-edit-error" role="alert">{animateError}</p>
+                      )}
+                      <div className="asset-edit-actions">
+                        <button
+                          className="asset-edit-run asset-animate-run"
+                          disabled={animateState === 'running' || !animateAssetId || animateInstruction.trim().length === 0}
+                          onClick={() => void handleAnimateAsset()}
+                        >
+                          {animateState === 'running' ? 'جارٍ…' : 'حرّك'}
+                        </button>
+                        <button
+                          className="asset-edit-cancel"
+                          disabled={animateState === 'running'}
+                          onClick={() => { setAnimatingRecordId(null); setAnimateError(null); }}
+                        >
+                          إلغاء
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Shown only after the derived video is really in the Vault: the
+                      src is the stored file, and the gallery above was re-read. */}
+                  {animatedResult && animatedResult.forRecordId === g.recordId && (
+                    <div className="asset-animate-result">
+                      <video className="generation-thumb generation-thumb-video asset-animate-video" src={animatedResult.url} controls playsInline />
+                      <p className="asset-edit-status">تحرّكت الصورة وحُفظ الفيديو أصلاً جديداً في خزائنك.</p>
                     </div>
                   )}
                 </div>

@@ -3,6 +3,7 @@ import { getDictionary } from '@/src/creator-language';
 import { QiyamahChamberExperience } from '@/src/imperial-experience-engine';
 import { QiyamahChamberClient } from './QiyamahChamberClient';
 import { getVisionDocument } from '@/src/chamber-vision';
+import { VIDEO_MODEL_FLEET } from '@/src/sovereign-model-selection/video-model-fleet';
 
 /**
  * QIYAMAH CHAMBER, PACKAGE I: wrapped in its own IXE Experience Pipeline
@@ -22,12 +23,20 @@ export default async function QiyamahChamberPage() {
   const dict = getDictionary(locale);
   const chamberVision = getVisionDocument('qiyamah-chamber');
   const generationAvailable = !!process.env.MAGIC_HOUR_API_KEY;
+  // The models a Creator may animate an image with — derived from the fleet
+  // at render time, never written in the interface: production-authorized,
+  // active, and VERIFIED to take an image. Today that is Seedance 2.0 alone;
+  // Veo joins when its own proof activates it. Zero models → no control.
+  const animationModels = VIDEO_MODEL_FLEET
+    .filter((m) => m.productionAuthorized && m.active && m.supportsImageToVideo === true)
+    .map((m) => ({ modelId: m.modelId, displayName: m.displayName }));
   return (
     <QiyamahChamberExperience dict={dict} locale={locale}>
       <QiyamahChamberClient
         dict={dict}
         chamberVision={chamberVision}
         generationAvailable={generationAvailable}
+        animationModels={animationModels}
       />
     </QiyamahChamberExperience>
   );
