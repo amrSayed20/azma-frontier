@@ -87,8 +87,14 @@ try {
   console.log(`  snapshot: ${listBefore.length} assets, ${generationsBefore} generation records (counted, never used to choose)`);
 
   // ── §6 · the model the request will name, and what the binding must send ──
-  const verifiedFleet = JSON.parse(ssh('cd /root/azma-os && node -e "const s=require(\'fs\').readFileSync(\'.next/server/chunks/ssr/\'+require(\'fs\').readdirSync(\'.next/server/chunks/ssr\').find(f=>f.includes(\'video-model-fleet\')&&!f.endsWith(\'.map\')),\'utf8\');const m=s.match(/modelId:\\"seedance-2-0\\"[\\s\\S]*?providerModelId:\\"([^\\"]+)\\"/);console.log(JSON.stringify({providerModelId:m&&m[1]}))" 2>/dev/null || echo "{}"'));
-  check('the live fleet maps seedance-2-0 → the verified provider identifier', verifiedFleet.providerModelId === VERIFIED_PROVIDER_MODEL, JSON.stringify(verifiedFleet));
+  // Read from the fleet SOURCE at the deployed commit (the release id carries
+  // it), never from a minified chunk: the first draft grepped the chunk,
+  // found nothing, and failed a proof whose facts were sound.
+  const deployedCommit = (evidence.deployment.match(/-([0-9a-f]{7})$/) ?? [])[1];
+  const fleetSource = execFileSync('git', ['show', `${deployedCommit}:src/sovereign-model-selection/video-model-fleet.ts`], { encoding: 'utf8' });
+  const seedanceEntry = fleetSource.slice(fleetSource.indexOf("modelId: 'seedance-2-0'"));
+  const mapped = (seedanceEntry.match(/providerModelId:\s*'([^']+)'/) ?? [])[1];
+  check(`the deployed fleet (${deployedCommit}) maps seedance-2-0 → the verified provider identifier`, mapped === VERIFIED_PROVIDER_MODEL, mapped);
 
   // ── §24 · the browser journey ─────────────────────────────────────────────
   console.log('\n== BROWSER · Qiyamah → the source\'s card → animate → Seedance → instruction → run ==');
