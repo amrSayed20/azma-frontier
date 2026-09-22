@@ -23,7 +23,7 @@
  *   keys or download URLs.
  */
 
-export type OperationKind = 'image-generation' | 'video-generation' | 'image-edit';
+export type OperationKind = 'image-generation' | 'video-generation' | 'image-edit' | 'image-animation';
 
 export type FailureCategory =
   | 'invalid-input'

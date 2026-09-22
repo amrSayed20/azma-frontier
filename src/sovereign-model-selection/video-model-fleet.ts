@@ -90,7 +90,7 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
     modelId: 'seedance-2-0',
     providerId: MAGIC_HOUR_VIDEO_PROVIDER_ID,
     gatewayId: 'magic-hour',
-    providerModelId: 'seedance-2.0',           // REQUIRES_VERIFICATION
+    providerModelId: 'seedance-2.0',           // VERIFIED 2026-09-22: docs.magichour.ai /v1/image-to-video model enum
     displayName: 'Seedance 2.0',
     mediaType: 'video',
     capabilities: ['video-generation'],
@@ -100,7 +100,7 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
     minDurationSeconds: 1,                      // REQUIRES_VERIFICATION
     maxDurationSeconds: 8,                      // REQUIRES_VERIFICATION
     supportsTextToVideo: true,                  // REQUIRES_VERIFICATION
-    supportsImageToVideo: undefined,            // REQUIRES_VERIFICATION
+    supportsImageToVideo: true,                 // VERIFIED 2026-09-22: listed in the /v1/image-to-video model enum
     supportsAudio: undefined,                   // REQUIRES_VERIFICATION
     supportsCharacterConsistency: undefined,    // REQUIRES_VERIFICATION
     characteristicHints: [],
@@ -118,13 +118,17 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
       'All capabilities require real-world verification.',
   },
   {
-    // Veo 3.1 is Google's video model. No AZMA provider adapter exists.
-    // active: false prevents this model from being selected.
-    // A Google video adapter must be registered before this model can be authorized.
+    // Veo 3.1 — Google's model, HOSTED BY MAGIC HOUR. Until 2026-09-22 this
+    // entry pointed at a 'google-veo' gateway that has no adapter and carried
+    // providerModelId 'veo-3.1', which is not an identifier any provider
+    // accepts: the verified Magic Hour enum is 'veo3.1' (and 'veo3.1-lite',
+    // 'veo3.1-audio'). Corrected to the binding that can actually dispatch it.
+    // active: false remains — activation is the controlled Veo production-proof
+    // step, not a side effect of fixing the identifier.
     modelId: 'veo-3-1',
-    providerId: 'google-veo',                  // No adapter exists — future
-    gatewayId: 'google-veo',
-    providerModelId: 'veo-3.1',               // REQUIRES_VERIFICATION
+    providerId: MAGIC_HOUR_VIDEO_PROVIDER_ID,
+    gatewayId: 'magic-hour',
+    providerModelId: 'veo3.1',                 // VERIFIED 2026-09-22: docs.magichour.ai /v1/image-to-video model enum
     displayName: 'Veo 3.1',
     mediaType: 'video',
     capabilities: ['video-generation'],
@@ -132,25 +136,25 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
     maxVideoResolution: '1080p',                // REQUIRES_VERIFICATION
     supportedAspectRatios: ['16:9', '9:16'],   // REQUIRES_VERIFICATION
     minDurationSeconds: 1,                      // REQUIRES_VERIFICATION
-    maxDurationSeconds: 60,                     // REQUIRES_VERIFICATION
+    maxDurationSeconds: 8,                      // REQUIRES_VERIFICATION
     supportsTextToVideo: true,                  // REQUIRES_VERIFICATION
-    supportsImageToVideo: undefined,            // REQUIRES_VERIFICATION
-    supportsAudio: undefined,                   // REQUIRES_VERIFICATION
+    supportsImageToVideo: true,                 // VERIFIED 2026-09-22: listed in the /v1/image-to-video model enum
+    supportsAudio: undefined,                   // REQUIRES_VERIFICATION ('veo3.1-audio' is a separate enum value)
     supportsCharacterConsistency: undefined,    // REQUIRES_VERIFICATION
     characteristicHints: [],
     supportedStyleIds: [],
     costCatalogKey: {
-      gatewayId: 'google-veo',
+      gatewayId: 'magic-hour',
       capabilityTarget: 'video-generation',
       modelId: 'veo-3-1',
     },
     verificationStatus: 'production-authorized',
     productionAuthorized: true,
-    active: false,  // No provider adapter — production-authorized but not yet dispatchable
+    active: false,  // Dispatchable through Magic Hour; activation deferred to the Veo production-proof step
     internalNotes:
-      'Production authorized by Chief Architect 2026-08-27 (Phase III). Google model. ' +
-      'No AZMA Google video adapter exists. active: false prevents runtime selection until ' +
-      'a Google video provider adapter is built and registered.',
+      'Production authorized by Chief Architect 2026-08-27 (Phase III). Magic Hour-hosted since the ' +
+      'identifier correction of 2026-09-22 (providerModelId veo3.1). active: false until the controlled ' +
+      'Veo image-to-video production proof activates it.',
   },
   {
     // Sora 2 is OpenAI's video model. No AZMA provider adapter exists for video.

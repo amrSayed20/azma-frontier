@@ -753,16 +753,20 @@ describe('Point 19 — No fake provider integration has been introduced', () => 
     }
   });
 
-  it('veo-3-1 and sora-2 reference non-existent providers and are correctly inactive', () => {
+  it('veo-3-1 is Magic Hour-hosted under its verified identifier and inactive until its proof; sora-2 references a non-existent provider and is inactive', () => {
     const veo = VIDEO_MODEL_FLEET.find((m) => m.modelId === 'veo-3-1');
     const sora = VIDEO_MODEL_FLEET.find((m) => m.modelId === 'sora-2');
 
-    // Their gatewayIds are not the known Magic Hour gateways
-    expect(veo!.gatewayId).not.toBe('magic-hour');
-    expect(sora!.gatewayId).not.toBe('magic-hour');
-
-    // And they are correctly inactive — their adapters do not exist
+    // MEASURED 2026-09-22: Magic Hour's /v1/image-to-video enum names 'veo3.1'.
+    // The earlier assumption that Veo needed a Google adapter was false; the
+    // entry now points at the binding that can dispatch it. Activation is the
+    // controlled Veo production-proof step, not a side effect of this fix.
+    expect(veo!.gatewayId).toBe('magic-hour');
+    expect(veo!.providerModelId).toBe('veo3.1');
     expect(veo!.active).toBe(false);
+
+    // Sora: still no adapter, still inactive.
+    expect(sora!.gatewayId).not.toBe('magic-hour');
     expect(sora!.active).toBe(false);
   });
 

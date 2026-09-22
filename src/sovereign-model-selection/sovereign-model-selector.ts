@@ -179,6 +179,19 @@ export class SovereignModelSelector {
       }
       characteristicsEligible = withCC;
     }
+    if (intent.imageToVideoRequired === true) {
+      const withI2V = characteristicsEligible.filter((m) => m.supportsImageToVideo === true);
+      if (withI2V.length === 0) {
+        return {
+          selected: false,
+          reason: 'capability-unavailable',
+          detail:
+            'No authorized model is verified to animate an existing image. ' +
+            'The requirement cannot be silently dropped.',
+        };
+      }
+      characteristicsEligible = withI2V;
+    }
     if (intent.audioRequired === true) {
       const withAudio = characteristicsEligible.filter(
         (m) => m.supportsAudio === true,

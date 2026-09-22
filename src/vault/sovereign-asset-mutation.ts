@@ -41,6 +41,7 @@ import {
   type VaultAsset,
 } from './sovereign-vault-types';
 import { getDb, getVaultAsset } from '../persistent-storage';
+import type { CapabilityTarget } from '../core/sovereign-orchestrator/qiyamah-intent-types';
 
 /** Why a mutation was refused. Each is a refusal, never a silent repair. */
 export type MutationRejection =
@@ -176,6 +177,13 @@ export interface MutationRequest {
     readonly providerModelId: string;
     readonly providerJobId?: string;
   };
+  /**
+   * What the OUTPUT is. A modified image is still VISUAL, so this is
+   * normally inherited from the parent; an ANIMATED derivation produces a
+   * video and must say MOTION — the one case where the child's target
+   * differs from its parent's.
+   */
+  readonly outputCapabilityTarget?: CapabilityTarget;
 }
 
 /**
@@ -245,7 +253,7 @@ export async function deriveAsset(request: MutationRequest): Promise<MutationOut
   const asset = await new SovereignVaultManager().depositAsset({
     operationId: request.operationId,
     subscriberTenantId: request.ownerId,
-    capabilityTarget: parent.capabilityTarget,
+    capabilityTarget: request.outputCapabilityTarget ?? parent.capabilityTarget,
     assetFamily: parent.assetFamily,
     secureStorageUri: request.outputStorageUri,
     creationChamber: request.chamber,

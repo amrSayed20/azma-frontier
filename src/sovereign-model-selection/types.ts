@@ -76,6 +76,12 @@ export interface SovereignCreationIntent {
   readonly platformTarget?: string;
   readonly characterConsistencyRequired?: boolean;
   readonly audioRequired?: boolean;
+  /**
+   * The intent starts from an existing image (animate-asset). Only a model
+   * whose supportsImageToVideo is VERIFIED true is eligible; undefined is
+   * treated as not supported, as with every other capability here.
+   */
+  readonly imageToVideoRequired?: boolean;
 }
 
 /**

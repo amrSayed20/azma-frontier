@@ -37,7 +37,7 @@ export {
 } from './cost-approval-gate';
 export {
   buildImageCreationIntent,
-  buildVideoCreationIntent,
+  buildVideoCreationIntent, buildAnimationIntent,
   STYLE_QUALITY_MAP,
   QUALITY_RESOLUTION_MAP,
 } from './intent-builder';

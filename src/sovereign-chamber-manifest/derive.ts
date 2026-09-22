@@ -79,6 +79,7 @@ const KERNEL_DELIVERY: Record<TruthCapabilityId, KernelDelivery> = {
   'generate-image':      { displayName: 'Generate an Image',                 interactionModes: ['write', 'listen'], operatingModes: ['guided'] },
   'expand-intent':       { displayName: 'Expand the Description',            interactionModes: ['write'],           operatingModes: ['guided'] },
   'edit-inside-asset':   { displayName: 'Edit Inside an Image',              interactionModes: ['write'],           operatingModes: ['explorer'] },
+  'animate-asset':       { displayName: 'Animate an Image into Video',      interactionModes: ['write'],           operatingModes: ['explorer'] },
   'review-generations':  { displayName: 'List Past Generations',             interactionModes: ['browse'],          operatingModes: ['explorer'] },
   'discard-generation':  { displayName: 'Discard a Generation',              interactionModes: ['browse'],          operatingModes: ['explorer'] },
 

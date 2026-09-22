@@ -45,7 +45,7 @@
  *   declared sovereign image engine, and this is the one already declared.
  */
 
-function engineBase(): string {
+export function engineBase(): string {
   // Read at call time — see the note in vault-asset-upload-storage.ts.
   return process.env.MAGIC_HOUR_BASE_URL ?? 'https://api.magichour.ai';
 }
@@ -94,7 +94,7 @@ export class ImageEditError extends Error {
   }
 }
 
-function authHeaders(): Record<string, string> {
+export function authHeaders(): Record<string, string> {
   const key = process.env.MAGIC_HOUR_API_KEY;
   if (!key) throw new ImageEditError('NO_CREDENTIAL', 'the image engine has no credential configured');
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` };
@@ -109,7 +109,7 @@ interface UploadSlot { readonly upload_url: string; readonly file_path: string }
  * written to a new public location on the way, so this path opens no hole in
  * the storage protections the security closure established.
  */
-async function uploadSource(bytes: Buffer, extension: string): Promise<string> {
+export async function uploadSource(bytes: Buffer, extension: string): Promise<string> {
   const ext = extension.replace(/^\./, '').toLowerCase();
   if (!ACCEPTED_EXTENSIONS.has(ext)) {
     throw new ImageEditError('UNSUPPORTED_EXTENSION', `'${ext}' is not an image extension the engine reads`);

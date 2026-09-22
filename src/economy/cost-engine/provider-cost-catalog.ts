@@ -208,7 +208,7 @@ export const CURRENT_PROVIDER_COST_CATALOG: ProviderCostCatalog = {
       notes: 'Approved candidate. Variable credit cost. Verification required.',
     },
     {
-      gatewayId: 'google-veo',
+      gatewayId: 'magic-hour',
       capabilityTarget: 'video-generation',
       modelId: 'veo-3-1',
       azmaUnitsPerUnit: 0,
@@ -217,7 +217,7 @@ export const CURRENT_PROVIDER_COST_CATALOG: ProviderCostCatalog = {
       catalogVersion: '0.3.0',
       effectiveFrom: 1756310400000,
       providerCreditCost: null,
-      providerCreditUnit: 'google-credits',
+      providerCreditUnit: 'magic-hour-credits',
       notes: 'Approved candidate. No Google provider adapter. Pricing unknown. Verification required.',
     },
     {

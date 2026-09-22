@@ -143,3 +143,34 @@ export function buildVideoCreationIntent(
 
 // Exported for tests.
 export { STYLE_QUALITY_MAP, QUALITY_RESOLUTION_MAP, STYLE_CHARACTERISTIC_MAP };
+
+/**
+ * Builds a SovereignCreationIntent for animate-asset: an existing sovereign
+ * image brought into motion by a model the Creator REQUIRES.
+ *
+ * The model is required, not preferred (Sovereign Journey order §12): the
+ * selector answers with that model or refuses. `imageToVideoRequired` keeps
+ * the pool to models verified to take an image; nothing is assumed.
+ *
+ * @param instruction     - the Creator's motion instruction
+ * @param requiredModelId - AZMA model id (e.g. 'seedance-2-0'), never a provider string
+ * @param durationSeconds - requested output duration
+ */
+export function buildAnimationIntent(
+  instruction: string,
+  requiredModelId: string,
+  durationSeconds: number,
+): SovereignCreationIntent {
+  return {
+    mediaType: 'video',
+    prompt: instruction,
+    style: '',
+    qualityRequirement: 'standard',
+    resolution: '720p',
+    aspectRatio: getDefaultAspectRatio(),
+    characteristicHints: ['image-to-video', 'source-fidelity'],
+    durationSeconds,
+    requiredModelId,
+    imageToVideoRequired: true,
+  };
+}

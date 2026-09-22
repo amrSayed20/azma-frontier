@@ -77,6 +77,21 @@ export const CHAMBER_TRUTH = {
         requiresExistingAsset: true,
       },
       {
+        id: 'animate-asset',
+        // NOT edit-inside-asset. An edit changes what an image shows and yields
+        // an image; an animation brings an image into time and yields a VIDEO —
+        // DerivationKind.ANIMATED, CapabilityTarget.MOTION, its own boundary,
+        // its own truthful name (animate-asset Truth Boundary order, 2026-09-22).
+        // Inside the asset, so Qiyamah's (Art. 4.5); the video it yields is
+        // what Ras Al Amr may later assemble with others.
+        performs:
+          'Transforms an existing sovereign visual asset into a time-based video through an '
+          + 'authorized motion-generation provider binding, deposited as a derived sovereign asset '
+          + '(parent = the source asset, root = its root, derivation ANIMATED) with the executed model recorded.',
+        boundary: { kind: 'route', at: 'app/api/vault/assets/[assetId]/animate', methods: ['POST'] },
+        requiresExistingAsset: true,
+      },
+      {
         id: 'review-generations',
         performs: 'Lists this Creator\'s own generations.',
         boundary: { kind: 'route', at: 'app/api/qiyamah/generations', methods: ['GET'] },
