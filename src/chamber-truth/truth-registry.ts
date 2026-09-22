@@ -58,12 +58,31 @@ export const CHAMBER_TRUTH = {
     capabilities: [
       {
         id: 'generate-image',
-        // Deliberately NOT widened to "image or video". The boundary below also
-        // carries a video verb (mediaType === 'video'), and that verb has no
-        // declared Truth capability — it is recorded in `deferred` under
-        // Constitution §3.1. Saying "visual original" here is the narrower and
-        // therefore the true statement: this capability declares the image.
+        // Still image-only, deliberately. The boundary is shared with
+        // generate-video (one route, two capabilities, decided 2026-09-22):
+        // mediaType === 'image' is THIS capability, mediaType === 'video' is
+        // that one. A shared route does not merge two sovereign capabilities.
         performs: 'Generates a new visual original from a described intent.',
+        boundary: { kind: 'route', at: 'app/api/qiyamah/generate', methods: ['POST'] },
+        requiresExistingAsset: false,
+      },
+      {
+        id: 'generate-video',
+        // AUTHORIZED 2026-09-22 by the Founder under Constitution §3.1's own
+        // mechanism: «إنتاج الأصول السمعية أو المرئية التي يُصرح لها بها
+        // لاحقًا، دون امتلاك الإخراج النهائي». The later authorization has now
+        // been granted, so what was recorded in `deferred` becomes a declared
+        // capability — and `deferred` no longer carries it.
+        //
+        // INTENT → NEW VIDEO ORIGINAL. It is not animate-asset (an EXISTING
+        // asset brought into motion, which has a parent), and it is not any
+        // part of assembly: no timeline, no scene order, no transitions, no
+        // composed audio, no final production — those are Ras Al Amr's
+        // (§3.5, §4.3). Qiyamah generates the asset; it does not own the
+        // direction of the work (§3.1's own proviso).
+        performs:
+          'Generates a new time-based visual original from a described intent alone — no parent asset — '
+          + 'deposited as a sovereign MOTION asset with the executed model recorded.',
         boundary: { kind: 'route', at: 'app/api/qiyamah/generate', methods: ['POST'] },
         requiresExistingAsset: false,
       },
@@ -109,28 +128,7 @@ export const CHAMBER_TRUTH = {
         requiresExistingAsset: true,
       },
     ],
-    deferred: [
-      {
-        responsibility:
-          'Generating a time-based sovereign asset from a described intent alone — video generation.',
-        constitutionalSource:
-          'Five-Chamber Constitution §3.1. Qiyamah\'s enumerated abilities close with '
-          + '«إنتاج الأصول السمعية أو المرئية التي يُصرح لها بها لاحقًا، دون امتلاك الإخراج النهائي» — '
-          + 'audiovisual production is PERMITTED THROUGH LATER AUTHORIZATION, not prohibited. '
-          + 'That later authorization has not been declared, so no active capability exists. '
-          + '«ليس بعدُ مأذوناً» ليس «ممنوعاً أبداً».',
-        missing:
-          'An active Truth capability. The machinery exists and is deliberately undeclared: '
-          + 'app/api/qiyamah/generate branches on mediaType === \'video\' and would deposit a MOTION '
-          + 'asset, but no Truth capability declares that verb, so none is derived into the Manifest '
-          + 'and none reaches kernel delivery. Deferred here means neither prohibited nor active: '
-          + 'constitutional permission is not a declared capability, and a declared capability is '
-          + 'what an interface may offer. Measured 2026-09-22: no asset has ever been produced '
-          + 'through that branch — 30 generation records, 2 of them video, both from animate-asset. '
-          + 'Declaring it would take a separate authorization under §3.1 and a production proof '
-          + '(§3.4 forbids announcing a capability that was not measured).',
-      },
-    ],
+    deferred: [],
   },
 
   // ── الخزائن ──────────────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ import { estimateImageGenerationCost, getCurrentMonthKey } from '../../../../src
 import { CreatorCreditRepository } from '../../../../src/economy/credit-ledger/credit-ledger-repository';
 import { AzmaUnitCostEngine } from '../../../../src/economy/cost-engine/azma-cost-engine';
 import { TrialEntitlementService } from '../../../../src/economy/trial/trial-entitlement-service';
+import { hasActiveEntitlement } from '../../../../src/billing/entitlement-service';
 import { InsufficientBalanceError } from '../../../../src/economy/credit-ledger/credit-ledger-types';
 import { CostUnavailableError } from '../../../../src/economy/cost-engine/cost-engine-types';
 import { TrialExhaustedError } from '../../../../src/economy/trial/trial-entitlement-types';
@@ -57,28 +58,63 @@ export async function POST(request: NextRequest) {
   const costEngine = new AzmaUnitCostEngine();
   const trialService = new TrialEntitlementService(db);
 
-  // ─── VIDEO PATH ─────────────────────────────────────────────────────────────
+  // ─── VIDEO PATH — the capability is `generate-video` ────────────────────────
+  //
+  // Truth: Qiyamah/generate-video (authorized 2026-09-22 under Constitution
+  // §3.1). Same boundary as generate-image, different capability: mediaType
+  // decides which of the two is being exercised, and the runtime never treats
+  // one as the other.
+  //
+  // ENTITLEMENT, decided by the Founder in the same order:
+  //   Founder            → allowed before any subscription
+  //   paid subscriber    → allowed on an active subscription
+  //   authenticated else → denied
+  //   anonymous          → already refused above, 401
+  //
+  // The decision is made HERE, before the provider is touched: a Creator who
+  // is not entitled must never spend the Empire's provider capacity to learn
+  // that they were not entitled. hasActiveEntitlement is the existing billing
+  // authority (role === 'founder' || subscription.status === 'active') — no
+  // second entitlement mechanism is introduced.
   if (mediaType === 'video') {
     let videoReservationId: string | null = null;
     let videoResolvedCostEstimate: CostEstimate | null = null;
 
+    if (!hasActiveEntitlement(session.creatorId, session.role)) {
+      return NextResponse.json(
+        {
+          status: 'failed', operationId, stage: 'entitlement',
+          reason: 'not-entitled',
+          capability: 'generate-video',
+          message: 'توليد الفيديو متاحٌ لأصحاب الاشتراك. اشترك لتفتحه.',
+        },
+        { status: 403 },
+      );
+    }
+
     if (session.role !== 'founder') {
-      // No free video trial (videoGranted = 0). Go directly to paid path.
+      // Entitled by subscription. The credit path below runs only while the
+      // cost catalog can price video at all: its magic-hour/video-generation
+      // entry is `availability: 'pending-discovery'` («per-frame credit cost
+      // not publicly documented»), and a price that is not known must not be
+      // charged. While it is unknown, an entitled subscriber generates
+      // without a unit reservation, and that fact is recorded rather than
+      // hidden. Pricing itself is not this package's to decide.
       try {
         videoResolvedCostEstimate = costEngine.estimate('video-generation', GATEWAY_ID);
       } catch (err) {
         if (err instanceof CostUnavailableError) {
-          return NextResponse.json(
-            { status: 'failed', operationId, stage: 'gate',
-              reason: 'cost-unavailable',
-              message: 'Video generation requires a subscription plan. Paid video is coming soon — pricing is being finalized.',
-            },
-            { status: 503 },
-          );
+          console.log('[QiyamahGenerate]', JSON.stringify({
+            operationId, capability: 'generate-video', note: 'entitled; video not metered — cost catalog pending-discovery',
+          }));
+          videoResolvedCostEstimate = null;
+        } else {
+          throw err;
         }
-        throw err;
       }
+    }
 
+    if (videoResolvedCostEstimate) {
       const balance = creditRepo.getBalance(session.creatorId);
       if (balance.availableUnits < videoResolvedCostEstimate.estimatedAzmaUnits) {
         return NextResponse.json(

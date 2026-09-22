@@ -47,9 +47,17 @@ describe('1–3 · the capability exists once, belongs to Qiyamah, and is not an
     expect(edit.performs).not.toMatch(/video/i);
   });
 
-  it('13 · no other motion-named capability was invented beside it', () => {
-    const motionish = ALL_CAPS.filter((c) => /motion|animat|video/i.test(c.id));
-    expect(motionish.map((c) => c.id)).toEqual(['animate-asset']);
+  it('13 · the only other video-producing capability is generate-video, and it is a different act', () => {
+    // generate-video was authorized on 2026-09-22 (Constitution §3.1). It is
+    // intent → a NEW original; animate-asset is an EXISTING asset → a derived
+    // video. Two capabilities, never merged, and no third was invented.
+    const motionish = ALL_CAPS.filter((c) => /motion|animat|video/i.test(c.id)).map((c) => c.id).sort();
+    expect(motionish).toEqual(['animate-asset', 'generate-video']);
+    const generate = ALL_CAPS.find((c) => c.id === 'generate-video')!;
+    const animate = ALL_CAPS.find((c) => c.id === 'animate-asset')!;
+    expect(generate.requiresExistingAsset).toBe(false);
+    expect(animate.requiresExistingAsset).toBe(true);
+    expect(generate.boundary.at).not.toBe(animate.boundary.at);
   });
 });
 
