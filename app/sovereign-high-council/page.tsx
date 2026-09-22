@@ -9,6 +9,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { ConstitutionalLink } from '@/src/constitutional-navigation';
 import type {
   HallRuntimeInsight,
   RuntimeHealthIndicatorView,
@@ -211,7 +212,28 @@ export default function SovereignHighCouncilPage() {
           <p className="text-gray-400">
             Exclusive supervisory interface for platform ownership and governance
           </p>
-          <div className="mt-3 flex items-center gap-4">
+          {/* ── THE ENTRANCE THAT WAS MISSING ──────────────────────────────
+              The Council is a supervisory surface, not the platform. Until
+              2026-09-22 its only exits were its own two reports, so a Founder
+              who signed in arrived here and had no sovereign way into AZMA OS
+              — the Empire's own entrance was reachable by every Creator at
+              /imperial-foyer and by the Founder from nowhere.
+
+              This is that entrance, and nothing more: the platform, not a
+              chamber. From the Foyer the Founder chooses among the five
+              through the navigation the Empire already has. ConstitutionalLink
+              is that authority's own component — the same session, the same
+              identity, no second door. */}
+          <div className="mt-4 flex flex-wrap items-center gap-4">
+            <ConstitutionalLink
+              to="/imperial-foyer"
+              data-testid="council-enter-platform"
+              aria-label="ادخل أزما أو إس — قلب الإمبراطورية، حيث تختار الحجرة"
+              className="inline-flex items-center gap-2 rounded-md border border-amber-400/40 px-4 py-2 text-sm text-amber-200 transition-colors hover:border-amber-300 hover:text-amber-100"
+            >
+              <span aria-hidden="true">⌂</span>
+              ادخل أزما أو إس
+            </ConstitutionalLink>
             <a href="/sovereign-high-council/consumption" className="text-xs text-amber-400/60 hover:text-amber-300 transition-colors">
               استهلاك المنصة ↗
             </a>
