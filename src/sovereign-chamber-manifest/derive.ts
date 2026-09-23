@@ -74,6 +74,7 @@ const KERNEL_DELIVERY: Record<TruthCapabilityId, KernelDelivery> = {
   'run-investigation':   { displayName: 'Investigate a Question',            interactionModes: ['write', 'listen'], operatingModes: ['guided', 'explorer'] },
   'keep-evidence':       { displayName: 'Keep a Piece of Evidence',          interactionModes: ['browse'],          operatingModes: ['explorer'] },
   'keep-investigation':  { displayName: 'Keep the Whole Investigation',      interactionModes: ['browse'],          operatingModes: ['explorer'] },
+  'compose-creation-demand': { displayName: 'Compose a Creation Demand',     interactionModes: ['browse'],          operatingModes: ['guided'] },
 
   // ── القيامة ─────────────────────────────────────────────────────────────
   'generate-image':      { displayName: 'Generate an Image',                 interactionModes: ['write', 'listen'], operatingModes: ['guided'] },

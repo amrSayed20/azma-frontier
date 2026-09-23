@@ -4924,3 +4924,10 @@
   .archive-domains-awaiting,
   .margin-domains-awaiting { animation: none; }
 }
+
+/* ── Leaving with a demand, not only a question ───────────────────────────── */
+.inv-demand-block { margin-top: 14px; border-top: 1px solid rgba(212,175,55,0.16); padding-top: 12px; }
+.inv-demand-tag { display: block; margin-bottom: 8px; font-size: 10px; letter-spacing: 0.08em; color: var(--gold-dim, #8a7434); }
+.inv-demand-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.inv-action.inv-demand { border-style: dashed; }
+.inv-demand-notice { margin: 8px 0 0; font-size: 11px; line-height: 1.6; color: var(--text-muted, #a89f91); }

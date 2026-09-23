@@ -5944,3 +5944,6 @@ body:has(.ras-amr-viewport) {
   color: rgba(120,90,0,0.55);
 }
 
+
+/* The condition of a Creation Demand that did not arrive. Said, not decorated. */
+.creator-intent-notice { margin: 0 0 8px; font-size: 11px; line-height: 1.6; color: var(--text-muted, #a89f91); }

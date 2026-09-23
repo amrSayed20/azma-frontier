@@ -10,7 +10,8 @@ import { declareKnowledge } from '@/src/chambers/hujjah-al-damighah/knowledge-la
 import { formulateResponse } from '@/src/chambers/hujjah-al-damighah/knowledge-response-layer';
 import { exportKnowledgeResponse } from '@/src/chambers/hujjah-al-damighah/knowledge-export-layer';
 import { createPerceptionEndpointForOrgan } from '@/src/sovereign-nervous-system';
-import { toSearchLanguage, composeAnswerOutcome, toArabic, displayableText } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
+import { toSearchLanguage, composeAnswerOutcome, composeCreationDemand, toArabic, displayableText } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
+import type { DemandDestination } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
 import { authorityOfEvidence, SourceAuthority } from '@/src/chambers/hujjah-al-damighah/domain/evidence-authority';
 import { judgeSubjectRelevance, sortingNoticeAr } from '@/src/chambers/hujjah-al-damighah/subject-relevance';
 import { KnowledgeInvestigationRepository } from '@/src/persistent-storage/knowledge-investigation-repository';
@@ -48,6 +49,13 @@ function failed(failure: InvestigationFailure): InvestigationDTO {
  * explicit and searchable instead.
  */
 const CHAMBER_INVESTIGATION_GOAL_ID = 'citizen-chamber';
+
+/** The Chamber a demand is addressed to, named as the Creator knows it. */
+const DESTINATION_AR: Record<DemandDestination, string> = {
+  'qiyamah-chamber':  'حجرة القيامة',
+  'ras-amr':          'رأس الأمر',
+  'makman-al-ghayah': 'مكمن الغاية',
+};
 
 let investigationStore: KnowledgeInvestigationRepository | null = null;
 function knowledgeInvestigationStore(): KnowledgeInvestigationRepository {
@@ -542,5 +550,104 @@ export async function depositInvestigationToVault(
   } catch (err) {
     console.error('[Hujjah] Investigation deposit failed:', err);
     return { ok: false, reasonAr: 'تعذّر الحفظ في الخزانة. لم يُحفظ شيء، فأعد المحاولة.' };
+  }
+}
+
+/**
+ * Compose the Creation Demand for one Chamber and keep it in the Vault.
+ *
+ * ─── THE DEFERRED RESPONSIBILITY THIS CLOSES ─────────────────────────────────
+ *
+ *   The Truth registry recorded, against this Chamber: «Ideas, briefs, prompts
+ *   and story structures — no service boundary. The Chamber exports exactly
+ *   three Server Actions and no API route; nothing in the repository creates a
+ *   brief, a prompt or a story structure.» A Creator could finish an
+ *   investigation and leave with their own question and nothing else.
+ *
+ *   This is the fourth action, and it keeps the Chamber's shape: an action,
+ *   not a route, like the three beside it.
+ *
+ * ─── WHAT IT IS AND IS NOT ───────────────────────────────────────────────────
+ *
+ *   The Chamber of Evidence investigates; it does not create. A demand states
+ *   what should be created and stops — Qiyamah, Ras Al Amr and Makman do the
+ *   creating, each with capabilities it already has. The demand is grounded
+ *   only in what this investigation established.
+ *
+ *   It is kept as a sovereign asset under the Creator's ownership, carrying
+ *   the id of the investigation it came from, so a demand can always be traced
+ *   back to the evidence that justifies it. Nothing about it lives in the
+ *   browser.
+ */
+export async function composeCreationDemandToVault(
+  destination: DemandDestination,
+  questionAr: string,
+  synthesizedAnswer: string | undefined,
+  evidence: readonly EvidenceItemDTO[],
+  investigationAssetId: string | null,
+): Promise<VaultDepositDTO> {
+  const jar = await cookies();
+  const sessionId = jar.get('azma_session')?.value;
+  const session = sessionId ? verifySession(sessionId) : null;
+  if (!session) {
+    return { ok: false, reasonAr: failureSpokenAr(InvestigationFailure.NOT_ADMITTED) };
+  }
+
+  const outcome = await composeCreationDemand({
+    query: questionAr.trim(),
+    answerAr: synthesizedAnswer,
+    evidenceTexts: evidence.map((e) => e.extractedText),
+    destination,
+  });
+
+  if (!outcome.text) {
+    // No demand is better than an invented one. The Creator is told which
+    // thing happened, and the engine's own words stay in the record.
+    console.error('[Hujjah] demand not composed:', JSON.stringify({
+      failure: outcome.failure, httpStatus: outcome.httpStatus, destination,
+    }));
+    return {
+      ok: false,
+      reasonAr: outcome.failure === 'EMPTY'
+        ? 'لا توجد نتيجةٌ تُبنى عليها مطالبة.'
+        : 'تعذّرت صياغة المطالبة الآن. أعد المحاولة.',
+    };
+  }
+
+  try {
+    const body = [
+      `المطالبة الإنشائيّة — ${DESTINATION_AR[destination]}`,
+      '',
+      `الموضوع: ${questionAr.trim()}`,
+      '',
+      outcome.text,
+    ].join('\n');
+
+    const persisted = await persistUploadedAsset(Buffer.from(body, 'utf-8'), '.txt');
+
+    const asset = await new SovereignVaultManager().depositAsset({
+      creationChamber: SourceChamber.HUJJAH_AL_DAMIGHAH,
+      operationId: persisted.assetId,
+      subscriberTenantId: session.creatorId,
+      capabilityTarget: CapabilityTarget.WRITING,
+      assetFamily: AssetFamily.STRUCTURAL,
+      secureStorageUri: persisted.assetUrl,
+      metadata: {
+        originChamber: 'hujjah-al-damighah',
+        // What distinguishes a demand from the investigation it came from.
+        kind: 'creation-demand',
+        destination,
+        questionAr: questionAr.trim().slice(0, 300),
+        demandAr: outcome.text.slice(0, 1000),
+        // Provenance: the demand can always be traced to its evidence.
+        investigationAssetId: investigationAssetId ?? undefined,
+        evidenceCount: evidence.length,
+      },
+    });
+
+    return { ok: true, assetId: asset.assetId };
+  } catch (err) {
+    console.error('[Hujjah] Demand deposit failed:', err);
+    return { ok: false, reasonAr: 'تعذّر حفظ المطالبة في الخزانة. أعد المحاولة.' };
   }
 }

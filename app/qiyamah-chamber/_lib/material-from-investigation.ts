@@ -26,6 +26,13 @@ export interface EnvelopeStorage {
 }
 
 export const INVESTIGATION_ENVELOPE_KEY = 'azma.transfer.investigation';
+/**
+ * A Creation Demand crossing from Hujjah — the same envelope discipline, a
+ * different thing inside it. A demand was written FOR a Chamber; an
+ * investigation is raw material that a Chamber may take up. When both are
+ * present the demand wins, because the Creator asked for it by name.
+ */
+export const DEMAND_ENVELOPE_KEY = 'azma.transfer.demand';
 /** Identity kept for this tab, so a refresh re-resolves instead of forgetting. */
 export const MATERIAL_KEY = 'azma.qiyamah.material';
 
@@ -34,6 +41,9 @@ export interface InvestigationAssetMetadata {
   readonly originChamber?: unknown;
   readonly questionAr?: unknown;
   readonly answerAr?: unknown;
+  /** 'creation-demand' when Hujjah wrote this FOR a Chamber. */
+  readonly kind?: unknown;
+  readonly demandAr?: unknown;
 }
 
 export interface VaultAssetLike {
@@ -55,9 +65,11 @@ export const IDEA_BUDGET = 1000;
  * kept for this tab is answered, so a refresh finds the same asset again.
  */
 export function takeMaterialIdentity(storage: EnvelopeStorage): string | null {
-  const envelope = storage.getItem(INVESTIGATION_ENVELOPE_KEY);
-  if (envelope !== null) {
-    storage.removeItem(INVESTIGATION_ENVELOPE_KEY);
+  // A demand was addressed to this Chamber by name; it outranks raw material.
+  for (const key of [DEMAND_ENVELOPE_KEY, INVESTIGATION_ENVELOPE_KEY]) {
+    const envelope = storage.getItem(key);
+    if (envelope === null) continue;
+    storage.removeItem(key);
     const assetId = assetIdOf(envelope);
     if (assetId) storage.setItem(MATERIAL_KEY, JSON.stringify({ assetId }));
     return assetId;
@@ -94,6 +106,12 @@ export function pickInvestigationAsset<A extends VaultAssetLike>(assets: readonl
  * the synthesized answer when there is one, within the idea's budget.
  */
 export function composeIdeaFromInvestigation(meta: InvestigationAssetMetadata | Record<string, unknown> | undefined): string | null {
+  // A Creation Demand already says what should be made, in this Chamber's own
+  // terms. Nothing is added to it: appending the raw question would dilute a
+  // brief that was written deliberately.
+  const demand = typeof meta?.demandAr === 'string' ? meta.demandAr.trim() : '';
+  if (demand) return demand.slice(0, IDEA_BUDGET);
+
   const question = typeof meta?.questionAr === 'string' ? meta.questionAr.trim() : '';
   const answer = typeof meta?.answerAr === 'string' ? meta.answerAr.trim() : '';
   if (!question && !answer) return null;

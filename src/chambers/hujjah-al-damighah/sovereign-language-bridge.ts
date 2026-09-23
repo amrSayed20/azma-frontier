@@ -243,6 +243,79 @@ export async function composeAnswerOutcome(input: SynthesisInput): Promise<Bridg
   );
 }
 
+// ─── THE CREATION DEMAND ─────────────────────────────────────────────────────
+
+/**
+ * Where a demand is addressed. A demand is written FOR a Chamber, in the terms
+ * that Chamber can actually act on — a scene is not a production arc, and
+ * neither is an objective. One object, three shapes, because the Chambers are
+ * genuinely different and a single generic brief would be useful to none.
+ */
+export type DemandDestination = 'qiyamah-chamber' | 'ras-amr' | 'makman-al-ghayah';
+
+export interface DemandInput {
+  readonly query: string;
+  readonly answerAr: string | undefined;
+  readonly evidenceTexts: readonly string[];
+  readonly destination: DemandDestination;
+}
+
+/**
+ * What each Chamber is handed, said in the terms it already works in.
+ *
+ * Qiyamah takes an idea and expands it into a scene, so its demand is what to
+ * depict. Ras Al Amr takes a free-text `intent` and plans a production from it,
+ * so its demand is the arc. Makman registers goals against the Sovereign
+ * Purpose, so its demand is an objective with what would evidence it.
+ */
+const DEMAND_INSTRUCTION: Record<DemandDestination, string> = {
+  'qiyamah-chamber':
+    'اكتب مطالبةً بصريّة: مشهدٌ واحد يُجسِّد ما خلص إليه التحقيق. صِف ما يُرى — المكان والعناصر والضوء والإحساس — في ثلاث إلى خمس جمل. '
+    + 'لا تكتب عناوين ولا قوائم ولا تعليمات تقنيّة، بل وصفاً يقرؤه فنّانٌ فيرسمه.',
+  'ras-amr':
+    'اكتب مطالبةً إخراجيّة: كيف يُبنى عملٌ مرئيّ يحمل ما خلص إليه التحقيق. اذكر المفتتح، ثم التصاعد، ثم الذروة، ثم الخاتمة — '
+    + 'في ثلاث إلى خمس جمل متّصلة، بصيغة نيّةٍ إخراجيّة لا قائمة لقطات.',
+  'makman-al-ghayah':
+    'اكتب مطالبةً غائيّة: ما الهدف الذي تستدعيه نتيجة هذا التحقيق، وما الذي يُثبت تحقّقه. '
+    + 'جملتان إلى أربع: الهدف أوّلاً، ثم ما يُرصَد ليُعرف أنّه تحقّق.',
+};
+
+/**
+ * Compose the Creation Demand a Creator leaves an investigation carrying.
+ *
+ * ─── THE BOUNDARY THIS RESPECTS ──────────────────────────────────────────────
+ *
+ *   The Chamber of Evidence investigates; it does not create. A demand is not
+ *   creation — it is the statement of what should be created, grounded in what
+ *   was actually found. So the instruction below forbids inventing: the demand
+ *   may only build on the question, the composed answer and the evidence that
+ *   this investigation produced. Nothing is added that the investigation did
+ *   not establish.
+ */
+export async function composeCreationDemand(input: DemandInput): Promise<BridgeOutcome> {
+  if (input.evidenceTexts.length === 0 && !input.answerAr) {
+    return { text: null, failure: 'EMPTY' };
+  }
+
+  const system = [
+    'أنت نظام معرفة سيادي يُحوِّل نتيجة تحقيقٍ إلى مطالبةٍ إنشائيّة.',
+    'المطالبة تصف ما ينبغي إنشاؤه، ولا تُنشئه.',
+    'ابنِ فقط على السؤال والجواب والأدلّة المعطاة. لا تُضف واقعةً لم ترد فيها، ولا تخترع رقماً ولا اسماً.',
+    'اكتب بالعربيّة الفصحى، نصّاً متّصلاً بلا عناوين ولا ترقيم ولا رموز.',
+    'لا تذكر اسم أيّ مصدر أو موسوعة أو قاعدة بيانات أو منصّة إطلاقاً.',
+    DEMAND_INSTRUCTION[input.destination],
+  ].join(' ');
+
+  const evidence = input.evidenceTexts.slice(0, 4).map((t, i) => `[${i + 1}] ${t}`).join('\n\n');
+  const user = [
+    `السؤال: ${input.query}`,
+    input.answerAr ? `\nالجواب المركَّب:\n${input.answerAr}` : '',
+    evidence ? `\nالأدلّة:\n${evidence}` : '',
+  ].join('\n');
+
+  return askGeminiOutcome(system, user, SYNTHESIS_TIMEOUT_MS, 600, 0.4);
+}
+
 // ─── CARRYING THE SOURCES' ANSWERS BACK ──────────────────────────────────────
 
 /**

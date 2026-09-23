@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import type { DemandDestination } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
 
 interface Props {
   onContinue:        () => void;
@@ -10,10 +11,36 @@ interface Props {
   onTransferQiyamah: () => void;
   onSaveVault:       () => void;
   savedToVault:      boolean;
+  /** Compose a Creation Demand for one Chamber, then cross carrying it. */
+  onDemand:          (destination: DemandDestination) => void;
+  /** Which demand is being composed right now, if any. */
+  composingDemand:   DemandDestination | null;
+  /** Why a demand could not be composed — the Chamber's real reason. */
+  demandNotice:      string | null;
 }
+
+/**
+ * Leaving with a demand, not only with a question.
+ *
+ * Until now a Creator finished an investigation and crossed carrying their own
+ * question: the Chamber had no capability that turned a finding into a
+ * statement of what should be made. These three doors are that capability's
+ * face — one per destination, because a scene, a production arc and an
+ * objective are different things and a single generic brief serves none.
+ *
+ * Composition happens before the crossing. If it fails, the Creator stays here
+ * with their investigation intact and is told why: a door that loses the work
+ * behind it is not a door.
+ */
+const DEMANDS: { destination: DemandDestination; label: string }[] = [
+  { destination: 'qiyamah-chamber',  label: 'مطالبة للقيامة' },
+  { destination: 'ras-amr',          label: 'مطالبة لرأس الأمر' },
+  { destination: 'makman-al-ghayah', label: 'مطالبة لمكمن الغاية' },
+];
 
 export function InvestigationFile({
   onContinue, onExpand, onChallenge, onAppeal, onTransferQiyamah, onSaveVault, savedToVault,
+  onDemand, composingDemand, demandNotice,
 }: Props) {
   return (
     <div className="investigation-file">
@@ -46,6 +73,24 @@ export function InvestigationFile({
         <button className="inv-action inv-qiyamah" onClick={onTransferQiyamah}>
           انتقال إلى القيامة
         </button>
+      </div>
+
+      <div className="inv-demand-block">
+        <span className="inv-demand-tag">اخرج بمطالبةٍ جاهزة للإنشاء</span>
+        <div className="inv-demand-actions">
+          {DEMANDS.map(({ destination, label }) => (
+            <button
+              key={destination}
+              className="inv-action inv-demand"
+              data-destination={destination}
+              onClick={() => onDemand(destination)}
+              disabled={composingDemand !== null}
+            >
+              {composingDemand === destination ? 'تُصاغ المطالبة…' : `⟡ ${label}`}
+            </button>
+          ))}
+        </div>
+        {demandNotice && <p className="inv-demand-notice">{demandNotice}</p>}
       </div>
     </div>
   );

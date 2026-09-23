@@ -10,7 +10,8 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation';
 import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import './hujjah-al-damighah.css';
-import { runInvestigation, depositEvidenceToVault, depositInvestigationToVault, type InvestigationDTO, type EvidenceItemDTO } from './actions';
+import { runInvestigation, depositEvidenceToVault, depositInvestigationToVault, composeCreationDemandToVault, type InvestigationDTO, type EvidenceItemDTO } from './actions';
+import type { DemandDestination } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
 import { EvidenceGateway }   from './_components/EvidenceGateway';
 import { VerdictDocument }   from './_components/VerdictDocument';
@@ -111,6 +112,13 @@ function assembleSilentQuery(domain: DomainId, concepts: string[]): string {
 // ── Chamber Voice — constitutional narrator, not assistant ──────────
 // Each message names the constitutional act the Empire is performing,
 // never the technical system (no provider, no Ministry, no API).
+/** Where each demand is carried. The Chamber it was written for. */
+const DESTINATION_ROUTE: Record<DemandDestination, string> = {
+  'qiyamah-chamber':  '/qiyamah-chamber',
+  'ras-amr':          '/ras-amr',
+  'makman-al-ghayah': '/makman-al-ghayah',
+};
+
 const COMPANION_MSGS: Record<string, string> = {
   receiving:    'الإمبراطورية تستقبل طلبك وتفهم مقصدك…',
   collecting:   'الحجرة تحقق في عمق المعرفة…',
@@ -504,6 +512,9 @@ interface VerdictBlockProps {
   onTransferQiyamah: () => void;
   onSaveVault:       () => void;
   savedToVault:      boolean;
+  onDemand:          (destination: DemandDestination) => void;
+  composingDemand:   DemandDestination | null;
+  demandNotice:      string | null;
 }
 
 function VerdictBlock({
@@ -512,6 +523,7 @@ function VerdictBlock({
   citizenStance,
   evidenceGroups, onGroupEvidence,
   onEvidenceSelect, onContinue, onExpand, onChallenge, onAppeal, onTransferQiyamah, onSaveVault, savedToVault,
+  onDemand, composingDemand, demandNotice,
 }: VerdictBlockProps) {
   if (!hasVerdict || !result) return null;
   const b = result.success ? bucketEvidence(result) : null;
@@ -602,6 +614,9 @@ function VerdictBlock({
             onTransferQiyamah={onTransferQiyamah}
             onSaveVault={onSaveVault}
             savedToVault={savedToVault}
+            onDemand={onDemand}
+            composingDemand={composingDemand}
+            demandNotice={demandNotice}
           />
         </>
       )}
@@ -729,6 +744,9 @@ export default function HujjahAlDamighah() {
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItemDTO | null>(null);
   const [gatewayOpen, setGatewayOpen]           = useState(false);
   const [savedToVault, setSavedToVault]         = useState(false);
+  /** Which Creation Demand is being composed, and why one could not be. */
+  const [composingDemand, setComposingDemand]   = useState<DemandDestination | null>(null);
+  const [demandNotice,    setDemandNotice]      = useState<string | null>(null);
 
   // ── Chamber Voice ─────────────────────────────────────────────────
   const [probingQuestion, setProbingQuestion]   = useState('');
@@ -1285,6 +1303,49 @@ export default function HujjahAlDamighah() {
     setTimeout(() => { void handleSubmitQuery(challengeQ, activeDomain); }, 300);
   }
 
+  /**
+   * Leave carrying a demand, not only a question.
+   *
+   * The demand is composed and kept BEFORE the crossing, exactly as the
+   * investigation is: material that evaporates at the door is not material.
+   * Only its identity travels, and the destination travels with it so the
+   * receiving Chamber knows the demand was addressed to it.
+   *
+   * If composition fails the Creator stays here with their result intact and
+   * is told why. Nothing invented is ever crossed with.
+   */
+  async function handleCreationDemand(destination: DemandDestination) {
+    if (!result || composingDemand) return;
+    setComposingDemand(destination);
+    setDemandNotice(null);
+    try {
+      // The investigation is kept first, so the demand can name the evidence
+      // that justifies it — provenance, not a loose sentence.
+      const investigationAssetId = await ensureKeptInVault();
+      const outcome = await composeCreationDemandToVault(
+        destination,
+        query.trim(),
+        result.synthesizedAnswer,
+        result.evidence,
+        investigationAssetId,
+      );
+      if (!outcome.ok || !outcome.assetId) {
+        setDemandNotice(outcome.reasonAr ?? 'تعذّرت صياغة المطالبة.');
+        return;
+      }
+      setSavedToVault(investigationAssetId !== null);
+      try {
+        sessionStorage.setItem('azma.transfer.demand', JSON.stringify({
+          assetId: outcome.assetId,
+          destination,
+        }));
+      } catch { /* the demand is kept either way; only the crossing's shortcut is lost */ }
+      await handleCinematicExit(DESTINATION_ROUTE[destination]);
+    } finally {
+      setComposingDemand(null);
+    }
+  }
+
   async function handleCinematicExit(destination: string) {
     // Crossing into Qiyamah with an investigation: the material must be
     // sovereign BEFORE the crossing. Until 2026-09-22 this wrote the evidence
@@ -1389,6 +1450,9 @@ export default function HujjahAlDamighah() {
     onChallenge:       handleChallengeVerdict,
     onAppeal:          handleAppeal,
     onTransferQiyamah: () => { void handleCinematicExit('/qiyamah-chamber'); },
+    onDemand:          (d: DemandDestination) => { void handleCreationDemand(d); },
+    composingDemand,
+    demandNotice,
     onSaveVault:       handleSaveVault,
     savedToVault,
   };

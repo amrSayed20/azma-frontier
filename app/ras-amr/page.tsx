@@ -434,6 +434,7 @@ import { AssemblyRuntime } from '@/src/chambers/ras-al-amr/assembly-runtime';
 import type { CanvasMutationPayload } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
 import { useVoiceMode } from '@/src/components/living-companion/useVoiceMode';
 import type { DirectorPlan, ProductionAssetContext } from '@/src/chambers/ras-al-amr/director-plan-types';
+import { takeDemandFor, resolveDemand, spokenDemandArrival } from '@/src/sovereign-creation-demand/arrival';
 import './ras-amr.css';
 
 // Pure, stateless transformer (see its own header comment) — one shared
@@ -2049,6 +2050,8 @@ export default function RasAmrChamber() {
   const [formalGoalTrackedForId, setFormalGoalTrackedForId] = useState<string | null>(null);
   // FINDING 6 — placed before multiNodeDirection memo (which consumes it).
   const [creatorDirectorIntent, setCreatorDirectorIntent] = useState<string>('');
+  /** The condition of a Creation Demand that did not arrive. */
+  const [demandNotice, setDemandNotice] = useState<string | null>(null);
   // PACKAGE XL — SOVEREIGN DIRECTOR EXECUTION BRIDGE: interpretation state.
   // isInterpretingIntent gates the API call; lastDirectorPlan records the
   // most recently executed plan for display in the direction panel.
@@ -2096,6 +2099,30 @@ export default function RasAmrChamber() {
     // Consume Palace treasure context — PACKAGE XL-D: now injects the asset
     // directly into the queue using the enriched payload (secureStorageUri,
     // assetFamily, capabilityTarget). Banner still shows; queue now also loads.
+    // ── A CREATION DEMAND WRITTEN FOR THIS CHAMBER ────────────────────────
+    //
+    //   الحُجّة الدامغة states what should be created; Ras Al Amr plans a
+    //   production from a free-text intent. So a demand addressed here lands
+    //   in that intent — the field the Automatic Director already reads —
+    //   and nothing is produced by its arrival. The Creator decides.
+    const demandAssetId = takeDemandFor(sessionStorage, 'ras-amr');
+    if (demandAssetId) {
+      fetch('/api/vault/assets')
+        .then((r) => r.json())
+        .then((res: { status?: string; assets?: { assetId: string; metadata?: Record<string, unknown> }[] }) =>
+          res.status === 'succeeded' && Array.isArray(res.assets) ? res.assets : null)
+        .catch(() => null)
+        .then((assets) => {
+          const arrival = resolveDemand(assets, demandAssetId);
+          if (arrival.kind === 'arrived') {
+            setCreatorDirectorIntent(arrival.demandAr);
+            setDemandNotice(null);
+          } else {
+            setDemandNotice(spokenDemandArrival(arrival));
+          }
+        });
+    }
+
     const treasureRaw = sessionStorage.getItem('azma.transfer.treasure');
     if (treasureRaw) {
       sessionStorage.removeItem('azma.transfer.treasure');
@@ -4699,6 +4726,7 @@ export default function RasAmrChamber() {
                 <label className="creator-intent-label" htmlFor="creator-intent-input">
                   ما الذي تريد من هذا المشهد؟
                 </label>
+                {demandNotice && <p className="creator-intent-notice">{demandNotice}</p>}
                 <textarea
                   id="creator-intent-input"
                   className="creator-intent-input"

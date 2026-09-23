@@ -35,6 +35,7 @@ import { DistributionTier } from '@/src/chambers/makman-al-ghayah/publication-co
 import type { CompiledAssemblyGraph } from '@/src/chambers/ras-al-amr/pre-publishing-boundary';
 import type { MakmanFirstCustomerJourneyResult } from '@/src/chambers/makman-al-ghayah/MAKMAN_FIRST_CUSTOMER_JOURNEY_PIPELINE';
 import type { ConsumptionResponse } from '@/src/chambers/makman-al-ghayah/consumption-boundary';
+import { takeDemandFor, resolveDemand, spokenDemandArrival } from '@/src/sovereign-creation-demand/arrival';
 import './makman-al-ghayah.css';
 
 interface RealProduction {
@@ -255,6 +256,15 @@ export default function MakmanAlGhayah() {
   const [isIssuingRequests,   setIsIssuingRequests]   = useState(false);
   /** Why a step could not proceed — the Chamber's real reason, in Arabic. */
   const [goalNotice,          setGoalNotice]          = useState<string | null>(null);
+  /**
+   * A Creation Demand written for this Chamber by الحُجّة الدامغة: the
+   * objective the investigation calls for, and what would evidence it.
+   * It is shown where it is always visible, and fills the Goal's description
+   * when the packaging desk is open — Makman registers a Goal only against a
+   * graph compiled in Ras Al Amr, and this does not pretend otherwise.
+   */
+  const [arrivedDemand,       setArrivedDemand]       = useState<string | null>(null);
+  const [demandNotice,        setDemandNotice]        = useState<string | null>(null);
 
   const [fulfillmentResult,   setFulfillmentResult]   = useState<Record<string, unknown> | null>(null);
   const [gapResult,           setGapResult]           = useState<Record<string, unknown> | null>(null);
@@ -293,6 +303,21 @@ export default function MakmanAlGhayah() {
   useEffect(() => {
     void fetchPurpose();
     void fetchGoals();
+  }, []);
+
+  useEffect(() => {
+    const assetId = takeDemandFor(sessionStorage, 'makman-al-ghayah');
+    if (!assetId) return;
+    fetch('/api/vault/assets')
+      .then((r) => r.json())
+      .then((res: { status?: string; assets?: { assetId: string; metadata?: Record<string, unknown> }[] }) =>
+        res.status === 'succeeded' && Array.isArray(res.assets) ? res.assets : null)
+      .catch(() => null)
+      .then((assets) => {
+        const arrival = resolveDemand(assets, assetId);
+        if (arrival.kind === 'arrived') { setArrivedDemand(arrival.demandAr); setDemandNotice(null); }
+        else setDemandNotice(spokenDemandArrival(arrival));
+      });
   }, []);
 
   useEffect(() => {
@@ -676,6 +701,19 @@ export default function MakmanAlGhayah() {
             </div>
           )}
 
+          {(arrivedDemand || demandNotice) && (
+            <div className="makman-capability-hint" data-testid="makman-demand">
+              {arrivedDemand && (
+                <>
+                  <p><strong>مطالبة غائيّة وصلت من حجّة الدامغة</strong></p>
+                  <p>{arrivedDemand}</p>
+                  <p>يُسجَّل الهدف من رسمٍ مُجمَّع في رأس الأمر — والمطالبة محفوظة في خزانتك.</p>
+                </>
+              )}
+              {demandNotice && <p>{demandNotice}</p>}
+            </div>
+          )}
+
           {goals.length > 0 && (
             <div className="makman-goals-list">
               {goals.map((goal) => (
@@ -887,7 +925,7 @@ export default function MakmanAlGhayah() {
             <div className="makman-packaging-section">
               <div className="form-group">
                 <label>الوصف (Description)</label>
-                <textarea ref={descriptionRef} className="cyber-input textarea" rows={3} defaultValue="الوصف الافتراضي للعمل الفني..." />
+                <textarea ref={descriptionRef} className="cyber-input textarea" rows={3} defaultValue={arrivedDemand ?? 'الوصف الافتراضي للعمل الفني...'} />
               </div>
               <div className="form-group">
                 <label>تفضيل الإيقاع — اختياري</label>

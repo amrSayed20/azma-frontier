@@ -40,14 +40,29 @@ export const CHAMBER_TRUTH = {
         boundary: { kind: 'action', at: 'app/hujjah-al-damighah/actions.ts#depositInvestigationToVault' },
         requiresExistingAsset: false,
       },
+      {
+        id: 'compose-creation-demand',
+        performs:
+          'Composes a Creation Demand addressed to one Chamber from what the investigation established, '
+          + 'and keeps it in the Vault as a sovereign asset carrying its investigation\'s identity.',
+        boundary: { kind: 'action', at: 'app/hujjah-al-damighah/actions.ts#composeCreationDemandToVault' },
+        requiresExistingAsset: false,
+      },
     ],
+    // «Ideas, briefs, prompts and story structures» stood here as deferred
+    // because nothing in the repository created a brief. compose-creation-demand
+    // now does, through a fourth Server Action — the Chamber's own shape, not a
+    // new route and not a new chamber. What remains deferred is narrower and
+    // still true: the Chamber states what should be made; it does not structure
+    // a story into scenes, and nothing here does that yet.
     deferred: [
       {
-        responsibility: 'Ideas, briefs, prompts and story structures.',
+        responsibility: 'Story structures — breaking a subject into ordered scenes.',
         constitutionalSource: 'Executive Construction Mandate §I.1 — the Chamber of Evidence\'s stated scope.',
         missing:
-          'No service boundary. The Chamber exports exactly three Server Actions and no API route; '
-          + 'nothing in the repository creates a brief, a prompt or a story structure.',
+          'A Creation Demand states what should be created as one continuous intent. '
+          + 'Nothing in the repository decomposes a subject into an ordered sequence of scenes; '
+          + 'Ras Al Amr plans a production from an intent, which is a different act.',
       },
     ],
   },
