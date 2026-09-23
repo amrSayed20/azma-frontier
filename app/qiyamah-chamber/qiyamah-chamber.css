@@ -1388,3 +1388,11 @@
 .asset-animate-model-option { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; cursor: pointer; }
 .asset-animate-result { margin-top: 0.5rem; }
 .asset-animate-video { width: 100%; max-height: 260px; background: #000; border-radius: 6px; }
+
+/* The condition of an arrival that brought no material. Said, not decorated. */
+.material-notice {
+  color: var(--text-muted);
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+}

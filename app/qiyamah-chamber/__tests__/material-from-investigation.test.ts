@@ -28,6 +28,8 @@ import {
   takeMaterialIdentity,
   pickInvestigationAsset,
   composeIdeaFromInvestigation,
+  resolveArrival,
+  spokenArrival,
 } from '../_lib/material-from-investigation';
 import type { EnvelopeStorage } from '../_lib/material-from-investigation';
 
@@ -143,12 +145,98 @@ describe('the wiring stays as measured', () => {
   it('the Qiyamah Client consumes it and resolves the material through the Vault list', () => {
     const code = strip('app/qiyamah-chamber/QiyamahChamberClient.tsx');
     expect(code).toMatch(/takeMaterialIdentity\(sessionStorage\)/);
-    expect(code).toMatch(/resolveMaterialIntoIdea[\s\S]*?fetch\('\/api\/vault\/assets'\)[\s\S]*?pickInvestigationAsset[\s\S]*?setIdea\(composed\)/);
+    // Still: identity -> the Vault's own list -> the idea input. The ownership
+    // check now lives inside resolveArrival, which pickInvestigationAsset backs.
+    expect(code).toMatch(/resolveMaterialIntoIdea[\s\S]*?fetch\('\/api\/vault\/assets'\)[\s\S]*?resolveArrival\(assets, assetId\)[\s\S]*?setIdea\(arrival\.idea\)/);
   });
 
   it('the Vault ceremony reads the identity-carrying envelope', () => {
     const code = strip('app/sovereign-vault-palace/page.tsx');
     expect(code).toMatch(/d\.questionAr \?\? d\.query/);
     expect(code).toMatch(/id:\s*d\.assetId \?\?/);
+  });
+});
+
+
+/**
+ * ─── THE ARRIVAL MUST STATE ITS OWN CONDITION ────────────────────────────────
+ *
+ *   MEASURED on production 2026-09-23, before this existed: crossing into
+ *   Qiyamah with an identity naming material this Creator does not own gave
+ *   an empty idea field, the plain label «فكرتك», and silence. Task 5 of the
+ *   carrier directive forbids exactly that — the chamber must state the
+ *   actual condition instead of presenting an empty field as normal.
+ */
+describe('an arrival that brings no material says which thing happened', () => {
+  const MINE = { assetId: 'asset-mine', metadata: { originChamber: 'hujjah-al-damighah', questionAr: 'سؤالي', answerAr: 'جوابي' } };
+
+  it('material present: the idea is the material, and nothing is said', () => {
+    const arrival = resolveArrival([MINE], 'asset-mine');
+    expect(arrival.kind).toBe('arrived');
+    expect(arrival.kind === 'arrived' && arrival.idea).toContain('سؤالي');
+    expect(spokenArrival(arrival)).toBeNull();
+  });
+
+  it('a Vault that could not be asked is never reported as material that is gone', () => {
+    const unreachable = resolveArrival(null, 'asset-mine');
+    const absent = resolveArrival([], 'asset-mine');
+    expect(unreachable.kind).toBe('vault-unreachable');
+    expect(absent.kind).toBe('not-in-vault');
+    // The two truths must not collapse into one sentence.
+    expect(spokenArrival(unreachable)).not.toBe(spokenArrival(absent));
+  });
+
+  it("another Creator's asset is 'not in your Vault' — never resolved, never explained away", () => {
+    const theirs = { assetId: 'asset-theirs', metadata: { originChamber: 'hujjah-al-damighah', questionAr: 'سؤالهم' } };
+    // The Vault answered with only what THIS Creator owns; theirs is not in it.
+    const arrival = resolveArrival([MINE], 'asset-theirs');
+    expect(arrival.kind).toBe('not-in-vault');
+    expect(spokenArrival(arrival)).not.toContain(theirs.metadata.questionAr);
+  });
+
+  it('an asset that is not an investigation is not taken up as one', () => {
+    expect(resolveArrival([{ assetId: 'asset-mine', metadata: { originChamber: 'qiyamah-chamber' } }], 'asset-mine').kind)
+      .toBe('not-in-vault');
+  });
+
+  it('an investigation carrying no usable text says so, rather than placing an empty idea', () => {
+    const arrival = resolveArrival([{ assetId: 'asset-mine', metadata: { originChamber: 'hujjah-al-damighah' } }], 'asset-mine');
+    expect(arrival.kind).toBe('no-usable-text');
+    expect(spokenArrival(arrival)).toBeTruthy();
+  });
+
+  it('every non-arrival is spoken, in Arabic, and none is silent', () => {
+    for (const kind of ['vault-unreachable', 'not-in-vault', 'no-usable-text'] as const) {
+      const said = spokenArrival({ kind });
+      expect(said).toBeTruthy();
+      expect(said).toMatch(/[؀-ۿ]/);
+      expect(said).not.toMatch(/[A-Za-z]{3}/);
+    }
+  });
+});
+
+describe('the chamber is wired to the arrival, and cannot go silent again', () => {
+  const CLIENT = readFileSync(join(process.cwd(), 'app/qiyamah-chamber/QiyamahChamberClient.tsx'), 'utf8');
+
+  it('the Client decides the arrival through the carrier and renders the condition', () => {
+    expect(CLIENT).toMatch(/resolveArrival\(assets, assetId\)/);
+    expect(CLIENT).toMatch(/setMaterialNotice\(spokenArrival\(arrival\)\)/);
+    expect(CLIENT).toMatch(/\{materialNotice && <p className="material-notice">\{materialNotice\}<\/p>\}/);
+  });
+
+  it('a Vault that did not answer becomes null — not an empty list of assets', () => {
+    // `.catch(() => null)` is what keeps 'could not ask' from becoming 'gone'.
+    expect(CLIENT).toMatch(/\.catch\(\(\) => null\)/);
+  });
+
+  it('the Creator typing clears the condition — it describes their arrival, not their work', () => {
+    expect(CLIENT).toMatch(/setIdea\(e\.target\.value\); setMaterialNotice\(null\);/);
+  });
+
+  it('arrival still never produces anything: no generation call sits in the material path', () => {
+    const path = CLIENT.slice(CLIENT.indexOf('const resolveMaterialIntoIdea'), CLIENT.indexOf('useEffect(() => {', CLIENT.indexOf('const resolveMaterialIntoIdea')));
+    for (const forbidden of ['/api/qiyamah/generate', 'handleEmbodyScene', 'acceptVideo', 'providerModelId']) {
+      expect(path).not.toContain(forbidden);
+    }
   });
 });

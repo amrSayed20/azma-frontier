@@ -100,3 +100,56 @@ export function composeIdeaFromInvestigation(meta: InvestigationAssetMetadata | 
   const composed = answer ? `${question}\n\n${answer}` : question;
   return composed.slice(0, IDEA_BUDGET);
 }
+
+/**
+ * What became of an arrival — one value, so silence is not a possible answer.
+ *
+ * ─── WHY THIS EXISTS ────────────────────────────────────────────────────────
+ *
+ *   MEASURED on production 2026-09-23: crossing into Qiyamah carrying an
+ *   identity whose asset this Creator no longer owns produced an empty idea
+ *   field, the plain label «فكرتك», and not one word about what happened.
+ *   Nothing false was claimed — and nothing true was said either. The Creator
+ *   was left to rebuild by hand the investigation they had just finished.
+ *
+ *   The four outcomes are kept apart because they are different truths and
+ *   the Creator acts differently on each. «We could not reach your Vault» is
+ *   not «it is not in your Vault»: the first is ours to retry, the second is
+ *   theirs to know. Conflating them would be a comfortable lie.
+ */
+export type MaterialArrival =
+  | { readonly kind: 'arrived'; readonly idea: string }
+  | { readonly kind: 'vault-unreachable' }
+  | { readonly kind: 'not-in-vault' }
+  | { readonly kind: 'no-usable-text' };
+
+/**
+ * Decide the arrival from what the Vault answered.
+ *
+ * `assets === null` means the Vault could not be asked or did not answer with
+ * a list — never that the material is gone.
+ */
+export function resolveArrival<A extends VaultAssetLike>(
+  assets: readonly A[] | null,
+  assetId: string,
+): MaterialArrival {
+  if (assets === null) return { kind: 'vault-unreachable' };
+  const asset = pickInvestigationAsset(assets, assetId);
+  if (!asset) return { kind: 'not-in-vault' };
+  const idea = composeIdeaFromInvestigation(asset.metadata);
+  if (!idea) return { kind: 'no-usable-text' };
+  return { kind: 'arrived', idea };
+}
+
+/**
+ * The actual condition, in the Creator's language. `null` on arrival: material
+ * that is present says so by being present, in the field and in its label.
+ */
+export function spokenArrival(arrival: MaterialArrival): string | null {
+  switch (arrival.kind) {
+    case 'arrived':           return null;
+    case 'vault-unreachable': return 'تعذّر الوصول إلى خزانتك الآن — لم نُحضر مادتك من حجّة الدامغة. أعد التحميل.';
+    case 'not-in-vault':      return 'لم نجد مادتك من حجّة الدامغة في خزانتك.';
+    case 'no-usable-text':    return 'مادتك من حجّة الدامغة لا تحمل نصاً تبدأ منه القيامة.';
+  }
+}

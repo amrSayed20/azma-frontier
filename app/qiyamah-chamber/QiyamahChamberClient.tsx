@@ -23,8 +23,8 @@ import { resolveChamberFromPath } from '@/src/imperial-awareness-engine';
 import {
   MATERIAL_KEY,
   takeMaterialIdentity,
-  pickInvestigationAsset,
-  composeIdeaFromInvestigation,
+  resolveArrival,
+  spokenArrival,
 } from './_lib/material-from-investigation';
 import type { ChamberState } from '@/src/button-engine';
 import { useInstallInvitation } from '@/src/install-experience';
@@ -115,6 +115,8 @@ export function QiyamahChamberClient({
   const [idea,               setIdea]               = useState('');
   /** The Vault asset the current idea was taken from, when it came from Hujjah. */
   const [materialAssetId,    setMaterialAssetId]    = useState<string | null>(null);
+  /** The actual condition of an arrival that brought no material. */
+  const [materialNotice,     setMaterialNotice]     = useState<string | null>(null);
   const [externalPrompt,     setExternalPrompt]     = useState('');
   const [qiyamahReading,     setQiyamahReading]     = useState('');
   const [style,              setStyle]              = useState('cinematic');
@@ -226,22 +228,28 @@ export function QiyamahChamberClient({
   const resolveMaterialIntoIdea = (assetId: string) => {
     fetch('/api/vault/assets')
       .then((r) => r.json())
-      .then((result: { status?: string; assets?: Array<{ assetId: string; metadata?: Record<string, unknown> }> }) => {
-        if (result.status !== 'succeeded' || !Array.isArray(result.assets)) return;
+      .then((result: { status?: string; assets?: Array<{ assetId: string; metadata?: Record<string, unknown> }> }) =>
         // Ownership is decided by the Vault: the asset is either in this
-        // Creator's list or it does not exist for them.
-        const asset = pickInvestigationAsset(result.assets, assetId);
-        if (!asset) {
-          try { sessionStorage.removeItem(MATERIAL_KEY); } catch { /* ignore */ }
+        // Creator's list or it does not exist for them. A list we never got
+        // is not an empty list, and `null` keeps those two apart.
+        result.status === 'succeeded' && Array.isArray(result.assets) ? result.assets : null)
+      .catch(() => null)
+      .then((assets) => {
+        const arrival = resolveArrival(assets, assetId);
+        if (arrival.kind === 'arrived') {
+          setInputMode('idea');
+          setIdea(arrival.idea);
+          setMaterialAssetId(assetId);
+          setMaterialNotice(null);
           return;
         }
-        const composed = composeIdeaFromInvestigation(asset.metadata);
-        if (!composed) return;
-        setInputMode('idea');
-        setIdea(composed);
-        setMaterialAssetId(assetId);
-      })
-      .catch(() => { /* the material stays in the Vault; only this arrival's shortcut is lost */ });
+        // The material did not arrive. The chamber says which of the three
+        // things happened rather than presenting an empty field as normal.
+        if (arrival.kind === 'not-in-vault') {
+          try { sessionStorage.removeItem(MATERIAL_KEY); } catch { /* ignore */ }
+        }
+        setMaterialNotice(spokenArrival(arrival));
+      });
   };
 
   useEffect(() => {
@@ -934,10 +942,11 @@ export function QiyamahChamberClient({
                       className="idea-textarea"
                       placeholder="أي فكرة بسيطة — في جملة أو جملتين…"
                       value={idea}
-                      onChange={(e) => { setIdea(e.target.value); if (e.target.value.trim().length === 0) setMaterialAssetId(null); }}
+                      onChange={(e) => { setIdea(e.target.value); setMaterialNotice(null); if (e.target.value.trim().length === 0) setMaterialAssetId(null); }}
                       rows={3}
                       disabled={stage === 'constructing'}
                     />
+                    {materialNotice && <p className="material-notice">{materialNotice}</p>}
                   </div>
                 </>
               ) : (
