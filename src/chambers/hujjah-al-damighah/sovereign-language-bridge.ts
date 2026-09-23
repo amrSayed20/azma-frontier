@@ -43,15 +43,43 @@ export function isArabic(text: string): boolean {
   return ARABIC.test(text);
 }
 
-async function askGemini(
+/**
+ * Why the bridge yielded nothing — so a failure can be seen, not guessed.
+ *
+ * ─── WHAT THIS ENDS ──────────────────────────────────────────────────────────
+ *
+ *   MEASURED on production 2026-09-23, three independent ways: two deposited
+ *   investigations carried no «الجواب المركَّب» line, and a live investigation
+ *   showed «الملخص» where «الإجابة» belongs. The composed Arabic answer — the
+ *   one thing a Creator is meant to leave an investigation holding — was not
+ *   being made, and nothing anywhere said so. Every failure path returned a
+ *   bare `null`: no key, a refused request, a timeout, a malformed body. Four
+ *   different truths collapsed into silence, and the Chamber went on as if
+ *   the answer had simply not been wanted.
+ */
+export type BridgeFailure =
+  | 'NO_KEY'          // the Empire never configured the bridge
+  | 'REFUSED'         // the provider answered, and said no
+  | 'TIMED_OUT'       // it did not answer in time
+  | 'EMPTY'           // it answered with nothing usable
+  | 'UNREACHABLE';    // the request never completed
+
+export interface BridgeOutcome {
+  readonly text: string | null;
+  readonly failure: BridgeFailure | null;
+  /** Provider status when it answered — for the record, never for a Creator. */
+  readonly httpStatus?: number;
+}
+
+async function askGeminiOutcome(
   system: string,
   user: string,
   timeoutMs: number,
   maxOutputTokens: number,
   temperature: number,
-): Promise<string | null> {
+): Promise<BridgeOutcome> {
   const key = apiKey();
-  if (!key) return null;
+  if (!key) return { text: null, failure: 'NO_KEY' };
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -66,18 +94,33 @@ async function askGemini(
         generationConfig: { temperature, maxOutputTokens },
       }),
     });
-    if (!response.ok) return null;
+    if (!response.ok) return { text: null, failure: 'REFUSED', httpStatus: response.status };
 
     const data = await response.json() as {
       candidates?: { content?: { parts?: { text?: string }[] } }[];
     };
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    return typeof text === 'string' && text.trim().length > 0 ? text.trim() : null;
-  } catch {
-    return null;
+    return typeof text === 'string' && text.trim().length > 0
+      ? { text: text.trim(), failure: null, httpStatus: response.status }
+      : { text: null, failure: 'EMPTY', httpStatus: response.status };
+  } catch (err) {
+    // An abort is the timeout we set; anything else never reached the provider.
+    const aborted = err instanceof Error && err.name === 'AbortError';
+    return { text: null, failure: aborted ? 'TIMED_OUT' : 'UNREACHABLE' };
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** The narrow form, for callers that genuinely have nothing to do with a reason. */
+async function askGemini(
+  system: string,
+  user: string,
+  timeoutMs: number,
+  maxOutputTokens: number,
+  temperature: number,
+): Promise<string | null> {
+  return (await askGeminiOutcome(system, user, timeoutMs, maxOutputTokens, temperature)).text;
 }
 
 /**
@@ -122,7 +165,18 @@ export interface SynthesisInput {
  * vouch for — قيل إن، يقال، ذكر أن.
  */
 export async function composeAnswer(input: SynthesisInput): Promise<string | null> {
-  if (input.evidenceTexts.length === 0) return null;
+  return (await composeAnswerOutcome(input)).text;
+}
+
+/**
+ * The same composition, and the reason when there is none.
+ *
+ * The Chamber calls this one: an answer that was not composed is an event the
+ * Empire must be able to name — «no key» and «the provider refused» are not
+ * the same failure, and neither is «there was no evidence to compose from».
+ */
+export async function composeAnswerOutcome(input: SynthesisInput): Promise<BridgeOutcome> {
+  if (input.evidenceTexts.length === 0) return { text: null, failure: 'EMPTY' };
 
   const commonRules = [
     'أنت نظام معرفة سيادي. تُجيب بالعربية الفصحى إجابة واضحة موثوقة مبنية على الأدلة المعطاة.',
@@ -147,7 +201,7 @@ export async function composeAnswer(input: SynthesisInput): Promise<string | nul
     .map((text, i) => `[${i + 1}] ${text}`)
     .join('\n\n');
 
-  return askGemini(
+  return askGeminiOutcome(
     system,
     `السؤال: ${input.query}\n\nالأدلة:\n${evidence}`,
     SYNTHESIS_TIMEOUT_MS,

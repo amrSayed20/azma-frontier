@@ -10,7 +10,7 @@ import { declareKnowledge } from '@/src/chambers/hujjah-al-damighah/knowledge-la
 import { formulateResponse } from '@/src/chambers/hujjah-al-damighah/knowledge-response-layer';
 import { exportKnowledgeResponse } from '@/src/chambers/hujjah-al-damighah/knowledge-export-layer';
 import { createPerceptionEndpointForOrgan } from '@/src/sovereign-nervous-system';
-import { toSearchLanguage, composeAnswer, toArabic, displayableText } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
+import { toSearchLanguage, composeAnswerOutcome, toArabic, displayableText } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
 import { authorityOfEvidence, SourceAuthority } from '@/src/chambers/hujjah-al-damighah/domain/evidence-authority';
 import { judgeSubjectRelevance, sortingNoticeAr } from '@/src/chambers/hujjah-al-damighah/subject-relevance';
 import { KnowledgeInvestigationRepository } from '@/src/persistent-storage/knowledge-investigation-repository';
@@ -261,7 +261,14 @@ export async function runInvestigation(
     // evidence. Was OpenAI, whose key was never configured on the server, so
     // this stage was skipped in silence and every Creator saw raw evidence and
     // no answer. Gemini carries it now — the same key the Empire already uses.
-    const synthesizedAnswer = (await composeAnswer({
+    //
+    // It then failed in silence a second time, under Gemini. MEASURED on
+    // production 2026-09-23: no investigation carried «الجواب المركَّب», and
+    // the Creator saw «الملخص» — a count of evidence — where the answer
+    // belongs. `?? undefined` discarded the reason, so nothing in the Empire
+    // could tell a missing key from a refusal from a timeout. The reason is
+    // now recorded. A stage that skips itself must say that it did.
+    const synthesis = await composeAnswerOutcome({
       query,
       // The citation travels with the passage, so the composed answer can say
       // which collection a narration is in and what the scholars said of it
@@ -269,7 +276,15 @@ export async function runInvestigation(
       evidenceTexts: carried.map((e) =>
         e.item.evidence.attributionAr ? `${e.text}\n[${e.item.evidence.attributionAr}]` : e.text),
       isReligious,
-    })) ?? undefined;
+    });
+    const synthesizedAnswer = synthesis.text ?? undefined;
+    if (synthesis.failure) {
+      console.error('[Hujjah] answer not composed:', JSON.stringify({
+        failure: synthesis.failure,
+        httpStatus: synthesis.httpStatus,
+        evidenceCount: carried.length,
+      }));
+    }
 
     // Stage 5 — Knowledge: declare the highest truthful conclusion
     const declaration = declareKnowledge(evidenceOutcome.collection);

@@ -157,6 +157,11 @@ export async function GET(request: NextRequest) {
     stripePrice:    !!process.env.STRIPE_PRICE_ID_CREATOR_MONTHLY ? 'CONFIGURED' : 'MISSING',
     voiceCloning:   !!process.env.VOICE_CLONING_API_KEY ? 'CONFIGURED' : 'NOT_CONFIGURED',
     founderAccount: !!process.env.FOUNDER_EMAIL         ? 'CONFIGURED' : 'MISSING',
+    // Gemini carries the Chamber of Evidence's synthesis — the composed Arabic
+    // answer a Creator leaves an investigation with. Its absence was invisible
+    // here while the composition failed silently in production, so the Empire
+    // could not see that the one thing it exists to hand over was not made.
+    gemini:         !!process.env.GEMINI_API_KEY        ? 'CONFIGURED' : 'MISSING',
   };
 
   const allProvidersReady =
