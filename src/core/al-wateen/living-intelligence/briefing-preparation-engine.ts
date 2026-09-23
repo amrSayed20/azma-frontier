@@ -12,16 +12,16 @@ export class BriefingPreparationEngine {
     return {
       briefingId: `alw-brief-founder-${Date.now().toString(36)}`,
       audience: 'founder',
-      summary: 'Unified constitutional intelligence briefing for Founder strategic guidance.',
+      summary: 'إحاطةٌ دستوريّةٌ جامعة لتوجيه المؤسس الاستراتيجيّ.',
       keySignals: [
         understanding.constitutionalSummary,
         understanding.busSummary,
-        `Global coherence score: ${correlation.coherenceScore}`,
+        `درجة التماسك العامّة: ${correlation.coherenceScore}`,
       ],
       recommendedFocus: [
-        'Constitutional priority arbitration',
-        'Empire-wide risk posture review',
-        'Synchronization stability oversight',
+        'الفصل في أولويّات الدستور',
+        'مراجعة موقف الخطر في الإمبراطوريّة',
+        'الإشراف على ثبات المزامنة',
       ],
     };
   }
@@ -33,16 +33,16 @@ export class BriefingPreparationEngine {
     return {
       briefingId: `alw-brief-executive-${Date.now().toString(36)}`,
       audience: 'executive',
-      summary: 'Executive-aligned constitutional intelligence briefing.',
+      summary: 'إحاطةٌ دستوريّةٌ على محاذاة التنفيذ.',
       keySignals: [
         understanding.executiveSummary,
         understanding.futureSummary,
-        `Synchronization health: ${correlation.synchronizationHealth}`,
+        `صحّة المزامنة: ${correlation.synchronizationHealth}`,
       ],
       recommendedFocus: [
-        'Executive readiness alignment',
-        'Constraint-aware planning posture',
-        'Perception-to-execution signal clarity',
+        'محاذاة الجاهزيّة التنفيذيّة',
+        'تخطيطٌ واعٍ بالقيود',
+        'وضوح الإشارة من الإدراك إلى التنفيذ',
       ],
     };
   }

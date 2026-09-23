@@ -19,14 +19,14 @@ export class RecommendationAdvisor {
       },
       {
         recommendationId: `alw-rec-synchronization-${Date.now().toString(36)}`,
-        summary: 'Preserve Sovereign Intelligence Bus synchronization health through constitutional routing discipline.',
+        summary: 'احفظ صحّة مزامنة الناقل السياديّ بانضباط التوجيه الدستوريّ.',
         priority: correlation.synchronizationHealth < 75 ? 'critical' : 'high',
         advisoryOnly: true,
         executionAuthority: 'none',
       },
       {
         recommendationId: `alw-rec-perception-${Date.now().toString(36)}`,
-        summary: 'Increase perception coverage consistency to preserve coherent constitutional understanding.',
+        summary: 'ارفع اتّساق تغطية الإدراك ليبقى الفهم الدستوريّ متماسكاً.',
         priority: correlation.perceptionCoverage < 70 ? 'high' : 'normal',
         advisoryOnly: true,
         executionAuthority: 'none',

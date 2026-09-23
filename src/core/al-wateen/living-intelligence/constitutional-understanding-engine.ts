@@ -17,12 +17,12 @@ export class ConstitutionalUnderstandingEngine {
       understandingId: `alw-understanding-${Date.now().toString(36)}`,
       generatedAt: new Date(),
       dominantPriority,
-      constitutionalSummary: `Constitution health ${correlation.constitutionalHealth} with decision ${streams.constitutionEvaluation?.decision ?? 'unavailable'}.`,
-      executiveSummary: `Executive readiness ${correlation.executiveReadiness} across ${streams.executiveState.totalDecisionPackages} packages.`,
-      strategicSummary: `Strategic readiness ${correlation.strategicReadiness} with ${streams.strategicState.totalPackages} packages observed.`,
-      futureSummary: `Future simulation confidence ${correlation.futureConfidence} with ${streams.futureSimulationState.totalSimulatedPaths} simulated paths.`,
-      busSummary: `SIB synchronization health ${correlation.synchronizationHealth} with ${streams.busSynchronization.length} routed messages.`,
-      perceptionSummary: `Perception coverage ${correlation.perceptionCoverage} from ${streams.perceptionState.totalObservations} observations.`,
+      constitutionalSummary: `صحّة الدستور ${correlation.constitutionalHealth}، والقرار ${streams.constitutionEvaluation?.decision ?? 'غير متاح'}.`,
+      executiveSummary: `الجاهزيّة التنفيذيّة ${correlation.executiveReadiness} عبر ${streams.executiveState.totalDecisionPackages} حزمة.`,
+      strategicSummary: `الجاهزيّة الاستراتيجيّة ${correlation.strategicReadiness}، ورُصدت ${streams.strategicState.totalPackages} حزمة.`,
+      futureSummary: `ثقة محاكاة المستقبل ${correlation.futureConfidence} عبر ${streams.futureSimulationState.totalSimulatedPaths} مسارٍ مُحاكى.`,
+      busSummary: `صحّة مزامنة الناقل ${correlation.synchronizationHealth}، و${streams.busSynchronization.length} رسالةً موجَّهة.`,
+      perceptionSummary: `تغطية الإدراك ${correlation.perceptionCoverage} من ${streams.perceptionState.totalObservations} رصدة.`,
     };
   }
 }
