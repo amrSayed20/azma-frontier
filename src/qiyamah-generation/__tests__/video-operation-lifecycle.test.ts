@@ -102,7 +102,7 @@ describe('7 · a lost connection never marks the operation failed', () => {
 
     // The request is gone — the module exports no way to say so, by design.
     expect(Object.keys(lifecycle).sort()).toEqual(
-      ['acceptVideoProduction', 'findOperationByIntentKey', 'isTerminal', 'observeOperation'].sort(),
+      ['acceptVideoProduction', 'classifyFailure', 'findOperationByIntentKey', 'isTerminal', 'observeOperation'].sort(),
     );
 
     // Time passes with no connection at all; the operation is still producing.
@@ -117,12 +117,14 @@ describe('7 · a lost connection never marks the operation failed', () => {
 });
 
 describe('11 · a real failure is still a failure, and says why', () => {
-  it('a refused production becomes FAILED with the provider’s own reason', async () => {
-    generateVideoMock.mockResolvedValueOnce({ status: 'failed', reason: 'provider-error', message: 'the engine reported error' });
+  it('a refused production becomes FAILED with an attributable reason that names no engine', async () => {
+    // Contract §5 with §10: true about WHAT failed, silent about WHO.
+    generateVideoMock.mockResolvedValueOnce({ status: 'failed', reason: 'provider-error', message: 'kling-3.0 returned HTTP 422' });
     const accepted = await lifecycle.acceptVideoProduction({ creatorId: CREATOR, intentKey: 'key-fail', request: request('fail') });
     const done = await settled(accepted.operationId);
     expect(done.state).toBe(OperationState.FAILED);
-    expect(done.failureReason).toContain('provider-error');
+    expect(done.failureReason).toBe('REFUSED_BY_ENGINE');
+    expect(done.failureReason).not.toMatch(/kling|422|http/i);
     expect(done.assetId).toBeUndefined();
   });
 
@@ -131,7 +133,7 @@ describe('11 · a real failure is still a failure, and says why', () => {
     const accepted = await lifecycle.acceptVideoProduction({ creatorId: CREATOR, intentKey: 'key-throw', request: request('throw') });
     const done = await settled(accepted.operationId);
     expect(done.state).toBe(OperationState.FAILED);
-    expect(done.failureReason).toContain('socket hang up');
+    expect(done.failureReason).toBe('INTERNAL');
   });
 });
 

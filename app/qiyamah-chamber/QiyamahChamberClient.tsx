@@ -153,6 +153,8 @@ export function QiyamahChamberClient({
   // when the fleet has a model verified to take an image (animationModels).
   // The asset behind a generation card is found by exact equality of its
   // stored URI in the Creator's own Vault list, never by position.
+  /** Contract §7's line while a production runs without an open request. */
+  const [producingNotice, setProducingNotice] = useState<string | null>(null);
   const [animatingRecordId, setAnimatingRecordId] = useState<string | null>(null);
   const [animateAssetId, setAnimateAssetId] = useState<string | null>(null);
   const [animateInstruction, setAnimateInstruction] = useState('');
@@ -389,23 +391,27 @@ export function QiyamahChamberClient({
     const deadline = Date.now() + 20 * 60 * 1000; // longer than any provider render
     while (Date.now() < deadline) {
       await new Promise((resolve) => setTimeout(resolve, 5000));
-      let observed: { status?: string; operation?: { state: string; producing: boolean; succeeded: boolean; assetUrl: string | null; failureReason: string | null } } | null = null;
+      // Contract §5: the operation's fields are the response itself.
+      let op: { state: string; producing: boolean; succeeded: boolean; assetUrl: string | null; failureReason: string | null } | null = null;
       try {
         const res = await fetch(`/api/qiyamah/operations/${operationId}`);
-        if (res.ok) observed = await res.json();
+        if (res.ok) op = await res.json();
       } catch { /* the question went unanswered; ask again */ }
-      if (!observed?.operation) continue;
-
-      const op = observed.operation;
+      if (!op) continue;
       if (op.producing) {
         if (!announced) {
           setStage('constructing');
+          // Contract §7: while the operation is still working, this is what
+          // the Creator is told — not a scene-building line written for a
+          // request that is still open, because this one is not.
+          setProducingNotice('الإنتاج ما زال جارياً.');
           setGenerationError(null);
           announced = true;
         }
         continue;
       }
       if (op.succeeded && op.assetUrl) {
+        setProducingNotice(null);
         setGeneratedAssetUrl(op.assetUrl);
         setGeneratedAssetType('video');
         setStage('result');
@@ -416,14 +422,32 @@ export function QiyamahChamberClient({
       }
       // A real, server-side terminal failure — the only kind that may be
       // shown as one.
-      setGenerationError(op.failureReason ? `تعذّر إتمام الإنتاج — ${op.failureReason}` : 'تعذّر إتمام الإنتاج.');
+      // A real, attributable failure — said in the Creator's language, with no
+      // engine or model named (contract §5 with §10).
+      setProducingNotice(null);
+      setGenerationError(spokenFailure(op.failureReason));
       setStage('error');
       forgetOperation();
       return;
     }
-    // Still running after the longest render we know of: say so truthfully.
+    // Still running after the longest render we know of: say so truthfully —
+    // this is not a failure, and the chamber does not call it one.
+    setProducingNotice('الإنتاج ما زال جارياً.');
     setGenerationError('الإنتاج ما زال جارياً. سيظهر في معرضك فور اكتماله.');
     setStage('error');
+  }
+
+  /** Contract §5/§10: a true reason, in the Creator's words, naming no engine. */
+  function spokenFailure(reason: string | null): string {
+    switch (reason) {
+      case 'CAPACITY_EXHAUSTED': return 'تعذّر إتمام الإنتاج — نفد رصيد الإمبراطوريّة لهذا النوع من الإنتاج.';
+      case 'TOOK_TOO_LONG':      return 'تعذّر إتمام الإنتاج — استغرق وقتاً أطول من المسموح.';
+      case 'OUTPUT_NOT_VIDEO':   return 'تعذّر إتمام الإنتاج — لم يكن الناتج فيديو صالحاً.';
+      case 'NO_OUTPUT':          return 'تعذّر إتمام الإنتاج — انتهى دون ناتج.';
+      case 'STORAGE_FAILED':     return 'تعذّر إتمام الإنتاج — لم يُحفَظ الناتج.';
+      case 'REFUSED_BY_ENGINE':  return 'تعذّر إتمام الإنتاج — رُفض الطلب.';
+      default:                   return 'تعذّر إتمام الإنتاج.';
+    }
   }
 
   // On arrival, resume any production this tab started and never saw finish.
@@ -449,10 +473,11 @@ export function QiyamahChamberClient({
     try {
       const res = await fetch('/api/qiyamah/operations/by-intent/' + encodeURIComponent(intentKey));
       if (!res.ok) { forgetOperation(); return; }
+      // Contract §6: { found, operationId, state }.
       const found = await res.json();
-      if (found?.operation?.operationId) {
-        rememberOperation({ intentKey, operationId: found.operation.operationId });
-        void observeProduction(found.operation.operationId);
+      if (found?.found && typeof found.operationId === 'string') {
+        rememberOperation({ intentKey, operationId: found.operationId });
+        void observeProduction(found.operationId);
       } else {
         forgetOperation();
       }
@@ -988,7 +1013,7 @@ export function QiyamahChamberClient({
                 <div className="construction-progress">
                   <div className="construction-spinner" aria-hidden="true" />
                   <p className="construction-text pulse-text">
-                    {inputMode === 'idea' ? 'القيامة تبني المشهد السيادي…' : 'القيامة تقرأ محثك…'}
+                    {producingNotice ?? (inputMode === 'idea' ? 'القيامة تبني المشهد السيادي…' : 'القيامة تقرأ محثك…')}
                   </p>
                 </div>
               ) : (

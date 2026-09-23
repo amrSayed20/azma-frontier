@@ -45,21 +45,21 @@ export async function GET(
     );
   }
 
+  // Contract §5: the operation IS the response — operationId and state at the
+  // top level, the sovereign asset reference when DEPOSITED, an attributable
+  // reason when FAILED. Nothing here names a provider or a model (§10).
   return NextResponse.json({
-    status: 'succeeded',
-    operation: {
-      operationId: observed.operationId,
-      state: observed.state,
-      isTerminal: observed.isTerminal,
-      // The one distinction the chamber needs and a socket cannot give it.
-      producing: !observed.isTerminal,
-      succeeded: observed.state === OperationState.DEPOSITED,
-      createdAt: observed.createdAt,
-      updatedAt: observed.updatedAt,
-      resolvedAt: observed.resolvedAt ?? null,
-      assetId: observed.assetId ?? null,
-      assetUrl: observed.assetUrl ?? null,
-      failureReason: observed.failureReason ?? null,
-    },
+    operationId: observed.operationId,
+    state: observed.state,
+    isTerminal: observed.isTerminal,
+    // The one distinction the chamber needs and a socket cannot give it.
+    producing: !observed.isTerminal,
+    succeeded: observed.state === OperationState.DEPOSITED,
+    createdAt: observed.createdAt,
+    updatedAt: observed.updatedAt,
+    resolvedAt: observed.resolvedAt ?? null,
+    assetId: observed.assetId ?? null,
+    assetUrl: observed.assetUrl ?? null,
+    failureReason: observed.failureReason ?? null,
   });
 }

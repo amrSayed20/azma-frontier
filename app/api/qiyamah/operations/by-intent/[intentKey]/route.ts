@@ -39,25 +39,24 @@ export async function GET(
 
   const { intentKey } = await context.params;
   const operationId = findOperationByIntentKey(session.creatorId, decodeURIComponent(intentKey ?? ''));
-  if (!operationId) {
-    // Truthfully: this Creator has no production for that intent. Nothing was
-    // started, so pressing generate again is safe.
-    return NextResponse.json({ status: 'succeeded', operation: null });
-  }
-
-  const observed = await observeOperation(operationId, session.creatorId);
+  const observed = operationId ? await observeOperation(operationId, session.creatorId) : null;
   if (!observed) {
-    return NextResponse.json({ status: 'succeeded', operation: null });
+    // Truthfully: this Creator has no production for that intent. Nothing was
+    // started, so pressing generate again is safe. `found: false` says that
+    // without pretending an operation exists (contract §6).
+    return NextResponse.json({ found: false, operationId: null, state: null });
   }
 
+  // Contract §6: the operation id and its current state, in §5's own shape.
   return NextResponse.json({
-    status: 'succeeded',
-    operation: {
-      operationId: observed.operationId,
-      state: observed.state,
-      isTerminal: observed.isTerminal,
-      producing: !observed.isTerminal,
-      assetUrl: observed.assetUrl ?? null,
-    },
+    found: true,
+    operationId: observed.operationId,
+    state: observed.state,
+    isTerminal: observed.isTerminal,
+    producing: !observed.isTerminal,
+    succeeded: observed.state === 'DEPOSITED',
+    assetId: observed.assetId ?? null,
+    assetUrl: observed.assetUrl ?? null,
+    failureReason: observed.failureReason ?? null,
   });
 }

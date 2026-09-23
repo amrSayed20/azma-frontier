@@ -52,6 +52,24 @@ export interface AcceptedOperation {
   readonly reused: boolean;
 }
 
+/**
+ * The Creator-facing reason a production failed.
+ *
+ * Contract §5 requires a real reason attributable to the operation; §10
+ * forbids the provider or the model appearing in the Creator's contract.
+ * Both hold at once by saying WHAT failed, never WHO: the provider's own
+ * words stay on the server, in the operation trail, where an engineer reads
+ * them and a Creator never does.
+ */
+export type ProductionFailure =
+  | 'REFUSED_BY_ENGINE'      // the engine declined or errored on the request
+  | 'NO_OUTPUT'              // it completed with nothing usable
+  | 'OUTPUT_NOT_VIDEO'       // what came back was not a video
+  | 'TOOK_TOO_LONG'          // it never finished in the time allowed
+  | 'CAPACITY_EXHAUSTED'     // the Empire's own capacity with the engine ran out
+  | 'STORAGE_FAILED'         // the result could not be kept
+  | 'INTERNAL';              // anything else — the trail carries the detail
+
 /** What an observer is told about a production. */
 export interface ObservedOperation {
   readonly operationId: string;
@@ -64,7 +82,22 @@ export interface ObservedOperation {
   readonly assetId?: string;
   readonly assetUrl?: string;
   /** Present on a real production failure — never on a lost connection. */
-  readonly failureReason?: string;
+  readonly failureReason?: ProductionFailure;
+}
+
+/**
+ * Classify a failure for the Creator. The input may name an engine, a model,
+ * an endpoint or an HTTP code; none of that crosses this function.
+ */
+export function classifyFailure(reason: string | undefined, message: string | undefined): ProductionFailure {
+  const text = `${reason ?? ''} ${message ?? ''}`.toLowerCase();
+  if (/no_credit|insufficient|quota|402/.test(text)) return 'CAPACITY_EXHAUSTED';
+  if (/timed_out|timeout|no result within/.test(text)) return 'TOOK_TOO_LONG';
+  if (/not a video|no mp4|signature/.test(text)) return 'OUTPUT_NOT_VIDEO';
+  if (/no_output|carried no result|invalid video url|could not be retrieved/.test(text)) return 'NO_OUTPUT';
+  if (/storage|persist|keep the generated/.test(text)) return 'STORAGE_FAILED';
+  if (/provider-error|submit_failed|render_failed|rejected|http \d\d\d/.test(text)) return 'REFUSED_BY_ENGINE';
+  return 'INTERNAL';
 }
 
 const TERMINAL: readonly OperationState[] = [
@@ -93,7 +126,8 @@ interface StoredVideoIntent extends MotionIntent {
   readonly style: string | null;
   readonly assetId?: string;
   readonly assetUrl?: string;
-  readonly failureReason?: string;
+  /** Creator-facing classification only — never the engine's own words. */
+  readonly failureReason?: ProductionFailure;
 }
 
 function readStored(operationId: string, db = getDb()): StoredVideoIntent | null {
@@ -132,12 +166,15 @@ export function findOperationByIntentKey(creatorId: string, intentKey: string): 
 
 /** Read a production's authoritative state. Returns null when it is not this Creator's. */
 export async function observeOperation(operationId: string, creatorId: string): Promise<ObservedOperation | null> {
+  // capability_target scopes this to video productions: the ledger is shared
+  // with the cinematic path, whose operations are not this contract's and
+  // whose states are not among the four it declares (§2).
   const row = getDb()
     .prepare(
       `SELECT operation_id, subscriber_tenant_id, current_state, created_at, updated_at, resolved_at
-         FROM operation_ledger WHERE operation_id = ?`,
+         FROM operation_ledger WHERE operation_id = ? AND capability_target = ?`,
     )
-    .get(operationId) as
+    .get(operationId, CapabilityTarget.MOTION) as
       | { operation_id: string; subscriber_tenant_id: string; current_state: string; created_at: number; updated_at: number; resolved_at: number | null }
       | undefined;
   // Not found and not-yours are the same answer to the asker: nothing.
@@ -217,7 +254,10 @@ async function runProduction(operationId: string, request: VideoGenerationReques
   try {
     result = await generateVideo(request);
   } catch (err) {
-    writeStored(operationId, { failureReason: err instanceof Error ? err.message.slice(0, 240) : 'unknown' });
+    // The engine's words go to the trail, not to the Creator (contract §10).
+    const detail = err instanceof Error ? err.message : String(err);
+    console.log('[QiyamahOperation]', JSON.stringify({ operationId, stage: 'failed', detail: detail.slice(0, 240) }));
+    writeStored(operationId, { failureReason: classifyFailure(undefined, detail) });
     try { await manager.updateState(operationId, OperationState.FAILED, { resolvedAt: Date.now() }); } catch { /* sealed */ }
     return;
   }
@@ -230,6 +270,7 @@ async function runProduction(operationId: string, request: VideoGenerationReques
     return;
   }
 
-  writeStored(operationId, { failureReason: `${result.reason}: ${result.message}`.slice(0, 240) });
+  console.log('[QiyamahOperation]', JSON.stringify({ operationId, stage: 'failed', reason: result.reason, detail: String(result.message).slice(0, 240) }));
+  writeStored(operationId, { failureReason: classifyFailure(result.reason, result.message) });
   try { await manager.updateState(operationId, OperationState.FAILED, { resolvedAt: Date.now() }); } catch { /* sealed */ }
 }
