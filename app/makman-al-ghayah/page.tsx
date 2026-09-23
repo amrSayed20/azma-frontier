@@ -114,6 +114,42 @@ const VERDICT_AR: Record<string, string> = {
   CANNOT_ASSESS:       'لا يمكن التقييم',
 };
 
+/** What the Empire can do about a requirement — its own words, not a provider's. */
+const AVAILABILITY_AR: Record<string, string> = {
+  OBSERVABLE_INTERNALLY:   'تُرصَد داخل الإمبراطورية',
+  REQUIRES_INVESTIGATION:  'تحتاج تحقيقاً في حجّة الدامغة',
+  NOT_CURRENTLY_OBTAINABLE:'غير متاحة حالياً',
+};
+
+const GAP_CLASS_AR: Record<string, string> = {
+  OBSERVATION_GAP: 'فجوة رصد',
+  FULFILLMENT_GAP: 'فجوة إنجاز',
+  NO_ACTIVE_GAP:   'لا فجوة قائمة',
+};
+
+const OBSERVATION_OUTCOME_AR: Record<string, string> = {
+  AUTHORIZED: 'وصولٌ مأذون',
+  DENIED:     'وصولٌ ممنوع',
+};
+
+/** A Goal as the Chamber actually knows it — read, never assumed. */
+interface GoalDetail {
+  readonly goalId: string;
+  /** Present = this Goal IS a Milestone Goal; the value is the Purpose it serves. */
+  readonly sovereignPurposeStatement?: string;
+  readonly successCriteria?: { criterionId: string; description: string }[];
+}
+
+interface ObservationRow { observationId: string; outcome: string; observedAtMs: number }
+interface RequirementRow {
+  criterionId: string;
+  criterionDescriptionSnapshot: string;
+  gapClass: string;
+  questionStatement: string;
+  availability: string;
+}
+interface RequestRow extends RequirementRow { requestId: string }
+
 export default function MakmanAlGhayah() {
   const { goTo } = useConstitutionalNavigation();
   const realProduction = useSyncExternalStore(subscribeToNothing, getRealProductionSnapshot, getRealProductionServerSnapshot);
@@ -167,6 +203,33 @@ export default function MakmanAlGhayah() {
   const [renderVaultAssetId,  setRenderVaultAssetId]  = useState<string | null>(null);
 
   // ── Fulfillment + Gap + Investigation (per selected goal) ──────────
+  // ── THE MIDDLE OF THE CHAIN, WHICH HAD NO CONTROLS ──────────────────────
+  //
+  //   MEASURED 2026-09-23: five capabilities this Chamber declares in the
+  //   Truth registry had a working route and no way for a Creator to reach
+  //   them — define-success, observe-reality, mark-milestone,
+  //   name-knowledge-requirements, issue-knowledge-requests. The chain
+  //   الغاية ← الهدف ← [تعريف النجاح ← رصد الواقع] ← التقييم ← الفجوة was
+  //   wired from its middle: assessment ran against a definition the Creator
+  //   had no means to state.
+  //
+  //   The Goal's own record decides what is offered — read through read-goal,
+  //   never inferred. `sovereignPurposeStatement` present means this Goal IS
+  //   a Milestone Goal; that is the Chamber's own rule, not this page's.
+  const [goalDetail,          setGoalDetail]          = useState<GoalDetail | null>(null);
+  const [isReadingGoal,       setIsReadingGoal]       = useState(false);
+  const [isDesignating,       setIsDesignating]       = useState(false);
+  const [criteriaDraft,       setCriteriaDraft]       = useState('');
+  const [isSavingCriteria,    setIsSavingCriteria]    = useState(false);
+  const [observations,        setObservations]        = useState<ObservationRow[] | null>(null);
+  const [isReadingObs,        setIsReadingObs]        = useState(false);
+  const [requirements,        setRequirements]        = useState<RequirementRow[] | null>(null);
+  const [isNamingReqs,        setIsNamingReqs]        = useState(false);
+  const [knowledgeRequests,   setKnowledgeRequests]   = useState<RequestRow[] | null>(null);
+  const [isIssuingRequests,   setIsIssuingRequests]   = useState(false);
+  /** Why a step could not proceed — the Chamber's real reason, in Arabic. */
+  const [goalNotice,          setGoalNotice]          = useState<string | null>(null);
+
   const [fulfillmentResult,   setFulfillmentResult]   = useState<Record<string, unknown> | null>(null);
   const [gapResult,           setGapResult]           = useState<Record<string, unknown> | null>(null);
   const [investigationResult, setInvestigationResult] = useState<Record<string, unknown> | null>(null);
@@ -340,6 +403,135 @@ export default function MakmanAlGhayah() {
     finally { setIsCheckingConsumption(false); }
   };
 
+  /**
+   * read-goal — what this Goal actually is, before anything is offered about it.
+   *
+   * Every control below depends on a fact only the Chamber holds: is this a
+   * Milestone Goal, and what has the Creator already defined? Asking is the
+   * difference between an interface that states the Goal's condition and one
+   * that guesses it.
+   */
+  const readGoal = async (goalId: string) => {
+    setIsReadingGoal(true);
+    try {
+      const res = await fetch(`/api/sovereign/entry/creator-goal/${goalId}`);
+      if (!res.ok) { setGoalDetail(null); setGoalNotice('تعذّرت قراءة هذا الهدف.'); return; }
+      const body = await res.json() as { goal?: GoalDetail };
+      setGoalDetail(body.goal ?? null);
+      setCriteriaDraft((body.goal?.successCriteria ?? []).map((c) => c.description).join('\n'));
+    } catch {
+      setGoalDetail(null);
+      setGoalNotice('تعذّر الوصول إلى الحجرة الآن.');
+    } finally { setIsReadingGoal(false); }
+  };
+
+  /** The Creator selects a Goal: everything read about the previous one is dropped. */
+  const selectGoal = (goalId: string) => {
+    const next = selectedGoalId === goalId ? null : goalId;
+    setSelectedGoalId(next);
+    setGoalDetail(null); setGoalNotice(null); setCriteriaDraft('');
+    setObservations(null); setRequirements(null); setKnowledgeRequests(null);
+    setFulfillmentResult(null); setGapResult(null); setInvestigationResult(null);
+    if (next) void readGoal(next);
+  };
+
+  /** mark-milestone — this Goal serves the Sovereign Purpose. */
+  const handleDesignateMilestone = async (goalId: string) => {
+    setIsDesignating(true); setGoalNotice(null);
+    try {
+      const res = await fetch(`/api/sovereign/entry/creator-goal/${goalId}/milestone`, { method: 'PUT' });
+      if (res.ok) { await readGoal(goalId); return; }
+      // The Chamber's own refusal, said plainly: a Purpose must exist first.
+      setGoalNotice(res.status === 400
+        ? 'عرِّف غايتك السيادية أوّلاً — المرحلة تخدم غايةً قائمة.'
+        : 'لم يُعثر على هذا الهدف.');
+    } catch { setGoalNotice('تعذّر الوصول إلى الحجرة الآن.'); }
+    finally { setIsDesignating(false); }
+  };
+
+  /**
+   * define-success — the Creator states what success means, in their words.
+   *
+   * One criterion per line. The route replaces the list entirely, so what is
+   * shown in the field IS what will be recorded — nothing is merged behind
+   * the Creator's back.
+   */
+  const handleSaveCriteria = async (goalId: string) => {
+    const criteria = criteriaDraft.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+    if (criteria.length === 0) { setGoalNotice('اكتب معياراً واحداً على الأقل — سطرٌ لكل معيار.'); return; }
+    setIsSavingCriteria(true); setGoalNotice(null);
+    try {
+      const res = await fetch(`/api/sovereign/entry/creator-goal/${goalId}/success-criteria`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ criteria: criteria.map((description) => ({ description })) }),
+      });
+      if (res.ok) { await readGoal(goalId); setGoalNotice('حُفظ تعريف النجاح.'); return; }
+      setGoalNotice(res.status === 400
+        ? 'عيِّن هذا الهدف مرحلةً للغاية قبل تعريف نجاحه.'
+        : 'لم يُعثر على هذا الهدف.');
+    } catch { setGoalNotice('تعذّر الوصول إلى الحجرة الآن.'); }
+    finally { setIsSavingCriteria(false); }
+  };
+
+  /**
+   * observe-reality — what the Empire has actually seen, not what it hopes.
+   *
+   * An Observation is a real platform signal. An empty list is a true answer
+   * and is shown as one: no signal means no observation, never a placeholder.
+   */
+  const handleReadObservations = async (goalId: string) => {
+    setIsReadingObs(true); setGoalNotice(null);
+    try {
+      const res = await fetch(`/api/sovereign/entry/creator-goal/${goalId}/observations`);
+      if (!res.ok) { setGoalNotice('تعذّر قراءة ما رُصد لهذا الهدف.'); return; }
+      const body = await res.json() as { observations?: ObservationRow[] };
+      setObservations(body.observations ?? []);
+    } catch { setGoalNotice('تعذّر الوصول إلى الحجرة الآن.'); }
+    finally { setIsReadingObs(false); }
+  };
+
+  /** name-knowledge-requirements — what must be learned; it learns nothing itself. */
+  const handleNameRequirements = async (goalId: string) => {
+    setIsNamingReqs(true); setGoalNotice(null);
+    try {
+      const res = await fetch(`/api/sovereign/entry/creator-goal/${goalId}/gap-investigation`);
+      if (res.ok) {
+        const body = await res.json() as { requirements?: { requirements?: RequirementRow[] } | RequirementRow[] };
+        const r = Array.isArray(body.requirements) ? body.requirements : (body.requirements?.requirements ?? []);
+        setRequirements(r);
+        return;
+      }
+      setGoalNotice(res.status === 422
+        ? 'اطلب تقييم الإنجاز أوّلاً — المتطلبات تُشتقّ من التقييم.'
+        : 'لم يُعثر على هذا الهدف.');
+    } catch { setGoalNotice('تعذّر الوصول إلى الحجرة الآن.'); }
+    finally { setIsNamingReqs(false); }
+  };
+
+  /**
+   * issue-knowledge-requests — the Empire states, formally, what it must answer.
+   *
+   * It does not invoke الحُجّة الدامغة and does not resolve anything. The
+   * requests are issued and remain unanswered; that answer belongs to the
+   * Chamber of Evidence, and the interface must not pretend otherwise.
+   */
+  const handleIssueRequests = async (goalId: string) => {
+    setIsIssuingRequests(true); setGoalNotice(null);
+    try {
+      const res = await fetch(`/api/sovereign/entry/creator-goal/${goalId}/knowledge-requests`);
+      if (res.ok) {
+        const body = await res.json() as { batch?: { requests?: RequestRow[] } };
+        setKnowledgeRequests(body.batch?.requests ?? []);
+        return;
+      }
+      setGoalNotice(res.status === 422
+        ? 'اطلب تقييم الإنجاز أوّلاً — الطلبات تُصدَر عن فجواته.'
+        : 'لم يُعثر على هذا الهدف.');
+    } catch { setGoalNotice('تعذّر الوصول إلى الحجرة الآن.'); }
+    finally { setIsIssuingRequests(false); }
+  };
+
   const handleAssessFulfillment = async (goalId: string) => {
     setIsAssessing(true);
     setFulfillmentResult(null);
@@ -464,7 +656,7 @@ export default function MakmanAlGhayah() {
                 <div
                   key={goal.goalId}
                   className={`makman-goal-card ${selectedGoalId === goal.goalId ? 'goal-selected' : ''}`}
-                  onClick={() => setSelectedGoalId(selectedGoalId === goal.goalId ? null : goal.goalId)}
+                  onClick={() => selectGoal(goal.goalId)}
                 >
                   <div className="goal-card-header">
                     <span className="goal-title">{goal.title}</span>
@@ -480,6 +672,82 @@ export default function MakmanAlGhayah() {
 
                   {selectedGoalId === goal.goalId && (
                     <div className="goal-card-actions">
+                      {isReadingGoal && <p className="project-status">قراءة الهدف…</p>}
+
+                      {/* 1 - the Milestone: does this Goal serve the Purpose? */}
+                      {!isReadingGoal && goalDetail && !goalDetail.sovereignPurposeStatement && (
+                        <>
+                          <p className="project-status">هذا الهدف ليس مرحلةً للغاية بعد.</p>
+                          <button
+                            className={`import-btn ${isDesignating ? 'importing' : ''}`}
+                            onClick={(e) => { e.stopPropagation(); void handleDesignateMilestone(goal.goalId); }}
+                            disabled={isDesignating}
+                          >
+                            {isDesignating ? 'التعيين جارٍ…' : '◈ عيِّن هذا الهدف مرحلةً للغاية'}
+                          </button>
+                        </>
+                      )}
+                      {goalDetail?.sovereignPurposeStatement && (
+                        <div className="goal-assessment-result">
+                          <p className="project-status">
+                            مرحلةٌ تخدم غايتك: «{goalDetail.sovereignPurposeStatement}»
+                          </p>
+                        </div>
+                      )}
+
+                      {/* 2 - the Creator states what success means */}
+                      {goalDetail?.sovereignPurposeStatement && (
+                        <div className="goal-assessment-result">
+                          <p className="project-status">
+                            {goalDetail.successCriteria && goalDetail.successCriteria.length > 0
+                              ? `معايير النجاح المُعرَّفة: ${goalDetail.successCriteria.length}`
+                              : 'لم تُعرَّف معايير النجاح بعد.'}
+                          </p>
+                          {goalDetail.successCriteria?.map((c) => (
+                            <p key={c.criterionId} className="project-status">— {c.description}</p>
+                          ))}
+                          <textarea
+                            className="cyber-input textarea"
+                            value={criteriaDraft}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => setCriteriaDraft(e.target.value)}
+                            placeholder="سطرٌ لكل معيار — ما الذي يجب أن يقع حتى تَعُدّ هذا الهدف ناجحاً؟"
+                            rows={3}
+                          />
+                          <button
+                            className={`import-btn ${isSavingCriteria ? 'importing' : ''}`}
+                            onClick={(e) => { e.stopPropagation(); void handleSaveCriteria(goal.goalId); }}
+                            disabled={isSavingCriteria}
+                          >
+                            {isSavingCriteria ? 'الحفظ جارٍ…' : '✎ احفظ تعريف النجاح'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 3 - what the Empire has actually observed */}
+                      <button
+                        className={`import-btn ${isReadingObs ? 'importing' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); void handleReadObservations(goal.goalId); }}
+                        disabled={isReadingObs}
+                      >
+                        {isReadingObs ? 'القراءة جارية…' : '◉ ما رصدته الإمبراطورية'}
+                      </button>
+                      {observations && (
+                        <div className="goal-assessment-result">
+                          <p className="project-status">
+                            {observations.length === 0
+                              ? 'لا رصد بعد — لم تصل إشارةٌ واحدة عن هذا الهدف.'
+                              : `الرصد المسجَّل: ${observations.length}`}
+                          </p>
+                          {observations.slice(0, 6).map((o) => (
+                            <p key={o.observationId} className="project-status">
+                              — {OBSERVATION_OUTCOME_AR[o.outcome] ?? o.outcome} · {new Date(o.observedAtMs).toLocaleDateString('ar')}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* 4 - assessment (already existed) */}
                       <button
                         className={`import-btn ${isAssessing ? 'importing' : ''}`}
                         onClick={(e) => { e.stopPropagation(); void handleAssessFulfillment(goal.goalId); }}
@@ -513,6 +781,54 @@ export default function MakmanAlGhayah() {
                           </p>
                         </div>
                       )}
+
+                      {/* 5 - name what the Empire must learn */}
+                      <button
+                        className={`import-btn ${isNamingReqs ? 'importing' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); void handleNameRequirements(goal.goalId); }}
+                        disabled={isNamingReqs}
+                      >
+                        {isNamingReqs ? 'الاشتقاق جارٍ…' : '❑ سمِّ ما يجب أن تتعلّمه الإمبراطورية'}
+                      </button>
+                      {requirements && (
+                        <div className="goal-assessment-result">
+                          <p className="project-status">
+                            {requirements.length === 0
+                              ? 'لا متطلبات معرفية — لا فجوة قائمة تحتاج تعلُّماً.'
+                              : `متطلبات معرفية: ${requirements.length}`}
+                          </p>
+                          {requirements.map((r) => (
+                            <p key={r.criterionId} className="project-status">
+                              — {r.questionStatement} · {GAP_CLASS_AR[r.gapClass] ?? r.gapClass} · {AVAILABILITY_AR[r.availability] ?? r.availability}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* 6 - issue the requests; they remain unanswered here */}
+                      <button
+                        className={`import-btn ${isIssuingRequests ? 'importing' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); void handleIssueRequests(goal.goalId); }}
+                        disabled={isIssuingRequests}
+                      >
+                        {isIssuingRequests ? 'الإصدار جارٍ…' : '✉ أصدر طلبات المعرفة'}
+                      </button>
+                      {knowledgeRequests && (
+                        <div className="goal-assessment-result">
+                          <p className="project-status">
+                            {knowledgeRequests.length === 0
+                              ? 'لا طلبات تُصدَر — لا فجوة قائمة.'
+                              : `طلباتٌ صادرة: ${knowledgeRequests.length} — تبقى دون جواب حتى تُحقَّق في حجّة الدامغة.`}
+                          </p>
+                          {knowledgeRequests.map((r) => (
+                            <p key={r.requestId} className="project-status">
+                              — {r.questionStatement} · {AVAILABILITY_AR[r.availability] ?? r.availability}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+
+                      {goalNotice && <p className="project-status">{goalNotice}</p>}
                     </div>
                   )}
                 </div>
