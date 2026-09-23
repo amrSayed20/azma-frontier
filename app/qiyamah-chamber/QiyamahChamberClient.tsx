@@ -342,6 +342,123 @@ export function QiyamahChamberClient({
   };
 
   // ── Stage: REVIEW → GENERATING ──────────────────────────────────────────────
+  /**
+   * ─── A PRODUCTION'S TRUTH IS THE OPERATION, NOT THE SOCKET ────────────────
+   *
+   *   On 2026-09-22 operation ce90a828 finished — a 6 MB video deposited in
+   *   the Founder's Vault — while this chamber said «البوابة لا تستجيب. أعِد
+   *   المحاولة.» The connection had died at ~125 s; the production ran on for
+   *   362 s. The message was true about the socket and false about the work,
+   *   and «أعِد المحاولة» invited a second paid production for a video that
+   *   already existed.
+   *
+   *   So a video request no longer waits on its own connection. It is
+   *   accepted (202) with an operation id, and this observes that operation
+   *   until the server says what became of it. A lost connection is now a
+   *   reason to ASK, never a verdict.
+   *
+   *   `intentKey` is minted before the request and kept for the tab: if the
+   *   202 itself is lost, the same key asks again and is handed the operation
+   *   that already exists — no duplicate, no second charge.
+   */
+  const OPERATION_KEY = 'azma.qiyamah.videoOperation';
+
+  function rememberOperation(record: { intentKey: string; operationId?: string }) {
+    try { sessionStorage.setItem(OPERATION_KEY, JSON.stringify(record)); } catch { /* ignore */ }
+  }
+  function forgetOperation() {
+    try { sessionStorage.removeItem(OPERATION_KEY); } catch { /* ignore */ }
+  }
+  function rememberedOperation(): { intentKey: string; operationId?: string } | null {
+    try {
+      const raw = sessionStorage.getItem(OPERATION_KEY);
+      return raw ? (JSON.parse(raw) as { intentKey: string; operationId?: string }) : null;
+    } catch { return null; }
+  }
+
+  /**
+   * Follow one production to its end. Never turns a failed poll into a
+   * verdict: an unanswered question is asked again.
+   */
+  async function observeProduction(operationId: string) {
+    // Deliberately sets no state before it knows anything: the first thing
+    // this does is await. A resumed production announces itself only once the
+    // server has confirmed it is running — state from evidence, not from
+    // intention (and no synchronous setState inside the resume effect).
+    let announced = false;
+    const deadline = Date.now() + 20 * 60 * 1000; // longer than any provider render
+    while (Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      let observed: { status?: string; operation?: { state: string; producing: boolean; succeeded: boolean; assetUrl: string | null; failureReason: string | null } } | null = null;
+      try {
+        const res = await fetch(`/api/qiyamah/operations/${operationId}`);
+        if (res.ok) observed = await res.json();
+      } catch { /* the question went unanswered; ask again */ }
+      if (!observed?.operation) continue;
+
+      const op = observed.operation;
+      if (op.producing) {
+        if (!announced) {
+          setStage('constructing');
+          setGenerationError(null);
+          announced = true;
+        }
+        continue;
+      }
+      if (op.succeeded && op.assetUrl) {
+        setGeneratedAssetUrl(op.assetUrl);
+        setGeneratedAssetType('video');
+        setStage('result');
+        fetchGenerations();
+        triggerInvitation();
+        forgetOperation();
+        return;
+      }
+      // A real, server-side terminal failure — the only kind that may be
+      // shown as one.
+      setGenerationError(op.failureReason ? `تعذّر إتمام الإنتاج — ${op.failureReason}` : 'تعذّر إتمام الإنتاج.');
+      setStage('error');
+      forgetOperation();
+      return;
+    }
+    // Still running after the longest render we know of: say so truthfully.
+    setGenerationError('الإنتاج ما زال جارياً. سيظهر في معرضك فور اكتماله.');
+    setStage('error');
+  }
+
+  // On arrival, resume any production this tab started and never saw finish.
+  // Deferred to the next tick so the resume can never touch state during the
+  // effect itself — the chamber renders first, then asks the server.
+  useEffect(() => {
+    const kept = rememberedOperation();
+    if (!kept) return;
+    const timer = setTimeout(() => {
+      if (kept.operationId) void observeProduction(kept.operationId);
+      else void recoverByIntentKey(kept.intentKey);
+    }, 0);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * The 202 was lost before its operation id arrived. Ask the server whether
+   * this intent already has a production — with the same key, so the answer
+   * can only ever be the operation that exists.
+   */
+  async function recoverByIntentKey(intentKey: string) {
+    try {
+      const res = await fetch('/api/qiyamah/operations/by-intent/' + encodeURIComponent(intentKey));
+      if (!res.ok) { forgetOperation(); return; }
+      const found = await res.json();
+      if (found?.operation?.operationId) {
+        rememberOperation({ intentKey, operationId: found.operation.operationId });
+        void observeProduction(found.operation.operationId);
+      } else {
+        forgetOperation();
+      }
+    } catch { /* leave it remembered; the next arrival asks again */ }
+  }
+
   const handleEmbodyScene = async () => {
     if (!constructedPrompt.trim()) return;
     setStage('generating');
@@ -358,6 +475,14 @@ export function QiyamahChamberClient({
       if (mediaType === 'video') {
         requestBody['durationSeconds'] = durationSeconds;
       }
+      // Minted BEFORE the request and remembered: this is what makes a lost
+      // response recoverable instead of repeatable.
+      const intentKey = (globalThis.crypto?.randomUUID?.() ?? String(Date.now()));
+      if (mediaType === 'video') {
+        requestBody['intentKey'] = intentKey;
+        rememberOperation({ intentKey });
+      }
+
       const response = await fetch('/api/qiyamah/generate', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -369,11 +494,25 @@ export function QiyamahChamberClient({
       // a real provider failure (now 422, JSON) and a gateway timeout (non-JSON).
       const ct = response.headers.get('content-type') ?? '';
       if (!ct.includes('application/json')) {
+        // The edge answered instead of AZMA. For a video this says nothing
+        // about the production — it may be running right now — so the
+        // chamber asks rather than declares.
+        if (mediaType === 'video') {
+          setGenerationError('انقطع الاتصال بالعملية. نتحقق من حالة الإنتاج…');
+          void recoverByIntentKey(intentKey);
+          return;
+        }
         setGenerationError('البوابة لا تستجيب. أعِد المحاولة.');
         setStage('error');
         return;
       }
       const result = await response.json();
+      // A video is ACCEPTED, not completed: its truth is the operation.
+      if (result.status === 'accepted' && typeof result.operationId === 'string') {
+        rememberOperation({ intentKey, operationId: result.operationId });
+        void observeProduction(result.operationId);
+        return;
+      }
       if (result.status === 'succeeded') {
         setGeneratedAssetUrl(result.asset.assetUrl);
         setGeneratedAssetType(mediaType);
@@ -392,6 +531,15 @@ export function QiyamahChamberClient({
         setStage('error');
       }
     } catch {
+      // The socket broke. For a video that is not a verdict: the production
+      // may be under way, and «أعِد المحاولة» would invite paying for it twice.
+      const kept = rememberedOperation();
+      if (mediaType === 'video' && kept) {
+        setGenerationError('انقطع الاتصال بالعملية. نتحقق من حالة الإنتاج…');
+        if (kept.operationId) void observeProduction(kept.operationId);
+        else void recoverByIntentKey(kept.intentKey);
+        return;
+      }
       setGenerationError('البوابة لا تستجيب. أعِد المحاولة.');
       setStage('error');
     }

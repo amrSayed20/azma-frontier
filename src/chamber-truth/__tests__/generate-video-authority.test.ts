@@ -97,7 +97,7 @@ describe('RUNTIME 8–9 · mediaType decides which capability is exercised', () 
 
   it('the image path is untouched by the video branch — the branch returns before it', () => {
     const videoBranch = route.slice(route.indexOf("if (mediaType === 'video')"));
-    expect(videoBranch).toMatch(/await generateVideo\(/);
+    expect(videoBranch).toMatch(/await acceptVideoProduction\(/);
     // generateImage is reached only after the video branch has returned.
     expect(route.indexOf('await generateImage(')).toBeGreaterThan(route.indexOf("if (mediaType === 'video')"));
   });
@@ -127,7 +127,10 @@ describe('ENTITLEMENT 16–20 · the decision is made before the provider', () =
     const video = route.slice(route.indexOf("if (mediaType === 'video')"));
     const gateAt = video.indexOf('!hasActiveEntitlement');
     expect(gateAt).toBeGreaterThanOrEqual(0);
-    for (const later of ['costEngine.estimate', 'creditRepo.reserve', 'await generateVideo(']) {
+    // acceptVideoProduction replaced the in-request generateVideo call when
+    // the production boundary became asynchronous (2026-09-23). The rule is
+    // unchanged: nothing that can reach the provider may precede the gate.
+    for (const later of ['costEngine.estimate', 'creditRepo.reserve', 'acceptVideoProduction(']) {
       expect(video.indexOf(later)).toBeGreaterThan(gateAt);
     }
   });

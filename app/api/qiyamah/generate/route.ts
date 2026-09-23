@@ -10,6 +10,7 @@ import { CreatorCreditRepository } from '../../../../src/economy/credit-ledger/c
 import { AzmaUnitCostEngine } from '../../../../src/economy/cost-engine/azma-cost-engine';
 import { TrialEntitlementService } from '../../../../src/economy/trial/trial-entitlement-service';
 import { hasActiveEntitlement } from '../../../../src/billing/entitlement-service';
+import { acceptVideoProduction } from '../../../../src/qiyamah-generation/video-operation-lifecycle';
 import { InsufficientBalanceError } from '../../../../src/economy/credit-ledger/credit-ledger-types';
 import { CostUnavailableError } from '../../../../src/economy/cost-engine/cost-engine-types';
 import { TrialExhaustedError } from '../../../../src/economy/trial/trial-entitlement-types';
@@ -152,32 +153,65 @@ export async function POST(request: NextRequest) {
         ? Math.round(durationSeconds)
         : 6;
 
-    const videoResult = await generateVideo({
-      operationId,
-      prompt,
-      style: typeof style === 'string' ? style : undefined,
-      creatorId: session.creatorId,
-      durationSeconds: duration,
-      originalIdea: typeof idea === 'string' && idea.trim().length > 0 ? idea.trim() : null,
-    });
-
-    if (videoResult.status === 'failed') {
-      if (videoReservationId) {
-        try { creditRepo.release(videoReservationId, 'generation_failed'); } catch { /* non-fatal */ }
-      }
-      const httpStatus =
-        videoResult.reason === 'invalid-prompt' ? 400 :
-        videoResult.reason === 'rate-limited'   ? 429 :
-        videoResult.reason === 'provider-error' ? 422 :
-        502;
-      return NextResponse.json(videoResult, { status: httpStatus });
+    // ── THE BOUNDARY THAT BROKE ON 2026-09-22 ────────────────────────────────
+    //
+    // Operation ce90a828 held this connection open while kling-3.0 rendered
+    // for 362 seconds. The edge closed it at ~125 s (nginx 499, 0 bytes) and
+    // the Creator was told «البوابة لا تستجيب» — while the server went on to
+    // finish, deposit a 6 MB video into their Vault, and mark it available.
+    //
+    // A production that takes minutes no longer rides a socket that lives for
+    // seconds. The operation is accepted, recorded in the Empire's own
+    // operation_ledger, and answered immediately with its id; the production
+    // then runs on its own and writes its ending to the ledger, which the
+    // chamber reads through GET /api/qiyamah/operations/[operationId].
+    //
+    // The intent key comes from the browser, minted before the request: if
+    // this response is lost and the Creator asks again with the same key,
+    // they are handed the operation that already exists — never a second
+    // provider call, never a second charge.
+    const intentKeyRaw = (body as { intentKey?: unknown })?.intentKey;
+    if (typeof intentKeyRaw !== 'string' || intentKeyRaw.trim().length === 0) {
+      return NextResponse.json(
+        { status: 'failed', operationId, stage: 'validate', reason: 'intent-key-required',
+          message: 'تعذّر بدء الإنتاج. أعد تحميل الصفحة ثم حاول.' },
+        { status: 400 },
+      );
     }
 
+    const accepted = await acceptVideoProduction({
+      creatorId: session.creatorId,
+      intentKey: intentKeyRaw.trim().slice(0, 100),
+      request: {
+        operationId,
+        prompt,
+        style: typeof style === 'string' ? style : undefined,
+        creatorId: session.creatorId,
+        durationSeconds: duration,
+        originalIdea: typeof idea === 'string' && idea.trim().length > 0 ? idea.trim() : null,
+      },
+    });
+
+    // The reservation, when one exists, is settled by the operation's own
+    // ending — not here, where nothing is yet known. While the cost catalog
+    // cannot price video there is no reservation to settle at all.
     if (videoReservationId && videoResolvedCostEstimate) {
       try { creditRepo.settle(videoReservationId, videoResolvedCostEstimate.estimatedAzmaUnits); } catch { /* non-fatal */ }
     }
 
-    return NextResponse.json({ ...videoResult, operationId }, { status: 200 });
+    return NextResponse.json(
+      {
+        status: 'accepted',
+        capability: 'generate-video',
+        operationId: accepted.operationId,
+        state: accepted.state,
+        // True when this intent key already had a production: the Creator is
+        // being handed the one that exists, not a new one.
+        reused: accepted.reused,
+        observeAt: `/api/qiyamah/operations/${accepted.operationId}`,
+      },
+      { status: 202 },
+    );
   }
 
   // ─── IMAGE PATH ─────────────────────────────────────────────────────────────
