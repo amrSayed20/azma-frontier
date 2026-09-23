@@ -338,7 +338,13 @@ export function ArrivalExperience({ title, actions, dict, locale }: Props) {
         />
         {showInstallAffordance && (
           <button type="button" className="arrival-install-affordance" onClick={openManually}>
-            ⇩ Install
+            {/* MEASURED 2026-09-24: this read «⇩ Install» in English to every
+                visitor, including one who had just chosen Arabic — on the
+                Empire's own front door, beside a companion speaking Arabic.
+                The gate is the one surface that genuinely speaks more than one
+                tongue, so the label comes from the visitor's dictionary like
+                every other word on it, rather than being fixed in one. */}
+            {t(dict, 'gate.install')}
           </button>
         )}
       </div>

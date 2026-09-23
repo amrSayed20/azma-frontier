@@ -26,6 +26,7 @@ export const en: Dictionary = {
   'gate.languageLabel': 'Language',
   'gate.chooseLanguage': 'Choose your language',
   'gate.companionMessage': 'The Empire sees you',
+  'gate.install': '⇩ Install',
   'gate.companionMessageReturning': 'The Empire still sees you',
   'gate.companionMessageIdle': 'Take your time — the Empire does not rush',
   'gate.companionMessageExiting': 'The Empire walks with you',

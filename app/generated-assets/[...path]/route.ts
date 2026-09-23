@@ -26,7 +26,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/src/authentication';
-import { getDb, findVaultAssetByStorageUri } from '@/src/persistent-storage';
+import { getDb, findVaultAssetByStorageUri, creatorOwnsGeneratedAsset } from '@/src/persistent-storage';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,9 +58,28 @@ export async function GET(
   if (!session) return refuse();
 
   const storageUri = `/generated-assets/${path.join('/')}`;
-  const asset = findVaultAssetByStorageUri(getDb(), storageUri);
-  if (!asset) return refuse();
-  if (asset.subscriberTenantId !== session.creatorId) return refuse();
+  const db = getDb();
+
+  // Ownership has two proofs, and either is enough.
+  //
+  //   MEASURED on production 2026-09-24 by opening the gallery as a visitor:
+  //   five of the Founder's own thirty-three generations rendered as broken
+  //   frames. The files were on disk and the generation records were in the
+  //   database; only the `vault_assets` rows were missing, and this gate knew
+  //   no other proof. It refused a Creator their own work, in their own
+  //   gallery, and said 404 — the same answer it gives a stranger.
+  //
+  //   A generation record names the Creator who asked for the image and the
+  //   url of what came back. That is ownership, established at the moment of
+  //   creation. Nothing is widened: both lookups are scoped to this session's
+  //   creator, so a file that neither this Creator's Vault nor their own
+  //   generations name is still refused, and still with one 404 for every
+  //   kind of refusal.
+  const asset = findVaultAssetByStorageUri(db, storageUri);
+  const ownedByVault = asset !== null && asset.subscriberTenantId === session.creatorId;
+  if (!ownedByVault && !creatorOwnsGeneratedAsset(db, session.creatorId, storageUri)) {
+    return refuse();
+  }
 
   const response = new NextResponse(null, { status: 200 });
   response.headers.set('X-Accel-Redirect', `${INTERNAL_PREFIX}${path.join('/')}`);

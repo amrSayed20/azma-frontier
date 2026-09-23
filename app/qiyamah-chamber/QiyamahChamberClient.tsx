@@ -849,9 +849,12 @@ export function QiyamahChamberClient({
               {chamberVision.philosophyAr}
             </span>
           )}
-          <span className="chamber-vision-en">
-            Enter with an idea — leave with a real, saved image
-          </span>
+          {/* MEASURED by walking in as a visitor 2026-09-24: this line read
+              «ENTER WITH AN IDEA — LEAVE WITH A REAL, SAVED IMAGE» to every
+              Creator, above their own name in Arabic. The Chamber's vision is
+              already said in Arabic directly above it, so this was the same
+              promise in a tongue the Empire does not speak. Removed, not
+              hidden — the Remove-not-cover rule. */}
           <span className="creator-name">
             {displayName ? `أهلاً، ${displayName}` : 'أهلاً بك'}
           </span>

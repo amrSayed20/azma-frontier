@@ -20,6 +20,7 @@ export const ar: Dictionary = {
   'gate.languageLabel': 'اللغة',
   'gate.chooseLanguage': 'اختر لغتك',
   'gate.companionMessage': 'الإمبراطورية تراك',
+  'gate.install': '⇩ ثبِّت الإمبراطورية',
   'gate.companionMessageReturning': 'لا تزال الإمبراطورية تراك',
   'gate.companionMessageIdle': 'خذ وقتك.. الإمبراطورية لا تتعجّل',
   'gate.companionMessageExiting': 'الإمبراطورية تسير معك',

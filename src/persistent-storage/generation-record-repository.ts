@@ -86,3 +86,32 @@ export function listGenerationsForCreator(db: DatabaseSync, creatorId: string): 
     mediaType: (row.media_type as string | null) ?? 'image',
   }));
 }
+
+/**
+ * Does this Creator own the generation that produced this file?
+ *
+ * ─── WHY OWNERSHIP HAS TWO PROOFS ────────────────────────────────────────────
+ *
+ *   MEASURED on production 2026-09-24 by opening the gallery as a visitor:
+ *   five of the Founder's own thirty-three generations rendered as broken
+ *   frames. The files were on disk, the generation records were in the
+ *   database, and the guard on /generated-assets/ answered 404 — because it
+ *   proved ownership only through `vault_assets`, and those five had no row
+ *   there. A Creator was refused their own work, in their own gallery, by the
+ *   gate meant to protect it.
+ *
+ *   A generation record is itself a proof of ownership: it carries the
+ *   creator_id of whoever asked for the image and the url of what came back.
+ *   Scoping the query by BOTH means this widens nothing — no Creator can reach
+ *   a file that neither their Vault nor their own generations name.
+ *
+ *   The five rows are left exactly as they are. Ownership is re-proved rather
+ *   than rewritten, because a gap in the Empire's records is not repaired by
+ *   inventing the rows that should have been there.
+ */
+export function creatorOwnsGeneratedAsset(db: DatabaseSync, creatorId: string, assetUrl: string): boolean {
+  const row = db
+    .prepare('SELECT 1 FROM generation_records WHERE asset_url = ? AND creator_id = ? LIMIT 1')
+    .get(assetUrl, creatorId);
+  return row !== undefined;
+}

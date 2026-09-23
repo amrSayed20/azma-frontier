@@ -24,6 +24,25 @@ interface CommandHallCard {
   readonly color: string;
 }
 
+/**
+ * The Empire's own words for its own condition.
+ *
+ * MEASURED by walking in as a visitor 2026-09-24: the first screen a Founder
+ * saw after signing in read «The Sovereign High Council — degraded —
+ * Exclusive supervisory interface for platform ownership and governance»,
+ * and thirteen halls named in English beneath it. The Council supervises the
+ * Empire; it is not outside it, and «no foreign text to the Creator» does not
+ * stop at its door.
+ *
+ * Identifiers are not prose: a path id, a version string and Al-Wateen's own
+ * name stay as they are, because they name things rather than speak to anyone.
+ */
+const SYSTEM_STATUS_AR: Record<string, string> = {
+  healthy:  'سليمة',
+  degraded: 'مُنهَكة',
+  critical: 'حرجة',
+};
+
 export default function SovereignHighCouncilPage() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -60,7 +79,7 @@ export default function SovereignHighCouncilPage() {
       } catch (error) {
         setIsAuthorized(false);
         setRuntimeView(null);
-        setRuntimeError(error instanceof Error ? error.message : 'Unknown runtime integration error');
+        setRuntimeError(error instanceof Error ? error.message : 'تعذّر الوصول إلى حالة التشغيل.');
       } finally {
         setLoading(false);
       }
@@ -89,99 +108,99 @@ export default function SovereignHighCouncilPage() {
   const commandHalls: readonly CommandHallCard[] = [
     {
       hallId: 'ch-sovereign-assistant',
-      name: 'Sovereign Assistant',
-      description: 'Central supervisory intelligence',
+      name: 'المعين السيادي',
+      description: 'ذكاءُ الإشراف المركزي',
       icon: '👁️',
       color: 'from-amber-500 to-yellow-400',
     },
     {
       hallId: 'ch-empire-pulse',
-      name: 'Empire Pulse',
-      description: 'Real-time platform health',
+      name: 'نبض الإمبراطورية',
+      description: 'صحّة المنصّة لحظةً بلحظة',
       icon: '💓',
       color: 'from-red-500 to-rose-400',
     },
     {
       hallId: 'ch-architectural-health',
-      name: 'Architectural Health',
-      description: 'Boundary & layer integrity',
+      name: 'صحّة البنيان',
+      description: 'سلامة الحدود والطبقات',
       icon: '🏗️',
       color: 'from-blue-500 to-cyan-400',
     },
     {
       hallId: 'ch-infrastructure-health',
-      name: 'Infrastructure Health',
-      description: 'Systems & resources',
+      name: 'صحّة البنية التحتيّة',
+      description: 'الأنظمة والموارد',
       icon: '⚙️',
       color: 'from-green-500 to-emerald-400',
     },
     {
       hallId: 'ch-resource-intelligence',
-      name: 'Resource Intelligence',
-      description: 'CPU, memory, storage analytics',
+      name: 'وعي الموارد',
+      description: 'المعالجة والذاكرة والتخزين',
       icon: '📊',
       color: 'from-purple-500 to-pink-400',
     },
     {
       hallId: 'ch-financial-intelligence',
-      name: 'Financial Intelligence',
-      description: 'Revenue & cost analysis',
+      name: 'وعي المال',
+      description: 'الإيراد والكلفة',
       icon: '💰',
       color: 'from-yellow-500 to-orange-400',
     },
     {
       hallId: 'ch-evolution-intelligence',
-      name: 'Evolution Intelligence',
-      description: 'AI discovery & evolution',
+      name: 'وعي التطوّر',
+      description: 'اكتشاف القدرات ونموّها',
       icon: '🧬',
       color: 'from-indigo-500 to-blue-400',
     },
     {
       hallId: 'ch-security-intelligence',
-      name: 'Security Intelligence',
-      description: 'Access & threat detection',
+      name: 'وعي الأمن',
+      description: 'الوصول ورصد التهديد',
       icon: '🛡️',
       color: 'from-slate-600 to-gray-400',
     },
     {
       hallId: 'ch-founder-command',
-      name: 'Founder Command',
-      description: 'Platform governance',
+      name: 'أمر المؤسس',
+      description: 'حوكمة المنصّة',
       icon: '👑',
       color: 'from-gold to-amber-300',
     },
     {
       hallId: 'ch-emergency-command',
-      name: 'Emergency Command',
-      description: 'Critical response',
+      name: 'أمر الطوارئ',
+      description: 'الاستجابة الحرجة',
       icon: '🚨',
       color: 'from-red-600 to-red-400',
     },
     {
       hallId: 'ch-development-observatory',
-      name: 'Development Observatory',
-      description: 'Engineering metrics',
+      name: 'مرصد البناء',
+      description: 'مقاييس الهندسة',
       icon: '🔬',
       color: 'from-teal-500 to-cyan-400',
     },
     {
       hallId: 'ch-broadcast-center',
-      name: 'Broadcast Center',
-      description: 'Platform communications',
+      name: 'مركز البثّ',
+      description: 'خطاب المنصّة',
       icon: '📢',
       color: 'from-violet-500 to-purple-400',
     },
     {
       hallId: 'ch-gift-distribution',
-      name: 'Gift Distribution',
-      description: 'Rewards & subscriptions',
+      name: 'توزيع العطايا',
+      description: 'المكافآت والاشتراكات',
       icon: '🎁',
       color: 'from-pink-500 to-red-400',
     },
     {
       hallId: 'ch-future-laboratory',
-      name: 'Future Laboratory',
-      description: 'Experimental features',
+      name: 'مختبر المستقبل',
+      description: 'قدراتٌ تحت الاختبار',
       icon: '🔮',
       color: 'from-cyan-500 to-blue-400',
     },
@@ -202,15 +221,15 @@ export default function SovereignHighCouncilPage() {
               <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent">
                 المجلس السيادي الأعلى
               </h1>
-              <p className="text-amber-300/70 text-sm mt-1">The Sovereign High Council</p>
+              <p className="text-amber-300/70 text-sm mt-1">أعلى سلطةِ إشرافٍ في الإمبراطوريّة</p>
             </div>
             <div className={`status-indicator status-${systemStatus}`}>
               <div className={`w-3 h-3 rounded-full ${systemStatus === 'healthy' ? 'bg-green-400' : systemStatus === 'degraded' ? 'bg-yellow-400' : 'bg-red-400'}`} />
-              <span className="text-xs text-gray-300 ml-2">{systemStatus}</span>
+              <span className="text-xs text-gray-300 ml-2">{SYSTEM_STATUS_AR[systemStatus] ?? systemStatus}</span>
             </div>
           </div>
           <p className="text-gray-400">
-            Exclusive supervisory interface for platform ownership and governance
+            واجهةُ إشرافٍ خاصّة بملكيّة المنصّة وحوكمتها
           </p>
           {/* ── THE ENTRANCE THAT WAS MISSING ──────────────────────────────
               The Council is a supervisory surface, not the platform. Until
@@ -238,7 +257,7 @@ export default function SovereignHighCouncilPage() {
               استهلاك المنصة ↗
             </a>
             <a href="/sovereign-high-council/health" className="text-xs text-amber-400/60 hover:text-amber-300 transition-colors">
-              Imperial Health ↗
+              صحّة الإمبراطوريّة ↗
             </a>
           </div>
         </div>
@@ -257,20 +276,20 @@ export default function SovereignHighCouncilPage() {
           <>
             <section className="mb-8 space-y-4">
               <div className="rounded-xl border border-gold/10 bg-gradient-to-br from-slate-800/40 to-slate-900/40 p-5">
-                <p className="text-xs uppercase tracking-wide text-amber-300/80 mb-1">Founder Session</p>
+                <p className="text-xs tracking-wide text-amber-300/80 mb-1">جلسة المؤسس</p>
                 <p className="text-gray-300 text-sm">{founderId}</p>
                 <p className="text-gray-500 text-xs mt-2">
-                  Runtime synchronized at {runtimeView?.generatedAt ? new Date(runtimeView.generatedAt).toLocaleString() : 'N/A'}
+                  آخر مزامنةٍ للتشغيل: {runtimeView?.generatedAt ? new Date(runtimeView.generatedAt).toLocaleString('ar') : '—'}
                 </p>
                 {runtimeError ? (
-                  <p className="text-red-400 text-xs mt-2">Runtime warning: {runtimeError}</p>
+                  <p className="text-red-400 text-xs mt-2">تنبيه تشغيل: {runtimeError}</p>
                 ) : null}
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
-                  <h3 className="text-sm font-semibold text-gold mb-2">Founder Briefing</h3>
-                  <p className="text-sm text-gray-300">{runtimeView?.founderBriefings.founder.summary ?? 'Awaiting briefing...'}</p>
+                  <h3 className="text-sm font-semibold text-gold mb-2">إحاطة المؤسس</h3>
+                  <p className="text-sm text-gray-300">{runtimeView?.founderBriefings.founder.summary ?? 'الإحاطة لم تصل بعد.'}</p>
                   <ul className="mt-3 space-y-1 text-xs text-gray-400">
                     {(runtimeView?.founderBriefings.founder.keySignals ?? []).slice(0, 3).map((signal) => (
                       <li key={signal}>- {signal}</li>
@@ -279,90 +298,90 @@ export default function SovereignHighCouncilPage() {
                 </div>
 
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
-                  <h3 className="text-sm font-semibold text-gold mb-2">Constitutional Status</h3>
-                  <p className="text-sm text-gray-300">{runtimeView?.constitutionalIntelligenceSummary ?? 'Awaiting constitutional synthesis...'}</p>
+                  <h3 className="text-sm font-semibold text-gold mb-2">الحالة الدستوريّة</h3>
+                  <p className="text-sm text-gray-300">{runtimeView?.constitutionalIntelligenceSummary ?? 'التركيب الدستوريّ لم يصل بعد.'}</p>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-400">
-                    <RuntimeFact label="Loaded" value={runtimeView?.constitutionalStatus.loaded ? 'yes' : 'no'} />
-                    <RuntimeFact label="Version" value={runtimeView?.constitutionalStatus.version ?? 'N/A'} />
-                    <RuntimeFact label="Decision" value={runtimeView?.constitutionalStatus.decision ?? 'N/A'} />
-                    <RuntimeFact label="Compliance" value={runtimeView?.constitutionalStatus.complianceStatus ?? 'N/A'} />
+                    <RuntimeFact label="محمَّلة" value={runtimeView?.constitutionalStatus.loaded ? 'نعم' : 'لا'} />
+                    <RuntimeFact label="الإصدار" value={runtimeView?.constitutionalStatus.version ?? 'N/A'} />
+                    <RuntimeFact label="القرار" value={runtimeView?.constitutionalStatus.decision ?? 'N/A'} />
+                    <RuntimeFact label="الامتثال" value={runtimeView?.constitutionalStatus.complianceStatus ?? 'N/A'} />
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
-                  <h3 className="text-sm font-semibold text-gold mb-2">Executive Briefing</h3>
-                  <p className="text-sm text-gray-300">{runtimeView?.executiveBriefing.summary ?? 'Awaiting executive briefing...'}</p>
+                  <h3 className="text-sm font-semibold text-gold mb-2">الإحاطة التنفيذيّة</h3>
+                  <p className="text-sm text-gray-300">{runtimeView?.executiveBriefing.summary ?? 'الإحاطة التنفيذيّة لم تصل بعد.'}</p>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-400">
-                    <RuntimeFact label="Risk" value={runtimeView?.executiveBriefing.overallRisk ?? 'N/A'} />
-                    <RuntimeFact label="Plan" value={runtimeView?.executiveBriefing.planStatus ?? 'N/A'} />
+                    <RuntimeFact label="الخطر" value={runtimeView?.executiveBriefing.overallRisk ?? 'N/A'} />
+                    <RuntimeFact label="الخطّة" value={runtimeView?.executiveBriefing.planStatus ?? 'N/A'} />
                   </div>
                 </div>
 
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
-                  <h3 className="text-sm font-semibold text-gold mb-2">Strategic Briefing</h3>
-                  <p className="text-sm text-gray-300">{runtimeView?.strategicBriefing.summary ?? 'Awaiting strategic briefing...'}</p>
-                  <p className="text-xs text-amber-300 mt-3">{runtimeView?.strategicBriefing.leadingOpportunity ?? 'Opportunity stream pending.'}</p>
+                  <h3 className="text-sm font-semibold text-gold mb-2">الإحاطة الاستراتيجيّة</h3>
+                  <p className="text-sm text-gray-300">{runtimeView?.strategicBriefing.summary ?? 'الإحاطة الاستراتيجيّة لم تصل بعد.'}</p>
+                  <p className="text-xs text-amber-300 mt-3">{runtimeView?.strategicBriefing.leadingOpportunity ?? 'لا فرصةٌ مرصودة بعد.'}</p>
                 </div>
 
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
-                  <h3 className="text-sm font-semibold text-gold mb-2">Future Simulation</h3>
-                  <p className="text-sm text-gray-300">{runtimeView?.simulation.summary ?? 'Awaiting simulation package...'}</p>
+                  <h3 className="text-sm font-semibold text-gold mb-2">محاكاة المستقبل</h3>
+                  <p className="text-sm text-gray-300">{runtimeView?.simulation.summary ?? 'المحاكاة لم تصل بعد.'}</p>
                   <p className="text-xs text-gray-500 mt-2">
-                    Recommended Path: {runtimeView?.simulation.recommendedPathId ?? 'N/A'}
+                    المسار المُوصى به: {runtimeView?.simulation.recommendedPathId ?? '—'}
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
-                  <h3 className="text-sm font-semibold text-gold mb-2">Doctrine Recommendation</h3>
-                  <p className="text-sm text-gray-300">{runtimeView?.founderExperience.doctrineRecommendation ?? 'Awaiting doctrine recommendation...'}</p>
-                  <p className="text-xs text-gray-500 mt-2">Selected Path: {runtimeView?.doctrine.selectedPathId ?? 'N/A'}</p>
+                  <h3 className="text-sm font-semibold text-gold mb-2">توصية العقيدة</h3>
+                  <p className="text-sm text-gray-300">{runtimeView?.founderExperience.doctrineRecommendation ?? 'التوصية لم تصل بعد.'}</p>
+                  <p className="text-xs text-gray-500 mt-2">المسار المختار: {runtimeView?.doctrine.selectedPathId ?? '—'}</p>
                 </div>
 
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
-                  <h3 className="text-sm font-semibold text-gold mb-2">WHY / WHY NOT</h3>
+                  <h3 className="text-sm font-semibold text-gold mb-2">لماذا / ولماذا لا</h3>
                   <div className="space-y-2">
-                    <p className="text-xs text-amber-300">WHY: {runtimeView?.founderExperience.why ?? 'N/A'}</p>
-                    <p className="text-xs text-gray-400">WHY NOT: {runtimeView?.founderExperience.whyNot ?? 'N/A'}</p>
+                    <p className="text-xs text-amber-300">لماذا: {runtimeView?.founderExperience.why ?? '—'}</p>
+                    <p className="text-xs text-gray-400">ولماذا لا: {runtimeView?.founderExperience.whyNot ?? '—'}</p>
                   </div>
                 </div>
 
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
-                  <h3 className="text-sm font-semibold text-gold mb-2">Founder Levels</h3>
+                  <h3 className="text-sm font-semibold text-gold mb-2">مستويات المؤسس</h3>
                   <div className="grid grid-cols-3 gap-2">
-                    <RuntimeLevel label="Confidence" value={runtimeView?.founderExperience.confidenceLevel ?? 'N/A'} />
-                    <RuntimeLevel label="Risk" value={runtimeView?.founderExperience.riskLevel ?? 'N/A'} />
-                    <RuntimeLevel label="Opportunity" value={runtimeView?.founderExperience.opportunityLevel ?? 'N/A'} />
+                    <RuntimeLevel label="الثقة" value={runtimeView?.founderExperience.confidenceLevel ?? 'N/A'} />
+                    <RuntimeLevel label="الخطر" value={runtimeView?.founderExperience.riskLevel ?? 'N/A'} />
+                    <RuntimeLevel label="الفرصة" value={runtimeView?.founderExperience.opportunityLevel ?? 'N/A'} />
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
-                  <h3 className="text-sm font-semibold text-gold mb-2">Runtime Synchronization</h3>
+                  <h3 className="text-sm font-semibold text-gold mb-2">مزامنة التشغيل</h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    <RuntimeFact label="Synchronized" value={runtimeView?.synchronizationStatus.synchronized ? 'yes' : 'no'} />
-                    <RuntimeFact label="Bus" value={runtimeView?.synchronizationStatus.busHealthy ? 'healthy' : 'critical'} />
-                    <RuntimeFact label="Al-Wateen" value={runtimeView?.synchronizationStatus.alWateenHealthy ? 'healthy' : 'critical'} />
-                    <RuntimeFact label="Coherence" value={runtimeView?.synchronizationStatus.coherenceScore ?? 0} />
-                    <RuntimeFact label="Queue" value={runtimeView?.synchronizationStatus.queueDepth ?? 0} />
-                    <RuntimeFact label="Blocked" value={runtimeView?.synchronizationStatus.invalidMessagesBlocked ?? 0} />
+                    <RuntimeFact label="مُتزامن" value={runtimeView?.synchronizationStatus.synchronized ? 'نعم' : 'لا'} />
+                    <RuntimeFact label="الناقل" value={runtimeView?.synchronizationStatus.busHealthy ? 'سليم' : 'حرج'} />
+                    <RuntimeFact label="Al-Wateen" value={runtimeView?.synchronizationStatus.alWateenHealthy ? 'سليم' : 'حرج'} />
+                    <RuntimeFact label="التماسك" value={runtimeView?.synchronizationStatus.coherenceScore ?? 0} />
+                    <RuntimeFact label="الطابور" value={runtimeView?.synchronizationStatus.queueDepth ?? 0} />
+                    <RuntimeFact label="المحجوب" value={runtimeView?.synchronizationStatus.invalidMessagesBlocked ?? 0} />
                   </div>
                 </div>
 
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
-                  <h3 className="text-sm font-semibold text-gold mb-2">Al-Wateen Personality</h3>
-                  <p className="text-sm text-gray-300">{runtimeView?.personality.greeting ?? 'Awaiting personality response...'}</p>
+                  <h3 className="text-sm font-semibold text-gold mb-2">شخصيّة الوتين</h3>
+                  <p className="text-sm text-gray-300">{runtimeView?.personality.greeting ?? 'لا ردّ بعد.'}</p>
                   <p className="text-xs text-gray-400 mt-2">{runtimeView?.personality.assessment ?? 'N/A'}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
-                  <h3 className="text-sm font-semibold text-gold mb-2">Strategic Recommendations</h3>
+                  <h3 className="text-sm font-semibold text-gold mb-2">توصياتٌ استراتيجيّة</h3>
                   <ul className="space-y-1 text-xs text-gray-400">
                     {(runtimeView?.strategicRecommendations ?? []).slice(0, 3).map((recommendation) => (
                       <li key={recommendation}>- {recommendation}</li>
@@ -371,7 +390,7 @@ export default function SovereignHighCouncilPage() {
                 </div>
 
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
-                  <h3 className="text-sm font-semibold text-gold mb-2">Executive Recommendations</h3>
+                  <h3 className="text-sm font-semibold text-gold mb-2">توصياتٌ تنفيذيّة</h3>
                   <ul className="space-y-1 text-xs text-gray-400">
                     {(runtimeView?.executiveBriefing.recommendations ?? []).slice(0, 3).map((recommendation) => (
                       <li key={recommendation}>- {recommendation}</li>
@@ -380,21 +399,21 @@ export default function SovereignHighCouncilPage() {
                 </div>
 
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
-                  <h3 className="text-sm font-semibold text-gold mb-2">Strategic Threat</h3>
-                  <p className="text-xs text-gray-400">{runtimeView?.strategicBriefing.leadingThreat ?? 'Threat stream pending.'}</p>
+                  <h3 className="text-sm font-semibold text-gold mb-2">التهديد الاستراتيجيّ</h3>
+                  <p className="text-xs text-gray-400">{runtimeView?.strategicBriefing.leadingThreat ?? 'لا تهديدٌ مرصود بعد.'}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-9 gap-3">
-                <RuntimeMetric label="Constitution" value={runtimeView?.runtimeSnapshots.constitutionLoaded ? 1 : 0} />
-                <RuntimeMetric label="Exec" value={runtimeView?.runtimeSnapshots.executivePackages} />
-                <RuntimeMetric label="Strategic" value={runtimeView?.runtimeSnapshots.strategicPackages} />
-                <RuntimeMetric label="Simulation" value={runtimeView?.runtimeSnapshots.simulationPackages} />
-                <RuntimeMetric label="Bus Routed" value={runtimeView?.runtimeSnapshots.busMessagesRouted} />
-                <RuntimeMetric label="Perception" value={runtimeView?.runtimeSnapshots.perceptionPackages} />
+                <RuntimeMetric label="الدستور" value={runtimeView?.runtimeSnapshots.constitutionLoaded ? 1 : 0} />
+                <RuntimeMetric label="تنفيذيّة" value={runtimeView?.runtimeSnapshots.executivePackages} />
+                <RuntimeMetric label="استراتيجيّة" value={runtimeView?.runtimeSnapshots.strategicPackages} />
+                <RuntimeMetric label="المحاكاة" value={runtimeView?.runtimeSnapshots.simulationPackages} />
+                <RuntimeMetric label="ما وجّهه الناقل" value={runtimeView?.runtimeSnapshots.busMessagesRouted} />
+                <RuntimeMetric label="الإدراك" value={runtimeView?.runtimeSnapshots.perceptionPackages} />
                 <RuntimeMetric label="Al-Wateen" value={runtimeView?.runtimeSnapshots.alWateenPackages} />
-                <RuntimeMetric label="Doctrine" value={runtimeView?.runtimeSnapshots.doctrinePackages} />
-                <RuntimeMetric label="Council Sync" value={runtimeView?.runtimeSnapshots.councilSynchronizations} />
+                <RuntimeMetric label="العقيدة" value={runtimeView?.runtimeSnapshots.doctrinePackages} />
+                <RuntimeMetric label="مزامنة المجلس" value={runtimeView?.runtimeSnapshots.councilSynchronizations} />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -405,9 +424,9 @@ export default function SovereignHighCouncilPage() {
             </section>
 
             <div className="mb-8">
-              <h2 className="text-xl font-semibold text-gold mb-2">14 Command Halls</h2>
+              <h2 className="text-xl font-semibold text-gold mb-2">قاعات الأمر الأربع عشرة</h2>
               <p className="text-gray-400 text-sm">
-                Access specialized chambers for platform supervision and governance
+                قاعاتٌ متخصّصة لإشراف المنصّة وحوكمتها
               </p>
             </div>
 
@@ -535,7 +554,7 @@ function CommandHallDetail({ hall, runtimeView, insight, onBack }: CommandHallDe
         onClick={onBack}
         className="text-gold hover:text-amber-300 transition-colors mb-6 flex items-center gap-2"
       >
-        ← Back to Halls
+        ← عودةٌ إلى القاعات
       </button>
 
       <div className="space-y-4">
@@ -549,7 +568,7 @@ function CommandHallDetail({ hall, runtimeView, insight, onBack }: CommandHallDe
 
         <div className="border-t border-gold/10 pt-6">
           <div className="space-y-4">
-            <p className="text-gray-300">{insight?.headline ?? 'Runtime insight not yet available.'}</p>
+            <p className="text-gray-300">{insight?.headline ?? 'لا قراءةَ تشغيلٍ لهذه القاعة بعد.'}</p>
 
             {insight?.details?.length ? (
               <ul className="space-y-1 text-sm text-gray-400">
@@ -561,7 +580,7 @@ function CommandHallDetail({ hall, runtimeView, insight, onBack }: CommandHallDe
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
               <div className="rounded-lg border border-gold/10 bg-slate-900/40 p-4">
-                <h3 className="text-sm font-semibold text-gold mb-2">Founder Briefing</h3>
+                <h3 className="text-sm font-semibold text-gold mb-2">إحاطة المؤسس</h3>
                 <p className="text-sm text-gray-300">{runtimeView?.founderBriefings.founder.summary ?? 'N/A'}</p>
               </div>
               <div className="rounded-lg border border-gold/10 bg-slate-900/40 p-4">
