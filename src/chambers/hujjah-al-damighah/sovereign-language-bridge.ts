@@ -71,7 +71,40 @@ export interface BridgeOutcome {
   readonly httpStatus?: number;
 }
 
+/**
+ * Statuses the provider itself asks us to come back from.
+ *
+ * MEASURED from the server 2026-09-23: the configured model answered 200 on
+ * two consecutive direct calls, while the Chamber's own call the same minute
+ * was refused 503 — «This model is currently experiencing high demand. Spikes
+ * in demand are usually temporary. Please try again later.» The provider
+ * asked to be retried and the Chamber did not; one spike cost the Creator the
+ * whole answer. 429 is here for the same reason.
+ */
+const RETRYABLE = new Set([429, 503]);
+const RETRY_BACKOFF_MS = [400, 1_200];
+
 async function askGeminiOutcome(
+  system: string,
+  user: string,
+  timeoutMs: number,
+  maxOutputTokens: number,
+  temperature: number,
+): Promise<BridgeOutcome> {
+  let last: BridgeOutcome = { text: null, failure: 'UNREACHABLE' };
+  for (let attempt = 0; attempt <= RETRY_BACKOFF_MS.length; attempt += 1) {
+    last = await askGeminiOnce(system, user, timeoutMs, maxOutputTokens, temperature);
+    if (last.text !== null) return last;
+    // A missing key and an empty answer do not improve by asking again.
+    if (last.failure !== 'REFUSED' || last.httpStatus === undefined || !RETRYABLE.has(last.httpStatus)) return last;
+    if (attempt < RETRY_BACKOFF_MS.length) {
+      await new Promise((resolve) => setTimeout(resolve, RETRY_BACKOFF_MS[attempt]));
+    }
+  }
+  return last;
+}
+
+async function askGeminiOnce(
   system: string,
   user: string,
   timeoutMs: number,
