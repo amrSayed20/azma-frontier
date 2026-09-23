@@ -2117,6 +2117,11 @@ export default function RasAmrChamber() {
           if (arrival.kind === 'arrived') {
             setCreatorDirectorIntent(arrival.demandAr);
             setDemandNotice(null);
+            // MEASURED live: the demand landed correctly and the Creator saw
+            // nothing, because the Chamber opens on the canvas and the intent
+            // it landed in lives under Direction. Material that arrives out of
+            // sight has not arrived. The Chamber opens where its demand is.
+            setActiveWorkspaceTab('direction');
           } else {
             setDemandNotice(spokenDemandArrival(arrival));
           }
