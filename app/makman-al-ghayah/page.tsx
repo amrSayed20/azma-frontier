@@ -145,10 +145,36 @@ interface RequirementRow {
   criterionId: string;
   criterionDescriptionSnapshot: string;
   gapClass: string;
+  gapCategory: string;
+  /** The engine's own English sentence — for engineers, never for the Creator. */
   questionStatement: string;
   availability: string;
 }
 interface RequestRow extends RequirementRow { requestId: string }
+
+/**
+ * The question the Empire must answer, said in Arabic.
+ *
+ * MEASURED live 2026-09-23: rendering the engine's `questionStatement`
+ * verbatim put English in front of the Creator — «The Empire has no recorded
+ * consumption events from which to assess…» — which the Empire does not do.
+ *
+ * This is not translation of foreign evidence. The engine builds that
+ * sentence from three of its own templates keyed by gapCategory, and the
+ * criterion inside it is the Creator's own wording. The Chamber simply says
+ * its own sentence in its own language. If a category ever appears that is
+ * not one of the three, the Creator sees their own criterion — never English.
+ */
+const GAP_QUESTION_AR: Record<string, (criterion: string) => string> = {
+  EVIDENCE_AVAILABILITY: (c) => `لا إشاراتِ وصولٍ مسجَّلة يُقاس عليها «${c}». ما الإشارات التي وصلت عن هذا النشر؟`,
+  EVIDENCE_SUFFICIENCY:  (c) => `الإشارات المسجَّلة لا تكفي للحكم على «${c}». ما البيانات التي تُثبت تحقّقه؟`,
+  FULFILLMENT_ABSENT:    (c) => `الأدلّة القائمة تُرجّح أنّ «${c}» لم يتحقّق بعد. ما المعرفة اللازمة لفهم هذه الفجوة؟`,
+};
+
+function spokenQuestion(row: RequirementRow): string {
+  return GAP_QUESTION_AR[row.gapCategory]?.(row.criterionDescriptionSnapshot)
+    ?? row.criterionDescriptionSnapshot;
+}
 
 export default function MakmanAlGhayah() {
   const { goTo } = useConstitutionalNavigation();
@@ -799,7 +825,7 @@ export default function MakmanAlGhayah() {
                           </p>
                           {requirements.map((r) => (
                             <p key={r.criterionId} className="project-status">
-                              — {r.questionStatement} · {GAP_CLASS_AR[r.gapClass] ?? r.gapClass} · {AVAILABILITY_AR[r.availability] ?? r.availability}
+                              — {spokenQuestion(r)} · {GAP_CLASS_AR[r.gapClass] ?? r.gapClass} · {AVAILABILITY_AR[r.availability] ?? r.availability}
                             </p>
                           ))}
                         </div>
@@ -822,7 +848,7 @@ export default function MakmanAlGhayah() {
                           </p>
                           {knowledgeRequests.map((r) => (
                             <p key={r.requestId} className="project-status">
-                              — {r.questionStatement} · {AVAILABILITY_AR[r.availability] ?? r.availability}
+                              — {spokenQuestion(r)} · {AVAILABILITY_AR[r.availability] ?? r.availability}
                             </p>
                           ))}
                         </div>
