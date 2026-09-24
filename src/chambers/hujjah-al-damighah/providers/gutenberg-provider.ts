@@ -71,6 +71,7 @@
 import { IRepositoryProvider } from '../core/repository-manager';
 import { RepositorySearchResult } from '../domain/evidence.types';
 import { SourceDocument } from '../core/evidence-extractor';
+import { stripBoilerplate } from './sovereign-library-provider';
 
 // ─── GUTENDEX RESPONSE TYPES ──────────────────────────────────────────────────
 
@@ -95,7 +96,14 @@ interface GutendexResponse {
 
 // ─── INTERNAL UTILITIES ───────────────────────────────────────────────────────
 
-const GUTENDEX_SEARCH = 'https://gutendex.com/books/';
+// MEASURED from the production server 2026-09-24: gutendex.com answers 403 to
+// this host on every request — the same refusal Reddit gives, and the reason
+// this provider sat built and unattached while the chamber searched elsewhere
+// for books it could have read. The library's own catalogue answers 200 in
+// ~0.40s, and its text cache answers 200 in ~0.39s. So the library was never
+// unreachable; only the middleman was. This asks Project Gutenberg directly,
+// through its OPDS catalogue feed.
+const GUTENBERG_SEARCH = 'https://www.gutenberg.org/ebooks/search/';
 const GUTENBERG_CACHE = 'https://www.gutenberg.org/cache/epub';
 const EVIDENCE_WINDOW_BYTES = 10240; // 10 KB — sufficient for EvidenceExtractor keyword scoring
 // Measured from the production server: Gutendex answers in ~130ms and the
@@ -103,6 +111,8 @@ const EVIDENCE_WINDOW_BYTES = 10240; // 10 KB — sufficient for EvidenceExtract
 // approached, so a single stalled call held the whole investigation for eight
 // seconds while the Creator waited. Generous against the real numbers, not
 // against a guess.
+// Measured above at ~0.40s for both calls. 3.5s stays generous against the
+// real numbers rather than against a guess.
 const FETCH_TIMEOUT_MS = 3_500;
 
 function buildBookSnippet(book: GutendexBook): string {
@@ -117,6 +127,53 @@ function buildBookSnippet(book: GutendexBook): string {
   return authorNames
     ? `By ${authorNames}.${subjectSample ? ` Subjects: ${subjectSample}.` : ''}${downloads}`
     : book.title;
+}
+
+interface CatalogueBook {
+  readonly bookId: number;
+  readonly title: string;
+  readonly snippet: string;
+}
+
+function readTag(entry: string, tag: string): string {
+  const match = new RegExp(`<${tag}[^>]*>([\s\S]*?)</${tag}>`).exec(entry);
+  if (!match) return '';
+  return match[1]
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Read the books out of an OPDS catalogue feed.
+ *
+ * The feed opens with navigation entries — Authors, Subjects, Bookshelves —
+ * whose ids point at further searches rather than at books. A book's id is
+ * always `/ebooks/{number}.opds`, and that is the only entry kept: anything
+ * else would send the evidence layer to fetch a search page as though it were
+ * a volume.
+ */
+function parseCatalogueFeed(xml: string, limit: number): CatalogueBook[] {
+  const books: CatalogueBook[] = [];
+  const entries = xml.match(/<entry>[\s\S]*?<\/entry>/g) ?? [];
+
+  for (const entry of entries) {
+    const id = /<id>https?:\/\/www\.gutenberg\.org\/ebooks\/(\d+)\.opds<\/id>/.exec(entry);
+    if (!id) continue;
+
+    const title = readTag(entry, 'title');
+    if (!title) continue;
+
+    const author = readTag(entry, 'name');
+    const summary = readTag(entry, 'summary') || readTag(entry, 'content');
+    const snippet = [author ? `By ${author}.` : '', summary].filter(Boolean).join(' ').trim() || title;
+
+    books.push({ bookId: Number(id[1]), title, snippet: snippet.slice(0, 600) });
+    if (books.length >= limit) break;
+  }
+  return books;
 }
 
 function extractNumericBookId(documentId: string): number {
@@ -144,11 +201,11 @@ export class GutenbergProvider implements IRepositoryProvider {
    * RepositoryManager aggregates results across multiple Ministries.
    */
   public async search(query: string, limit: number): Promise<RepositorySearchResult[]> {
-    console.log(`[Gutenberg Provider] Querying Gutendex: "${query}" (limit: ${limit})`);
+    const url = new URL(GUTENBERG_SEARCH);
+    url.searchParams.set('query', query);
+    url.searchParams.set('format', 'opds');
 
-    const url = new URL(GUTENDEX_SEARCH);
-    url.searchParams.set('search', query);
-    url.searchParams.set('languages', 'en');
+    console.log(`[Gutenberg Provider] Querying the library catalogue: "${query}" (limit: ${limit})`);
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -159,18 +216,16 @@ export class GutenbergProvider implements IRepositoryProvider {
       clearTimeout(timer);
     }
     if (!response.ok) {
-      throw new Error(
-        `[GutenbergProvider] Gutendex search failed: HTTP ${response.status}`,
-      );
+      throw new Error(`[GutenbergProvider] Catalogue search failed: HTTP ${response.status}`);
     }
 
-    const data = (await response.json()) as GutendexResponse;
-
-    return data.results.slice(0, limit).map((book, index) => ({
-      id: `book-${book.id}`,
+    return parseCatalogueFeed(await response.text(), limit).map((book, index) => ({
+      id: `book-${book.bookId}`,
       provider: this.providerId,
       title: book.title,
-      snippet: buildBookSnippet(book),
+      snippet: book.snippet,
+      // Position preserves the catalogue's own relevance ordering when the
+      // RepositoryManager merges results from several Ministries.
       relevanceScore: Math.max(0.1, 0.95 - index * 0.05),
     }));
   }
@@ -209,10 +264,30 @@ export class GutenbergProvider implements IRepositoryProvider {
       );
     }
 
+    const raw = await response.text();
+
+    // The file's wrapper repeats the publishing service's name throughout.
+    // A vendor's name must not reach the Creator in any language, so the
+    // wrapper is removed before the text becomes evidence at all.
+    const body = stripBoilerplate(raw);
+    const title = /^\s*Title:\s*(.+)$/m.exec(raw)?.[1]?.trim();
+    const author = /^\s*Author:\s*(.+)$/m.exec(raw)?.[1]?.trim();
+
+    // The citation is the volume itself, which is the evidence's own
+    // provenance — the same standing a narration's collection carries. And
+    // the register is hedged deliberately: these are old books, and what an
+    // old book recounts is recounted, not established.
+    const attributionAr = [
+      title ? `${title}${author ? ` — ${author}` : ''}.` : 'كتابٌ قديم.',
+      'قُرئ جزءٌ من الكتاب لا الكتاب كلّه.',
+      'يُذكر بصيغة: قيل إنّ — فهو منقولٌ لا مقطوعٌ به.',
+    ].join('\n');
+
     return {
       id: documentId,
       provider: this.providerId,
-      content: await response.text(),
-    };
+      content: body.slice(0, EVIDENCE_WINDOW_BYTES).replace(/\s+/g, ' ').trim(),
+      attributionAr,
+    } as SourceDocument;
   }
 }

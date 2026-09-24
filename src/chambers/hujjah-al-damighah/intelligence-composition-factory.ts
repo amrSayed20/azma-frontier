@@ -34,6 +34,7 @@
 import { IntelligenceEngine } from './core/intelligence-engine';
 import { SovereignLibraryProvider } from './providers/sovereign-library-provider';
 import { OpenLibraryProvider } from './providers/open-library-provider';
+import { GutenbergProvider } from './providers/gutenberg-provider';
 import { GoogleTrendsProvider } from './providers/google-trends-provider';
 import { HackerNewsProvider } from './providers/hacker-news-provider';
 import { WikipediaProvider } from './providers/wikipedia-provider';
@@ -106,6 +107,28 @@ export class IntelligenceCompositionFactory {
     // handing back a title page.
     registry.attachProvider('ministry-human-knowledge', new SovereignLibraryProvider());
     registry.attachProvider('ministry-human-knowledge', new OpenLibraryProvider());
+    // ── THE OLD BOOKS, RESTORED AT THE FOUNDER'S INSTRUCTION ─────────────
+    //
+    //   GutenbergProvider was built, kept, and never attached. The comment
+    //   at the head of OpenLibraryProvider says it «replaces» Gutenberg for
+    //   being English-only — and the replacement is not equivalent: Open
+    //   Library is a CATALOGUE, answering with titles, subjects and a first
+    //   sentence. Gutenberg is a CORPUS, answering with the text of the book
+    //   itself. Evidence is extracted from text; a catalogue record has none
+    //   to give.
+    //
+    //   English-only was never the obstacle it was taken for: the chamber
+    //   already renders an Arabic question into the terms an English
+    //   catalogue indexes (toSearchLanguage in sovereign-language-bridge),
+    //   which exists precisely so that libraries like this one can be asked.
+    //
+    //   Its standing is already ruled on and unchanged: `gutenberg` sits in
+    //   DOCUMENTED_SOURCE_KEYS, never in SCRIPTURE. So a very old book reaches
+    //   the Creator as something recounted — the hedged register the chamber
+    //   reserves for what is transmitted rather than established. That is
+    //   exactly what old histories and old religious tales are, and stating
+    //   them any more firmly than that would be the error.
+    registry.attachProvider('ministry-human-knowledge', new GutenbergProvider());
     registry.attachProvider('ministry-business-intelligence', new GoogleTrendsProvider());
     registry.attachProvider('ministry-business-intelligence', new HackerNewsProvider());
     // Reddit is detached, not disabled. Measured from the production server it

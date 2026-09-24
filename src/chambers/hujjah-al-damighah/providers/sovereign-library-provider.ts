@@ -86,7 +86,16 @@ export function parseLibraryId(documentId: string): { workId: string; words: str
 }
 
 /** Gutenberg wraps every text in a licence header and footer. */
-function stripBoilerplate(raw: string): string {
+/**
+ * Remove the library's own wrapper from a volume's text.
+ *
+ * Exported because GutenbergProvider reads volumes in this same format, and
+ * because what it removes is not merely noise: the wrapper repeats the name of
+ * the service that published the file. A vendor's name must never reach the
+ * Creator — not in English, and not translated either. Stripping it is part of
+ * the Knowledge Source Abstraction Principle, not a tidying step.
+ */
+export function stripBoilerplate(raw: string): string {
   const start = raw.indexOf('START OF THE PROJECT GUTENBERG');
   const from = start === -1 ? 0 : raw.indexOf('\n', start) + 1;
   const end = raw.indexOf('END OF THE PROJECT GUTENBERG');
