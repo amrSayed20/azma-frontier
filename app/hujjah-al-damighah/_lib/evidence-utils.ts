@@ -403,3 +403,30 @@ export function generateNextInvestigation(query: string, buckets: EvidenceBucket
   }
   return `ما السياق التاريخي والفلسفي الذي يُعزز نتائج هذا التحقيق؟`;
 }
+
+/**
+ * Shape the composed answer the Creator actually reads.
+ *
+ * ─── MEASURED BY OPERATING IT, 2026-09-24 ────────────────────────────────────
+ *
+ *   The three shaping buttons were pressed on the live chamber and the page
+ *   did not move: 962 characters before «موجز» and 962 after. `verdictText`
+ *   above shapes only the statistical summary, and that summary is rendered
+ *   ONLY when no answer was composed. Once the composition was repaired the
+ *   answer appeared, the summary stopped appearing, and the shaper became a
+ *   control over something nobody could see.
+ *
+ *   It shapes the answer now, which is the thing being read. The evidence is
+ *   untouched and no investigation is repeated — the same finding, said at
+ *   three lengths, exactly as the control promises.
+ */
+export function shapeAnswer(answer: string, format: OutputFormat): string {
+  const text = answer.trim();
+  if (format !== 'short') return text;
+
+  // The first complete sentence. Arabic prose ends on «.» or «؟» or «!» —
+  // and a trailing marker is kept, because a sentence without its full stop
+  // reads as a sentence that was cut off.
+  const end = text.search(/[.؟!]\s/);
+  return end === -1 ? text : text.slice(0, end + 1);
+}

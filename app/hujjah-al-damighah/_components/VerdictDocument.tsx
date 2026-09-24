@@ -7,6 +7,7 @@ import {
   bucketEvidence,
   resolveKnowledgeLayer,
   verdictText,
+  shapeAnswer,
   generateVerdictExplanation,
   generateUnknownRemains,
   generateNextInvestigation,
@@ -56,6 +57,8 @@ function VField({
 
 export function VerdictDocument({ dto, query, domain, outputFormat, onFormatChange }: Props) {
   const vText       = verdictText(dto, outputFormat, query, domain);
+  // The shaper governs what is actually read: the composed answer.
+  const shownAnswer = dto.synthesizedAnswer ? shapeAnswer(dto.synthesizedAnswer, outputFormat) : null;
   const buckets     = bucketEvidence(dto);
   const pct         = Math.round(dto.averageEvidenceScore * 100);
   const explanation = generateVerdictExplanation(dto, domain);
@@ -115,8 +118,13 @@ export function VerdictDocument({ dto, query, domain, outputFormat, onFormatChan
 
       <div className="vd-fields">
         <VField label="الموضوع"         value={query}    />
-        {dto.synthesizedAnswer && (
-          <VField label="الإجابة"         value={dto.synthesizedAnswer} large />
+        {shownAnswer && (
+          <VField label="الإجابة"         value={shownAnswer} large />
+        )}
+        {/* At full length the Creator also gets the measurement behind the
+            answer — how many layers were examined, and how well they matched. */}
+        {shownAnswer && outputFormat === 'long' && (
+          <VField label="خلف الإجابة"     value={vText} />
         )}
         {!dto.synthesizedAnswer && (
           <VField label="الملخص"          value={vText}    large />
