@@ -16,6 +16,7 @@ import { createCouncilRuntime } from '../../core/sovereign-high-council-runtime'
 import { measureOperationalState } from '../../operational-truth/measure';
 import { readEmpireFacts, say } from '../../operational-truth/empire-facts';
 import { getDb } from '../../persistent-storage';
+import { CHAMBER_TRUTH } from '../../chamber-truth';
 
 export type RuntimeHealth = 'healthy' | 'degraded' | 'critical';
 export type FounderExperienceLevel = 'low' | 'medium' | 'high' | 'critical';
@@ -318,6 +319,31 @@ export function buildSovereignHighCouncilRuntimeView(input?: {
   const tierAr: Record<string, string> = { NORMAL: 'سليمة', WARNING: 'تحذير', CRITICAL: 'حرجة' };
   const missingRevenue = operational.missingRevenueProviders;
 
+  // The Empire's own declared capabilities — the registry is the single
+  // authority for what the Chambers can do, so «evolution» and «the future
+  // laboratory» are answered from it rather than from a simulation id minted
+  // by this request.
+  const chambers = Object.values(CHAMBER_TRUTH);
+  const declaredCapabilities = chambers.reduce((sum, chamber) => sum + chamber.capabilities.length, 0);
+  const deferredResponsibilities = chambers.reduce((sum, chamber) => sum + chamber.deferred.length, 0);
+
+  // What the Empire is actually unwell about, in its own words. Empty means
+  // nothing measured is wrong — which is itself a truthful thing to say.
+  const standingConcerns: string[] = [
+    ...missingRevenue.map((provider) => `${provider.nameAr} غير مهيّأ`),
+    ...(operational.memoryTier !== 'NORMAL' && operational.heapUtilizationPct !== null
+      ? [`الذاكرة ${operational.heapUtilizationPct}٪ — ${tierAr[operational.memoryTier]}`] : []),
+    ...(operational.diskTier !== 'NORMAL' && operational.diskUsedPct !== null
+      ? [`القرص ${operational.diskUsedPct}٪ — ${tierAr[operational.diskTier]}`] : []),
+    ...(facts === null ? ['تعذّرت قراءة سجلّات الإمبراطوريّة'] : []),
+  ];
+  const uptimeSeconds = Math.floor(process.uptime());
+  const uptimeAr = uptimeSeconds >= 86400
+    ? `${Math.floor(uptimeSeconds / 86400)} يوماً`
+    : uptimeSeconds >= 3600
+      ? `${Math.floor(uptimeSeconds / 3600)} ساعة`
+      : `${Math.floor(uptimeSeconds / 60)} دقيقة`;
+
   const constitutionState = constitutionRuntime.getState();
   const executiveSnapshot = executiveRuntime.getSnapshot();
   const strategicSnapshot = strategicRuntime.getSnapshot();
@@ -405,23 +431,40 @@ export function buildSovereignHighCouncilRuntimeView(input?: {
 
   const hallInsights: Readonly<Record<string, HallRuntimeInsight>> = {
     'ch-sovereign-assistant': {
-      headline: councilResult.unifiedPackage.founderBriefing.summary,
-      details: councilResult.unifiedPackage.founderBriefing.keySignals,
+      // Was the Al-Wateen briefing summary — a sentence composed about a
+      // runtime built for this one request. It now says what is actually
+      // wrong, or says plainly that nothing measured is.
+      headline: standingConcerns.length > 0
+        ? `ما يستدعي نظرك الآن: ${standingConcerns.length}.`
+        : 'لا شيء ممّا يُقاس يستدعي نظرك الآن.',
+      details: standingConcerns.length > 0
+        ? standingConcerns
+        : [
+            `الحالة التشغيليّة: ${tierAr[operational.overallTier]}`,
+            `المُنشئون: ${say(facts?.creators ?? null)}`,
+            `مُقاسٌ لحظةَ سؤالك، لا مُستنتَج.`,
+          ],
     },
     'ch-empire-pulse': {
-      headline: `Bus healthy: ${busDiagnostics.healthy ? 'yes' : 'no'} | Coherence: ${councilResult.unifiedPackage.correlation.coherenceScore}`,
+      // Was a bus counter belonging to this request. A pulse is the living
+      // platform: how long it has stood, who is inside it, and its condition.
+      headline: `الإمبراطوريّة قائمةٌ منذ ${uptimeAr} — الحالة ${tierAr[operational.overallTier]}.`,
       details: [
-        `Published messages: ${busSnapshot.totalPublishedMessages}`,
-        `Routed messages: ${busSnapshot.totalRoutedMessages}`,
-        `Synchronization cycles: ${busSnapshot.totalSynchronizationCycles}`,
+        `جلساتٌ قائمة: ${say(facts?.activeSessions ?? null)}`,
+        `المُنشئون: ${say(facts?.creators ?? null)}`,
+        operational.heapUtilizationPct === null
+          ? 'الذاكرة: تعذّر القياس'
+          : `الذاكرة ${operational.heapUtilizationPct}٪`,
       ],
     },
     'ch-architectural-health': {
-      headline: `Constitution loaded: ${constitutionState?.loaded ? 'yes' : 'no'}`,
+      headline: constitutionState?.loaded
+        ? `الدستور محمَّل — ${constitutionState.articleCount} مادّة و${constitutionState.policyCount} سياسة.`
+        : 'الدستور غير محمَّل.',
       details: [
-        `Articles: ${constitutionState?.articleCount ?? 0}`,
-        `Policies: ${constitutionState?.policyCount ?? 0}`,
-        `Events: ${constitutionState?.eventCount ?? 0}`,
+        `الحجرات المُعلَنة: ${chambers.length}`,
+        `القدرات المُعلَنة: ${declaredCapabilities}`,
+        `مسؤوليّاتٌ مؤجَّلة ومُقرّ بها: ${deferredResponsibilities}`,
       ],
     },
     'ch-infrastructure-health': {
@@ -455,8 +498,10 @@ export function buildSovereignHighCouncilRuntimeView(input?: {
       ],
     },
     'ch-evolution-intelligence': {
-      headline: `Recommended future path: ${futurePackage.recommendedPathId}`,
-      details: futurePackage.rankedFutures.slice(0, 3).map((future) => `${future.pathId} rank ${future.rank} score ${future.score.toFixed(2)}`),
+      // Was a simulation id minted by this very request. Growth is what the
+      // Empire can actually do, and the Truth registry is its only authority.
+      headline: `${declaredCapabilities} قدرةً مُعلَنة عبر ${chambers.length} حجرات.`,
+      details: chambers.map((chamber) => `${chamber.chamberId}: ${chamber.capabilities.length} قدرة`).slice(0, 5),
     },
     'ch-security-intelligence': {
       headline: `جلساتٌ قائمة: ${say(facts?.activeSessions ?? null)} لـ${say(facts?.creators ?? null)} مُنشئ.`,
@@ -467,12 +512,28 @@ export function buildSovereignHighCouncilRuntimeView(input?: {
       ],
     },
     'ch-founder-command': {
-      headline: councilResult.doctrinePackage.recommendation.justification.constitutionalExplanation,
-      details: councilResult.doctrinePackage.ranking.slice(0, 3).map((ranked) => `${ranked.pathId}: ${ranked.why}`),
+      // Was the doctrine engine's English justification for a path it had
+      // just invented. Governance is what actually awaits a decision.
+      headline: missingRevenue.length > 0
+        ? `قرارٌ ينتظرك: ${missingRevenue.length} مفتاحَ دفعٍ غير مهيّأ يمنع كلّ إيراد.`
+        : standingConcerns.length > 0
+          ? `قرارٌ ينتظرك: ${standingConcerns[0]}.`
+          : 'لا قرارَ حوكمةٍ معلّقاً ممّا يُقاس.',
+      details: [
+        ...missingRevenue.map((provider) => `${provider.nameAr}: يُهيَّأ في بيئة الخادم`),
+        `القدرات المُعلَنة تحت حكمك: ${declaredCapabilities}`,
+        `المُنشئون: ${say(facts?.creators ?? null)}`,
+      ].slice(0, 4),
     },
     'ch-emergency-command': {
-      headline: councilResult.unifiedPackage.understanding.constitutionalSummary,
-      details: councilResult.unifiedPackage.recommendations.map((recommendation) => recommendation.summary).slice(0, 3),
+      headline: operational.overallTier === 'CRITICAL'
+        ? `حالةٌ حرجة: ${standingConcerns[0] ?? 'غير محدّدة'}.`
+        : standingConcerns.length > 0
+          ? `تحذير: ${standingConcerns[0]}.`
+          : 'لا حالةَ طوارئ ممّا يُقاس.',
+      details: standingConcerns.length > 0
+        ? standingConcerns
+        : [`الحالة التشغيليّة: ${tierAr[operational.overallTier]}`],
     },
     'ch-development-observatory': {
       // «Executive packages: 1» stood here — a counter belonging to a runtime
@@ -486,8 +547,16 @@ export function buildSovereignHighCouncilRuntimeView(input?: {
       ],
     },
     'ch-broadcast-center': {
-      headline: `Routed messages: ${busSnapshot.totalRoutedMessages}`,
-      details: busApi.recentRouted(3).map((message) => `${message.source} -> ${message.target} (${message.priority})`),
+      // «Routed messages: 48» counted this request's internal bus, and was
+      // read as the platform's communications. The Empire keeps no record of
+      // anything broadcast to Creators, so the hall says that instead of
+      // borrowing a number that means something else.
+      headline: 'لا سجلَّ بثٍّ إلى المُنشئين بعد.',
+      details: [
+        `المُنشئون الذين سيبلغهم البثّ: ${say(facts?.creators ?? null)}`,
+        'لا تملك الإمبراطوريّة اليوم حدّاً يُرسل خطاباً إلى مُنشئيها.',
+        'هذا إقرارٌ لا قياس.',
+      ],
     },
     'ch-gift-distribution': {
       headline: missingRevenue.length > 0
@@ -500,8 +569,14 @@ export function buildSovereignHighCouncilRuntimeView(input?: {
       ],
     },
     'ch-future-laboratory': {
-      headline: futurePackage.recommendationSummary,
-      details: futurePackage.rankedFutures.slice(0, 3).map((future) => `${future.pathId} probability ${future.probability.toFixed(3)}`),
+      // The honest future is what the Empire has written down as not yet
+      // built, not a probability attached to an invented path.
+      headline: deferredResponsibilities === 0
+        ? 'لا مسؤوليّةَ مؤجَّلة مُعلَنة.'
+        : `${deferredResponsibilities} مسؤوليّةً مؤجَّلة، مُقرٌّ بها في سجلّ الحقيقة.`,
+      details: chambers
+        .flatMap((chamber) => chamber.deferred.map((item) => `${chamber.chamberId}: ${item.responsibility}`))
+        .slice(0, 4),
     },
   };
 
