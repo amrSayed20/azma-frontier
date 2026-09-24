@@ -33,7 +33,7 @@ export class WatchdogEngine {
           source: COMPONENTS.WATCHDOG,
           payload: {
             severity: NotificationSeverity.CRITICAL,
-            title: 'Heartbeat stalled',
+            title: 'توقّف النبض',
             message: 'Watchdog detected heartbeat timeout.'
           }
         });

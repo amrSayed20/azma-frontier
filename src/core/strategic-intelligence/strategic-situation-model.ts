@@ -107,7 +107,7 @@ export class StrategicSituationModel {
       category: 'constitutional-health',
       polarity: input.constitutionState.loaded ? 'positive' : 'negative',
       strength: input.constitutionState.loaded ? 90 : 10,
-      summary: 'Constitution runtime load state for strategic continuity.',
+      summary: 'حالةُ تحميل الدستور وقت التشغيل، لاستمراريّةٍ استراتيجيّة.',
     });
 
     signals.push({
@@ -116,7 +116,7 @@ export class StrategicSituationModel {
       category: 'architectural-health',
       polarity: input.constitutionState.policyCount >= 5 ? 'positive' : 'neutral',
       strength: Math.min(100, 40 + input.constitutionState.policyCount * 5),
-      summary: 'Policy density as proxy for governance depth.',
+      summary: 'كثافةُ السياسات دليلاً على عمق الحوكمة.',
     });
 
     signals.push({
@@ -125,7 +125,7 @@ export class StrategicSituationModel {
       category: 'infrastructure-health',
       polarity: input.constitutionState.eventCount > 0 ? 'positive' : 'neutral',
       strength: Math.min(100, 30 + input.constitutionState.eventCount),
-      summary: 'Event flow indicates runtime liveliness.',
+      summary: 'تدفّقُ الأحداث يدلّ على حياة التشغيل.',
     });
 
     if (input.executiveState) {
@@ -135,7 +135,7 @@ export class StrategicSituationModel {
         category: 'platform-evolution',
         polarity: input.executiveState.totalDecisionPackages > 0 ? 'positive' : 'neutral',
         strength: Math.min(100, 35 + input.executiveState.totalDecisionPackages * 2),
-        summary: 'Executive package throughput supports strategic learning loops.',
+        summary: 'إنتاجيّةُ الحزم التنفيذيّة تسند دوراتِ التعلّم الاستراتيجيّ.',
       });
     }
 

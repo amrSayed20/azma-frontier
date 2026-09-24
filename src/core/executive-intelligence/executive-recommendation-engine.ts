@@ -12,8 +12,8 @@ export class ExecutiveRecommendationEngine {
     recommendations.push({
       recommendationId: `exec-rec-${input.action.actionId}-constitutional-brief`,
       actionId: input.action.actionId,
-      title: 'Submit Constitutional Executive Brief',
-      summary: 'Deliver full constitutional understanding, risk analysis, and recommendation package to Founder.',
+      title: 'ارفع الإحاطةَ التنفيذيّة الدستوريّة',
+      summary: 'سلِّم المؤسسَ فهماً دستوريّاً كاملاً وتحليلَ خطرٍ وحزمةَ توصية.',
       requiresFounderApproval: true,
       targetDecision: this.mapDecision(input.evaluation.decision),
       executionConstraints: ['no-direct-founder-execution', 'runtime-only', 'constitutional-obedience'],
@@ -23,8 +23,8 @@ export class ExecutiveRecommendationEngine {
       recommendations.push({
         recommendationId: `exec-rec-${input.action.actionId}-escalation`,
         actionId: input.action.actionId,
-        title: 'Initiate Executive Escalation',
-        summary: 'Escalate to Founder with critical-risk context and constitutional evidence.',
+        title: 'ابدأ التصعيدَ التنفيذيّ',
+        summary: 'صعِّد إلى المؤسس بسياق الخطر الحرج والدليل الدستوريّ.',
         requiresFounderApproval: true,
         targetDecision: 'escalate',
         executionConstraints: ['founder-approval-required', 'no-automatic-dispatch'],
@@ -35,8 +35,8 @@ export class ExecutiveRecommendationEngine {
       recommendations.push({
         recommendationId: `exec-rec-${input.action.actionId}-preparedness`,
         actionId: input.action.actionId,
-        title: 'Prepare Conditional Execution Readiness',
-        summary: 'Prepare non-executing readiness steps for post-approval dispatch.',
+        title: 'هيّئ جاهزيّةَ تنفيذٍ مشروطة',
+        summary: 'هيّئ خطواتِ جاهزيّةٍ لا تُنفِّذ، لتُرسَل بعد الموافقة.',
         requiresFounderApproval: false,
         targetDecision: 'approve',
         executionConstraints: ['readiness-only', 'dispatch-after-founder-approval'],
@@ -46,7 +46,7 @@ export class ExecutiveRecommendationEngine {
     recommendations.push({
       recommendationId: `exec-rec-${input.action.actionId}-priority`,
       actionId: input.action.actionId,
-      title: 'Apply Executive Priority Control',
+      title: 'طبِّق ضبطَ الأولويّة التنفيذيّة',
       summary: `Apply executive priority ${priority.executivePriority} with weight ${priority.weight}.`,
       requiresFounderApproval: false,
       targetDecision: 'defer',

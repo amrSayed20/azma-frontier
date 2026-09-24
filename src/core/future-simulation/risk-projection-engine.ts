@@ -16,7 +16,7 @@ export class RiskProjectionEngine {
         pathId: path.pathId,
         level: this.toLevel(riskScore),
         score: riskScore,
-        summary: 'Risk projection reflects constitutional alignment, resource pressure, and resilience impacts.',
+        summary: 'إسقاطُ الخطر يعكس المحاذاةَ الدستوريّة وضغطَ الموارد وأثرَ المتانة.',
       };
     });
   }

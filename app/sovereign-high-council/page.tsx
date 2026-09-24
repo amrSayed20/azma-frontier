@@ -37,6 +37,27 @@ interface CommandHallCard {
  * Identifiers are not prose: a path id, a version string and Al-Wateen's own
  * name stay as they are, because they name things rather than speak to anyone.
  */
+/**
+ * Machine words the Council printed raw: «escalate», «partial», «low»,
+ * «awaiting-founder-approval». They are states, not sentences, and a state
+ * shown in the machine's own spelling is not a report to a Founder.
+ */
+const MACHINE_WORD_AR: Record<string, string> = {
+  escalate: 'تصعيد', proceed: 'مضيّ', hold: 'إيقاف', reject: 'رفض',
+  compliant: 'ممتثل', 'non-compliant': 'غير ممتثل', partial: 'جزئيّ',
+  low: 'منخفض', medium: 'متوسّط', high: 'عالٍ', critical: 'حرج',
+  'awaiting-founder-approval': 'بانتظار موافقة المؤسس',
+  approved: 'مُعتمَد', pending: 'معلّق', unavailable: 'غير متاح',
+  yes: 'نعم', no: 'لا', healthy: 'سليم', degraded: 'مُنهَك',
+};
+
+/** A value the Council prints: in the Empire's words when it knows them. */
+function spoken(value: unknown): string {
+  if (value === null || value === undefined) return '—';
+  const text = String(value);
+  return MACHINE_WORD_AR[text] ?? text;
+}
+
 const SYSTEM_STATUS_AR: Record<string, string> = {
   healthy:  'سليمة',
   degraded: 'مُنهَكة',
@@ -302,9 +323,9 @@ export default function SovereignHighCouncilPage() {
                   <p className="text-sm text-gray-300">{runtimeView?.constitutionalIntelligenceSummary ?? 'التركيب الدستوريّ لم يصل بعد.'}</p>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-400">
                     <RuntimeFact label="محمَّلة" value={runtimeView?.constitutionalStatus.loaded ? 'نعم' : 'لا'} />
-                    <RuntimeFact label="الإصدار" value={runtimeView?.constitutionalStatus.version ?? 'N/A'} />
-                    <RuntimeFact label="القرار" value={runtimeView?.constitutionalStatus.decision ?? 'N/A'} />
-                    <RuntimeFact label="الامتثال" value={runtimeView?.constitutionalStatus.complianceStatus ?? 'N/A'} />
+                    <RuntimeFact label="الإصدار" value={spoken(runtimeView?.constitutionalStatus.version)} />
+                    <RuntimeFact label="القرار" value={spoken(runtimeView?.constitutionalStatus.decision)} />
+                    <RuntimeFact label="الامتثال" value={spoken(runtimeView?.constitutionalStatus.complianceStatus)} />
                   </div>
                 </div>
               </div>
@@ -314,8 +335,8 @@ export default function SovereignHighCouncilPage() {
                   <h3 className="text-sm font-semibold text-gold mb-2">الإحاطة التنفيذيّة</h3>
                   <p className="text-sm text-gray-300">{runtimeView?.executiveBriefing.summary ?? 'الإحاطة التنفيذيّة لم تصل بعد.'}</p>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-400">
-                    <RuntimeFact label="الخطر" value={runtimeView?.executiveBriefing.overallRisk ?? 'N/A'} />
-                    <RuntimeFact label="الخطّة" value={runtimeView?.executiveBriefing.planStatus ?? 'N/A'} />
+                    <RuntimeFact label="الخطر" value={spoken(runtimeView?.executiveBriefing.overallRisk)} />
+                    <RuntimeFact label="الخطّة" value={spoken(runtimeView?.executiveBriefing.planStatus)} />
                   </div>
                 </div>
 
@@ -352,9 +373,9 @@ export default function SovereignHighCouncilPage() {
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
                   <h3 className="text-sm font-semibold text-gold mb-2">مستويات المؤسس</h3>
                   <div className="grid grid-cols-3 gap-2">
-                    <RuntimeLevel label="الثقة" value={runtimeView?.founderExperience.confidenceLevel ?? 'N/A'} />
-                    <RuntimeLevel label="الخطر" value={runtimeView?.founderExperience.riskLevel ?? 'N/A'} />
-                    <RuntimeLevel label="الفرصة" value={runtimeView?.founderExperience.opportunityLevel ?? 'N/A'} />
+                    <RuntimeLevel label="الثقة" value={spoken(runtimeView?.founderExperience.confidenceLevel)} />
+                    <RuntimeLevel label="الخطر" value={spoken(runtimeView?.founderExperience.riskLevel)} />
+                    <RuntimeLevel label="الفرصة" value={spoken(runtimeView?.founderExperience.opportunityLevel)} />
                   </div>
                 </div>
               </div>
@@ -365,7 +386,7 @@ export default function SovereignHighCouncilPage() {
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     <RuntimeFact label="مُتزامن" value={runtimeView?.synchronizationStatus.synchronized ? 'نعم' : 'لا'} />
                     <RuntimeFact label="الناقل" value={runtimeView?.synchronizationStatus.busHealthy ? 'سليم' : 'حرج'} />
-                    <RuntimeFact label="Al-Wateen" value={runtimeView?.synchronizationStatus.alWateenHealthy ? 'سليم' : 'حرج'} />
+                    <RuntimeFact label="الوتين" value={runtimeView?.synchronizationStatus.alWateenHealthy ? 'سليم' : 'حرج'} />
                     <RuntimeFact label="التماسك" value={runtimeView?.synchronizationStatus.coherenceScore ?? 0} />
                     <RuntimeFact label="الطابور" value={runtimeView?.synchronizationStatus.queueDepth ?? 0} />
                     <RuntimeFact label="المحجوب" value={runtimeView?.synchronizationStatus.invalidMessagesBlocked ?? 0} />
@@ -375,7 +396,7 @@ export default function SovereignHighCouncilPage() {
                 <div className="rounded-xl border border-gold/10 bg-slate-900/50 p-5">
                   <h3 className="text-sm font-semibold text-gold mb-2">شخصيّة الوتين</h3>
                   <p className="text-sm text-gray-300">{runtimeView?.personality.greeting ?? 'لا ردّ بعد.'}</p>
-                  <p className="text-xs text-gray-400 mt-2">{runtimeView?.personality.assessment ?? 'N/A'}</p>
+                  <p className="text-xs text-gray-400 mt-2">{runtimeView?.personality.assessment ?? '—'}</p>
                 </div>
               </div>
 
@@ -581,12 +602,12 @@ function CommandHallDetail({ hall, runtimeView, insight, onBack }: CommandHallDe
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
               <div className="rounded-lg border border-gold/10 bg-slate-900/40 p-4">
                 <h3 className="text-sm font-semibold text-gold mb-2">إحاطة المؤسس</h3>
-                <p className="text-sm text-gray-300">{runtimeView?.founderBriefings.founder.summary ?? 'N/A'}</p>
+                <p className="text-sm text-gray-300">{runtimeView?.founderBriefings.founder.summary ?? '—'}</p>
               </div>
               <div className="rounded-lg border border-gold/10 bg-slate-900/40 p-4">
                 <h3 className="text-sm font-semibold text-gold mb-2">Doctrine Justification</h3>
-                <p className="text-xs text-gray-300">Confidence: {runtimeView?.doctrine.confidence ?? 'N/A'}</p>
-                <p className="text-xs text-gray-400 mt-1">{runtimeView?.doctrine.confidenceReason ?? 'N/A'}</p>
+                <p className="text-xs text-gray-300">Confidence: {runtimeView?.doctrine.confidence ?? '—'}</p>
+                <p className="text-xs text-gray-400 mt-1">{runtimeView?.doctrine.confidenceReason ?? '—'}</p>
               </div>
             </div>
           </div>

@@ -54,7 +54,7 @@ export class BriefingPreparationEngine {
     return {
       briefingId: `alw-brief-strategic-${Date.now().toString(36)}`,
       audience: 'strategic',
-      summary: 'Long-horizon strategic constitutional intelligence briefing.',
+      summary: 'إحاطةٌ دستوريّةٌ استراتيجيّةٌ بعيدةُ المدى.',
       keySignals: [
         understanding.strategicSummary,
         understanding.perceptionSummary,

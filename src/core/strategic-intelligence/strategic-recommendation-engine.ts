@@ -16,16 +16,16 @@ export class StrategicRecommendationEngine {
     const recommendations: StrategicRecommendation[] = [
       {
         recommendationId: 'str-rec-founder-briefing',
-        title: 'Founder Strategic Briefing',
-        summary: 'Submit long-horizon strategic package for constitutional and empire-direction guidance.',
+        title: 'إحاطةُ المؤسس الاستراتيجيّة',
+        summary: 'ارفع حزمةً استراتيجيّةً بعيدةَ المدى لتوجيه الدستور ووجهة الإمبراطوريّة.',
         targetAudience: 'founder',
         advisoryOnly: true,
         requiresFounderApproval: true,
       },
       {
         recommendationId: 'str-rec-exec-alignment',
-        title: 'Executive Strategic Alignment',
-        summary: 'Advise Executive Intelligence on strategic priorities and threat posture for future planning cycles.',
+        title: 'المحاذاةُ التنفيذيّة الاستراتيجيّة',
+        summary: 'أشِر على الوعي التنفيذيّ بالأولويّات الاستراتيجيّة وموقف التهديد لدورات التخطيط القادمة.',
         targetAudience: 'executive-intelligence',
         advisoryOnly: true,
         requiresFounderApproval: false,
@@ -35,8 +35,8 @@ export class StrategicRecommendationEngine {
     if (threats.some((threat) => threat.level === 'critical' || threat.level === 'high')) {
       recommendations.push({
         recommendationId: 'str-rec-risk-shield',
-        title: 'Strategic Risk Shield',
-        summary: 'Advise preemptive constitutional and architecture safeguards to contain emerging strategic risks.',
+        title: 'درعُ الخطر الاستراتيجيّ',
+        summary: 'أشِر بضماناتٍ دستوريّةٍ وبنيويّةٍ استباقيّة لاحتواء الأخطار الاستراتيجيّة الناشئة.',
         targetAudience: 'founder',
         advisoryOnly: true,
         requiresFounderApproval: true,
@@ -46,8 +46,8 @@ export class StrategicRecommendationEngine {
     if (opportunities.length > threats.length && forecast.confidence >= 75 && objectives.every((objective) => objective.status !== 'at-risk')) {
       recommendations.push({
         recommendationId: 'str-rec-growth-window',
-        title: 'Strategic Growth Window',
-        summary: 'Advise readiness posture to capitalize on long-horizon opportunities under constitutional safeguards.',
+        title: 'نافذةُ نموٍّ استراتيجيّة',
+        summary: 'أشِر بموقف جاهزيّةٍ لاقتناص الفرص بعيدة المدى ضمن الضمانات الدستوريّة.',
         targetAudience: 'executive-intelligence',
         advisoryOnly: true,
         requiresFounderApproval: false,

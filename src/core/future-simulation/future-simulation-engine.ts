@@ -66,7 +66,7 @@ export class FutureSimulationEngine {
       constitutionalOutcomes,
       rankedFutures,
       recommendedPathId,
-      recommendationSummary: 'Recommended path maximizes constitutional safety while minimizing long-horizon risk.',
+      recommendationSummary: 'المسارُ المُوصى به يُعظّم الأمان الدستوريّ ويُقلّل الخطر بعيد المدى.',
       executionDirective: 'simulation-only',
     };
 

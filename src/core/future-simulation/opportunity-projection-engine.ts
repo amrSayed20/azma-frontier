@@ -15,7 +15,7 @@ export class OpportunityProjectionEngine {
       return {
         pathId: path.pathId,
         score,
-        summary: 'Opportunity projection reflects compounding constitutional and platform advantages.',
+        summary: 'إسقاطُ الفرصة يعكس تراكمَ المزايا الدستوريّة ومزايا المنصّة.',
       };
     });
   }

@@ -17,31 +17,31 @@ export class StrategicOpportunityAnalyzer {
     if (situation.platformEvolutionHealth >= 80) {
       opportunities.push({
         opportunityId: 'opp-platform-compounding',
-        title: 'Platform Compounding Capacity',
+        title: 'قدرةُ المنصّة على التراكم',
         confidence: situation.platformEvolutionHealth,
         impactHorizon: 'multi-year',
-        rationale: 'High platform evolution health indicates readiness for compounded strategic growth.',
+        rationale: 'صحّةُ تطوّر المنصّة عاليةٌ، وهي تدلّ على جاهزيّةٍ لنموٍّ استراتيجيٍّ متراكم.',
       });
     }
 
     if (situation.constitutionalHealth >= 85) {
       opportunities.push({
         opportunityId: 'opp-constitutional-acceleration',
-        title: 'Constitutional Alignment Acceleration',
+        title: 'تسريعُ المحاذاة الدستوريّة',
         confidence: situation.constitutionalHealth,
         impactHorizon: 'annual',
-        rationale: 'Strong constitutional health enables faster strategic alignment cycles.',
+        rationale: 'صحّةُ الدستور قويّة، وهي تتيح دوراتِ محاذاةٍ استراتيجيّةٍ أسرع.',
       });
     }
 
     opportunities.push({
       opportunityId: 'opp-strategic-memory-density',
-      title: 'Strategic Memory Density Growth',
+      title: 'نموُّ كثافة الذاكرة الاستراتيجيّة',
       // The one standing opportunity: its confidence is the count it rests on,
       // bounded, rather than a number chosen to look plausible.
       confidence: Math.min(100, situation.executivePackageCount * 4),
       impactHorizon: 'long-term',
-      rationale: 'Continuous package generation increases long-horizon strategic intelligence depth.',
+      rationale: 'توليدُ الحزم المتّصل يزيد عمقَ الوعي الاستراتيجيّ بعيدَ المدى.',
     });
 
     return opportunities;

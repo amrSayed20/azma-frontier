@@ -16,7 +16,7 @@ export class StrategicForecastEngine {
       projectedArchitecturalHealth: this.project(situation.architecturalHealth, threatPenalty - 2),
       projectedInfrastructureHealth: this.project(situation.infrastructureHealth, threatPenalty + 2),
       projectedPlatformEvolutionHealth: this.project(situation.platformEvolutionHealth, threatPenalty - 1),
-      narrative: 'Forecast projects strategic resilience when advisory recommendations are adopted within constitutional boundaries.',
+      narrative: 'يتوقّع الإسقاطُ متانةً استراتيجيّةً متى اعتُمدت التوصياتُ الاستشاريّة داخل الحدود الدستوريّة.',
     };
   }
 

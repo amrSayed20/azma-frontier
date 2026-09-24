@@ -10,27 +10,27 @@ export class StrategicObjectiveTracker {
     return [
       {
         objectiveId: 'obj-constitutional-durability',
-        title: 'Maintain constitutional durability above strategic threshold.',
+        title: 'أبقِ متانةَ الدستور فوق العتبة الاستراتيجيّة.',
         owner: 'strategic-intelligence',
         status: forecast.projectedConstitutionalHealth >= 75 ? 'on-track' : 'at-risk',
         progress: Math.min(100, forecast.projectedConstitutionalHealth),
-        rationale: 'Constitutional projection determines long-horizon governance durability.',
+        rationale: 'الإسقاطُ الدستوريّ يحدّد متانةَ الحوكمة بعيدةَ المدى.',
       },
       {
         objectiveId: 'obj-architecture-coherence',
-        title: 'Preserve architecture coherence through sustained strategic guidance.',
+        title: 'احفظ تماسكَ البنيان بتوجيهٍ استراتيجيٍّ متّصل.',
         owner: 'strategic-intelligence',
         status: highThreatCount > 0 ? 'watch' : 'on-track',
         progress: Math.max(40, forecast.projectedArchitecturalHealth),
-        rationale: 'Threat pressure influences architecture coherence over multi-year horizons.',
+        rationale: 'ضغطُ التهديد يؤثّر في تماسك البنيان عبر آفاقٍ متعدّدة السنوات.',
       },
       {
         objectiveId: 'obj-platform-evolution',
-        title: 'Increase platform evolution health with advisory-only intelligence cycles.',
+        title: 'ارفع صحّةَ تطوّر المنصّة بدوراتِ وعيٍ استشاريّةٍ لا تنفيذيّة.',
         owner: 'strategic-intelligence',
         status: forecast.projectedPlatformEvolutionHealth >= 70 ? 'on-track' : 'watch',
         progress: Math.max(45, forecast.projectedPlatformEvolutionHealth),
-        rationale: 'Strategic intelligence packages drive evolution without direct authority execution.',
+        rationale: 'حزمُ الوعي الاستراتيجيّ تقود التطوّر دون أن تُنفِّذ سلطةً مباشرة.',
       },
     ];
   }

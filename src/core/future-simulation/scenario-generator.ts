@@ -36,7 +36,7 @@ export class ScenarioGenerator {
       actor: 'founder',
       decision: seed % 5 === 0 ? 'escalate' : baseline,
       confidence: this.seededConfidence(seed, 75),
-      rationale: 'Founder decision simulation derived from constitutional state and scenario variance.',
+      rationale: 'محاكاةُ قرار المؤسس، مُشتقّةً من الحالة الدستوريّة وتباين السيناريو.',
     };
   }
 
@@ -47,7 +47,7 @@ export class ScenarioGenerator {
       actor: 'executive',
       decision: seed % 4 === 0 ? 'approve' : baseline,
       confidence: this.seededConfidence(seed + 7, 70),
-      rationale: 'Executive decision simulation derived from latest package and risk-aware variance.',
+      rationale: 'محاكاةُ القرار التنفيذيّ، مُشتقّةً من آخر حزمةٍ وتباينٍ واعٍ بالخطر.',
     };
   }
 
@@ -58,7 +58,7 @@ export class ScenarioGenerator {
       actor: 'strategic',
       decision: seed % 3 === 0 ? 'escalate' : baseline,
       confidence: this.seededConfidence(seed + 13, 68),
-      rationale: 'Strategic decision simulation derived from long-horizon intelligence continuity.',
+      rationale: 'محاكاةُ القرار الاستراتيجيّ، مُشتقّةً من اتّصال الوعي بعيد المدى.',
     };
   }
 
