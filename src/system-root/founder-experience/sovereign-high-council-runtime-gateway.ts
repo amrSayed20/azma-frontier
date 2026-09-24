@@ -13,6 +13,9 @@ import {
   PersonalityRuntime,
 } from '../../core/al-wateen';
 import { createCouncilRuntime } from '../../core/sovereign-high-council-runtime';
+import { measureOperationalState } from '../../operational-truth/measure';
+import { readEmpireFacts, say } from '../../operational-truth/empire-facts';
+import { getDb } from '../../persistent-storage';
 
 export type RuntimeHealth = 'healthy' | 'degraded' | 'critical';
 export type FounderExperienceLevel = 'low' | 'medium' | 'high' | 'critical';
@@ -208,6 +211,18 @@ function deriveHealthStatus(value: number, degradedAt: number, criticalAt: numbe
   return 'healthy';
 }
 
+/**
+ * A hall's insight must be about that hall.
+ *
+ * SEEN on the Council's own screen 2026-09-24: «وعي المال — الإيراد والكلفة»
+ * displayed a sentence about strategic resilience while every payment key was
+ * missing, and «وعي الموارد — المعالجة والذاكرة والتخزين» displayed a sentence
+ * about constitutional safety while the heap sat at 96%. Every hall carried a
+ * name and showed whichever runtime sentence was nearest to hand.
+ *
+ * The halls below that CAN be answered from measurement are answered from it,
+ * and each carries the figures its claim rests on — لسان صدق وبرهان.
+ */
 export function buildSovereignHighCouncilRuntimeView(input?: {
   readonly founderId?: string;
   readonly founderIntent?: string;
@@ -293,6 +308,15 @@ export function buildSovereignHighCouncilRuntimeView(input?: {
     existingFuturePackage: futurePackage,
     trigger,
   });
+
+  // The platform as it actually is, and what it has actually done. One
+  // measurement, one read, shared with /api/health — not a second opinion.
+  const operational = measureOperationalState();
+  const facts = (() => {
+    try { return readEmpireFacts(getDb()); } catch { return null; }
+  })();
+  const tierAr: Record<string, string> = { NORMAL: 'سليمة', WARNING: 'تحذير', CRITICAL: 'حرجة' };
+  const missingRevenue = operational.missingRevenueProviders;
 
   const constitutionState = constitutionRuntime.getState();
   const executiveSnapshot = executiveRuntime.getSnapshot();
@@ -401,29 +425,45 @@ export function buildSovereignHighCouncilRuntimeView(input?: {
       ],
     },
     'ch-infrastructure-health': {
-      headline: `Perception observations: ${perceptionSnapshot.totalObservations}`,
+      headline: `الحالة التشغيليّة: ${tierAr[operational.overallTier]}.`,
       details: [
-        `Perception packages: ${perceptionSnapshot.totalPackages}`,
-        `Last observed package: ${perceptionSnapshot.lastPackageId ?? 'none'}`,
+        operational.heapUtilizationPct === null ? 'الذاكرة: تعذّر القياس' : `الذاكرة ${operational.heapUtilizationPct}٪`,
+        operational.diskUsedPct === null ? 'القرص: تعذّر القياس' : `القرص ${operational.diskUsedPct}٪`,
+        facts === null ? 'قاعدة البيانات: تعذّرت القراءة' : `قاعدة البيانات تستجيب — ${say(facts.creators)} مُنشئ`,
       ],
     },
     'ch-resource-intelligence': {
-      headline: futurePackage.recommendationSummary,
-      details: futurePackage.risks.slice(0, 3).map((risk) => `${risk.pathId}: ${risk.level} (${risk.score})`),
+      headline: operational.heapUtilizationPct === null
+        ? 'تعذّر قياس الذاكرة.'
+        : `الذاكرة ${operational.heapUtilizationPct}٪ — ${tierAr[operational.memoryTier]}.`,
+      details: [
+        operational.diskUsedPct === null
+          ? 'القرص: تعذّر القياس'
+          : `القرص ${operational.diskUsedPct}٪ — ${tierAr[operational.diskTier]}`,
+        `عتبة الذاكرة: تحذيرٌ عند ٧٠٪، وحرجٌ عند ٨٥٪`,
+        `الأصول المحفوظة: ${say(facts?.vaultAssets ?? null)}`,
+      ],
     },
     'ch-financial-intelligence': {
-      headline: strategicPackage.forecast.narrative,
-      details: strategicPackage.recommendations.map((recommendation) => recommendation.summary).slice(0, 3),
+      headline: missingRevenue.length > 0
+        ? `لا إيراد ممكن: ${missingRevenue.map((provider) => provider.nameAr).join('، ')} غير مهيّأ.`
+        : `اشتراكاتٌ فاعلة: ${say(facts?.activeSubscriptions ?? null)} — مدفوعاتٌ مُستوفاة: ${say(facts?.settledPayments ?? null)}.`,
+      details: [
+        `الاشتراكات المسجّلة كلّها: ${say(facts?.totalSubscriptions ?? null)}`,
+        `المدفوعات المُستوفاة: ${say(facts?.settledPayments ?? null)}`,
+        `المُنشئون: ${say(facts?.creators ?? null)}`,
+      ],
     },
     'ch-evolution-intelligence': {
       headline: `Recommended future path: ${futurePackage.recommendedPathId}`,
       details: futurePackage.rankedFutures.slice(0, 3).map((future) => `${future.pathId} rank ${future.rank} score ${future.score.toFixed(2)}`),
     },
     'ch-security-intelligence': {
-      headline: `Invalid messages blocked: ${busSnapshot.invalidMessagesBlocked}`,
+      headline: `جلساتٌ قائمة: ${say(facts?.activeSessions ?? null)} لـ${say(facts?.creators ?? null)} مُنشئ.`,
       details: [
-        `Queue depth: ${busDiagnostics.queueDepth}`,
-        `Bus healthy: ${busDiagnostics.healthy ? 'yes' : 'no'}`,
+        `رسائلُ مرفوضة: ${busSnapshot.invalidMessagesBlocked}`,
+        `المزوّدون المهيّأون: ${operational.providers.filter((provider) => provider.configured).length} من ${operational.providers.length}`,
+        `غيرُ المهيّأ: ${operational.providers.filter((provider) => !provider.configured).map((provider) => provider.nameAr).join('، ') || 'لا شيء'}`,
       ],
     },
     'ch-founder-command': {
@@ -435,10 +475,14 @@ export function buildSovereignHighCouncilRuntimeView(input?: {
       details: councilResult.unifiedPackage.recommendations.map((recommendation) => recommendation.summary).slice(0, 3),
     },
     'ch-development-observatory': {
-      headline: `Executive packages: ${executiveSnapshot.totalDecisionPackages}`,
+      // «Executive packages: 1» stood here — a counter belonging to a runtime
+      // built for this one request, read by the Founder as the Empire's
+      // engineering output. These are the Empire's own records instead.
+      headline: `ما أنتجته الإمبراطوريّة: ${say(facts?.generations ?? null)} توليداً و${say(facts?.investigations ?? null)} تحقيقاً.`,
       details: [
-        `Observed events: ${executiveSnapshot.totalObservedEvents}`,
-        `Latest package: ${executiveSnapshot.lastPackageId ?? 'none'}`,
+        `الأصول في الخزائن: ${say(facts?.vaultAssets ?? null)}`,
+        `المُنشئون: ${say(facts?.creators ?? null)}`,
+        facts === null ? 'تعذّرت قراءة سجلّات الإمبراطوريّة.' : 'مقروءةٌ من سجلّات الإمبراطوريّة لحظةَ السؤال.',
       ],
     },
     'ch-broadcast-center': {
@@ -446,8 +490,14 @@ export function buildSovereignHighCouncilRuntimeView(input?: {
       details: busApi.recentRouted(3).map((message) => `${message.source} -> ${message.target} (${message.priority})`),
     },
     'ch-gift-distribution': {
-      headline: `Strategic recommendations: ${strategicPackage.recommendations.length}`,
-      details: strategicPackage.recommendations.map((recommendation) => recommendation.title).slice(0, 3),
+      headline: missingRevenue.length > 0
+        ? 'لا اشتراك ممكن — مفاتيح الدفع غير مهيّأة.'
+        : `اشتراكاتٌ فاعلة: ${say(facts?.activeSubscriptions ?? null)} من ${say(facts?.totalSubscriptions ?? null)}.`,
+      details: [
+        `المُنشئون: ${say(facts?.creators ?? null)}`,
+        `الاشتراكات الفاعلة: ${say(facts?.activeSubscriptions ?? null)}`,
+        `المدفوعات المُستوفاة: ${say(facts?.settledPayments ?? null)}`,
+      ],
     },
     'ch-future-laboratory': {
       headline: futurePackage.recommendationSummary,
