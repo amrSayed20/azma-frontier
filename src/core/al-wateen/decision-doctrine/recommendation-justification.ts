@@ -11,11 +11,11 @@ export class RecommendationJustificationBuilder {
 
     return {
       confidence,
-      confidenceReason: `Score ${score.totalScore} derived from constitutional ${score.constitutionalScore}, strategic ${score.strategicScore}, and long-term ${score.longTermScore} factors.`,
+      confidenceReason: `الدرجة ${score.totalScore}، مُشتقّةً من الدستوريّ ${score.constitutionalScore} والاستراتيجيّ ${score.strategicScore} وبعيد المدى ${score.longTermScore}.`,
       uncertaintyStatement: selected.uncertainty,
-      constitutionalExplanation: `Constitutional impact ${selected.constitutionalImpact} prioritized over convenience and speed pressure.`,
-      strategicExplanation: `Strategic impact ${selected.strategicImpact} compared against alternatives with transparent tradeoff penalties.`,
-      longTermExplanation: `Long-term sustainability ${selected.sustainabilityImpact} preserved as mandatory decision doctrine condition.`,
+      constitutionalExplanation: `الأثر الدستوريّ ${selected.constitutionalImpact} قُدّم على الراحة وضغط السرعة.`,
+      strategicExplanation: `الأثر الاستراتيجيّ ${selected.strategicImpact} قِيس على البدائل بمقايضاتٍ معلنة.`,
+      longTermExplanation: `الاستدامة بعيدة المدى ${selected.sustainabilityImpact} محفوظةٌ شرطاً لازماً في عقيدة القرار.`,
     };
   }
 }

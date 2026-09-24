@@ -54,7 +54,7 @@ export class RuntimeSynchronizer {
       futureSimulationRecommendation: {
         packageId: futurePackage?.packageId,
         recommendedPathId: futurePackage?.recommendedPathId,
-        summary: futurePackage?.recommendationSummary ?? 'No future simulation package available at synchronization time.',
+        summary: futurePackage?.recommendationSummary ?? 'لا حزمةَ محاكاةٍ متاحة وقت المزامنة.',
       },
       doctrinePackage,
       candidatePathsUsed: candidates,
@@ -72,14 +72,14 @@ export class RuntimeSynchronizer {
     const futureCandidates: DoctrineCandidatePath[] =
       futurePackage?.rankedFutures.slice(0, pathLimit).map((future) => ({
         pathId: future.pathId,
-        title: `Future path ${future.pathId}`,
-        why: `Rank ${future.rank} with constitutional outcome ${future.constitutionalOutcome}.`,
-        whyNot: `Alternative paths scored below ${future.score}.`,
+        title: `مسارٌ مستقبليّ ${future.pathId}`,
+        why: `الترتيب ${future.rank}، والأثر الدستوريّ ${future.constitutionalOutcome}.`,
+        whyNot: `سجّلت المسارات البديلة أقلّ من ${future.score}.`,
         constitutionalImpact: future.constitutionalOutcome === 'best' ? 95 : future.constitutionalOutcome === 'acceptable' ? 80 : 55,
         strategicImpact: Math.min(100, Math.round(future.score)),
         sustainabilityImpact: future.riskLevel === 'low' ? 90 : future.riskLevel === 'medium' ? 75 : 60,
         speedBenefit: Math.max(10, 100 - future.rank * 20),
-        uncertainty: `Probability ${future.probability.toFixed(4)} and risk level ${future.riskLevel}.`,
+        uncertainty: `الاحتماليّة ${future.probability.toFixed(4)}، ومستوى الخطر ${future.riskLevel}.`,
       })) ?? [];
 
     if (futureCandidates.length > 0) {
@@ -89,9 +89,9 @@ export class RuntimeSynchronizer {
     return [
       {
         pathId: `${unifiedPackage.packageId}-baseline-1`,
-        title: 'Constitution-first stabilization path',
-        why: 'Preserves constitutional coherence and synchronized advisory continuity.',
-        whyNot: 'May reduce immediate speed in favor of durability.',
+        title: 'مسارُ تثبيتٍ يُقدّم الدستور',
+        why: 'يحفظ التماسك الدستوريّ واتّصال الاستشارة.',
+        whyNot: 'قد يُبطئ السرعة الآنيّة لصالح المتانة.',
         constitutionalImpact: Math.min(100, unifiedPackage.correlation.constitutionalHealth),
         strategicImpact: Math.min(100, unifiedPackage.correlation.strategicReadiness),
         sustainabilityImpact: Math.min(100, unifiedPackage.correlation.futureConfidence),

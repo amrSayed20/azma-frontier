@@ -47,7 +47,7 @@ export class ExecutiveRecommendationEngine {
       recommendationId: `exec-rec-${input.action.actionId}-priority`,
       actionId: input.action.actionId,
       title: 'طبِّق ضبطَ الأولويّة التنفيذيّة',
-      summary: `Apply executive priority ${priority.executivePriority} with weight ${priority.weight}.`,
+      summary: `طبِّق الأولويّة التنفيذيّة ${priority.executivePriority} بوزن ${priority.weight}.`,
       requiresFounderApproval: false,
       targetDecision: 'defer',
       executionConstraints: ['priority-governance', 'constitutional-alignment'],
