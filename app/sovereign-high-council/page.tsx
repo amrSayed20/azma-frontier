@@ -47,6 +47,8 @@ const MACHINE_WORD_AR: Record<string, string> = {
   compliant: 'ممتثل', 'non-compliant': 'غير ممتثل', partial: 'جزئيّ',
   low: 'منخفض', medium: 'متوسّط', high: 'عالٍ', critical: 'حرج',
   'awaiting-founder-approval': 'بانتظار موافقة المؤسس',
+  acceptable: 'مقبول', unacceptable: 'غير مقبول', favourable: 'مُواتٍ',
+  'action-evaluated': 'إجراءٌ مُقيَّم', event: 'حدث',
   approved: 'مُعتمَد', pending: 'معلّق', unavailable: 'غير متاح',
   yes: 'نعم', no: 'لا', healthy: 'سليم', degraded: 'مُنهَك',
 };

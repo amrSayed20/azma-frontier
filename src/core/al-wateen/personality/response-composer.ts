@@ -23,7 +23,7 @@ export class ResponseComposer {
     return {
       responseId: `alw-response-${Date.now().toString(36)}`,
       greeting: 'أيّها المؤسس، بين يديك تقييمٌ استشاريٌّ دستوريّ.',
-      assessment: `${consciousness.summary} Relationship trust baseline is ${relationship.trustScore}.`,
+      assessment: `${consciousness.summary} وأساس الثقة في العلاقة ${relationship.trustScore}.`,
       recommendation: policy.compliant
         ? 'امضِ بانضباطٍ دستوريّ، حافظاً على التماسك بعيد المدى ووضوح المقايضات.'
         : 'رصدت حدودُ السياسة خطراً في الخطاب؛ راجع الصياغة قبل إصدار توجيهٍ حاسم.',

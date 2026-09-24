@@ -10,6 +10,11 @@ import {
   FounderSession,
 } from './runtime-types';
 
+/** Constitutional outcomes, said rather than spelled. */
+const OUTCOME_AR: Record<string, string> = {
+  acceptable: 'مقبول', unacceptable: 'غير مقبول', favourable: 'مُواتٍ', marginal: 'حدّيّ',
+};
+
 export class RuntimeSynchronizer {
   constructor(
     private readonly alWateenRuntime: AlWateenIntegrationRuntime,
@@ -73,7 +78,7 @@ export class RuntimeSynchronizer {
       futurePackage?.rankedFutures.slice(0, pathLimit).map((future) => ({
         pathId: future.pathId,
         title: `مسارٌ مستقبليّ ${future.pathId}`,
-        why: `الترتيب ${future.rank}، والأثر الدستوريّ ${future.constitutionalOutcome}.`,
+        why: `الترتيب ${future.rank}، والأثر الدستوريّ ${OUTCOME_AR[future.constitutionalOutcome] ?? future.constitutionalOutcome}.`,
         whyNot: `سجّلت المسارات البديلة أقلّ من ${future.score}.`,
         constitutionalImpact: future.constitutionalOutcome === 'best' ? 95 : future.constitutionalOutcome === 'acceptable' ? 80 : 55,
         strategicImpact: Math.min(100, Math.round(future.score)),
