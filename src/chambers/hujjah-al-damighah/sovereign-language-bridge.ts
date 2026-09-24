@@ -164,7 +164,7 @@ async function askGemini(
 export async function toSearchLanguage(query: string): Promise<string | null> {
   if (!isArabic(query)) return null;
 
-  const translated = await askGemini(
+  const outcome = await askGeminiOutcome(
     [
       'You convert an Arabic question into English search keywords for a library catalogue.',
       'Reply with the keywords only — no sentence, no punctuation, no explanation, no quotes.',
@@ -176,11 +176,37 @@ export async function toSearchLanguage(query: string): Promise<string | null> {
     40,
     0,
   );
-  if (!translated) return null;
+
+  // ─── WHY THIS FAILURE IS NOW SPOKEN ──────────────────────────────────────
+  //
+  //   MEASURED on production 2026-09-24, in the server's own log: one
+  //   investigation reached the library as «Seven Sleepers Ephesus religious
+  //   history», and the next reached it as «أثر العدل استقرار المجتمعات» —
+  //   an Arabic string sent to a catalogue that indexes only English, which
+  //   can answer nothing. The bridge had failed, said nothing, and the
+  //   library was blamed for the silence that followed.
+  //
+  //   Four different things end here and they are not one event: the provider
+  //   refused, it timed out, it answered with nothing, or it answered in
+  //   Arabic instead of translating. The Empire records which.
+  const translated = outcome.text;
+  if (!translated) {
+    console.error('[Hujjah] question not bridged:', JSON.stringify({
+      failure: outcome.failure, httpStatus: outcome.httpStatus,
+    }));
+    return null;
+  }
 
   // A model that answers instead of translating is worse than no bridge.
   const cleaned = translated.replace(/["'\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
-  if (cleaned.length === 0 || cleaned.length > 120 || ARABIC.test(cleaned)) return null;
+  if (cleaned.length === 0 || cleaned.length > 120 || ARABIC.test(cleaned)) {
+    console.error('[Hujjah] question not bridged:', JSON.stringify({
+      failure: 'NOT_A_RENDERING',
+      length: cleaned.length,
+      stillArabic: ARABIC.test(cleaned),
+    }));
+    return null;
+  }
   return cleaned;
 }
 
