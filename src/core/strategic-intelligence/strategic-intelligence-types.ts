@@ -7,13 +7,20 @@ import {
 } from '../constitution-runtime';
 import { ExecutiveRuntimeStateSnapshot } from '../executive-intelligence';
 
-export type StrategicHorizon = 'annual' | 'multi-year' | 'long-term';
+/**
+ * 'immediate' was added 2026-09-24. The three horizons below all pointed away
+ * from the present, so a threat that is true right now — a payment key that is
+ * not configured, a heap at 91% — had no honest label and would have been
+ * filed as 'long-term'. A Council reading «long-term» about something already
+ * happening is being misinformed by the vocabulary itself.
+ */
+export type StrategicHorizon = 'immediate' | 'annual' | 'multi-year' | 'long-term';
 export type StrategicRiskLevel = 'low' | 'medium' | 'high' | 'critical';
 export type StrategicSignalPolarity = 'positive' | 'neutral' | 'negative';
 
 export interface StrategicSignal {
   readonly signalId: string;
-  readonly source: 'constitution-runtime' | 'executive-intelligence';
+  readonly source: 'constitution-runtime' | 'executive-intelligence' | 'operational-truth';
   readonly category: 'constitutional-health' | 'architectural-health' | 'infrastructure-health' | 'platform-evolution';
   readonly polarity: StrategicSignalPolarity;
   readonly strength: number;

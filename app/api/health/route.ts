@@ -13,6 +13,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '../../../src/authentication';
 import { getDb } from '../../../src/persistent-storage';
 import { statSync, readdirSync, statfsSync } from 'fs';
+// One measurement of one platform. The Council's strategic layer reads the
+// same module, so the Empire cannot hold two opinions of its own condition.
+import { measureOperationalState } from '../../../src/operational-truth/measure';
 import { join } from 'path';
 
 export const dynamic = 'force-dynamic';
@@ -121,6 +124,7 @@ export async function GET(request: NextRequest) {
   const uploadsBytes        = dirSizeBytes(join(cwd, 'public', 'uploads'));
 
   // ── Disk (root filesystem) ─────────────────────────────────────────────
+  const operational = measureOperationalState();
   let diskFreeBytes  = -1;
   let diskTotalBytes = -1;
   try {
@@ -131,8 +135,8 @@ export async function GET(request: NextRequest) {
 
   // ── Memory ────────────────────────────────────────────────────────────
   const mem = process.memoryUsage();
-  const heapUtilizationNum = mem.heapTotal > 0 ? Math.round((mem.heapUsed / mem.heapTotal) * 100) : 0;
-  const diskUsedPctNum     = diskTotalBytes > 0 ? Math.round(((diskTotalBytes - diskFreeBytes) / diskTotalBytes) * 100) : -1;
+  const heapUtilizationNum = operational.heapUtilizationPct ?? 0;
+  const diskUsedPctNum     = operational.diskUsedPct ?? -1;
 
   // ── Threshold evaluation (Certification V) ────────────────────────────
   const memoryTier: HealthTier = evalTier(
