@@ -77,6 +77,15 @@ export function InvestigationFile({
 
       <div className="inv-demand-block">
         <span className="inv-demand-tag">اخرج بمطالبةٍ جاهزة للإنشاء</span>
+        {/* The Founder entered the chamber and asked how a Creation Demand is
+            obtained. The three doors worked and said nothing about themselves —
+            a capability without a written covenant. This is that covenant. */}
+        <p className="inv-demand-explainer">
+          هذه الحجرة تُحقّق ولا تُنشئ. المطالبة هي قولُ <strong>ما ينبغي أن يُصنَع</strong>،
+          مبنيًّا على أدلّة تحقيقك وحدها — ثم تعبر بها إلى الحجرة التي تصنع.
+          تُحفظ في خزانتك حاملةً معرّف هذا التحقيق، فتُردّ دائماً إلى ما يُبرّرها.
+          ولكلّ حجرةٍ مطالبتها، لأنّ المشهد والقوسَ والهدفَ أشياءٌ مختلفة.
+        </p>
         <div className="inv-demand-actions">
           {DEMANDS.map(({ destination, label }) => (
             <button

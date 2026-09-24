@@ -12,6 +12,7 @@ import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import './hujjah-al-damighah.css';
 import { runInvestigation, depositEvidenceToVault, depositInvestigationToVault, composeCreationDemandToVault, type InvestigationDTO, type EvidenceItemDTO } from './actions';
 import type { DemandDestination } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
+import { useVoiceMode } from '@/src/components/living-companion/useVoiceMode';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
 import { EvidenceGateway }   from './_components/EvidenceGateway';
 import { VerdictDocument }   from './_components/VerdictDocument';
@@ -643,6 +644,24 @@ export default function HujjahAlDamighah() {
   const [phase, setPhase]             = useState<Phase>('idle');
   const [invStage, setInvStage]       = useState<InvStage>('idle');
   const [query, setQuery]             = useState('');
+  /**
+   * ─── HEARING, AND THE REVIEW BEFORE SENDING ───────────────────────────
+   *
+   *   MEASURED 2026-09-24: this chamber contained no microphone and no
+   *   SpeechRecognition of any kind. «محادثة» and «سكوت» were names for
+   *   visual modes, not for sound — so the Founder's difficulty speaking to
+   *   the chamber was not misuse; the instrument did not exist.
+   *
+   *   The Empire already owns one, in useVoiceMode, and it is extended here
+   *   rather than written again. What it hears lands in the question field
+   *   and is shown BEFORE anything is sent: recognition mishears, and a
+   *   chamber that investigates a misheard question wastes the Creator's
+   *   minute and its own evidence. Nothing is submitted that was not read.
+   */
+  // `isHearing` already means a court hearing in this chamber. The microphone
+  // is a different thing entirely and takes a different name.
+  const [isMicOpen, setIsMicOpen]     = useState(false);
+  const [heardNotice, setHeardNotice] = useState<string | null>(null);
   // No default domain. The five are equal — «كلهم مجالات متساوية الأهمية ولا
   // يوجد مجال منهم أهم من الآخر» — and each has its own research path and its
   // own kinds of evidence. A silent fallback to «ديني» meant a doctor's first
@@ -1048,6 +1067,30 @@ export default function HujjahAlDamighah() {
   }, [activeDomain]);
 
   // ── Conversation Query Change — hesitation observation ────────────
+  /** What the chamber heard goes into the field the Creator can still edit. */
+  const receiveTranscript = (text: string) => {
+    const heard = text.trim();
+    setIsMicOpen(false);
+    if (heard.length === 0) {
+      setHeardNotice('لم أسمع شيئاً — حاول مرّةً أخرى.');
+      return;
+    }
+    setQuery(heard);
+    setHeardNotice('هذا ما سمعته — راجعه ثمّ ابدأ التحقيق.');
+  };
+
+  const voice = useVoiceMode(true, receiveTranscript, 'ar-SA');
+
+  const handleHear = () => {
+    setHeardNotice(null);
+    if (!voice.isSupported) {
+      setHeardNotice('متصفّحك لا يدعم الاستماع. اكتب سؤالك.');
+      return;
+    }
+    setIsMicOpen(true);
+    voice.startListening();
+  };
+
   function handleConversationQueryChange(text: string) {
     // Hesitation signal: typed a substantive query then deleted back to near-empty
     if (queryLengthRef.current > 20 && text.length < 5) {
@@ -1678,10 +1721,51 @@ export default function HujjahAlDamighah() {
                           <span className="dialogue-examining-pulse" aria-hidden="true" />
                         </>
                       ) : (
-                        <span className="dialogue-key-hint" aria-hidden="true">
-                          ↵ للإرسال · Shift+↵ سطر جديد
+                        // MEASURED by the Founder, entering the chamber 2026-09-24:
+                        // there was no submit control at all — only this hint, which
+                        // also carried the Latin word «Shift» onto an Arabic screen.
+                        // A Creator who did not know that Enter submits stood in front
+                        // of a field that looked broken. The chamber now says what it
+                        // will do, and what it will cost in time.
+                        <span className="dialogue-key-hint">
+                          التحقيق يمرّ بأربع مراحل · يستغرق عادةً أقلّ من دقيقة
                         </span>
                       )}
+                    </div>
+
+                    {heardNotice && (
+                      <p className="dialogue-heard-notice" aria-live="polite">{heardNotice}</p>
+                    )}
+
+                    <div className="dialogue-commit">
+                      <button
+                        type="button"
+                        className={`dialogue-mic-btn ${isMicOpen ? 'mic-open' : ''}`}
+                        onClick={handleHear}
+                        disabled={isExamining || isMicOpen}
+                        aria-label="اسأل بصوتك — يُعرض ما سُمع قبل الإرسال"
+                        data-testid="hujjah-mic"
+                      >
+                        <span aria-hidden="true">◉</span>
+                        {isMicOpen ? 'أسمعك…' : 'اسأل بصوتك'}
+                      </button>
+                      {query.trim().length > 0 && !isExamining && (
+                        <button
+                          type="button"
+                          className="dialogue-clear-btn"
+                          onClick={() => { handleConversationQueryChange(''); setHeardNotice(null); }}
+                        >
+                          امسح
+                        </button>
+                      )}
+                      <button
+                        type="submit"
+                        className="dialogue-begin-btn"
+                        disabled={isExamining || query.trim().length === 0}
+                        data-testid="hujjah-begin"
+                      >
+                        {isExamining ? 'التحقيق جارٍ…' : 'ابدأ التحقيق ⟵'}
+                      </button>
                     </div>
                   </form>
                 </div>

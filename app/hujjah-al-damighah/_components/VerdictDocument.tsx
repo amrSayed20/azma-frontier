@@ -92,7 +92,16 @@ export function VerdictDocument({ dto, query, domain, outputFormat, onFormatChan
         <span className="vd-glyph" aria-hidden="true">✦</span>
       </div>
 
-      <div className="vd-format-row" role="group" aria-label="حجم الحكم">
+      {/* MEASURED live 2026-09-24: these three buttons existed, rendered, and
+          were 1021px wide on the Founder's screen — and the Founder asked for
+          an output-shaping control, because three bare words with no heading
+          do not announce what they are. The capability was never hidden; it
+          was unnamed. It says what it does now, and what it will not do. */}
+      <div className="vd-format-shaper">
+        <span className="vd-format-label">صياغة المخرجات</span>
+        <span className="vd-format-note">الأدلّة نفسها — عرضٌ آخر، بلا إعادة تحقيق</span>
+      </div>
+      <div className="vd-format-row" role="group" aria-label="صياغة المخرجات">
         {(['short', 'medium', 'long'] as OutputFormat[]).map(fmt => (
           <button
             key={fmt}
