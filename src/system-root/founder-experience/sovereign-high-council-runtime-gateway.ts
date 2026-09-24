@@ -382,7 +382,9 @@ export function buildSovereignHighCouncilRuntimeView(input?: {
     {
       system: 'الوعي التنفيذيّ',
       status: deriveHealthStatus(executiveSnapshot.totalDecisionPackages, 0, -1),
-      summary: executivePackage?.situation.constitutionalSignals[0] ?? 'مجرى الحزم التنفيذيّة فاعل.',
+      // Was `event:action-evaluated` — an internal signal name printed to the
+      // Founder as though it were a sentence.
+      summary: `حزمٌ تنفيذيّة: ${executiveSnapshot.totalDecisionPackages} — مُولَّدةٌ لهذه الجلسة.`,
       metric: `${executiveSnapshot.totalDecisionPackages} حزمة`,
     },
     {

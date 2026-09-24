@@ -1,5 +1,11 @@
 import { ExecutivePipelineInput, ExecutivePriorityProfile, ExecutiveRecommendation, ExecutiveRiskAssessment, ExecutiveSituationUnderstanding } from './executive-intelligence-types';
 
+/** Executive priorities, said rather than spelled. */
+const PRIORITY_AR: Record<string, string> = {
+  constitutional: 'الدستوريّة', strategic: 'الاستراتيجيّة',
+  operational: 'التشغيليّة', convenience: 'الراحة', speed: 'السرعة',
+};
+
 export class ExecutiveRecommendationEngine {
   public recommend(
     input: ExecutivePipelineInput,
@@ -47,7 +53,7 @@ export class ExecutiveRecommendationEngine {
       recommendationId: `exec-rec-${input.action.actionId}-priority`,
       actionId: input.action.actionId,
       title: 'طبِّق ضبطَ الأولويّة التنفيذيّة',
-      summary: `طبِّق الأولويّة التنفيذيّة ${priority.executivePriority} بوزن ${priority.weight}.`,
+      summary: `طبِّق الأولويّة التنفيذيّة ${PRIORITY_AR[priority.executivePriority] ?? priority.executivePriority} بوزن ${priority.weight}.`,
       requiresFounderApproval: false,
       targetDecision: 'defer',
       executionConstraints: ['priority-governance', 'constitutional-alignment'],

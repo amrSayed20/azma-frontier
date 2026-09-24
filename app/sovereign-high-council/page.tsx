@@ -434,7 +434,7 @@ export default function SovereignHighCouncilPage() {
                 <RuntimeMetric label="المحاكاة" value={runtimeView?.runtimeSnapshots.simulationPackages} />
                 <RuntimeMetric label="ما وجّهه الناقل" value={runtimeView?.runtimeSnapshots.busMessagesRouted} />
                 <RuntimeMetric label="الإدراك" value={runtimeView?.runtimeSnapshots.perceptionPackages} />
-                <RuntimeMetric label="Al-Wateen" value={runtimeView?.runtimeSnapshots.alWateenPackages} />
+                <RuntimeMetric label="الوتين" value={runtimeView?.runtimeSnapshots.alWateenPackages} />
                 <RuntimeMetric label="العقيدة" value={runtimeView?.runtimeSnapshots.doctrinePackages} />
                 <RuntimeMetric label="مزامنة المجلس" value={runtimeView?.runtimeSnapshots.councilSynchronizations} />
               </div>
