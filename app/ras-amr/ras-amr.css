@@ -5343,6 +5343,10 @@ body:has(.ras-amr-viewport) {
   user-select: none;
 }
 
+/* MEASURED 2026-09-25 on the live preview: this caption sat directly on the
+   brightest part of the frame's own glow — gold lettering on gold light — and
+   the line beneath it was white at 28% alpha, which is not dim, it is absent.
+   The words now carry their own ground, so they read on any frame. */
 .ras-tp-demo-frame-inner {
   position: relative;
   z-index: 2;
@@ -5351,7 +5355,12 @@ body:has(.ras-amr-viewport) {
   align-items: center;
   gap: 6px;
   text-align: center;
-  padding: 0 20px;
+  padding: 12px 22px;
+  background: rgba(4, 3, 2, 0.72);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 4px;
+  backdrop-filter: blur(2px);
+  max-width: 78%;
 }
 
 .ras-tp-demo-frame-num {
@@ -5372,9 +5381,22 @@ body:has(.ras-amr-viewport) {
 
 .ras-tp-demo-frame-cue {
   font-size: var(--rt-3xs);
-  color: rgba(255,255,255,0.28);
-  line-height: 1.4;
-  max-width: 200px;
+  color: rgba(239, 230, 208, 0.82);
+  line-height: 1.5;
+  max-width: 320px;
+}
+
+/* What each shot is for, in the row that describes it. The template has
+   carried this cue all along and the row showed a name and a number. */
+/* The card was a two-row grid whose second row held nothing, which is why
+   these rows read as mostly empty space. This is what belongs in it. */
+.ras-tp-slot-cue {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  font-size: var(--rt-3xs);
+  line-height: 1.55;
+  color: rgba(239, 230, 208, 0.62);
+  text-align: start;
 }
 
 /* ── Product ad motifs ────────────────────────────────────────────────── */

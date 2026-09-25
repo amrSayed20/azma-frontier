@@ -993,12 +993,41 @@ export default function RasAmrChamber() {
   // PACKAGE XXXVIII — ANIMATED STRUCTURAL PREVIEW
   // Which slot index is currently "active" in the template preview animation.
   // -1 = not playing. Driven by a timer chain in useEffect below.
+  /**
+   * Which shot the auto-animation is on when the preview opens — a nine-second
+   * pass that lights each shot for its proportional share, so the rhythm of
+   * the template reads before anything is pressed.
+   *
+   * I called this dead state on 2026-09-25 and was wrong: I searched for it,
+   * read the first four matches, and did not look for the rest. It is written
+   * by the effect below. The real fault here was never a dead value — it was
+   * two of them: this and the demo player's own playhead, both claiming to
+   * say which shot is current. The rows now read one position (`currentShot`).
+   */
   const [previewStep, setPreviewStep] = useState<number>(-1);
   const previewTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   // DEMO PLAYBACK — isolated from the creator's real preview (isPlaying / playheadSec).
   // Reads only from demoFrames derived from selectedTemplate; never touches sessionCanvas.
   const [isDemoPlaying, setIsDemoPlaying] = useState(false);
   const [demoPlayheadSec, setDemoPlayheadSec] = useState(0);
+
+  /**
+   * Which shot the demo is on right now, from the playhead the stage itself
+   * reads. One position for the picture and the list beneath it.
+   */
+  const demoStep = selectedTemplate && isDemoPlaying
+    ? buildDemoFrames(selectedTemplate).findIndex(
+        (f) => demoPlayheadSec >= f.scaledStart && demoPlayheadSec < f.scaledStart + f.scaledDur,
+      )
+    : -1;
+
+  /**
+   * The one shot the whole preview agrees is current: the demo's, while it is
+   * playing; the opening pass's otherwise. Two sources used to exist and only
+   * one of them was ever read, so the stage could be on shot four while the
+   * list beneath it pointed at shot two.
+   */
+  const currentShot = demoStep >= 0 ? demoStep : previewStep;
   const demoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const demoStartRef = useRef(0);
   // PACKAGE XL-D — Web Audio API oscillator for demo sound (real audio, not silence).
@@ -3934,7 +3963,7 @@ export default function RasAmrChamber() {
                   )}
 
                   {/* Replay after finish */}
-                  {!isDemoPlaying && demoPlayheadSec === 0 && previewStep === -1 && (
+                  {!isDemoPlaying && demoPlayheadSec === 0 && (
                     <button
                       className="ras-tp-demo-replay-corner"
                       onClick={handleStartDemo}
@@ -3953,16 +3982,24 @@ export default function RasAmrChamber() {
               <div className="ras-tp-body-flow">
                 {selectedTemplate.slotDurations.map((dur, i) => {
                   const role = selectedTemplate.slotRoles?.[i] ?? `موضع ${i + 1}`;
+                  const cue = selectedTemplate.slotCues?.[i] ?? '';
                   const isLast = i === selectedTemplate.slotDurations.length - 1;
                   const sep = selectedTemplate.transitionPreference === 'crossfade' ? '≈' : '|';
-                  const isActive = previewStep === i;
-                  const isPast = previewStep > i && previewStep >= 0;
+                  // MEASURED 2026-09-25: these rows followed the opening
+                  // animation and ignored the demo player entirely, so the
+                  // stage could be on shot four while the list pointed at shot
+                  // two. They read one agreed position now.
+                  const isActive = currentShot === i;
+                  const isPast = currentShot > i && currentShot >= 0;
                   return (
                     <div key={i} className="ras-tp-slot-group">
                       <div className={`ras-tp-slot ras-tp-slot-compact${isActive ? ' ras-tp-slot-playing' : ''}${isPast ? ' ras-tp-slot-done' : ''}`}>
                         <span className="ras-tp-slot-num">{i + 1}</span>
                         <span className="ras-tp-slot-role">{role}</span>
                         <span className="ras-tp-slot-dur">{dur}ث</span>
+                        {/* What goes in this shot. The template has carried it
+                            all along and the row showed a name and a number. */}
+                        {cue && <span className="ras-tp-slot-cue">{cue}</span>}
                       </div>
                       {!isLast && (
                         <span className="ras-tp-connector-compact" aria-hidden="true">{sep}</span>
