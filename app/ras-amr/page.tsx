@@ -4994,8 +4994,19 @@ export default function RasAmrChamber() {
                               const layerUri = layerVaultAsset?.secureStorageUri;
                               const layerIsAudio = layerVaultAsset?.capabilityTarget === CapabilityTarget.AUDIO;
                               const layerIsMotion = layerVaultAsset?.capabilityTarget === CapabilityTarget.MOTION;
+                              // FOUND 2026-09-25 in the launch-readiness audit:
+                              // an asset with no name of its own fell back to
+                              // `capabilityOrigin`, so a layer in the Creator's
+                              // own scene was labelled «MOTION». The same rule
+                              // as everywhere else — a capability is machinery,
+                              // and the Arabic name for it already exists.
+                              const layerNamed = ((layerVaultAsset?.metadata?.voiceDisplayName
+                                ?? layerVaultAsset?.metadata?.generationPrompt ?? '') as string).trim();
                               const layerLabel = layerVaultAsset
-                                ? ((layerVaultAsset.metadata?.voiceDisplayName ?? layerVaultAsset.metadata?.generationPrompt ?? '') as string).slice(0, 32) || node.capabilityOrigin
+                                ? (layerNamed.length <= 32
+                                    ? layerNamed
+                                    : `${layerNamed.slice(0, 32).replace(/\s+\S*$/, '')}…`)
+                                  || typeLabelForCapability(node.capabilityOrigin ?? '')
                                 : 'طبقة غير محددة';
                               return (
                               <li key={node.nodeId} className={`narrative-canvas-node ${node.nodeId === selectedNodeId ? 'node-selected' : ''} ${node.isActive === false ? 'node-inactive' : ''} ${node.isLocked ? 'node-locked' : ''}`}>

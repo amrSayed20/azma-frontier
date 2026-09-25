@@ -500,10 +500,22 @@ body:has(.ras-amr-viewport) {
   padding-inline: 10px;
 }
 
+/* MEASURED 2026-09-25 from the Founder's own screen: I had let this row wrap
+   so no shot would be cut off, and on a narrower window it wrapped into a tall
+   column that ate the canvas — the template read «5 من 5» with every shot
+   ✓, five layers sat on the timeline, and the Creator's own assets had nowhere
+   left to be shown. The row sits in an auto-height grid row, so its growth
+   comes out of the 1fr canvas above it.
+   It wraps, and it stops. Beyond two lines it scrolls within its own bound,
+   and the canvas keeps its height. */
 .ras-template-structure {
   grid-row: 3;
   grid-column: 2;
   z-index: 30;
+  max-height: 104px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.25) transparent;
 }
 
 /* ═══════════════════════════════════════════════

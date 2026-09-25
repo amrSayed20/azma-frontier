@@ -207,6 +207,7 @@ export async function POST(
       if (toGenerate.length > 0) {
         const commissioned = await commissionScenePictures({
           creatorId: session.creatorId,
+          creatorRole: session.role,
           demands: toGenerate,
         });
         // The workshop opens a path on its own filesystem, not a Vault URI.

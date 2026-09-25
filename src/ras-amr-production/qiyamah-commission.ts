@@ -40,6 +40,8 @@
 import { copyFile, mkdir } from 'fs/promises';
 import { basename, join } from 'path';
 import { getDb } from '../persistent-storage';
+import { hasActiveEntitlement } from '../billing/entitlement-service';
+import type { CreatorRole } from '../authentication';
 import { generateImage } from '../qiyamah-generation/generation-service';
 
 /**
@@ -121,6 +123,7 @@ export async function handOverAssetToWorkshop(
 
 /** Why a commission did not come back. Never the provider's own words. */
 export type CommissionFailure =
+  | 'NOT_ENTITLED'        // this Creator may not spend the Empire's capacity
   | 'DEMAND_REFUSED'      // the demand itself could not be accepted
   | 'BUSY'                // the Empire's generation is at its limit
   | 'GENERATION_FAILED'   // it was attempted and did not produce
@@ -158,6 +161,7 @@ function classify(reason: string): CommissionFailure {
 /** What the Chamber says about a commission that did not arrive. */
 export function commissionFailureSpokenAr(failure: CommissionFailure): string {
   switch (failure) {
+    case 'NOT_ENTITLED':      return 'إنشاء الصور متاحٌ لأصحاب الاشتراك. اشترك لتفتحه.';
     case 'DEMAND_REFUSED':    return 'لم تُقبل مطالبة هذا المشهد. أعد صياغته.';
     case 'BUSY':              return 'التوليد بلغ حدّه الآن. أعد المحاولة بعد قليل.';
     case 'STORAGE_FAILED':    return 'أُنشئت الصورة ولم تُحفظ في خزانتك.';
@@ -176,8 +180,29 @@ export function commissionFailureSpokenAr(failure: CommissionFailure): string {
  */
 export async function commissionScenePictures(params: {
   readonly creatorId: string;
+  readonly creatorRole: CreatorRole;
   readonly demands: readonly SceneDemand[];
 }): Promise<readonly CommissionedScene[]> {
+  // ── EVERY PATH THAT SPENDS IS GUARDED, NOT ONE THAT REMEMBERS ────────
+  //
+  //   FOUND 2026-09-25 during the launch-readiness audit, in work I had
+  //   written the same day. القيامة's own route decides entitlement before
+  //   touching a provider and says why in its own comment: «a Creator who is
+  //   not entitled must never spend the Empire's provider capacity to learn
+  //   that they were not entitled». But the gate lives in that ROUTE, and this
+  //   courier calls the generation service underneath it — so a Creator with
+  //   no subscription could compose scenes in رأس الأمر, mark them «يُنشَأ
+  //   لي», press produce, and the Empire would buy the pictures. Measured
+  //   earlier today: five credits an image.
+  //
+  //   The same authority is used, not a second one. The durable repair is for
+  //   the generation service itself to refuse an unentitled caller, so no
+  //   third path can forget — that touches trial accounting and is the
+  //   Founder's to rule on, and is recorded in the audit rather than taken.
+  if (!hasActiveEntitlement(params.creatorId, params.creatorRole)) {
+    return params.demands.map((d) => ({ order: d.order, failure: 'NOT_ENTITLED' as const }));
+  }
+
   const commissioned: CommissionedScene[] = [];
 
   for (const demand of [...params.demands].sort((a, b) => a.order - b.order)) {
