@@ -159,8 +159,15 @@ export async function acceptStoryboardProduction(params: {
   const existing = findOperationForStoryboard(params.creatorId, params.storyboardId);
   if (existing) {
     const observed = await observeStoryboardOperation(existing, params.creatorId);
-    if (observed && !observed.isTerminal) {
-      // Already producing. One board, one production — never a second run.
+    // One board, one film. Producing covers the obvious case — a second press
+    // while the first run is still going. DEPOSITED covers the expensive one.
+    //
+    //   MEASURED 2026-09-25: a production commissions pictures from القيامة,
+    //   and the provider charges five credits for each. Until now a board that
+    //   had already produced a film would happily produce another, paying again
+    //   for the same pictures and handing back a second copy of the same work.
+    //   The Creator asked for a film of these scenes. They have one.
+    if (observed && (!observed.isTerminal || observed.succeeded)) {
       return { operationId: existing, state: observed.state, reused: true };
     }
   }

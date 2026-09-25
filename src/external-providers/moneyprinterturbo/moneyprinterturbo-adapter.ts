@@ -291,7 +291,6 @@ export class MoneyPrinterTurboAdapter {
         // Supplied pictures replace the search for the scenes that have them.
         ...(request.suppliedMaterials && request.suppliedMaterials.length > 0
           ? {
-              video_source: 'local',
               video_materials: request.suppliedMaterials.map((m) => ({
                 provider: 'local',
                 url: m.url,
@@ -302,7 +301,22 @@ export class MoneyPrinterTurboAdapter {
         video_language: request.language ?? 'Arabic',
         paragraph_number: request.paragraphCount ?? 2,
         voice_name: request.voiceName ?? '',
-        video_source: 'pexels',
+        /**
+         * Written once, from whether pictures were supplied.
+         *
+         * MEASURED 2026-09-25 on the live workshop: this key used to be a
+         * fixed 'pexels' here AND a conditional 'local' in the spread above.
+         * A later key in the same object literal overwrites an earlier one,
+         * so the fixed value always won. The workshop received five pictures
+         * the Empire had just generated — its own log shows their paths — and
+         * searched a stock library instead, because it had been told to. The
+         * Creator was charged for every one of them and saw none.
+         *
+         * There is one source for one production, and it is decided here.
+         */
+        video_source: request.suppliedMaterials && request.suppliedMaterials.length > 0
+          ? 'local'
+          : 'pexels',
         video_aspect: request.aspect ?? '9:16',
         video_clip_duration: request.clipDurationSeconds ?? 5,
         video_count: 1,

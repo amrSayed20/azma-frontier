@@ -145,6 +145,33 @@ describe('polling', () => {
   });
 });
 
+describe('supplied pictures', () => {
+  // The test that would have caught it. MEASURED 2026-09-25: video_source was
+  // written twice in one object literal — conditionally as 'local' beside the
+  // materials, and unconditionally as 'pexels' a few keys later. The later key
+  // won, so the workshop was handed five freshly generated pictures, logged
+  // their paths, and searched a stock library anyway. The Creator paid for all
+  // five and saw none of them.
+  it('tells the workshop to use supplied pictures instead of searching', async () => {
+    mockFetch.mockResolvedValueOnce(envelope({ task_id: 'task-supplied' }));
+    await new MoneyPrinterTurboAdapter().submitProduction({
+      subject: 'إعلان',
+      suppliedMaterials: [{ url: '/x/a.png' }, { url: '/x/b.png' }],
+    });
+    const body = JSON.parse((mockFetch.mock.calls[0][1] as { body: string }).body) as Record<string, unknown>;
+    expect(body['video_source']).toBe('local');
+    expect(body['video_materials']).toHaveLength(2);
+  });
+
+  it('searches when no picture was supplied', async () => {
+    mockFetch.mockResolvedValueOnce(envelope({ task_id: 'task-search' }));
+    await new MoneyPrinterTurboAdapter().submitProduction({ subject: 'إعلان' });
+    const body = JSON.parse((mockFetch.mock.calls[0][1] as { body: string }).body) as Record<string, unknown>;
+    expect(body['video_source']).toBe('pexels');
+    expect(body['video_materials']).toBeUndefined();
+  });
+});
+
 describe('retrieval', () => {
   it('returns the artefact bytes', async () => {
     const payload = Buffer.from('fake-mp4-bytes');
