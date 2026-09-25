@@ -4571,6 +4571,12 @@ body:has(.ras-amr-viewport) {
   gap: 0;
   flex: 1;
   min-width: 0;
+  /* MEASURED 2026-09-25: the outer row fitted its five children in one line,
+     and this container still reported 993px of content in 900px — the
+     overflow was here, among the shots themselves, so the last ones were cut
+     off their own strip. The wrap belongs where the overflow is. */
+  flex-wrap: wrap;
+  row-gap: 6px;
 }
 
 .ras-template-structure-slot-group {
