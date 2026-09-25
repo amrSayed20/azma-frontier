@@ -302,11 +302,22 @@ body:has(.ras-amr-viewport) {
   flex-shrink: 0;
   border-bottom: 1px solid var(--neon-gold-dim);
   background: rgba(0, 0, 0, 0.4);
+  /* If the panel is ever narrower than the five names together, the bar
+     scrolls. It does not cut them: a tab whose name is «الم…» is not a name. */
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.ras-tab-bar::-webkit-scrollbar { display: none; }
 
 .ras-tab-btn {
-  flex: 1;
-  padding: 10px 4px;
+  /* MEASURED 2026-09-25 from the Founder's own screen: at this Chamber's
+     reading size these five equal cells were narrower than the words in them,
+     and every tab truncated — «الم… التر… ال… الت… الص…». The type scale
+     enlarged the words and I audited two other Chambers for exactly this and
+     not this one. A tab is as wide as its name; the spare room is shared. */
+  flex: 1 1 auto;
+  min-width: max-content;
+  padding: 10px 12px;
   font-size: var(--rt-2xs);
   font-weight: 700;
   background: transparent;
@@ -317,8 +328,6 @@ body:has(.ras-amr-viewport) {
   font-family: inherit;
   transition: all 0.2s;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .ras-tab-btn.ras-tab-active {
   border-bottom-color: var(--neon-gold-primary);
@@ -4480,15 +4489,28 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-template-slot-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
   background: rgba(212, 175, 55, 0.12);
   border: 1px solid rgba(212, 175, 55, 0.25);
   border-radius: 3px;
-  padding: 1px 6px;
-  font-size: var(--rt-2xs);
-  color: rgba(212, 175, 55, 0.75);
+  padding: 2px 8px;
+  font-size: var(--rt-3xs);
+  color: rgba(212, 175, 55, 0.78);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+/* A shot that already holds something reads as done at a glance, so the eye
+   finds the next empty one without counting. */
+.ras-template-slot-chip-filled {
+  background: rgba(212, 175, 55, 0.24);
+  border-color: rgba(212, 175, 55, 0.55);
+  color: #F0DFA8;
+}
+.slot-chip-n { font-weight: 700; color: #D4AF37; }
+.slot-chip-role { color: inherit; }
+.slot-chip-dur { color: rgba(212, 175, 55, 0.6); }
 
 .ras-template-slot-chip-fx {
   background: rgba(120, 160, 212, 0.08);
@@ -6144,6 +6166,82 @@ body:has(.ras-amr-viewport) {
   font-size: var(--rt-3xs);
   line-height: 1.55;
   color: rgba(239, 230, 208, 0.62);
+}
+
+/* ── THE CREATOR DECIDES EACH SCENE'S PICTURE ═─────────────────────
+   Read before anything is produced, because producing spends their money. */
+.scene-plans { display: flex; flex-direction: column; gap: 9px; margin-top: 11px; }
+.scene-plans-head {
+  font-size: var(--rt-3xs);
+  font-weight: 700;
+  color: rgba(212, 175, 55, 0.82);
+}
+.scene-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 10px;
+  background: rgba(0, 0, 0, 0.32);
+  border-inline-start: 2px solid rgba(212, 175, 55, 0.4);
+}
+.scene-plan-head { display: flex; gap: 8px; align-items: baseline; }
+.scene-plan-n {
+  font-size: var(--rt-3xs);
+  font-weight: 700;
+  color: #D4AF37;
+  flex-shrink: 0;
+}
+.scene-plan-seen {
+  font-size: var(--rt-3xs);
+  line-height: 1.55;
+  color: rgba(239, 230, 208, 0.9);
+}
+.scene-plan-choices { display: flex; gap: 5px; flex-wrap: wrap; }
+.scene-plan-choice {
+  font: inherit;
+  font-size: var(--rt-3xs);
+  color: rgba(212, 175, 55, 0.8);
+  background: transparent;
+  border: 1px solid rgba(212, 175, 55, 0.32);
+  border-radius: 2px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.scene-plan-choice:hover:not(:disabled) { background: rgba(212, 175, 55, 0.1); }
+.scene-plan-choice-on {
+  color: #0b0904;
+  background: linear-gradient(180deg, #E8C860, #D4AF37);
+  border-color: #D4AF37;
+  font-weight: 700;
+}
+.scene-plan-choice:disabled { opacity: 0.5; cursor: wait; }
+.scene-plan-label { font-size: var(--rt-3xs); color: rgba(212, 175, 55, 0.7); }
+.scene-plan-demand,
+.scene-plan-asset {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: var(--rt-3xs);
+  line-height: 1.55;
+  color: #efe6d0;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 2px;
+  padding: 6px 8px;
+  resize: vertical;
+}
+.scene-plan-demand:focus,
+.scene-plan-asset:focus {
+  outline: 2px solid rgba(212, 175, 55, 0.6);
+  outline-offset: 1px;
+}
+.scene-plan-empty,
+.scene-plan-notice {
+  margin: 0;
+  font-size: var(--rt-3xs);
+  line-height: 1.55;
+  color: rgba(212, 175, 55, 0.78);
 }
 
 .scenes-arrived {

@@ -437,7 +437,8 @@ import type { DirectorPlan, ProductionAssetContext } from '@/src/chambers/ras-al
 import { takeDemandFor, resolveDemand, spokenDemandArrival } from '@/src/sovereign-creation-demand/arrival';
 import './ras-amr.css';
 import { ChamberDemonstration } from '@/src/chamber-demonstration';
-import { composeStoryboardFromBrief } from './actions';
+import { composeStoryboardFromBrief, readScenePlans, setScenePlan } from './actions';
+import type { ScenePlanView } from './actions';
 
 // Pure, stateless transformer (see its own header comment) — one shared
 // instance is sufficient, no per-render instantiation needed.
@@ -1341,8 +1342,35 @@ export default function RasAmrChamber() {
   // previously zero real callers anywhere in the platform). PACKAGE XX:
   // lands in whichever group (`activeTrackId`) the Creator currently has
   // selected, and the duplicate guard now spans every group.
+  /**
+   * ── A BUTTON THAT REFUSED IN SILENCE ─────────────────────────────
+   *
+   *   The Founder, 2026-09-25: «أرى زر الاضافه الى المشهد لا يعمل.»
+   *
+   *   Measured: the button rendered on two conditions and the handler
+   *   demanded four. An asset carrying no family or capability — both of
+   *   which are optional on this object — met the render test, so the button
+   *   appeared, was pressed, and returned without a word.
+   *
+   *   The missing half was never missing. The Vault list already holds the
+   *   classification of every real asset, so it is recovered from there
+   *   rather than used as grounds for refusal. And when it truly cannot be
+   *   placed, the Chamber says so instead of going quiet: a control that
+   *   looks pressable is a promise.
+   */
   const handleAddActiveAssetToCanvas = () => {
-    if (!sessionCanvas || !activeAsset?.isRealAsset || !activeAsset.assetFamily || !activeAsset.capabilityOrigin) return;
+    if (!sessionCanvas || !activeAsset?.isRealAsset) {
+      setDemandNotice('استدعِ أصلاً حقيقيّاً من خزانتك أوّلاً.');
+      return;
+    }
+    const known = vaultAssets.find((va) => va.assetId === activeAsset.id);
+    const assetFamily = activeAsset.assetFamily ?? (known?.assetFamily as AssetFamily | undefined);
+    const capabilityOrigin = activeAsset.capabilityOrigin ?? (known?.capabilityTarget as CapabilityTarget | undefined);
+    if (!assetFamily || !capabilityOrigin) {
+      setDemandNotice('لم يُعرَف نوع هذا الأصل، فتعذّر وضعه في المشهد. استدعِه من خزانتك من جديد.');
+      return;
+    }
+    setDemandNotice(null);
     // PACKAGE XXXV: duplicate guard removed — same asset may appear in multiple
     // temporal windows (ghost reappears, product cycles, repeated motif).
     // PACKAGE XXXVI: template-aware initial temporal. Creator edits override freely.
@@ -1357,8 +1385,8 @@ export default function RasAmrChamber() {
       subscriberTenantId: sessionCanvas.subscriberTenantId,
       targetTrackId: activeTrackId,
       vaultAssetId: activeAsset.id,
-      assetFamily: activeAsset.assetFamily,
-      capabilityOrigin: activeAsset.capabilityOrigin,
+      assetFamily,
+      capabilityOrigin,
       initialTemporal,
       initialSpatial: DEFAULT_SPATIAL,
     };
@@ -1369,7 +1397,10 @@ export default function RasAmrChamber() {
     const targetTrack = updatedCanvas.tracks.find((t) => t.trackId === activeTrackId);
     const newNode = targetTrack?.nodes[targetTrack.nodes.length - 1];
 
-    if (activeAsset.capabilityOrigin === CapabilityTarget.AUDIO) {
+    // The recovered classification, not the possibly-absent field: a voice
+    // whose capability was missing would otherwise be routed to the visual
+    // surface, where it cannot be seen or heard.
+    if (capabilityOrigin === CapabilityTarget.AUDIO) {
       // Audio nodes live in the audio track, not the visual canvas surface.
       // Route the creator to the audio tab so they can see and control the asset.
       // The node exists in canvas for preview temporal tracking — it is NOT
@@ -2087,6 +2118,19 @@ export default function RasAmrChamber() {
   const [briefSceneCount, setBriefSceneCount] = useState(5);
   const [isComposingBrief, setIsComposingBrief] = useState(false);
   const [briefNotice, setBriefNotice] = useState<string | null>(null);
+  /**
+   * The picture plan of every scene, as the Creator must see it BEFORE
+   * anything is produced or paid for.
+   *
+   * MEASURED 2026-09-25: scenes arrived, the Creator pressed produce, and
+   * the Chamber decided by itself which pictures to buy and what to ask for
+   * — spending their credits on demands they had never read, and giving a
+   * Creator who owned the right picture no way to say so.
+   */
+  const [scenePlans, setScenePlans] = useState<ScenePlanView[] | null>(null);
+  const [planNotice, setPlanNotice] = useState<string | null>(null);
+  const [savingSceneId, setSavingSceneId] = useState<string | null>(null);
+  const [plansTrackedForId, setPlansTrackedForId] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isProducingScenes, setIsProducingScenes] = useState(false);
   const [sceneNotice, setSceneNotice] = useState<string | null>(null);
@@ -2097,6 +2141,17 @@ export default function RasAmrChamber() {
   const [isInterpretingIntent, setIsInterpretingIntent] = useState(false);
   const [lastDirectorPlan, setLastDirectorPlan] = useState<DirectorPlan | null>(null);
   const [intentInterpretError, setIntentInterpretError] = useState<string | null>(null);
+  /**
+   * How many of the template's shots already hold something.
+   *
+   * The same count the placement itself uses (`nodeIndex` in
+   * handleAddActiveAssetToCanvas), so what the banner says about where the
+   * next asset lands is what actually happens — not a second opinion.
+   */
+  const placedNodeCount = sessionCanvas
+    ? sessionCanvas.tracks.flatMap((t) => t.nodes).length
+    : 0;
+
   const activeGoalId = activeVaultAsset?.metadata?.goalId ?? null;
 
   // Adjust state during render — the same established pattern
@@ -2129,6 +2184,27 @@ export default function RasAmrChamber() {
   // writes before departing (sessionStorage['azma.kernel.session']). If
   // RESOLVED, records the mode so the chamber can acknowledge the journey.
   // Also consumes treasure context written by the Vault Palace (Package D).
+  // The plans are read whenever a storyboard is in front of the Creator, so
+  // what they see is what will actually be produced.
+  const storyboardId = storyboard?.storyboardId ?? null;
+  // Adjusted during render — the same pattern this Chamber already uses for
+  // the formal Goal — rather than as an unconditional setState at the top of
+  // an effect, which would cascade a second render every time.
+  if (storyboardId !== plansTrackedForId) {
+    setScenePlans(null);
+    setPlansTrackedForId(storyboardId);
+  }
+  useEffect(() => {
+    if (!storyboardId) return;
+    let cancelled = false;
+    void readScenePlans(storyboardId).then((outcome) => {
+      if (cancelled) return;
+      if (outcome.ok) setScenePlans([...outcome.scenes]);
+      else setPlanNotice(outcome.messageAr);
+    });
+    return () => { cancelled = true; };
+  }, [storyboardId]);
+
   const [kernelContinuity, setKernelContinuity] = useState<string | null>(null);
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -3773,13 +3849,25 @@ export default function RasAmrChamber() {
                     const nextFrame = demoFrames[i + 1];
                     const outFadeDur = nextFrame?.hasFade ? nextFrame.fadeDur : 0;
                     const effectiveEnd = frame.scaledStart + frame.scaledDur + outFadeDur;
-                    const inWindow = isDemoPlaying
-                      && demoPlayheadSec >= effectiveStart
-                      && demoPlayheadSec < effectiveEnd;
+                    // ── THE PREVIEW AT REST ─────────────────────────────
+                    //   MEASURED 2026-09-25 from the Founder's own screen:
+                    //   every frame's opacity was zero unless the demo was
+                    //   playing, so a Creator choosing between ten templates
+                    //   was shown an empty rectangle until they thought to
+                    //   press play. A preview that shows nothing has said
+                    //   nothing. The opening shot stands still at rest, which
+                    //   is what a first frame is for.
+                    const atRest = !isDemoPlaying;
+                    const inWindow = atRest
+                      ? i === 0
+                      : demoPlayheadSec >= effectiveStart && demoPlayheadSec < effectiveEnd;
                     let opacity = 0;
                     if (inWindow) {
                       opacity = 1;
-                      if (frame.hasFade && demoPlayheadSec < frame.scaledStart) {
+                      if (atRest) {
+                        // Still: no fade arithmetic applies to a frame that
+                        // is not moving through time.
+                      } else if (frame.hasFade && demoPlayheadSec < frame.scaledStart) {
                         opacity = (demoPlayheadSec - effectiveStart) / frame.fadeDur;
                       } else if (outFadeDur > 0 && demoPlayheadSec >= frame.scaledStart + frame.scaledDur) {
                         opacity = 1 - (demoPlayheadSec - (frame.scaledStart + frame.scaledDur)) / outFadeDur;
@@ -4001,15 +4089,38 @@ export default function RasAmrChamber() {
           <span className="ras-template-banner-label">
             {selectedTemplate.icon} {selectedTemplate.name}
           </span>
-          <span className="ras-template-banner-slots" aria-label="مدد الخانات">
-            {selectedTemplate.slotDurations.map((d, i) => (
-              <span key={i} className="ras-template-slot-chip">{d}ث</span>
-            ))}
+          {/* ── WHICH SHOT IS WAITING, AND FOR WHAT ──────────────────────
+              The Founder, 2026-09-25, having chosen a template at random:
+              «غير واضح طريقة ملء القوالب بأصول المنشئ.» Measured: the
+              banner showed «ث3 ث5 ث4 ث4 ث4 ث3» and «أضف أصولك لملء الهيكل».
+              Six bare numbers tell a Creator nothing about which shot wants
+              what, and the template had carried a role and a cue for every
+              one of them all along. Each chip now says what it is waiting
+              for, and shows when it has been filled. */}
+          <span className="ras-template-banner-slots" aria-label="ترتيب اللقطات">
+            {selectedTemplate.slotDurations.map((d, i) => {
+              const filled = i < placedNodeCount;
+              return (
+                <span
+                  key={i}
+                  className={`ras-template-slot-chip${filled ? ' ras-template-slot-chip-filled' : ''}`}
+                  title={selectedTemplate.slotCues?.[i] ?? ''}
+                >
+                  <span className="slot-chip-n">{filled ? '✓' : i + 1}</span>
+                  <span className="slot-chip-role">{selectedTemplate.slotRoles?.[i] ?? `لقطة ${i + 1}`}</span>
+                  <span className="slot-chip-dur">{d}ث</span>
+                </span>
+              );
+            })}
             {selectedTemplate.transitionPreference === 'crossfade' && (
               <span className="ras-template-slot-chip ras-template-slot-chip-fx">≈ تلاشٍ</span>
             )}
           </span>
-          <span className="ras-template-banner-hint">أضف أصولك لملء الهيكل</span>
+          <span className="ras-template-banner-hint">
+            {placedNodeCount >= selectedTemplate.slotDurations.length
+              ? 'الهيكل مكتمل — عايِنه ثمّ جمّع المشهد.'
+              : `استدعِ أصلاً أو ارفعه من جهازك، ثمّ «➕ أضف إلى المشهد» — ينزل في اللقطة ${placedNodeCount + 1}.`}
+          </span>
           <button className="ras-template-banner-change" onClick={handleChangeIntent}>
             تغيير البداية
           </button>
@@ -4989,7 +5100,111 @@ export default function RasAmrChamber() {
                         : 'مشاهد وصلت من حجّة الدامغة'}
                     </span>
                     <p className="scenes-subject">{storyboard.questionAr}</p>
-                    <p className="scenes-count">{storyboard.sceneCount} مشاهد مرتّبة، جاهزة للإنتاج.</p>
+                    <p className="scenes-count">{storyboard.sceneCount} مشاهد مرتّبة.</p>
+
+                    {/* ── EVERY SCENE, AND WHERE ITS PICTURE COMES FROM ─────────
+                        The Founder, 2026-09-25: this Chamber «لا يمنح الفرصة
+                        للمنشئ القادم إليه بمطالبة من الحجة أن يضيف أصولاً
+                        لهذه المطالبة من عنده... حتى إنه لا يسأل المبدع عن طلب أو
+                        مواصفات للمادة المولّدة قبل توليدها.» The Chamber
+                        proposes; only the Creator decides, and nothing is
+                        bought before they have read what it is for. */}
+                    {scenePlans && scenePlans.length > 0 && (
+                      <div className="scene-plans" data-testid="rasamr-scene-plans">
+                        <span className="scene-plans-head">من أين صورة كلّ مشهد؟</span>
+                        {scenePlans.map((plan) => {
+                          const save = async (next: Partial<ScenePlanView>) => {
+                            const merged = { ...plan, ...next };
+                            setScenePlans((all) => (all ?? []).map((x) => (x.sceneId === plan.sceneId ? merged : x)));
+                            if (merged.sourcing === 'generate' && (merged.creationDemandAr ?? '').trim().length < 8) return;
+                            if (merged.sourcing === 'creator-asset' && !merged.visualAssetId) return;
+                            setSavingSceneId(plan.sceneId);
+                            const outcome = await setScenePlan({
+                              sceneId: plan.sceneId,
+                              sourcing: merged.sourcing,
+                              creationDemandAr: merged.creationDemandAr,
+                              visualAssetId: merged.visualAssetId,
+                            });
+                            setPlanNotice(outcome.ok ? null : outcome.messageAr ?? null);
+                            setSavingSceneId(null);
+                          };
+                          return (
+                            <div key={plan.sceneId} className="scene-plan">
+                              <div className="scene-plan-head">
+                                <span className="scene-plan-n">{plan.order}</span>
+                                <span className="scene-plan-seen">{plan.seenAr}</span>
+                              </div>
+                              <div className="scene-plan-choices" role="group" aria-label={`مصدر صورة المشهد ${plan.order}`}>
+                                {([
+                                  ['stock', 'يُبحَث عنه'],
+                                  ['generate', 'يُنشَأ لي'],
+                                  ['creator-asset', 'من أصولي'],
+                                ] as const).map(([value, label]) => (
+                                  <button
+                                    key={value}
+                                    type="button"
+                                    className={`scene-plan-choice${plan.sourcing === value ? ' scene-plan-choice-on' : ''}`}
+                                    disabled={savingSceneId === plan.sceneId}
+                                    onClick={() => { void save({ sourcing: value }); }}
+                                  >
+                                    {label}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {plan.sourcing === 'generate' && (
+                                <>
+                                  <label className="scene-plan-label" htmlFor={`demand-${plan.sceneId}`}>
+                                    ما الذي يُنشَأ لهذا المشهد؟
+                                  </label>
+                                  <textarea
+                                    id={`demand-${plan.sceneId}`}
+                                    className="scene-plan-demand"
+                                    rows={2}
+                                    value={plan.creationDemandAr ?? ''}
+                                    onChange={(e) => {
+                                      const v = e.target.value;
+                                      setScenePlans((all) => (all ?? []).map((x) => (x.sceneId === plan.sceneId ? { ...x, creationDemandAr: v } : x)));
+                                    }}
+                                    onBlur={() => { void save({}); }}
+                                    placeholder="صف الصورة التي تريدها بدقة."
+                                  />
+                                </>
+                              )}
+
+                              {plan.sourcing === 'creator-asset' && (
+                                <>
+                                  <label className="scene-plan-label" htmlFor={`asset-${plan.sceneId}`}>
+                                    أي أصلٍ من خزانتك؟
+                                  </label>
+                                  <select
+                                    id={`asset-${plan.sceneId}`}
+                                    className="scene-plan-asset"
+                                    value={plan.visualAssetId ?? ''}
+                                    onChange={(e) => { void save({ visualAssetId: e.target.value || null }); }}
+                                  >
+                                    <option value="">— اختر —</option>
+                                    {vaultAssets
+                                      .filter((va) => va.capabilityTarget === 'VISUAL' || va.capabilityTarget === 'MOTION')
+                                      .map((va) => (
+                                        <option key={va.assetId} value={va.assetId}>
+                                          {typeLabelForCapability(va.capabilityTarget)} — {String(va.metadata?.generationPrompt ?? va.assetId).slice(0, 40)}
+                                        </option>
+                                      ))}
+                                  </select>
+                                  {vaultAssets.length === 0 && (
+                                    <p className="scene-plan-empty">
+                                      خزانتك فارغة بعد. ارفع أصلاً من جهازك أو استدعِ من الخزانة.
+                                    </p>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {planNotice && <p className="scene-plan-notice">{planNotice}</p>}
+                      </div>
+                    )}
                     <button
                       type="button"
                       className="scenes-produce-btn"

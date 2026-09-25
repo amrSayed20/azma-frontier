@@ -7,7 +7,7 @@ import {
   isMoneyPrinterTurboConfigured,
 } from '@/src/external-providers/moneyprinterturbo/moneyprinterturbo-adapter';
 import { depositProductionIntoVault } from '@/src/external-providers/moneyprinterturbo/moneyprinterturbo-vault-deposit';
-import { commissionScenePictures } from '@/src/ras-amr-production/qiyamah-commission';
+import { commissionScenePictures, handOverAssetToWorkshop } from '@/src/ras-amr-production/qiyamah-commission';
 import {
   acceptStoryboardProduction,
   findOperationForStoryboard,
@@ -133,6 +133,17 @@ export async function POST(
     .filter((sc) => sc.sourcing === 'generate' && (sc.creationDemandAr ?? '').trim().length > 0)
     .map((sc) => ({ order: sc.order, demandAr: sc.creationDemandAr as string, seenAr: sc.description }));
 
+  // ── SCENES THE CREATOR ALREADY HAS A PICTURE FOR ─────────────────────
+  //
+  //   The Founder, 2026-09-25: this Chamber gave a Creator arriving with a
+  //   demand from الحجّة no way to put their OWN asset into it, and leaned on
+  //   generation instead. A picture they already own costs nothing and is
+  //   already theirs, so it is used as it is — nothing is commissioned for a
+  //   scene whose picture the Creator has already chosen.
+  const chosenByCreator = scenes
+    .filter((sc) => sc.sourcing === 'creator-asset' && sc.visualAssetId)
+    .map((sc) => ({ order: sc.order, assetId: sc.visualAssetId as string }));
+
   const productionRequest = {
     subject,
     // The Chamber's own sentences are narrated, not a foreign model's
@@ -185,7 +196,14 @@ export async function POST(
       // Commissioned here, not above: this closure is what outlives the
       // request. A picture the Empire could not make does not stop the film —
       // that scene is searched for instead, which is what it would have been.
-      let suppliedMaterials: { url: string }[] = [];
+      // The Creator's own pictures first: they are already theirs, already
+      // paid for, and need no provider at all.
+      let suppliedMaterials: { url: string; order: number }[] = [];
+      for (const chosen of chosenByCreator) {
+        const workshopPath = await handOverAssetToWorkshop(chosen.assetId, session.creatorId);
+        if (workshopPath) suppliedMaterials.push({ url: workshopPath, order: chosen.order });
+      }
+
       if (toGenerate.length > 0) {
         const commissioned = await commissionScenePictures({
           creatorId: session.creatorId,
@@ -194,9 +212,11 @@ export async function POST(
         // The workshop opens a path on its own filesystem, not a Vault URI.
         // A picture whose handoff failed is simply absent here, and that scene
         // is searched for instead.
-        suppliedMaterials = commissioned
-          .filter((c) => typeof c.workshopPath === 'string')
-          .map((c) => ({ url: c.workshopPath as string }));
+        suppliedMaterials = suppliedMaterials.concat(
+          commissioned
+            .filter((c) => typeof c.workshopPath === 'string')
+            .map((c) => ({ url: c.workshopPath as string, order: c.order })),
+        );
         const refused = commissioned.filter((c) => c.failure);
         if (refused.length > 0) {
           console.error('[RasAmr] scenes not commissioned:', JSON.stringify(
@@ -205,7 +225,12 @@ export async function POST(
         }
       }
 
-      const production = await adapter.produce({ ...productionRequest, suppliedMaterials });
+      // In scene order, so the pictures follow the story rather than the
+      // order the Empire happened to obtain them in.
+      const ordered = [...suppliedMaterials]
+        .sort((x, y) => x.order - y.order)
+        .map(({ url }) => ({ url }));
+      const production = await adapter.produce({ ...productionRequest, suppliedMaterials: ordered });
       const asset = await depositProductionIntoVault({
         creatorId: session.creatorId,
         production,

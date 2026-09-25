@@ -39,6 +39,7 @@
 
 import { copyFile, mkdir } from 'fs/promises';
 import { basename, join } from 'path';
+import { getDb } from '../persistent-storage';
 import { generateImage } from '../qiyamah-generation/generation-service';
 
 /**
@@ -68,7 +69,12 @@ const CONTAINER_HANDOFF_DIR = process.env['MPT_HANDOFF_CONTAINER_DIR']
 function hostPathForAsset(assetUrl: string): string {
   const name = basename(assetUrl);
   const root = process.env['UPLOADS_DIR'] ?? join(process.cwd(), 'public');
-  return join(root, 'generated-assets', name);
+  // A sovereign asset sits in one of two places depending on how it came to
+  // exist: generated here, or uploaded by the Creator. The URI says which, so
+  // the URI is what decides — never an assumption about where pictures live.
+  return assetUrl.startsWith('/generated-assets/')
+    ? join(root, 'generated-assets', name)
+    : join(root, name);
 }
 
 /**
@@ -86,6 +92,29 @@ async function handOverToWorkshop(assetUrl: string): Promise<string | null> {
     return `${CONTAINER_HANDOFF_DIR}/${name}`;
   } catch (err) {
     console.error('[RasAmr] handoff to workshop failed:', assetUrl, err);
+    return null;
+  }
+}
+
+/**
+ * Put a picture the Creator already owns where the workshop can open it.
+ *
+ * Nothing is commissioned and nothing is charged: it is already theirs. The
+ * asset is read scoped to this Creator, so one Creator cannot put another's
+ * picture into their film by passing an id.
+ */
+export async function handOverAssetToWorkshop(
+  assetId: string,
+  creatorId: string,
+): Promise<string | null> {
+  try {
+    const row = getDb()
+      .prepare('SELECT secure_storage_uri FROM vault_assets WHERE asset_id = ? AND subscriber_tenant_id = ?')
+      .get(assetId, creatorId) as { secure_storage_uri?: string } | undefined;
+    if (typeof row?.secure_storage_uri !== 'string') return null;
+    return await handOverToWorkshop(row.secure_storage_uri);
+  } catch (err) {
+    console.error('[RasAmr] creator asset handoff failed:', assetId, err);
     return null;
   }
 }

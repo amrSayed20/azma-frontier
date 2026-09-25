@@ -3,7 +3,7 @@
 import { cookies } from 'next/headers';
 import { verifySession } from '@/src/authentication';
 import { getDb } from '@/src/persistent-storage/db';
-import { createStoryboard, addScene } from '@/src/persistent-storage/sovereign-project-repository';
+import { createStoryboard, addScene, listScenes, setScenePicturePlan } from '@/src/persistent-storage/sovereign-project-repository';
 import { composeSceneStructure } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
 
 /**
@@ -41,6 +41,14 @@ import { composeSceneStructure } from '@/src/chambers/hujjah-al-damighah/soverei
 
 const SESSION_COOKIE = 'azma_session';
 
+/** Who is asking. One way to know it, used by every action in this file. */
+async function currentSession() {
+  const jar = await cookies();
+  const sessionId = jar.get(SESSION_COOKIE)?.value;
+  return sessionId ? verifySession(sessionId) : null;
+}
+
+
 /** A scene as the Chamber shows it back — the Creator's half only. */
 export interface BriefScene {
   readonly order: number;
@@ -68,9 +76,7 @@ export async function composeStoryboardFromBrief(input: {
   specificationsAr?: string;
   sceneCount?: number;
 }): Promise<BriefOutcome> {
-  const jar = await cookies();
-  const sessionId = jar.get(SESSION_COOKIE)?.value;
-  const session = sessionId ? verifySession(sessionId) : null;
+  const session = await currentSession();
   if (!session) {
     return { ok: false, messageAr: 'سجّل دخولك أوّلاً.' };
   }
@@ -138,4 +144,86 @@ export async function composeStoryboardFromBrief(input: {
   }
 
   return { ok: true, storyboardId: storyboard.storyboardId, scenes: kept };
+}
+
+
+/**
+ * The scenes of a storyboard, with the picture plan of each — as the Creator
+ * must see them BEFORE anything is produced or paid for.
+ *
+ * ─── WHY THIS EXISTS ─────────────────────────────────────────────────────────
+ *
+ *   The Founder, 2026-09-25: رأس الأمر «لا يمنح الفرصة للمنشئ القادم إليه
+ *   بمطالبة من الحجة أن يضيف أصولاً لهذه المطالبة من عنده... حتى إنه لا يسأل
+ *   المبدع عن طلب أو مواصفات للمادة المولّدة قبل توليدها.»
+ *
+ *   Measured, and he was right: scenes arrived, the Creator pressed produce,
+ *   and the Chamber decided by itself which pictures to buy and what to ask
+ *   for — spending the Creator's credits on demands they had never read. The
+ *   Chamber may propose. Only the Creator decides.
+ */
+export interface ScenePlanView {
+  readonly sceneId: string;
+  readonly order: number;
+  /** What is seen, in the Creator's own words. */
+  readonly seenAr: string;
+  /** What is said over it. */
+  readonly saidAr: string;
+  readonly sourcing: 'stock' | 'generate' | 'creator-asset';
+  /** The demand, when it is to be generated. Theirs to rewrite. */
+  readonly creationDemandAr: string | null;
+  /** Their own asset, when they chose one. */
+  readonly visualAssetId: string | null;
+}
+
+export type ScenePlansOutcome =
+  | { readonly ok: true; readonly scenes: readonly ScenePlanView[] }
+  | { readonly ok: false; readonly messageAr: string };
+
+export async function readScenePlans(storyboardId: string): Promise<ScenePlansOutcome> {
+  const session = await currentSession();
+  if (!session) return { ok: false, messageAr: 'سجّل دخولك أوّلاً.' };
+
+  const scenes = listScenes(getDb(), storyboardId, session.creatorId);
+  if (scenes.length === 0) return { ok: false, messageAr: 'لا مشاهدَ في هذه المطالبة.' };
+
+  return {
+    ok: true,
+    scenes: scenes.map((sc) => ({
+      sceneId: sc.sceneId,
+      order: sc.order,
+      seenAr: sc.description,
+      saidAr: sc.directionNotes ?? '',
+      sourcing: sc.sourcing ?? 'stock',
+      creationDemandAr: sc.creationDemandAr,
+      visualAssetId: sc.visualAssetId,
+    })),
+  };
+}
+
+/** The Creator changes one scene's picture plan. Theirs to change, always. */
+export async function setScenePlan(input: {
+  sceneId: string;
+  sourcing: 'stock' | 'generate' | 'creator-asset';
+  creationDemandAr?: string | null;
+  visualAssetId?: string | null;
+}): Promise<{ ok: boolean; messageAr?: string }> {
+  const session = await currentSession();
+  if (!session) return { ok: false, messageAr: 'سجّل دخولك أوّلاً.' };
+
+  if (input.sourcing === 'generate' && (input.creationDemandAr ?? '').trim().length < 8) {
+    // Said plainly rather than refused silently: a demand is what will be
+    // made, and an empty one would spend their generation on nothing.
+    return { ok: false, messageAr: 'اكتب ما تريد إنشاءه في هذا المشهد قبل توليده.' };
+  }
+  if (input.sourcing === 'creator-asset' && !input.visualAssetId) {
+    return { ok: false, messageAr: 'اختر أصلاً من خزانتك لهذا المشهد.' };
+  }
+
+  const changed = setScenePicturePlan(getDb(), input.sceneId, session.creatorId, {
+    sourcing: input.sourcing,
+    creationDemandAr: input.creationDemandAr ?? null,
+    visualAssetId: input.visualAssetId ?? null,
+  });
+  return changed ? { ok: true } : { ok: false, messageAr: 'لم يُحفظ التغيير. أعد المحاولة.' };
 }

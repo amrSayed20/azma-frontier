@@ -147,7 +147,19 @@ export interface StoryboardScene {
    * and can be found; 'generate' when it exists nowhere and must be made.
    * Null on scenes written before the distinction existed, and read as stock.
    */
-  readonly sourcing: 'stock' | 'generate' | null;
+  /**
+   * Where this scene's picture comes from.
+   *
+   *   'stock'         — it exists in the world and can be found.
+   *   'generate'      — it exists nowhere and must be made.
+   *   'creator-asset' — the Creator has it already and chose it.
+   *
+   * The Chamber proposes the first two when it writes the scene. The third is
+   * only ever the Creator's, and any of them can be changed by them: it is
+   * their film. Null on scenes written before the distinction existed, read
+   * as stock.
+   */
+  readonly sourcing: 'stock' | 'generate' | 'creator-asset' | null;
   /** What to create, when sourcing is 'generate'. Null otherwise. */
   readonly creationDemandAr: string | null;
   readonly createdAt: number;

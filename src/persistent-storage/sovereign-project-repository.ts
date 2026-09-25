@@ -217,7 +217,7 @@ function rowToScene(row: Record<string, unknown>): StoryboardScene {
     transitionIntent: (row.transition_intent as string | null) ?? null,
     directionNotes: (row.direction_notes as string | null) ?? null,
     visualSearchEn: (row.visual_search_en as string | null) ?? null,
-    sourcing: (row.sourcing as 'stock' | 'generate' | null) ?? null,
+    sourcing: (row.sourcing as 'stock' | 'generate' | 'creator-asset' | null) ?? null,
     creationDemandAr: (row.creation_demand_ar as string | null) ?? null,
     createdAt: row.created_at as number,
     updatedAt: row.updated_at as number,
@@ -252,7 +252,7 @@ export function addScene(
     transitionIntent?: string | null;
     directionNotes?: string | null;
     visualSearchEn?: string | null;
-    sourcing?: 'stock' | 'generate' | null;
+    sourcing?: 'stock' | 'generate' | 'creator-asset' | null;
     creationDemandAr?: string | null;
     nowMs?: number;
   },
@@ -337,6 +337,53 @@ export function assignSceneAsset(
       assignment.audioAssetId !== undefined ? assignment.audioAssetId : current.audioAssetId,
       nowMs, sceneId, ownerId,
     );
+  return Number(result.changes) > 0;
+}
+
+/**
+ * Decide where one scene's picture comes from.
+ *
+ * ─── WHY ONE FUNCTION AND NOT THREE ──────────────────────────────────────────
+ *
+ *   The Founder, 2026-09-25: رأس الأمر «لا يمنح الفرصة للمنشئ القادم إليه
+ *   بمطالبة من الحجة أن يضيف أصولاً لهذه المطالبة من عنده ويعتمد على التوليد،
+ *   حتى إنه لا يسأل المبدع عن طلب أو مواصفات للمادة المولّدة قبل توليدها.»
+ *
+ *   Choosing to use your own picture, choosing to have one made, and saying
+ *   what to make are not three decisions. They are one decision with three
+ *   answers, and splitting them across three calls would let a scene end up
+ *   claiming it needs generating while holding a Creator's own asset.
+ *
+ *   The scene must belong to this Creator, checked here rather than trusted.
+ */
+export function setScenePicturePlan(
+  db: DatabaseSync,
+  sceneId: string,
+  ownerId: string,
+  plan: {
+    sourcing: 'stock' | 'generate' | 'creator-asset';
+    creationDemandAr?: string | null;
+    visualAssetId?: string | null;
+  },
+  nowMs: number = Date.now(),
+): boolean {
+  const row = db
+    .prepare('SELECT scene_id FROM storyboard_scenes WHERE scene_id = ? AND owner_id = ?')
+    .get(sceneId, ownerId);
+  if (!row) return false;
+
+  // Each answer clears what the others would have meant. A scene holding both
+  // a demand and a chosen asset is a scene that has not decided.
+  const demand = plan.sourcing === 'generate' ? (plan.creationDemandAr ?? null) : null;
+  const asset = plan.sourcing === 'creator-asset' ? (plan.visualAssetId ?? null) : null;
+
+  const result = db
+    .prepare(
+      `UPDATE storyboard_scenes
+          SET sourcing = ?, creation_demand_ar = ?, visual_asset_id = ?, updated_at = ?
+        WHERE scene_id = ? AND owner_id = ?`,
+    )
+    .run(plan.sourcing, demand, asset, nowMs, sceneId, ownerId);
   return Number(result.changes) > 0;
 }
 
