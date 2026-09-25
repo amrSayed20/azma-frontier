@@ -4120,38 +4120,8 @@ export default function RasAmrChamber() {
 
       {/* template-preview-gate rendered outside viewport above */}
 
-      {/* TEMPLATE BANNER — workspace only */}
-      {selectedTemplate && creationPhase === 'workspace' && (
-        <div className="ras-template-banner">
-          <span className="ras-template-banner-label">
-            {selectedTemplate.icon} {selectedTemplate.name}
-          </span>
-          {/* ── THE BANNER SAYS WHERE YOU ARE, NOT WHAT THE CANVAS ALREADY SHOWS ─
-              MEASURED 2026-09-25 on the Founder's own screen: I had widened
-              every chip to carry its number, role and duration, and the strip
-              became wider than the place it sits in — it wrapped into a tall
-              column of one word per line and fell below the whole grid. It was
-              also a repetition: the canvas above already lists all six shots
-              with their names, their cues and their lengths. A banner's work
-              is to say how far along you are and what to do next. */}
-          <span className="ras-template-banner-slots" aria-label="التقدّم">
-            <span className="ras-template-progress">
-              {placedNodeCount} من {selectedTemplate.slotDurations.length} لقطات
-            </span>
-            {selectedTemplate.transitionPreference === 'crossfade' && (
-              <span className="ras-template-slot-chip ras-template-slot-chip-fx">≈ تلاشٍ</span>
-            )}
-          </span>
-          <span className="ras-template-banner-hint">
-            {placedNodeCount >= selectedTemplate.slotDurations.length
-              ? 'الهيكل مكتمل — عايِنه ثمّ جمّع المشهد.'
-              : `التالي: اللقطة ${placedNodeCount + 1} — «${selectedTemplate.slotRoles?.[placedNodeCount] ?? ''}». استدعِ أصلاً أو ارفعه، ثمّ «➕ أضف إلى المشهد».`}
-          </span>
-          <button className="ras-template-banner-change" onClick={handleChangeIntent}>
-            تغيير البداية
-          </button>
-        </div>
-      )}
+      {/* The template banner was removed — see the tombstone above
+          .ras-template-structure below, which took over its two duties. */}
 
       {/* BODY GRID — Phase C: Desktop 280px 1fr 300px */}
       <div className="ras-body-grid" style={{ display: (creationPhase === 'intent' || creationPhase === 'template-preview') ? 'none' : undefined }}>
@@ -5810,6 +5780,19 @@ export default function RasAmrChamber() {
               );
             })}
           </div>
+          {/* What the removed banner alone used to say, in the row that was
+              always the right place for it. The count is clamped: it read
+              «7 من 6 لقطات» on the Founder's screen, because a Creator may
+              place more layers than a template has shots and the sentence
+              had no answer for that. */}
+          <span className="ras-tss-progress">
+            {Math.min(placedNodeCount, selectedTemplate.slotDurations.length)} من {selectedTemplate.slotDurations.length}
+          </span>
+          <span className="ras-tss-next">
+            {placedNodeCount >= selectedTemplate.slotDurations.length
+              ? 'الهيكل مكتمل — عايِنه ثمّ جمّع المشهد.'
+              : `التالي: «${selectedTemplate.slotRoles?.[placedNodeCount] ?? ''}» — استدعِ أصلاً ثمّ «➕ أضف إلى المشهد».`}
+          </span>
           <button
             className="ras-template-structure-remove"
             onClick={() => setSelectedTemplate(null)}

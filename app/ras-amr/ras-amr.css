@@ -472,6 +472,34 @@ body:has(.ras-amr-viewport) {
    TEMPLATE BANNER — Grid Row 3 (auto-height)
    Collapses to 0 when not rendered.
    ═══════════════════════════════════════════════ */
+/* TOMBSTONE — .ras-template-banner and its children, removed 2026-09-25.
+   They styled a second template display beside this one, and its element was
+   a grid child with no declared placement in a root that assigns every row
+   and column, so it landed in whatever cell was left. The element is gone;
+   its rules go with it, because a rule with no element invites the element
+   back. */
+
+/* How far along, and what to do next — the banner's two real duties, now
+   sitting with the structure they describe. */
+.ras-tss-progress {
+  flex-shrink: 0;
+  font-size: var(--rt-3xs);
+  font-weight: 700;
+  color: #D4AF37;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ras-tss-next {
+  font-size: var(--rt-3xs);
+  color: rgba(239, 230, 208, 0.62);
+  line-height: 1.5;
+  /* The row is a horizontal strip that scrolls; this sentence does not wrap
+     inside it and does not shrink the shots to make room for itself. */
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-inline: 10px;
+}
+
 .ras-template-structure {
   grid-row: 3;
   grid-column: 2;
@@ -4039,46 +4067,6 @@ body:has(.ras-amr-viewport) {
 }
 
 /* ── Template banner (workspace) ─────────────────────────────────────── */
-.ras-template-banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 20px;
-  background: rgba(212, 175, 55, 0.06);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
-  font-size: var(--rt-sm);
-  flex-shrink: 0;
-}
-
-.ras-template-banner-label {
-  color: #d4af37;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-}
-
-.ras-template-banner-hint {
-  color: rgba(255, 255, 255, 0.45);
-  flex: 1;
-}
-
-.ras-template-banner-change {
-  background: transparent;
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  border-radius: 4px;
-  color: rgba(212, 175, 55, 0.7);
-  font-family: inherit;
-  font-size: var(--rt-sm);
-  padding: 3px 10px;
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
-  white-space: nowrap;
-}
-
-.ras-template-banner-change:hover {
-  border-color: #d4af37;
-  color: #d4af37;
-}
-
 /* ── Mobile: single-column intent grid ──────────────────────────────── */
 @media (max-width: 560px) {
   .ras-intent-grid {
@@ -4133,17 +4121,6 @@ body:has(.ras-amr-viewport) {
 :root[data-theme="light"] .ras-intent-imagine .ras-intent-card-icon {
   color: #8a6800;
 }
-
-:root[data-theme="light"] .ras-template-banner {
-  background: rgba(160, 120, 0, 0.05);
-  border-bottom-color: rgba(160, 120, 0, 0.2);
-}
-
-:root[data-theme="light"] .ras-template-banner-label {
-  color: #7a5c00;
-}
-
-
 
 /* ═══════════════════════════════════════════════════════════════════════
    FINAL AMENDMENT — EXPERIENCE CLOSURE
@@ -4300,12 +4277,6 @@ body:has(.ras-amr-viewport) {
 }
 
 /* ── Template banner upgrade ────────────────────────────────────────── */
-.ras-template-banner {
-  /* Slightly more presence */
-  background: rgba(212, 175, 55, 0.07);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.22);
-}
-
 /* ── Light theme additions ──────────────────────────────────────────── */
 :root[data-theme="light"] .ras-nav-btn {
   border-color: rgba(160, 120, 0, 0.25);
@@ -4481,13 +4452,6 @@ body:has(.ras-amr-viewport) {
 }
 
 /* ── Template banner slot chips ──────────────────────────────────────── */
-.ras-template-banner-slots {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
 /* How far along, in one short phrase. The shots themselves are listed on the
    canvas; the banner does not repeat them. */
 .ras-template-progress {
