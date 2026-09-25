@@ -24,13 +24,13 @@
      Every size below display type now resolves here. To change the
      Chamber's text size is to change these seven numbers — there is no
      second place where a font-size can quietly disagree with them. */
-  --ht-3xs: 13px;   /* was 7 – 9.5   — the unreadable end */
-  --ht-2xs: 14px;   /* was 10 – 10.5 */
-  --ht-xs:  15px;   /* was 11 – 11.5 */
-  --ht-sm:  16px;   /* was 12 – 12.5 */
-  --ht-md:  17px;   /* was 13 – 13.5 */
-  --ht-lg:  19px;   /* was 14 – 15   */
-  --ht-xl:  21px;   /* was 16        */
+  --ht-3xs: 15px;   /* was 7 – 9.5   — the unreadable end */
+  --ht-2xs: 16px;   /* was 10 – 10.5 */
+  --ht-xs:  17px;   /* was 11 – 11.5 */
+  --ht-sm:  18px;   /* was 12 – 12.5 */
+  --ht-md:  19px;   /* was 13 – 13.5 */
+  --ht-lg:  21px;   /* was 14 – 15   */
+  --ht-xl:  23px;   /* was 16        */
 
   --chamber-bg:    #060504;
   --archives-bg:   #0a0805;
@@ -432,7 +432,14 @@
 /* ── Knowledge Archives — the left alcove ──────────────────────────── */
 
 .knowledge-archives {
-  width: min(215px, 22vw);
+  /* MEASURED 2026-09-25: at 215px this rail clipped its own sentence —
+     «اختر مجال بحثك — خمسة مجالات متساوية، ولكلّ مسارُه وأدلتُه» ran past
+     the edge and `overflow: hidden` swallowed the rest, so a Creator was
+     shown a sentence that stopped mid-thought and was never told it had.
+     A rail is a place for words, and its width answers to them: wide
+     enough for Arabic at the Chamber's own reading size, and still a rail
+     on a narrow screen. */
+  width: clamp(248px, 21vw, 320px);
   flex-shrink: 0;
   background: var(--archives-bg);
   border-left: 1px solid transparent; /* physical left = the separator from court */
@@ -4955,7 +4962,11 @@
   color: var(--ig-3);
   letter-spacing: 0.4px;
   line-height: 1.6;
+  /* Aligned with the rail's header above it, which has always been inset by
+     16px. Without this the sentence ran flush to both edges and the fade at
+     the rail's rim fell across its last letters. */
   margin: 0 0 8px;
+  padding: 0 16px;
 }
 
 /* Awaiting a choice: the cards lift slightly, so the eye goes to them before

@@ -1,3 +1,25 @@
+:root {
+  /* ═══ THE PALACE'S TYPE SCALE ════════════════════════════════════════
+     Measured 2026-09-25: 81 font-size declarations, the mass of them
+     between 7px and 13px — the same disease the Chamber of Evidence had,
+     and the Founder found it here too. Arabic carries its distinctions in
+     dots, hamzas and tashkeel and needs more size than Latin at the same
+     nominal value.
+
+     Every size below display type resolves here, so changing the Palace's
+     text size is changing seven numbers and there is nowhere else a
+     font-size can quietly disagree with them. The steps match the Chamber
+     of Evidence's own, so a Creator crossing between them does not cross
+     between two different ideas of how large a word is. */
+  --vt-3xs: 15px;   /* was 7 – 9.5   */
+  --vt-2xs: 16px;   /* was 10 – 10.5 */
+  --vt-xs:  17px;   /* was 11 – 11.5 */
+  --vt-sm:  18px;   /* was 12 – 12.5 */
+  --vt-md:  19px;   /* was 13 – 13.5 */
+  --vt-lg:  21px;   /* was 14 – 15   */
+  --vt-xl:  23px;   /* was 16 – 18   */
+}
+
 /**
  * AZMA OS – Sovereign Vault Palace
  * Constitutional Architecture V1.0 — 21 Laws
@@ -144,7 +166,7 @@
 }
 
 .gate-subtitle {
-  font-size: 13px;
+  font-size: var(--vt-md);
   color: var(--text-dim);
   font-style: italic;
   letter-spacing: 0.05em;
@@ -162,7 +184,7 @@
   border: 1px solid rgba(139,101,8,.35);
   color: var(--text-dim);
   padding: 6px 18px;
-  font-size: 11px;
+  font-size: var(--vt-xs);
   font-family: inherit;
   cursor: pointer;
   border-radius: 2px;
@@ -229,7 +251,7 @@
     linear-gradient(145deg, var(--ig-2) 0%, var(--ig-3) 50%, var(--ig-2) 100%) border-box;
   border: 1px solid transparent;
   color: var(--text-main);
-  font-size: 18px;
+  font-size: var(--vt-xl);
   font-family: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -250,7 +272,7 @@
 /* The bottom row reads as a dead strip next to the digits above it: clear was
    a dim red, and enter sits disabled — and therefore at 30% opacity — until a
    fourth digit lands. Both are given the same presence as the numerals. */
-.pin-key-clear  { color: rgba(228,120,120,.95); font-size: 18px; }
+.pin-key-clear  { color: rgba(228,120,120,.95); font-size: var(--vt-xl); }
 .pin-key-enter  { color: var(--ig-7); font-size: 22px; }
 
 
@@ -261,14 +283,14 @@
   .gate-seal   { font-size: 52px; }
   .gate-pin-zone { gap: 14px; }
   .pin-keypad  { grid-template-columns: repeat(3, 48px); gap: 8px; }
-  .pin-key     { width: 48px; height: 48px; font-size: 17px; }
+  .pin-key     { width: 48px; height: 48px; font-size: var(--vt-xl); }
 }
 
 @media (max-height: 620px) {
   .palace-gate { justify-content: flex-start; }
   .gate-seal   { font-size: 40px; }
   .pin-keypad  { grid-template-columns: repeat(3, 44px); gap: 6px; }
-  .pin-key     { width: 44px; height: 44px; font-size: 16px; }
+  .pin-key     { width: 44px; height: 44px; font-size: var(--vt-xl); }
 }
 .pin-key:disabled { opacity: 0.30; cursor: not-allowed; }
 
@@ -281,7 +303,7 @@
 /* PIN error and verifying states — Phase 3B Package II N-5 */
 .pin-error {
   margin: 6px 0 2px;
-  font-size: 11px;
+  font-size: var(--vt-xs);
   color: rgba(220, 80, 80, 0.90);
   text-align: center;
   letter-spacing: 0.01em;
@@ -289,7 +311,7 @@
 }
 .pin-verifying-label {
   margin: 6px 0 0;
-  font-size: 10px;
+  font-size: var(--vt-2xs);
   color: var(--text-ghost, rgba(255,255,255,.28));
   text-align: center;
   letter-spacing: 0.04em;
@@ -308,7 +330,7 @@
 }
 /* PIN Setup phase — subtitle variant */
 .pin-setup-subtitle {
-  font-size: 11px;
+  font-size: var(--vt-xs);
   color: var(--text-muted);
   letter-spacing: 0.04em;
   margin-top: 4px;
@@ -343,7 +365,7 @@
    use, so a separate face control could only promise what it cannot deliver. */
 .biometric-hint {
   margin: 4px 0 0;
-  font-size: 11px;
+  font-size: var(--vt-xs);
   color: var(--text-muted);
   opacity: 0.75;
 }
@@ -374,7 +396,7 @@
 .bio-glyph { font-size: 60px; color: var(--ig-3); opacity: 0.50; }
 
 .biometric-label {
-  font-size: 12px;
+  font-size: var(--vt-sm);
   color: var(--text-dim);
   font-style: italic;
   margin: 0;
@@ -385,7 +407,7 @@
   background: transparent;
   border: 1px solid rgba(139,101,8,.25);
   color: var(--text-ghost);
-  font-size: 10px;
+  font-size: var(--vt-2xs);
   padding: 5px 14px;
   cursor: pointer;
   font-family: inherit;
@@ -507,9 +529,9 @@
   margin-bottom: 8px;
 }
 
-.ceremony-origin { font-size: 13px; color: var(--text-dim); font-weight: 600; letter-spacing: 0.06em; margin: 0; }
+.ceremony-origin { font-size: var(--vt-md); color: var(--text-dim); font-weight: 600; letter-spacing: 0.06em; margin: 0; }
 
-.ceremony-subtitle { font-size: 11px; color: var(--text-ghost); font-style: italic; margin: 0; }
+.ceremony-subtitle { font-size: var(--vt-xs); color: var(--text-ghost); font-style: italic; margin: 0; }
 
 .ceremony-treasure {
   background: rgba(12,9,2,.80);
@@ -519,9 +541,9 @@
   width: 100%;
 }
 
-.ceremony-treasure-title { font-size: 14px; color: var(--text-sacred); font-weight: 600; margin-bottom: 6px; }
+.ceremony-treasure-title { font-size: var(--vt-lg); color: var(--text-sacred); font-weight: 600; margin-bottom: 6px; }
 
-.ceremony-treasure-preview { font-size: 11px; color: var(--text-muted); }
+.ceremony-treasure-preview { font-size: var(--vt-xs); color: var(--text-muted); }
 
 .ceremony-path {
   display: flex;
@@ -531,7 +553,7 @@
 }
 
 .ceremony-origin-tag, .ceremony-vault-tag {
-  font-size: 10px;
+  font-size: var(--vt-2xs);
   color: var(--text-dim);
   letter-spacing: 0.04em;
   padding: 3px 10px;
@@ -553,7 +575,7 @@
     linear-gradient(145deg, var(--ig-3) 0%, var(--ig-6) 50%, var(--ig-3) 100%) border-box;
   border: 1px solid transparent;
   color: var(--ig-7);
-  font-size: 13px;
+  font-size: var(--vt-md);
   font-family: inherit;
   font-weight: 600;
   padding: 12px 32px;
@@ -600,17 +622,17 @@
   justify-content: center;
 }
 
-.palace-crown-seal { font-size: 14px; color: var(--ig-4); opacity: 0.55; }
+.palace-crown-seal { font-size: var(--vt-lg); color: var(--ig-4); opacity: 0.55; }
 
 .palace-crown-name {
-  font-size: 12px;
+  font-size: var(--vt-sm);
   font-weight: 700;
   color: var(--ig-5);
   letter-spacing: 0.08em;
 }
 
 .palace-crown-count {
-  font-size: 9px;
+  font-size: var(--vt-3xs);
   color: var(--text-ghost);
   letter-spacing: 1px;
   background: rgba(212,175,55,.06);
@@ -625,7 +647,7 @@
   background: transparent;
   border: 1px solid rgba(139,101,8,.35);
   color: var(--ig-4);
-  font-size: 11px;
+  font-size: var(--vt-xs);
   font-weight: 600;
   padding: 5px 12px;
   border-radius: 2px;
@@ -674,7 +696,7 @@
 
 .corridor-label {
   display: block;
-  font-size: 7px;
+  font-size: var(--vt-3xs);
   font-weight: 900;
   color: var(--ig-2);
   letter-spacing: 3px;
@@ -684,7 +706,7 @@
 
 .corridor-sublabel {
   display: block;
-  font-size: 11px;
+  font-size: var(--vt-xs);
   color: var(--text-dim);
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -731,7 +753,7 @@
 }
 
 .portal-icon {
-  font-size: 16px;
+  font-size: var(--vt-xl);
   flex-shrink: 0;
   color: rgba(var(--vault-rgb), 0.65);
   transition: color 0.20s;
@@ -747,7 +769,7 @@
 
 .portal-name {
   display: block;
-  font-size: 11.5px;
+  font-size: var(--vt-xs);
   font-weight: 600;
   color: var(--text-dim);
   letter-spacing: 0.02em;
@@ -759,7 +781,7 @@
 
 .portal-desc {
   display: block;
-  font-size: 9px;
+  font-size: var(--vt-3xs);
   color: var(--text-ghost);
   white-space: nowrap;
   overflow: hidden;
@@ -773,7 +795,7 @@
 .portal-status { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 
 .portal-count {
-  font-size: 9px;
+  font-size: var(--vt-3xs);
   color: rgba(var(--vault-rgb), 0.75);
   font-family: monospace;
   font-weight: 700;
@@ -862,7 +884,7 @@
 }
 
 .atrium-subtitle {
-  font-size: 13px;
+  font-size: var(--vt-md);
   color: var(--text-dim);
   font-style: italic;
   margin: 0;
@@ -885,7 +907,7 @@
   border-radius: 2px;
   color: var(--ig-6);
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--vt-md);
   font-weight: 600;
   letter-spacing: 0.5px;
   cursor: pointer;
@@ -902,12 +924,12 @@
 
 .atrium-deposit-error {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--vt-sm);
   color: rgba(220, 90, 90, 0.92);
 }
 
 .atrium-section-label {
-  font-size: 8px;
+  font-size: var(--vt-3xs);
   font-weight: 700;
   color: var(--ig-2);
   letter-spacing: 2.5px;
@@ -949,16 +971,16 @@
   border-right-color: rgba(var(--vault-rgb), 0.70);
 }
 
-.recent-icon { font-size: 16px; color: rgba(var(--vault-rgb), 0.75); flex-shrink: 0; }
+.recent-icon { font-size: var(--vt-xl); color: rgba(var(--vault-rgb), 0.75); flex-shrink: 0; }
 
 .recent-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 
-.recent-title  { font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.recent-title  { font-size: var(--vt-sm); font-weight: 600; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.recent-origin { font-size: 9px; color: var(--text-ghost); font-style: italic; }
+.recent-origin { font-size: var(--vt-3xs); color: var(--text-ghost); font-style: italic; }
 
 .recent-status {
-  font-size: 9px;
+  font-size: var(--vt-3xs);
   padding: 2px 8px;
   border-radius: 10px;
   border: 1px solid;
@@ -980,7 +1002,7 @@
   border: 1px solid rgba(139,101,8,.25);
   color: var(--text-dim);
   padding: 8px 18px;
-  font-size: 11px;
+  font-size: var(--vt-xs);
   font-family: inherit;
   cursor: pointer;
   border-radius: 2px;
@@ -1038,7 +1060,7 @@
 }
 
 .vault-interior-name {
-  font-size: 1.2rem;
+  font-size: var(--vt-xl);
   font-weight: 700;
   color: var(--text-main);
   margin: 0 0 3px;
@@ -1046,7 +1068,7 @@
 }
 
 .vault-interior-desc {
-  font-size: 11px;
+  font-size: var(--vt-xs);
   color: var(--text-dim);
   font-style: italic;
   display: block;
@@ -1056,7 +1078,7 @@
   background: transparent;
   border: 1px solid rgba(var(--vault-rgb), 0.25);
   color: rgba(var(--vault-rgb), 0.70);
-  font-size: 11px;
+  font-size: var(--vt-xs);
   padding: 6px 14px;
   cursor: pointer;
   font-family: inherit;
@@ -1108,14 +1130,14 @@
 }
 
 .treasury-empty-label {
-  font-size: 13px;
+  font-size: var(--vt-md);
   color: var(--text-dim);
   font-style: italic;
   margin: 0;
 }
 
 .treasury-empty-sub {
-  font-size: 11px;
+  font-size: var(--vt-xs);
   color: var(--text-ghost);
   margin: 0;
 }
@@ -1150,14 +1172,14 @@
 }
 
 .record-main { display: flex; flex-direction: column; gap: 3px; }
-.record-title   { font-size: 13px; font-weight: 600; color: var(--text-muted); line-height: 1.4; }
-.record-preview { font-size: 11px; color: var(--text-ghost); font-style: italic; }
+.record-title   { font-size: var(--vt-md); font-weight: 600; color: var(--text-muted); line-height: 1.4; }
+.record-preview { font-size: var(--vt-xs); color: var(--text-ghost); font-style: italic; }
 
 .record-meta { display: flex; align-items: center; justify-content: space-between; }
-.record-origin { font-size: 9px; color: var(--text-ghost); }
+.record-origin { font-size: var(--vt-3xs); color: var(--text-ghost); }
 
 .record-status {
-  font-size: 9px;
+  font-size: var(--vt-3xs);
   letter-spacing: 0.5px;
 }
 
@@ -1188,7 +1210,7 @@
 }
 
 .detail-label {
-  font-size: 8px;
+  font-size: var(--vt-3xs);
   font-weight: 700;
   color: rgba(var(--vault-rgb), 0.65);
   letter-spacing: 2px;
@@ -1202,7 +1224,7 @@
   width: 22px;
   height: 22px;
   border-radius: 2px;
-  font-size: 10px;
+  font-size: var(--vt-2xs);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1213,7 +1235,7 @@
 .detail-close:hover { background: rgba(212,175,55,.05); color: var(--text-dim); }
 
 .detail-title {
-  font-size: 14px;
+  font-size: var(--vt-lg);
   font-weight: 600;
   color: var(--text-sacred);
   line-height: 1.5;
@@ -1221,7 +1243,7 @@
 }
 
 .detail-preview {
-  font-size: 11px;
+  font-size: var(--vt-xs);
   color: var(--text-dim);
   padding: 0 16px 12px;
   font-style: italic;
@@ -1230,7 +1252,7 @@
 }
 
 .detail-section-label {
-  font-size: 7px;
+  font-size: var(--vt-3xs);
   font-weight: 700;
   color: var(--ig-2);
   letter-spacing: 2px;
@@ -1270,7 +1292,7 @@
 
 .detail-asset-unavailable {
   padding: 14px 16px;
-  font-size: 11px;
+  font-size: var(--vt-xs);
   color: var(--text-ghost, rgba(255,255,255,0.22));
   text-align: center;
   font-style: italic;
@@ -1308,8 +1330,8 @@
 
 .journey-step-body { display: flex; flex-direction: column; gap: 1px; }
 
-.journey-action  { font-size: 11px; color: var(--text-muted); }
-.journey-chamber { font-size: 9px; color: var(--text-ghost); font-style: italic; }
+.journey-action  { font-size: var(--vt-xs); color: var(--text-muted); }
+.journey-chamber { font-size: var(--vt-3xs); color: var(--text-ghost); font-style: italic; }
 
 /* Actions */
 
@@ -1325,7 +1347,7 @@
   border: 1px solid rgba(139,101,8,.25);
   color: var(--text-dim);
   padding: 8px 12px;
-  font-size: 11px;
+  font-size: var(--vt-xs);
   font-family: inherit;
   cursor: pointer;
   border-radius: 2px;
@@ -1354,13 +1376,13 @@
   padding: 16px 18px;
 }
 .vault-delete-title {
-  font-size: 13px;
+  font-size: var(--vt-md);
   font-weight: 600;
   color: rgba(230,80,80,.9);
   margin: 0 0 8px;
 }
 .vault-delete-warning {
-  font-size: 12px;
+  font-size: var(--vt-sm);
   color: var(--text-muted);
   margin: 0 0 14px;
   line-height: 1.6;
@@ -1376,7 +1398,7 @@
   border: 1px solid rgba(200,30,30,.60);
   background: rgba(180,20,20,.25);
   color: rgba(240,80,80,1);
-  font-size: 12px;
+  font-size: var(--vt-sm);
   font-weight: 600;
   cursor: pointer;
   transition: background .15s;
@@ -1389,7 +1411,7 @@
   border: 1px solid rgba(255,255,255,.10);
   background: transparent;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--vt-sm);
   cursor: pointer;
   transition: border-color .15s;
 }
@@ -1439,7 +1461,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  font-size: 11px;
+  font-size: var(--vt-xs);
   cursor: pointer;
   transition: border-color 0.22s, color 0.22s, background 0.22s;
   display: flex;
@@ -1470,7 +1492,7 @@
   background: transparent;
   border: 1px solid rgba(212,175,55,0.28);
   color: var(--ig-5);
-  font-size: 10px;
+  font-size: var(--vt-2xs);
   padding: 3px 10px;
   border-radius: 2px;
   cursor: pointer;
@@ -1483,7 +1505,7 @@
 .voice-listen-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .voice-permission-denied {
-  font-size: 10px;
+  font-size: var(--vt-2xs);
   color: rgba(220,80,80,0.85);
   font-style: italic;
   white-space: nowrap;
@@ -1493,7 +1515,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: var(--vt-2xs);
   color: var(--ig-5);
   font-style: italic;
 }
@@ -1524,11 +1546,11 @@
 .companion-message-zone.companion-visible { opacity: 1; }
 .companion-message-zone.companion-hidden  { opacity: 0; pointer-events: none; }
 
-.companion-sigil { color: var(--ig-4); font-size: 10px; flex-shrink: 0; opacity: 0.65; }
+.companion-sigil { color: var(--ig-4); font-size: var(--vt-2xs); flex-shrink: 0; opacity: 0.65; }
 
 .companion-text {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--vt-xs);
   line-height: 1.4;
   font-style: italic;
   white-space: nowrap;
@@ -1596,7 +1618,7 @@
 
 /* ── The gate subtitle: no demand, no explanation ───────────────── */
 .gate-subtitle {
-  font-size:      11px;
+  font-size: var(--vt-xs);
   letter-spacing: 0.10em;
 }
 
@@ -1830,7 +1852,7 @@
 .journey-path:hover         { border-right-color: rgba(var(--path-rgb), 0.48); }
 
 .path-icon {
-  font-size:  13px;
+  font-size: var(--vt-md);
   flex-shrink: 0;
   color:      rgba(var(--path-rgb), 0.38);
   line-height: 1;
@@ -1845,7 +1867,7 @@
 
 .path-name {
   display:       block;
-  font-size:     11px;
+  font-size: var(--vt-xs);
   font-weight:   600;
   color:         var(--text-dim);
   letter-spacing: 0.02em;
@@ -1855,7 +1877,7 @@
 
 .path-desc {
   display:        block;
-  font-size:      9px;
+  font-size: var(--vt-3xs);
   color:          var(--text-ghost);
   letter-spacing: 0.02em;
 }
@@ -2082,7 +2104,7 @@
 .detail-echo-item:nth-child(3) .echo-pulse { animation-delay: 3.0s; }
 
 .echo-title {
-  font-size:      0.79rem;
+  font-size: var(--vt-sm);
   color:          rgba(212,175,55,0.48);
   font-weight:    400;
   letter-spacing: 0.01em;
