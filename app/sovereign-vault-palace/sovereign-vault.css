@@ -677,7 +677,12 @@
    ═══════════════════════════════════════════════════════════════ */
 
 .vault-corridor {
-  width: min(230px, 22vw);
+  /* MEASURED 2026-09-25: at 230px, with the Palace reading at its own size,
+     four of the ten vault descriptions were cut off mid-word — «هويات
+     الذكاء الاصطناعي والـ…». The same rail-too-narrow fault the Chamber
+     of Evidence carried, in the other room. A colonnade is a place for
+     words, and its width answers to them. */
+  width: clamp(256px, 21vw, 330px);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -694,15 +699,10 @@
   flex-shrink: 0;
 }
 
-.corridor-label {
-  display: block;
-  font-size: var(--vt-3xs);
-  font-weight: 900;
-  color: var(--ig-2);
-  letter-spacing: 3px;
-  margin-bottom: 3px;
-  opacity: 0.70;
-}
+/* TOMBSTONE — .corridor-label, removed 2026-09-25.
+   It styled an English eyebrow reading SOVEREIGN VAULTS above the Arabic
+   heading. The element is gone, so its rule goes with it: a rule with no
+   element is an invitation to put the element back. */
 
 .corridor-sublabel {
   display: block;
@@ -783,9 +783,13 @@
   display: block;
   font-size: var(--vt-3xs);
   color: var(--text-ghost);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* It used to be held to one line and truncated. A description that ends
+     in an ellipsis has told the Creator what the vault holds only as far as
+     the rail happened to reach. There is room below — the colonnade ends
+     well short of the screen — so the sentence finishes instead. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
   letter-spacing: 0.02em;
 }
 

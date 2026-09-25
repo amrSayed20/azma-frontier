@@ -1031,7 +1031,10 @@ export default function SovereignVaultPalace() {
                 className={`gate-method-btn ${authMethod === m ? 'method-active' : ''}`}
                 onClick={() => { setAuthMethod(m); setPin(''); setPinError(null); }}
               >
-                {m === 'pin' ? 'PIN' : 'بصمتك'}
+                {/* Was 'PIN'. The Empire does not address its Creator in
+                    a foreign tongue, least of all at the door of their own
+                    Vault. */}
+                {m === 'pin' ? 'رمزك السرّي' : 'بصمتك'}
               </button>
             ))}
           </div>
@@ -1194,7 +1197,11 @@ export default function SovereignVaultPalace() {
             {/* Vault Corridor — left colonnade */}
             <aside className="vault-corridor">
               <div className="corridor-header">
-                <span className="corridor-label">SOVEREIGN VAULTS</span>
+                {/* An English eyebrow reading SOVEREIGN VAULTS used to sit
+                    above this heading, saying the same thing the heading says
+                    and saying it in a tongue the Creator was never addressed
+                    in. Removed rather than hidden — the heading below was
+                    always the one doing the work. */}
                 <span className="corridor-sublabel">الخزائن السيادية</span>
               </div>
               <div className="corridor-portals custom-scroll">
