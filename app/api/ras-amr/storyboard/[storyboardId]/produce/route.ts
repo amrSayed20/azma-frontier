@@ -96,6 +96,14 @@ export async function POST(
   const productionRequest = {
     subject,
     language: 'ar',
+    // MEASURED on the workshop 2026-09-25: with no voice named, the task
+    // failed at «failed to synthesize audio; verify the selected voice and TTS
+    // connectivity» — the adapter sends an empty voice_name and the engine has
+    // no Arabic default to fall back on. Asked again with this voice, the same
+    // workshop synthesized the same Arabic sentence and finished at progress
+    // 100 with no error. A production that narrates Arabic must be told which
+    // Arabic voice to narrate it in.
+    voiceName: 'ar-EG-SalmaNeural-Female',
     paragraphCount: scenes.length,
     aspect: '16:9' as const,
     subtitlesEnabled: true,
