@@ -4544,9 +4544,14 @@ body:has(.ras-amr-viewport) {
   border-top: 1px solid rgba(212, 175, 55, 0.22);
   border-bottom: 1px solid rgba(212, 175, 55, 0.12);
   flex-shrink: 0;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(212, 175, 55, 0.2) transparent;
+  /* MEASURED 2026-09-25: this row held 993px of content in 900px and scrolled
+     sideways, so a Creator had to drag to see the end of their own template's
+     structure — and with every shot filled and carrying a ✓ it grew wider
+     still. It wraps now. The grid row it sits in is auto-height and takes the
+     second line without pushing anything. */
+  flex-wrap: wrap;
+  row-gap: 6px;
+  overflow-x: visible;
 }
 
 .ras-template-structure-label {
