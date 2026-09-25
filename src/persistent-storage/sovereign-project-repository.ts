@@ -202,7 +202,7 @@ export function listStoryboardsForOwner(db: DatabaseSync, ownerId: string): read
 }
 
 const SCENE_COLUMNS =
-  'scene_id, storyboard_id, owner_id, scene_order, description, visual_asset_id, audio_asset_id, duration_seconds, transition_intent, direction_notes, visual_search_en, created_at, updated_at';
+  'scene_id, storyboard_id, owner_id, scene_order, description, visual_asset_id, audio_asset_id, duration_seconds, transition_intent, direction_notes, visual_search_en, sourcing, creation_demand_ar, created_at, updated_at';
 
 function rowToScene(row: Record<string, unknown>): StoryboardScene {
   return {
@@ -217,6 +217,8 @@ function rowToScene(row: Record<string, unknown>): StoryboardScene {
     transitionIntent: (row.transition_intent as string | null) ?? null,
     directionNotes: (row.direction_notes as string | null) ?? null,
     visualSearchEn: (row.visual_search_en as string | null) ?? null,
+    sourcing: (row.sourcing as 'stock' | 'generate' | null) ?? null,
+    creationDemandAr: (row.creation_demand_ar as string | null) ?? null,
     createdAt: row.created_at as number,
     updatedAt: row.updated_at as number,
   };
@@ -250,6 +252,8 @@ export function addScene(
     transitionIntent?: string | null;
     directionNotes?: string | null;
     visualSearchEn?: string | null;
+    sourcing?: 'stock' | 'generate' | null;
+    creationDemandAr?: string | null;
     nowMs?: number;
   },
 ): AddSceneOutcome {
@@ -274,14 +278,17 @@ export function addScene(
     transitionIntent: input.transitionIntent ?? null,
     directionNotes: input.directionNotes ?? null,
     visualSearchEn: input.visualSearchEn ?? null,
+    sourcing: input.sourcing ?? null,
+    creationDemandAr: input.creationDemandAr ?? null,
     createdAt: now,
     updatedAt: now,
   };
 
-  db.prepare(`INSERT INTO storyboard_scenes (${SCENE_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+  db.prepare(`INSERT INTO storyboard_scenes (${SCENE_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
     scene.sceneId, scene.storyboardId, scene.ownerId, scene.order, scene.description,
     scene.visualAssetId, scene.audioAssetId, scene.durationSeconds,
     scene.transitionIntent, scene.directionNotes, scene.visualSearchEn,
+    scene.sourcing, scene.creationDemandAr,
     scene.createdAt, scene.updatedAt,
   );
   return { ok: true, scene };

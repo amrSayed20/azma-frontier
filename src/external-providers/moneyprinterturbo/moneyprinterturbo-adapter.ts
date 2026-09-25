@@ -164,6 +164,15 @@ export interface VideoProductionRequest {
    * inference put a crucifix over narration about أصحاب الكهف.
    */
   readonly visualTerms?: readonly string[];
+  /**
+   * Exact pictures to use, in order, instead of anything searched for.
+   *
+   * MEASURED 2026-09-25: the workshop holds no generator but accepts supplied
+   * materials — `video_materials`, each one a url with a duration. So a
+   * picture the Empire made in القيامة can be handed over directly, and a
+   * scene showing something that exists nowhere stops being impossible.
+   */
+  readonly suppliedMaterials?: readonly { readonly url: string; readonly durationSeconds?: number }[];
   readonly language?: string;
   readonly paragraphCount?: number;
   readonly voiceName?: string;
@@ -278,6 +287,17 @@ export class MoneyPrinterTurboAdapter {
         ...(request.script ? { video_script: request.script } : {}),
         ...(request.visualTerms && request.visualTerms.length > 0
           ? { video_terms: toSearchTerms(request.visualTerms), match_materials_to_script: true }
+          : {}),
+        // Supplied pictures replace the search for the scenes that have them.
+        ...(request.suppliedMaterials && request.suppliedMaterials.length > 0
+          ? {
+              video_source: 'local',
+              video_materials: request.suppliedMaterials.map((m) => ({
+                provider: 'local',
+                url: m.url,
+                duration: Math.max(1, Math.round(m.durationSeconds ?? 5)),
+              })),
+            }
           : {}),
         video_language: request.language ?? 'Arabic',
         paragraph_number: request.paragraphCount ?? 2,

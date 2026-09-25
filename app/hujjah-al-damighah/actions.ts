@@ -744,6 +744,11 @@ export async function composeStoryboardDemand(
         // The visual half the production obeys. It stays here and in the
         // database — it is never put in `kept`, which is what the Creator sees.
         visualSearchEn: scene.searchEn,
+        // The author's decision about this picture, and the demand it
+        // implies. Kept, not re-derived: the moment of deciding what is seen
+        // is the moment the answer is known.
+        sourcing: scene.sourcing,
+        creationDemandAr: scene.creationDemandAr,
         order: index + 1,
       });
       if (added.ok) kept.push({ order: index + 1, seenAr: scene.seenAr, saidAr: scene.saidAr });

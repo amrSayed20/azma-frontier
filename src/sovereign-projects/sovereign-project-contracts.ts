@@ -142,6 +142,14 @@ export interface StoryboardScene {
    * decided by the Chamber that wrote the scene.
    */
   readonly visualSearchEn: string | null;
+  /**
+   * Where this scene's picture comes from. 'stock' when it exists in the world
+   * and can be found; 'generate' when it exists nowhere and must be made.
+   * Null on scenes written before the distinction existed, and read as stock.
+   */
+  readonly sourcing: 'stock' | 'generate' | null;
+  /** What to create, when sourcing is 'generate'. Null otherwise. */
+  readonly creationDemandAr: string | null;
   readonly createdAt: number;
   readonly updatedAt: number;
 }

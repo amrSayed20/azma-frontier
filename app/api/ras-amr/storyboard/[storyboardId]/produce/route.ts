@@ -7,6 +7,7 @@ import {
   isMoneyPrinterTurboConfigured,
 } from '@/src/external-providers/moneyprinterturbo/moneyprinterturbo-adapter';
 import { depositProductionIntoVault } from '@/src/external-providers/moneyprinterturbo/moneyprinterturbo-vault-deposit';
+import { commissionScenePictures } from '@/src/ras-amr-production/qiyamah-commission';
 import {
   acceptStoryboardProduction,
   findOperationForStoryboard,
@@ -113,6 +114,25 @@ export async function POST(
     .map((s) => (s.visualSearchEn ?? '').trim())
     .filter((term) => term.length > 0);
 
+  // ── SCENES THAT EXIST NOWHERE ─────────────────────────────────
+  //
+  //   The Founder's ruling, 2026-09-25: a demand travels to القيامة and the
+  //   generated picture travels back here. Measured: the production workshop
+  //   holds no generator, so a scene showing a particular product or an
+  //   imagined moment could never be found by any search, however phrased.
+  //
+  //   The constitutional line is not crossed: nothing is generated here. The
+  //   courier commissions القيامة, which generates and deposits into the
+  //   Creator's own Vault, and what returns is a sovereign asset this Chamber
+  //   assembles — which is exactly what this Chamber does.
+  //
+  //   Only the PLAN is made here. Commissioning five pictures takes minutes,
+  //   and this request answers in milliseconds — the same boundary the
+  //   production itself already respects. The work happens inside `run`.
+  const toGenerate = scenes
+    .filter((sc) => sc.sourcing === 'generate' && (sc.creationDemandAr ?? '').trim().length > 0)
+    .map((sc) => ({ order: sc.order, demandAr: sc.creationDemandAr as string, seenAr: sc.description }));
+
   const productionRequest = {
     subject,
     // The Chamber's own sentences are narrated, not a foreign model's
@@ -162,7 +182,27 @@ export async function POST(
     storyboardId,
     sceneCount: scenes.length,
     run: async () => {
-      const production = await adapter.produce(productionRequest);
+      // Commissioned here, not above: this closure is what outlives the
+      // request. A picture the Empire could not make does not stop the film —
+      // that scene is searched for instead, which is what it would have been.
+      let suppliedMaterials: { url: string }[] = [];
+      if (toGenerate.length > 0) {
+        const commissioned = await commissionScenePictures({
+          creatorId: session.creatorId,
+          demands: toGenerate,
+        });
+        suppliedMaterials = commissioned
+          .filter((c) => typeof c.assetUrl === 'string')
+          .map((c) => ({ url: c.assetUrl as string }));
+        const refused = commissioned.filter((c) => c.failure);
+        if (refused.length > 0) {
+          console.error('[RasAmr] scenes not commissioned:', JSON.stringify(
+            refused.map((c) => ({ order: c.order, failure: c.failure })),
+          ));
+        }
+      }
+
+      const production = await adapter.produce({ ...productionRequest, suppliedMaterials });
       const asset = await depositProductionIntoVault({
         creatorId: session.creatorId,
         production,

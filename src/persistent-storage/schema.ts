@@ -351,6 +351,9 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     -- The description column is what is seen, in Arabic, and is the Creator's;
     -- this is the same intent phrased so a search can act on it, never shown.
     visual_search_en TEXT,
+    -- stock | generate, and what to create when it is generate.
+    sourcing TEXT,
+    creation_demand_ar TEXT,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`,
@@ -605,6 +608,22 @@ export const HADITH_NARRATIONS_MIGRATION_COLUMNS: readonly { readonly name: stri
  */
 export const STORYBOARD_SCENES_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
   { name: 'visual_search_en', ddl: 'visual_search_en TEXT' },
+  /**
+   * Where this scene's picture comes from, and what to make when it must be
+   * made. Decided by whoever wrote the scene — the only party that knows
+   * whether what it shows exists in the world at all.
+   *
+   * MEASURED 2026-09-25: the production workshop holds no generator, so a
+   * scene describing something that exists nowhere could never be found by
+   * any search. The decision and the demand are stored beside the scene
+   * rather than re-derived later, because the moment of deciding what is
+   * seen is the moment the answer is known.
+   *
+   * Scenes written before these columns existed have neither, and a scene
+   * with no sourcing is stock — which is what every scene was until now.
+   */
+  { name: 'sourcing', ddl: 'sourcing TEXT' },
+  { name: 'creation_demand_ar', ddl: 'creation_demand_ar TEXT' },
 ];
 
 /** Columns added to `cinematic_ledger` after its original creation — applied via ALTER TABLE for pre-existing databases. */

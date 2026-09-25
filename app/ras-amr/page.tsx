@@ -2066,7 +2066,15 @@ export default function RasAmrChamber() {
    * The Founder's ruling: that Chamber decomposes, this one produces and
    * assembles. The isolated production workshop is what produces them.
    */
-  const [storyboard, setStoryboard] = useState<{ storyboardId: string; sceneCount: number; questionAr: string } | null>(null);
+  /**
+   * Scenes to be produced, and where they came from.
+   *
+   * MEASURED 2026-09-25: the panel's tag read «مشاهد وصلت من حجّة
+   * الدامغة» for every storyboard, including one the Creator had just
+   * written here. A Chamber that tells a Creator their own work arrived
+   * from somewhere else is wrong about the one thing they know best.
+   */
+  const [storyboard, setStoryboard] = useState<{ storyboardId: string; sceneCount: number; questionAr: string; origin: 'hujjah' | 'brief' } | null>(null);
   /**
    * The Creator's own idea, and what they specified about it.
    *
@@ -2158,6 +2166,7 @@ export default function RasAmrChamber() {
             storyboardId: payload.storyboardId,
             sceneCount: typeof payload.sceneCount === 'number' ? payload.sceneCount : 0,
             questionAr: typeof payload.questionAr === 'string' ? payload.questionAr : '',
+            origin: 'hujjah',
           });
           // Only a fresh crossing moves the Creator; a restored one lets them
           // stay wherever they were working.
@@ -4100,6 +4109,7 @@ export default function RasAmrChamber() {
                         storyboardId: outcome.storyboardId,
                         sceneCount: outcome.scenes.length,
                         questionAr: briefIdea.trim(),
+                        origin: 'brief',
                       });
                       // Carried to the scenes rather than left to find them:
                       // the Creator asked for this and it is ready.
@@ -4973,7 +4983,11 @@ export default function RasAmrChamber() {
                     what returns is a sovereign asset in their own Vault. */}
                 {storyboard && (
                   <div className="scenes-arrived" data-testid="rasamr-storyboard">
-                    <span className="scenes-tag">مشاهد وصلت من حجّة الدامغة</span>
+                    <span className="scenes-tag">
+                      {storyboard.origin === 'brief'
+                        ? '✦ مشاهد من فكرتك'
+                        : 'مشاهد وصلت من حجّة الدامغة'}
+                    </span>
                     <p className="scenes-subject">{storyboard.questionAr}</p>
                     <p className="scenes-count">{storyboard.sceneCount} مشاهد مرتّبة، جاهزة للإنتاج.</p>
                     <button

@@ -121,6 +121,11 @@ export async function composeStoryboardFromBrief(input: {
       // The visual half the production obeys. Never returned to the Creator —
       // `seenAr` is the half that is theirs.
       visualSearchEn: scene.searchEn,
+      // The author's decision about this picture, and the demand it implies.
+      // Kept, not re-derived: the moment of deciding what is seen is the
+      // moment the answer is known.
+      sourcing: scene.sourcing,
+      creationDemandAr: scene.creationDemandAr,
       order: index + 1,
     });
     if (added.ok) {

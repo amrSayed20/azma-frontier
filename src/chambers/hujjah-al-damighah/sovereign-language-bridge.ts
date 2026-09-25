@@ -523,6 +523,27 @@ export interface ComposedScene {
    * returned. `seenAr` is the half that is theirs.
    */
   readonly searchEn: string | null;
+  /**
+   * Where this scene's picture comes from, decided by whoever wrote the scene.
+   *
+   * MEASURED 2026-09-25: the production workshop holds no generator — it
+   * searches a stock library. So a scene describing something that does not
+   * exist in the world can never be found, however well the search is
+   * phrased, and no amount of production skill fixes it. The only party that
+   * knows which case a scene is, is the one that decided what it shows.
+   *
+   * 'stock'    — it exists and can be found: a place, weather, light, a hand
+   *              at work.
+   * 'generate' — it exists nowhere: a particular product, a brand, an
+   *              imagined scene, a thing not yet made.
+   */
+  readonly sourcing: 'stock' | 'generate';
+  /**
+   * What to create, when `sourcing` is 'generate'. Written by the same hand
+   * that wrote what is seen, because that hand is the one that knows. Null
+   * for a stock scene, which needs no demand.
+   */
+  readonly creationDemandAr: string | null;
 }
 
 export interface SceneStructureOutcome {
@@ -594,6 +615,10 @@ export async function composeSceneStructure(input: {
     'بحث: <ثلاث إلى خمس كلمات إنجليزية تصف المنظر الطبيعيّ أو المادّيّ وحده>',
     'سطر «بحث» للآلة وحدها ولن يراه أحد، فاكتبه بالإنجليزية.',
     'في سطر «بحث» صف مكاناً أو ضوءاً أو طبيعةً أو عمارةً فقط؛ ولا تذكر فيه شعائرَ دينٍ ولا رموزه ولا رجالَ دين، لا من هذا الدين ولا من غيره.',
+    'مصدر: <مخزون أو توليد>',
+    'اكتب «مخزون» إذا كان ما يُرى موجوداً في الدنيا ويُمكن تصويره: مكان، طبيعة، ضوء، يدٌ تعمل.',
+    'واكتب «توليد» إذا كان ما يُرى لا وجود له في أيّ مكتبة: منتجٌ بعينه، علامةٌ، مشهدٌ متخيّل، شيءٌ لم يُصنَع بعد.',
+    'مطالبة: <تُكتب فقط مع «توليد» — وصفٌ دقيق بالعربيّة للصورة المطلوب إنشاؤها>',
     'افصل بين كلّ مشهدٍ والذي يليه بسطرٍ فارغ.',
     fromBrief
       ? 'ابنِ على فكرة المُنشئ ومواصفاته المكتوبة. التزم بمواصفاته حرفيّاً ولا تخالفها، وما سكت عنه فأتمِمه بما يخدم فكرته.'
@@ -649,7 +674,10 @@ function parseScenes(text: string): ComposedScene[] {
 
     const said = /^قول\s*[:：]\s*(.+)$/.exec(line);
     if (said && seenAr && seenAr.length > 0) {
-      scenes.push({ seenAr, saidAr: said[1].trim(), searchEn: null });
+      // A scene is stock until its author says otherwise. The picture that
+      // can be found is the safe default; the one that must be made costs
+      // the Creator, and nothing should spend that on their behalf.
+      scenes.push({ seenAr, saidAr: said[1].trim(), searchEn: null, sourcing: 'stock', creationDemandAr: null });
       seenAr = null;
       continue;
     }
@@ -667,6 +695,37 @@ function parseScenes(text: string): ComposedScene[] {
         scenes[scenes.length - 1] = { ...last, searchEn: term };
       }
     }
+    // «مصدر» — the author's decision about where this picture comes from.
+    const sourced = /^مصدر\s*[:：]\s*(.+)$/.exec(line);
+    if (sourced && scenes.length > 0) {
+      const want = sourced[1].trim();
+      if (/توليد/.test(want)) {
+        const last = scenes[scenes.length - 1];
+        scenes[scenes.length - 1] = { ...last, sourcing: 'generate' };
+      }
+      continue;
+    }
+
+    // «مطالبة» — what to create, and only meaningful for a generated scene.
+    // A demand attached to a stock scene is dropped rather than obeyed: it
+    // would spend the Creator's generation on a picture that can be found.
+    const demanded = /^مطالبة\s*[:：]\s*(.+)$/.exec(line);
+    if (demanded && scenes.length > 0) {
+      const last = scenes[scenes.length - 1];
+      const text = demanded[1].trim();
+      if (last.sourcing === 'generate' && text.length >= 8) {
+        scenes[scenes.length - 1] = { ...last, creationDemandAr: text };
+      }
+    }
   }
-  return scenes;
+
+  // A scene that claims it must be generated and then says nothing about what
+  // is a claim without its evidence. It falls back to stock, which is at least
+  // something a search can act on — rather than being commissioned with an
+  // empty demand, which would spend the Creator's generation on nothing.
+  return scenes.map((scene) =>
+    scene.sourcing === 'generate' && !scene.creationDemandAr
+      ? { ...scene, sourcing: 'stock' as const }
+      : scene,
+  );
 }
