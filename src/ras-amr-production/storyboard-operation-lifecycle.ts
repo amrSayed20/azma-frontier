@@ -36,6 +36,14 @@ export type StoryboardFailure =
   | 'WORKSHOP_UNREACHABLE'
   | 'REFUSED_BY_WORKSHOP'
   | 'NO_OUTPUT'
+  /**
+   * The film was made and then could not be carried. MEASURED 2026-09-25: an
+   * 82MB film was refused by a 50MB buffer ceiling, and because no
+   * classification fitted, the Creator was told the production had failed —
+   * of a production that had succeeded. A success we could not carry is not
+   * a failure to produce, and must never be spoken as one.
+   */
+  | 'TOO_LARGE_TO_CARRY'
   | 'STORAGE_FAILED'
   | 'INTERNAL';
 
@@ -72,6 +80,9 @@ export function isTerminal(state: OperationState): boolean {
  */
 export function classifyStoryboardFailure(message: string): StoryboardFailure {
   const text = message.toLowerCase();
+  // Asked before the generic HTTP/refusal patterns below, which would other-
+  // wise swallow it: this message is about the size of a finished film.
+  if (/above the \d+-byte ceiling|too large/.test(text)) return 'TOO_LARGE_TO_CARRY';
   if (/unreachable|econnrefused|fetch failed|network/.test(text)) return 'WORKSHOP_UNREACHABLE';
   if (/failed to|task .* failed|refused|http 4|http 5/.test(text)) return 'REFUSED_BY_WORKSHOP';
   if (/no output|empty|not a video/.test(text)) return 'NO_OUTPUT';

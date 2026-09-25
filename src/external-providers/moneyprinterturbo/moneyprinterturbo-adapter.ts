@@ -37,7 +37,19 @@ export interface MoneyPrinterTurboConfig {
   readonly pollIntervalMs: number;
   /** Applies to transient transport failures only — never to a failed task. */
   readonly maxTransientRetries: number;
-  /** Refuse to buffer an output larger than the Vault would accept anyway. */
+  /**
+   * What the Empire will hold in memory while carrying one finished production
+   * to the Vault. This is the adapter's own limit and it speaks for nothing
+   * else — in particular it is NOT the Vault's, which this path never asks.
+   *
+   * MEASURED 2026-09-25, the first real storyboard film: five scenes written
+   * in الحُجّة الدامغة, 137 seconds of Arabic narration at 1920x1080, came to
+   * 82,314,643 bytes. The previous ceiling was 50MB, copied from
+   * MAX_UPLOAD_BYTES — a rule about what a Creator may post from a browser,
+   * governing a path that never consults it. It refused a film the Vault
+   * would have taken, and the Creator was told the production had failed when
+   * the production had succeeded.
+   */
   readonly maxOutputBytes: number;
 }
 
@@ -56,7 +68,11 @@ export function resolveConfig(): MoneyPrinterTurboConfig {
     taskTimeoutMs: intFromEnv('MONEYPRINTERTURBO_TASK_TIMEOUT_MS', 1_800_000),
     pollIntervalMs: intFromEnv('MONEYPRINTERTURBO_POLL_INTERVAL_MS', 6_000),
     maxTransientRetries: intFromEnv('MONEYPRINTERTURBO_MAX_RETRIES', 3),
-    maxOutputBytes: intFromEnv('MONEYPRINTERTURBO_MAX_OUTPUT_BYTES', 50 * 1024 * 1024),
+    // 256MB: roughly three times the longest film measured on this Empire, on
+    // a host with 6GB free and the buffer alive only until the bytes reach
+    // disk. Large enough that ordinary work passes; small enough that a
+    // runaway provider cannot exhaust the process.
+    maxOutputBytes: intFromEnv('MONEYPRINTERTURBO_MAX_OUTPUT_BYTES', 256 * 1024 * 1024),
   };
 }
 
@@ -116,6 +132,19 @@ export class MoneyPrinterTurboOutputTooLargeError extends MoneyPrinterTurboError
 
 export interface VideoProductionRequest {
   readonly subject: string;
+  /**
+   * The exact words to be narrated. When given, the provider speaks these
+   * instead of writing its own script from `subject` with a foreign model —
+   * so a film built from الحُجّة الدامغة's scenes says what that
+   * Chamber said, and evidence does not get paraphrased on its way to a screen.
+   */
+  readonly script?: string;
+  /**
+   * What to show, in the form a stock library can be asked for it. Without it
+   * the provider infers a picture from the words — MEASURED 2026-09-25, that
+   * inference put a crucifix over narration about أصحاب الكهف.
+   */
+  readonly visualTerms?: readonly string[];
   readonly language?: string;
   readonly paragraphCount?: number;
   readonly voiceName?: string;
@@ -225,6 +254,12 @@ export class MoneyPrinterTurboAdapter {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         video_subject: request.subject,
+        // Omitted rather than sent empty: the provider writes its own script
+        // only when this is absent, and an empty string is not an absence.
+        ...(request.script ? { video_script: request.script } : {}),
+        ...(request.visualTerms && request.visualTerms.length > 0
+          ? { video_terms: request.visualTerms.join(', '), match_materials_to_script: true }
+          : {}),
         video_language: request.language ?? 'Arabic',
         paragraph_number: request.paragraphCount ?? 2,
         voice_name: request.voiceName ?? '',

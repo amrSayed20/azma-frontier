@@ -133,6 +133,15 @@ export interface StoryboardScene {
   readonly transitionIntent: string | null;
   /** Direction for what belongs inside the frame. Read by Qiyamah. */
   readonly directionNotes: string | null;
+  /**
+   * The same scene's visual intent, phrased so a stock search can act on it.
+   * Machinery: never rendered, never spoken, never returned to the Creator —
+   * `description` is the half that is theirs. MEASURED 2026-09-25: with this
+   * absent, a production about أصحاب الكهف was illustrated with a
+   * crucifix, because the picture was inferred by a stock library instead of
+   * decided by the Chamber that wrote the scene.
+   */
+  readonly visualSearchEn: string | null;
   readonly createdAt: number;
   readonly updatedAt: number;
 }

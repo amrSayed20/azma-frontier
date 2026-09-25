@@ -98,8 +98,27 @@ export async function POST(
     .join(' ');
   const subject = narration.length > 0 ? narration : scenes.map((s) => s.description).join(' ');
 
+  // What each scene should SHOW, as الحُجّة الدامغة wrote it.
+  //
+  //   MEASURED 2026-09-25 by looking at the first real film: over narration
+  //   about أصحاب الكهف it showed a priest holding a crucifix. The Chamber
+  //   had written what every scene should show and this route sent none of it,
+  //   so the picture was inferred from the words by a stock library that knows
+  //   nothing of this Empire's world. A Chamber that decomposes a subject into
+  //   scenes decides both halves of a scene; this carries the second half.
+  //
+  //   Storyboards written before that column existed have none, and then the
+  //   production falls back to inferring as it did — degraded, not broken.
+  const visualTerms = scenes
+    .map((s) => (s.visualSearchEn ?? '').trim())
+    .filter((term) => term.length > 0);
+
   const productionRequest = {
     subject,
+    // The Chamber's own sentences are narrated, not a foreign model's
+    // paraphrase of them: what the evidence supported is what is spoken.
+    script: narration.length > 0 ? narration : undefined,
+    visualTerms,
     language: 'ar',
     // MEASURED on the workshop 2026-09-25: with no voice named, the task
     // failed at «failed to synthesize audio; verify the selected voice and TTS

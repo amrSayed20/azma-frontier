@@ -202,7 +202,7 @@ export function listStoryboardsForOwner(db: DatabaseSync, ownerId: string): read
 }
 
 const SCENE_COLUMNS =
-  'scene_id, storyboard_id, owner_id, scene_order, description, visual_asset_id, audio_asset_id, duration_seconds, transition_intent, direction_notes, created_at, updated_at';
+  'scene_id, storyboard_id, owner_id, scene_order, description, visual_asset_id, audio_asset_id, duration_seconds, transition_intent, direction_notes, visual_search_en, created_at, updated_at';
 
 function rowToScene(row: Record<string, unknown>): StoryboardScene {
   return {
@@ -216,6 +216,7 @@ function rowToScene(row: Record<string, unknown>): StoryboardScene {
     durationSeconds: (row.duration_seconds as number | null) ?? null,
     transitionIntent: (row.transition_intent as string | null) ?? null,
     directionNotes: (row.direction_notes as string | null) ?? null,
+    visualSearchEn: (row.visual_search_en as string | null) ?? null,
     createdAt: row.created_at as number,
     updatedAt: row.updated_at as number,
   };
@@ -248,6 +249,7 @@ export function addScene(
     durationSeconds?: number | null;
     transitionIntent?: string | null;
     directionNotes?: string | null;
+    visualSearchEn?: string | null;
     nowMs?: number;
   },
 ): AddSceneOutcome {
@@ -271,14 +273,16 @@ export function addScene(
     durationSeconds: input.durationSeconds ?? null,
     transitionIntent: input.transitionIntent ?? null,
     directionNotes: input.directionNotes ?? null,
+    visualSearchEn: input.visualSearchEn ?? null,
     createdAt: now,
     updatedAt: now,
   };
 
-  db.prepare(`INSERT INTO storyboard_scenes (${SCENE_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+  db.prepare(`INSERT INTO storyboard_scenes (${SCENE_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
     scene.sceneId, scene.storyboardId, scene.ownerId, scene.order, scene.description,
     scene.visualAssetId, scene.audioAssetId, scene.durationSeconds,
-    scene.transitionIntent, scene.directionNotes, scene.createdAt, scene.updatedAt,
+    scene.transitionIntent, scene.directionNotes, scene.visualSearchEn,
+    scene.createdAt, scene.updatedAt,
   );
   return { ok: true, scene };
 }

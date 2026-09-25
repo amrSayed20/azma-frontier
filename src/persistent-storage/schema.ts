@@ -347,6 +347,10 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     duration_seconds REAL,
     transition_intent TEXT,
     direction_notes TEXT,
+    -- What this scene should SHOW, as the stock libraries can be asked for it.
+    -- The description column is what is seen, in Arabic, and is the Creator's;
+    -- this is the same intent phrased so a search can act on it, never shown.
+    visual_search_en TEXT,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`,
@@ -574,6 +578,33 @@ export const GENERATION_RECORDS_MIGRATION_COLUMNS: readonly { readonly name: str
  */
 export const HADITH_NARRATIONS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
   { name: 'normalised_matn', ddl: "normalised_matn TEXT NOT NULL DEFAULT ''" },
+];
+
+/**
+ * Columns added to `storyboard_scenes` after its original creation.
+ *
+ * ─── THE INCIDENT THIS ENCODES ───────────────────────────────────────────────
+ *
+ *   MEASURED 2026-09-25 by looking at the first real storyboard film. Over
+ *   narration about أصحاب الكهف — a Qur'anic account — the production showed a
+ *   priest holding a crucifix. Nothing malfunctioned: الحُجّة الدامغة had
+ *   written what each scene should show, in Arabic, and the production was
+ *   never given it. Only the spoken narration crossed, so the stock library
+ *   was left to guess a picture from the words, and it guessed from outside
+ *   this Empire's world.
+ *
+ *   A Chamber that decomposes a subject into scenes decides both halves of a
+ *   scene. This column carries the visual half in the form a search can act
+ *   on, so the picture is chosen here and not inferred elsewhere.
+ *
+ * ─── WHY IT IS NOT `description` ─────────────────────────────────────────────
+ *
+ *   `description` is the Creator's, in Arabic, and is displayed. This is
+ *   machinery: it is written for a stock search, never rendered, never spoken,
+ *   and never returned to the Creator. Two purposes, two columns.
+ */
+export const STORYBOARD_SCENES_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
+  { name: 'visual_search_en', ddl: 'visual_search_en TEXT' },
 ];
 
 /** Columns added to `cinematic_ledger` after its original creation — applied via ALTER TABLE for pre-existing databases. */

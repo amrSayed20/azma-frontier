@@ -510,6 +510,19 @@ export function displayableText(record: TranslationRecord): string | null {
 export interface ComposedScene {
   readonly seenAr: string;
   readonly saidAr: string;
+  /**
+   * The same picture, phrased so a stock library can be asked for it.
+   *
+   * MEASURED 2026-09-25 by watching the first real storyboard film: over
+   * narration about أصحاب الكهف the production showed a priest holding
+   * a crucifix. The Chamber had written what the scene should show and the
+   * production was never given it, so the picture was inferred from the words
+   * by a library that knows nothing of this Empire's world.
+   *
+   * It is machinery and never reaches a Creator: not rendered, not spoken, not
+   * returned. `seenAr` is the half that is theirs.
+   */
+  readonly searchEn: string | null;
 }
 
 export interface SceneStructureOutcome {
@@ -558,6 +571,9 @@ export async function composeSceneStructure(input: {
     'كلّ مشهد سطران اثنان لا غير، بهذه الصيغة حرفيّاً:',
     'مشهد: <ما يُرى — المكان والعناصر والضوء والحركة>',
     'قول: <ما يُقال فوق المشهد، جملة أو جملتان>',
+    'بحث: <ثلاث إلى خمس كلمات إنجليزية تصف المنظر الطبيعيّ أو المادّيّ وحده>',
+    'سطر «بحث» للآلة وحدها ولن يراه أحد، فاكتبه بالإنجليزية.',
+    'في سطر «بحث» صف مكاناً أو ضوءاً أو طبيعةً أو عمارةً فقط؛ ولا تذكر فيه شعائرَ دينٍ ولا رموزه ولا رجالَ دين، لا من هذا الدين ولا من غيره.',
     'افصل بين كلّ مشهدٍ والذي يليه بسطرٍ فارغ.',
     'ابنِ فقط على السؤال والجواب والأدلّة المعطاة. لا تُضف واقعةً لم ترد فيها، ولا تخترع اسماً ولا رقماً.',
     'لا تكتب عناوين ولا ترقيماً ولا رموزاً ولا شرحاً خارج الصيغة.',
@@ -604,8 +620,23 @@ function parseScenes(text: string): ComposedScene[] {
 
     const said = /^قول\s*[:：]\s*(.+)$/.exec(line);
     if (said && seenAr && seenAr.length > 0) {
-      scenes.push({ seenAr, saidAr: said[1].trim() });
+      scenes.push({ seenAr, saidAr: said[1].trim(), searchEn: null });
       seenAr = null;
+      continue;
+    }
+
+    // The search line follows the scene it belongs to, and is optional: a
+    // scene without one is still a scene, and the production falls back to
+    // deriving a picture as it did before — degraded, never broken.
+    const search = /^بحث\s*[:：]\s*(.+)$/.exec(line);
+    if (search && scenes.length > 0) {
+      const term = search[1].trim();
+      // Latin only, and short. Anything else is not a stock query, and a line
+      // that came back in Arabic would search a library that cannot read it.
+      if (/^[ -~]{3,80}$/.test(term) && /[A-Za-z]/.test(term)) {
+        const last = scenes[scenes.length - 1];
+        scenes[scenes.length - 1] = { ...last, searchEn: term };
+      }
     }
   }
   return scenes;

@@ -24,7 +24,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
-import { SCHEMA_STATEMENTS, GENERATION_RECORDS_MIGRATION_COLUMNS, CINEMATIC_LEDGER_MIGRATION_COLUMNS, CREATORS_MIGRATION_COLUMNS, GOALS_MIGRATION_COLUMNS, HADITH_NARRATIONS_MIGRATION_COLUMNS, VAULT_ASSETS_MIGRATION_COLUMNS, INDEX_STATEMENTS } from './schema';
+import { SCHEMA_STATEMENTS, GENERATION_RECORDS_MIGRATION_COLUMNS, CINEMATIC_LEDGER_MIGRATION_COLUMNS, CREATORS_MIGRATION_COLUMNS, GOALS_MIGRATION_COLUMNS, HADITH_NARRATIONS_MIGRATION_COLUMNS, STORYBOARD_SCENES_MIGRATION_COLUMNS, VAULT_ASSETS_MIGRATION_COLUMNS, INDEX_STATEMENTS } from './schema';
 // Economy Foundation: no migration columns needed for new tables — they are
 // created fresh via CREATE TABLE IF NOT EXISTS in SCHEMA_STATEMENTS.
 
@@ -65,6 +65,22 @@ function migrateCinematicLedgerTable(db: DatabaseSync): void {
   for (const column of CINEMATIC_LEDGER_MIGRATION_COLUMNS) {
     if (!existingColumns.has(column.name)) {
       db.exec(`ALTER TABLE cinematic_ledger ADD COLUMN ${column.ddl}`);
+    }
+  }
+}
+
+/**
+ * The visual half of a scene reaches a table that already holds storyboards
+ * written before the production could be told what to show, so it arrives by
+ * ALTER TABLE. A scene without it produces exactly as it did before.
+ */
+function migrateStoryboardScenesTable(db: DatabaseSync): void {
+  const existingColumns = new Set(
+    (db.prepare('PRAGMA table_info(storyboard_scenes)').all() as { name: string }[]).map((row) => row.name),
+  );
+  for (const column of STORYBOARD_SCENES_MIGRATION_COLUMNS) {
+    if (!existingColumns.has(column.name)) {
+      db.exec(`ALTER TABLE storyboard_scenes ADD COLUMN ${column.ddl}`);
     }
   }
 }
@@ -156,6 +172,7 @@ export function createDatabase(path: string = defaultDbPath()): DatabaseSync {
   migrateCreatorsTable(db);
   migrateGoalsTable(db);
   migrateHadithNarrationsTable(db);
+  migrateStoryboardScenesTable(db);
   migrateGenerationRecordsTable(db);
   // Provenance must exist before INDEX_STATEMENTS runs — SQLite cannot index a
   // column that is not there yet, the same ordering CREATORS_MIGRATION_COLUMNS

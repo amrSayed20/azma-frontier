@@ -2117,9 +2117,20 @@ export default function RasAmrChamber() {
     //   in that intent — the field the Automatic Director already reads —
     //   and nothing is produced by its arrival. The Creator decides.
     // Scenes written next door, carried by identity alone.
-    const storyboardRaw = sessionStorage.getItem('azma.transfer.storyboard');
+    //
+    //   The envelope is consumed once — it is a crossing, not a possession.
+    //   But what crossed then belongs to this Chamber, and must survive a
+    //   reload: MEASURED 2026-09-25, a real storyboard film takes thirteen and
+    //   a half minutes, and a Creator who refreshes during that wait lost the
+    //   panel entirely, with it every way to watch or collect the production.
+    //   The film still reached their Vault — nothing was destroyed — but the
+    //   Chamber that ordered it could no longer show it. So the crossing is
+    //   still consumed once, and the Chamber keeps its own copy.
+    const HELD_STORYBOARD = 'azma.rasamr.storyboard';
+    const crossing = sessionStorage.getItem('azma.transfer.storyboard');
+    if (crossing) sessionStorage.removeItem('azma.transfer.storyboard');
+    const storyboardRaw = crossing ?? sessionStorage.getItem(HELD_STORYBOARD);
     if (storyboardRaw) {
-      sessionStorage.removeItem('azma.transfer.storyboard');
       try {
         const payload = JSON.parse(storyboardRaw) as { storyboardId?: string; sceneCount?: number; questionAr?: string };
         if (typeof payload.storyboardId === 'string' && payload.storyboardId.length > 0) {
@@ -2128,9 +2139,17 @@ export default function RasAmrChamber() {
             sceneCount: typeof payload.sceneCount === 'number' ? payload.sceneCount : 0,
             questionAr: typeof payload.questionAr === 'string' ? payload.questionAr : '',
           });
-          setActiveWorkspaceTab('direction');
+          // Only a fresh crossing moves the Creator; a restored one lets them
+          // stay wherever they were working.
+          if (crossing) {
+            sessionStorage.setItem(HELD_STORYBOARD, storyboardRaw);
+            setActiveWorkspaceTab('direction');
+          }
         }
-      } catch { /* a malformed envelope names nothing */ }
+      } catch {
+        /* a malformed envelope names nothing, and is not kept */
+        sessionStorage.removeItem(HELD_STORYBOARD);
+      }
     }
 
     const demandAssetId = takeDemandFor(sessionStorage, 'ras-amr');
@@ -4810,13 +4829,22 @@ export default function RasAmrChamber() {
                         // turned into a verdict about the work itself.
                         setSceneNotice('الإنتاج جارٍ… يستغرق عادةً بضع دقائق.');
                         const spokenFailure = (reason: string | null) =>
-                          reason === 'WORKSHOP_UNREACHABLE' ? 'تعذّر إتمام الإنتاج — ورشة الإنتاج لم تستجب.'
+                          reason === 'TOO_LARGE_TO_CARRY'  ? 'اكتمل الفيلم، لكنّه جاء أكبر من أن يُحمَل إلى خزانتك. اجعل المشاهد أقصر وأعد المحاولة.'
+                          : reason === 'WORKSHOP_UNREACHABLE' ? 'تعذّر إتمام الإنتاج — ورشة الإنتاج لم تستجب.'
                           : reason === 'REFUSED_BY_WORKSHOP' ? 'تعذّر إتمام الإنتاج — رُفض الطلب.'
                           : reason === 'NO_OUTPUT'          ? 'تعذّر إتمام الإنتاج — انتهى دون ناتج.'
                           : reason === 'STORAGE_FAILED'     ? 'تعذّر إتمام الإنتاج — لم يُحفظ الناتج.'
                           :                                   'تعذّر إتمام الإنتاج.';
 
-                        for (let i = 0; i < 120; i += 1) {
+                        // MEASURED 2026-09-25: the first real storyboard film
+                        // — five scenes, 137 seconds of Arabic narration at
+                        // 1920x1080 — took 13 minutes 37 seconds end to end.
+                        // The old ceiling here was 120 polls × 5s = 10 minutes,
+                        // so the Chamber stopped watching before the work it
+                        // had asked for could finish. 360 polls × 5s = 30
+                        // minutes, the same limit the production side already
+                        // holds, so one number governs both ends.
+                        for (let i = 0; i < 360; i += 1) {
                           await new Promise((r) => setTimeout(r, 5000));
                           let op: { producing?: boolean; succeeded?: boolean; assetUrl?: string | null; failureReason?: string | null } | null = null;
                           try {

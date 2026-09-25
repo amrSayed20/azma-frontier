@@ -741,6 +741,9 @@ export async function composeStoryboardDemand(
         ownerId: session.creatorId,
         description: scene.seenAr,
         directionNotes: scene.saidAr,
+        // The visual half the production obeys. It stays here and in the
+        // database — it is never put in `kept`, which is what the Creator sees.
+        visualSearchEn: scene.searchEn,
         order: index + 1,
       });
       if (added.ok) kept.push({ order: index + 1, seenAr: scene.seenAr, saidAr: scene.saidAr });

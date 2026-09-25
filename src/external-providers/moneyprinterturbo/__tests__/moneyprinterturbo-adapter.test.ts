@@ -154,10 +154,22 @@ describe('retrieval', () => {
   });
 
   it('refuses an oversized artefact from its declared length, before buffering it', async () => {
-    mockFetch.mockResolvedValueOnce(binary(Buffer.from('x'), 80 * 1024 * 1024));
+    mockFetch.mockResolvedValueOnce(binary(Buffer.from('x'), 300 * 1024 * 1024));
     await expect(
       new MoneyPrinterTurboAdapter().retrieveOutput('/tasks/t/final-1.mp4'),
     ).rejects.toBeInstanceOf(MoneyPrinterTurboOutputTooLargeError);
+  });
+
+  // The test that would have caught it. MEASURED 2026-09-25: the first real
+  // storyboard film — five scenes from الحُجّة الدامغة, 137 seconds of
+  // Arabic narration at 1920x1080 — was 82,314,643 bytes, and the ceiling
+  // then in force was 50MB. The film was made and then refused, and the
+  // Creator was told the production had failed.
+  it('carries a film the size of the first real one this Empire produced', async () => {
+    mockFetch.mockResolvedValueOnce(binary(Buffer.from('x'), 82_314_643));
+    await expect(
+      new MoneyPrinterTurboAdapter().retrieveOutput('/tasks/t/final-1.mp4'),
+    ).resolves.toBeInstanceOf(Buffer);
   });
 });
 
