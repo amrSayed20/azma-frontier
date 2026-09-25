@@ -4097,10 +4097,16 @@ export default function RasAmrChamber() {
         {selectedNodeId && sessionCanvas && (() => {
           const _badgeNode = sessionCanvas.tracks.flatMap(t => t.nodes).find(n => n.nodeId === selectedNodeId);
           const _badgeAsset = _badgeNode ? vaultAssets.find(a => a.assetId === _badgeNode.assetId) : null;
+          // A badge is short on purpose, but «الن…» is not a word. It stops at
+          // the last whole word that fits; the full text stays in the title.
+          const _badgeFull = ((_badgeAsset?.metadata?.voiceDisplayName ?? _badgeAsset?.metadata?.generationPrompt ?? '') as string).trim();
+          const _badgeShort = _badgeFull.length <= 22
+            ? _badgeFull
+            : `${_badgeFull.slice(0, 22).replace(/\s+\S*$/, '')}…`;
           const _badgeLabel = _badgeAsset
-            ? ((_badgeAsset.metadata?.voiceDisplayName ?? _badgeAsset.metadata?.generationPrompt ?? '') as string).slice(0, 22) || typeLabelForCapability(_badgeAsset.capabilityTarget)
+            ? (_badgeShort || typeLabelForCapability(_badgeAsset.capabilityTarget))
             : typeLabelForCapability(_badgeNode?.capabilityOrigin ?? '');
-          return <span className="ras-selected-node-badge" title="الطبقة المحددة حالياً">✦ {_badgeLabel}</span>;
+          return <span className="ras-selected-node-badge" title={_badgeFull || 'الطبقة المحددة حالياً'}>✦ {_badgeLabel}</span>;
         })()}
         <div className="ras-header-status">
           <span className={`strip-pulse${isRendering ? ' strip-pulse-active' : ''}`} aria-hidden="true" />
