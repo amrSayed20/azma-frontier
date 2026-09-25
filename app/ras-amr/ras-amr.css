@@ -4488,6 +4488,16 @@ body:has(.ras-amr-viewport) {
   flex-wrap: wrap;
 }
 
+/* How far along, in one short phrase. The shots themselves are listed on the
+   canvas; the banner does not repeat them. */
+.ras-template-progress {
+  font-size: var(--rt-3xs);
+  font-weight: 700;
+  color: #D4AF37;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 .ras-template-slot-chip {
   display: inline-flex;
   align-items: baseline;

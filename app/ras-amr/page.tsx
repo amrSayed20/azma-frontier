@@ -4126,29 +4126,18 @@ export default function RasAmrChamber() {
           <span className="ras-template-banner-label">
             {selectedTemplate.icon} {selectedTemplate.name}
           </span>
-          {/* ── WHICH SHOT IS WAITING, AND FOR WHAT ──────────────────────
-              The Founder, 2026-09-25, having chosen a template at random:
-              «غير واضح طريقة ملء القوالب بأصول المنشئ.» Measured: the
-              banner showed «ث3 ث5 ث4 ث4 ث4 ث3» and «أضف أصولك لملء الهيكل».
-              Six bare numbers tell a Creator nothing about which shot wants
-              what, and the template had carried a role and a cue for every
-              one of them all along. Each chip now says what it is waiting
-              for, and shows when it has been filled. */}
-          <span className="ras-template-banner-slots" aria-label="ترتيب اللقطات">
-            {selectedTemplate.slotDurations.map((d, i) => {
-              const filled = i < placedNodeCount;
-              return (
-                <span
-                  key={i}
-                  className={`ras-template-slot-chip${filled ? ' ras-template-slot-chip-filled' : ''}`}
-                  title={selectedTemplate.slotCues?.[i] ?? ''}
-                >
-                  <span className="slot-chip-n">{filled ? '✓' : i + 1}</span>
-                  <span className="slot-chip-role">{selectedTemplate.slotRoles?.[i] ?? `لقطة ${i + 1}`}</span>
-                  <span className="slot-chip-dur">{d}ث</span>
-                </span>
-              );
-            })}
+          {/* ── THE BANNER SAYS WHERE YOU ARE, NOT WHAT THE CANVAS ALREADY SHOWS ─
+              MEASURED 2026-09-25 on the Founder's own screen: I had widened
+              every chip to carry its number, role and duration, and the strip
+              became wider than the place it sits in — it wrapped into a tall
+              column of one word per line and fell below the whole grid. It was
+              also a repetition: the canvas above already lists all six shots
+              with their names, their cues and their lengths. A banner's work
+              is to say how far along you are and what to do next. */}
+          <span className="ras-template-banner-slots" aria-label="التقدّم">
+            <span className="ras-template-progress">
+              {placedNodeCount} من {selectedTemplate.slotDurations.length} لقطات
+            </span>
             {selectedTemplate.transitionPreference === 'crossfade' && (
               <span className="ras-template-slot-chip ras-template-slot-chip-fx">≈ تلاشٍ</span>
             )}
@@ -4156,7 +4145,7 @@ export default function RasAmrChamber() {
           <span className="ras-template-banner-hint">
             {placedNodeCount >= selectedTemplate.slotDurations.length
               ? 'الهيكل مكتمل — عايِنه ثمّ جمّع المشهد.'
-              : `استدعِ أصلاً أو ارفعه من جهازك، ثمّ «➕ أضف إلى المشهد» — ينزل في اللقطة ${placedNodeCount + 1}.`}
+              : `التالي: اللقطة ${placedNodeCount + 1} — «${selectedTemplate.slotRoles?.[placedNodeCount] ?? ''}». استدعِ أصلاً أو ارفعه، ثمّ «➕ أضف إلى المشهد».`}
           </span>
           <button className="ras-template-banner-change" onClick={handleChangeIntent}>
             تغيير البداية
