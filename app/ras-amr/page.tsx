@@ -447,6 +447,22 @@ const rasAlAmrStateManager = new RasAlAmrStateManager();
 // execution consumer of a DirectionDecision — see assembly-runtime.ts.
 const assemblyRuntime = new AssemblyRuntime(rasAlAmrStateManager);
 
+/**
+ * The blend modes, in the Creator's own tongue.
+ *
+ * FOUND 2026-09-25 in the launch-readiness audit: the surface that hands a
+ * Creator every pixel of their own work addressed them in NORMAL, MULTIPLY,
+ * SCREEN, OVERLAY — and in «X (%)», «Scale X», «z-Index», «Opacity», «Blend
+ * Mode». The enum values are what the assembly stores and are untouched; only
+ * what reaches a person changes.
+ */
+const BLEND_MODE_AR: Record<'NORMAL' | 'MULTIPLY' | 'SCREEN' | 'OVERLAY', string> = {
+  NORMAL:   'عاديّ',
+  MULTIPLY: 'ضرب — يُعمّق الداكن',
+  SCREEN:   'شاشة — يُفتّح',
+  OVERLAY:  'تراكب — يزيد التباين',
+};
+
 const DEFAULT_SPATIAL: SpatialDirective = {
   zIndex: 0,
   scaleX: 1,
@@ -2501,6 +2517,74 @@ export default function RasAmrChamber() {
   // endpoint. Never simulated.
   const canCompile = Boolean(activeAsset?.isRealAsset && activeAsset.secureStorageUri && sessionCanvas);
 
+  /**
+   * ── A FILM FROM THE CREATOR'S OWN ASSETS ─────────────────────────
+   *
+   *   The Founder, 2026-09-25: «أين حقل أو زر الاختيار الذي يمكّن
+   *   المستخدم من رفع صوره ومقاطعه وإنشاء مقطع mp4».
+   *
+   *   «تجميع المشهد» compiles a plan. This produces a file. The work
+   *   outlives the request, as the storyboard production does, because a film
+   *   takes minutes and a socket lives for seconds.
+   */
+  const [isFilming, setIsFilming] = useState(false);
+  const [filmNotice, setFilmNotice] = useState<string | null>(null);
+  const [filmUrl, setFilmUrl] = useState<string | null>(null);
+
+  const placedLayerCount = sessionCanvas
+    ? sessionCanvas.tracks.flatMap((t) => t.nodes).filter((n) => n.isActive !== false).length
+    : 0;
+
+  const produceSceneFilm = async () => {
+    if (!sessionCanvas) return;
+    setIsFilming(true);
+    setFilmUrl(null);
+    setFilmNotice('الإنتاج جارٍ… يستغرق عادةً بضع دقائق.');
+    const observeAt = `/api/ras-amr/scene/produce?canvasId=${encodeURIComponent(sessionCanvas.canvasId)}`;
+    try {
+      const res = await fetch('/api/ras-amr/scene/produce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ canvasId: sessionCanvas.canvasId }),
+      });
+      const body = await res.json() as { status?: string; message?: string };
+      if (!res.ok || body.status !== 'accepted') {
+        setFilmNotice(body.message ?? 'تعذّر بدء الإنتاج.');
+        setIsFilming(false);
+        return;
+      }
+    } catch {
+      setFilmNotice('تعذّر الوصول إلى ورشة الإنتاج الآن.');
+      setIsFilming(false);
+      return;
+    }
+
+    // 360 polls × 5s = 30 minutes — the same limit the production side holds.
+    for (let i = 0; i < 360; i += 1) {
+      await new Promise((r) => setTimeout(r, 5000));
+      let op: { producing?: boolean; succeeded?: boolean; assetUrl?: string | null; failureReason?: string | null } | null = null;
+      try {
+        const r = await fetch(observeAt);
+        if (r.ok) op = await r.json();
+      } catch { /* the question went unanswered; ask again */ }
+      if (!op || op.producing) continue;
+      if (op.succeeded && op.assetUrl) {
+        setFilmUrl(op.assetUrl);
+        setFilmNotice('اكتمل الفيلم — وأُودِع في خزانتك.');
+      } else {
+        setFilmNotice(
+          op.failureReason === 'WORKSHOP_UNREACHABLE' ? 'تعذّر إتمام الإنتاج — ورشة الإنتاج لم تستجب.'
+          : op.failureReason === 'TOO_LARGE_TO_CARRY' ? 'اكتمل الفيلم، لكنّه جاء أكبر من أن يُحمَل إلى خزانتك.'
+          : op.failureReason === 'NO_OUTPUT' ? 'تعذّر إتمام الإنتاج — انتهى دون ناتج.'
+          : 'تعذّر إتمام الإنتاج.');
+      }
+      setIsFilming(false);
+      return;
+    }
+    setFilmNotice('الإنتاج ما زال جارياً. سيظهر في خزانتك فور اكتماله.');
+    setIsFilming(false);
+  };
+
   const triggerMasterRender = async () => {
     if (!activeAsset?.isRealAsset || !sessionCanvas) return;
 
@@ -4122,6 +4206,20 @@ export default function RasAmrChamber() {
         >
           {isRendering ? '⏳ تجميع…' : '🎬 تجميع المشهد'}
         </button>
+        {/* تجميع المشهد compiles a plan; this returns a file. Placed beside
+            it because that is where a Creator who has just assembled a scene
+            looks for the thing that ends it. */}
+        <button
+          className={`ras-render-btn ras-film-btn ${isFilming ? 'rendering' : ''}`}
+          data-testid="rasamr-produce-scene-film"
+          onClick={() => { void produceSceneFilm(); }}
+          disabled={isFilming || placedLayerCount === 0}
+          title={placedLayerCount === 0
+            ? 'ضع أصلاً واحداً على الأقلّ في مشهدك أوّلاً'
+            : `إنتاج فيلم mp4 من ${placedLayerCount} طبقة في مشهدك`}
+        >
+          {isFilming ? '⏳ الفيلم يُنتَج…' : '✦ أنتِج الفيلم'}
+        </button>
       </header>
 
       {/* template-preview-gate rendered outside viewport above */}
@@ -4671,6 +4769,16 @@ export default function RasAmrChamber() {
                 {renderStatus !== 'في وضع الاستعداد الإخراجي' ? renderStatus : '◉ جاهز'}
               </div>
             </div>
+
+            {(filmNotice || filmUrl) && (
+              <div className="scene-film-outcome">
+                {filmNotice && <p className="scenes-notice">{filmNotice}</p>}
+                {filmUrl && (
+                  // eslint-disable-next-line jsx-a11y/media-has-caption
+                  <video className="scenes-result" src={filmUrl} controls playsInline />
+                )}
+              </div>
+            )}
 
             {/* Quick actions: add active asset to scene */}
             {activeAsset && (
@@ -5329,12 +5437,12 @@ export default function RasAmrChamber() {
                         </header>
                         <p className="ras-honesty-note">⚠ التوجيه المكاني يظهر مباشرة في سطح التأليف — اسحب الطبقة للتحريك، أو استخدم الحقول أدناه للقيم الدقيقة. التأثيرات البصرية المتقدمة تظهر في الصهر النهائي.</p>
                         <div className="spatial-input-grid">
-                          <label>X (%)<input type="number" step="0.5" value={spatialForm.positionX} onChange={(e) => setSpatialForm((prev) => ({ ...prev, positionX: Number(e.target.value) }))} /></label>
-                          <label>Y (%)<input type="number" step="0.5" value={spatialForm.positionY} onChange={(e) => setSpatialForm((prev) => ({ ...prev, positionY: Number(e.target.value) }))} /></label>
-                          <label>Scale X<input type="number" step="0.05" value={spatialForm.scaleX} onChange={(e) => setSpatialForm((prev) => ({ ...prev, scaleX: Number(e.target.value) }))} /></label>
-                          <label>Scale Y<input type="number" step="0.05" value={spatialForm.scaleY} onChange={(e) => setSpatialForm((prev) => ({ ...prev, scaleY: Number(e.target.value) }))} /></label>
+                          <label>الموضع أفقيّاً (٪)<input type="number" step="0.5" value={spatialForm.positionX} onChange={(e) => setSpatialForm((prev) => ({ ...prev, positionX: Number(e.target.value) }))} /></label>
+                          <label>الموضع رأسيّاً (٪)<input type="number" step="0.5" value={spatialForm.positionY} onChange={(e) => setSpatialForm((prev) => ({ ...prev, positionY: Number(e.target.value) }))} /></label>
+                          <label>الاتّساع أفقيّاً<input type="number" step="0.05" value={spatialForm.scaleX} onChange={(e) => setSpatialForm((prev) => ({ ...prev, scaleX: Number(e.target.value) }))} /></label>
+                          <label>الاتّساع رأسيّاً<input type="number" step="0.05" value={spatialForm.scaleY} onChange={(e) => setSpatialForm((prev) => ({ ...prev, scaleY: Number(e.target.value) }))} /></label>
                           <label>دوران°<input type="number" step="1" value={spatialForm.rotationDegrees} onChange={(e) => setSpatialForm((prev) => ({ ...prev, rotationDegrees: Number(e.target.value) }))} /></label>
-                          <label>z-Index<input type="number" step="1" value={spatialForm.zIndex} onChange={(e) => setSpatialForm((prev) => ({ ...prev, zIndex: Number(e.target.value) }))} /></label>
+                          <label>ترتيب الطبقة<input type="number" step="1" value={spatialForm.zIndex} onChange={(e) => setSpatialForm((prev) => ({ ...prev, zIndex: Number(e.target.value) }))} /></label>
                         </div>
                         <button className="action-trigger-btn spatial-apply-btn" onClick={handleApplySpatialAdjustment}>⇲ تطبيق التعديل المكاني</button>
                         {activeSpatialDirective && (
@@ -5349,8 +5457,8 @@ export default function RasAmrChamber() {
                         </header>
                         <p className="ras-honesty-note">⚠ Opacity يظهر مباشرة في سطح التأليف — Blend Mode يظهر في الصهر النهائي فقط</p>
                         <div className="spatial-input-grid">
-                          <label>Opacity<input type="number" min="0" max="1" step="0.05" value={visualForm.opacity} onChange={(e) => setVisualForm((prev) => ({ ...prev, opacity: Number(e.target.value) }))} /></label>
-                          <label>Blend Mode<select value={visualForm.blendMode} onChange={(e) => setVisualForm((prev) => ({ ...prev, blendMode: e.target.value as VisualFilterDirective['blendMode'] }))}>{BLEND_MODES.map((mode) => (<option key={mode} value={mode}>{mode}</option>))}</select></label>
+                          <label>الشفافيّة<input type="number" min="0" max="1" step="0.05" value={visualForm.opacity} onChange={(e) => setVisualForm((prev) => ({ ...prev, opacity: Number(e.target.value) }))} /></label>
+                          <label>طريقة المزج<select value={visualForm.blendMode} onChange={(e) => setVisualForm((prev) => ({ ...prev, blendMode: e.target.value as VisualFilterDirective['blendMode'] }))}>{BLEND_MODES.map((mode) => (<option key={mode} value={mode}>{BLEND_MODE_AR[mode]}</option>))}</select></label>
                           <label>الإطار<select value={visualForm.framingMode ?? 'contain'} onChange={(e) => setVisualForm((prev) => ({ ...prev, framingMode: e.target.value as VisualFilterDirective['framingMode'] }))}>
                             <option value="contain">احتواء — Contain</option>
                             <option value="cover">ملء — Cover</option>

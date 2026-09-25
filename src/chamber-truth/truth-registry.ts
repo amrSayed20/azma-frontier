@@ -288,6 +288,16 @@ export const CHAMBER_TRUTH = {
     primaryCapabilityId: 'keep-canvas',
     capabilities: [
       {
+        id: 'produce-scene-film',
+        performs:
+          "Assembles the Creator's own placed assets into a finished film and deposits it "
+          + 'in their Vault. Generates nothing and commissions nothing.',
+        performsAr:
+          'تُجمّع أصولك الموضوعة في المشهد فيلماً مكتملاً يُودَع في خزانتك.',
+        boundary: { kind: 'route', at: 'app/api/ras-amr/scene/produce', methods: ['GET', 'POST'] },
+        requiresExistingAsset: true,
+      },
+      {
         id: 'compose-storyboard-from-brief',
         performs:
           "Turns the Creator's written idea and specifications into an ordered storyboard "

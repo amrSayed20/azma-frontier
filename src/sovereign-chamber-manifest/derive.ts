@@ -99,6 +99,7 @@ const KERNEL_DELIVERY: Record<TruthCapabilityId, KernelDelivery> = {
   'review-devices':      { displayName: 'Review Enrolled Devices',           interactionModes: ['browse'],          operatingModes: ['explorer'] },
 
   // ── رأس الأمر ───────────────────────────────────────────────────────────
+  'produce-scene-film':  { displayName: 'Produce a Film from Placed Assets', interactionModes: ['browse'], operatingModes: ['guided', 'explorer'] },
   'compose-storyboard-from-brief': { displayName: 'Compose a Storyboard from a Written Brief', interactionModes: ['write'], operatingModes: ['guided'] },
   'keep-canvas':         { displayName: 'Save and Reload the Direction Canvas', interactionModes: ['browse'],       operatingModes: ['guided', 'explorer'] },
   'direct-automatically':{ displayName: 'Direct Automatically',              interactionModes: ['browse'],          operatingModes: ['guided'] },

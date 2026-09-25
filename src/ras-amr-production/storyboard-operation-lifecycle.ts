@@ -90,7 +90,15 @@ export function classifyStoryboardFailure(message: string): StoryboardFailure {
   return 'INTERNAL';
 }
 
-/** One storyboard, one production: the same board asked twice is not two. */
+/**
+ * One subject, one production: the same thing asked twice is not two.
+ *
+ * The subject is a storyboard's id, or a canvas's — this lifecycle owns the
+ * accept/observe/ledger boundary and never cared which. It was named for its
+ * first subject alone, and a Creator assembling their own scene deserves the
+ * same protections: one film per subject, work that outlives the request, and
+ * a failure said in their own tongue.
+ */
 export function findOperationForStoryboard(creatorId: string, storyboardId: string): string | null {
   const row = getDb()
     .prepare(

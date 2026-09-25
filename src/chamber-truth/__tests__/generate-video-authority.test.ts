@@ -166,6 +166,10 @@ describe('BOUNDARIES 21–25 · nothing else moved', () => {
   // a storyboard, which is a plan, not a frame of picture.
   it('Ras Al Amr keeps every between-assets capability, unchanged', () => {
     expect(getChamberTruth('ras-amr').capabilities.map((c) => c.id)).toEqual([
+      // Updated deliberately 2026-09-25. Assembling a Creator's OWN placed
+      // assets into a film generates nothing and commissions nothing — it is
+      // work between assets, which is exactly what this guard protects.
+      'produce-scene-film',
       'compose-storyboard-from-brief',
       'keep-canvas', 'direct-automatically', 'compile-production', 'follow-production',
       'give-voice', 'clone-voice', 'import-subtitles', 'restore-canvas', 'give-cloned-voice',
