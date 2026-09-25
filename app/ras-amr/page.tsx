@@ -4302,7 +4302,7 @@ export default function RasAmrChamber() {
                     )}
                     <div className="queue-card-meta">
                       <span className="item-type-badge">{asset.type}</span>
-                      <span className="item-title">{asset.title}</span>
+                      <span className="item-title" title={asset.title}>{asset.title}</span>
                     </div>
                   </div>
                   {/* PACKAGE XXXVIII BLOCKER — session-scoped removal: removes this
