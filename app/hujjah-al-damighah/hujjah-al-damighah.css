@@ -12,6 +12,26 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 :root {
+  /* ═══ THE CHAMBER'S TYPE SCALE ═══════════════════════════════════════
+     Measured 2026-09-25 on the live Chamber: 191 font-size declarations,
+     144 of them under 14px, one at 7px — and the Founder had already asked
+     once for larger text. The previous repair raised the sizes it could
+     find and the rest stayed small, which is what 191 scattered literals
+     guarantee: a correction that reaches some of them and not the others.
+
+     Arabic carries its distinctions in dots, hamzas and tashkeel, so it
+     needs more size than Latin at the same nominal value to stay legible.
+     Every size below display type now resolves here. To change the
+     Chamber's text size is to change these seven numbers — there is no
+     second place where a font-size can quietly disagree with them. */
+  --ht-3xs: 13px;   /* was 7 – 9.5   — the unreadable end */
+  --ht-2xs: 14px;   /* was 10 – 10.5 */
+  --ht-xs:  15px;   /* was 11 – 11.5 */
+  --ht-sm:  16px;   /* was 12 – 12.5 */
+  --ht-md:  17px;   /* was 13 – 13.5 */
+  --ht-lg:  19px;   /* was 14 – 15   */
+  --ht-xl:  21px;   /* was 16        */
+
   --chamber-bg:    #060504;
   --archives-bg:   #0a0805;
   --court-bg:      #070605;
@@ -208,7 +228,7 @@
   display: flex;
   align-items: center;
   color: var(--text-ghost);
-  font-size: 14px;
+  font-size: var(--ht-lg);
   font-style: italic;
   pointer-events: none;
   animation: proveItFadeOut 3.8s ease-out forwards;
@@ -309,7 +329,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  font-size: 12px;
+  font-size: var(--ht-sm);
   cursor: pointer;
   transition: border-color 0.25s, color 0.25s, background 0.25s;
   display: flex;
@@ -355,11 +375,11 @@
   pointer-events: none;
 }
 
-.companion-sigil { color: var(--ig-4); font-size: 11px; flex-shrink: 0; opacity: 0.70; }
+.companion-sigil { color: var(--ig-4); font-size: var(--ht-xs); flex-shrink: 0; opacity: 0.70; }
 
 .companion-text {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--ht-sm);
   line-height: 1.4;
   font-style: italic;
   letter-spacing: 0.02em;
@@ -378,7 +398,7 @@
   background: transparent;
   border: 1px solid rgba(139,101,8,.40);
   color: var(--ig-4);
-  font-size: 11px;
+  font-size: var(--ht-xs);
   font-weight: 600;
   padding: 5px 12px;
   border-radius: 2px;
@@ -450,7 +470,7 @@
 }
 
 .archives-classification {
-  font-size: 8px;
+  font-size: var(--ht-3xs);
   font-weight: 900;
   color: var(--ig-3);
   letter-spacing: 2.5px;
@@ -460,7 +480,7 @@
 
 .archives-title {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--ht-xl);
   color: var(--ig-4);
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -496,7 +516,7 @@
 
 .archive-domain-mark {
   color: var(--ig-2);
-  font-size: 11px;
+  font-size: var(--ht-xs);
   flex-shrink: 0;
   margin-top: 1px;
   transition: color 0.20s;
@@ -520,14 +540,14 @@
    is not offered. Sizes raised and colours lifted up the Empire's own text
    ladder — no new colour, only a rung that can be seen. */
 .archive-domain-name {
-  font-size: 15px;
+  font-size: var(--ht-lg);
   font-weight: 600;
   color: var(--text-muted);
   transition: color 0.20s;
 }
 
 .archive-domain-sub {
-  font-size: 12px;
+  font-size: var(--ht-sm);
   color: var(--text-dim);
   transition: color 0.20s;
   letter-spacing: 0.02em;
@@ -555,7 +575,7 @@
 }
 
 .archive-records-label {
-  font-size: 11px;
+  font-size: var(--ht-xs);
   font-weight: 700;
   color: var(--ig-2);
   letter-spacing: 2px;
@@ -577,13 +597,13 @@
    not really present. Every rung here is raised — these are the findings,
    not decoration around them. */
 .archive-record-tier {
-  font-size: 11px;
+  font-size: var(--ht-xs);
   font-weight: 700;
   letter-spacing: 0.6px;
 }
 
 .archive-record-excerpt {
-  font-size: 13.5px;
+  font-size: var(--ht-md);
   color: var(--text-muted);
   line-height: 1.7;
   margin: 0;
@@ -594,7 +614,7 @@
 }
 
 .archive-record-score {
-  font-size: 11px;
+  font-size: var(--ht-xs);
   color: var(--text-dim);
   font-family: monospace;
 }
@@ -610,7 +630,7 @@
 }
 
 .scanning-label {
-  font-size: 9px;
+  font-size: var(--ht-3xs);
   color: var(--text-ghost);
   font-style: italic;
   letter-spacing: 0.05em;
@@ -670,13 +690,13 @@
 
 .frieze-glyph {
   color: var(--ig-3);
-  font-size: 14px;
+  font-size: var(--ht-lg);
   opacity: 0.50;
   flex-shrink: 0;
 }
 
 .frieze-title {
-  font-size: 11px;
+  font-size: var(--ht-xs);
   color: var(--ig-4);
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -697,7 +717,7 @@
 }
 
 .podium-inscription {
-  font-size: 9px;
+  font-size: var(--ht-3xs);
   color: var(--text-ghost);
   letter-spacing: 2.5px;
   text-transform: uppercase;
@@ -728,7 +748,7 @@
   border: none;
   outline: none;
   color: var(--ig-7);
-  font-size: 15px;
+  font-size: var(--ht-lg);
   font-family: inherit;
   font-weight: 500;
   padding: 8px 0;
@@ -738,7 +758,7 @@
 
 .case-declaration::placeholder {
   color: var(--text-ghost);
-  font-size: 13px;
+  font-size: var(--ht-md);
   font-style: italic;
   font-weight: 400;
 }
@@ -756,7 +776,7 @@
   color: var(--ig-5);
   padding: 8px 18px;
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--ht-sm);
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -818,7 +838,7 @@
 
 .idle-inscription {
   color: var(--text-dim);
-  font-size: 13px;
+  font-size: var(--ht-md);
   font-style: italic;
   letter-spacing: 0.06em;
   margin: 0;
@@ -826,7 +846,7 @@
 
 .idle-subtext {
   color: var(--text-ghost);
-  font-size: 11px;
+  font-size: var(--ht-xs);
   margin: 0;
   letter-spacing: 0.04em;
 }
@@ -857,7 +877,7 @@
 
 .deliberation-inscription {
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: var(--ht-sm);
   font-style: italic;
   margin: 0;
   letter-spacing: 0.05em;
@@ -897,7 +917,7 @@
 
 .truth-word {
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: var(--ht-sm);
   font-style: italic;
   letter-spacing: 0.12em;
   animation: truthWordFade 500ms ease-out forwards;
@@ -945,13 +965,13 @@
 
 .verdict-glyph {
   color: var(--ig-5);
-  font-size: 16px;
+  font-size: var(--ht-xl);
   flex-shrink: 0;
 }
 
 .verdict-crown-title {
   color: var(--ig-6);
-  font-size: 12px;
+  font-size: var(--ht-sm);
   font-weight: 700;
   letter-spacing: 0.10em;
   text-transform: uppercase;
@@ -968,7 +988,7 @@
   border: 1px solid rgba(139,101,8,.40);
   color: var(--text-dim);
   padding: 3px 11px;
-  font-size: 10px;
+  font-size: var(--ht-2xs);
   font-family: inherit;
   cursor: pointer;
   border-radius: 2px;
@@ -986,7 +1006,7 @@
 
 .verdict-declaration {
   color: var(--text-sacred);
-  font-size: 13.5px;
+  font-size: var(--ht-md);
   line-height: 1.85;
   white-space: pre-wrap;
   margin: 0;
@@ -994,14 +1014,14 @@
 
 .verdict-empty {
   color: var(--text-dim);
-  font-size: 13px;
+  font-size: var(--ht-md);
   font-style: italic;
   margin: 0;
 }
 
 .verdict-error {
   color: rgba(220,100,100,.80);
-  font-size: 13px;
+  font-size: var(--ht-md);
   padding: 16px 20px;
   border: 1px solid rgba(200,60,60,.18);
   border-radius: 3px;
@@ -1030,7 +1050,7 @@
 }
 
 .taxonomy-title {
-  font-size: 9px;
+  font-size: var(--ht-3xs);
   font-weight: 700;
   color: var(--ig-3);
   letter-spacing: 2px;
@@ -1052,9 +1072,9 @@
   gap: 10px;
 }
 
-.category-mark    { font-size: 15px; flex-shrink: 0; }
-.category-title   { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; }
-.category-count   { font-size: 11px; color: var(--text-dim); }
+.category-mark    { font-size: var(--ht-lg); flex-shrink: 0; }
+.category-title   { font-size: var(--ht-md); font-weight: 600; letter-spacing: 0.02em; }
+.category-count   { font-size: var(--ht-xs); color: var(--text-dim); }
 
 .category-supported  .category-mark  { color: var(--ig-8); }
 .category-supported  .category-title { color: var(--ig-7); }
@@ -1089,21 +1109,21 @@
 .category-unverified .evidence-entry { border-right-color: var(--ig-1); }
 
 .entry-tier {
-  font-size: 8px;
+  font-size: var(--ht-3xs);
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
 }
 
 .entry-text {
-  font-size: 13px;
+  font-size: var(--ht-md);
   color: var(--text-main);
   line-height: 1.68;
   margin: 0;
 }
 
 .entry-score {
-  font-size: 9px;
+  font-size: var(--ht-3xs);
   color: var(--text-ghost);
   font-family: monospace;
   text-align: left;
@@ -1121,8 +1141,8 @@
   background: rgba(8,7,2,.40);
 }
 
-.oq-mark { color: var(--text-dim); font-size: 16px; flex-shrink: 0; font-weight: 700; }
-.oq-text  { color: var(--text-dim); font-size: 12px; line-height: 1.65; font-style: italic; }
+.oq-mark { color: var(--text-dim); font-size: var(--ht-xl); flex-shrink: 0; font-weight: 700; }
+.oq-text  { color: var(--text-dim); font-size: var(--ht-sm); line-height: 1.65; font-style: italic; }
 
 /* ── Article VII: Knowledge Tier labels (tier-*) ────────────────────── */
 
@@ -1147,7 +1167,7 @@
 }
 
 .dispatch-label {
-  font-size: 9px;
+  font-size: var(--ht-3xs);
   font-weight: 700;
   color: var(--text-ghost);
   letter-spacing: 2px;
@@ -1165,7 +1185,7 @@
   border: 1px solid;
   padding: 7px 18px;
   border-radius: 2px;
-  font-size: 11px;
+  font-size: var(--ht-xs);
   font-family: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -1227,7 +1247,7 @@
   }
   .court-space { min-height: 70vh; }
   .deliberation-hall { padding: 16px; }
-  .companion-text { font-size: 11px; }
+  .companion-text { font-size: var(--ht-xs); }
   .crown-bar { padding: 0 10px; }
 }
 
@@ -1324,7 +1344,7 @@
 }
 
 .nstage-label {
-  font-size: 9px;
+  font-size: var(--ht-3xs);
   letter-spacing: 0.06em;
   color: var(--text-ghost);
   white-space: nowrap;
@@ -1393,14 +1413,14 @@
 }
 
 .gateway-tier {
-  font-size: 9px;
+  font-size: var(--ht-3xs);
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
 }
 
 .gateway-confidence {
-  font-size: 10px;
+  font-size: var(--ht-2xs);
   color: var(--text-dim);
   font-family: monospace;
 }
@@ -1412,7 +1432,7 @@
   width: 24px;
   height: 24px;
   border-radius: 2px;
-  font-size: 11px;
+  font-size: var(--ht-xs);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1438,7 +1458,7 @@
 .gateway-section { display: flex; flex-direction: column; gap: 8px; }
 
 .gateway-section-label {
-  font-size: 8px;
+  font-size: var(--ht-3xs);
   font-weight: 700;
   color: var(--ig-3);
   letter-spacing: 2px;
@@ -1446,7 +1466,7 @@
 }
 
 .gateway-full-text {
-  font-size: 12.5px;
+  font-size: var(--ht-sm);
   color: var(--text-main);
   line-height: 1.75;
   margin: 0;
@@ -1456,7 +1476,7 @@
 }
 
 .gateway-context-text {
-  font-size: 11.5px;
+  font-size: var(--ht-xs);
   color: var(--text-dim);
   line-height: 1.70;
   margin: 0;
@@ -1465,7 +1485,7 @@
 /* Standing, bearing and interpretation read as three separate statements,
    because they are three separate claims. The standing carries the weight. */
 .gateway-authority-text {
-  font-size: 12px;
+  font-size: var(--ht-sm);
   color: var(--ig-6);
   line-height: 1.6;
   margin: 0;
@@ -1473,7 +1493,7 @@
 }
 
 .gateway-relevance-text {
-  font-size: 11px;
+  font-size: var(--ht-xs);
   color: var(--text-dim);
   line-height: 1.6;
   margin: 0;
@@ -1486,7 +1506,7 @@
 .mev-source,
 .sev-source {
   display: block;
-  font-size: 9px;
+  font-size: var(--ht-3xs);
   color: var(--ig-3);
   letter-spacing: 0.3px;
   margin-top: 4px;
@@ -1498,7 +1518,7 @@
 /* In the gateway there is room for the whole of it, gradings included, and for
    scholars who disagree with one another. */
 .gateway-attribution {
-  font-size: 10.5px;
+  font-size: var(--ht-2xs);
   color: var(--ig-6);
   line-height: 1.7;
   margin: 10px 0 0;
@@ -1511,7 +1531,7 @@
    element lets a Latin-script original read left-to-right inside an RTL page
    without the punctuation drifting to the wrong end of the line. */
 .gateway-original-text {
-  font-size: 11px;
+  font-size: var(--ht-xs);
   color: var(--text-dim);
   line-height: 1.7;
   margin: 0;
@@ -1521,14 +1541,14 @@
 }
 
 .gateway-translation-note {
-  font-size: 9.5px;
+  font-size: var(--ht-3xs);
   color: var(--ig-3);
   letter-spacing: 0.4px;
   margin: 6px 0 0;
 }
 
 .gateway-interpretation-text {
-  font-size: 10.5px;
+  font-size: var(--ht-2xs);
   color: var(--text-dim);
   line-height: 1.65;
   margin: 4px 0 0;
@@ -1548,7 +1568,7 @@
   border: 1px solid rgba(139,101,8,.30);
   color: var(--text-muted);
   padding: 8px 12px;
-  font-size: 11px;
+  font-size: var(--ht-xs);
   font-family: inherit;
   cursor: pointer;
   border-radius: 2px;
@@ -1580,7 +1600,7 @@
   border: 1px solid rgba(139,101,8,.15);
   color: var(--text-ghost);
   padding: 7px 12px;
-  font-size: 11px;
+  font-size: var(--ht-xs);
   font-family: inherit;
   border-radius: 2px;
   text-align: right;
@@ -1592,7 +1612,7 @@
 }
 
 .dormant-authority {
-  font-size: 11px;
+  font-size: var(--ht-xs);
   color: var(--ig-4);
   font-style: normal;
   opacity: 0.75;
@@ -1630,11 +1650,11 @@
   border-bottom: 1px solid rgba(212,175,55,.14);
 }
 
-.vd-glyph { color: var(--ig-5); font-size: 16px; opacity: 0.70; }
+.vd-glyph { color: var(--ig-5); font-size: var(--ht-xl); opacity: 0.70; }
 
 .vd-title {
   color: var(--ig-6);
-  font-size: 12px;
+  font-size: var(--ht-sm);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -1651,7 +1671,7 @@
   border: 1px solid rgba(139,101,8,.35);
   color: var(--text-dim);
   padding: 3px 12px;
-  font-size: 10px;
+  font-size: var(--ht-2xs);
   font-family: inherit;
   cursor: pointer;
   border-radius: 2px;
@@ -1687,7 +1707,7 @@
 .vd-row-pair .vd-field { flex: 1; border-bottom: none; padding-bottom: 0; }
 
 .vd-label {
-  font-size: 8px;
+  font-size: var(--ht-3xs);
   font-weight: 700;
   color: var(--ig-3);
   letter-spacing: 1.8px;
@@ -1695,14 +1715,14 @@
 }
 
 .vd-value {
-  font-size: 13px;
+  font-size: var(--ht-md);
   color: var(--text-main);
   line-height: 1.70;
   white-space: pre-wrap;
 }
 
-.vdv-large  { font-size: 14px; color: var(--text-sacred); }
-.vdv-mono   { font-family: monospace; font-size: 15px; color: var(--ig-7); }
+.vdv-large  { font-size: var(--ht-lg); color: var(--text-sacred); }
+.vdv-mono   { font-family: monospace; font-size: var(--ht-lg); color: var(--ig-7); }
 .vdv-italic { font-style: italic; color: var(--text-muted); }
 .vdv-conflict { color: rgba(220,120,100,.80); }
 
@@ -1711,7 +1731,7 @@
   justify-content: space-between;
   padding-top: 12px;
   border-top: 1px solid rgba(212,175,55,.08);
-  font-size: 9px;
+  font-size: var(--ht-3xs);
   color: var(--text-ghost);
   letter-spacing: 0.05em;
 }
@@ -1737,17 +1757,17 @@
 }
 
 .inv-file-tag {
-  font-size: 8px;
+  font-size: var(--ht-3xs);
   font-weight: 700;
   color: var(--ig-3);
   letter-spacing: 2px;
   text-transform: uppercase;
 }
 
-.inv-file-dot { font-size: 8px; color: #4caf50; }
+.inv-file-dot { font-size: var(--ht-3xs); color: #4caf50; }
 
 .inv-file-status {
-  font-size: 8px;
+  font-size: var(--ht-3xs);
   color: #4caf50;
   letter-spacing: 1px;
 }
@@ -1763,7 +1783,7 @@
   border: 1px solid rgba(139,101,8,.35);
   color: var(--text-muted);
   padding: 7px 14px;
-  font-size: 11px;
+  font-size: var(--ht-xs);
   font-family: inherit;
   cursor: pointer;
   border-radius: 2px;
@@ -1839,7 +1859,7 @@
   background: transparent;
   border: 1px solid rgba(212,175,55,.20);
   color: var(--ig-4);
-  font-size: 10px;
+  font-size: var(--ht-2xs);
   padding: 3px 10px;
   border-radius: 2px;
   cursor: pointer;
@@ -1860,7 +1880,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: var(--ht-2xs);
   color: var(--ig-4);
   font-style: italic;
 }
@@ -1880,7 +1900,7 @@
 }
 
 .voice-permission-denied {
-  font-size: 10px;
+  font-size: var(--ht-2xs);
   color: rgba(220,90,90,.75);
   font-style: italic;
 }
@@ -1904,7 +1924,7 @@
 }
 
 .entry-gateway-hint {
-  font-size: 8px;
+  font-size: var(--ht-3xs);
   color: var(--ig-3);
   opacity: 0;
   transition: opacity 0.18s;
@@ -1921,7 +1941,7 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 .archives-session-docket {
-  font-size: 8px;
+  font-size: var(--ht-3xs);
   color: var(--ig-2);
   letter-spacing: 1.5px;
   font-style: italic;
@@ -1946,7 +1966,7 @@
 
 .deliberation-stage-label {
   color: var(--ig-5);
-  font-size: 13px;
+  font-size: var(--ht-md);
   font-weight: 600;
   letter-spacing: 0.05em;
   margin: 0;
@@ -2005,7 +2025,7 @@
 }
 
 .awakening-breath {
-  font-size: 13px;
+  font-size: var(--ht-md);
   color: var(--ig-3);
   letter-spacing: 0.22em;
   margin: 0;
@@ -2064,7 +2084,7 @@
 }
 
 .tongue-subtitle {
-  font-size: 12px;
+  font-size: var(--ht-sm);
   color: var(--text-dim);
   font-style: italic;
   letter-spacing: 0.06em;
@@ -2072,7 +2092,7 @@
 }
 
 .tongue-mandate {
-  font-size: 13px;
+  font-size: var(--ht-md);
   color: var(--ig-4);
   margin: 14px 0 0;
   max-width: 420px;
@@ -2121,7 +2141,7 @@
 }
 
 .tongue-opt-name {
-  font-size: 15px;
+  font-size: var(--ht-lg);
   font-weight: 700;
   color: var(--ig-6);
   letter-spacing: 0.06em;
@@ -2129,7 +2149,7 @@
 }
 
 .tongue-opt-desc {
-  font-size: 10px;
+  font-size: var(--ht-2xs);
   color: var(--text-dim);
   line-height: 1.6;
   letter-spacing: 0.03em;
@@ -2153,7 +2173,7 @@
   color: var(--text-ghost);
   width: 28px;
   height: 28px;
-  font-size: 13px;
+  font-size: var(--ht-md);
   cursor: pointer;
   border-radius: 2px;
   transition: background 0.18s, border-color 0.18s, color 0.18s;
@@ -2196,7 +2216,7 @@
   border: none;
   border-bottom: 1px solid rgba(212,175,55,.07);
   color: var(--text-main);
-  font-size: 14px;
+  font-size: var(--ht-lg);
   font-family: inherit;
   line-height: 1.7;
   padding: 16px 28px;
@@ -2232,14 +2252,14 @@
 }
 
 .dialogue-key-hint {
-  font-size: 9px;
+  font-size: var(--ht-3xs);
   color: var(--text-ghost);
   letter-spacing: 0.04em;
   font-style: italic;
 }
 
 .dialogue-stage-hint {
-  font-size: 9px;
+  font-size: var(--ht-3xs);
   color: var(--ig-3);
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -2284,7 +2304,7 @@
 }
 
 .csf-utterance {
-  font-size: 1.1rem;
+  font-size: var(--ht-xl);
   color: var(--ig-5);
   font-style: italic;
   letter-spacing: 0.04em;
@@ -2318,7 +2338,7 @@
 }
 
 .probing-sigil {
-  font-size: 14px;
+  font-size: var(--ht-lg);
   color: var(--ig-4);
   flex-shrink: 0;
   margin-top: 2px;
@@ -2326,7 +2346,7 @@
 }
 
 .probing-question {
-  font-size: 13px;
+  font-size: var(--ht-md);
   color: var(--ig-5);
   font-style: italic;
   letter-spacing: 0.03em;
@@ -2376,13 +2396,13 @@
 }
 
 .margin-glyph {
-  font-size: 12px;
+  font-size: var(--ht-sm);
   color: var(--ig-3);
   opacity: 0.60;
 }
 
 .margin-label {
-  font-size: 8px;
+  font-size: var(--ht-3xs);
   font-weight: 700;
   color: var(--ig-2);
   letter-spacing: 2.5px;
@@ -2401,7 +2421,7 @@
   background: transparent;
   border: 1px solid transparent;
   color: var(--text-ghost);
-  font-size: 10px;
+  font-size: var(--ht-2xs);
   font-family: inherit;
   padding: 5px 10px;
   cursor: pointer;
@@ -2439,7 +2459,7 @@
 }
 
 .suggestion-mark {
-  font-size: 10px;
+  font-size: var(--ht-2xs);
   color: var(--ig-4);
   flex-shrink: 0;
   margin-top: 2px;
@@ -2447,7 +2467,7 @@
 }
 
 .suggestion-text {
-  font-size: 10px;
+  font-size: var(--ht-2xs);
   color: var(--ig-5);
   font-style: italic;
   line-height: 1.6;
@@ -2475,7 +2495,7 @@
 }
 
 .margin-stage {
-  font-size: 8px;
+  font-size: var(--ht-3xs);
   color: var(--ig-3);
   letter-spacing: 2.5px;
   text-transform: uppercase;
@@ -2492,7 +2512,7 @@
 }
 
 .margin-ev-label {
-  font-size: 7px;
+  font-size: var(--ht-3xs);
   font-weight: 700;
   color: var(--ig-2);
   letter-spacing: 2px;
@@ -2517,8 +2537,8 @@
 
 .margin-ev-item:hover { background: rgba(14,10,2,.75); border-right-color: var(--ig-4); }
 
-.mev-tier { font-size: 8px; color: var(--ig-4); letter-spacing: 0.5px; }
-.mev-text { font-size: 9px; color: var(--text-dim); font-style: italic; line-height: 1.5; margin: 0; }
+.mev-tier { font-size: var(--ht-3xs); color: var(--ig-4); letter-spacing: 0.5px; }
+.mev-text { font-size: var(--ht-3xs); color: var(--text-dim); font-style: italic; line-height: 1.5; margin: 0; }
 
 /* Writing Canvas — left side visually (second in DOM in RTL) */
 
@@ -2540,9 +2560,9 @@
   flex-shrink: 0;
 }
 
-.canvas-frieze-glyph { font-size: 12px; color: var(--ig-3); opacity: 0.45; }
+.canvas-frieze-glyph { font-size: var(--ht-sm); color: var(--ig-3); opacity: 0.45; }
 .canvas-frieze-title {
-  font-size: 9px;
+  font-size: var(--ht-3xs);
   font-weight: 700;
   color: var(--ig-2);
   letter-spacing: 3px;
@@ -2559,7 +2579,7 @@
   border: none;
   border-bottom: 1px solid rgba(212,175,55,.05);
   color: var(--text-main);
-  font-size: 15px;
+  font-size: var(--ht-lg);
   font-family: inherit;
   line-height: 1.80;
   padding: 24px 32px;
@@ -2585,7 +2605,7 @@
 }
 
 .writing-key-hint {
-  font-size: 9px;
+  font-size: var(--ht-3xs);
   color: var(--text-ghost);
   font-style: italic;
   letter-spacing: 0.04em;
@@ -2597,7 +2617,7 @@
     linear-gradient(145deg, var(--ig-2), var(--ig-5) 50%, var(--ig-2)) border-box;
   border: 1px solid transparent;
   color: var(--ig-7);
-  font-size: 11px;
+  font-size: var(--ht-xs);
   font-family: inherit;
   font-weight: 600;
   padding: 6px 20px;
@@ -2613,7 +2633,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: var(--ht-2xs);
   color: var(--ig-4);
   letter-spacing: 0.05em;
   font-style: italic;
@@ -2668,7 +2688,7 @@
 
 /* Silent Prompt */
 .silent-prompt {
-  font-size: 12px;
+  font-size: var(--ht-sm);
   color: var(--text-dim);
   font-style: italic;
   letter-spacing: 0.06em;
@@ -2719,8 +2739,8 @@
 }
 
 .sdz-glyph { font-size: 22px; color: var(--ig-4); line-height: 1; display: block; }
-.sdz-name  { font-size: 13px; font-weight: 700; color: var(--ig-5); display: block; }
-.sdz-full  { font-size: 9px; color: var(--text-dim); font-style: italic; display: block; letter-spacing: 0.03em; }
+.sdz-name  { font-size: var(--ht-md); font-weight: 700; color: var(--ig-5); display: block; }
+.sdz-full  { font-size: var(--ht-3xs); color: var(--text-dim); font-style: italic; display: block; letter-spacing: 0.03em; }
 
 /* Concept Field */
 .silent-concept-field {
@@ -2747,7 +2767,7 @@
   height: 28px;
   cursor: pointer;
   border-radius: 2px;
-  font-size: 13px;
+  font-size: var(--ht-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2757,7 +2777,7 @@
 .concept-back-btn:hover { border-color: var(--ig-4); color: var(--ig-5); }
 
 .concept-domain-label {
-  font-size: 10px;
+  font-size: var(--ht-2xs);
   color: var(--ig-4);
   letter-spacing: 1.5px;
   font-weight: 600;
@@ -2776,7 +2796,7 @@
     linear-gradient(145deg, var(--ig-1), var(--ig-2) 50%, var(--ig-1)) border-box;
   border: 1px solid transparent;
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: var(--ht-sm);
   font-family: inherit;
   font-weight: 600;
   padding: 9px 18px;
@@ -2823,8 +2843,8 @@
   max-width: 500px;
 }
 
-.saq-label { font-size: 12px; color: var(--ig-4); flex-shrink: 0; opacity: 0.70; }
-.saq-text  { font-size: 12px; color: var(--ig-5); font-style: italic; letter-spacing: 0.03em; line-height: 1.6; }
+.saq-label { font-size: var(--ht-sm); color: var(--ig-4); flex-shrink: 0; opacity: 0.70; }
+.saq-text  { font-size: var(--ht-sm); color: var(--ig-5); font-style: italic; letter-spacing: 0.03em; line-height: 1.6; }
 
 /* Silent Examining State */
 .silent-examining {
@@ -2861,7 +2881,7 @@
 }
 
 .silent-stage-text {
-  font-size: 10px;
+  font-size: var(--ht-2xs);
   color: var(--ig-3);
   letter-spacing: 3px;
   text-transform: uppercase;
@@ -2911,9 +2931,9 @@
   box-shadow: 0 0 12px rgba(212,175,55,.08);
 }
 
-.sev-tier  { font-size: 9px; font-weight: 700; color: var(--ig-4); letter-spacing: 0.5px; }
-.sev-text  { font-size: 10px; color: var(--text-dim); font-style: italic; line-height: 1.55; margin: 0; }
-.sev-score { font-size: 9px; color: var(--ig-3); font-family: monospace; align-self: flex-end; }
+.sev-tier  { font-size: var(--ht-3xs); font-weight: 700; color: var(--ig-4); letter-spacing: 0.5px; }
+.sev-text  { font-size: var(--ht-2xs); color: var(--text-dim); font-style: italic; line-height: 1.55; margin: 0; }
+.sev-score { font-size: var(--ht-3xs); color: var(--ig-3); font-family: monospace; align-self: flex-end; }
 
 /* ── orbBreath keyframe used by silent-orb-inner (also exists above, reuse) */
 /* Fallback if not already defined elsewhere in the file: */
@@ -2942,14 +2962,14 @@
 }
 
 .cont-glyph {
-  font-size:   13px;
+  font-size: var(--ht-md);
   color:       rgba(212, 175, 55, 0.45);
   flex-shrink: 0;
 }
 
 .cont-text {
   flex:        1;
-  font-size:   11px;
+  font-size: var(--ht-xs);
   color:       rgba(212, 175, 55, 0.55);
   font-style:  italic;
   line-height: 1.5;
@@ -2966,7 +2986,7 @@
   border:          1px solid rgba(212, 175, 55, 0.20);
   border-radius:   3px;
   color:           rgba(212, 175, 55, 0.70);
-  font-size:       10px;
+  font-size: var(--ht-2xs);
   font-family:     inherit;
   cursor:          pointer;
   transition:      border-color 0.18s, color 0.18s, background 0.18s;
@@ -2984,7 +3004,7 @@
   background:   transparent;
   border:       none;
   color:        rgba(212, 175, 55, 0.25);
-  font-size:    10px;
+  font-size: var(--ht-2xs);
   cursor:       pointer;
   padding:      4px 6px;
   line-height:  1;
@@ -3038,7 +3058,7 @@
 }
 
 .vu-sigil {
-  font-size:   16px;
+  font-size: var(--ht-xl);
   color:       rgba(212, 175, 55, 0.30);
   flex-shrink: 0;
   line-height: 1.5;
@@ -3046,7 +3066,7 @@
 
 .vu-text {
   margin:      0;
-  font-size:   11.5px;
+  font-size: var(--ht-xs);
   color:       rgba(212, 175, 55, 0.45);
   font-style:  italic;
   line-height: 1.7;
@@ -3076,12 +3096,12 @@
 }
 
 .tc-glyph {
-  font-size: 13px;
+  font-size: var(--ht-md);
   color:     rgba(212, 175, 55, 0.30);
 }
 
 .tc-title {
-  font-size:       10px;
+  font-size: var(--ht-2xs);
   color:           rgba(212, 175, 55, 0.40);
   letter-spacing:  0.08em;
   text-transform:  uppercase;
@@ -3102,7 +3122,7 @@
   background:    rgba(12, 9, 2, 0.80);
   border:        1px solid rgba(212, 175, 55, 0.10);
   border-radius: 2px;
-  font-size:     10px;
+  font-size: var(--ht-2xs);
   color:         rgba(212, 175, 55, 0.55);
   cursor:        grab;
   line-height:   1.4;
@@ -3147,7 +3167,7 @@
 .tcz-doubt      { border-color: rgba(180, 90,  60,  0.14); }
 
 .tcz-label {
-  font-size:       9px;
+  font-size: var(--ht-3xs);
   color:           rgba(212, 175, 55, 0.30);
   text-align:      center;
   letter-spacing:  0.06em;
@@ -3160,7 +3180,7 @@
 .tcz-doubt .tcz-label      { color: rgba(200, 100, 70, 0.50); }
 
 .tc-chip {
-  font-size:  9.5px;
+  font-size: var(--ht-3xs);
   color:      rgba(212, 175, 55, 0.42);
   line-height: 1.4;
   padding:    4px 6px;
@@ -3186,17 +3206,17 @@
 /* Tier III — Supporting Context */
 .ctier-3 { color: rgba(180,155,90,.65); font-weight: 500; }
 .ctier-entry-3 { opacity: 0.72; }
-.ctier-entry-3 .entry-text { font-size: 0.96em; }
+.ctier-entry-3 .entry-text { font-size: var(--ht-lg); }
 
 /* Tier IV — Claim Under Examination: faded, italic */
 .ctier-4 { color: rgba(150,125,70,.48); font-weight: 400; font-style: italic; }
 .ctier-entry-4 { opacity: 0.55; }
-.ctier-entry-4 .entry-text { font-size: 0.93em; font-style: italic; }
+.ctier-entry-4 .entry-text { font-size: var(--ht-lg); font-style: italic; }
 
 /* Tier V — Common Narrative: clearly de-emphasized */
 .ctier-5 { color: rgba(120,100,55,.32); font-weight: 400; font-style: italic; }
 .ctier-entry-5 { opacity: 0.38; }
-.ctier-entry-5 .entry-text { font-size: 0.88em; font-style: italic; color: rgba(180,155,90,.45); }
+.ctier-entry-5 .entry-text { font-size: var(--ht-lg); font-style: italic; color: rgba(180,155,90,.45); }
 
 /* ═══════════════════════════════════════════════════════════════════════
    COMPETING POSITIONS — Article II
@@ -3226,12 +3246,12 @@
 }
 
 .cp-glyph {
-  font-size: 12px;
+  font-size: var(--ht-sm);
   color:     rgba(212, 175, 55, 0.30);
 }
 
 .cp-title {
-  font-size:       9.5px;
+  font-size: var(--ht-3xs);
   color:           rgba(212, 175, 55, 0.38);
   letter-spacing:  0.10em;
   text-transform:  uppercase;
@@ -3252,7 +3272,7 @@
 }
 
 .cp-side-label {
-  font-size:       9px;
+  font-size: var(--ht-3xs);
   color:           rgba(212, 175, 55, 0.28);
   letter-spacing:  0.06em;
   text-transform:  uppercase;
@@ -3283,7 +3303,7 @@
 .cp-ev-oppose  { border-right: 2px solid rgba(180,90,60,.10); }
 
 .cp-tier {
-  font-size:      8.5px;
+  font-size: var(--ht-3xs);
   font-weight:    600;
   color:          rgba(212, 175, 55, 0.40);
   letter-spacing: 0.04em;
@@ -3291,7 +3311,7 @@
 
 .cp-text {
   margin:      0;
-  font-size:   10px;
+  font-size: var(--ht-2xs);
   color:       rgba(212, 175, 55, 0.52);
   line-height: 1.6;
   font-style:  italic;
@@ -3313,7 +3333,7 @@
 }
 
 .cp-spine-glyph {
-  font-size: 12px;
+  font-size: var(--ht-sm);
   color:     rgba(212, 175, 55, 0.20);
 }
 
@@ -3361,8 +3381,8 @@
   margin-bottom: 20px;
 }
 .hearing-rule  { flex: 1; height: 1px; background: linear-gradient(to left, rgba(212,175,55,.20), transparent); }
-.hearing-glyph { font-size: 14px; color: rgba(212,175,55,.50); }
-.hearing-title { font-size: 11px; color: rgba(212,175,55,.60); letter-spacing: .10em; text-transform: uppercase; white-space: nowrap; }
+.hearing-glyph { font-size: var(--ht-lg); color: rgba(212,175,55,.50); }
+.hearing-title { font-size: var(--ht-xs); color: rgba(212,175,55,.60); letter-spacing: .10em; text-transform: uppercase; white-space: nowrap; }
 
 .hearing-layout {
   display:       flex;
@@ -3374,7 +3394,7 @@
 .hearing-side { flex: 1; display: flex; flex-direction: column; gap: 10px; }
 
 .hearing-side-label {
-  font-size:      9.5px;
+  font-size: var(--ht-3xs);
   color:          rgba(212,175,55,.38);
   letter-spacing: .06em;
   text-transform: uppercase;
@@ -3384,7 +3404,7 @@
   align-items:    center;
   gap:            6px;
 }
-.hsl-mark { font-size: 8px; }
+.hsl-mark { font-size: var(--ht-3xs); }
 .hearing-prosecution .hearing-side-label { color: rgba(212,175,55,.55); }
 .hearing-defense     .hearing-side-label { color: rgba(180,100,70,.45); }
 
@@ -3397,13 +3417,13 @@
 .hearing-ev-btn:hover { background: rgba(212,175,55,.04); }
 .hev-support { border-right: 2px solid rgba(212,175,55,.18); }
 .hev-oppose  { border-right: 2px solid rgba(180,90,60,.14);  }
-.hev-tier    { font-size: 8.5px; font-weight: 600; color: rgba(212,175,55,.48); letter-spacing: .04em; }
-.hev-text    { margin: 0; font-size: 10.5px; color: rgba(212,175,55,.58); line-height: 1.65; font-style: italic; }
-.hearing-empty { font-size: 10px; color: rgba(212,175,55,.25); font-style: italic; padding: 10px 12px; margin: 0; }
+.hev-tier    { font-size: var(--ht-3xs); font-weight: 600; color: rgba(212,175,55,.48); letter-spacing: .04em; }
+.hev-text    { margin: 0; font-size: var(--ht-2xs); color: rgba(212,175,55,.58); line-height: 1.65; font-style: italic; }
+.hearing-empty { font-size: var(--ht-2xs); color: rgba(212,175,55,.25); font-style: italic; padding: 10px 12px; margin: 0; }
 
 .hearing-spine { display: flex; flex-direction: column; align-items: center; padding: 0 16px; gap: 8px; }
 .hearing-spine-line  { flex: 1; width: 1px; background: rgba(212,175,55,.08); }
-.hearing-spine-glyph { font-size: 14px; color: rgba(212,175,55,.22); }
+.hearing-spine-glyph { font-size: var(--ht-lg); color: rgba(212,175,55,.22); }
 
 /* ── Court Questions — Article IV ────────────────────────────────── */
 @keyframes cqAppear { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
@@ -3415,14 +3435,14 @@
   animation: cqAppear .40s ease-out forwards;
 }
 .cq-header        { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-.cq-glyph         { font-size: 11px; color: rgba(212,175,55,.40); }
-.cq-title         { font-size: 9.5px; color: rgba(212,175,55,.48); letter-spacing: .08em; text-transform: uppercase; }
+.cq-glyph         { font-size: var(--ht-xs); color: rgba(212,175,55,.40); }
+.cq-title         { font-size: var(--ht-3xs); color: rgba(212,175,55,.48); letter-spacing: .08em; text-transform: uppercase; }
 .cq-list          { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.cq-item          { font-size: 11px; color: rgba(212,175,55,.65); line-height: 1.7; padding-right: 10px; border-right: 2px solid rgba(212,175,55,.14); animation: cqAppear .35s ease-out both; }
+.cq-item          { font-size: var(--ht-xs); color: rgba(212,175,55,.65); line-height: 1.7; padding-right: 10px; border-right: 2px solid rgba(212,175,55,.14); animation: cqAppear .35s ease-out both; }
 
 /* ── Citizen Stance — Article V ──────────────────────────────────── */
 .citizen-stance { margin: 20px 0; text-align: center; }
-.cs-prompt      { font-size: 10px; color: rgba(212,175,55,.40); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 14px; }
+.cs-prompt      { font-size: var(--ht-2xs); color: rgba(212,175,55,.40); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 14px; }
 .cs-actions     { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 
 .cs-btn {
@@ -3432,8 +3452,8 @@
   cursor: pointer; transition: border-color .18s, background .18s; min-width: 90px;
 }
 .cs-btn:hover { border-color: rgba(212,175,55,.35); background: rgba(212,175,55,.04); }
-.cs-ar   { font-size: 12px; color: rgba(212,175,55,.75); font-weight: 600; }
-.cs-hint { font-size:  8px; color: rgba(212,175,55,.35); }
+.cs-ar   { font-size: var(--ht-sm); color: rgba(212,175,55,.75); font-weight: 600; }
+.cs-hint { font-size: var(--ht-3xs); color: rgba(212,175,55,.35); }
 
 .cs-support       { border-color: rgba(212,175,55,.20); }
 .cs-object        { border-color: rgba(180,100,60,.18);  }
@@ -3451,8 +3471,8 @@
   background: rgba(212,175,55,.03); border: 1px solid rgba(212,175,55,.10); border-radius: 4px;
   animation: saSettle .30s ease-out forwards;
 }
-.sa-mark { font-size: 10px; color: rgba(212,175,55,.50); }
-.sa-text { font-size: 10.5px; color: rgba(212,175,55,.60); line-height: 1.5; }
+.sa-mark { font-size: var(--ht-2xs); color: rgba(212,175,55,.50); }
+.sa-text { font-size: var(--ht-2xs); color: rgba(212,175,55,.60); line-height: 1.5; }
 
 /* ── Hearing Proceed Button ───────────────────────────────────────── */
 .hearing-footer { display: flex; justify-content: center; margin-top: 20px; }
@@ -3460,11 +3480,11 @@
   display: flex; align-items: center; gap: 8px;
   padding: 10px 28px; background: transparent;
   border: 1px solid rgba(212,175,55,.28); border-radius: 4px;
-  color: rgba(212,175,55,.78); font-size: 12px; font-weight: 600; letter-spacing: .06em;
+  color: rgba(212,175,55,.78); font-size: var(--ht-sm); font-weight: 600; letter-spacing: .06em;
   cursor: pointer; transition: border-color .18s, background .18s, color .18s;
 }
 .hearing-proceed-btn:hover { border-color: rgba(212,175,55,.55); background: rgba(212,175,55,.06); color: rgba(212,175,55,.95); }
-.hpb-glyph { font-size: 14px; opacity: 0.7; }
+.hpb-glyph { font-size: var(--ht-lg); opacity: 0.7; }
 
 /* ═══════════════════════════════════════════════════════════════════════
    MINORITY VIEW — Article VII
@@ -3479,13 +3499,13 @@
   animation: mvSettle .40s ease-out forwards;
 }
 .mv-header        { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-.mv-glyph         { font-size: 11px; color: rgba(180,100,60,.50); }
-.mv-title         { font-size: 9.5px; color: rgba(180,100,60,.52); letter-spacing: .07em; text-transform: uppercase; }
+.mv-glyph         { font-size: var(--ht-xs); color: rgba(180,100,60,.50); }
+.mv-title         { font-size: var(--ht-3xs); color: rgba(180,100,60,.52); letter-spacing: .07em; text-transform: uppercase; }
 .mv-ev-btn        { display: flex; flex-direction: column; gap: 6px; background: transparent; border: none; text-align: right; cursor: pointer; padding: 8px 0; width: 100%; transition: opacity .16s; }
 .mv-ev-btn:hover  { opacity: 0.80; }
-.mv-tier          { font-size: 8.5px; font-weight: 600; color: rgba(180,100,60,.55); letter-spacing: .04em; }
-.mv-text          { margin: 0; font-size: 10.5px; color: rgba(200,140,100,.60); line-height: 1.65; font-style: italic; }
-.mv-note          { margin: 10px 0 0; font-size: 9px; color: rgba(180,100,60,.38); line-height: 1.55; font-style: italic; }
+.mv-tier          { font-size: var(--ht-3xs); font-weight: 600; color: rgba(180,100,60,.55); letter-spacing: .04em; }
+.mv-text          { margin: 0; font-size: var(--ht-2xs); color: rgba(200,140,100,.60); line-height: 1.65; font-style: italic; }
+.mv-note          { margin: 10px 0 0; font-size: var(--ht-3xs); color: rgba(180,100,60,.38); line-height: 1.55; font-style: italic; }
 
 /* ════════════════════════════════════════════════════════════════════════
    DIRECTOR'S POLISH — THE CHAMBER IS A REAL PLACE
@@ -4286,7 +4306,7 @@
 }
 .category-unverified .category-header::after {
   content:    '— أفق مفتوح';
-  font-size:  8px;
+  font-size: var(--ht-3xs);
   color:      rgba(212,175,55,.25);
   font-style: italic;
   letter-spacing: 0.06em;
@@ -4397,7 +4417,7 @@
 }
 
 .curiosity-sigil {
-  font-size:   14px;
+  font-size: var(--ht-lg);
   color:       rgba(212, 175, 55, 0.28);
   flex-shrink: 0;
   margin-top:  2px;
@@ -4406,7 +4426,7 @@
 
 .curiosity-question {
   margin:      0;
-  font-size:   12px;
+  font-size: var(--ht-sm);
   color:       rgba(212, 175, 55, 0.42);
   font-style:  italic;
   line-height: 1.7;
@@ -4897,19 +4917,19 @@
 }
 
 .vd-rung-title {
-  font-size: 11.5px;
+  font-size: var(--ht-xs);
   font-weight: 600;
   color: var(--ig-6);
 }
 
 .vd-rung-count {
-  font-size: 9.5px;
+  font-size: var(--ht-3xs);
   color: var(--text-dim);
   font-family: monospace;
 }
 
 .vd-rung-meaning {
-  font-size: 10px;
+  font-size: var(--ht-2xs);
   color: var(--text-dim);
   line-height: 1.6;
   margin: 3px 0 0;
@@ -4931,7 +4951,7 @@
    is. Until they choose, the cards say so. */
 .archive-domains-prompt,
 .margin-domains-prompt {
-  font-size: 9.5px;
+  font-size: var(--ht-3xs);
   color: var(--ig-3);
   letter-spacing: 0.4px;
   line-height: 1.6;
@@ -4957,10 +4977,10 @@
 
 /* ── Leaving with a demand, not only a question ───────────────────────────── */
 .inv-demand-block { margin-top: 14px; border-top: 1px solid rgba(212,175,55,0.16); padding-top: 12px; }
-.inv-demand-tag { display: block; margin-bottom: 8px; font-size: 10px; letter-spacing: 0.08em; color: var(--gold-dim, #8a7434); }
+.inv-demand-tag { display: block; margin-bottom: 8px; font-size: var(--ht-2xs); letter-spacing: 0.08em; color: var(--gold-dim, #8a7434); }
 .inv-demand-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .inv-action.inv-demand { border-style: dashed; }
-.inv-demand-notice { margin: 8px 0 0; font-size: 11px; line-height: 1.6; color: var(--text-muted, #a89f91); }
+.inv-demand-notice { margin: 8px 0 0; font-size: var(--ht-xs); line-height: 1.6; color: var(--text-muted, #a89f91); }
 
 /* ── The confirm control, the microphone, and the shaper ──────────────────
    Every value below is the Imperial Gold System's own. The identity is a
@@ -4985,7 +5005,7 @@
 .dialogue-begin-btn {
   margin-inline-start: auto;
   font-family: inherit;
-  font-size: 1rem;
+  font-size: var(--ht-xl);
   font-weight: 600;
   letter-spacing: 0.01em;
   padding: 12px 28px;
@@ -5005,7 +5025,7 @@
 .dialogue-clear-btn,
 .dialogue-mic-btn {
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: var(--ht-lg);
   padding: 10px 18px;
   cursor: pointer;
   color: var(--text-muted);
@@ -5034,7 +5054,7 @@
 .dialogue-heard-notice {
   margin: 12px 0 0;
   padding: 10px 14px;
-  font-size: 0.9rem;
+  font-size: var(--ht-lg);
   line-height: 1.75;
   color: var(--text-muted);
   background: rgba(212, 175, 55, 0.05);
@@ -5050,17 +5070,17 @@
   margin-bottom: 8px;
 }
 .vd-format-label {
-  font-size: 0.8rem;
+  font-size: var(--ht-sm);
   font-weight: 600;
   letter-spacing: 0.1em;
   color: var(--ig-5);
 }
-.vd-format-note { font-size: 0.75rem; color: var(--text-dim); }
+.vd-format-note { font-size: var(--ht-sm); color: var(--text-dim); }
 
 /* The covenant above the three demand doors. */
 .inv-demand-explainer {
   margin: 0 0 12px;
-  font-size: 0.86rem;
+  font-size: var(--ht-md);
   line-height: 1.85;
   color: var(--text-muted);
   max-width: 60ch;
@@ -5082,13 +5102,13 @@
   line-height: 1.7;
 }
 
-.inv-demand-label { font-size: 0.95rem; font-weight: 600; color: var(--ig-6); }
-.inv-demand-for   { font-size: 0.82rem; color: var(--text-muted); }
+.inv-demand-label { font-size: var(--ht-lg); font-weight: 600; color: var(--ig-6); }
+.inv-demand-for   { font-size: var(--ht-md); color: var(--text-muted); }
 
 /* A direction the Chamber has declared and has not yet built. Never a door:
    it carries no action, and says so in the same breath. */
 .inv-demand-soon {
-  font-size: 0.78rem;
+  font-size: var(--ht-sm);
   color: var(--text-dim);
   padding-top: 3px;
   border-top: 1px dashed rgba(212, 175, 55, 0.18);
@@ -5114,7 +5134,7 @@
 }
 
 .arrived-tag {
-  font-size: 0.78rem;
+  font-size: var(--ht-sm);
   font-weight: 600;
   letter-spacing: 0.1em;
   color: var(--ig-5);
@@ -5122,7 +5142,7 @@
 
 .arrived-dismiss {
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: var(--ht-lg);
   line-height: 1;
   padding: 4px 8px;
   cursor: pointer;
@@ -5135,7 +5155,7 @@
 
 .arrived-title {
   margin: 10px 0 0;
-  font-size: 1rem;
+  font-size: var(--ht-xl);
   font-weight: 600;
   line-height: 1.75;
   color: var(--text-main);
@@ -5143,7 +5163,7 @@
 
 .arrived-preview {
   margin: 6px 0 0;
-  font-size: 0.86rem;
+  font-size: var(--ht-md);
   line-height: 1.8;
   color: var(--text-muted);
   max-width: 62ch;
@@ -5152,7 +5172,7 @@
 .arrived-ask {
   display: block;
   margin-top: 14px;
-  font-size: 0.82rem;
+  font-size: var(--ht-md);
   color: var(--text-dim);
 }
 
@@ -5165,7 +5185,7 @@
 
 .arrived-btn {
   font-family: inherit;
-  font-size: 0.86rem;
+  font-size: var(--ht-md);
   padding: 9px 15px;
   cursor: pointer;
   color: var(--ig-7);
