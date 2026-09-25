@@ -130,6 +130,25 @@ export class MoneyPrinterTurboOutputTooLargeError extends MoneyPrinterTurboError
 
 // ── Request / result shapes ──────────────────────────────────────────────────
 
+/**
+ * The Chamber writes its visual intent as prose, and the stock library is
+ * searched with it term by term. MEASURED 2026-09-25 on the live workshop:
+ * passed through whole, the sentence's own full stop reached the library as
+ * part of the query — term='awakening.' and term='desolate landscape.' —
+ * searching for a phrase no catalogue is indexed under.
+ *
+ * So the prose is split where it already divides and each term is handed over
+ * as a term: trimmed, stripped of the punctuation that ended a sentence rather
+ * than named a thing, and emptied entries dropped.
+ */
+function toSearchTerms(terms: readonly string[]): string {
+  return terms
+    .flatMap((line) => line.split(','))
+    .map((term) => term.trim().replace(/^[\s.,;:،؛—-]+|[\s.,;:،؛—-]+$/g, ''))
+    .filter((term) => term.length > 0)
+    .join(', ');
+}
+
 export interface VideoProductionRequest {
   readonly subject: string;
   /**
@@ -258,7 +277,7 @@ export class MoneyPrinterTurboAdapter {
         // only when this is absent, and an empty string is not an absence.
         ...(request.script ? { video_script: request.script } : {}),
         ...(request.visualTerms && request.visualTerms.length > 0
-          ? { video_terms: request.visualTerms.join(', '), match_materials_to_script: true }
+          ? { video_terms: toSearchTerms(request.visualTerms), match_materials_to_script: true }
           : {}),
         video_language: request.language ?? 'Arabic',
         paragraph_number: request.paragraphCount ?? 2,
