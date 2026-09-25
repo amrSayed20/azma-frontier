@@ -7,6 +7,11 @@ import {
   isMoneyPrinterTurboConfigured,
 } from '@/src/external-providers/moneyprinterturbo/moneyprinterturbo-adapter';
 import { depositProductionIntoVault } from '@/src/external-providers/moneyprinterturbo/moneyprinterturbo-vault-deposit';
+import {
+  acceptStoryboardProduction,
+  findOperationForStoryboard,
+  observeStoryboardOperation,
+} from '@/src/ras-amr-production/storyboard-operation-lifecycle';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -112,37 +117,92 @@ export async function POST(
     fontName: 'NotoSansArabic-Regular.ttf',
   };
 
-  try {
-    const adapter = new MoneyPrinterTurboAdapter();
-    if (!(await adapter.checkHealth())) {
-      return NextResponse.json(
-        { status: 'failed', reason: 'production-unreachable', message: 'ورشة الإنتاج لا تستجيب الآن. أعد المحاولة.' },
-        { status: 503 },
-      );
-    }
-
-    const production = await adapter.produce(productionRequest);
-    const asset = await depositProductionIntoVault({
-      creatorId: session.creatorId,
-      production,
-      request: productionRequest,
-      generatedScript: subject,
-    });
-
-    return NextResponse.json({
-      status: 'succeeded',
-      storyboardId,
-      sceneCount: scenes.length,
-      assetId: asset.assetId,
-      assetUrl: asset.secureStorageUri,
-    });
-  } catch (err) {
-    // The engine's own words go to the trail an engineer reads; the Creator is
-    // told what happened, in Arabic, with nothing outside the Empire named.
-    console.error('[RasAmr] storyboard production failed:', err);
+  const adapter = new MoneyPrinterTurboAdapter();
+  if (!(await adapter.checkHealth())) {
     return NextResponse.json(
-      { status: 'failed', reason: 'production-failed', message: 'تعذّر إنتاج المشاهد. أعد المحاولة.' },
-      { status: 422 },
+      { status: 'failed', reason: 'production-unreachable', message: 'ورشة الإنتاج لا تستجيب الآن. أعد المحاولة.' },
+      { status: 503 },
     );
   }
+
+  // ─── THE BOUNDARY THAT BROKE ON 2026-09-25 ─────────────────────────────
+  //
+  //   The first real storyboard production ran for 187 seconds and the
+  //   browser's connection died before it finished. The Creator was told the
+  //   workshop could not be reached, and the server had logged no failure —
+  //   because there had been none. The work was still running. Then the
+  //   request was gone, and the `await` that would have deposited the result
+  //   went with it: the workshop finished into nothing.
+  //
+  //   A production that takes minutes does not ride a socket that lives for
+  //   seconds. This accepts and answers at once; the work runs on its own and
+  //   writes its ending to the Empire's operation ledger, which the Chamber
+  //   reads through GET on this same path.
+  const accepted = await acceptStoryboardProduction({
+    creatorId: session.creatorId,
+    storyboardId,
+    sceneCount: scenes.length,
+    run: async () => {
+      const production = await adapter.produce(productionRequest);
+      const asset = await depositProductionIntoVault({
+        creatorId: session.creatorId,
+        production,
+        request: productionRequest,
+        generatedScript: subject,
+      });
+      return { assetId: asset.assetId, assetUrl: asset.secureStorageUri };
+    },
+  });
+
+  return NextResponse.json(
+    {
+      status: 'accepted',
+      storyboardId,
+      sceneCount: scenes.length,
+      operationId: accepted.operationId,
+      state: accepted.state,
+      // True when this board already had a production running: the Creator is
+      // handed the one that exists, never a second run of the same scenes.
+      reused: accepted.reused,
+      observeAt: `/api/ras-amr/storyboard/${encodeURIComponent(storyboardId)}/produce`,
+    },
+    { status: 202 },
+  );
+}
+
+/**
+ * GET — what became of the production. It observes only: it starts nothing,
+ * changes nothing, and costs nothing.
+ */
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ storyboardId: string }> },
+) {
+  const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
+  const session = sessionId ? verifySession(sessionId) : null;
+  if (!session) {
+    return NextResponse.json(
+      { status: 'failed', reason: 'unauthorized', message: 'سجّل دخولك أوّلاً.' },
+      { status: 401 },
+    );
+  }
+
+  const { storyboardId } = await context.params;
+  const operationId = findOperationForStoryboard(session.creatorId, storyboardId);
+  const observed = operationId ? await observeStoryboardOperation(operationId, session.creatorId) : null;
+  if (!observed) {
+    return NextResponse.json({ found: false, operationId: null, state: null });
+  }
+
+  return NextResponse.json({
+    found: true,
+    operationId: observed.operationId,
+    state: observed.state,
+    isTerminal: observed.isTerminal,
+    producing: observed.producing,
+    succeeded: observed.succeeded,
+    assetId: observed.assetId ?? null,
+    assetUrl: observed.assetUrl ?? null,
+    failureReason: observed.failureReason ?? null,
+  });
 }

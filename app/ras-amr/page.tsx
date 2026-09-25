@@ -4789,23 +4789,54 @@ export default function RasAmrChamber() {
                         setIsProducingScenes(true);
                         setSceneNotice(null);
                         setSceneAssetUrl(null);
+                        const path = `/api/ras-amr/storyboard/${encodeURIComponent(storyboard.storyboardId)}/produce`;
                         try {
-                          const res = await fetch(
-                            `/api/ras-amr/storyboard/${encodeURIComponent(storyboard.storyboardId)}/produce`,
-                            { method: 'POST' },
-                          );
-                          const body = await res.json() as { status?: string; assetUrl?: string; message?: string };
-                          if (res.ok && body.status === 'succeeded' && body.assetUrl) {
-                            setSceneAssetUrl(body.assetUrl);
-                            setSceneNotice('اكتمل الإنتاج — وأُودع في خزانتك.');
-                          } else {
-                            setSceneNotice(body.message ?? 'تعذّر إنتاج المشاهد.');
+                          const res = await fetch(path, { method: 'POST' });
+                          const body = await res.json() as { status?: string; message?: string };
+                          if (!res.ok || body.status !== 'accepted') {
+                            setSceneNotice(body.message ?? 'تعذّر بدء الإنتاج.');
+                            setIsProducingScenes(false);
+                            return;
                           }
                         } catch {
                           setSceneNotice('تعذّر الوصول إلى ورشة الإنتاج الآن.');
-                        } finally {
                           setIsProducingScenes(false);
+                          return;
                         }
+
+                        // The production outlives this request, so the Chamber
+                        // asks the ledger rather than holding a socket open.
+                        // A poll that goes unanswered is asked again — never
+                        // turned into a verdict about the work itself.
+                        setSceneNotice('الإنتاج جارٍ… يستغرق عادةً بضع دقائق.');
+                        const spokenFailure = (reason: string | null) =>
+                          reason === 'WORKSHOP_UNREACHABLE' ? 'تعذّر إتمام الإنتاج — ورشة الإنتاج لم تستجب.'
+                          : reason === 'REFUSED_BY_WORKSHOP' ? 'تعذّر إتمام الإنتاج — رُفض الطلب.'
+                          : reason === 'NO_OUTPUT'          ? 'تعذّر إتمام الإنتاج — انتهى دون ناتج.'
+                          : reason === 'STORAGE_FAILED'     ? 'تعذّر إتمام الإنتاج — لم يُحفظ الناتج.'
+                          :                                   'تعذّر إتمام الإنتاج.';
+
+                        for (let i = 0; i < 120; i += 1) {
+                          await new Promise((r) => setTimeout(r, 5000));
+                          let op: { producing?: boolean; succeeded?: boolean; assetUrl?: string | null; failureReason?: string | null } | null = null;
+                          try {
+                            const r = await fetch(path);
+                            if (r.ok) op = await r.json();
+                          } catch { /* the question went unanswered; ask again */ }
+                          if (!op || op.producing) continue;
+                          if (op.succeeded && op.assetUrl) {
+                            setSceneAssetUrl(op.assetUrl);
+                            setSceneNotice('اكتمل الإنتاج — وأُودع في خزانتك.');
+                          } else {
+                            setSceneNotice(spokenFailure(op.failureReason ?? null));
+                          }
+                          setIsProducingScenes(false);
+                          return;
+                        }
+                        // Still running after the longest production we know of.
+                        // That is not a failure, and the Chamber does not call it one.
+                        setSceneNotice('الإنتاج ما زال جارياً. سيظهر في خزانتك فور اكتماله.');
+                        setIsProducingScenes(false);
                       }}
                     >
                       {isProducingScenes ? 'الإنتاج جارٍ… قد يستغرق دقائق' : '🎬 أنتج هذه المشاهد'}
