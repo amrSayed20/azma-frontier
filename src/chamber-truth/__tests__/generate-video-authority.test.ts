@@ -158,8 +158,15 @@ describe('BOUNDARIES 21–25 · nothing else moved', () => {
     expect(every.filter((id) => /edit/i.test(id))).toEqual(['edit-inside-asset']);
   });
 
+  // Updated deliberately 2026-09-25. This guard exists so a capability cannot
+  // drift into or out of the Chamber unnoticed, and it caught exactly that: the
+  // Founder found no way to state an idea in رأس الأمر, so the Chamber gained
+  // one. What the guard protects — that this Chamber works BETWEEN assets and
+  // never generates one — is unchanged: composing a brief into scenes produces
+  // a storyboard, which is a plan, not a frame of picture.
   it('Ras Al Amr keeps every between-assets capability, unchanged', () => {
     expect(getChamberTruth('ras-amr').capabilities.map((c) => c.id)).toEqual([
+      'compose-storyboard-from-brief',
       'keep-canvas', 'direct-automatically', 'compile-production', 'follow-production',
       'give-voice', 'clone-voice', 'import-subtitles', 'restore-canvas', 'give-cloned-voice',
     ]);

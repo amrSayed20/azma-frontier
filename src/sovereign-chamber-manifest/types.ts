@@ -108,5 +108,12 @@ export interface SovereignChamberManifest {
   readonly constitutionalName: string;
   readonly constitutionalResponsibility: string;
   readonly capabilities: readonly SovereignChamberCapability[];
+  /**
+   * Where a Creator lands when they enter this Chamber without naming a
+   * capability. Carried from Chamber Truth, which states it — it used to be
+   * `capabilities[0]`, so the order of an array decided it and adding a
+   * capability moved it without anyone choosing to.
+   */
+  readonly primaryCapabilityId: string;
   readonly boundary: SovereignChamberBoundary;
 }

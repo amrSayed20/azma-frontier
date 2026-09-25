@@ -1,3 +1,22 @@
+:root {
+  /* ═══ THE CHAMBER'S TYPE SCALE ══════════════════════════════════
+     Measured 2026-09-25: 234 font-size declarations, the mass of them between
+     9px and 13px — worse than either room the Founder had already found it
+     in. He asked this Chamber for «تجلٍّ واضح وميسور للمستخدمين», and a
+     room cannot be plain to anyone who cannot read it.
+
+     The steps are the same seven the Chamber of Evidence and the Vault Palace
+     resolve through, so a Creator crossing between the three does not cross
+     between three ideas of how large a word is. */
+  --rt-3xs: 15px;
+  --rt-2xs: 16px;
+  --rt-xs:  17px;
+  --rt-sm:  18px;
+  --rt-md:  19px;
+  --rt-lg:  21px;
+  --rt-xl:  23px;
+}
+
 /**
  * AZMA OS – Ras Al-Amr Chamber (Hollywood Master Director Console Layout)
  * File: app/ras-amr/ras-amr.css
@@ -114,7 +133,7 @@ body:has(.ras-amr-viewport) {
   background: transparent;
   border: 1px solid var(--neon-gold-dim);
   color: var(--neon-gold-bright);
-  font-size: 11px;
+  font-size: var(--rt-xs);
   font-weight: bold;
   padding: 5px 12px;
   border-radius: 6px;
@@ -133,7 +152,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-header-name {
-  font-size: 14px;
+  font-size: var(--rt-lg);
   font-weight: 900;
   color: var(--neon-gold-bright);
   letter-spacing: 1px;
@@ -151,7 +170,7 @@ body:has(.ras-amr-viewport) {
 
 .ras-mode-btn {
   padding: 4px 10px;
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   font-weight: 700;
   background: transparent;
   border: none;
@@ -171,7 +190,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-selected-node-badge {
-  font-size: 9px;
+  font-size: var(--rt-3xs);
   font-family: monospace;
   color: var(--neon-gold-dim);
   padding: 2px 8px;
@@ -188,7 +207,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-header-render-status {
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   font-family: monospace;
   color: var(--text-muted);
 }
@@ -197,7 +216,7 @@ body:has(.ras-amr-viewport) {
   background: linear-gradient(135deg, #a07800, var(--neon-gold-primary));
   border: 1px solid var(--neon-gold-bright);
   color: #000;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   font-weight: 900;
   padding: 6px 14px;
   border-radius: 6px;
@@ -288,7 +307,7 @@ body:has(.ras-amr-viewport) {
 .ras-tab-btn {
   flex: 1;
   padding: 10px 4px;
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   font-weight: 700;
   background: transparent;
   border: none;
@@ -338,7 +357,7 @@ body:has(.ras-amr-viewport) {
 .ras-panel-action-zone .director-status-strip {
   border-radius: 6px;
   padding: 5px 10px;
-  font-size: 9px;
+  font-size: var(--rt-3xs);
 }
 
 /* Compact preview controls inside the right panel action zone */
@@ -351,7 +370,7 @@ body:has(.ras-amr-viewport) {
 /* Mute toggle for per-node audio */
 .audio-node-mute-btn {
   padding: 3px 10px;
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   font-weight: 700;
   border-radius: 6px;
   cursor: pointer;
@@ -392,7 +411,7 @@ body:has(.ras-amr-viewport) {
 
 /* Honesty note — per CA Correction #3 */
 .ras-honesty-note {
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   color: rgba(255, 215, 0, 0.45);
   margin: 4px 0 0;
   font-style: italic;
@@ -419,7 +438,7 @@ body:has(.ras-amr-viewport) {
 }
 .viewport-audio-title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--rt-lg);
   font-weight: 700;
   color: var(--text-main);
   text-align: center;
@@ -430,7 +449,7 @@ body:has(.ras-amr-viewport) {
 }
 .viewport-audio-hint {
   margin: 0;
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   color: var(--neon-gold-dim);
   font-style: italic;
 }
@@ -480,7 +499,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-timeline-phase-label {
-  font-size: 9px;
+  font-size: var(--rt-3xs);
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
@@ -491,7 +510,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-timeline-node-count {
-  font-size: 11px;
+  font-size: var(--rt-xs);
   font-weight: 600;
   color: var(--neon-gold-bright);
   opacity: 0.75;
@@ -528,7 +547,7 @@ body:has(.ras-amr-viewport) {
   background: rgba(212, 175, 55, 0.35);
 }
 .ras-ruler-tick span {
-  font-size: 8px;
+  font-size: var(--rt-3xs);
   color: rgba(212, 175, 55, 0.55);
   font-family: monospace;
   margin-top: 1px;
@@ -541,7 +560,7 @@ body:has(.ras-amr-viewport) {
   color: var(--neon-gold-bright);
   padding: 5px 14px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   font-weight: 900;
   cursor: pointer;
   font-family: inherit;
@@ -596,7 +615,7 @@ body:has(.ras-amr-viewport) {
   .ras-panel-right .panel-header { padding: 8px 8px 6px; }
   .ras-panel-left .panel-header h2,
   .ras-panel-right .panel-header h2 {
-    font-size: 0.78rem;
+    font-size: var(--rt-sm);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -606,7 +625,7 @@ body:has(.ras-amr-viewport) {
 
   /* Compact summon button */
   .summon-bridge-trigger-btn {
-    font-size: 9px;
+    font-size: var(--rt-3xs);
     padding: 5px 6px;
     white-space: normal;
     line-height: 1.3;
@@ -617,7 +636,7 @@ body:has(.ras-amr-viewport) {
 
   /* Compact right tabs: fit 5 tabs in 110px */
   .ras-tab-btn {
-    font-size: 8px;
+    font-size: var(--rt-3xs);
     padding: 8px 2px;
     letter-spacing: 0;
   }
@@ -626,7 +645,7 @@ body:has(.ras-amr-viewport) {
   .timeline-tracks-container { padding: 4px 8px; gap: 3px; }
   .timeline-track-row { height: 26px; }
   .timeline-nodes-bar { height: 20px; }
-  .timeline-track-label { min-width: 36px; max-width: 36px; font-size: 8px; }
+  .timeline-track-label { min-width: 36px; max-width: 36px; font-size: var(--rt-3xs); }
 }
 
 /* ── Phone (< 400px) ─────────────────────────────────────────────
@@ -779,7 +798,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .neon-tag {
-  font-size: 9px;
+  font-size: var(--rt-3xs);
   font-weight: 900;
   color: var(--neon-gold-bright);
   letter-spacing: 2px;
@@ -789,14 +808,14 @@ body:has(.ras-amr-viewport) {
 
 .panel-header h2 {
   margin: 0 0 3px 0;
-  font-size: 1.1rem;
+  font-size: var(--rt-xl);
   font-weight: 800;
   color: var(--text-main);
 }
 
 .panel-header p {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: var(--text-muted);
 }
 
@@ -811,7 +830,7 @@ body:has(.ras-amr-viewport) {
   border-radius: 8px;
   padding: 10px;
   color: #fff;
-  font-size: 12px;
+  font-size: var(--rt-sm);
   font-weight: 900;
   cursor: pointer;
   display: flex;
@@ -877,7 +896,7 @@ body:has(.ras-amr-viewport) {
 .item-meta { display: flex; justify-content: space-between; margin-bottom: 8px; }
 
 .item-type-badge {
-  font-size: 9px;
+  font-size: var(--rt-3xs);
   background: rgba(255, 215, 0, 0.15);
   color: var(--neon-gold-bright);
   padding: 2px 8px;
@@ -885,11 +904,11 @@ body:has(.ras-amr-viewport) {
   border: 1px solid rgba(255, 215, 0, 0.2);
 }
 
-.item-source { font-size: 11px; color: var(--text-muted); }
+.item-source { font-size: var(--rt-xs); color: var(--text-muted); }
 
 .item-title {
   margin: 0 0 10px 0;
-  font-size: 13px;
+  font-size: var(--rt-md);
   font-weight: bold;
   color: var(--text-main);
 }
@@ -902,7 +921,7 @@ body:has(.ras-amr-viewport) {
 .item-footer {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: var(--rt-sm);
   color: var(--text-muted);
   border-top: 1px solid rgba(255,255,255,0.03);
   padding-top: 8px;
@@ -936,7 +955,7 @@ body:has(.ras-amr-viewport) {
   border: 1px solid rgba(255,215,0,0.25);
   border-radius: 10px;
   padding: 10px 16px;
-  font-size: 12px;
+  font-size: var(--rt-sm);
   color: var(--neon-gold-bright);
   text-align: center;
   letter-spacing: 0.4px;
@@ -958,7 +977,7 @@ body:has(.ras-amr-viewport) {
 
 .dir-chamber-mandate {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: var(--text-muted);
   line-height: 1.6;
 }
@@ -980,20 +999,20 @@ body:has(.ras-amr-viewport) {
 
 .active-asset-title {
   margin: 6px 0 3px;
-  font-size: 1rem;
+  font-size: var(--rt-xl);
   font-weight: 700;
   color: var(--text-main);
 }
 
 .active-asset-meta {
   margin: 0;
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   color: var(--text-muted);
 }
 
 .dir-empty-hint {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: var(--text-muted);
   line-height: 1.5;
 }
@@ -1015,7 +1034,7 @@ body:has(.ras-amr-viewport) {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   border-bottom: 1px solid rgba(255,215,0,0.05);
   padding-bottom: 6px;
 }
@@ -1025,13 +1044,13 @@ body:has(.ras-amr-viewport) {
 .dir-state-value {
   color: var(--neon-gold-primary);
   font-weight: 600;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   text-align: left;
 }
 
 .dir-render-status {
   margin: 8px 0 0;
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   color: var(--neon-gold-bright);
   font-style: italic;
 }
@@ -1052,7 +1071,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .dir-action-item {
-  font-size: 9px;
+  font-size: var(--rt-3xs);
   padding: 3px 8px;
   border-radius: 6px;
   line-height: 1.4;
@@ -1078,14 +1097,14 @@ body:has(.ras-amr-viewport) {
 
 .dir-decision-text {
   margin: 8px 0 0;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: var(--text-muted);
   font-family: monospace;
   line-height: 1.6;
 }
 
 .queue-empty-hint {
-  font-size: 12px;
+  font-size: var(--rt-sm);
   color: var(--text-muted);
   text-align: center;
   padding: 16px;
@@ -1114,7 +1133,7 @@ body:has(.ras-amr-viewport) {
   border-radius: 8px;
   color: var(--text-main);
   font-family: monospace;
-  font-size: 12px;
+  font-size: var(--rt-sm);
   padding: 9px 10px;
   cursor: pointer;
 }
@@ -1127,7 +1146,7 @@ body:has(.ras-amr-viewport) {
 
 .canvas-mode-reset-note {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: rgba(255, 180, 50, 0.7);
   font-family: monospace;
 }
@@ -1164,7 +1183,7 @@ body:has(.ras-amr-viewport) {
 .operator-btn {
   width: 100%;
   padding: 10px 12px;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   border-radius: 8px;
   border: 1px solid rgba(255, 215, 0, 0.1);
   background: var(--os-surface-elevated);
@@ -1180,12 +1199,12 @@ body:has(.ras-amr-viewport) {
 
 .operator-btn-label {
   font-weight: 700;
-  font-size: 13px;
+  font-size: var(--rt-md);
   color: var(--text-main);
 }
 
 .operator-btn-desc {
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: var(--text-muted);
   line-height: 1.3;
 }
@@ -1234,7 +1253,7 @@ body:has(.ras-amr-viewport) {
 .tool-btn-icon { font-size: 22px; }
 
 .tool-btn-label {
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: var(--text-main);
   text-align: center;
   font-weight: bold;
@@ -1264,7 +1283,7 @@ body:has(.ras-amr-viewport) {
   width: 100%;
   padding: 10px 12px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--rt-md);
   font-weight: 900;
   cursor: pointer;
   font-family: inherit;
@@ -1320,7 +1339,7 @@ body:has(.ras-amr-viewport) {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   color: var(--text-muted);
   font-weight: bold;
 }
@@ -1332,7 +1351,7 @@ body:has(.ras-amr-viewport) {
   border-radius: 6px;
   color: var(--text-main);
   padding: 8px;
-  font-size: 12px;
+  font-size: var(--rt-sm);
   font-family: inherit;
 }
 
@@ -1352,7 +1371,7 @@ body:has(.ras-amr-viewport) {
 .spatial-apply-btn:hover { background: rgba(255, 215, 0, 0.08); }
 
 .spatial-current-state {
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   color: var(--text-muted);
   margin: 0;
   font-family: monospace;
@@ -1430,7 +1449,7 @@ body:has(.ras-amr-viewport) {
   border: none;
   color: var(--text-muted);
   font-family: monospace;
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   padding: 8px 10px;
   cursor: pointer;
 }
@@ -1445,7 +1464,7 @@ body:has(.ras-amr-viewport) {
   border-radius: 4px;
   color: rgba(255, 120, 120, 0.8);
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   font-weight: 700;
   padding: 4px 8px;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
@@ -1477,7 +1496,7 @@ body:has(.ras-amr-viewport) {
 
 .text-node-add-btn,
 .text-node-edit-toggle {
-  font-size: 0.72rem;
+  font-size: var(--rt-xs);
   padding: 3px 10px;
   border: 1px solid rgba(212,175,55,0.4);
   border-radius: 12px;
@@ -1494,7 +1513,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .text-node-label {
-  font-size: 0.65rem;
+  font-size: var(--rt-2xs);
   color: rgba(255,255,255,0.5);
   display: flex;
   flex-direction: column;
@@ -1504,7 +1523,7 @@ body:has(.ras-amr-viewport) {
 .text-node-label input,
 .text-node-label select,
 .text-node-textarea {
-  font-size: 0.75rem;
+  font-size: var(--rt-sm);
   padding: 4px 6px;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(212,175,55,0.2);
@@ -1539,7 +1558,7 @@ body:has(.ras-amr-viewport) {
   border: 1px solid rgba(212,175,55,0.5);
   border-radius: 4px;
   color: rgba(212,175,55,1);
-  font-size: 0.75rem;
+  font-size: var(--rt-sm);
   cursor: pointer;
 }
 
@@ -1555,7 +1574,7 @@ body:has(.ras-amr-viewport) {
   border: 1px solid rgba(200,60,60,0.35);
   border-radius: 4px;
   color: rgba(255,120,120,0.9);
-  font-size: 0.75rem;
+  font-size: var(--rt-sm);
   cursor: pointer;
 }
 
@@ -1570,7 +1589,7 @@ body:has(.ras-amr-viewport) {
 .direction-decision-latest {
   margin: 4px 0 0;
   font-family: monospace;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: var(--text-muted);
 }
 
@@ -1594,7 +1613,7 @@ body:has(.ras-amr-viewport) {
   color: var(--text-muted);
   font-family: monospace;
   padding: 6px 8px;
-  font-size: 10px;
+  font-size: var(--rt-2xs);
 }
 
 .narrative-node-classification:disabled,
@@ -1616,7 +1635,7 @@ body:has(.ras-amr-viewport) {
 
 .narrative-canvas-group-name {
   margin: 0 0 4px 0;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: var(--neon-gold-bright);
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -1630,7 +1649,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .track-volume-label {
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   color: var(--text-muted);
   min-width: 54px;
   white-space: nowrap;
@@ -1648,7 +1667,7 @@ body:has(.ras-amr-viewport) {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--rt-sm);
   padding: 8px 6px;
 }
 
@@ -1664,7 +1683,7 @@ body:has(.ras-amr-viewport) {
 .narrative-node-move-group,
 .narrative-node-classification,
 .narrative-node-emphasis {
-  font-size: 9px;
+  font-size: var(--rt-3xs);
   padding: 4px 6px;
 }
 
@@ -1675,7 +1694,7 @@ body:has(.ras-amr-viewport) {
   border-radius: 6px;
   color: var(--text-muted);
   font-family: monospace;
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   padding: 4px 6px;
   width: 100%;
 }
@@ -1685,7 +1704,7 @@ body:has(.ras-amr-viewport) {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--rt-sm);
   padding: 8px 6px;
 }
 
@@ -1711,7 +1730,7 @@ body:has(.ras-amr-viewport) {
 .canvas-load-btn:hover { background: rgba(100, 160, 220, 0.06); border-color: rgba(100, 160, 220, 0.6); }
 
 .canvas-save-status {
-  font-size: 0.75rem;
+  font-size: var(--rt-sm);
   color: rgba(212, 185, 102, 0.75);
   margin: 4px 0 0;
   text-align: center;
@@ -1730,7 +1749,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .canvas-load-hint {
-  font-size: 0.75rem;
+  font-size: var(--rt-sm);
   color: rgba(232, 228, 220, 0.45);
   margin: 0;
   text-align: center;
@@ -1741,7 +1760,7 @@ body:has(.ras-amr-viewport) {
   background: rgba(10, 10, 10, 0.8);
   border: 1px solid rgba(100, 160, 220, 0.2);
   color: rgba(232, 228, 220, 0.8);
-  font-size: 0.78rem;
+  font-size: var(--rt-sm);
   padding: 8px 12px;
   border-radius: 6px;
   cursor: pointer;
@@ -1755,7 +1774,7 @@ body:has(.ras-amr-viewport) {
   background: transparent;
   border: none;
   color: rgba(232, 228, 220, 0.35);
-  font-size: 0.72rem;
+  font-size: var(--rt-xs);
   cursor: pointer;
   text-align: center;
   padding: 4px;
@@ -1773,7 +1792,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .project-setting-label {
-  font-size: 0.72rem;
+  font-size: var(--rt-xs);
   font-weight: 600;
   color: var(--text-muted);
   letter-spacing: 0.04em;
@@ -1798,7 +1817,7 @@ body:has(.ras-amr-viewport) {
   border: 1px solid rgba(232, 228, 220, 0.15);
   border-radius: 8px;
   color: rgba(232, 228, 220, 0.65);
-  font-size: 0.78rem;
+  font-size: var(--rt-sm);
   font-family: inherit;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
@@ -1816,7 +1835,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .project-profile-hint {
-  font-size: 0.63rem;
+  font-size: var(--rt-2xs);
   opacity: 0.6;
   font-variant-numeric: tabular-nums;
 }
@@ -1838,7 +1857,7 @@ body:has(.ras-amr-viewport) {
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--rt-sm);
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
@@ -1907,7 +1926,7 @@ body:has(.ras-amr-viewport) {
 
 .hud-badge {
   display: inline-block;
-  font-size: 8px;
+  font-size: var(--rt-3xs);
   font-weight: 900;
   color: var(--neon-gold-bright);
   background: rgba(255, 215, 0, 0.12);
@@ -1920,7 +1939,7 @@ body:has(.ras-amr-viewport) {
 
 .hud-title-block h2 {
   margin: 0 0 2px 0;
-  font-size: 0.95rem;
+  font-size: var(--rt-lg);
   color: #fff;
   font-weight: 800;
   text-shadow: 0 0 10px var(--neon-gold-shadow);
@@ -1928,7 +1947,7 @@ body:has(.ras-amr-viewport) {
 
 .hud-title-block p {
   margin: 0;
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   color: var(--text-muted);
 }
 
@@ -1939,7 +1958,7 @@ body:has(.ras-amr-viewport) {
   padding: 8px 16px;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--rt-sm);
   font-weight: bold;
   transition: all 0.3s;
 }
@@ -1980,7 +1999,7 @@ body:has(.ras-amr-viewport) {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 13px;
+  font-size: var(--rt-md);
   color: var(--text-muted);
 }
 
@@ -2006,7 +2025,7 @@ body:has(.ras-amr-viewport) {
   border-radius: 6px;
   color: var(--text-muted);
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--rt-sm);
   padding: 4px 8px;
 }
 
@@ -2064,7 +2083,7 @@ body:has(.ras-amr-viewport) {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--rt-md);
 }
 
 /* Sidebar Vault Selector within HUD */
@@ -2090,7 +2109,7 @@ body:has(.ras-amr-viewport) {
   cursor: pointer;
   text-align: right;
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--rt-sm);
   transition: all 0.2s ease;
 }
 
@@ -2106,7 +2125,7 @@ body:has(.ras-amr-viewport) {
   text-shadow: 0 0 10px var(--neon-gold-shadow);
 }
 
-.hud-tab-icon { font-size: 14px; }
+.hud-tab-icon { font-size: var(--rt-lg); }
 
 /* Grid Viewer for items inside HUD */
 .hud-items-viewer {
@@ -2117,7 +2136,7 @@ body:has(.ras-amr-viewport) {
 
 .viewer-title-context {
   margin: 0 0 8px 0;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: var(--neon-gold-primary);
   font-weight: 600;
 }
@@ -2148,7 +2167,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .hud-item-graphic {
-  font-size: 18px;
+  font-size: var(--rt-xl);
   color: var(--neon-gold-dim);
 }
 
@@ -2158,7 +2177,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .hud-item-name {
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   font-weight: 600;
   color: #ccc;
   word-break: break-word;
@@ -2172,7 +2191,7 @@ body:has(.ras-amr-viewport) {
   color: var(--neon-gold-primary);
   padding: 5px 4px;
   border-radius: 5px;
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   font-weight: bold;
   cursor: pointer;
   font-family: inherit;
@@ -2223,7 +2242,7 @@ body:has(.ras-amr-viewport) {
   padding: 7px 16px;
   background: linear-gradient(135deg, rgba(255,215,0,0.18), rgba(255,215,0,0.05));
   border-bottom: 1px solid rgba(255,215,0,0.25);
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   color: var(--neon-gold-bright);
   text-align: center;
   letter-spacing: 0.4px;
@@ -2277,7 +2296,7 @@ body:has(.ras-amr-viewport) {
 
 .viewport-chamber-mandate {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: var(--text-muted);
   line-height: 1.6;
   max-width: 280px;
@@ -2285,7 +2304,7 @@ body:has(.ras-amr-viewport) {
 
 .viewport-summon-cue {
   margin: 8px 0 0;
-  font-size: 12px;
+  font-size: var(--rt-sm);
   font-weight: 600;
   color: rgba(212, 175, 55, 0.70);
   letter-spacing: 0.4px;
@@ -2331,7 +2350,7 @@ body:has(.ras-amr-viewport) {
 
 .viewport-audio-label {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--rt-md);
   color: var(--text-main);
   font-weight: 600;
   text-align: center;
@@ -2356,7 +2375,7 @@ body:has(.ras-amr-viewport) {
 
 .viewport-video-label {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--rt-md);
   color: var(--text-main);
   font-weight: 600;
   text-align: center;
@@ -2376,7 +2395,7 @@ body:has(.ras-amr-viewport) {
 
 .viewport-generic-label {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--rt-sm);
   color: var(--text-muted);
   text-align: center;
 }
@@ -2389,7 +2408,7 @@ body:has(.ras-amr-viewport) {
   padding: 7px 14px;
   background: rgba(0, 0, 0, 0.65);
   border-top: 1px solid rgba(255,215,0,0.08);
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   position: relative;
   z-index: 5;
   flex-shrink: 0;
@@ -2397,7 +2416,7 @@ body:has(.ras-amr-viewport) {
 
 .viewport-real-badge {
   font-weight: 900;
-  font-size: 9px;
+  font-size: var(--rt-3xs);
   padding: 2px 8px;
   border-radius: 4px;
   letter-spacing: 0.5px;
@@ -2420,7 +2439,7 @@ body:has(.ras-amr-viewport) {
 .viewport-idle { color: var(--text-muted); font-style: italic; }
 
 .viewport-id-tag {
-  font-size: 9px;
+  font-size: var(--rt-3xs);
   font-weight: 900;
   color: var(--neon-gold-dim);
   letter-spacing: 1.5px;
@@ -2463,7 +2482,7 @@ body:has(.ras-amr-viewport) {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: rgba(212, 175, 55, 0.4);
   font-style: italic;
   text-align: center;
@@ -2490,7 +2509,7 @@ body:has(.ras-amr-viewport) {
 .timeline-track-row.track-muted { opacity: 0.4; }
 
 .timeline-track-label {
-  font-size: 9px;
+  font-size: var(--rt-3xs);
   color: var(--text-muted);
   min-width: 52px;
   max-width: 52px;
@@ -2553,7 +2572,7 @@ body:has(.ras-amr-viewport) {
 .node-block-inactive { opacity: 0.28; }
 
 .timeline-node-index {
-  font-size: 8px;
+  font-size: var(--rt-3xs);
   font-weight: 900;
   color: var(--neon-gold-bright);
   opacity: 0.8;
@@ -2571,7 +2590,7 @@ body:has(.ras-amr-viewport) {
   display: flex;
   align-items: center;
   gap: 0;
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   flex-shrink: 0;
 }
 
@@ -2589,7 +2608,7 @@ body:has(.ras-amr-viewport) {
 .strip-operator {
   color: var(--neon-gold-primary);
   font-weight: 700;
-  font-size: 11px;
+  font-size: var(--rt-xs);
 }
 
 .strip-pulse {
@@ -2637,7 +2656,7 @@ body:has(.ras-amr-viewport) {
 
 .creator-action-btn {
   padding: 7px 16px;
-  font-size: 12px;
+  font-size: var(--rt-sm);
   font-weight: 700;
   border-radius: 8px;
   cursor: pointer;
@@ -2765,7 +2784,7 @@ body:has(.ras-amr-viewport) {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: var(--rt-md);
   font-weight: 700;
   color: var(--neon-gold-bright);
   text-shadow: 0 0 12px var(--neon-gold-bright);
@@ -2840,7 +2859,7 @@ body:has(.ras-amr-viewport) {
   border: 1px solid var(--neon-gold-dim);
   border-radius: 20px;
   padding: 8px 16px;
-  font-size: 12px;
+  font-size: var(--rt-sm);
   font-weight: 700;
   color: var(--neon-gold-bright);
   white-space: nowrap;
@@ -2910,7 +2929,7 @@ body:has(.ras-amr-viewport) {
   border: 1px solid var(--neon-gold-dim);
   background: rgba(0, 0, 0, 0.4);
   color: var(--neon-gold-bright);
-  font-size: 18px;
+  font-size: var(--rt-xl);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -2993,11 +3012,11 @@ body:has(.ras-amr-viewport) {
   gap: 3px;
 }
 .queue-card-meta .item-type-badge {
-  font-size: 9px;
+  font-size: var(--rt-3xs);
   opacity: 0.7;
 }
 .queue-card-meta .item-title {
-  font-size: 11px !important;
+  font-size: var(--rt-xs) !important;
   margin: 0 !important;
   white-space: nowrap;
   overflow: hidden;
@@ -3020,7 +3039,7 @@ body:has(.ras-amr-viewport) {
   border-radius: 4px;
   color: rgba(220, 140, 140, 0.7);
   font-family: var(--font-arabic), var(--font-main), sans-serif;
-  font-size: 9px;
+  font-size: var(--rt-3xs);
   padding: 2px 7px;
   cursor: pointer;
   transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
@@ -3083,7 +3102,7 @@ body:has(.ras-amr-viewport) {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: var(--rt-lg);
   border-radius: 3px;
   background: rgba(255, 215, 0, 0.08);
   border: 1px solid rgba(255, 215, 0, 0.15);
@@ -3097,7 +3116,7 @@ body:has(.ras-amr-viewport) {
   background: none;
   border: none;
   color: var(--neon-gold-dim);
-  font-size: 11px;
+  font-size: var(--rt-xs);
   text-align: right;
   cursor: pointer;
   padding: 3px 4px;
@@ -3106,7 +3125,7 @@ body:has(.ras-amr-viewport) {
 }
 .layer-select-btn:hover { background: rgba(255,215,0,0.08); color: var(--neon-gold-bright); }
 .node-selected .layer-select-btn { color: var(--neon-gold-bright); }
-.layer-select-index { font-weight: 700; opacity: 0.6; font-size: 10px; }
+.layer-select-index { font-weight: 700; opacity: 0.6; font-size: var(--rt-2xs); }
 .layer-select-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .layer-z-btn {
   flex-shrink: 0;
@@ -3116,7 +3135,7 @@ body:has(.ras-amr-viewport) {
   border: 1px solid rgba(255,215,0,0.15);
   border-radius: 4px;
   color: var(--neon-gold-dim);
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -3147,7 +3166,7 @@ body:has(.ras-amr-viewport) {
   margin-bottom: 6px;
 }
 .audio-tab-asset-badge {
-  font-size: 9px;
+  font-size: var(--rt-3xs);
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 10px;
@@ -3164,7 +3183,7 @@ body:has(.ras-amr-viewport) {
   border: 1px solid rgba(255, 215, 0, 0.15);
 }
 .audio-tab-asset-name {
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: var(--neon-gold-bright);
   white-space: nowrap;
   overflow: hidden;
@@ -3212,7 +3231,7 @@ body:has(.ras-amr-viewport) {
 
 /* --- Observation 6: Director apply status feedback --- */
 .director-apply-status {
-  font-size: 11px;
+  font-size: var(--rt-xs);
   padding: 6px 8px;
   border-radius: 5px;
   margin-top: 6px;
@@ -3268,7 +3287,7 @@ body:has(.ras-amr-viewport) {
   margin-bottom: 10px;
 }
 .creator-intent-label {
-  font-size: 12px;
+  font-size: var(--rt-sm);
   font-weight: 600;
   color: var(--neon-gold-bright);
   letter-spacing: 0.02em;
@@ -3279,7 +3298,7 @@ body:has(.ras-amr-viewport) {
   border: 1px solid rgba(255, 215, 0, 0.2);
   border-radius: 6px;
   color: #e8e0c8;
-  font-size: 12px;
+  font-size: var(--rt-sm);
   padding: 7px 10px;
   resize: vertical;
   direction: rtl;
@@ -3293,7 +3312,7 @@ body:has(.ras-amr-viewport) {
   box-shadow: 0 0 6px rgba(255, 215, 0, 0.15);
 }
 .creator-intent-hint {
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   color: rgba(255, 215, 0, 0.7);
   margin: 0;
   direction: rtl;
@@ -3317,24 +3336,24 @@ body:has(.ras-amr-viewport) {
   gap: 8px;
 }
 .compiled-result-icon {
-  font-size: 18px;
+  font-size: var(--rt-xl);
   color: #64ffa0;
   flex-shrink: 0;
 }
 .compiled-result-title {
-  font-size: 14px;
+  font-size: var(--rt-lg);
   font-weight: 700;
   color: #64ffa0;
   letter-spacing: 0.02em;
 }
 .compiled-result-summary {
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: rgba(200, 230, 210, 0.85);
   margin: 0;
   line-height: 1.5;
 }
 .compiled-result-hint {
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: rgba(100, 255, 160, 0.6);
   margin: 0;
   line-height: 1.5;
@@ -3345,7 +3364,7 @@ body:has(.ras-amr-viewport) {
   background: rgba(100, 255, 160, 0.1);
   border: 1px solid rgba(100, 255, 160, 0.45);
   color: #64ffa0;
-  font-size: 13px;
+  font-size: var(--rt-md);
   font-weight: 600;
   padding: 10px 16px;
   border-radius: 8px;
@@ -3369,7 +3388,7 @@ body:has(.ras-amr-viewport) {
   margin-bottom: 6px;
 }
 .canvas-tab-save-btn {
-  font-size: 11px;
+  font-size: var(--rt-xs);
   padding: 5px 10px;
   border-radius: 6px;
   border: 1px solid rgba(255, 215, 0, 0.3);
@@ -3388,7 +3407,7 @@ body:has(.ras-amr-viewport) {
   cursor: not-allowed;
 }
 .canvas-tab-save-status {
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   color: rgba(255, 215, 0, 0.7);
   margin: 0;
   direction: rtl;
@@ -3396,7 +3415,7 @@ body:has(.ras-amr-viewport) {
 
 /* --- Finding 5: HUD create tab section headings --- */
 .hud-section-heading {
-  font-size: 11px;
+  font-size: var(--rt-xs);
   font-weight: 700;
   color: var(--neon-gold-bright);
   letter-spacing: 0.06em;
@@ -3411,7 +3430,7 @@ body:has(.ras-amr-viewport) {
   padding-top: 4px;
 }
 .hud-section-caption {
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   color: rgba(255, 215, 0, 0.5);
   margin: 0 0 6px;
   direction: rtl;
@@ -3429,7 +3448,7 @@ body:has(.ras-amr-viewport) {
   width: 100% !important;
   height: auto !important;
   padding: 10px 14px !important;
-  font-size: 13px !important;
+  font-size: var(--rt-md) !important;
   justify-content: flex-start !important;
   gap: 8px;
   direction: rtl;
@@ -3456,7 +3475,7 @@ body:has(.ras-amr-viewport) {
   animation: recording-pulse 1s ease-in-out infinite alternate;
 }
 .hud-recording-indicator {
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: rgba(255, 80, 80, 0.9);
   animation: recording-pulse 1s ease-in-out infinite alternate;
 }
@@ -3467,7 +3486,7 @@ body:has(.ras-amr-viewport) {
 
 /* --- Quick-action hint text --- */
 .quick-action-hint {
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   color: rgba(255, 215, 0, 0.45);
   margin: 2px 0 0;
   direction: rtl;
@@ -3496,7 +3515,7 @@ body:has(.ras-amr-viewport) {
   border-radius: 5px;
   color: var(--neon-gold-primary);
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--rt-sm);
   padding: 5px 14px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
@@ -3512,14 +3531,14 @@ body:has(.ras-amr-viewport) {
 .preview-playhead-display {
   font-family: 'IBM Plex Mono', monospace, inherit;
   font-variant-numeric: tabular-nums;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: var(--neon-gold-bright);
   min-width: 3ch;
   direction: ltr;
 }
 
 .preview-limitation-note {
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   color: rgba(255, 215, 0, 0.35);
   margin-right: auto;
   direction: rtl;
@@ -3560,7 +3579,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .save-state-pill {
-  font-size: 11px;
+  font-size: var(--rt-xs);
   font-weight: 500;
   padding: 2px 8px;
   border-radius: 10px;
@@ -3582,7 +3601,7 @@ body:has(.ras-amr-viewport) {
   border: 1px solid rgba(255, 215, 0, 0.3);
   border-radius: 4px;
   color: var(--neon-gold-dim);
-  font-size: 11px;
+  font-size: var(--rt-xs);
   padding: 2px 10px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
@@ -3600,7 +3619,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .director-apply-all-note {
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: rgba(255, 215, 0, 0.55);
   margin-bottom: 8px;
   line-height: 1.5;
@@ -3609,7 +3628,7 @@ body:has(.ras-amr-viewport) {
 
 .director-apply-all-btn {
   width: 100%;
-  font-size: 12px;
+  font-size: var(--rt-sm);
 }
 
 /* ── PACKAGE XXXII — Timeline Drag Handles ─────────────────────────── */
@@ -3665,7 +3684,7 @@ body:has(.ras-amr-viewport) {
 
 .audio-tab-selected-indicator {
   color: var(--neon-gold-primary);
-  font-size: 8px;
+  font-size: var(--rt-3xs);
   margin-right: 4px;
   vertical-align: middle;
 }
@@ -3682,7 +3701,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .audio-trim-hint {
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: rgba(180, 220, 255, 0.65);
   margin-bottom: 8px;
   line-height: 1.5;
@@ -3699,7 +3718,7 @@ body:has(.ras-amr-viewport) {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 11px;
+  font-size: var(--rt-xs);
   color: rgba(180, 220, 255, 0.8);
   font-weight: 500;
 }
@@ -3710,7 +3729,7 @@ body:has(.ras-amr-viewport) {
   border: 1px solid rgba(80, 200, 255, 0.3);
   border-radius: 4px;
   color: rgba(200, 230, 255, 0.9);
-  font-size: 12px;
+  font-size: var(--rt-sm);
   padding: 4px 6px;
   font-variant-numeric: tabular-nums;
   direction: ltr;
@@ -3718,7 +3737,7 @@ body:has(.ras-amr-viewport) {
 .audio-trim-input:focus { outline: none; border-color: rgba(80, 200, 255, 0.6); }
 
 .audio-trim-current {
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   color: rgba(180, 220, 255, 0.5);
   margin-top: 6px;
   direction: rtl;
@@ -3742,7 +3761,7 @@ body:has(.ras-amr-viewport) {
 
 .canvas-load-badge {
   display: inline-block;
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   font-weight: 700;
   border-radius: 4px;
   padding: 1px 5px;
@@ -3774,14 +3793,14 @@ body:has(.ras-amr-viewport) {
 }
 
 .manual-cap-real {
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   color: rgba(100, 220, 100, 0.8);
   margin: 0 0 4px;
   line-height: 1.5;
 }
 
 .manual-cap-unimplemented {
-  font-size: 10px;
+  font-size: var(--rt-2xs);
   color: rgba(255, 120, 80, 0.75);
   margin: 0;
   line-height: 1.5;
@@ -3854,7 +3873,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-intent-sub {
-  font-size: 0.9rem;
+  font-size: var(--rt-lg);
   color: rgba(255, 255, 255, 0.45);
   margin: 0;
   letter-spacing: 0.03em;
@@ -3901,21 +3920,21 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-intent-card-name {
-  font-size: 0.95rem;
+  font-size: var(--rt-lg);
   font-weight: 600;
   color: #e8d48a;
   letter-spacing: 0.02em;
 }
 
 .ras-intent-card-desc {
-  font-size: 0.78rem;
+  font-size: var(--rt-sm);
   color: rgba(255, 255, 255, 0.45);
   line-height: 1.5;
 }
 
 /* PACKAGE XXXIX — domain label on Ready Template cards */
 .ras-intent-card-domain {
-  font-size: 0.65rem;
+  font-size: var(--rt-2xs);
   color: rgba(212, 175, 55, 0.45);
   letter-spacing: 0.04em;
   direction: rtl;
@@ -4001,7 +4020,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-intent-imagine .ras-intent-card-name {
-  font-size: 1.05rem;
+  font-size: var(--rt-xl);
   color: #d4af37;
 }
 
@@ -4018,7 +4037,7 @@ body:has(.ras-amr-viewport) {
   padding: 8px 20px;
   background: rgba(212, 175, 55, 0.06);
   border-bottom: 1px solid rgba(212, 175, 55, 0.18);
-  font-size: 0.8rem;
+  font-size: var(--rt-sm);
   flex-shrink: 0;
 }
 
@@ -4039,7 +4058,7 @@ body:has(.ras-amr-viewport) {
   border-radius: 4px;
   color: rgba(212, 175, 55, 0.7);
   font-family: inherit;
-  font-size: 0.75rem;
+  font-size: var(--rt-sm);
   padding: 3px 10px;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
@@ -4137,7 +4156,7 @@ body:has(.ras-amr-viewport) {
   border-radius: 4px;
   color: rgba(212, 175, 55, 0.65);
   font-family: inherit;
-  font-size: 0.72rem;
+  font-size: var(--rt-xs);
   padding: 3px 10px;
   cursor: pointer;
   white-space: nowrap;
@@ -4164,7 +4183,7 @@ body:has(.ras-amr-viewport) {
 
 /* ── Canvas-tab: production type info (replaces selector) ───────────── */
 .canvas-type-info {
-  font-size: 0.78rem;
+  font-size: var(--rt-sm);
   color: rgba(212, 175, 55, 0.6);
   letter-spacing: 0.04em;
   padding: 6px 0 4px;
@@ -4187,7 +4206,7 @@ body:has(.ras-amr-viewport) {
   background: transparent;
   border: 1px solid rgba(212, 175, 55, 0.35);
   color: var(--neon-gold-bright);
-  font-size: 11px;
+  font-size: var(--rt-xs);
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -4226,7 +4245,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-intent-section-label span {
-  font-size: 0.65rem;
+  font-size: var(--rt-2xs);
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -4259,7 +4278,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-intent-family-name {
-  font-size: 0.72rem;
+  font-size: var(--rt-xs);
   font-weight: 700;
   color: rgba(212,175,55,0.75);
   letter-spacing: 0.08em;
@@ -4267,7 +4286,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-intent-family-desc {
-  font-size: 0.6rem;
+  font-size: var(--rt-3xs);
   color: rgba(255,255,255,0.32);
 }
 
@@ -4339,7 +4358,7 @@ body:has(.ras-amr-viewport) {
   padding: 8px 10px;
   cursor: pointer;
   font-family: inherit;
-  font-size: 0.75rem;
+  font-size: var(--rt-sm);
   color: rgba(212, 175, 55, 0.6);
   letter-spacing: 0.06em;
   text-align: right;
@@ -4354,7 +4373,7 @@ body:has(.ras-amr-viewport) {
 
 .workspace-template-toggle-arrow {
   margin-right: auto; /* pushes to left in RTL */
-  font-size: 0.6rem;
+  font-size: var(--rt-3xs);
   opacity: 0.5;
 }
 
@@ -4363,7 +4382,7 @@ body:has(.ras-amr-viewport) {
   border: 1px solid rgba(212, 175, 55, 0.3);
   border-radius: 3px;
   padding: 1px 7px;
-  font-size: 0.7rem;
+  font-size: var(--rt-xs);
   color: #d4af37;
 }
 
@@ -4413,12 +4432,12 @@ body:has(.ras-amr-viewport) {
 }
 
 .workspace-template-card-icon {
-  font-size: 1rem;
+  font-size: var(--rt-xl);
   line-height: 1;
 }
 
 .workspace-template-card-name {
-  font-size: 0.72rem;
+  font-size: var(--rt-xs);
   font-weight: 600;
   color: rgba(212, 175, 55, 0.85);
   line-height: 1.2;
@@ -4447,7 +4466,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .workspace-template-card-total {
-  font-size: 0.62rem;
+  font-size: var(--rt-3xs);
   color: rgba(255, 255, 255, 0.3);
   margin-right: 2px;
 }
@@ -4465,7 +4484,7 @@ body:has(.ras-amr-viewport) {
   border: 1px solid rgba(212, 175, 55, 0.25);
   border-radius: 3px;
   padding: 1px 6px;
-  font-size: 0.68rem;
+  font-size: var(--rt-2xs);
   color: rgba(212, 175, 55, 0.75);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -4535,7 +4554,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-template-structure-label {
-  font-size: 0.7rem;
+  font-size: var(--rt-xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   color: rgba(212, 175, 55, 0.55);
@@ -4582,7 +4601,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-tss-role {
-  font-size: 0.65rem;
+  font-size: var(--rt-2xs);
   color: rgba(255, 255, 255, 0.5);
   white-space: nowrap;
   font-weight: 500;
@@ -4594,7 +4613,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-tss-dur {
-  font-size: 0.6rem;
+  font-size: var(--rt-3xs);
   color: rgba(212, 175, 55, 0.35);
   font-variant-numeric: tabular-nums;
 }
@@ -4607,14 +4626,14 @@ body:has(.ras-amr-viewport) {
   position: absolute;
   top: 2px;
   left: 4px;
-  font-size: 0.5rem;
+  font-size: var(--rt-3xs);
   color: #d4af37;
   opacity: 0.8;
 }
 
 /* Transition separator between slots */
 .ras-template-structure-sep {
-  font-size: 0.65rem;
+  font-size: var(--rt-2xs);
   color: rgba(212, 175, 55, 0.3);
   padding: 0 5px;
   flex-shrink: 0;
@@ -4625,7 +4644,7 @@ body:has(.ras-amr-viewport) {
   background: transparent;
   border: none;
   color: rgba(212, 175, 55, 0.25);
-  font-size: 0.65rem;
+  font-size: var(--rt-2xs);
   cursor: pointer;
   padding: 2px 6px;
   white-space: nowrap;
@@ -4737,7 +4756,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-tp-desc {
-  font-size: 0.85rem;
+  font-size: var(--rt-md);
   color: rgba(255, 255, 255, 0.4);
   margin: 0;
   letter-spacing: 0.03em;
@@ -4749,7 +4768,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-tp-body-label {
-  font-size: 0.65rem;
+  font-size: var(--rt-2xs);
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -4789,7 +4808,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-tp-slot-role {
-  font-size: 0.9rem;
+  font-size: var(--rt-lg);
   font-weight: 600;
   color: #e8d48a;
   grid-column: 1;
@@ -4797,7 +4816,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-tp-slot-cue {
-  font-size: 0.72rem;
+  font-size: var(--rt-xs);
   color: rgba(255, 255, 255, 0.3);
   grid-column: 1;
   grid-row: 2;
@@ -4805,7 +4824,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-tp-slot-dur {
-  font-size: 0.7rem;
+  font-size: var(--rt-xs);
   color: rgba(212, 175, 55, 0.4);
   grid-column: 2;
   grid-row: 1 / 3;
@@ -4830,7 +4849,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-tp-connector-label {
-  font-size: 0.6rem;
+  font-size: var(--rt-3xs);
   color: rgba(212, 175, 55, 0.3);
   letter-spacing: 0.06em;
 }
@@ -4845,7 +4864,7 @@ body:has(.ras-amr-viewport) {
   gap: 20px;
   justify-content: center;
   flex-wrap: wrap;
-  font-size: 0.72rem;
+  font-size: var(--rt-xs);
   color: rgba(212, 175, 55, 0.35);
   letter-spacing: 0.04em;
   margin: 12px 0 28px;
@@ -4867,7 +4886,7 @@ body:has(.ras-amr-viewport) {
   border-radius: 6px;
   color: #d4af37;
   font-family: inherit;
-  font-size: 0.95rem;
+  font-size: var(--rt-lg);
   font-weight: 600;
   letter-spacing: 0.04em;
   padding: 12px 32px;
@@ -4887,7 +4906,7 @@ body:has(.ras-amr-viewport) {
   border: none;
   color: rgba(255, 255, 255, 0.25);
   font-family: inherit;
-  font-size: 0.78rem;
+  font-size: var(--rt-sm);
   cursor: pointer;
   padding: 6px 12px;
   transition: color 0.15s;
@@ -4918,11 +4937,11 @@ body:has(.ras-amr-viewport) {
 }
 
 .viewport-tb-icon {
-  font-size: 1.1rem;
+  font-size: var(--rt-xl);
 }
 
 .viewport-tb-name {
-  font-size: 0.75rem;
+  font-size: var(--rt-sm);
   font-weight: 700;
   letter-spacing: 0.1em;
   color: rgba(212, 175, 55, 0.5);
@@ -4972,7 +4991,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .viewport-tb-slot-role {
-  font-size: 0.62rem;
+  font-size: var(--rt-3xs);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.45);
   white-space: nowrap;
@@ -4983,24 +5002,24 @@ body:has(.ras-amr-viewport) {
 }
 
 .viewport-tb-slot-cue {
-  font-size: 0.55rem;
+  font-size: var(--rt-3xs);
   color: rgba(255, 255, 255, 0.2);
   white-space: nowrap;
 }
 
 .viewport-tb-slot-check {
-  font-size: 0.7rem;
+  font-size: var(--rt-xs);
   color: #d4af37;
 }
 
 .viewport-tb-slot-dur {
-  font-size: 0.55rem;
+  font-size: var(--rt-3xs);
   color: rgba(212, 175, 55, 0.25);
   font-variant-numeric: tabular-nums;
 }
 
 .viewport-tb-sep {
-  font-size: 0.65rem;
+  font-size: var(--rt-2xs);
   color: rgba(212, 175, 55, 0.2);
   padding: 0 5px;
   flex-shrink: 0;
@@ -5070,7 +5089,7 @@ body:has(.ras-amr-viewport) {
   border-radius: 50%;
   background: rgba(212,175,55,0.1);
   border: 1px solid rgba(212,175,55,0.2);
-  font-size: 0.6rem;
+  font-size: var(--rt-3xs);
   font-weight: 700;
   color: rgba(212,175,55,0.5);
   flex-shrink: 0;
@@ -5082,7 +5101,7 @@ body:has(.ras-amr-viewport) {
   position: absolute;
   top: 6px;
   left: 8px;
-  font-size: 0.7rem;
+  font-size: var(--rt-xs);
   color: #d4af37;
   opacity: 0.7;
 }
@@ -5100,7 +5119,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-tp-replay-btn {
-  font-size: 0.62rem;
+  font-size: var(--rt-3xs);
   padding: 4px 10px;
   border: 1px solid rgba(212,175,55,0.3);
   border-radius: 12px;
@@ -5156,7 +5175,7 @@ body:has(.ras-amr-viewport) {
 
 /* ── Preview hint on cards ────────────────────────────────────────────── */
 .ras-intent-card-preview-hint {
-  font-size: 0.58rem;
+  font-size: var(--rt-3xs);
   color: rgba(212,175,55,0.4);
   letter-spacing: 0.08em;
   margin-top: 2px;
@@ -5169,7 +5188,7 @@ body:has(.ras-amr-viewport) {
 
 /* ── Slot cue in template-preview ────────────────────────────────────── */
 .ras-tp-slot-cue {
-  font-size: 0.6rem;
+  font-size: var(--rt-3xs);
   color: rgba(255,255,255,0.3);
   text-align: center;
   line-height: 1.4;
@@ -5188,7 +5207,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .viewport-tb-slot-cue {
-  font-size: 0.5rem;
+  font-size: var(--rt-3xs);
   color: rgba(255,255,255,0.18);
   white-space: normal;
   text-align: center;
@@ -5237,12 +5256,12 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-tp-hero-compact .ras-tp-name {
-  font-size: 1rem;
+  font-size: var(--rt-xl);
   margin: 0;
 }
 
 .ras-tp-hero-compact .ras-tp-desc {
-  font-size: 0.62rem;
+  font-size: var(--rt-3xs);
   margin: 0;
   opacity: 0.6;
 }
@@ -5314,14 +5333,14 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-tp-demo-frame-num {
-  font-size: 0.6rem;
+  font-size: var(--rt-3xs);
   color: rgba(212,175,55,0.4);
   letter-spacing: 0.15em;
   font-variant-numeric: tabular-nums;
 }
 
 .ras-tp-demo-frame-role {
-  font-size: 1.05rem;
+  font-size: var(--rt-xl);
   font-weight: 700;
   color: rgba(212,175,55,0.9);
   letter-spacing: 0.04em;
@@ -5330,7 +5349,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-tp-demo-frame-cue {
-  font-size: 0.58rem;
+  font-size: var(--rt-3xs);
   color: rgba(255,255,255,0.28);
   line-height: 1.4;
   max-width: 200px;
@@ -5660,7 +5679,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-tp-demo-idle-text {
-  font-size: 0.65rem;
+  font-size: var(--rt-2xs);
   color: rgba(212,175,55,0.45);
   letter-spacing: 0.06em;
   margin: 0;
@@ -5672,7 +5691,7 @@ body:has(.ras-amr-viewport) {
   border-radius: 20px;
   background: rgba(212,175,55,0.07);
   color: #d4af37;
-  font-size: 0.75rem;
+  font-size: var(--rt-sm);
   font-weight: 600;
   letter-spacing: 0.06em;
   cursor: pointer;
@@ -5710,7 +5729,7 @@ body:has(.ras-amr-viewport) {
 }
 
 .ras-tp-demo-stop-btn {
-  font-size: 0.65rem;
+  font-size: var(--rt-2xs);
   color: rgba(212,175,55,0.6);
   background: none;
   border: none;
@@ -5735,7 +5754,7 @@ body:has(.ras-amr-viewport) {
   border: 1px solid rgba(212,175,55,0.3);
   background: rgba(0,0,0,0.5);
   color: rgba(212,175,55,0.6);
-  font-size: 0.75rem;
+  font-size: var(--rt-sm);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -5765,20 +5784,20 @@ body:has(.ras-amr-viewport) {
 .ras-tp-slot-compact .ras-tp-slot-num {
   width: 16px;
   height: 16px;
-  font-size: 0.55rem;
+  font-size: var(--rt-3xs);
 }
 
 .ras-tp-slot-compact .ras-tp-slot-role {
-  font-size: 0.6rem;
+  font-size: var(--rt-3xs);
 }
 
 .ras-tp-slot-compact .ras-tp-slot-dur {
-  font-size: 0.55rem;
+  font-size: var(--rt-3xs);
   color: rgba(212,175,55,0.25);
 }
 
 .ras-tp-connector-compact {
-  font-size: 0.6rem;
+  font-size: var(--rt-3xs);
   color: rgba(212,175,55,0.2);
   padding: 0 3px;
   flex-shrink: 0;
@@ -5817,13 +5836,13 @@ body:has(.ras-amr-viewport) {
 }
 
 .sovereign-director-bridge .panel-header h2 {
-  font-size: 0.92rem;
+  font-size: var(--rt-lg);
   color: var(--neon-gold-bright);
   margin: 3px 0 2px;
 }
 
 .sovereign-director-bridge .panel-header p {
-  font-size: 0.75rem;
+  font-size: var(--rt-sm);
   color: rgba(255,215,0,0.5);
   margin: 0;
 }
@@ -5836,7 +5855,7 @@ body:has(.ras-amr-viewport) {
   border: 1px solid rgba(255, 215, 0, 0.45);
   border-radius: 6px;
   color: var(--neon-gold-bright);
-  font-size: 0.88rem;
+  font-size: var(--rt-lg);
   font-family: inherit;
   cursor: pointer;
   text-align: center;
@@ -5864,7 +5883,7 @@ body:has(.ras-amr-viewport) {
 
 /* Hint text shown when preconditions are not met */
 .director-bridge-hint {
-  font-size: 0.78rem;
+  font-size: var(--rt-sm);
   color: rgba(255,215,0,0.45);
   text-align: center;
   padding: 8px 0 4px;
@@ -5874,7 +5893,7 @@ body:has(.ras-amr-viewport) {
 
 /* Error message */
 .director-interpret-error {
-  font-size: 0.78rem;
+  font-size: var(--rt-sm);
   color: #e05555;
   padding: 6px 0 2px;
   margin: 0;
@@ -5889,20 +5908,20 @@ body:has(.ras-amr-viewport) {
 }
 
 .director-plan-summary .plan-purpose {
-  font-size: 0.82rem;
+  font-size: var(--rt-md);
   color: rgba(255,215,0,0.85);
   margin: 0 0 4px;
   line-height: 1.4;
 }
 
 .director-plan-summary .plan-detail {
-  font-size: 0.75rem;
+  font-size: var(--rt-sm);
   color: rgba(255,215,0,0.55);
   margin: 0 0 4px;
 }
 
 .director-plan-summary .plan-unresolved {
-  font-size: 0.75rem;
+  font-size: var(--rt-sm);
   color: #d4a020;
   margin: 4px 0 0;
   line-height: 1.4;
@@ -5946,11 +5965,187 @@ body:has(.ras-amr-viewport) {
 
 
 /* The condition of a Creation Demand that did not arrive. Said, not decorated. */
-.creator-intent-notice { margin: 0 0 8px; font-size: 11px; line-height: 1.6; color: var(--text-muted, #a89f91); }
+.creator-intent-notice { margin: 0 0 8px; font-size: var(--rt-xs); line-height: 1.6; color: var(--text-muted, #a89f91); }
 
 /* ── Scenes written next door, produced here ─────────────────────────────
    الحُجّة الدامغة decomposes the subject; رأس الأمر produces and assembles.
    The workshop that does the producing is never named to the Creator. */
+/* ── THE CREATOR STATES WHAT THEY WANT ─────────────────────────
+   It wears the scenes panel's own dress, because it is the step before it and
+   the two are one motion: state it, see it, produce it. */
+.brief-compose {
+  margin-top: 14px;
+  padding: 15px 17px;
+  background: rgba(212, 175, 55, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  border-inline-start: 3px solid #D4AF37;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.brief-tag {
+  font-size: var(--rt-sm);
+  font-weight: 700;
+  color: #D4AF37;
+  letter-spacing: 0.02em;
+}
+.brief-label {
+  font-size: var(--rt-3xs);
+  color: rgba(212, 175, 55, 0.78);
+  letter-spacing: 0.02em;
+}
+.brief-idea,
+.brief-specs {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: var(--rt-xs);
+  line-height: 1.6;
+  color: #efe6d0;
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 3px;
+  padding: 9px 11px;
+  resize: vertical;
+}
+.brief-idea:focus,
+.brief-specs:focus,
+.brief-count:focus {
+  outline: 2px solid rgba(212, 175, 55, 0.65);
+  outline-offset: 1px;
+}
+.brief-idea::placeholder,
+.brief-specs::placeholder { color: rgba(212, 175, 55, 0.4); }
+.brief-count-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.brief-count {
+  font: inherit;
+  font-size: var(--rt-xs);
+  width: 64px;
+  color: #efe6d0;
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 3px;
+  padding: 5px 8px;
+}
+.brief-count-hint {
+  font-size: var(--rt-3xs);
+  color: rgba(212, 175, 55, 0.55);
+}
+.brief-compose-btn {
+  align-self: flex-start;
+  font: inherit;
+  font-size: var(--rt-sm);
+  font-weight: 700;
+  color: #0b0904;
+  background: linear-gradient(180deg, #E8C860, #D4AF37);
+  border: none;
+  border-radius: 3px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: filter 0.18s;
+}
+.brief-compose-btn:hover:not(:disabled) { filter: brightness(1.12); }
+.brief-compose-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.brief-notice {
+  margin: 0;
+  font-size: var(--rt-3xs);
+  line-height: 1.6;
+  color: rgba(212, 175, 55, 0.85);
+}
+
+/* The second door. It is the same shape as the first because the two are
+   equals — a Creator's own file is not a lesser asset than a stored one. */
+.upload-bridge-trigger-btn {
+  margin-top: 6px;
+}
+
+/* ── A TEMPLATE SAYS WHAT IT IS ──────────────────────────────
+   Opens inside the chosen card, so choosing and understanding are one act
+   and not two screens. */
+.workspace-template-card-domain {
+  display: block;
+  font-size: var(--rt-3xs);
+  color: rgba(212, 175, 55, 0.6);
+  margin-top: 2px;
+}
+.tpl-spec {
+  display: block;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(212, 175, 55, 0.22);
+  text-align: start;
+}
+.tpl-spec-desc {
+  display: block;
+  font-size: var(--rt-3xs);
+  line-height: 1.65;
+  color: rgba(239, 230, 208, 0.9);
+}
+.tpl-spec-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+.tpl-spec-facts > span {
+  font-size: var(--rt-3xs);
+  color: #D4AF37;
+  background: rgba(212, 175, 55, 0.09);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 2px;
+  padding: 2px 7px;
+}
+.tpl-spec-heading {
+  display: block;
+  margin-top: 10px;
+  font-size: var(--rt-3xs);
+  font-weight: 700;
+  color: rgba(212, 175, 55, 0.82);
+}
+.tpl-spec-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 6px;
+}
+.tpl-spec-slot {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: 'n role dur' '. cue cue';
+  gap: 2px 8px;
+  align-items: baseline;
+  padding: 5px 7px;
+  background: rgba(0, 0, 0, 0.3);
+  border-inline-start: 2px solid rgba(212, 175, 55, 0.45);
+}
+.tpl-spec-slot-n {
+  grid-area: n;
+  font-size: var(--rt-3xs);
+  font-weight: 700;
+  color: #D4AF37;
+}
+.tpl-spec-slot-role {
+  grid-area: role;
+  font-size: var(--rt-3xs);
+  color: rgba(239, 230, 208, 0.95);
+}
+.tpl-spec-slot-dur {
+  grid-area: dur;
+  font-size: var(--rt-3xs);
+  color: rgba(212, 175, 55, 0.7);
+}
+.tpl-spec-slot-cue {
+  grid-area: cue;
+  font-size: var(--rt-3xs);
+  line-height: 1.55;
+  color: rgba(239, 230, 208, 0.62);
+}
+
 .scenes-arrived {
   margin-top: 14px;
   padding: 15px 17px;
@@ -5960,23 +6155,23 @@ body:has(.ras-amr-viewport) {
 }
 .scenes-tag {
   display: block;
-  font-size: 0.78rem;
+  font-size: var(--rt-sm);
   font-weight: 600;
   letter-spacing: 0.1em;
   color: #C9A84C;
 }
 .scenes-subject {
   margin: 10px 0 0;
-  font-size: 1rem;
+  font-size: var(--rt-xl);
   font-weight: 600;
   line-height: 1.75;
   color: #E8D595;
 }
-.scenes-count { margin: 5px 0 0; font-size: 0.86rem; color: #A8955B; }
+.scenes-count { margin: 5px 0 0; font-size: var(--rt-md); color: #A8955B; }
 .scenes-produce-btn {
   margin-top: 13px;
   font-family: inherit;
-  font-size: 0.95rem;
+  font-size: var(--rt-lg);
   font-weight: 600;
   padding: 11px 22px;
   cursor: pointer;
@@ -5991,5 +6186,5 @@ body:has(.ras-amr-viewport) {
   box-shadow: 0 0 14px rgba(212, 175, 55, 0.22);
 }
 .scenes-produce-btn:disabled { opacity: 0.55; cursor: progress; }
-.scenes-notice { margin: 10px 0 0; font-size: 0.86rem; line-height: 1.75; color: #A8955B; }
+.scenes-notice { margin: 10px 0 0; font-size: var(--rt-md); line-height: 1.75; color: #A8955B; }
 .scenes-result { margin-top: 12px; width: 100%; max-width: 640px; border-radius: 3px; background: #000; }

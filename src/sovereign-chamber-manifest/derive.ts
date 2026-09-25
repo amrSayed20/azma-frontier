@@ -99,6 +99,7 @@ const KERNEL_DELIVERY: Record<TruthCapabilityId, KernelDelivery> = {
   'review-devices':      { displayName: 'Review Enrolled Devices',           interactionModes: ['browse'],          operatingModes: ['explorer'] },
 
   // ── رأس الأمر ───────────────────────────────────────────────────────────
+  'compose-storyboard-from-brief': { displayName: 'Compose a Storyboard from a Written Brief', interactionModes: ['write'], operatingModes: ['guided'] },
   'keep-canvas':         { displayName: 'Save and Reload the Direction Canvas', interactionModes: ['browse'],       operatingModes: ['guided', 'explorer'] },
   'direct-automatically':{ displayName: 'Direct Automatically',              interactionModes: ['browse'],          operatingModes: ['guided'] },
   'compile-production':  { displayName: 'Compile the Production',            interactionModes: ['browse'],          operatingModes: ['guided'] },
@@ -129,9 +130,12 @@ const NEEDS_ASSET = 'An existing sovereign asset the Creator owns';
 /**
  * The Manifest's capabilities for one Chamber, projected from Chamber Truth.
  *
- * Order is Truth's order. That matters: the Kernel resolves a bare navigate
- * intent to `capabilities[0]`, so the first capability Truth declares is the
- * one a Creator launched from the Foyer is prepared for.
+ * Order is Truth's order, and it is now only order. It used to carry an
+ * authority nobody declared: the Kernel resolved a bare navigate intent to
+ * `capabilities[0]`, so wherever a capability happened to sit in this array
+ * decided where every unaddressed visit landed. Adding one to رأس الأمر
+ * on 2026-09-25 moved that destination, and only a test noticed. Each Chamber
+ * now states `primaryCapabilityId` in Truth and the Kernel reads that.
  */
 export function deriveManifestCapabilities(chamberId: ManifestChamberContext): readonly SovereignChamberCapability[] {
   return CHAMBER_TRUTH[chamberId].capabilities.map((capability) => {

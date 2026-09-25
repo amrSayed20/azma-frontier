@@ -559,14 +559,34 @@ export async function composeSceneStructure(input: {
   readonly evidenceTexts: readonly string[];
   /** Three to seven; the Chamber keeps it within what a Creator can hold. */
   readonly sceneCount?: number;
+  /**
+   * What the scenes are built out of, which decides what the composition is
+   * forbidden to do.
+   *
+   *   'evidence'       — a finished investigation. Inventing an episode here
+   *                      would be a storyboard about something that did not
+   *                      happen, so nothing may be added.
+   *   'creative-brief' — the Creator's own idea and specifications. Invention
+   *                      is the entire point — it is their work, not a claim
+   *                      about the world — and the evidence rule would
+   *                      cripple it. What still binds is their own
+   *                      specification, which the composition serves.
+   *
+   * There is one scene composition in this Empire and this is it. A second
+   * function would be a second authority on what a scene is.
+   */
+  readonly source?: 'evidence' | 'creative-brief';
 }): Promise<SceneStructureOutcome> {
   if (input.evidenceTexts.length === 0 && !input.answerAr) {
     return { scenes: [], failure: 'EMPTY' };
   }
   const count = Math.max(3, Math.min(7, input.sceneCount ?? 5));
+  const fromBrief = input.source === 'creative-brief';
 
   const system = [
-    'أنت نظام معرفة سيادي يُفكّك نتيجة تحقيقٍ إلى مشاهد مرتّبة.',
+    fromBrief
+      ? 'أنت نظام إخراج سيادي يُفكّك فكرة المُنشئ إلى مشاهد مرتّبة قابلة للإنتاج.'
+      : 'أنت نظام معرفة سيادي يُفكّك نتيجة تحقيقٍ إلى مشاهد مرتّبة.',
     `اكتب ${count} مشاهد بالضبط، بالترتيب الذي تُروى به.`,
     'كلّ مشهد سطران اثنان لا غير، بهذه الصيغة حرفيّاً:',
     'مشهد: <ما يُرى — المكان والعناصر والضوء والحركة>',
@@ -575,17 +595,26 @@ export async function composeSceneStructure(input: {
     'سطر «بحث» للآلة وحدها ولن يراه أحد، فاكتبه بالإنجليزية.',
     'في سطر «بحث» صف مكاناً أو ضوءاً أو طبيعةً أو عمارةً فقط؛ ولا تذكر فيه شعائرَ دينٍ ولا رموزه ولا رجالَ دين، لا من هذا الدين ولا من غيره.',
     'افصل بين كلّ مشهدٍ والذي يليه بسطرٍ فارغ.',
-    'ابنِ فقط على السؤال والجواب والأدلّة المعطاة. لا تُضف واقعةً لم ترد فيها، ولا تخترع اسماً ولا رقماً.',
+    fromBrief
+      ? 'ابنِ على فكرة المُنشئ ومواصفاته المكتوبة. التزم بمواصفاته حرفيّاً ولا تخالفها، وما سكت عنه فأتمِمه بما يخدم فكرته.'
+      :'ابنِ فقط على السؤال والجواب والأدلّة المعطاة. لا تُضف واقعةً لم ترد فيها، ولا تخترع اسماً ولا رقماً.',
     'لا تكتب عناوين ولا ترقيماً ولا رموزاً ولا شرحاً خارج الصيغة.',
     'لا تذكر اسم أيّ مصدر أو موسوعة أو قاعدة بيانات أو منصّة إطلاقاً.',
   ].join(' ');
 
   const evidence = input.evidenceTexts.slice(0, 5).map((t, i) => `[${i + 1}] ${t}`).join('\n\n');
-  const user = [
-    `السؤال: ${input.query}`,
-    input.answerAr ? `\nالجواب المركَّب:\n${input.answerAr}` : '',
-    evidence ? `\nالأدلّة:\n${evidence}` : '',
-  ].join('\n');
+  const user = fromBrief
+    ? [
+        `فكرة المُنشئ: ${input.query}`,
+        input.answerAr
+          ? `\nالمواصفات التي طلبها:\n${input.answerAr}`
+          : '',
+      ].join('\n')
+    : [
+        `السؤال: ${input.query}`,
+        input.answerAr ? `\nالجواب المركَّب:\n${input.answerAr}` : '',
+        evidence ? `\nالأدلّة:\n${evidence}` : '',
+      ].join('\n');
 
   const outcome = await askGeminiOutcome(system, user, SYNTHESIS_TIMEOUT_MS, 1_200, 0.45);
   if (!outcome.text) {

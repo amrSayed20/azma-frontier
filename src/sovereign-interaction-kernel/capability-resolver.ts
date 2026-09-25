@@ -102,8 +102,12 @@ function resolveNavigate(intent: Extract<KernelIntent, { kind: 'navigate' }>): R
     return { status: 'RESOLVED', match: toResolvedCapability(cap, manifest) };
   }
 
-  // No capabilityId: resolve to the primary (first declared) capability.
-  const primary = manifest.capabilities[0];
+  // No capabilityId: resolve to the capability the Chamber declares as its
+  // own destination. It used to be `capabilities[0]` — so the order of Truth's
+  // array silently decided where every unaddressed visit landed, and adding a
+  // capability to رأس الأمر moved that destination without anyone choosing
+  // to. Only a test noticed. An array position is not a decision.
+  const primary = manifest.capabilities.find((c) => c.capabilityId === manifest.primaryCapabilityId);
   if (!primary) return { status: 'NO_MATCHING_CAPABILITY' };
   return { status: 'RESOLVED', match: toResolvedCapability(primary, manifest) };
 }

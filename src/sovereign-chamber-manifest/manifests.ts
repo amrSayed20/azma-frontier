@@ -17,6 +17,7 @@
  */
 
 import type { SovereignChamberManifest } from './types';
+import { CHAMBER_TRUTH } from '../chamber-truth/truth-registry';
 import { deriveManifestCapabilities } from './derive';
 
 // ── Sovereign Vault Palace ─────────────────────────────────────────────────
@@ -29,6 +30,7 @@ const SOVEREIGN_VAULT_PALACE_MANIFEST: SovereignChamberManifest = {
   constitutionalResponsibility:
     'It protects. The Palace consciousness guards what endures.',
   capabilities: deriveManifestCapabilities('sovereign-vault-palace'),
+  primaryCapabilityId: CHAMBER_TRUTH['sovereign-vault-palace'].primaryCapabilityId,
   boundary: {
     canDo: [
       'Store, retrieve, and serve binary assets on behalf of a single Creator',
@@ -59,6 +61,7 @@ const HUJJAH_AL_DAMIGHAH_MANIFEST: SovereignChamberManifest = {
   constitutionalResponsibility:
     'It reasons. The Hujjah consciousness builds the argument methodically.',
   capabilities: deriveManifestCapabilities('hujjah-al-damighah'),
+  primaryCapabilityId: CHAMBER_TRUTH['hujjah-al-damighah'].primaryCapabilityId,
   boundary: {
     canDo: [
       'Accept a natural-language question and return evidence from real knowledge sources',
@@ -90,6 +93,7 @@ const QIYAMAH_CHAMBER_MANIFEST: SovereignChamberManifest = {
   constitutionalResponsibility:
     'It creates. The Qiyamah consciousness gives form to what the citizen imagines.',
   capabilities: deriveManifestCapabilities('qiyamah-chamber'),
+  primaryCapabilityId: CHAMBER_TRUTH['qiyamah-chamber'].primaryCapabilityId,
   boundary: {
     canDo: [
       'Generate images from natural-language prompts using the platform\'s approved image provider',
@@ -119,6 +123,7 @@ const RAS_AL_AMR_MANIFEST: SovereignChamberManifest = {
   constitutionalResponsibility:
     'It governs. The Ras Al-Amr consciousness speaks with sovereign authority.',
   capabilities: deriveManifestCapabilities('ras-amr'),
+  primaryCapabilityId: CHAMBER_TRUTH['ras-amr'].primaryCapabilityId,
   boundary: {
     canDo: [
       'Create, read, and update persistent cinematic direction canvases',
@@ -152,6 +157,7 @@ const MAKMAN_AL_GHAYAH_MANIFEST: SovereignChamberManifest = {
   constitutionalResponsibility:
     'It strategizes. The Makman consciousness reads patterns and possibilities.',
   capabilities: deriveManifestCapabilities('makman-al-ghayah'),
+  primaryCapabilityId: CHAMBER_TRUTH['makman-al-ghayah'].primaryCapabilityId,
   boundary: {
     canDo: [
       'Record and retrieve the Creator\'s sovereign purpose',

@@ -124,6 +124,17 @@ export interface DeferredCapability {
 
 export interface ChamberTruth {
   readonly chamberId: ChamberId;
+  /**
+   * The capability a Creator reaches when they enter this Chamber without
+   * naming one.
+   *
+   * MEASURED 2026-09-25: the Interaction Kernel took `capabilities[0]` — so
+   * the ORDER of this array silently decided where every unaddressed visit
+   * landed. Adding a capability to رأس الأمر changed that destination
+   * without anyone choosing to, and only a test noticed. An array position is
+   * not a decision. This is.
+   */
+  readonly primaryCapabilityId: string;
   readonly capabilities: readonly ChamberCapability[];
   readonly deferred: readonly DeferredCapability[];
 }

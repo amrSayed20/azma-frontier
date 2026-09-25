@@ -437,6 +437,7 @@ import type { DirectorPlan, ProductionAssetContext } from '@/src/chambers/ras-al
 import { takeDemandFor, resolveDemand, spokenDemandArrival } from '@/src/sovereign-creation-demand/arrival';
 import './ras-amr.css';
 import { ChamberDemonstration } from '@/src/chamber-demonstration';
+import { composeStoryboardFromBrief } from './actions';
 
 // Pure, stateless transformer (see its own header comment) — one shared
 // instance is sufficient, no per-render instantiation needed.
@@ -868,6 +869,13 @@ const CAPABILITY_LABELS: Record<string, { name: string; icon: string }> = {
   DIRECTORIAL: { name: 'مخططات الإخراج',      icon: '🎯' },
 };
 
+/**
+ * A capability is machinery. VISUAL, MOTION, AUDIO are how the Empire and its
+ * providers name a kind of asset; they are not words, and no Creator was ever
+ * addressed in them. MEASURED 2026-09-25: two places rendered the raw enum
+ * straight to the screen, and one of them put «VISUAL» in the middle of the
+ * Creator's own canvas. Everything that shows a kind comes through here.
+ */
 function typeLabelForCapability(target: string): string {
   switch (target) {
     case 'VISUAL': return 'صورة';
@@ -939,7 +947,7 @@ const DIRECTION_NODE_ROLE_LABELS: Record<DirectionNodeRole, string> = {
   [DirectionNodeRole.NARRATION]: 'سرد صوتي',
   [DirectionNodeRole.MUSIC_LAYER]: 'طبقة موسيقية',
   [DirectionNodeRole.AMBIENT_LAYER]: 'طبقة صوتية محيطة',
-  [DirectionNodeRole.TRANSITION]: 'انتقال (تصنيف فقط — غير مُنفَّذ)',
+  [DirectionNodeRole.TRANSITION]: 'انتقال',
   [DirectionNodeRole.CLOSING_SHOT]: 'لقطة ختامية',
 };
 
@@ -2059,6 +2067,18 @@ export default function RasAmrChamber() {
    * assembles. The isolated production workshop is what produces them.
    */
   const [storyboard, setStoryboard] = useState<{ storyboardId: string; sceneCount: number; questionAr: string } | null>(null);
+  /**
+   * The Creator's own idea, and what they specified about it.
+   *
+   * MEASURED 2026-09-25: this Chamber had one text field in the whole room
+   * and it named a track group. A Creator could direct scenes that arrived
+   * from elsewhere and could not state an idea of their own.
+   */
+  const [briefIdea, setBriefIdea] = useState('');
+  const [briefSpecs, setBriefSpecs] = useState('');
+  const [briefSceneCount, setBriefSceneCount] = useState(5);
+  const [isComposingBrief, setIsComposingBrief] = useState(false);
+  const [briefNotice, setBriefNotice] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isProducingScenes, setIsProducingScenes] = useState(false);
   const [sceneNotice, setSceneNotice] = useState<string | null>(null);
@@ -3891,12 +3911,13 @@ export default function RasAmrChamber() {
     <main className={`ras-amr-viewport ${injectionFlash ? 'neon-flash-active' : ''}`}>
       <ChamberDemonstration
         chamberId="ras-amr"
-        outcomeAr="إنتاجٌ مرئيٌّ مُجمَّع من أصولك، بصوتٍ وترجمةٍ إن شئت، مُرمَّزٌ وجاهزٌ للنشر."
+        outcomeAr="فيلمٌ يُودَع في خزانتك — من فكرةٍ تكتبها، أو من أصولٍ تجمعها بنفسك."
         stepsAr={[
-            'استدعِ أصولك من الخزانة السياديّة إلى لوح العمل.',
-            'وجّه بنفسك، أو اطلب توجيهاً آليّاً من نيّةٍ تكتبها.',
-            'أضف الصوت والترجمة، وعايِن ما بنيته.',
-            'جمّع الإنتاج وتابِع ترميزه حتى يكتمل.',
+            'للبدء طريقان: اكتب فكرتك ومواصفاتها فتُفكّك إلى مشاهد — أو ابدأ من أصولك أنت.',
+            'أحضِر أصولك: استدعِ من خزانتك السياديّة، أو ارفع صورك ومقاطعك من جهازك.',
+            'اختر قالباً ليُريَك ترتيب اللقطات وما يوضَع في كلّ واحدة — أو وجّه بنفسك لقطةً لقطة.',
+            'أضف الصوت والترجمة، وعايِن ما بنيته قبل أن تعتمده.',
+            'أنتِج — ويُودَع الفيلم في خزانتك.',
         ]}
       />
 
@@ -3995,8 +4016,28 @@ export default function RasAmrChamber() {
             <div className="neon-tag">الأصول</div>
             <h2>أصول الإنتاج</h2>
             <p>الأصول المستدعاة من الخزانة السيادية</p>
-            <button className="summon-bridge-trigger-btn" onClick={() => setIsSummonOpen(true)}>
-              استدعِ من الخزانة السيادية
+            {/* ── TWO DOORS, BOTH VISIBLE ────────────────────────────────
+                MEASURED 2026-09-25: uploading from your own device already
+                worked and lived behind the second tab of the panel this one
+                button opened, under a label that said only «استدعِ من
+                الخزانة السيادية». A Creator reading that has no reason to
+                think their own files are inside it, and the Founder looked
+                for the upload and could not find it. A capability nobody can
+                find is not a capability. There are two ways to bring an asset
+                in, so there are two doors, and each says what it opens. */}
+            <button
+              className="summon-bridge-trigger-btn"
+              data-testid="rasamr-open-vault"
+              onClick={() => { setHudActiveTab('vault'); setIsSummonOpen(true); }}
+            >
+              ◆ استدعِ من الخزانة السيادية
+            </button>
+            <button
+              className="summon-bridge-trigger-btn upload-bridge-trigger-btn"
+              data-testid="rasamr-open-upload"
+              onClick={() => { setHudActiveTab('create'); setIsSummonOpen(true); }}
+            >
+              ⬆ ارفع من جهازك
             </button>
           </header>
           <div className="queue-container custom-scroll">
@@ -4218,7 +4259,7 @@ export default function RasAmrChamber() {
                           ) : (
                             <div className="layer-audio-pill">
                               {vaultAsset?.capabilityTarget === CapabilityTarget.AUDIO ? '🎙' : '◆'}{' '}
-                              {vaultAsset?.metadata?.voiceDisplayName as string ?? node.capabilityOrigin}
+                              {(vaultAsset?.metadata?.voiceDisplayName as string) ?? typeLabelForCapability(node.capabilityOrigin ?? '')}
                             </div>
                           )}
                           {isSelected && !node.isLocked && (
@@ -4527,11 +4568,17 @@ export default function RasAmrChamber() {
                           setSelectedTemplate(tpl);
                           setCreatorDirectorIntent(tpl.directorIntentPreset);
                           setDirectingMode('smart');
-                          setShowTemplatePanel(false);
+                          // Deliberately not closed. MEASURED 2026-09-25: the
+                          // panel shut the instant a template was chosen, so
+                          // its specification — which the template has carried
+                          // all along — was never on screen at the same time as
+                          // the choice. A Creator was asked to pick between ten
+                          // names and a row of dots.
                         }}
                       >
                         <span className="workspace-template-card-icon">{tpl.icon}</span>
                         <span className="workspace-template-card-name">{tpl.name}</span>
+                        <span className="workspace-template-card-domain">{tpl.domain}</span>
                         <span className="workspace-template-card-slots">
                           {tpl.slotDurations.map((d, i) => (
                             <span key={i} className="workspace-template-slot-dot" title={`خانة ${i + 1}: ${d}ث`} />
@@ -4540,6 +4587,34 @@ export default function RasAmrChamber() {
                             {tpl.slotDurations.reduce((a, b) => a + b, 0)}ث
                           </span>
                         </span>
+
+                        {/* ── WHAT THIS TEMPLATE IS, AND HOW IT WORKS ───────────
+                            The Founder, 2026-09-25: «القوالب ما زالت لا
+                            تعرض طريقة عمل ومواصفات كل قالب وخصائصه». Every
+                            line below was already on the template and none of
+                            it was ever shown. Nothing new was invented here;
+                            what the Chamber knew, the Creator now reads. */}
+                        {selectedTemplate?.id === tpl.id && (
+                          <span className="tpl-spec">
+                            <span className="tpl-spec-desc">{tpl.description}</span>
+                            <span className="tpl-spec-facts">
+                              <span>{tpl.slotDurations.length} لقطات</span>
+                              <span>{tpl.slotDurations.reduce((a, b) => a + b, 0)} ثانية</span>
+                              <span>{tpl.transitionPreference === 'cut' ? 'قطع حادّ' : 'مزج متدرّج'}</span>
+                            </span>
+                            <span className="tpl-spec-heading">ترتيب اللقطات — وما يوضَع في كلّ واحدة</span>
+                            <span className="tpl-spec-slots">
+                              {tpl.slotDurations.map((d, i) => (
+                                <span key={i} className="tpl-spec-slot">
+                                  <span className="tpl-spec-slot-n">{i + 1}</span>
+                                  <span className="tpl-spec-slot-role">{tpl.slotRoles?.[i] ?? 'لقطة'}</span>
+                                  <span className="tpl-spec-slot-cue">{tpl.slotCues?.[i] ?? 'أيّ أصل من خزانتك'}</span>
+                                  <span className="tpl-spec-slot-dur">{d}ث</span>
+                                </span>
+                              ))}
+                            </span>
+                          </span>
+                        )}
                       </button>
                     ))}
                     {selectedTemplate && (
@@ -4733,7 +4808,16 @@ export default function RasAmrChamber() {
                                 <div className="layer-controls-strip">
                                   <select className="narrative-node-classification" value={node.directionRole ?? ''} onChange={(e) => handleUpdateNodeClassification(node.nodeId, (e.target.value || undefined) as DirectionNodeRole | undefined)} disabled={node.isLocked} aria-label="التصنيف السينمائي">
                                     <option value="">غير مصنَّف</option>
-                                    {Object.values(DirectionNodeRole).map((role) => (<option key={role} value={role}>{DIRECTION_NODE_ROLE_LABELS[role]}</option>))}
+                                    {/* TRANSITION is not offered. Its own label used to
+                                        read «انتقال (تصنيف فقط — غير مُنفَّذ)» — a choice
+                                        that confessed in its own name that choosing it
+                                        does nothing. An option is a promise. It is removed
+                                        from what can be chosen rather than dressed up, and
+                                        kept in the labels above so a node already classified
+                                        that way still reads as itself instead of going blank. */}
+                                    {Object.values(DirectionNodeRole)
+                                      .filter((role) => role !== DirectionNodeRole.TRANSITION || node.directionRole === DirectionNodeRole.TRANSITION)
+                                      .map((role) => (<option key={role} value={role}>{DIRECTION_NODE_ROLE_LABELS[role]}</option>))}
                                   </select>
                                   <select className="narrative-node-emphasis" value={node.directionEmphasis ?? ''} onChange={(e) => handleSetNodeEmphasis(node.nodeId, (e.target.value || null) as 'primary' | 'supporting' | null)} disabled={node.isLocked} aria-label="الأهمية الإخراجية">
                                     <option value="">بلا تمييز</option>
@@ -4790,6 +4874,90 @@ export default function RasAmrChamber() {
                   ما الذي تريد من هذا المشهد؟
                 </label>
                 {demandNotice && <p className="creator-intent-notice">{demandNotice}</p>}
+
+                {/* ── THE CREATOR STATES WHAT THEY WANT ─────────────────
+                    The Founder, 2026-09-25: «يجب أن يجد المنشئ حقلاً
+                    لكتابة مراده لإنشاء الاستوري بورد ووضع الفكرة
+                    والمواصفات وضغط زر الإنشاء». It sits directly above
+                    the scenes panel because that is the order of the work:
+                    state it, see it, produce it. */}
+                {!storyboard && (
+                  <div className="brief-compose" data-testid="rasamr-brief">
+                    <span className="brief-tag">✦ اكتب فكرتك — تُفكّك إلى مشاهد</span>
+                    <label className="brief-label" htmlFor="ras-brief-idea">الفكرة</label>
+                    <textarea
+                      id="ras-brief-idea"
+                      className="brief-idea"
+                      data-testid="rasamr-brief-idea"
+                      rows={3}
+                      value={briefIdea}
+                      disabled={isComposingBrief}
+                      onChange={(e) => setBriefIdea(e.target.value)}
+                      placeholder="ما الذي تريد أن تصنعه؟ اكتبه بلغتك كما تتخيّله."
+                    />
+                    <label className="brief-label" htmlFor="ras-brief-specs">المواصفات — ما تلتزم به المشاهد</label>
+                    <textarea
+                      id="ras-brief-specs"
+                      className="brief-specs"
+                      data-testid="rasamr-brief-specs"
+                      rows={3}
+                      value={briefSpecs}
+                      disabled={isComposingBrief}
+                      onChange={(e) => setBriefSpecs(e.target.value)}
+                      placeholder="النبرة، الإيقاع، من يُخاطَب، ما يجب أن يُرى وما يجب ألّا يُرى."
+                    />
+                    <div className="brief-count-row">
+                      <label className="brief-label" htmlFor="ras-brief-count">عدد المشاهد</label>
+                      <input
+                        id="ras-brief-count"
+                        className="brief-count"
+                        type="number"
+                        min={3}
+                        max={7}
+                        value={briefSceneCount}
+                        disabled={isComposingBrief}
+                        onChange={(e) => setBriefSceneCount(Math.max(3, Math.min(7, Number(e.target.value) || 5)))}
+                      />
+                      <span className="brief-count-hint">من ثلاثة إلى سبعة</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="brief-compose-btn"
+                      data-testid="rasamr-brief-compose"
+                      disabled={isComposingBrief || briefIdea.trim().length < 8}
+                      onClick={async () => {
+                        setIsComposingBrief(true);
+                        setBriefNotice('يُفكّك — ثوانٍ…');
+                        try {
+                          const outcome = await composeStoryboardFromBrief({
+                            ideaAr: briefIdea,
+                            specificationsAr: briefSpecs,
+                            sceneCount: briefSceneCount,
+                          });
+                          if (!outcome.ok) {
+                            setBriefNotice(outcome.messageAr);
+                            return;
+                          }
+                          // Straight into the panel that produces. The road from
+                          // here to a finished film is already measured.
+                          setStoryboard({
+                            storyboardId: outcome.storyboardId,
+                            sceneCount: outcome.scenes.length,
+                            questionAr: briefIdea.trim(),
+                          });
+                          setBriefNotice(null);
+                        } catch {
+                          setBriefNotice('تعذّر التفكيك الآن. أعد المحاولة.');
+                        } finally {
+                          setIsComposingBrief(false);
+                        }
+                      }}
+                    >
+                      {isComposingBrief ? 'يُفكّك…' : '✦ أنشئ المشاهد'}
+                    </button>
+                    {briefNotice && <p className="brief-notice">{briefNotice}</p>}
+                  </div>
+                )}
 
                 {/* Scenes written in الحُجّة الدامغة, produced here. The
                     workshop that produces them is never named to the Creator —
@@ -5251,7 +5419,7 @@ export default function RasAmrChamber() {
                   const cueCount = nodeSubs?.cues?.length ?? 0;
                   return (
                     <div key={node.nodeId} className="spatial-adjust-panel">
-                      <p className="spatial-current-state">عقدة {idx + 1} — {node.assetFamily}/{node.capabilityOrigin}</p>
+                      <p className="spatial-current-state">عقدة {idx + 1} — {typeLabelForCapability(node.capabilityOrigin ?? '')}</p>
                       <button className="action-trigger-btn spatial-apply-btn" onClick={() => { setSubtitleTargetNodeId(node.nodeId); subtitleInputRef.current?.click(); }} disabled={node.isLocked || (subtitleImportBusy && subtitleTargetNodeId === node.nodeId)} aria-label={`استيراد ترجمات للعقدة ${idx + 1}`}>
                         {subtitleImportBusy && subtitleTargetNodeId === node.nodeId ? '⏳ جارٍ الاستيراد…' : cueCount > 0 ? `💬 ${cueCount} ترجمة — تحديث` : '💬 استيراد SRT/VTT'}
                       </button>

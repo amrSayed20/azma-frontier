@@ -21,6 +21,7 @@ export const CHAMBER_TRUTH = {
   // route-only survey would have reported as an empty Chamber.
   'hujjah-al-damighah': {
     chamberId: 'hujjah-al-damighah',
+    primaryCapabilityId: 'run-investigation',
     capabilities: [
       {
         id: 'run-investigation',
@@ -86,6 +87,7 @@ export const CHAMBER_TRUTH = {
   // ── القيامة ──────────────────────────────────────────────────────────────
   'qiyamah-chamber': {
     chamberId: 'qiyamah-chamber',
+    primaryCapabilityId: 'generate-image',
     capabilities: [
       {
         id: 'generate-image',
@@ -179,6 +181,7 @@ export const CHAMBER_TRUTH = {
   // ── الخزائن ──────────────────────────────────────────────────────────────
   'sovereign-vault-palace': {
     chamberId: 'sovereign-vault-palace',
+    primaryCapabilityId: 'review-assets',
     capabilities: [
       {
         id: 'review-assets',
@@ -282,7 +285,18 @@ export const CHAMBER_TRUTH = {
   // ── رأس الأمر ────────────────────────────────────────────────────────────
   'ras-amr': {
     chamberId: 'ras-amr',
+    primaryCapabilityId: 'keep-canvas',
     capabilities: [
+      {
+        id: 'compose-storyboard-from-brief',
+        performs:
+          "Turns the Creator's written idea and specifications into an ordered storyboard "
+          + 'they own, ready for this Chamber to produce.',
+        performsAr:
+          'تُفكّك فكرتك ومواصفاتك المكتوبة إلى مشاهد مرتّبة جاهزة للإنتاج.',
+        boundary: { kind: 'action', at: 'app/ras-amr/actions.ts#composeStoryboardFromBrief' },
+        requiresExistingAsset: false,
+      },
       {
         id: 'keep-canvas',
         performs: 'Saves and reloads the Creator\'s composition canvas.',
@@ -395,6 +409,7 @@ export const CHAMBER_TRUTH = {
   // which its own exit condition already admits.
   'makman-al-ghayah': {
     chamberId: 'makman-al-ghayah',
+    primaryCapabilityId: 'declare-purpose',
     capabilities: [
       {
         id: 'declare-purpose',
