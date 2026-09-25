@@ -383,9 +383,12 @@
   line-height: 1.4;
   font-style: italic;
   letter-spacing: 0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* The companion's own sentence was held to one line and truncated, so at
+     the Chamber's reading size it ended «اسألني عن العلم، التاريـ…». A
+     companion that greets the Creator and is cut off mid-invitation has
+     said less than nothing. It wraps. */
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .crown-nav {
