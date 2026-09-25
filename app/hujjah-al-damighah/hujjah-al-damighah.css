@@ -171,10 +171,27 @@
   to   { transform: translateY(0);    opacity: 1; }
 }
 
+/* ─── THE EVIDENCE WAS INVISIBLE ──────────────────────────────────────────
+   The Founder: «ظهور بعض الأدلة في قائمة جانبية شفافة». MEASURED on the live
+   chamber: every record computed to opacity EXACTLY 0 — six of six, in normal
+   motion and in reduced motion alike. Not dim. Not small. Not rendered.
+
+   The cause was two rules that were each correct alone. This one rested the
+   element at opacity 0 and relied on `gravitySettle` to raise it. Later rules
+   (:nth-child, line ~4355) replace the `animation` shorthand outright, so
+   gravitySettle never runs — and the replacement breathes on `filter`, by a
+   deliberate decision recorded at line ~4090: «Redefine evidenceBreath to use
+   filter (not opacity — avoids ctier conflicts)». That decision was sound. It
+   simply left this `opacity: 0` with nothing to lift it.
+
+   A resting state must not depend on an animation that a later rule may
+   replace. The 0 now lives in the keyframes, where `both` applies it before
+   the animation and `to { opacity: 1 }` after it — and if the animation is
+   ever overridden again, the element rests visible, which is what evidence
+   must do in a Chamber of Evidence. */
 .archive-record,
 .evidence-entry {
-  opacity: 0;
-  animation: gravitySettle 280ms ease-out forwards;
+  animation: gravitySettle 280ms ease-out both;
 }
 
 /* ── Prove it overlay ───────────────────────────────────────────────── */
