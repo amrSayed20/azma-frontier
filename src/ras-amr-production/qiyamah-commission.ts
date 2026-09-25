@@ -37,7 +37,58 @@
  *   outcome below is classified, and the Chamber says it in Arabic.
  */
 
+import { copyFile, mkdir } from 'fs/promises';
+import { basename, join } from 'path';
 import { generateImage } from '../qiyamah-generation/generation-service';
+
+/**
+ * Where the production workshop can read a picture the Empire made.
+ *
+ * ─── WHY A COPY, AND WHY HERE ────────────────────────────────────────────────
+ *
+ *   MEASURED 2026-09-25 on the live host: with `video_source: 'local'` the
+ *   workshop treats each material's `url` as a path on its OWN filesystem and
+ *   opens it directly — it does not fetch. A sovereign asset's URI is a
+ *   relative web path («/generated-assets/….png»), which that container cannot
+ *   open, so handing it over unchanged would have been a road to nothing.
+ *
+ *   The container already shares one directory with the host —
+ *   /opt/providers/mpt-runtime/storage ⟷ /MoneyPrinterTurbo/storage, proven by
+ *   writing on one side and reading on the other. So a working copy is placed
+ *   there and the container-side path is what the workshop is told. No mount
+ *   is added, nothing is exposed over HTTP, and the sovereign asset itself
+ *   never leaves the Creator's Vault — this is a render copy, like any other.
+ */
+const HOST_HANDOFF_DIR = process.env['MPT_HANDOFF_DIR']
+  ?? '/opt/providers/mpt-runtime/storage/azma-commissioned';
+const CONTAINER_HANDOFF_DIR = process.env['MPT_HANDOFF_CONTAINER_DIR']
+  ?? '/MoneyPrinterTurbo/storage/azma-commissioned';
+
+/** Where the generated file actually sits on this host. */
+function hostPathForAsset(assetUrl: string): string {
+  const name = basename(assetUrl);
+  const root = process.env['UPLOADS_DIR'] ?? join(process.cwd(), 'public');
+  return join(root, 'generated-assets', name);
+}
+
+/**
+ * Put a commissioned picture where the workshop can open it, and answer with
+ * the path IT will see. Returns null when the handoff fails — that scene then
+ * falls back to being searched for, which is what it would have been.
+ */
+async function handOverToWorkshop(assetUrl: string): Promise<string | null> {
+  try {
+    const name = basename(assetUrl);
+    await mkdir(HOST_HANDOFF_DIR, { recursive: true });
+    await copyFile(hostPathForAsset(assetUrl), join(HOST_HANDOFF_DIR, name));
+    // The container is Linux; its path is built explicitly rather than by
+    // this host's separator, which on Windows would be the wrong one.
+    return `${CONTAINER_HANDOFF_DIR}/${name}`;
+  } catch (err) {
+    console.error('[RasAmr] handoff to workshop failed:', assetUrl, err);
+    return null;
+  }
+}
 
 /** Why a commission did not come back. Never the provider's own words. */
 export type CommissionFailure =
@@ -50,7 +101,10 @@ export interface CommissionedScene {
   /** The scene this picture belongs to, so order can never be guessed at. */
   readonly order: number;
   readonly assetId?: string;
+  /** The sovereign asset's own URI, in the Creator's Vault. */
   readonly assetUrl?: string;
+  /** The same picture where the production workshop can open it. */
+  readonly workshopPath?: string;
   readonly failure?: CommissionFailure;
 }
 
@@ -107,10 +161,12 @@ export async function commissionScenePictures(params: {
     });
 
     if (outcome.status === 'succeeded') {
+      const workshopPath = await handOverToWorkshop(outcome.asset.assetUrl);
       commissioned.push({
         order: demand.order,
         assetId: outcome.asset.assetId,
         assetUrl: outcome.asset.assetUrl,
+        ...(workshopPath ? { workshopPath } : {}),
       });
     } else {
       // The provider's own message goes where an engineer reads it, never to

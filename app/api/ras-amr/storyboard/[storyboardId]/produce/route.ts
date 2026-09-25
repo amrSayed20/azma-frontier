@@ -191,9 +191,12 @@ export async function POST(
           creatorId: session.creatorId,
           demands: toGenerate,
         });
+        // The workshop opens a path on its own filesystem, not a Vault URI.
+        // A picture whose handoff failed is simply absent here, and that scene
+        // is searched for instead.
         suppliedMaterials = commissioned
-          .filter((c) => typeof c.assetUrl === 'string')
-          .map((c) => ({ url: c.assetUrl as string }));
+          .filter((c) => typeof c.workshopPath === 'string')
+          .map((c) => ({ url: c.workshopPath as string }));
         const refused = commissioned.filter((c) => c.failure);
         if (refused.length > 0) {
           console.error('[RasAmr] scenes not commissioned:', JSON.stringify(
