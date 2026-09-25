@@ -5682,15 +5682,22 @@ body:has(.ras-amr-viewport) {
 }
 
 /* ── Demo idle state ─────────────────────────────────────────────────── */
+/* MEASURED 2026-09-25 from the Founder's own screen: this was a 92%-opaque
+   sheet across the whole stage, so the opening shot sat underneath it and a
+   Creator choosing between ten templates saw a black rectangle and a play
+   button. A preview is not hidden in order to offer the button that reveals
+   it. The control sits along the bottom; the stage stays visible. */
 .ras-tp-demo-idle {
   position: absolute;
-  inset: 0;
+  inset: auto 0 0 0;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  background: rgba(5,5,5,0.92);
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: linear-gradient(to top, rgba(5,5,5,0.94), rgba(5,5,5,0.72) 60%, rgba(5,5,5,0));
   transition: opacity 0.3s ease;
   z-index: 5;
 }

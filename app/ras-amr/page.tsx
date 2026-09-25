@@ -517,31 +517,31 @@ function makeDemoSvgUri(bg: string, accent: string, shape: 'spot'|'diamond'|'gri
   let s: string;
   switch (shape) {
     case 'spot':
-      s = `<defs><radialGradient id="g"><stop offset="0%" stop-color="${accent}" stop-opacity=".7"/><stop offset="100%" stop-color="${accent}" stop-opacity="0"/></radialGradient></defs><ellipse cx="200" cy="112" rx="140" ry="80" fill="url(#g)"/>`;
+      s = `<defs><radialGradient id="g"><stop offset="0%" stop-color="${accent}" stop-opacity=".99"/><stop offset="100%" stop-color="${accent}" stop-opacity="0"/></radialGradient></defs><ellipse cx="200" cy="112" rx="140" ry="80" fill="url(#g)"/>`;
       break;
     case 'diamond':
-      s = `<polygon points="200,35 340,112 200,190 60,112" fill="none" stroke="${accent}" stroke-width="2" opacity=".55"/><polygon points="200,70 305,112 200,155 95,112" fill="${accent}" opacity=".12"/>`;
+      s = `<polygon points="200,35 340,112 200,190 60,112" fill="none" stroke="${accent}" stroke-width="2" opacity=".80"/><polygon points="200,70 305,112 200,155 95,112" fill="${accent}" opacity=".37"/>`;
       break;
     case 'grid':
-      s = Array.from({length:5},(_,r)=>Array.from({length:9},(_,c)=>`<circle cx="${c*45+22}" cy="${r*45+22}" r="1.5" fill="${accent}" opacity=".35"/>`).join('')).join('');
+      s = Array.from({length:5},(_,r)=>Array.from({length:9},(_,c)=>`<circle cx="${c*45+22}" cy="${r*45+22}" r="1.5" fill="${accent}" opacity=".60"/>`).join('')).join('');
       break;
     case 'circle':
-      s = `<circle cx="200" cy="112" r="80" fill="none" stroke="${accent}" stroke-width="2" opacity=".5"/><circle cx="200" cy="112" r="50" fill="${accent}" opacity=".1"/><circle cx="200" cy="112" r="20" fill="${accent}" opacity=".25"/>`;
+      s = `<circle cx="200" cy="112" r="80" fill="none" stroke="${accent}" stroke-width="2" opacity=".75"/><circle cx="200" cy="112" r="50" fill="${accent}" opacity=".35"/><circle cx="200" cy="112" r="20" fill="${accent}" opacity=".50"/>`;
       break;
     case 'lines':
-      s = `<line x1="50" y1="85" x2="350" y2="85" stroke="${accent}" stroke-width="1" opacity=".3"/><line x1="50" y1="112" x2="350" y2="112" stroke="${accent}" stroke-width="2.5" opacity=".6"/><line x1="50" y1="139" x2="350" y2="139" stroke="${accent}" stroke-width="1" opacity=".3"/>`;
+      s = `<line x1="50" y1="85" x2="350" y2="85" stroke="${accent}" stroke-width="1" opacity=".55"/><line x1="50" y1="112" x2="350" y2="112" stroke="${accent}" stroke-width="2.5" opacity=".85"/><line x1="50" y1="139" x2="350" y2="139" stroke="${accent}" stroke-width="1" opacity=".55"/>`;
       break;
     case 'triangle':
-      s = `<polygon points="200,42 330,178 70,178" fill="none" stroke="${accent}" stroke-width="2" opacity=".5"/><polygon points="200,80 280,160 120,160" fill="${accent}" opacity=".1"/>`;
+      s = `<polygon points="200,42 330,178 70,178" fill="none" stroke="${accent}" stroke-width="2" opacity=".75"/><polygon points="200,80 280,160 120,160" fill="${accent}" opacity=".35"/>`;
       break;
     case 'wave':
-      s = `<path d="M0,112 C67,80 133,144 200,112 S333,80 400,112" stroke="${accent}" stroke-width="2.5" fill="none" opacity=".6"/><path d="M0,130 C67,98 133,162 200,130 S333,98 400,130" stroke="${accent}" stroke-width="1" fill="none" opacity=".3"/>`;
+      s = `<path d="M0,112 C67,80 133,144 200,112 S333,80 400,112" stroke="${accent}" stroke-width="2.5" fill="none" opacity=".85"/><path d="M0,130 C67,98 133,162 200,130 S333,98 400,130" stroke="${accent}" stroke-width="1" fill="none" opacity=".55"/>`;
       break;
     case 'slash':
-      s = `<line x1="60" y1="178" x2="200" y2="32" stroke="${accent}" stroke-width="3" opacity=".6"/><line x1="200" y1="178" x2="340" y2="32" stroke="${accent}" stroke-width="3" opacity=".6"/>`;
+      s = `<line x1="60" y1="178" x2="200" y2="32" stroke="${accent}" stroke-width="3" opacity=".85"/><line x1="200" y1="178" x2="340" y2="32" stroke="${accent}" stroke-width="3" opacity=".85"/>`;
       break;
     case 'arch':
-      s = `<path d="M80,178 A120,120 0 0,1 320,178" fill="none" stroke="${accent}" stroke-width="2.5" opacity=".55"/><path d="M110,178 A90,90 0 0,1 290,178" fill="${accent}" opacity=".08"/>`;
+      s = `<path d="M80,178 A120,120 0 0,1 320,178" fill="none" stroke="${accent}" stroke-width="2.5" opacity=".80"/><path d="M110,178 A90,90 0 0,1 290,178" fill="${accent}" opacity=".33"/>`;
       break;
   }
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="225"><rect width="400" height="225" fill="${bg}"/>${s!}</svg>`;
