@@ -495,22 +495,30 @@
   gap: 1px;
 }
 
+/* MEASURED 2026-09-25 at the Founder's report: the domain name was 12px in
+   --text-dim and its description 9px in --text-ghost (#3D2E12) on a #0A0805
+   ground — a contrast so low the label was there without being readable.
+   This is the FIRST control a subscriber touches; choosing a domain decides
+   which evidence the Chamber may even consult. A choice that cannot be read
+   is not offered. Sizes raised and colours lifted up the Empire's own text
+   ladder — no new colour, only a rung that can be seen. */
 .archive-domain-name {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--text-dim);
+  color: var(--text-muted);
   transition: color 0.20s;
 }
 
 .archive-domain-sub {
-  font-size: 9px;
-  color: var(--text-ghost);
+  font-size: 12px;
+  color: var(--text-dim);
   transition: color 0.20s;
   letter-spacing: 0.02em;
+  line-height: 1.6;
 }
 
 .archive-domain.archive-domain-active .archive-domain-name { color: var(--ig-6); }
-.archive-domain.archive-domain-active .archive-domain-sub  { color: var(--text-dim); }
+.archive-domain.archive-domain-active .archive-domain-sub  { color: var(--text-muted); }
 
 .archive-divider {
   height: 1px;
@@ -530,7 +538,7 @@
 }
 
 .archive-records-label {
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--ig-2);
   letter-spacing: 2px;
@@ -539,23 +547,28 @@
 }
 
 .archive-record {
-  padding: 8px 16px;
+  padding: 11px 16px;
   border-bottom: 1px solid rgba(212,175,55,.04);
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
 
+/* The Founder: «بعض الأدلة تظهر في قائمة جانبية شفافة». Measured: the tier
+   label was 8px, the passage 10px in --text-dim, the match score 9px in
+   --text-ghost. Evidence a Creator cannot read is evidence the Chamber did
+   not really present. Every rung here is raised — these are the findings,
+   not decoration around them. */
 .archive-record-tier {
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.6px;
 }
 
 .archive-record-excerpt {
-  font-size: 10px;
-  color: var(--text-dim);
-  line-height: 1.45;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  line-height: 1.7;
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -564,8 +577,8 @@
 }
 
 .archive-record-score {
-  font-size: 9px;
-  color: var(--text-ghost);
+  font-size: 11px;
+  color: var(--text-dim);
   font-family: monospace;
 }
 
@@ -5028,3 +5041,118 @@
   max-width: 60ch;
 }
 .inv-demand-explainer strong { color: var(--text-main); font-weight: 600; }
+
+/* ── The three doors, each saying where it leads ─────────────────────────
+   The Founder read three labels and could not tell them apart. A demand is
+   addressed to one Chamber, so each door names the act performed there. */
+.inv-demand-actions { flex-direction: column; gap: 10px; }
+
+.inv-action.inv-demand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: right;
+  padding: 12px 15px;
+  line-height: 1.7;
+}
+
+.inv-demand-label { font-size: 0.95rem; font-weight: 600; color: var(--ig-6); }
+.inv-demand-for   { font-size: 0.82rem; color: var(--text-muted); }
+
+/* A direction the Chamber has declared and has not yet built. Never a door:
+   it carries no action, and says so in the same breath. */
+.inv-demand-soon {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  padding-top: 3px;
+  border-top: 1px dashed rgba(212, 175, 55, 0.18);
+  margin-top: 3px;
+  align-self: stretch;
+}
+
+/* ── What the Creator carried in from their Vault ────────────────────────
+   It used to be read, deleted, and spent on a greeting. Now it is met. */
+.arrived-work {
+  margin-bottom: 16px;
+  padding: 15px 17px;
+  background: rgba(212, 175, 55, 0.05);
+  border: 1px solid var(--ig-2);
+  border-inline-start: 3px solid var(--ig-6);
+}
+
+.arrived-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.arrived-tag {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--ig-5);
+}
+
+.arrived-dismiss {
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+.arrived-dismiss:hover { color: var(--text-main); border-color: var(--ig-2); }
+
+.arrived-title {
+  margin: 10px 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.75;
+  color: var(--text-main);
+}
+
+.arrived-preview {
+  margin: 6px 0 0;
+  font-size: 0.86rem;
+  line-height: 1.8;
+  color: var(--text-muted);
+  max-width: 62ch;
+}
+
+.arrived-ask {
+  display: block;
+  margin-top: 14px;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+.arrived-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.arrived-btn {
+  font-family: inherit;
+  font-size: 0.86rem;
+  padding: 9px 15px;
+  cursor: pointer;
+  color: var(--ig-7);
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid var(--ig-3);
+  transition: background 0.22s, border-color 0.22s;
+}
+.arrived-btn:hover { background: rgba(212, 175, 55, 0.18); border-color: var(--ig-6); }
+
+.arrived-btn-quiet {
+  color: var(--text-muted);
+  background: transparent;
+  border-color: var(--ig-2);
+}
+.arrived-btn-quiet:hover { color: var(--text-main); background: transparent; }

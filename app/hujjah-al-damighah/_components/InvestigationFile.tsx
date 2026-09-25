@@ -32,10 +32,52 @@ interface Props {
  * with their investigation intact and is told why: a door that loses the work
  * behind it is not a door.
  */
-const DEMANDS: { destination: DemandDestination; label: string }[] = [
-  { destination: 'qiyamah-chamber',  label: 'مطالبة للقيامة' },
-  { destination: 'ras-amr',          label: 'مطالبة لرأس الأمر' },
-  { destination: 'makman-al-ghayah', label: 'مطالبة لمكمن الغاية' },
+/**
+ * Each door says where it leads and what is made there.
+ *
+ * The Founder read three labels and could not tell them apart — a demand is
+ * addressed to one Chamber and the Creator must know which act that Chamber
+ * performs before choosing. Every `forAr` below names only capabilities the
+ * Truth registry declares:
+ *
+ *   القيامة        generate-image · generate-video · animate-asset
+ *   رأس الأمر       compile-production · give-voice · import-subtitles
+ *   مكمن الغاية     set-goal · define-success · publish through access tiers
+ *
+ * Publishing to the Creator's own social accounts is Makman's responsibility
+ * by the Founder's ruling of 2026-09-25, and the Chamber will be built to
+ * carry it. It does not carry it yet: measured, Makman's distribution is an
+ * access policy inside the Empire — private, public, subscription, commercial
+ * — with no platform integration of any kind, and its own `deferred` records
+ * exactly that gap.
+ *
+ * So the purpose is stated, as the Founder instructed, and what is not yet
+ * built is marked as not yet built. `soonAr` is never a door the Creator can
+ * walk through — it is the Chamber naming its own direction. A promise that
+ * reads as an available action is the one thing these cards exist to prevent.
+ */
+const DEMANDS: {
+  destination: DemandDestination;
+  label: string;
+  forAr: string;
+  soonAr?: string;
+}[] = [
+  {
+    destination: 'qiyamah-chamber',
+    label: 'مطالبة للقيامة',
+    forAr: 'لإنشاء صورةٍ أو فيديو من فكرتك — أو لتحريك صورةٍ تملكها.',
+  },
+  {
+    destination: 'ras-amr',
+    label: 'مطالبة لرأس الأمر',
+    forAr: 'لتجميع أصولك إنتاجاً مرئيّاً واحداً، بصوتٍ وترجمةٍ إن شئت.',
+  },
+  {
+    destination: 'makman-al-ghayah',
+    label: 'مطالبة لمكمن الغاية',
+    forAr: 'لتحويل ما خلص إليه تحقيقك إلى هدفٍ يُقاس، ونشرٍ بسياسة وصولٍ تختارها.',
+    soonAr: 'والنشر إلى حساباتك على مواقع التواصل من خصائص هذه الحجرة — لم يُبنَ بعد.',
+  },
 ];
 
 export function InvestigationFile({
@@ -87,7 +129,7 @@ export function InvestigationFile({
           ولكلّ حجرةٍ مطالبتها، لأنّ المشهد والقوسَ والهدفَ أشياءٌ مختلفة.
         </p>
         <div className="inv-demand-actions">
-          {DEMANDS.map(({ destination, label }) => (
+          {DEMANDS.map(({ destination, label, forAr, soonAr }) => (
             <button
               key={destination}
               className="inv-action inv-demand"
@@ -95,7 +137,11 @@ export function InvestigationFile({
               onClick={() => onDemand(destination)}
               disabled={composingDemand !== null}
             >
-              {composingDemand === destination ? 'تُصاغ المطالبة…' : `⟡ ${label}`}
+              <span className="inv-demand-label">
+                {composingDemand === destination ? 'تُصاغ المطالبة…' : `⟡ ${label}`}
+              </span>
+              <span className="inv-demand-for">{forAr}</span>
+              {soonAr && <span className="inv-demand-soon">{soonAr}</span>}
             </button>
           ))}
         </div>

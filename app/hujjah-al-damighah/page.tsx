@@ -661,6 +661,21 @@ export default function HujjahAlDamighah() {
    */
   // `isHearing` already means a court hearing in this chamber. The microphone
   // is a different thing entirely and takes a different name.
+  /**
+   * ─── WHAT THE CREATOR BROUGHT IN WITH THEM ────────────────────────────
+   *
+   *   MEASURED 2026-09-25 at the Founder's report: crossing from the Vault
+   *   carrying a kept investigation, the envelope was read, deleted on the
+   *   spot, and spent on a companion line — «كنز القصر ينتظر». The material
+   *   itself never appeared anywhere on the page. The same disease the
+   *   Hujjah→Qiyamah crossing had: the envelope is consumed and the work
+   *   evaporates at the door.
+   *
+   *   It is held now, shown, and answered with what can be done to it —
+   *   because a Creator who walks in holding something must be met by a
+   *   Chamber that can see it.
+   */
+  const [arrived, setArrived] = useState<{ titleAr: string; preview: string } | null>(null);
   const [isMicOpen, setIsMicOpen]     = useState(false);
   const [heardNotice, setHeardNotice] = useState<string | null>(null);
   // No default domain. The five are equal — «كلهم مجالات متساوية الأهمية ولا
@@ -851,6 +866,24 @@ export default function HujjahAlDamighah() {
       sessionStorage.removeItem('azma.transfer.origin');
     }
 
+    // The envelope is journey state — read once, removed once. What it named
+    // is kept, so the Chamber can show the Creator their own work rather than
+    // a sentence about it. Parsed here (pure), applied with the rest of the
+    // opening below — never as a synchronous setState inside an effect.
+    let arrivedFromVault: { titleAr: string; preview: string } | null = null;
+    if (treasureRaw) {
+      try {
+        const payload = JSON.parse(treasureRaw) as { titleAr?: string; preview?: string };
+        const titleAr = typeof payload.titleAr === 'string' ? payload.titleAr.trim() : '';
+        if (titleAr.length > 0) {
+          arrivedFromVault = {
+            titleAr,
+            preview: typeof payload.preview === 'string' ? payload.preview.trim() : '',
+          };
+        }
+      } catch { /* a malformed envelope names nothing; the Chamber stays as it was */ }
+    }
+
     const stored   = getStoredTongue();
     const mem      = readMemory();
     const quiet    = isQuietMode(mem);
@@ -860,6 +893,7 @@ export default function HujjahAlDamighah() {
                      : getRhythmProfile(mem) === 'confident' ? 200
                      : 400;
     const t = setTimeout(() => {
+      if (arrivedFromVault) setArrived(arrivedFromVault);
       if (stored) {
         setTongue(stored);
         setChamberInit('active');
@@ -1702,6 +1736,60 @@ export default function HujjahAlDamighah() {
                 </div>
 
                 {/* Dialogue Podium — no chatbot patterns */}
+                {/* What the Creator carried in from their Vault: shown, then
+                    answered with what the Chamber can actually do to it. Each
+                    control writes into the question field — the Creator stays
+                    the one who decides, and nothing is investigated until they
+                    press «ابدأ التحقيق». */}
+                {arrived && (
+                  <div className="arrived-work" data-testid="hujjah-arrived">
+                    <div className="arrived-head">
+                      <span className="arrived-tag">جئتَ من خزانتك بهذا</span>
+                      <button
+                        type="button"
+                        className="arrived-dismiss"
+                        onClick={() => setArrived(null)}
+                        aria-label="أغلق"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <p className="arrived-title">{arrived.titleAr}</p>
+                    {arrived.preview && <p className="arrived-preview">{arrived.preview}</p>}
+                    <span className="arrived-ask">ماذا تريد أن تفعل به؟</span>
+                    <div className="arrived-actions">
+                      <button
+                        type="button"
+                        className="arrived-btn"
+                        onClick={() => { handleConversationQueryChange(arrived.titleAr); setArrived(null); }}
+                      >
+                        استكمل التحقيق فيه
+                      </button>
+                      <button
+                        type="button"
+                        className="arrived-btn"
+                        onClick={() => { handleConversationQueryChange(`${arrived.titleAr} — من زاويةٍ أخرى`); setArrived(null); }}
+                      >
+                        أعد صياغته
+                      </button>
+                      <button
+                        type="button"
+                        className="arrived-btn"
+                        onClick={() => { handleConversationQueryChange(`${arrived.titleAr} — ما الذي فاتني فيه؟`); setArrived(null); }}
+                      >
+                        وسّع أدلّته
+                      </button>
+                      <button
+                        type="button"
+                        className="arrived-btn arrived-btn-quiet"
+                        onClick={() => setArrived(null)}
+                      >
+                        اتركه واسأل سؤالاً جديداً
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="dialogue-podium">
                   <form className="dialogue-form" onSubmit={handleSubmit}>
                     <textarea
