@@ -5164,3 +5164,10 @@
   border-color: var(--ig-2);
 }
 .arrived-btn-quiet:hover { color: var(--text-main); background: transparent; }
+
+/* The «كيف تعمل هذه الحجرة» control is fixed to the corner, so at some scroll
+   positions it was painted over the last demand door. Measured: no collision
+   once the door is centred, but the risk is real at other positions. The
+   block ends with clearance for it rather than depending on where the Creator
+   happens to stop scrolling. */
+.inv-demand-block { padding-bottom: 72px; }
