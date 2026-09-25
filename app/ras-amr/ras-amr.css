@@ -5974,7 +5974,7 @@ body:has(.ras-amr-viewport) {
    It wears the scenes panel's own dress, because it is the step before it and
    the two are one motion: state it, see it, produce it. */
 .brief-compose {
-  margin-top: 14px;
+  margin-top: 10px;
   padding: 15px 17px;
   background: rgba(212, 175, 55, 0.05);
   border: 1px solid rgba(212, 175, 55, 0.28);

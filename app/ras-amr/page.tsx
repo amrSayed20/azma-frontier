@@ -4025,6 +4025,99 @@ export default function RasAmrChamber() {
                 for the upload and could not find it. A capability nobody can
                 find is not a capability. There are two ways to bring an asset
                 in, so there are two doors, and each says what it opens. */}
+            {/* MEASURED 2026-09-25 after building it: this panel was
+                placed inside the التوجيه tab, and a Creator lands on
+                المشهد — so the Chamber's first road was behind a tab,
+                which is the same fault the upload had. Stating an idea
+                is the first act in this room, so it stands where the
+                room begins, above the two doors that are the second. */}
+            {/* ── THE CREATOR STATES WHAT THEY WANT ─────────────────
+                The Founder, 2026-09-25: «يجب أن يجد المنشئ حقلاً
+                لكتابة مراده لإنشاء الاستوري بورد ووضع الفكرة
+                والمواصفات وضغط زر الإنشاء». It sits directly above
+                the scenes panel because that is the order of the work:
+                state it, see it, produce it. */}
+            {!storyboard && (
+              <div className="brief-compose" data-testid="rasamr-brief">
+                <span className="brief-tag">✦ اكتب فكرتك — تُفكّك إلى مشاهد</span>
+                <label className="brief-label" htmlFor="ras-brief-idea">الفكرة</label>
+                <textarea
+                  id="ras-brief-idea"
+                  className="brief-idea"
+                  data-testid="rasamr-brief-idea"
+                  rows={3}
+                  value={briefIdea}
+                  disabled={isComposingBrief}
+                  onChange={(e) => setBriefIdea(e.target.value)}
+                  placeholder="ما الذي تريد أن تصنعه؟ اكتبه بلغتك كما تتخيّله."
+                />
+                <label className="brief-label" htmlFor="ras-brief-specs">المواصفات — ما تلتزم به المشاهد</label>
+                <textarea
+                  id="ras-brief-specs"
+                  className="brief-specs"
+                  data-testid="rasamr-brief-specs"
+                  rows={3}
+                  value={briefSpecs}
+                  disabled={isComposingBrief}
+                  onChange={(e) => setBriefSpecs(e.target.value)}
+                  placeholder="النبرة، الإيقاع، من يُخاطَب، ما يجب أن يُرى وما يجب ألّا يُرى."
+                />
+                <div className="brief-count-row">
+                  <label className="brief-label" htmlFor="ras-brief-count">عدد المشاهد</label>
+                  <input
+                    id="ras-brief-count"
+                    className="brief-count"
+                    type="number"
+                    min={3}
+                    max={7}
+                    value={briefSceneCount}
+                    disabled={isComposingBrief}
+                    onChange={(e) => setBriefSceneCount(Math.max(3, Math.min(7, Number(e.target.value) || 5)))}
+                  />
+                  <span className="brief-count-hint">من ثلاثة إلى سبعة</span>
+                </div>
+                <button
+                  type="button"
+                  className="brief-compose-btn"
+                  data-testid="rasamr-brief-compose"
+                  disabled={isComposingBrief || briefIdea.trim().length < 8}
+                  onClick={async () => {
+                    setIsComposingBrief(true);
+                    setBriefNotice('يُفكّك — ثوانٍ…');
+                    try {
+                      const outcome = await composeStoryboardFromBrief({
+                        ideaAr: briefIdea,
+                        specificationsAr: briefSpecs,
+                        sceneCount: briefSceneCount,
+                      });
+                      if (!outcome.ok) {
+                        setBriefNotice(outcome.messageAr);
+                        return;
+                      }
+                      // Straight into the panel that produces. The road from
+                      // here to a finished film is already measured.
+                      setStoryboard({
+                        storyboardId: outcome.storyboardId,
+                        sceneCount: outcome.scenes.length,
+                        questionAr: briefIdea.trim(),
+                      });
+                      // Carried to the scenes rather than left to find them:
+                      // the Creator asked for this and it is ready.
+                      setActiveWorkspaceTab('direction');
+                      setBriefNotice(null);
+                    } catch {
+                      setBriefNotice('تعذّر التفكيك الآن. أعد المحاولة.');
+                    } finally {
+                      setIsComposingBrief(false);
+                    }
+                  }}
+                >
+                  {isComposingBrief ? 'يُفكّك…' : '✦ أنشئ المشاهد'}
+                </button>
+                {briefNotice && <p className="brief-notice">{briefNotice}</p>}
+              </div>
+            )}
+
             <button
               className="summon-bridge-trigger-btn"
               data-testid="rasamr-open-vault"
@@ -4874,90 +4967,6 @@ export default function RasAmrChamber() {
                   ما الذي تريد من هذا المشهد؟
                 </label>
                 {demandNotice && <p className="creator-intent-notice">{demandNotice}</p>}
-
-                {/* ── THE CREATOR STATES WHAT THEY WANT ─────────────────
-                    The Founder, 2026-09-25: «يجب أن يجد المنشئ حقلاً
-                    لكتابة مراده لإنشاء الاستوري بورد ووضع الفكرة
-                    والمواصفات وضغط زر الإنشاء». It sits directly above
-                    the scenes panel because that is the order of the work:
-                    state it, see it, produce it. */}
-                {!storyboard && (
-                  <div className="brief-compose" data-testid="rasamr-brief">
-                    <span className="brief-tag">✦ اكتب فكرتك — تُفكّك إلى مشاهد</span>
-                    <label className="brief-label" htmlFor="ras-brief-idea">الفكرة</label>
-                    <textarea
-                      id="ras-brief-idea"
-                      className="brief-idea"
-                      data-testid="rasamr-brief-idea"
-                      rows={3}
-                      value={briefIdea}
-                      disabled={isComposingBrief}
-                      onChange={(e) => setBriefIdea(e.target.value)}
-                      placeholder="ما الذي تريد أن تصنعه؟ اكتبه بلغتك كما تتخيّله."
-                    />
-                    <label className="brief-label" htmlFor="ras-brief-specs">المواصفات — ما تلتزم به المشاهد</label>
-                    <textarea
-                      id="ras-brief-specs"
-                      className="brief-specs"
-                      data-testid="rasamr-brief-specs"
-                      rows={3}
-                      value={briefSpecs}
-                      disabled={isComposingBrief}
-                      onChange={(e) => setBriefSpecs(e.target.value)}
-                      placeholder="النبرة، الإيقاع، من يُخاطَب، ما يجب أن يُرى وما يجب ألّا يُرى."
-                    />
-                    <div className="brief-count-row">
-                      <label className="brief-label" htmlFor="ras-brief-count">عدد المشاهد</label>
-                      <input
-                        id="ras-brief-count"
-                        className="brief-count"
-                        type="number"
-                        min={3}
-                        max={7}
-                        value={briefSceneCount}
-                        disabled={isComposingBrief}
-                        onChange={(e) => setBriefSceneCount(Math.max(3, Math.min(7, Number(e.target.value) || 5)))}
-                      />
-                      <span className="brief-count-hint">من ثلاثة إلى سبعة</span>
-                    </div>
-                    <button
-                      type="button"
-                      className="brief-compose-btn"
-                      data-testid="rasamr-brief-compose"
-                      disabled={isComposingBrief || briefIdea.trim().length < 8}
-                      onClick={async () => {
-                        setIsComposingBrief(true);
-                        setBriefNotice('يُفكّك — ثوانٍ…');
-                        try {
-                          const outcome = await composeStoryboardFromBrief({
-                            ideaAr: briefIdea,
-                            specificationsAr: briefSpecs,
-                            sceneCount: briefSceneCount,
-                          });
-                          if (!outcome.ok) {
-                            setBriefNotice(outcome.messageAr);
-                            return;
-                          }
-                          // Straight into the panel that produces. The road from
-                          // here to a finished film is already measured.
-                          setStoryboard({
-                            storyboardId: outcome.storyboardId,
-                            sceneCount: outcome.scenes.length,
-                            questionAr: briefIdea.trim(),
-                          });
-                          setBriefNotice(null);
-                        } catch {
-                          setBriefNotice('تعذّر التفكيك الآن. أعد المحاولة.');
-                        } finally {
-                          setIsComposingBrief(false);
-                        }
-                      }}
-                    >
-                      {isComposingBrief ? 'يُفكّك…' : '✦ أنشئ المشاهد'}
-                    </button>
-                    {briefNotice && <p className="brief-notice">{briefNotice}</p>}
-                  </div>
-                )}
 
                 {/* Scenes written in الحُجّة الدامغة, produced here. The
                     workshop that produces them is never named to the Creator —
