@@ -5012,7 +5012,7 @@ export default function RasAmrChamber() {
                                   {layerIsAudio && <div className="layer-list-audio-pill">🎵</div>}
                                   <button className="narrative-node-select layer-select-btn" onClick={() => setSelectedNodeId(node.nodeId)} title="اختر هذه الطبقة على السطح">
                                     <span className="layer-select-index">#{index + 1}</span>
-                                    <span className="layer-select-label">{layerLabel}</span>
+                                    <span className="layer-select-label" title={layerLabel}>{layerLabel}</span>
                                     {node.isLocked && <span title="مقفولة">🔒</span>}
                                     {node.isActive === false && <span title="معطَّلة">⏸</span>}
                                   </button>

@@ -943,11 +943,17 @@ body:has(.ras-amr-viewport) {
 
 .item-source { font-size: var(--rt-xs); color: var(--text-muted); }
 
+/* MEASURED 2026-09-25: these ran up to 314px past their card and were cut by
+   it. An asset's name is how a Creator finds it again; a card has room below
+   and no reason to hide it. */
 .item-title {
   margin: 0 0 10px 0;
   font-size: var(--rt-md);
   font-weight: bold;
   color: var(--text-main);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
 }
 
 .active-neon-card .item-title {
