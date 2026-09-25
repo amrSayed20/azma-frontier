@@ -436,6 +436,7 @@ import { useVoiceMode } from '@/src/components/living-companion/useVoiceMode';
 import type { DirectorPlan, ProductionAssetContext } from '@/src/chambers/ras-al-amr/director-plan-types';
 import { takeDemandFor, resolveDemand, spokenDemandArrival } from '@/src/sovereign-creation-demand/arrival';
 import './ras-amr.css';
+import { ChamberDemonstration } from '@/src/chamber-demonstration';
 
 // Pure, stateless transformer (see its own header comment) — one shared
 // instance is sufficient, no per-render instantiation needed.
@@ -3842,6 +3843,17 @@ export default function RasAmrChamber() {
       )}
 
     <main className={`ras-amr-viewport ${injectionFlash ? 'neon-flash-active' : ''}`}>
+      <ChamberDemonstration
+        chamberId="ras-amr"
+        outcomeAr="إنتاجٌ مرئيٌّ مُجمَّع من أصولك، بصوتٍ وترجمةٍ إن شئت، مُرمَّزٌ وجاهزٌ للنشر."
+        stepsAr={[
+            'استدعِ أصولك من الخزانة السياديّة إلى لوح العمل.',
+            'وجّه بنفسك، أو اطلب توجيهاً آليّاً من نيّةٍ تكتبها.',
+            'أضف الصوت والترجمة، وعايِن ما بنيته.',
+            'جمّع الإنتاج وتابِع ترميزه حتى يكتمل.',
+        ]}
+      />
+
 
       {/* Neon atmosphere — fixed behind all content */}
       <div className="neon-layer">

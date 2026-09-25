@@ -37,6 +37,7 @@ import type { MakmanFirstCustomerJourneyResult } from '@/src/chambers/makman-al-
 import type { ConsumptionResponse } from '@/src/chambers/makman-al-ghayah/consumption-boundary';
 import { takeDemandFor, resolveDemand, spokenDemandArrival } from '@/src/sovereign-creation-demand/arrival';
 import './makman-al-ghayah.css';
+import { ChamberDemonstration } from '@/src/chamber-demonstration';
 
 interface RealProduction {
   id: string;
@@ -607,6 +608,17 @@ export default function MakmanAlGhayah() {
   return (
     <MakmanExperience>
     <main className="makman-viewport">
+      <ChamberDemonstration
+        chamberId="makman-al-ghayah"
+        outcomeAr="غايةٌ مُعلَنة وأهدافٌ تُقاس عليها — وتقريرٌ صادقٌ عن الفجوة بين ما أردتَه وما وقع."
+        stepsAr={[
+            'أعلن غايتك السياديّة — فكلّ هدفٍ بعدها يخدمها.',
+            'عيّن هدفاً مرحلةً لها، ثمّ عرّف ما يُعدّ نجاحاً فيه.',
+            'اقرأ ما رصدته الإمبراطوريّة فعلاً، ثمّ اطلب التقييم.',
+            'سمِّ ما يجب أن تتعلّمه، وأصدر طلبات المعرفة.',
+        ]}
+      />
+
       {/* IMPERIAL JOURNEY CONTINUITY — Package D */}
       <button className="sovereign-exit-btn" onClick={() => {
         try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'makman-al-ghayah', constitutionalAct: 'distribution' })); } catch { /* ignore */ }

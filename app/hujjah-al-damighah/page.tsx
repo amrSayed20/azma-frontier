@@ -47,6 +47,7 @@ import {
   getIdleDelay,
   type CitizenMemory,
 } from './_lib/citizen-memory';
+import { ChamberDemonstration } from '@/src/chamber-demonstration';
 
 // ══════════════════════════════════════════════════════════════════
 //  AZMA TONGUE — Constitutional Communication System
@@ -1523,6 +1524,17 @@ export default function HujjahAlDamighah() {
       data-inv-count={sessionCount % 4}
       dir="rtl"
     >
+
+      <ChamberDemonstration
+        chamberId="hujjah-al-damighah"
+        outcomeAr="جوابٌ مُسنَدٌ بأدلّته مرتّبةً بحُجّيتها — ومطالبةٌ إنشائيّةٌ تعبر بها إلى حجرةٍ تصنع."
+        stepsAr={[
+            'اختر كيف تُحادث الحجرة، ثمّ اختر مجال سؤالك — فلكلّ مجالٍ أدلّته.',
+            'اسأل بالكتابة أو بصوتك، وراجع ما سُمع قبل الإرسال.',
+            'ابدأ التحقيق، واقرأ الجواب بالصياغة التي تناسبك.',
+            'اخرج بمطالبةٍ إنشائيّة، أو احفظ التحقيق في خزانتك.',
+        ]}
+      />
       {/* Atmospheric Background — chamber breathes continuously */}
       <div className="neon-layer" aria-hidden="true">
         <div className="cyber-grid" />

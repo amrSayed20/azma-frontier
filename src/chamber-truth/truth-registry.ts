@@ -25,18 +25,24 @@ export const CHAMBER_TRUTH = {
       {
         id: 'run-investigation',
         performs: 'Runs a sovereign knowledge investigation and returns evidence with its verdict.',
+        performsAr:
+          'تُجري تحقيقاً سياديّاً في سؤالك، وتردّ الأدلّة مرتّبةً بحُجّيتها مع حكمها.',
         boundary: { kind: 'action', at: 'app/hujjah-al-damighah/actions.ts#runInvestigation' },
         requiresExistingAsset: false,
       },
       {
         id: 'keep-evidence',
         performs: 'Deposits a single piece of evidence into the Vault as a sovereign asset.',
+        performsAr:
+          'تحفظ دليلاً واحداً في خزانتك أصلاً سياديّاً يبقى لك.',
         boundary: { kind: 'action', at: 'app/hujjah-al-damighah/actions.ts#depositEvidenceToVault' },
         requiresExistingAsset: false,
       },
       {
         id: 'keep-investigation',
         performs: 'Deposits a whole investigation into the Vault as a sovereign asset.',
+        performsAr:
+          'تحفظ التحقيق كلّه — السؤال وأدلّته — في خزانتك.',
         boundary: { kind: 'action', at: 'app/hujjah-al-damighah/actions.ts#depositInvestigationToVault' },
         requiresExistingAsset: false,
       },
@@ -45,6 +51,8 @@ export const CHAMBER_TRUTH = {
         performs:
           'Composes a Creation Demand addressed to one Chamber from what the investigation established, '
           + 'and keeps it in the Vault as a sovereign asset carrying its investigation\'s identity.',
+        performsAr:
+          'تصوغ مطالبةً إنشائيّةً موجَّهةً إلى حجرةٍ بعينها، مبنيّةً على ما أثبته تحقيقك وحده.',
         boundary: { kind: 'action', at: 'app/hujjah-al-damighah/actions.ts#composeCreationDemandToVault' },
         requiresExistingAsset: false,
       },
@@ -58,6 +66,7 @@ export const CHAMBER_TRUTH = {
     deferred: [
       {
         responsibility: 'Story structures — breaking a subject into ordered scenes.',
+        responsibilityAr: 'بناء القصّة — تفكيك الموضوع إلى مشاهد مرتّبة.',
         constitutionalSource: 'Executive Construction Mandate §I.1 — the Chamber of Evidence\'s stated scope.',
         missing:
           'A Creation Demand states what should be created as one continuous intent. '
@@ -78,6 +87,8 @@ export const CHAMBER_TRUTH = {
         // mediaType === 'image' is THIS capability, mediaType === 'video' is
         // that one. A shared route does not merge two sovereign capabilities.
         performs: 'Generates a new visual original from a described intent.',
+        performsAr:
+          'تُنشئ صورةً أصليّة من فكرةٍ تصفها بكلماتك.',
         boundary: { kind: 'route', at: 'app/api/qiyamah/generate', methods: ['POST'] },
         requiresExistingAsset: false,
       },
@@ -98,12 +109,16 @@ export const CHAMBER_TRUTH = {
         performs:
           'Generates a new time-based visual original from a described intent alone — no parent asset — '
           + 'deposited as a sovereign MOTION asset with the executed model recorded.',
+        performsAr:
+          'تُنشئ فيديو أصليّاً من فكرةٍ تصفها، دون الحاجة إلى صورةٍ تبدأ منها.',
         boundary: { kind: 'route', at: 'app/api/qiyamah/generate', methods: ['POST'] },
         requiresExistingAsset: false,
       },
       {
         id: 'expand-intent',
         performs: 'Expands a Creator\'s brief description into a fuller generation intent.',
+        performsAr:
+          'توسّع فكرتك القصيرة إلى مشهدٍ مكتمل الوصف قبل التجسيد.',
         boundary: { kind: 'route', at: 'app/api/qiyamah/expand', methods: ['POST'] },
         requiresExistingAsset: false,
       },
@@ -112,6 +127,8 @@ export const CHAMBER_TRUTH = {
         performs:
           'Edits inside an existing visual asset and deposits the result as a derived sovereign asset '
           + 'with its lineage recorded.',
+        performsAr:
+          'تُعدّل داخل صورةٍ تملكها، وتحفظ الناتج أصلاً جديداً يحمل نسبه إلى أصله.',
         boundary: { kind: 'route', at: 'app/api/vault/assets/[assetId]/edit', methods: ['POST'] },
         requiresExistingAsset: true,
       },
@@ -127,18 +144,24 @@ export const CHAMBER_TRUTH = {
           'Transforms an existing sovereign visual asset into a time-based video through an '
           + 'authorized motion-generation provider binding, deposited as a derived sovereign asset '
           + '(parent = the source asset, root = its root, derivation ANIMATED) with the executed model recorded.',
+        performsAr:
+          'تُحرّك صورةً تملكها فتصير فيديو، ويُحفظ أصلاً جديداً.',
         boundary: { kind: 'route', at: 'app/api/vault/assets/[assetId]/animate', methods: ['POST'] },
         requiresExistingAsset: true,
       },
       {
         id: 'review-generations',
         performs: 'Lists this Creator\'s own generations.',
+        performsAr:
+          'تعرض كلّ ما ولّدتَه أنت، ولا يراه سواك.',
         boundary: { kind: 'route', at: 'app/api/qiyamah/generations', methods: ['GET'] },
         requiresExistingAsset: false,
       },
       {
         id: 'discard-generation',
         performs: 'Removes a generation, leaving a tombstone rather than a silent gap.',
+        performsAr:
+          'تحذف توليداً، وتترك شاهدةً تُسجّل أنّه كان — لا فراغاً صامتاً.',
         boundary: { kind: 'route', at: 'app/api/qiyamah/generations/[recordId]', methods: ['DELETE'] },
         requiresExistingAsset: true,
       },
@@ -153,12 +176,16 @@ export const CHAMBER_TRUTH = {
       {
         id: 'review-assets',
         performs: 'Lists every sovereign asset this Creator owns, and nobody else\'s.',
+        performsAr:
+          'تعرض كلّ أصلٍ سياديٍّ تملكه، ولا يبلغه أحدٌ غيرك.',
         boundary: { kind: 'route', at: 'app/api/vault/assets', methods: ['GET'] },
         requiresExistingAsset: false,
       },
       {
         id: 'receive-asset',
         performs: 'Takes a file into the Vault as a sovereign asset with recorded provenance.',
+        performsAr:
+          'تُدخل ملفّاً إلى خزانتك أصلاً سياديّاً مسجَّل النسب.',
         boundary: { kind: 'route', at: 'app/api/vault/assets/upload', methods: ['POST'] },
         requiresExistingAsset: false,
       },
@@ -167,12 +194,16 @@ export const CHAMBER_TRUTH = {
         performs:
           'Lifts the hold on an asset whose provenance predates the sovereign model, so it may be '
           + 'built upon. Invents no history: its recorded lineage begins at adoption.',
+        performsAr:
+          'ترفع الحجز عن أصلٍ يسبق نظام النسب السياديّ، فيصير قابلاً للاستعمال.',
         boundary: { kind: 'route', at: 'app/api/vault/assets/[assetId]/adopt', methods: ['POST'] },
         requiresExistingAsset: true,
       },
       {
         id: 'publish-work',
         performs: 'Mints a revocable public link for a finished work, and withdraws it.',
+        performsAr:
+          'تمنح عملاً مكتملاً رابطاً عامّاً يمكنك سحبه متى شئت.',
         boundary: { kind: 'route', at: 'app/api/renders/[operationId]/publish', methods: ['POST', 'DELETE'] },
         requiresExistingAsset: true,
       },
@@ -181,6 +212,8 @@ export const CHAMBER_TRUTH = {
         performs:
           'Removes a sovereign asset the Creator owns, recording a tombstone that carries its lineage '
           + 'before the row and the file are destroyed (Constitution Article 6.3).',
+        performsAr:
+          'تحذف أصلاً تملكه، وتُسجّل شاهدةً تحمل سبب الحذف.',
         boundary: { kind: 'route', at: 'app/api/vault/assets/[assetId]', methods: ['DELETE'] },
         requiresExistingAsset: true,
       },
@@ -194,12 +227,16 @@ export const CHAMBER_TRUTH = {
       {
         id: 'set-pin',
         performs: 'Sets the PIN that opens this Creator\'s Vault.',
+        performsAr:
+          'تضع الرقم السرّي الذي يفتح خزانتك.',
         boundary: { kind: 'route', at: 'app/api/vault/pin/setup', methods: ['POST'] },
         requiresExistingAsset: false,
       },
       {
         id: 'open-with-pin',
         performs: 'Opens the Vault by verifying the Creator\'s PIN.',
+        performsAr:
+          'تفتح الخزانة بالتحقّق من رقمك السرّي.',
         boundary: { kind: 'route', at: 'app/api/vault/pin/verify', methods: ['POST'] },
         requiresExistingAsset: false,
       },
@@ -208,6 +245,8 @@ export const CHAMBER_TRUTH = {
         performs:
           'Enrols the Creator\'s own device to open the Vault with its fingerprint or face: GET issues '
           + 'the registration challenge, POST verifies what the device signed and keeps only its public key.',
+        performsAr:
+          'تُسجّل جهازك ليفتح الخزانة ببصمتك دون رقم.',
         boundary: { kind: 'route', at: 'app/api/vault/biometric/enrol', methods: ['GET', 'POST'] },
         requiresExistingAsset: false,
       },
@@ -216,12 +255,16 @@ export const CHAMBER_TRUTH = {
         performs:
           'Opens the Vault with an enrolled device: GET issues the authentication challenge, POST '
           + 'verifies the signed assertion.',
+        performsAr:
+          'تفتح الخزانة بجهازٍ مُسجَّل: تحدٍّ يُصدَر ثمّ يُتحقَّق منه.',
         boundary: { kind: 'route', at: 'app/api/vault/biometric/verify', methods: ['GET', 'POST'] },
         requiresExistingAsset: false,
       },
       {
         id: 'review-devices',
         performs: 'Lists the devices enrolled to open this Vault, and withdraws one that is lost or no longer trusted.',
+        performsAr:
+          'تعرض الأجهزة المأذون لها بفتح خزانتك، وتسحب ما ضاع منها.',
         boundary: { kind: 'route', at: 'app/api/vault/biometric/devices', methods: ['GET', 'DELETE'] },
         requiresExistingAsset: false,
       },
@@ -242,48 +285,64 @@ export const CHAMBER_TRUTH = {
         // during live verification; the test now demands equality, so a verb
         // the handler exports and this file omits is refused as loudly as the
         // reverse.
+        performsAr:
+          'تحفظ لوح عملك وتستعيده كما تركته.',
         boundary: { kind: 'route', at: 'app/api/ras-amr/canvas', methods: ['GET', 'POST'] },
         requiresExistingAsset: false,
       },
       {
         id: 'direct-automatically',
         performs: 'Produces a direction decision for the assembled material.',
+        performsAr:
+          'تُصدر قرار إخراجٍ للمادّة التي جمعتها.',
         boundary: { kind: 'route', at: 'app/api/ras-amr/director', methods: ['POST'] },
         requiresExistingAsset: true,
       },
       {
         id: 'compile-production',
         performs: 'Compiles the canvas into a production and begins encoding it.',
+        performsAr:
+          'تُجمّع اللوح إنتاجاً وتبدأ ترميزه.',
         boundary: { kind: 'route', at: 'app/api/sovereign/entry/ras-al-amr/compile', methods: ['POST'] },
         requiresExistingAsset: true,
       },
       {
         id: 'follow-production',
         performs: 'Reports whether an encoding operation has finished, failed, or is still running.',
+        performsAr:
+          'تُخبرك هل انتهى الترميز أم أخفق أم ما زال جارياً.',
         boundary: { kind: 'route', at: 'app/api/ras-amr/resolution/[operationId]', methods: ['GET'] },
         requiresExistingAsset: true,
       },
       {
         id: 'give-voice',
         performs: 'Generates real speech as a sovereign audio asset.',
+        performsAr:
+          'تُنشئ نطقاً حقيقيّاً أصلاً صوتيّاً سياديّاً.',
         boundary: { kind: 'route', at: 'app/api/vault/assets/generate-speech', methods: ['POST'] },
         requiresExistingAsset: false,
       },
       {
         id: 'clone-voice',
         performs: 'Creates a cloned voice identity from a Creator\'s own reference voice asset.',
+        performsAr:
+          'تصنع هويّةً صوتيّة مستنسخة من تسجيلك.',
         boundary: { kind: 'route', at: 'app/api/vault/assets/clone-voice', methods: ['POST'] },
         requiresExistingAsset: true,
       },
       {
         id: 'import-subtitles',
         performs: 'Takes a subtitle file into the production as a sovereign asset.',
+        performsAr:
+          'تُدخل ملفّ ترجمةٍ إلى الإنتاج أصلاً سياديّاً.',
         boundary: { kind: 'route', at: 'app/api/vault/assets/import-subtitles', methods: ['POST'] },
         requiresExistingAsset: false,
       },
       {
         id: 'restore-canvas',
         performs: 'Restores one specific saved canvas by its id, for this Creator only.',
+        performsAr:
+          'تستعيد لوحاً محفوظاً بعينه، لك وحدك.',
         boundary: { kind: 'route', at: 'app/api/ras-amr/canvas/[canvasId]', methods: ['GET'] },
         requiresExistingAsset: false,
       },
@@ -292,6 +351,8 @@ export const CHAMBER_TRUTH = {
         performs:
           'Generates real speech in a voice the Creator has already cloned, as a new sovereign audio '
           + 'asset with its own lineage.',
+        performsAr:
+          'تُنشئ نطقاً بصوتٍ سبق أن استنسخته، أصلاً صوتيّاً جديداً.',
         boundary: { kind: 'route', at: 'app/api/vault/assets/generate-cloned-speech', methods: ['POST'] },
         requiresExistingAsset: true,
       },
@@ -299,6 +360,7 @@ export const CHAMBER_TRUTH = {
     deferred: [
       {
         responsibility: 'Interactive timeline editing, scene transitions, and in-chamber preview.',
+        responsibilityAr: 'تحرير الخطّ الزمنيّ تفاعليّاً، والانتقالات بين المشاهد، والمعاينة داخل الحجرة.',
         constitutionalSource: 'Executive Construction Mandate §I.3 and §IV Decision 03.',
         missing:
           'No service boundary. Encoding exists (compile + resolution), but nothing in the repository '
@@ -306,6 +368,7 @@ export const CHAMBER_TRUTH = {
       },
       {
         responsibility: 'A real completion state for the Chamber.',
+        responsibilityAr: 'حالةُ اكتمالٍ حقيقيّة لهذه الحجرة.',
         constitutionalSource:
           'chamber-identity/entry-exit-conditions.ts — the exit condition itself records the gap: '
           + '"Today: there is no real completion state."',
@@ -329,12 +392,16 @@ export const CHAMBER_TRUTH = {
       {
         id: 'declare-purpose',
         performs: 'Records and reads the Creator\'s sovereign purpose.',
+        performsAr:
+          'تُعلن غايتك السياديّة وتقرؤها.',
         boundary: { kind: 'route', at: 'app/api/sovereign/entry/purpose', methods: ['GET', 'PUT'] },
         requiresExistingAsset: false,
       },
       {
         id: 'set-goal',
         performs: 'Creates and lists milestone goals under guardianship.',
+        performsAr:
+          'تُنشئ أهدافك المرحليّة وتعرضها تحت رعايةٍ واحدة.',
         boundary: { kind: 'route', at: 'app/api/sovereign/entry/creator-goal', methods: ['GET', 'POST'] },
         requiresExistingAsset: false,
       },
@@ -345,6 +412,8 @@ export const CHAMBER_TRUTH = {
         // the shape the others had, and the boundary test refused it — which
         // is the whole reason that test asserts on exported verbs rather than
         // on the file merely existing.
+        performsAr:
+          'تُعلن ما الذي يجب أن يقع حتى يُعدّ الهدف متحقّقاً.',
         boundary: {
           kind: 'route',
           at: 'app/api/sovereign/entry/creator-goal/[goalId]/success-criteria',
@@ -360,6 +429,8 @@ export const CHAMBER_TRUTH = {
         // boundary test refused it — which is exactly why that test asserts on
         // exported verbs and not on the file merely existing.
         performs: 'Reads the real observations recorded about a goal’s publications.',
+        performsAr:
+          'تقرأ ما رُصد فعلاً عمّا نشرتَه من أعمال الهدف.',
         boundary: {
           kind: 'route',
           at: 'app/api/sovereign/entry/creator-goal/[goalId]/observations',
@@ -370,6 +441,8 @@ export const CHAMBER_TRUTH = {
       {
         id: 'assess-fulfilment',
         performs: 'Compares declared success against observed reality.',
+        performsAr:
+          'تقارن ما أعلنتَه نجاحاً بما رصده الواقع.',
         boundary: {
           kind: 'route',
           at: 'app/api/sovereign/entry/creator-goal/[goalId]/fulfillment-assessment',
@@ -383,6 +456,8 @@ export const CHAMBER_TRUTH = {
         // from here was mine, not the repository's — that is a separate
         // boundary (gap-investigation) and is not declared until measured.
         performs: 'Reads the distance between what a goal declared and what reality recorded.',
+        performsAr:
+          'تقرأ المسافة بين ما أعلنه الهدف وما سجّله الواقع.',
         boundary: {
           kind: 'route',
           at: 'app/api/sovereign/entry/creator-goal/[goalId]/fulfillment-gap',
@@ -393,6 +468,8 @@ export const CHAMBER_TRUTH = {
       {
         id: 'read-goal',
         performs: 'Reads one goal the Creator created.',
+        performsAr:
+          'تقرأ هدفاً واحداً أنشأتَه.',
         boundary: { kind: 'route', at: 'app/api/sovereign/entry/creator-goal/[goalId]', methods: ['GET'] },
         requiresExistingAsset: false,
       },
@@ -401,6 +478,8 @@ export const CHAMBER_TRUTH = {
         performs:
           'Designates a goal as a milestone serving the Creator\'s sovereign purpose, snapshotting the '
           + 'purpose wording so the relationship survives later edits.',
+        performsAr:
+          'تُعيّن هدفاً مرحلةً تخدم غايتك السياديّة.',
         boundary: { kind: 'route', at: 'app/api/sovereign/entry/creator-goal/[goalId]/milestone', methods: ['PUT'] },
         requiresExistingAsset: false,
       },
@@ -409,6 +488,8 @@ export const CHAMBER_TRUTH = {
         performs:
           'Derives, from the latest fulfilment assessment, what the Empire must learn to understand '
           + 'each open gap.',
+        performsAr:
+          'تشتقّ من آخر تقييمٍ ما يجب أن تتعلّمه الإمبراطوريّة لفهم الفجوة.',
         boundary: {
           kind: 'route',
           at: 'app/api/sovereign/entry/creator-goal/[goalId]/gap-investigation',
@@ -422,6 +503,8 @@ export const CHAMBER_TRUTH = {
         // constitutional bridge between the two. Declared here because the
         // Creator exercises it from a goal, not from an investigation.
         performs: 'Conducts the full sovereign knowledge investigation for a milestone goal\'s open gaps.',
+        performsAr:
+          'تُجري تحقيق المعرفة السياديّ كاملاً لأجل هدفٍ مرحليّ.',
         boundary: {
           kind: 'route',
           at: 'app/api/sovereign/entry/creator-goal/[goalId]/knowledge-investigation',
@@ -432,6 +515,8 @@ export const CHAMBER_TRUTH = {
       {
         id: 'issue-knowledge-requests',
         performs: 'Issues the formal batch of typed knowledge requests for a goal\'s active requirements.',
+        performsAr:
+          'تُصدر طلبات المعرفة الرسميّة عن فجوات الهدف — وتبقى دون جواب حتى تُحقَّق.',
         boundary: {
           kind: 'route',
           at: 'app/api/sovereign/entry/creator-goal/[goalId]/knowledge-requests',
@@ -448,6 +533,7 @@ export const CHAMBER_TRUTH = {
     deferred: [
       {
         responsibility: 'Publishing and distribution from within the Chamber.',
+        responsibilityAr: 'النشر والتوزيع من داخل الحجرة.',
         constitutionalSource: 'Executive Construction Mandate §I.5.',
         missing:
           'The capability exists — app/api/renders/[operationId]/publish mints and revokes a real '

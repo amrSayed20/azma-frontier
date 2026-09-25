@@ -35,6 +35,7 @@ import { LivingCompanion } from '@/src/components/living-companion/LivingCompani
 import { mapVaultAssetToTreasure } from '@/src/vault/vault-palace-presentation';
 import type { AssetMediaType } from '@/src/vault/vault-palace-presentation';
 import type { VaultAsset } from '@/src/vault/sovereign-vault-types';
+import { ChamberDemonstration } from '@/src/chamber-demonstration';
 
 // ── Constitutional Vault Catalogue ────────────────────────────────────────
 
@@ -987,6 +988,17 @@ export default function SovereignVaultPalace() {
       data-visit-rhythm={visitRhythm}
       dir="rtl"
     >
+
+      <ChamberDemonstration
+        chamberId="sovereign-vault-palace"
+        outcomeAr="كلّ ما أنشأتَه في مكانٍ واحدٍ لا يبلغه غيرك — ورابطٌ عامّ تمنحه وتسحبه متى شئت."
+        stepsAr={[
+            'افتح الخزانة برقمك السرّي أو بجهازٍ سجّلته.',
+            'تصفّح أصولك: ما ولّدته، وما رفعته، وما حفظته من الحجرات.',
+            'امنح عملاً مكتملاً رابطاً عامّاً — أو اسحبه.',
+            'احذف ما لا تريد؛ تبقى شاهدةٌ تُسجّل أنّه كان.',
+        ]}
+      />
       {/* Atmospheric background */}
       <div className="palace-ambient" aria-hidden="true">
         <div className="palace-grid" />

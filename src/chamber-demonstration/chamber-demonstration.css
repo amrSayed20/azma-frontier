@@ -1,0 +1,180 @@
+/**
+ * AZMA OS — the Chamber demonstration.
+ *
+ * The visual identity is a boundary, not a canvas: every colour here is the
+ * Imperial Gold System's own, read from src/design-system/azma-identity.css.
+ * Nothing new is introduced — the panel borrows the Empire's voice so it reads
+ * as the Chamber speaking rather than as a notice pasted over it.
+ */
+
+.demo-open-btn {
+  position: fixed;
+  inset-inline-end: 18px;
+  inset-block-end: calc(18px + env(safe-area-inset-bottom, 0px));
+  z-index: 900;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  font-family: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+  color: var(--azma-text-primary, #E8D595);
+  background: rgba(6, 5, 4, 0.92);
+  border: 1px solid var(--azma-gold-3, #8B6508);
+  border-radius: 2px;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  transition: border-color 0.25s, color 0.25s, box-shadow 0.25s;
+}
+.demo-open-btn:hover {
+  color: var(--azma-gold-7, #E8C547);
+  border-color: var(--azma-gold-6, #D4AF37);
+  box-shadow: 0 0 14px rgba(212, 175, 55, 0.22);
+}
+
+.demo-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(3, 2, 2, 0.88);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  overflow-y: auto;
+}
+
+.demo-panel {
+  direction: rtl;
+  text-align: right;
+  width: min(680px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 26px 28px 28px;
+  background: #060504;
+  border: 1px solid var(--azma-gold-2, #5C3A06);
+  border-top: 2px solid var(--azma-gold-6, #D4AF37);
+  color: var(--azma-text-primary, #E8D595);
+  font-size: 1rem;
+  line-height: 1.95;
+}
+
+.demo-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.16);
+}
+.demo-eyebrow {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--azma-gold-5, #C9A84C);
+}
+.demo-close {
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 6px 10px;
+  cursor: pointer;
+  color: var(--azma-text-muted, #A8955B);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  transition: color 0.2s, border-color 0.2s;
+}
+.demo-close:hover {
+  color: var(--azma-text-primary, #E8D595);
+  border-color: var(--azma-gold-2, #5C3A06);
+}
+
+.demo-philosophy {
+  margin: 18px 0 0;
+  font-size: 1.05rem;
+  line-height: 2;
+  color: var(--azma-text-sacred, #FFF2A8);
+  max-width: 58ch;
+}
+
+.demo-section { margin-top: 24px; }
+
+.demo-h {
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--azma-gold-5, #C9A84C);
+}
+
+.demo-outcome {
+  margin: 0;
+  max-width: 58ch;
+  color: var(--azma-text-primary, #E8D595);
+}
+
+.demo-steps {
+  margin: 0;
+  padding-inline-start: 0;
+  padding-inline-end: 22px;
+  display: grid;
+  gap: 6px;
+  color: var(--azma-text-primary, #E8D595);
+  max-width: 58ch;
+}
+.demo-steps li::marker { color: var(--azma-gold-6, #D4AF37); font-weight: 600; }
+
+.demo-caps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 1px;
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.12);
+}
+.demo-caps li {
+  padding: 11px 14px;
+  background: #0A0805;
+  font-size: 0.94rem;
+  line-height: 1.8;
+  color: var(--azma-text-primary, #E8D595);
+}
+.demo-caps-gated li { color: var(--azma-text-muted, #A8955B); }
+.demo-caps-absent li { color: var(--azma-text-dim, #6B5A30); }
+
+.demo-note {
+  margin: 10px 0 0;
+  font-size: 0.84rem;
+  line-height: 1.8;
+  color: var(--azma-text-dim, #6B5A30);
+  max-width: 58ch;
+}
+
+.demo-enter {
+  margin-top: 28px;
+  width: 100%;
+  padding: 13px 20px;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--azma-gold-7, #E8C547);
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid var(--azma-gold-6, #D4AF37);
+  border-radius: 2px;
+  transition: background 0.25s, box-shadow 0.25s;
+}
+.demo-enter:hover {
+  background: rgba(212, 175, 55, 0.2);
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.22);
+}
+
+@media (max-width: 560px) {
+  .demo-panel { padding: 20px 18px 22px; max-height: 92vh; }
+  .demo-open-btn { inset-inline-end: 12px; font-size: 0.8rem; padding: 9px 14px; }
+}

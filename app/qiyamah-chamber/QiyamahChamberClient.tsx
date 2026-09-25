@@ -29,6 +29,7 @@ import {
 import type { ChamberState } from '@/src/button-engine';
 import { useInstallInvitation } from '@/src/install-experience';
 import type { ImperialVisionDocument } from '@/src/chamber-vision';
+import { ChamberDemonstration } from '@/src/chamber-demonstration';
 
 // All 14 styles — operational, none locked. 'infographic' (2026-09-22) requires Nano Banana 2 server-side.
 const ALL_STYLES: Array<{ id: string; nameAr: string; tagline: string }> = [
@@ -829,6 +830,17 @@ export function QiyamahChamberClient({
 
   return (
     <main className="qiyamah-viewport">
+      <ChamberDemonstration
+        chamberId="qiyamah-chamber"
+        outcomeAr="صورةٌ أو فيديو أصليّ، محفوظٌ في خزانتك باسمك — لا معاينةً تزول بإغلاق الصفحة."
+        stepsAr={[
+            'صِف فكرتك في جملةٍ أو جملتين، أو أحضر محثّك الجاهز.',
+            'اختر ما تُريده: صورة أم فيديو، وبأيّ نمطٍ بصريّ.',
+            'ابنِ المشهد — تقرأ القيامة فكرتك وتوسّعها قبل التجسيد.',
+            'جسِّد. الناتج يُودَع خزانتك فور اكتماله.',
+        ]}
+      />
+
 
       {/* ── Background ─────────────────────────────────────────────────── */}
       <div className="forge-background" aria-hidden="true">

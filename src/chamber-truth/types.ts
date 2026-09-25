@@ -75,6 +75,17 @@ export interface ChamberCapability {
   readonly id: string;
   /** What it does, in engineering terms — for a reader of this file, not for a Creator. */
   readonly performs: string;
+  /**
+   * The same act, said to the Creator in their own tongue.
+   *
+   * `performs` is written for whoever reads this file and may never be shown:
+   * it is English, and the Empire does not speak English to a Creator. A guide
+   * that described a Chamber from a second, hand-kept list would drift from
+   * what the Chamber actually does the first time a capability changed — so
+   * the sentence the Creator reads is declared here, beside the boundary that
+   * performs it, and moves only when the capability moves.
+   */
+  readonly performsAr: string;
   readonly boundary: CapabilityBoundary;
   /**
    * Whether exercising it requires an existing sovereign asset.
@@ -97,6 +108,14 @@ export interface ChamberCapability {
  */
 export interface DeferredCapability {
   readonly responsibility: string;
+  /**
+   * The same gap, said to the Creator in their own tongue.
+   *
+   * `responsibility` is written for a reader of this file. A Chamber's guide
+   * shows what the Chamber will not do, and it must say that in Arabic like
+   * everything else the Creator reads.
+   */
+  readonly responsibilityAr: string;
   /** Where the constitution assigns it. */
   readonly constitutionalSource: string;
   /** What is actually missing — measured, not guessed. */
