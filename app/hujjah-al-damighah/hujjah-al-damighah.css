@@ -4949,12 +4949,20 @@
    Every value below is the Imperial Gold System's own. The identity is a
    hard boundary: this chamber adds structure, never a new colour. */
 
+/* SEEN 2026-09-25 in the rendered page, not in the numbers: the row inherited
+   the form's full width with no inset, so «ابدأ التحقيق» sat at x=0 — hard
+   against the window edge, while the question text above it was inset 28px by
+   the input's own padding. The control read as though it had fallen out of
+   the podium. It carries the same 28px as .dialogue-meta, so the button lines
+   up with the words it acts on. */
 .dialogue-commit {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   margin-top: 14px;
+  padding-inline: 28px;
+  padding-bottom: 14px;
 }
 
 .dialogue-begin-btn {
@@ -5074,7 +5082,7 @@
 /* ── What the Creator carried in from their Vault ────────────────────────
    It used to be read, deleted, and spent on a greeting. Now it is met. */
 .arrived-work {
-  margin-bottom: 16px;
+  margin: 0 28px 16px;
   padding: 15px 17px;
   background: rgba(212, 175, 55, 0.05);
   border: 1px solid var(--ig-2);
