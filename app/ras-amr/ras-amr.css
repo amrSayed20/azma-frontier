@@ -297,6 +297,44 @@ body:has(.ras-amr-viewport) {
 /* ========================================= */
 /* PHASE D: 5-TAB WORKSPACE                  */
 /* ========================================= */
+/* ── MONTAGE AND PRODUCTION ARE DIFFERENT WORK ─────────────────────
+   The Founder's ruling of 2026-09-25. One shapes what you have, the other
+   makes a finished thing out of it, and the room says which you are in. */
+.ras-work-bar {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  padding: 8px 10px 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+.ras-work-btn {
+  font: inherit;
+  font-size: var(--rt-2xs);
+  font-weight: 700;
+  color: rgba(212, 175, 55, 0.62);
+  background: transparent;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 4px 4px 0 0;
+  padding: 8px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.18s, background 0.18s;
+}
+.ras-work-btn:hover:not(.ras-work-active) { background: rgba(212, 175, 55, 0.07); }
+.ras-work-active {
+  color: #0b0904;
+  background: linear-gradient(180deg, #E8C860, #D4AF37);
+  border-color: #D4AF37;
+}
+.ras-production-section { display: flex; flex-direction: column; gap: 12px; }
+.production-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.production-hint {
+  margin: 0;
+  font-size: var(--rt-3xs);
+  line-height: 1.6;
+  color: rgba(239, 230, 208, 0.6);
+}
+
 .ras-tab-bar {
   display: flex;
   flex-shrink: 0;

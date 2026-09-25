@@ -2527,6 +2527,12 @@ export default function RasAmrChamber() {
    *   outlives the request, as the storyboard production does, because a film
    *   takes minutes and a socket lives for seconds.
    */
+  /**
+   * Which kind of work the Creator is doing. Montage shapes what they have;
+   * production makes a finished thing out of it. They were mixed across four
+   * places until the Founder ruled they should not be.
+   */
+  const [workMode, setWorkMode] = useState<'montage' | 'production'>('montage');
   const [isFilming, setIsFilming] = useState(false);
   const [filmNotice, setFilmNotice] = useState<string | null>(null);
   const [filmUrl, setFilmUrl] = useState<string | null>(null);
@@ -4198,28 +4204,10 @@ export default function RasAmrChamber() {
             {isRendering ? renderStatus : (compiledGraph && compiledForAssetId === activeAsset?.id ? '✓ مُجمَّع' : '◉ جاهز')}
           </span>
         </div>
-        <button
-          className={`ras-render-btn ${isRendering ? 'rendering' : ''}`}
-          onClick={triggerMasterRender}
-          disabled={isRendering || !canCompile}
-          title={!canCompile ? 'استدعِ أصلاً حقيقياً من الخزانة السيادية أولاً' : undefined}
-        >
-          {isRendering ? '⏳ تجميع…' : '🎬 تجميع المشهد'}
-        </button>
-        {/* تجميع المشهد compiles a plan; this returns a file. Placed beside
-            it because that is where a Creator who has just assembled a scene
-            looks for the thing that ends it. */}
-        <button
-          className={`ras-render-btn ras-film-btn ${isFilming ? 'rendering' : ''}`}
-          data-testid="rasamr-produce-scene-film"
-          onClick={() => { void produceSceneFilm(); }}
-          disabled={isFilming || placedLayerCount === 0}
-          title={placedLayerCount === 0
-            ? 'ضع أصلاً واحداً على الأقلّ في مشهدك أوّلاً'
-            : `إنتاج فيلم mp4 من ${placedLayerCount} طبقة في مشهدك`}
-        >
-          {isFilming ? '⏳ الفيلم يُنتَج…' : '✦ أنتِج الفيلم'}
-        </button>
+        {/* TOMBSTONE — تجميع المشهد and أنتِج الفيلم stood here, above
+            everything, while the rest of producing lived in a tab and a rail.
+            Both now live in الإنتاج with the acts they belong to — a button
+            kept in two places is not a separation. */}
       </header>
 
       {/* template-preview-gate rendered outside viewport above */}
@@ -4728,7 +4716,38 @@ export default function RasAmrChamber() {
         {/* RIGHT: 5-Tab Workspace */}
         <aside className="ras-panel-right neon-border">
           {/* Tab bar — Phase D */}
-          <div className="ras-tab-bar" role="tablist">
+          {/* ── TWO KINDS OF WORK, NAMED ───────────────────────────────
+              The Founder, 2026-09-25: «قسم المونتاج يجب أن يكون مستقلاً
+              عن الإنتاج.»
+
+              MEASURED before this: producing was in four places at once — two
+              buttons in the header above everything, the brief and the scene
+              plans inside the التوجيه tab, and the film's outcome in the
+              left rail. Shaping what you have and making a finished thing out
+              of it are different work, and a room that mixes them asks a
+              Creator to hold both at once.
+
+              Nothing was rebuilt. The surfaces that existed are gathered under
+              the kind of work they belong to. */}
+          <div className="ras-work-bar" role="tablist" aria-label="نوع العمل">
+            {([
+              ['montage', '✂ المونتاج', 'تشكيل ما تملك'],
+              ['production', '✦ الإنتاج', 'صناعة شيءٍ مكتمل'],
+            ] as const).map(([mode, label, hint]) => (
+              <button
+                key={mode}
+                role="tab"
+                aria-selected={workMode === mode}
+                className={`ras-work-btn ${workMode === mode ? 'ras-work-active' : ''}`}
+                onClick={() => setWorkMode(mode)}
+                title={hint}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="ras-tab-bar" role="tablist" style={{ display: workMode === 'montage' ? undefined : 'none' }}>
             {(['canvas', 'direction', 'audio', 'subtitles', 'project'] as const).map((tab) => {
               const labels: Record<typeof tab, string> = { canvas: 'المشهد', direction: 'التوجيه', audio: 'الصوت', subtitles: 'الترجمة', project: 'المشروع' };
               return (
@@ -4830,8 +4849,57 @@ export default function RasAmrChamber() {
             )}
           </div>
 
+          {/* ── THE PRODUCTION SECTION ─────────────────────────────
+              Everything that turns work into a finished thing, in one place:
+              stating an idea, deciding each scene's picture, and the two acts
+              that end with a file. They were scattered across the header, the
+              التوجيه tab and the left rail. */}
+          {workMode === 'production' && (
+            <div className="ras-tab-content custom-scroll ras-production-section">
+              <header className="panel-header">
+                <div className="neon-tag">الإنتاج</div>
+                <h2>صناعة شيءٍ مكتمل</h2>
+                <p>المونتاج يُشكّل ما تملك؛ وهنا يصير فيلماً في خزانتك.</p>
+              </header>
+
+              <div className="production-acts">
+                <button
+                  className={`ras-render-btn ${isRendering ? 'rendering' : ''}`}
+                  onClick={triggerMasterRender}
+                  disabled={isRendering || !canCompile}
+                  title={!canCompile ? 'استدعِ أصلاً حقيقياً من الخزانة السيادية أولاً' : 'يُجمّع مخطّط المشهد — خطّةٌ لا ملف'}
+                >
+                  {isRendering ? '⏳ تجميع…' : '🎬 تجميع المشهد'}
+                </button>
+                <button
+                  className={`ras-render-btn ras-film-btn ${isFilming ? 'rendering' : ''}`}
+                  data-testid="rasamr-produce-scene-film-section"
+                  onClick={() => { void produceSceneFilm(); }}
+                  disabled={isFilming || placedLayerCount === 0}
+                  title={placedLayerCount === 0
+                    ? 'ضع أصلاً واحداً على الأقلّ في مشهدك أوّلاً'
+                    : `إنتاج فيلم mp4 من ${placedLayerCount} طبقة في مشهدك`}
+                >
+                  {isFilming ? '⏳ الفيلم يُنتَج…' : '✦ أنتِج الفيلم'}
+                </button>
+              </div>
+              {(filmNotice || filmUrl) && (
+                <div className="scene-film-outcome">
+                  {filmNotice && <p className="scenes-notice">{filmNotice}</p>}
+                  {filmUrl && (
+                    // eslint-disable-next-line jsx-a11y/media-has-caption
+                    <video className="scenes-result" src={filmUrl} controls playsInline />
+                  )}
+                </div>
+              )}
+              <p className="production-hint">
+                لإنتاج فيلمٍ من فكرةٍ مكتوبة، اكتبها في لوح «اكتب فكرتك» إلى يمينك، ثمّ قرّر مصدر صورة كلّ مشهد قبل أن يُنتَج.
+              </p>
+            </div>
+          )}
+
           {/* Tab: المشهد */}
-          {activeWorkspaceTab === 'canvas' && (
+          {workMode === 'montage' && activeWorkspaceTab === 'canvas' && (
             <div className="ras-tab-content custom-scroll">
               <div className="canvas-mode-selector">
                 <div className="canvas-mode-header-row">
@@ -5196,7 +5264,7 @@ export default function RasAmrChamber() {
           )}
 
           {/* Tab: التوجيه — Phase E: real mode consequence */}
-          {activeWorkspaceTab === 'direction' && (
+          {workMode === 'montage' && activeWorkspaceTab === 'direction' && (
             <div className="ras-tab-content custom-scroll">
               {/* Mode indicator — read-only label. The authoritative toggle is in the sticky header. */}
               <div className="ras-direction-mode-indicator">
@@ -5610,7 +5678,7 @@ export default function RasAmrChamber() {
           )}
 
           {/* Tab: الصوت — Phase D: track volume + per-node voice */}
-          {activeWorkspaceTab === 'audio' && (
+          {workMode === 'montage' && activeWorkspaceTab === 'audio' && (
             <div className="ras-tab-content custom-scroll">
               {!sessionCanvas ? (
                 <p className="spatial-current-state" style={{ padding: '12px' }}>ابدأ مشهداً لضبط الصوت</p>
@@ -5766,7 +5834,7 @@ export default function RasAmrChamber() {
           )}
 
           {/* Tab: الترجمة — Phase D: per-node subtitle import */}
-          {activeWorkspaceTab === 'subtitles' && (
+          {workMode === 'montage' && activeWorkspaceTab === 'subtitles' && (
             <div className="ras-tab-content custom-scroll">
               <input type="file" ref={subtitleInputRef} accept=".srt,.vtt,text/plain" style={{ display: 'none' }} onChange={handleSubtitleFileChosen} />
               {subtitleImportError && (<p className="spatial-current-state narrative-integrity-violation" style={{ padding: '8px' }}>{subtitleImportError}</p>)}
@@ -5790,7 +5858,7 @@ export default function RasAmrChamber() {
           )}
 
           {/* Tab: المشروع — Phase D: save/restore + forward */}
-          {activeWorkspaceTab === 'project' && (
+          {workMode === 'montage' && activeWorkspaceTab === 'project' && (
             <div className="ras-tab-content custom-scroll">
               <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
 
