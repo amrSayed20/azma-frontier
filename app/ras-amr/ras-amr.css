@@ -2626,16 +2626,23 @@ body:has(.ras-amr-viewport) {
 /* ================================================== */
 /* DIRECTOR STATUS STRIP                              */
 /* ================================================== */
+/* MEASURED 2026-09-25: three cells in a narrow rail, and the render status
+   overflowed its own by 47px — the last word of what the Chamber was telling
+   the Creator about their render, cut off. A status that cannot be read is
+   not a status. The strip wraps; the rail has the room. */
 .director-status-strip {
   border-radius: 8px;
   background: rgba(4, 4, 4, 0.85);
   padding: 8px 14px;
   display: flex;
   align-items: center;
-  gap: 0;
+  flex-wrap: wrap;
+  gap: 4px 0;
   font-size: var(--rt-2xs);
   flex-shrink: 0;
 }
+.strip-cell { min-width: 0; }
+.strip-cell > span:not(.strip-pulse) { overflow-wrap: anywhere; }
 
 .strip-cell {
   display: flex;
