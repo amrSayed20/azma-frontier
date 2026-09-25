@@ -5569,7 +5569,44 @@ export default function RasAmrChamber() {
                       </div>
                     </>
                   ) : (
-                    <p className="spatial-current-state" style={{ padding: '12px' }}>اختر عقدة من تبويب «المشهد» لتطبيق التعديلات اليدوية</p>
+                    <div className="spatial-empty">
+                      {/* MEASURED 2026-09-25: reaching this surface took three
+                          steps across two tabs — manual mode, then choose a
+                          layer in المشهد, then come back here — which is why
+                          the Founder looked for it in Manual Director and found
+                          nothing. Guidance that points at a door without
+                          opening it is not guidance. */}
+                      <p className="spatial-current-state">
+                        {placedLayerCount === 0
+                          ? 'ضع أصلاً في مشهدك أوّلاً، ثمّ اختره هنا لتتحكّم في كلّ تفصيلٍ فيه.'
+                          : 'اختر طبقةً لتتحكّم في موضعها واتّساعها ودورانها وشفافيّتها وتوقيتها.'}
+                      </p>
+                      {sessionCanvas && placedLayerCount > 0 && (
+                        <div className="spatial-empty-layers">
+                          {sessionCanvas.tracks.flatMap((t) => t.nodes)
+                            .filter((n) => n.isActive !== false)
+                            .map((n, i) => {
+                              const va = vaultAssets.find((a) => a.assetId === n.assetId);
+                              const named = ((va?.metadata?.voiceDisplayName ?? va?.metadata?.generationPrompt ?? '') as string).trim();
+                              const label = named.length > 0
+                                ? (named.length <= 26 ? named : `${named.slice(0, 26).replace(/\s+\S*$/, '')}…`)
+                                : typeLabelForCapability(n.capabilityOrigin ?? '');
+                              return (
+                                <button
+                                  key={n.nodeId}
+                                  type="button"
+                                  className="spatial-empty-layer"
+                                  title={named || label}
+                                  onClick={() => setSelectedNodeId(n.nodeId)}
+                                >
+                                  <span className="spatial-empty-layer-n">{i + 1}</span>
+                                  <span className="spatial-empty-layer-name">{label}</span>
+                                </button>
+                              );
+                            })}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </>
               ) : (
