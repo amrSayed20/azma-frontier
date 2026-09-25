@@ -10,7 +10,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation';
 import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import './hujjah-al-damighah.css';
-import { runInvestigation, depositEvidenceToVault, depositInvestigationToVault, composeCreationDemandToVault, type InvestigationDTO, type EvidenceItemDTO } from './actions';
+import { runInvestigation, depositEvidenceToVault, depositInvestigationToVault, composeCreationDemandToVault, composeStoryboardDemand, type InvestigationDTO, type EvidenceItemDTO } from './actions';
 import type { DemandDestination } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
 import { useVoiceMode } from '@/src/components/living-companion/useVoiceMode';
 import { LivingCompanion } from '@/src/components/living-companion/LivingCompanion';
@@ -517,6 +517,8 @@ interface VerdictBlockProps {
   onDemand:          (destination: DemandDestination) => void;
   composingDemand:   DemandDestination | null;
   demandNotice:      string | null;
+  onSceneStructure:  () => void;
+  composingScenes:   boolean;
 }
 
 function VerdictBlock({
@@ -525,7 +527,7 @@ function VerdictBlock({
   citizenStance,
   evidenceGroups, onGroupEvidence,
   onEvidenceSelect, onContinue, onExpand, onChallenge, onAppeal, onTransferQiyamah, onSaveVault, savedToVault,
-  onDemand, composingDemand, demandNotice,
+  onDemand, composingDemand, demandNotice, onSceneStructure, composingScenes,
 }: VerdictBlockProps) {
   if (!hasVerdict || !result) return null;
   const b = result.success ? bucketEvidence(result) : null;
@@ -619,6 +621,8 @@ function VerdictBlock({
             onDemand={onDemand}
             composingDemand={composingDemand}
             demandNotice={demandNotice}
+            onSceneStructure={onSceneStructure}
+            composingScenes={composingScenes}
           />
         </>
       )}
@@ -781,6 +785,8 @@ export default function HujjahAlDamighah() {
   const [savedToVault, setSavedToVault]         = useState(false);
   /** Which Creation Demand is being composed, and why one could not be. */
   const [composingDemand, setComposingDemand]   = useState<DemandDestination | null>(null);
+  /** The ordered scenes this Chamber wrote, and whether it is writing them. */
+  const [composingScenes, setComposingScenes]   = useState(false);
   const [demandNotice,    setDemandNotice]      = useState<string | null>(null);
 
   // ── Chamber Voice ─────────────────────────────────────────────────
@@ -1424,6 +1430,44 @@ export default function HujjahAlDamighah() {
     }
   }
 
+  /**
+   * Write the scenes, then cross to the Chamber that produces them.
+   *
+   * The Founder's ruling: الحُجّة الدامغة writes the decomposition, رأس الأمر
+   * produces and assembles it. So the scenes are composed and kept BEFORE the
+   * crossing — a structure that evaporates at the door is not a structure —
+   * and only the storyboard's identity travels.
+   */
+  async function handleSceneStructure() {
+    if (!result || composingScenes) return;
+    setComposingScenes(true);
+    setDemandNotice(null);
+    try {
+      const investigationAssetId = await ensureKeptInVault();
+      const outcome = await composeStoryboardDemand(
+        query.trim(),
+        result.synthesizedAnswer,
+        result.evidence,
+        investigationAssetId,
+      );
+      if (!outcome.ok || !outcome.storyboardId) {
+        setDemandNotice(outcome.reasonAr ?? 'تعذّر تفكيك الموضوع إلى مشاهد.');
+        return;
+      }
+      setSavedToVault(investigationAssetId !== null);
+      try {
+        sessionStorage.setItem('azma.transfer.storyboard', JSON.stringify({
+          storyboardId: outcome.storyboardId,
+          sceneCount: outcome.scenes?.length ?? 0,
+          questionAr: query.trim(),
+        }));
+      } catch { /* the scenes are kept either way; only the crossing's shortcut is lost */ }
+      await handleCinematicExit('/ras-amr');
+    } finally {
+      setComposingScenes(false);
+    }
+  }
+
   async function handleCinematicExit(destination: string) {
     // Crossing into Qiyamah with an investigation: the material must be
     // sovereign BEFORE the crossing. Until 2026-09-22 this wrote the evidence
@@ -1529,6 +1573,8 @@ export default function HujjahAlDamighah() {
     onAppeal:          handleAppeal,
     onTransferQiyamah: () => { void handleCinematicExit('/qiyamah-chamber'); },
     onDemand:          (d: DemandDestination) => { void handleCreationDemand(d); },
+    onSceneStructure:  () => { void handleSceneStructure(); },
+    composingScenes,
     composingDemand,
     demandNotice,
     onSaveVault:       handleSaveVault,

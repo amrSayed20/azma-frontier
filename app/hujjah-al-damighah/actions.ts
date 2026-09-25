@@ -10,12 +10,13 @@ import { declareKnowledge } from '@/src/chambers/hujjah-al-damighah/knowledge-la
 import { formulateResponse } from '@/src/chambers/hujjah-al-damighah/knowledge-response-layer';
 import { exportKnowledgeResponse } from '@/src/chambers/hujjah-al-damighah/knowledge-export-layer';
 import { createPerceptionEndpointForOrgan } from '@/src/sovereign-nervous-system';
-import { toSearchLanguage, composeAnswerOutcome, composeCreationDemand, toArabic, displayableText } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
+import { toSearchLanguage, composeAnswerOutcome, composeCreationDemand, composeSceneStructure, toArabic, displayableText } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
 import type { DemandDestination } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
 import { authorityOfEvidence, SourceAuthority } from '@/src/chambers/hujjah-al-damighah/domain/evidence-authority';
 import { judgeSubjectRelevance, sortingNoticeAr } from '@/src/chambers/hujjah-al-damighah/subject-relevance';
 import { KnowledgeInvestigationRepository } from '@/src/persistent-storage/knowledge-investigation-repository';
 import { getDb } from '@/src/persistent-storage/db';
+import { createStoryboard, addScene } from '@/src/persistent-storage/sovereign-project-repository';
 import { InvestigationFailure, failureSpokenAr } from './_lib/investigation-failure';
 import { SovereignVaultManager } from '@/src/vault/sovereign-vault-manager';
 import { persistUploadedAsset } from '@/src/vault/vault-asset-upload-storage';
@@ -649,5 +650,137 @@ export async function composeCreationDemandToVault(
   } catch (err) {
     console.error('[Hujjah] Demand deposit failed:', err);
     return { ok: false, reasonAr: 'تعذّر حفظ المطالبة في الخزانة. أعد المحاولة.' };
+  }
+}
+
+export interface SceneDTO {
+  readonly order: number;
+  readonly seenAr: string;
+  readonly saidAr: string;
+}
+
+export interface StoryboardDemandDTO {
+  ok: boolean;
+  storyboardId?: string;
+  scenes?: readonly SceneDTO[];
+  reasonAr?: string;
+}
+
+/**
+ * Break the investigation into an ordered sequence of scenes and keep it.
+ *
+ * ─── THE RULING THIS IMPLEMENTS ──────────────────────────────────────────────
+ *
+ *   «تفكيك الموضوع إلى مشاهد مطالبةٌ تكتبها الحُجّة الدامغة، ويُنتَج ويُجمَّع
+ *   في رأس الأمر» — the Founder, 2026-09-25.
+ *
+ *   The Truth registry recorded this as deferred against this Chamber: «Story
+ *   structures — breaking a subject into ordered scenes», because nothing in
+ *   the repository decomposed a subject. This is that capability, and it goes
+ *   no further: the Chamber states the sequence. It produces no frame of it,
+ *   and it assembles nothing. Both belong to رأس الأمر.
+ *
+ * ─── WHY NOTHING NEW WAS BUILT TO HOLD IT ────────────────────────────────────
+ *
+ *   `storyboards` and `storyboard_scenes` already existed, with a full
+ *   repository — createStoryboard, addScene, listScenes, setSceneOrder — and
+ *   no route, no action and no interface anywhere. The schema's own comment
+ *   records that the constitutional line between «inside the asset» and «on
+ *   the timeline» runs through a single scene row, which is exactly the line
+ *   the Founder drew. So this connects what the Empire already owned rather
+ *   than adding a second way to hold the same thing.
+ *
+ *   The demand is also deposited as a sovereign Vault asset, like every other
+ *   Creation Demand, carrying the investigation that justifies it.
+ */
+export async function composeStoryboardDemand(
+  questionAr: string,
+  synthesizedAnswer: string | undefined,
+  evidence: readonly EvidenceItemDTO[],
+  investigationAssetId: string | null,
+): Promise<StoryboardDemandDTO> {
+  const jar = await cookies();
+  const sessionId = jar.get('azma_session')?.value;
+  const session = sessionId ? verifySession(sessionId) : null;
+  if (!session) {
+    return { ok: false, reasonAr: failureSpokenAr(InvestigationFailure.NOT_ADMITTED) };
+  }
+
+  const outcome = await composeSceneStructure({
+    query: questionAr.trim(),
+    answerAr: synthesizedAnswer,
+    evidenceTexts: evidence.map((e) => e.extractedText),
+  });
+
+  if (outcome.scenes.length === 0) {
+    console.error('[Hujjah] scenes not composed:', JSON.stringify({
+      failure: outcome.failure, httpStatus: outcome.httpStatus, evidenceCount: evidence.length,
+    }));
+    return {
+      ok: false,
+      reasonAr: outcome.failure === 'EMPTY'
+        ? 'لا توجد نتيجةٌ تُفكَّك إلى مشاهد.'
+        : 'تعذّر تفكيك الموضوع إلى مشاهد الآن. أعد المحاولة.',
+    };
+  }
+
+  try {
+    const db = getDb();
+    const storyboard = createStoryboard(db, {
+      ownerId: session.creatorId,
+      title: questionAr.trim().slice(0, 200),
+    });
+
+    const kept: SceneDTO[] = [];
+    for (const [index, scene] of outcome.scenes.entries()) {
+      // `description` is what is seen; `direction_notes` carries what is said
+      // over it. Both belong to the scene, and the schema already separates
+      // what Qiyamah answers from what Ras Al Amr times.
+      const added = addScene(db, {
+        storyboardId: storyboard.storyboardId,
+        ownerId: session.creatorId,
+        description: scene.seenAr,
+        directionNotes: scene.saidAr,
+        order: index + 1,
+      });
+      if (added.ok) kept.push({ order: index + 1, seenAr: scene.seenAr, saidAr: scene.saidAr });
+    }
+
+    if (kept.length === 0) {
+      return { ok: false, reasonAr: 'تعذّر حفظ المشاهد. أعد المحاولة.' };
+    }
+
+    // The demand itself, kept like every other: readable, owned, and carrying
+    // the id of the investigation that justifies it.
+    const body = [
+      `المطالبة الإنشائيّة — مشاهد مرتّبة`,
+      '',
+      `الموضوع: ${questionAr.trim()}`,
+      '',
+      ...kept.flatMap((s) => [`مشهد ${s.order}: ${s.seenAr}`, `قول: ${s.saidAr}`, '']),
+    ].join('\n');
+    const persisted = await persistUploadedAsset(Buffer.from(body, 'utf-8'), '.txt');
+    await new SovereignVaultManager().depositAsset({
+      creationChamber: SourceChamber.HUJJAH_AL_DAMIGHAH,
+      operationId: persisted.assetId,
+      subscriberTenantId: session.creatorId,
+      capabilityTarget: CapabilityTarget.WRITING,
+      assetFamily: AssetFamily.STRUCTURAL,
+      secureStorageUri: persisted.assetUrl,
+      metadata: {
+        originChamber: 'hujjah-al-damighah',
+        kind: 'storyboard-demand',
+        destination: 'ras-amr',
+        storyboardId: storyboard.storyboardId,
+        questionAr: questionAr.trim().slice(0, 300),
+        sceneCount: kept.length,
+        investigationAssetId: investigationAssetId ?? undefined,
+      },
+    });
+
+    return { ok: true, storyboardId: storyboard.storyboardId, scenes: kept };
+  } catch (err) {
+    console.error('[Hujjah] storyboard demand failed:', err);
+    return { ok: false, reasonAr: 'تعذّر حفظ المشاهد في خزانتك. أعد المحاولة.' };
   }
 }

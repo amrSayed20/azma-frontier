@@ -2053,6 +2053,16 @@ export default function RasAmrChamber() {
   const [creatorDirectorIntent, setCreatorDirectorIntent] = useState<string>('');
   /** The condition of a Creation Demand that did not arrive. */
   const [demandNotice, setDemandNotice] = useState<string | null>(null);
+  /**
+   * The ordered scenes الحُجّة الدامغة wrote, arriving to be produced here.
+   * The Founder's ruling: that Chamber decomposes, this one produces and
+   * assembles. The isolated production workshop is what produces them.
+   */
+  const [storyboard, setStoryboard] = useState<{ storyboardId: string; sceneCount: number; questionAr: string } | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [isProducingScenes, setIsProducingScenes] = useState(false);
+  const [sceneNotice, setSceneNotice] = useState<string | null>(null);
+  const [sceneAssetUrl, setSceneAssetUrl] = useState<string | null>(null);
   // PACKAGE XL — SOVEREIGN DIRECTOR EXECUTION BRIDGE: interpretation state.
   // isInterpretingIntent gates the API call; lastDirectorPlan records the
   // most recently executed plan for display in the direction panel.
@@ -2106,6 +2116,23 @@ export default function RasAmrChamber() {
     //   production from a free-text intent. So a demand addressed here lands
     //   in that intent — the field the Automatic Director already reads —
     //   and nothing is produced by its arrival. The Creator decides.
+    // Scenes written next door, carried by identity alone.
+    const storyboardRaw = sessionStorage.getItem('azma.transfer.storyboard');
+    if (storyboardRaw) {
+      sessionStorage.removeItem('azma.transfer.storyboard');
+      try {
+        const payload = JSON.parse(storyboardRaw) as { storyboardId?: string; sceneCount?: number; questionAr?: string };
+        if (typeof payload.storyboardId === 'string' && payload.storyboardId.length > 0) {
+          setStoryboard({
+            storyboardId: payload.storyboardId,
+            sceneCount: typeof payload.sceneCount === 'number' ? payload.sceneCount : 0,
+            questionAr: typeof payload.questionAr === 'string' ? payload.questionAr : '',
+          });
+          setActiveWorkspaceTab('direction');
+        }
+      } catch { /* a malformed envelope names nothing */ }
+    }
+
     const demandAssetId = takeDemandFor(sessionStorage, 'ras-amr');
     if (demandAssetId) {
       fetch('/api/vault/assets')
@@ -4744,6 +4771,51 @@ export default function RasAmrChamber() {
                   ما الذي تريد من هذا المشهد؟
                 </label>
                 {demandNotice && <p className="creator-intent-notice">{demandNotice}</p>}
+
+                {/* Scenes written in الحُجّة الدامغة, produced here. The
+                    workshop that produces them is never named to the Creator —
+                    what returns is a sovereign asset in their own Vault. */}
+                {storyboard && (
+                  <div className="scenes-arrived" data-testid="rasamr-storyboard">
+                    <span className="scenes-tag">مشاهد وصلت من حجّة الدامغة</span>
+                    <p className="scenes-subject">{storyboard.questionAr}</p>
+                    <p className="scenes-count">{storyboard.sceneCount} مشاهد مرتّبة، جاهزة للإنتاج.</p>
+                    <button
+                      type="button"
+                      className="scenes-produce-btn"
+                      data-testid="rasamr-produce-scenes"
+                      disabled={isProducingScenes}
+                      onClick={async () => {
+                        setIsProducingScenes(true);
+                        setSceneNotice(null);
+                        setSceneAssetUrl(null);
+                        try {
+                          const res = await fetch(
+                            `/api/ras-amr/storyboard/${encodeURIComponent(storyboard.storyboardId)}/produce`,
+                            { method: 'POST' },
+                          );
+                          const body = await res.json() as { status?: string; assetUrl?: string; message?: string };
+                          if (res.ok && body.status === 'succeeded' && body.assetUrl) {
+                            setSceneAssetUrl(body.assetUrl);
+                            setSceneNotice('اكتمل الإنتاج — وأُودع في خزانتك.');
+                          } else {
+                            setSceneNotice(body.message ?? 'تعذّر إنتاج المشاهد.');
+                          }
+                        } catch {
+                          setSceneNotice('تعذّر الوصول إلى ورشة الإنتاج الآن.');
+                        } finally {
+                          setIsProducingScenes(false);
+                        }
+                      }}
+                    >
+                      {isProducingScenes ? 'الإنتاج جارٍ… قد يستغرق دقائق' : '🎬 أنتج هذه المشاهد'}
+                    </button>
+                    {sceneNotice && <p className="scenes-notice">{sceneNotice}</p>}
+                    {sceneAssetUrl && (
+                      <video className="scenes-result" src={sceneAssetUrl} controls playsInline />
+                    )}
+                  </div>
+                )}
                 <textarea
                   id="creator-intent-input"
                   className="creator-intent-input"

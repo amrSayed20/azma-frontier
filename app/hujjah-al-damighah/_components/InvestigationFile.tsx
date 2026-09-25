@@ -17,6 +17,9 @@ interface Props {
   composingDemand:   DemandDestination | null;
   /** Why a demand could not be composed — the Chamber's real reason. */
   demandNotice:      string | null;
+  /** Break the finding into ordered scenes, then cross to رأس الأمر. */
+  onSceneStructure:  () => void;
+  composingScenes:   boolean;
 }
 
 /**
@@ -82,7 +85,7 @@ const DEMANDS: {
 
 export function InvestigationFile({
   onContinue, onExpand, onChallenge, onAppeal, onTransferQiyamah, onSaveVault, savedToVault,
-  onDemand, composingDemand, demandNotice,
+  onDemand, composingDemand, demandNotice, onSceneStructure, composingScenes,
 }: Props) {
   return (
     <div className="investigation-file">
@@ -145,6 +148,25 @@ export function InvestigationFile({
             </button>
           ))}
         </div>
+        {/* The fourth door, and the only one that writes a sequence.
+            The Founder's ruling: this Chamber decomposes the subject into
+            ordered scenes; رأس الأمر produces and assembles them. So it is
+            named for what it produces there, not for what it writes here. */}
+        <button
+          className="inv-action inv-demand inv-scenes"
+          data-destination="storyboard"
+          data-testid="hujjah-scenes"
+          onClick={onSceneStructure}
+          disabled={composingScenes || composingDemand !== null}
+        >
+          <span className="inv-demand-label">
+            {composingScenes ? 'تُكتَب المشاهد…' : '⟡ فكّك الموضوع إلى مشاهد'}
+          </span>
+          <span className="inv-demand-for">
+            مشاهد مرتّبة — ما يُرى وما يُقال في كلٍّ منها — تُنتَج وتُجمَّع في رأس الأمر.
+          </span>
+        </button>
+
         {demandNotice && <p className="inv-demand-notice">{demandNotice}</p>}
       </div>
     </div>

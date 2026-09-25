@@ -503,3 +503,110 @@ export function displayableText(record: TranslationRecord): string | null {
     ? null
     : record.translationText;
 }
+
+// ─── THE SCENE STRUCTURE ─────────────────────────────────────────────────────
+
+/** One scene of a storyboard: what is seen, and what is said over it. */
+export interface ComposedScene {
+  readonly seenAr: string;
+  readonly saidAr: string;
+}
+
+export interface SceneStructureOutcome {
+  readonly scenes: readonly ComposedScene[];
+  readonly failure: BridgeFailure | 'NOT_A_STRUCTURE' | null;
+  readonly httpStatus?: number;
+}
+
+/**
+ * Break a finished investigation into an ordered sequence of scenes.
+ *
+ * ─── THE RULING THIS IMPLEMENTS ──────────────────────────────────────────────
+ *
+ *   «تفكيك الموضوع إلى مشاهد مطالبةٌ تكتبها الحُجّة الدامغة، ويُنتَج ويُجمَّع
+ *   في رأس الأمر» — the Founder, 2026-09-25.
+ *
+ *   The registry recorded this exact gap against this Chamber: «Story
+ *   structures — breaking a subject into ordered scenes.» It was deferred
+ *   because nothing in the repository decomposed a subject. This does, and
+ *   it stops there: the Chamber of Evidence states the sequence and does not
+ *   produce a frame of it. Production and assembly are Ras Al Amr's, which is
+ *   the line the storyboard_scenes row is already drawn along.
+ *
+ *   Order is the whole point — an unordered list is not a storyboard — so the
+ *   scenes are returned in the sequence the model gave them and stored with
+ *   an explicit scene_order the Creator controls afterwards.
+ *
+ *   Grounded only in what the investigation established. A storyboard that
+ *   invents an episode is a storyboard about something that did not happen.
+ */
+export async function composeSceneStructure(input: {
+  readonly query: string;
+  readonly answerAr: string | undefined;
+  readonly evidenceTexts: readonly string[];
+  /** Three to seven; the Chamber keeps it within what a Creator can hold. */
+  readonly sceneCount?: number;
+}): Promise<SceneStructureOutcome> {
+  if (input.evidenceTexts.length === 0 && !input.answerAr) {
+    return { scenes: [], failure: 'EMPTY' };
+  }
+  const count = Math.max(3, Math.min(7, input.sceneCount ?? 5));
+
+  const system = [
+    'أنت نظام معرفة سيادي يُفكّك نتيجة تحقيقٍ إلى مشاهد مرتّبة.',
+    `اكتب ${count} مشاهد بالضبط، بالترتيب الذي تُروى به.`,
+    'كلّ مشهد سطران اثنان لا غير، بهذه الصيغة حرفيّاً:',
+    'مشهد: <ما يُرى — المكان والعناصر والضوء والحركة>',
+    'قول: <ما يُقال فوق المشهد، جملة أو جملتان>',
+    'افصل بين كلّ مشهدٍ والذي يليه بسطرٍ فارغ.',
+    'ابنِ فقط على السؤال والجواب والأدلّة المعطاة. لا تُضف واقعةً لم ترد فيها، ولا تخترع اسماً ولا رقماً.',
+    'لا تكتب عناوين ولا ترقيماً ولا رموزاً ولا شرحاً خارج الصيغة.',
+    'لا تذكر اسم أيّ مصدر أو موسوعة أو قاعدة بيانات أو منصّة إطلاقاً.',
+  ].join(' ');
+
+  const evidence = input.evidenceTexts.slice(0, 5).map((t, i) => `[${i + 1}] ${t}`).join('\n\n');
+  const user = [
+    `السؤال: ${input.query}`,
+    input.answerAr ? `\nالجواب المركَّب:\n${input.answerAr}` : '',
+    evidence ? `\nالأدلّة:\n${evidence}` : '',
+  ].join('\n');
+
+  const outcome = await askGeminiOutcome(system, user, SYNTHESIS_TIMEOUT_MS, 1_200, 0.45);
+  if (!outcome.text) {
+    return { scenes: [], failure: outcome.failure, httpStatus: outcome.httpStatus };
+  }
+
+  const scenes = parseScenes(outcome.text);
+  if (scenes.length === 0) {
+    // A model that answered instead of structuring is worse than no structure.
+    return { scenes: [], failure: 'NOT_A_STRUCTURE', httpStatus: outcome.httpStatus };
+  }
+  return { scenes, failure: null, httpStatus: outcome.httpStatus };
+}
+
+/**
+ * Read the scenes back out of the composed text.
+ *
+ * A scene needs both halves. One without a «قول» is a picture with nobody
+ * speaking over it, and one without a «مشهد» is a line with nothing to show —
+ * neither is a scene, and both are dropped rather than padded into one.
+ */
+function parseScenes(text: string): ComposedScene[] {
+  const scenes: ComposedScene[] = [];
+  let seenAr: string | null = null;
+
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.replace(/^[\s*\-–—•\d.)]+/, '').trim();
+    if (line.length === 0) continue;
+
+    const seen = /^مشهد\s*[:：]\s*(.+)$/.exec(line);
+    if (seen) { seenAr = seen[1].trim(); continue; }
+
+    const said = /^قول\s*[:：]\s*(.+)$/.exec(line);
+    if (said && seenAr && seenAr.length > 0) {
+      scenes.push({ seenAr, saidAr: said[1].trim() });
+      seenAr = null;
+    }
+  }
+  return scenes;
+}

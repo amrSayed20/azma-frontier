@@ -5947,3 +5947,49 @@ body:has(.ras-amr-viewport) {
 
 /* The condition of a Creation Demand that did not arrive. Said, not decorated. */
 .creator-intent-notice { margin: 0 0 8px; font-size: 11px; line-height: 1.6; color: var(--text-muted, #a89f91); }
+
+/* ── Scenes written next door, produced here ─────────────────────────────
+   الحُجّة الدامغة decomposes the subject; رأس الأمر produces and assembles.
+   The workshop that does the producing is never named to the Creator. */
+.scenes-arrived {
+  margin-top: 14px;
+  padding: 15px 17px;
+  background: rgba(212, 175, 55, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  border-inline-start: 3px solid #D4AF37;
+}
+.scenes-tag {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #C9A84C;
+}
+.scenes-subject {
+  margin: 10px 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.75;
+  color: #E8D595;
+}
+.scenes-count { margin: 5px 0 0; font-size: 0.86rem; color: #A8955B; }
+.scenes-produce-btn {
+  margin-top: 13px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 11px 22px;
+  cursor: pointer;
+  color: #E8C547;
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid #D4AF37;
+  border-radius: 2px;
+  transition: background 0.25s, box-shadow 0.25s;
+}
+.scenes-produce-btn:hover:not(:disabled) {
+  background: rgba(212, 175, 55, 0.2);
+  box-shadow: 0 0 14px rgba(212, 175, 55, 0.22);
+}
+.scenes-produce-btn:disabled { opacity: 0.55; cursor: progress; }
+.scenes-notice { margin: 10px 0 0; font-size: 0.86rem; line-height: 1.75; color: #A8955B; }
+.scenes-result { margin-top: 12px; width: 100%; max-width: 640px; border-radius: 3px; background: #000; }

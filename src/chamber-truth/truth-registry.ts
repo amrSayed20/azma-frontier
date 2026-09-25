@@ -47,6 +47,16 @@ export const CHAMBER_TRUTH = {
         requiresExistingAsset: false,
       },
       {
+        id: 'compose-scene-structure',
+        performs:
+          'Breaks a finished investigation into an ordered sequence of scenes, persists them as a '
+          + 'storyboard the Creator owns, and keeps the demand as a sovereign asset.',
+        performsAr:
+          'تُفكّك تحقيقك إلى مشاهد مرتّبة — ما يُرى وما يُقال في كلّ مشهد — وتحفظها مطالبةً في خزانتك.',
+        boundary: { kind: 'action', at: 'app/hujjah-al-damighah/actions.ts#composeStoryboardDemand' },
+        requiresExistingAsset: false,
+      },
+      {
         id: 'compose-creation-demand',
         performs:
           'Composes a Creation Demand addressed to one Chamber from what the investigation established, '
@@ -63,17 +73,14 @@ export const CHAMBER_TRUTH = {
     // new route and not a new chamber. What remains deferred is narrower and
     // still true: the Chamber states what should be made; it does not structure
     // a story into scenes, and nothing here does that yet.
-    deferred: [
-      {
-        responsibility: 'Story structures — breaking a subject into ordered scenes.',
-        responsibilityAr: 'بناء القصّة — تفكيك الموضوع إلى مشاهد مرتّبة.',
-        constitutionalSource: 'Executive Construction Mandate §I.1 — the Chamber of Evidence\'s stated scope.',
-        missing:
-          'A Creation Demand states what should be created as one continuous intent. '
-          + 'Nothing in the repository decomposes a subject into an ordered sequence of scenes; '
-          + 'Ras Al Amr plans a production from an intent, which is a different act.',
-      },
-    ],
+    // «Story structures — breaking a subject into ordered scenes» stood here
+    // as deferred, because nothing in the repository decomposed a subject.
+    // compose-scene-structure now does, by the Founder's ruling of 2026-09-25:
+    // the Chamber of Evidence writes the ordered scenes and stops there, and
+    // رأس الأمر produces and assembles them. The gap is removed rather than
+    // annotated — a closed gap that stays written is a gap the guide will keep
+    // showing a Creator.
+    deferred: [],
   },
 
   // ── القيامة ──────────────────────────────────────────────────────────────
