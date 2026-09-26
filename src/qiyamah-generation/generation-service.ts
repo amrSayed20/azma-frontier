@@ -157,6 +157,14 @@ async function depositVideoAssetIntoVault(params: {
   readonly providerJobId: string | null;
   /** The provider's actual charge, IN THE PROVIDER'S OWN UNIT. Never cash. */
   readonly providerCreditsCharged: number | null;
+  /**
+   * The conditions the charge was incurred under. A quantity without its
+   * conditions is not a cost: 1008 credits means nothing until it is known to
+   * be 6 seconds at 1280×720 and 24fps. Absent when the provider did not say.
+   */
+  readonly outputWidth: number | null;
+  readonly outputHeight: number | null;
+  readonly outputFps: number | null;
   /** SHA-256 of the bytes that were actually kept. */
   readonly contentDigest: string;
 }): Promise<string | null> {
@@ -195,6 +203,9 @@ async function depositVideoAssetIntoVault(params: {
           ? { providerCreditsCharged: params.providerCreditsCharged, providerCreditUnit: 'magic-hour-credits' }
           : {}),
         ...(params.providerJobId ? { providerJobId: params.providerJobId } : {}),
+        ...(params.outputWidth !== null ? { outputWidth: params.outputWidth } : {}),
+        ...(params.outputHeight !== null ? { outputHeight: params.outputHeight } : {}),
+        ...(params.outputFps !== null ? { outputFps: params.outputFps } : {}),
         contentDigest: params.contentDigest,
         ...(params.style ? { generationStyle: params.style } : {}),
       },
@@ -650,6 +661,12 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
         operationId: trail.operationId,
         providerJobId,
         providerCreditsCharged,
+        outputWidth: typeof providerMeta['magicHourWidth'] === 'number'
+          ? (providerMeta['magicHourWidth'] as number) : null,
+        outputHeight: typeof providerMeta['magicHourHeight'] === 'number'
+          ? (providerMeta['magicHourHeight'] as number) : null,
+        outputFps: typeof providerMeta['magicHourFps'] === 'number'
+          ? (providerMeta['magicHourFps'] as number) : null,
         // The digest of the bytes actually kept — not of the prompt, not of
         // anything the provider said about them.
         contentDigest: digestOf(videoBytes),
