@@ -145,15 +145,30 @@ describe('BOUNDARIES 21–25 · nothing else moved', () => {
   // capability is the Creator's word itself; it creates nothing and changes
   // no bytes, so what this guard protects — that QIYAMAH generates and does
   // not assemble — is unchanged.
-  it('Qiyamah declares exactly these eight capabilities, in order', () => {
+  //
+  // The TENTH, added 2026-09-26 with the Founder's approval: upscale-asset.
+  // It raises an image's resolution in a mode that invents nothing. It has a
+  // parent, it stays a still, and it never touches the relation BETWEEN assets
+  // — so what this guard protects is unchanged for it too.
+  //
+  // The NINTH, added 2026-09-26: know-cost-before-creating. Its engine was
+  // already complete — cost engine, credit ledger, trial service, and its own
+  // comment reading «Creator must know cost BEFORE creation starts» — and no
+  // chamber in the Empire called it, so it was absent from Truth as well. It
+  // states a price and a balance. It creates nothing, spends nothing, and
+  // touches no asset, so what this guard protects — that QIYAMAH generates and
+  // does not assemble — is again unchanged.
+  it('Qiyamah declares exactly these ten capabilities, in order', () => {
     expect(QIYAMAH.capabilities.map((c) => c.id)).toEqual([
       'generate-image',
       'generate-video',
       'expand-intent',
       'edit-inside-asset',
       'animate-asset',
+      'upscale-asset',
       'accept-generated-asset',
       'review-generations',
+      'know-cost-before-creating',
       'discard-generation',
     ]);
   });

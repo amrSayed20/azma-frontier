@@ -60,16 +60,34 @@ describe('2 · the act is chosen before what depends on it', () => {
 });
 
 describe('3 · each act is offered only what it can use', () => {
-  it('a style grid is offered for image and video alone', () => {
-    expect(CLIENT).toContain("{(mediaType === 'image' || mediaType === 'video') && (");
+  it('a style grid is offered only where a style is chosen', () => {
+    // A clip made FROM an owned still takes its look from that still, so the
+    // grid narrowed with the video act's two sources (2026-09-26).
+    expect(CLIENT).toContain("{(mediaType === 'image' || (mediaType === 'video' && videoSource === 'idea')) && (");
   });
 
   it('the infographic binds its model instead of re-offering a style', () => {
     expect(CLIENT).toContain("if (mode === 'infographic') setStyle('infographic');");
   });
 
-  it('an edit is not asked for an idea', () => {
-    expect(CLIENT).toContain("{mediaType !== 'edit' && (");
+  it('an act that works on an owned asset is not asked for an idea', () => {
+    // This read `mediaType !== 'edit'` until animation moved into the video
+    // act. Two acts now begin from something the Creator already owns, so the
+    // rule is named once and every control reads the name — a literal repeated
+    // at four call sites is how the fourth gets forgotten.
+    expect(CLIENT).toContain("const actsOnOwnAsset = mediaType === 'edit' || (mediaType === 'video' && videoSource === 'asset');");
+    expect(CLIENT).toContain('{!actsOnOwnAsset && (');
+    expect(CLIENT).toContain('{!actsOnOwnAsset && shapesForAct.length > 1 && (');
+    expect(CLIENT).toContain(') : actsOnOwnAsset ? null : (');
+  });
+
+  it('animation is offered inside the video act, not as a fifth box', () => {
+    // The Founder named four acts; animating a still IS making a clip from an
+    // asset you own. He said twice it was «موجود ولكنه غير ظاهر».
+    expect(CLIENT).toContain("['asset', 'من أصلٍ تملكه'");
+    expect(CLIENT).toContain("{mediaType === 'video' && videoSource === 'asset' && (");
+    const acts = CLIENT.slice(at('<div className="media-type-toggle"'), at('<div className="media-type-toggle"') + 1400);
+    expect(acts).not.toContain("'animate'");
   });
 
   it('the infographic has one door, not two', () => {
@@ -86,7 +104,7 @@ describe('4 · a picture has a shape too', () => {
     // generation service → adapter aspect_ratio) already carried the value and
     // the designated image model is VERIFIED to accept all three shapes.
     expect(CLIENT).toContain("const shapesForAct = mediaType === 'video' ? aspectOptions : imageAspectOptions;");
-    expect(CLIENT).toContain("{mediaType !== 'edit' && shapesForAct.length > 1 && (");
+    expect(CLIENT).toContain('{!actsOnOwnAsset && shapesForAct.length > 1 && (');
   });
 
   it('the image shapes are derived from the image fleet, never written by hand', () => {

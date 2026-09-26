@@ -242,3 +242,103 @@ export async function editImageViaProvider(
 export function imageEditingIsConfigured(): boolean {
   return Boolean(process.env.MAGIC_HOUR_API_KEY);
 }
+
+/**
+ * ── RAISING AN ASSET'S RESOLUTION ───────────────────────────────────────────
+ *
+ *   The Founder approved this on 2026-09-26 after the inventory showed four of
+ *   its five parts were already built: the provider route PROBED LIVE (400 for
+ *   a missing scale_factor — a route that exists), the cost catalog pricing it
+ *   as `image-upscaling`, a full benchmark in
+ *   `src/benchmark/specs/image-upscaling-specs.ts` with golden assets, and
+ *   this file's own client to extend. The fifth part is this function.
+ *
+ *   It lives here, beside the edit, for the reason stated at the top of this
+ *   file: the same base URL, the same credential, the same upload and the same
+ *   job-polling shape. A second provider client would be a duplicate, not a
+ *   capability.
+ *
+ * ─── TWO CHOICES MADE ON MEASURED GROUNDS, NOT TASTE ────────────────────────
+ *
+ *   `mode: 'preserve'`, not the provider's default of 'balanced'. Two reasons
+ *   agreeing: the Empire's OWN benchmark for this capability specifies
+ *   `hallucination: 'none'` and scores "no hallucinated features absent from
+ *   source" — which is what preserve does and what balanced and creative do
+ *   not — and preserve costs 1× where balanced and creative cost 2×. The
+ *   cheaper option is also the correct one; nothing is traded.
+ *
+ *   `scale_factor: 2` only. The provider documents 4× as available to Creator,
+ *   Pro and Business tiers. This Empire's tier is NOT verified, and offering a
+ *   Creator a choice the account may refuse is offering a refusal. When 4× is
+ *   proven on a live call, widen this — not before.
+ */
+export const IMAGE_UPSCALE_PROVIDER_ID = 'magic-hour-image-upscaler' as const;
+export const UPSCALE_SCALE_FACTOR = 2 as const;
+export const UPSCALE_MODE = 'preserve' as const;
+
+export async function upscaleImageViaProvider(
+  sourceBytes: Buffer,
+  sourceExtension: string,
+  options: { readonly timeoutMs?: number; readonly pollIntervalMs?: number } = {},
+): Promise<EditedImageResult> {
+  const headers = authHeaders();
+  const filePath = await uploadSource(sourceBytes, sourceExtension);
+
+  const submitted = await fetch(`${engineBase()}/v1/ai-image-upscaler`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      name: 'azma-sovereign-upscale',
+      scale_factor: UPSCALE_SCALE_FACTOR,
+      style: { mode: UPSCALE_MODE },
+      assets: { image_file_path: filePath },
+    }),
+  });
+  if (!submitted.ok) {
+    if (submitted.status === 402) {
+      throw new ImageEditError('NO_CREDIT', 'the image engine has no remaining credit');
+    }
+    throw new ImageEditError('SUBMIT_FAILED', `upscaler returned HTTP ${submitted.status}`);
+  }
+
+  const job = (await submitted.json()) as JobResponse;
+  if (!job.id) throw new ImageEditError('SUBMIT_FAILED', 'the engine returned no job id');
+
+  // The upscaler reports through the same image-project surface as the editor.
+  const timeoutMs = options.timeoutMs ?? 180_000;
+  const intervalMs = options.pollIntervalMs ?? 3_000;
+  const deadline = Date.now() + timeoutMs;
+
+  let finished: JobResponse | null = null;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+
+    const polled = await fetch(`${engineBase()}/v1/image-projects/${job.id}`, { headers });
+    if (!polled.ok) continue;
+
+    const state = (await polled.json()) as JobResponse;
+    if (state.status === 'complete') { finished = state; break; }
+    if (state.status === 'error' || state.status === 'canceled') {
+      const words = state.error?.message ? `: ${state.error.message.slice(0, 200)}` : '';
+      throw new ImageEditError('RENDER_FAILED', `the engine reported '${state.status}'${words}`);
+    }
+  }
+  if (!finished) throw new ImageEditError('TIMED_OUT', `no result within ${timeoutMs}ms`);
+
+  const url = finished.downloads?.[0]?.url;
+  if (!url) throw new ImageEditError('NO_OUTPUT', 'the completed job carried no result');
+
+  const downloaded = await fetch(url);
+  if (!downloaded.ok) throw new ImageEditError('NO_OUTPUT', `download returned HTTP ${downloaded.status}`);
+
+  return {
+    bytes: Buffer.from(await downloaded.arrayBuffer()),
+    mimeType: downloaded.headers.get('content-type')?.split(';')[0]?.trim() ?? 'application/octet-stream',
+    creditsCharged: typeof finished.credits_charged === 'number' ? finished.credits_charged : null,
+    providerId: IMAGE_UPSCALE_PROVIDER_ID,
+    // The upscaler takes no model; the provider's own upscaling engine does the
+    // work. Recorded as such rather than inventing a model name for provenance.
+    providerModelId: 'ai-image-upscaler',
+    providerJobId: job.id,
+  };
+}

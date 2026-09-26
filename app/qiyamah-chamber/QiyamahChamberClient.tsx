@@ -163,7 +163,44 @@ export function QiyamahChamberClient({
   const [aspectRatio,        setAspectRatio]        = useState<string>('16:9');
   // Which fleet's shapes are offered follows the act: a clip's fleet for a
   // clip, a picture's for a picture. An edit keeps the shape of its source.
+  /** A clip is made from a described idea, or from a still the Creator owns. */
+  const [videoSource, setVideoSource] = useState<'idea' | 'asset'>('idea');
+
   const shapesForAct = mediaType === 'video' ? aspectOptions : imageAspectOptions;
+
+  /**
+   * Acts that begin from something the Creator already owns. They take an
+   * asset and an instruction; an idea, a style, a duration and a shape all
+   * belong to the thing being made from nothing, and are not asked for here.
+   */
+  const actsOnOwnAsset = mediaType === 'edit' || (mediaType === 'video' && videoSource === 'asset');
+
+  /**
+   * ── WHAT THIS WILL COST, BEFORE IT IS SPENT ───────────────────────────
+   *
+   *   FOUND 2026-09-26: the engine for this was complete — cost engine,
+   *   credit ledger, trial service, its own comment reading «Creator must
+   *   know cost BEFORE creation starts» — and no chamber in the Empire
+   *   called it. Nothing new is built here. A door is opened.
+   */
+  /**
+   * ── THE RESULT'S OWN NAME ─────────────────────────────────────────────
+   *
+   *   The Chamber showed a Creator the asset it had just made for them and
+   *   did not know WHICH asset it was: the id came back in the response and
+   *   was thrown away. So nothing could be done to a fresh result without
+   *   scrolling to the gallery and finding it again by eye — the one thing
+   *   the newest creation workspaces do not make anyone do.
+   */
+  const [generatedAssetId, setGeneratedAssetId] = useState<string | null>(null);
+
+  const [upscaleState, setUpscaleState] = useState<'idle' | 'running' | 'ready' | 'failed'>('idle');
+  const [upscaleError, setUpscaleError] = useState<string | null>(null);
+
+  const [cost, setCost] = useState<{
+    workAr: string; estimatedAzmaUnits: number | null; priced: boolean;
+    canProceed: boolean; availableUnits: number; trialAvailable: boolean; blockerAr?: string;
+  } | null>(null);
   const [constructedPrompt,  setConstructedPrompt]  = useState('');
   // Tracks the initial Qiyamah expansion so the Creator can restore it after editing
   const [originalConstructedPrompt, setOriginalConstructedPrompt] = useState('');
@@ -462,7 +499,7 @@ export function QiyamahChamberClient({
     while (Date.now() < deadline) {
       await new Promise((resolve) => setTimeout(resolve, 5000));
       // Contract §5: the operation's fields are the response itself.
-      let op: { state: string; producing: boolean; succeeded: boolean; assetUrl: string | null; failureReason: string | null } | null = null;
+      let op: { state: string; producing: boolean; succeeded: boolean; assetId?: string | null; assetUrl: string | null; failureReason: string | null } | null = null;
       try {
         const res = await fetch(`/api/qiyamah/operations/${operationId}`);
         if (res.ok) op = await res.json();
@@ -483,6 +520,7 @@ export function QiyamahChamberClient({
       if (op.succeeded && op.assetUrl) {
         setProducingNotice(null);
         setGeneratedAssetUrl(op.assetUrl);
+        setGeneratedAssetId(op.assetId ?? null);
         setGeneratedAssetType('video');
         setStage('result');
         fetchGenerations();
@@ -617,6 +655,7 @@ export function QiyamahChamberClient({
       }
       if (result.status === 'succeeded') {
         setGeneratedAssetUrl(result.asset.assetUrl);
+        setGeneratedAssetId(result.asset.assetId ?? null);
         // What was MADE, not which act was chosen: an infographic is a
         // picture, and an edit returns one. Only video is video.
         setGeneratedAssetType(mediaType === 'video' ? 'video' : 'image');
@@ -682,8 +721,12 @@ export function QiyamahChamberClient({
     setOriginalConstructedPrompt('');
     setConstructionError(null);
     setGeneratedAssetUrl(null);
+    setGeneratedAssetId(null);
     setGeneratedAssetType(null);
+    setUpscaleState('idle');
+    setUpscaleError(null);
     setMediaType('image');
+    setVideoSource('idea');
     setDurationSeconds(6);
     setGenerationError(null);
     setGenerationErrorReason(null);
@@ -733,6 +776,33 @@ export function QiyamahChamberClient({
       .filter((u) => u.capabilityTarget === 'VISUAL')
       .map((u) => ({ assetId: u.assetId, url: u.url, label: 'أصلٌ رفعته' })),
   ];
+
+  const COST_CAPABILITY_OF_ACT = {
+    image: 'image-generation',
+    infographic: 'image-generation',
+    video: 'video-generation',
+    edit: 'image-editing',
+  } as const;
+
+  useEffect(() => {
+    let abandoned = false;
+    setCost(null);
+    void (async () => {
+      try {
+        const res = await fetch('/api/sovereign/economy/estimate', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ capability: COST_CAPABILITY_OF_ACT[mediaType] }),
+        });
+        if (!res.ok || abandoned) return;
+        setCost(await res.json());
+      } catch {
+        // A price we cannot fetch is simply not shown. It never blocks the work.
+      }
+    })();
+    return () => { abandoned = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mediaType]);
 
   const hasGalleryContent = generations.length > 0 || uploadedItems.length > 0;
 
@@ -861,6 +931,37 @@ export function QiyamahChamberClient({
     } catch {
       setAnimateError('البوابة لا تستجيب. أعِد المحاولة.');
       setAnimateState('failed');
+    }
+  }
+
+  /**
+   * Raise an asset's resolution. The Founder approved it on 2026-09-26 after
+   * the inventory showed four of its five parts were already built and
+   * unreachable. It takes no instruction — an upscale is told nothing, it is
+   * asked only which asset, and the engine runs in a mode that invents
+   * nothing, as the Empire's own benchmark for it requires.
+   */
+  async function handleUpscaleAsset(assetId: string) {
+    setUpscaleState('running');
+    setUpscaleError(null);
+    try {
+      const res = await fetch(`/api/vault/assets/${assetId}/upscale`, { method: 'POST' });
+      const result = await res.json();
+      if (result.status !== 'succeeded') {
+        // The route speaks Arabic and names no engine. Shown as it is.
+        setUpscaleError(result.message ?? 'تعذّر رفع الدقّة.');
+        setUpscaleState('failed');
+        return;
+      }
+      // The Vault is re-read rather than guessed at, and the Creator is shown
+      // the raised asset in place of the one they were looking at.
+      fetchGenerations();
+      setGeneratedAssetId(result.asset.assetId);
+      setGeneratedAssetUrl(result.asset.secureStorageUri);
+      setUpscaleState('ready');
+    } catch {
+      setUpscaleError('تعذّر الاتصال. لم يُحفظ شيء.');
+      setUpscaleState('failed');
     }
   }
 
@@ -1037,8 +1138,114 @@ export function QiyamahChamberClient({
                 ))}
               </div>
 
-              {/* An edit takes an asset and an instruction, not an idea. */}
-              {mediaType !== 'edit' && (
+              {/* ── WHERE A CLIP COMES FROM ─────────────────────────────
+                  The Founder, twice: «التحريك موجود ولكنه غير ظاهر إلا عند
+                  الضغط على الصورة». It was true and unfindable — a control
+                  on a card at the bottom of the gallery. Animating a still
+                  IS making a clip from an asset you own, so it belongs
+                  inside the فيديو act, not as a fifth box beside four he
+                  named. Nothing new is built: the same route, the same
+                  handler, the same model choice. What changed is where. */}
+              {mediaType === 'video' && animationModels.length > 0 && (
+                <div className="source-toggle" role="radiogroup" aria-label="مصدر المقطع">
+                  {([
+                    ['idea',  'من فكرتك',        'يُبنى المشهد من وصفك'],
+                    ['asset', 'من أصلٍ تملكه',   'تُبعث الحركة في صورةٍ لديك'],
+                  ] as const).map(([src, label, hint]) => (
+                    <button
+                      key={src}
+                      role="radio"
+                      aria-checked={videoSource === src}
+                      className={`source-btn${videoSource === src ? ' source-btn--active' : ''}`}
+                      onClick={() => setVideoSource(src)}
+                      disabled={stage === 'constructing'}
+                    >
+                      <span className="source-name">{label}</span>
+                      <span className="source-hint">{hint}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {mediaType === 'video' && videoSource === 'asset' && (
+                <div className="edit-act" role="group" aria-label="تحريك أصل">
+                  {editableAssets.length === 0 && !animateAssetId ? (
+                    <p className="edit-act-empty">
+                      لا صورَ لديك بعد. أنشئ صورةً أوّلاً، ثمّ عُد لتبعث فيها الحركة.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="edit-act-label">أيّ صورةٍ تُحرّك؟</p>
+                      <div className="edit-act-assets">
+                        {editableAssets.map((a) => (
+                          <button
+                            key={a.assetId}
+                            type="button"
+                            className={`edit-act-asset${animateAssetId === a.assetId ? ' edit-act-asset--on' : ''}`}
+                            onClick={() => setAnimateAssetId(a.assetId)}
+                            disabled={animateState === 'running'}
+                            title={a.label}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={a.url} alt={a.label} />
+                          </button>
+                        ))}
+                      </div>
+
+                      <label className="edit-act-label" htmlFor="video-animate-instruction">
+                        كيف تتحرّك؟
+                      </label>
+                      <textarea
+                        id="video-animate-instruction"
+                        className="edit-act-input"
+                        rows={2}
+                        maxLength={1000}
+                        value={animateInstruction}
+                        onChange={(e) => setAnimateInstruction(e.target.value)}
+                        placeholder="مثال: تقترب الكاميرا ببطء، ويتحرّك الدخان إلى الأعلى."
+                        disabled={animateState === 'running'}
+                      />
+
+                      {animationModels.length > 1 && (
+                        <div className="asset-animate-models" role="radiogroup" aria-label="نوع الحركة">
+                          {animationModels.map((m) => (
+                            <label key={m.modelId} className="asset-animate-model-option">
+                              <input
+                                type="radio"
+                                name="video-act-animate-model"
+                                checked={animateModelId === m.modelId}
+                                onChange={() => setAnimateModelId(m.modelId)}
+                                disabled={animateState === 'running'}
+                              />
+                              <span className="animate-model-name">{m.nameAr}</span>
+                              {m.noteAr && <span className="animate-model-note">{m.noteAr}</span>}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+
+                      {animateState === 'running' && (
+                        <p className="edit-act-status" role="status">الحركة قيد البعث… لا تغلق الصفحة.</p>
+                      )}
+                      {animateState === 'failed' && animateError && (
+                        <p className="edit-act-error" role="alert">{animateError}</p>
+                      )}
+
+                      <button
+                        className="edit-act-run"
+                        disabled={animateState === 'running' || !animateAssetId || animateInstruction.trim().length === 0}
+                        onClick={() => void handleAnimateAsset()}
+                      >
+                        {animateState === 'running' ? '⏳ الحركة جارية…' : '▶ ابعث الحركة'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* An act that works on an asset the Creator owns takes that
+                  asset and an instruction — never an idea. */}
+              {!actsOnOwnAsset && (
                 <>
               {/* Mode tab switcher */}
               <div className="mode-tab-switcher" role="tablist" aria-label="وضع الإدخال">
@@ -1113,7 +1320,7 @@ export function QiyamahChamberClient({
                   already has one. An infographic's style is the act itself, and
                   it BINDS a designated model, so it is not re-offered as one
                   choice among fourteen. */}
-              {(mediaType === 'image' || mediaType === 'video') && (
+              {(mediaType === 'image' || (mediaType === 'video' && videoSource === 'idea')) && (
                 <StyleRegistry disabled={stage === 'constructing'} />
               )}
               {mediaType === 'infographic' && (
@@ -1129,7 +1336,7 @@ export function QiyamahChamberClient({
                   same route, the same handler. What changed is where it is. */}
               {mediaType === 'edit' && (
                 <div className="edit-act" role="group" aria-label="تعديل أصل">
-                  {editableAssets.length === 0 ? (
+                  {editableAssets.length === 0 && !editingAssetId ? (
                     <p className="edit-act-empty">
                       لا أصولَ لديك بعد. أنشئ صورةً أوّلاً، ثمّ عُد هنا لتُغيّر فيها.
                     </p>
@@ -1185,7 +1392,7 @@ export function QiyamahChamberClient({
                 </div>
               )}
 
-              {mediaType === 'video' && durationLadder.length > 0 && (
+              {mediaType === 'video' && videoSource === 'idea' && durationLadder.length > 0 && (
                 <div className="duration-picker" role="group" aria-label="مدة الفيديو">
                   <p className="duration-label">
                     مدة الفيديو
@@ -1212,7 +1419,7 @@ export function QiyamahChamberClient({
                 </div>
               )}
 
-              {mediaType !== 'edit' && shapesForAct.length > 1 && (
+              {!actsOnOwnAsset && shapesForAct.length > 1 && (
                 <div className="aspect-picker" role="group" aria-label="امتداد المشهد">
                   <p className="duration-label">امتداد المشهد</p>
                   {/* The Founder asked for it and it did not exist. Only shapes
@@ -1243,6 +1450,17 @@ export function QiyamahChamberClient({
                 <p className="construction-error" role="alert">{constructionError}</p>
               )}
 
+              {cost && (
+                <p className={`cost-line${cost.canProceed ? '' : ' cost-line--blocked'}`} role="status">
+                  {cost.priced && cost.estimatedAzmaUnits !== null
+                    ? <>{cost.workAr} — <strong>{cost.estimatedAzmaUnits}</strong> وحدة سياديّة</>
+                    : <>{cost.workAr} — الكُلفة غير مُقدَّرة بعد</>}
+                  <span className="cost-balance">رصيدك {cost.availableUnits}</span>
+                  {cost.trialAvailable && <span className="cost-trial">تجربتك سارية</span>}
+                  {cost.blockerAr && <span className="cost-blocker">{cost.blockerAr}</span>}
+                </p>
+              )}
+
               {stage === 'constructing' ? (
                 <div className="construction-progress">
                   <div className="construction-spinner" aria-hidden="true" />
@@ -1250,7 +1468,7 @@ export function QiyamahChamberClient({
                     {producingNotice ?? (inputMode === 'idea' ? 'القيامة تبني المشهد السيادي…' : 'القيامة تقرأ محثك…')}
                   </p>
                 </div>
-              ) : mediaType === 'edit' ? null : (
+              ) : actsOnOwnAsset ? null : (
                 /* An edit has its own act and its own button. Offering
                    «بناء المشهد» beside it would offer a second thing to
                    press that does something else entirely. */
@@ -1449,6 +1667,76 @@ export function QiyamahChamberClient({
                   ? <><strong>{displayName}</strong>، هذا الآن جزء من إرثك السيادي.</>
                   : <>تم التخليق. هذا الآن جزء من إرثك السيادي.</>}
               </p>
+              {/* ── THE LOOP CLOSES ON THE RESULT ─────────────────────────
+                  MEASURED 2026-09-26 against the newest creation workspaces:
+                  they keep the result in place and offer the next act ON it.
+                  This Chamber sent a Creator back to the top to choose an act,
+                  then down to the gallery to find the asset they were already
+                  looking at. Every act below already existed. What is new is
+                  that the result knows its own name, so they can be offered
+                  here. Nothing is regenerated and nothing is re-uploaded. */}
+              {generatedAssetId && (
+                <div className="next-acts" role="group" aria-label="ماذا تفعل بهذا الآن؟">
+                  <p className="next-acts-label">وماذا الآن؟</p>
+                  <div className="next-acts-row">
+                    <button
+                      className="next-act"
+                      disabled={acceptingAssetId === generatedAssetId || acceptedAssetIds.includes(generatedAssetId)}
+                      onClick={() => void acceptAsset(generatedAssetId)}
+                    >
+                      {acceptedAssetIds.includes(generatedAssetId) ? '✓ معتمَد' : '✓ اعتمده'}
+                    </button>
+
+                    {generatedAssetType !== 'video' && (
+                      <>
+                        <button
+                          className="next-act"
+                          onClick={() => {
+                            setMediaType('edit');
+                            setEditingAssetId(generatedAssetId);
+                            setEditInstruction('');
+                            setEditState('ready');
+                            setStage('idea');
+                          }}
+                        >
+                          ✎ عدّل عليه
+                        </button>
+
+                        {animationModels.length > 0 && (
+                          <button
+                            className="next-act"
+                            onClick={() => {
+                              setMediaType('video');
+                              setVideoSource('asset');
+                              setAnimateAssetId(generatedAssetId);
+                              setAnimateInstruction('');
+                              setAnimateState('ready');
+                              setStage('idea');
+                            }}
+                          >
+                            ▶ ابعث فيه الحركة
+                          </button>
+                        )}
+
+                        <button
+                          className="next-act"
+                          disabled={upscaleState === 'running'}
+                          onClick={() => void handleUpscaleAsset(generatedAssetId)}
+                        >
+                          {upscaleState === 'running' ? '⏳ الدقّة تُرفع…' : '⤢ ارفع دقّته'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {upscaleState === 'ready' && (
+                    <p className="next-acts-note" role="status">رُفعت الدقّة، وهذا هو الناتج الجديد.</p>
+                  )}
+                  {upscaleState === 'failed' && upscaleError && (
+                    <p className="next-acts-error" role="alert">{upscaleError}</p>
+                  )}
+                </div>
+              )}
+
               <div className="result-actions">
                 {generatedAssetUrl && (
                   <a

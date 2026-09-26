@@ -5,6 +5,8 @@ import { CreatorCreditRepository } from '../../../../../src/economy/credit-ledge
 import { AzmaUnitCostEngine } from '../../../../../src/economy/cost-engine/azma-cost-engine';
 import { TrialEntitlementService } from '../../../../../src/economy/trial/trial-entitlement-service';
 import type { CapabilityTarget } from '../../../../../src/economy/cost-engine/cost-engine-types';
+import { IMAGE_MODEL_FLEET } from '../../../../../src/sovereign-model-selection/image-model-fleet';
+import { VIDEO_MODEL_FLEET } from '../../../../../src/sovereign-model-selection/video-model-fleet';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,10 +17,47 @@ const VALID_CAPABILITIES: readonly CapabilityTarget[] = [
   'video-generation', 'text-to-speech', 'voice-cloning',
 ];
 
+/**
+ * ── THE GATEWAY IS DERIVED, NEVER SUPPLIED ──────────────────────────────────
+ *
+ *   This route defaulted to 'openai' and accepted any gatewayId the caller
+ *   sent. Both are wrong. The gateway a Creator's work will actually run on is
+ *   whatever the DESIGNATED fleet declares — the Founder's designation, not a
+ *   default written here and not a string from a browser. Reading it from the
+ *   fleet means the price quoted is the price of the work that will be done,
+ *   and it means no provider name can travel from a page into this estimate.
+ */
+function designatedGateway(capability: CapabilityTarget): string {
+  const fleet = capability === 'video-generation' ? VIDEO_MODEL_FLEET : IMAGE_MODEL_FLEET;
+  const designated = fleet.find((m) => m.productionAuthorized && m.active);
+  return designated?.gatewayId ?? 'magic-hour';
+}
+
+/**
+ * ── WHAT A CREATOR IS TOLD A THING COSTS ────────────────────────────────────
+ *
+ *   The catalog's own `unitDescription` reads «1 upscaled image (50–200 MH
+ *   credits)», «1 generated image (Nano Banana 2)», «1 video generation (Veo
+ *   3.1)». That field is for engineers reading logs, exactly as `displayName`
+ *   is on the model fleet — it names providers and their products, and the
+ *   Knowledge Source Abstraction Principle forbids it reaching a Creator.
+ *   The same is true of `blockerReason`, which interpolates the gateway id.
+ *
+ *   So neither crosses this boundary. What crosses is the work, in Arabic.
+ */
+const WORK_AR: Record<CapabilityTarget, string> = {
+  'image-generation': 'صورة واحدة',
+  'image-editing':    'تعديل واحد على أصل',
+  'image-upscaling':  'رفع دقّة أصل واحد',
+  'video-generation': 'مقطع واحد',
+  'text-to-speech':   'نطق واحد',
+  'voice-cloning':    'صوت منسوخ واحد',
+};
+
 // POST /api/sovereign/economy/estimate
 // Pre-flight cost transparency — Creator must know cost BEFORE creation starts.
-// Body: { capability: CapabilityTarget, gatewayId?: string }
-// Returns: AZMA Unit cost, whether Creator can proceed, trial status.
+// Body: { capability: CapabilityTarget }   — the gateway is derived, not sent.
+// Returns: AZMA Units, the Creator's balance, and whether they may proceed.
 export async function POST(request: NextRequest) {
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   const session = sessionId ? verifySession(sessionId) : null;
@@ -35,7 +74,6 @@ export async function POST(request: NextRequest) {
   }
 
   const capability = (body as { capability?: unknown })?.capability;
-  const gatewayId = (body as { gatewayId?: unknown })?.gatewayId ?? 'openai';
 
   if (typeof capability !== 'string' || !VALID_CAPABILITIES.includes(capability as CapabilityTarget)) {
     return NextResponse.json(
@@ -44,9 +82,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (typeof gatewayId !== 'string') {
-    return NextResponse.json({ error: 'invalid_gateway_id' }, { status: 400 });
-  }
+  const gatewayId = designatedGateway(capability as CapabilityTarget);
 
   const db = getDb();
   const repo = new CreatorCreditRepository(db);
@@ -69,16 +105,22 @@ export async function POST(request: NextRequest) {
   // Founder bypass — Founders always can proceed
   const canProceed = session.role === 'founder' ? true : (estimate.canProceed || trialAvailable);
 
+  // A price the Empire cannot state is not quoted as zero — it is stated as
+  // unknown, and the Creator is told so rather than shown a confident 0.
+  const priced = estimate.availability === 'available';
+
   return NextResponse.json({
     capability,
-    gatewayId,
-    estimatedAzmaUnits: estimate.estimatedAzmaUnits,
-    availability: estimate.availability,
-    unitDescription: estimate.unitDescription,
+    workAr: WORK_AR[capability as CapabilityTarget],
+    estimatedAzmaUnits: priced ? estimate.estimatedAzmaUnits : null,
+    priced,
     canProceed,
-    blockerReason: canProceed ? undefined : estimate.blockerReason,
     availableUnits: balance.availableUnits,
     trialAvailable,
-    catalogVersion: estimate.catalogVersion,
+    blockerAr: canProceed
+      ? undefined
+      : trialAvailable === false && priced
+        ? 'رصيدك لا يكفي لهذا العمل.'
+        : 'هذا العمل غير متاحٍ الآن.',
   });
 }

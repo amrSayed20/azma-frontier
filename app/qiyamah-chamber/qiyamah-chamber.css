@@ -1272,7 +1272,7 @@
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(212, 175, 55, 0.18);
   border-radius: 4px;
-  color: var(--text-soft, #d8d2c6);
+  color: var(--text-main);
   font-family: inherit;
   font-size: 11px;
   line-height: 1.7;
@@ -1382,7 +1382,7 @@
 .asset-animate-model {
   margin: 0.35rem 0 0;
   font-size: 0.9rem;
-  color: var(--qiyamah-text-dim, #b9ad8c);
+  color: var(--text-muted);
 }
 .asset-animate-models { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.35rem; }
 .asset-animate-model-option { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; cursor: pointer; }
@@ -1529,3 +1529,72 @@
 .generation-card:has(.asset-edit-panel) .generation-thumb { height: 180px; }
 .asset-animate-models { flex-direction: column; gap: 0.6rem; }
 .asset-animate-result .asset-animate-video { height: auto; max-height: 260px; }
+
+
+/* ── WHAT THIS WILL COST, BEFORE IT IS SPENT ──────────────────
+   Said beside the button that spends it, not on a billing page. */
+.cost-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  margin: 0;
+  font-size: 0.92em;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.cost-line strong { color: var(--gold-neon); font-weight: 700; }
+.cost-balance { opacity: 0.72; }
+.cost-trial { color: var(--gold-neon); opacity: 0.85; }
+.cost-line--blocked .cost-blocker { color: var(--crimson-neon); }
+
+
+/* ── WHERE A CLIP COMES FROM ─────────────────────────────────
+   Two sources for one act: a described idea, or a still already owned. */
+.source-toggle { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+.source-btn {
+  flex: 1 1 160px;
+  min-width: 0;
+  text-align: center;
+  padding: 9px 12px;
+  border-radius: 7px;
+  border: 1px solid rgba(139, 0, 0, 0.28);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+.source-btn:hover:not(:disabled) { color: var(--text-main); background: rgba(139, 0, 0, 0.1); }
+.source-btn--active {
+  border-color: var(--crimson-neon);
+  color: var(--crimson-neon);
+  background: rgba(139, 0, 0, 0.18);
+}
+.source-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.source-name { display: block; font-weight: 700; white-space: nowrap; }
+.source-hint { display: block; margin-top: 3px; font-size: 0.85em; line-height: 1.4; opacity: 0.62; }
+
+/* ── THE LOOP CLOSES ON THE RESULT ───────────────────────────
+   The next act is offered on the thing just made, in place. */
+.next-acts { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; width: 100%; }
+.next-acts-label { margin: 0; font-size: 0.9em; opacity: 0.66; }
+.next-acts-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.next-act {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--gold-dim);
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--gold-neon);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.18s, border-color 0.18s;
+}
+.next-act:hover:not(:disabled) { background: rgba(212, 175, 55, 0.1); border-color: var(--gold-neon); }
+.next-act:disabled { opacity: 0.5; cursor: not-allowed; }
+.next-acts-note { margin: 0; font-size: 0.9em; color: var(--gold-neon); opacity: 0.85; }
+.next-acts-error { margin: 0; font-size: 0.9em; color: var(--crimson-neon); }

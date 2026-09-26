@@ -159,6 +159,24 @@ export const CHAMBER_TRUTH = {
         requiresExistingAsset: true,
       },
       {
+        // APPROVED by the Founder 2026-09-26. Four of its five parts were
+        // already built and unreachable: the provider route PROBED LIVE,
+        // the cost catalog pricing it, a full benchmark with golden assets,
+        // and the editor's own client to extend.
+        //
+        // NOT an edit: an edit changes what the picture shows, this raises
+        // its resolution and is run in a mode that invents nothing — which is
+        // what the Empire's own benchmark for it demands.
+        id: 'upscale-asset',
+        performs:
+          "Raises an existing image's resolution without inventing detail, depositing the "
+          + 'result as a new asset whose lineage names its parent.',
+        performsAr:
+          'ترفع دقّة صورةٍ تملكها دون أن تخترع فيها شيئاً — ويُحفظ الناتج أصلاً جديداً ينسب إلى أصله.',
+        boundary: { kind: 'route', at: 'app/api/vault/assets/[assetId]/upscale', methods: ['POST'] },
+        requiresExistingAsset: true,
+      },
+      {
         id: 'accept-generated-asset',
         performs:
           "Records the Creator's word that a generated asset is right, raising it from "
@@ -174,6 +192,21 @@ export const CHAMBER_TRUTH = {
         performsAr:
           'تعرض كلّ ما ولّدتَه أنت، ولا يراه سواك.',
         boundary: { kind: 'route', at: 'app/api/qiyamah/generations', methods: ['GET'] },
+        requiresExistingAsset: false,
+      },
+      {
+        // FOUND 2026-09-26: the engine behind this was complete — verified
+        // session, cost engine, credit ledger, trial service, and its own
+        // comment reading «Creator must know cost BEFORE creation starts» —
+        // and NOTHING in the Empire called it. Not a missing capability: an
+        // unreachable one, and so absent from this registry too.
+        id: 'know-cost-before-creating',
+        performs:
+          'States what a chosen act will cost in AZMA Units, and what the Creator holds, '
+          + 'before anything is made. Creates nothing and spends nothing.',
+        performsAr:
+          'تقول لك ما يكلّفه العمل الذي اخترته وما لديك — قبل أن يُصنع شيء.',
+        boundary: { kind: 'route', at: 'app/api/sovereign/economy/estimate', methods: ['POST'] },
         requiresExistingAsset: false,
       },
       {
