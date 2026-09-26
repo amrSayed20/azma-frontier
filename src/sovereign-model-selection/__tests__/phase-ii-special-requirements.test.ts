@@ -24,6 +24,8 @@ function makeVideoModel(
     gatewayId: 'gateway-v',
     providerModelId: 'base-video-v1',
     displayName: 'Base Video Model',
+    sovereignNameAr: 'نموذج اختبار',
+    sovereignNoteAr: 'للاختبار وحده.',
     mediaType: 'video',
     capabilities: ['video-generation'],
     qualityTier: 'high',

@@ -62,6 +62,14 @@ export interface VideoGenerationRequest {
   readonly prompt: string;
   readonly style?: string;
   readonly durationSeconds: number;
+  /**
+   * The shape of the scene — '16:9' horizontal, '9:16' vertical, '1:1' square.
+   *
+   * The Founder asked for it on 2026-09-25 and no field existed: the Chamber
+   * could not offer a choice the request had no way to carry. Optional, so a
+   * caller that does not care gets the provider's own default.
+   */
+  readonly aspectRatio?: string;
   readonly creatorId?: string;
   readonly originalIdea?: string | null;
   /** One id per attempt, minted by the route; threaded to the provider and back. */

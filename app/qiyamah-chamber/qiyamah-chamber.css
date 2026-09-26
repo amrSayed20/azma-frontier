@@ -1396,3 +1396,48 @@
   font-size: 12px;
   line-height: 1.6;
 }
+
+
+/* ── A MODEL IS CHOSEN BY WHAT IT DOES ─────────────────────────────
+   FOUND 2026-09-25: this list rendered the provider's own product names to the
+   Creator. It now carries a sovereign name and one line on what choosing it
+   means for the work. */
+.asset-animate-model-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+  align-items: baseline;
+}
+.animate-model-name { font-weight: 600; }
+.animate-model-note {
+  grid-column: 2;
+  font-size: 0.9em;
+  line-height: 1.5;
+  opacity: 0.66;
+}
+
+
+/* ── THE SHAPE OF THE SCENE ───────────────────────────────────
+   Asked for on 2026-09-25 and absent entirely. The glyph shows the shape so a
+   Creator recognises it before reading the word. */
+.aspect-picker { margin-top: 10px; }
+.aspect-btn { display: inline-flex; align-items: center; gap: 7px; }
+.aspect-glyph {
+  display: inline-block;
+  border: 1.5px solid currentColor;
+  border-radius: 2px;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+.aspect-glyph--16-9 { width: 18px; height: 10px; }
+.aspect-glyph--9-16 { width: 10px; height: 18px; }
+.aspect-glyph--1-1  { width: 14px; height: 14px; }
+
+/* The ladder can now be long. It wraps rather than pushing the panel wide, and
+   says its own ceiling so a Creator sees what the Empire can reach. */
+.duration-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.duration-max {
+  margin-inline-start: 8px;
+  font-size: 0.85em;
+  opacity: 0.6;
+}

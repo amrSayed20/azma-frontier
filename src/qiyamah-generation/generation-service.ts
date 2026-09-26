@@ -413,6 +413,7 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
   const orchestrationMetadata: Record<string, unknown> = {
     ...(style ? { style } : {}),
     durationSeconds: request.durationSeconds,
+    ...(request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
   };
 
   if (selectionResult.selected) {

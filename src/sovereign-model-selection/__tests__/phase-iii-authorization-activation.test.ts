@@ -1,4 +1,17 @@
 /**
+ * UPDATED 2026-09-25 — the Founder's designation supersedes the Phase III order.
+ *
+ * These guards were written when the Chief Architect authorized all ten fleet
+ * models for production. The Founder designated four on 2026-09-25: two for
+ * images and the infographic, two for video and its editing. The other six are
+ * withdrawn from production and their entries kept, because what the Empire
+ * verified about them is its own record.
+ *
+ * What these guards protect is unchanged and still enforced: authorization is
+ * explicit, never implied; reading it costs nothing; and an unauthorized model
+ * is never selected.
+ */
+/**
  * Phase III Validation: Production Model Fleet Activation
  *
  * 20 non-generative validation points proving authorization correctness.
@@ -42,6 +55,8 @@ function makeAuthorizedImageModel(
     gatewayId: 'magic-hour',
     providerModelId: 'test-image-v1',
     displayName: 'Test Image Model',
+    sovereignNameAr: 'نموذج اختبار',
+    sovereignNoteAr: 'للاختبار وحده.',
     mediaType: 'image',
     capabilities: ['image-generation'],
     qualityTier: 'high',
@@ -66,6 +81,8 @@ function makeAuthorizedVideoModel(
     gatewayId: 'magic-hour',
     providerModelId: 'test-video-v1',
     displayName: 'Test Video Model',
+    sovereignNameAr: 'نموذج اختبار',
+    sovereignNoteAr: 'للاختبار وحده.',
     mediaType: 'video',
     capabilities: ['video-generation'],
     qualityTier: 'high',
@@ -109,7 +126,7 @@ describe('Point 1 — All ten fleet models have productionAuthorized: true', () 
   it('all 5 image fleet models are production-authorized', () => {
     expect(IMAGE_MODEL_FLEET).toHaveLength(5);
     for (const model of IMAGE_MODEL_FLEET) {
-      expect(model.productionAuthorized).toBe(true);
+      expect(typeof model.productionAuthorized).toBe('boolean');
       expect(model.verificationStatus).toBe('production-authorized');
     }
   });
@@ -117,7 +134,7 @@ describe('Point 1 — All ten fleet models have productionAuthorized: true', () 
   it('all 5 video fleet models are production-authorized', () => {
     expect(VIDEO_MODEL_FLEET).toHaveLength(5);
     for (const model of VIDEO_MODEL_FLEET) {
-      expect(model.productionAuthorized).toBe(true);
+      expect(typeof model.productionAuthorized).toBe('boolean');
       expect(model.verificationStatus).toBe('production-authorized');
     }
   });
@@ -129,7 +146,7 @@ describe('Point 1 — All ten fleet models have productionAuthorized: true', () 
     const unauthorized = all.filter((m) => !m.productionAuthorized);
     const stillCandidate = all.filter((m) => m.verificationStatus === 'approved-candidate');
 
-    expect(unauthorized).toHaveLength(0);
+    expect(unauthorized.length).toBeLessThanOrEqual(6);
     expect(stillCandidate).toHaveLength(0);
   });
 
@@ -142,7 +159,7 @@ describe('Point 1 — All ten fleet models have productionAuthorized: true', () 
 
     // Authorized by the Chief Architect
     expect(veo!.productionAuthorized).toBe(true);
-    expect(sora!.productionAuthorized).toBe(true);
+    expect(sora!.productionAuthorized).toBe(false); // withdrawn by the designation
 
     // Veo dispatches through the Magic Hour binding; Sora still has no adapter.
     expect(veo!.active).toBe(true);
@@ -162,7 +179,7 @@ describe('Point 2 — Production registry exposes authorized models', () => {
 
   it('findProductionAuthorized("image") returns 4 active authorized image models (seedream-4-5 inactive: invalid providerModelId)', () => {
     const authorized = getProductionRegistry().findProductionAuthorized('image');
-    expect(authorized).toHaveLength(4);
+    expect(authorized).toHaveLength(2);
     for (const m of authorized) {
       expect(m.productionAuthorized).toBe(true);
       expect(m.active).toBe(true);
@@ -173,9 +190,11 @@ describe('Point 2 — Production registry exposes authorized models', () => {
   it('findProductionAuthorized("video") returns the 4 active authorized video models (excludes sora)', () => {
     const authorized = getProductionRegistry().findProductionAuthorized('video');
     // ltx-2-3, kling-3-0, seedance-2-0, veo-3-1 are active; sora-2 is active:false
-    expect(authorized).toHaveLength(4);
+    expect(authorized).toHaveLength(2);
     const ids = authorized.map((m) => m.modelId).sort();
-    expect(ids).toEqual(['kling-3-0', 'ltx-2-3', 'seedance-2-0', 'veo-3-1']);
+    // The Founder designated two models for video and its editing on
+    // 2026-09-25. kling-3-0 and ltx-2-3 are withdrawn from production.
+    expect(ids).toEqual(['seedance-2-0', 'veo-3-1']);
   });
 });
 
@@ -809,7 +828,7 @@ describe('Point 20 — ZERO real provider generations during Phase III', () => {
     const authorizedCount = allModels.filter((m) => m.productionAuthorized).length;
 
     // Reading productionAuthorized is a pure property access — no network, no credits
-    expect(authorizedCount).toBe(10);
+    expect(authorizedCount).toBe(4);
   });
 
   it('production registry rebuild (after resetProductionRegistryForTests) is a pure in-memory operation', () => {

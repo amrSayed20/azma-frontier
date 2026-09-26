@@ -28,6 +28,8 @@ function makeImageModel(
     gatewayId: 'gateway-a',
     providerModelId: 'test-model-v1',
     displayName: 'Test Image Model',
+    sovereignNameAr: 'نموذج اختبار',
+    sovereignNoteAr: 'للاختبار وحده.',
     mediaType: 'image',
     capabilities: ['image-generation'],
     qualityTier: 'high',

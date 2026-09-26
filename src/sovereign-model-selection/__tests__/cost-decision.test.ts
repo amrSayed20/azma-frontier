@@ -24,6 +24,8 @@ function makeModel(overrides: Partial<SovereignMediaModelDescriptor>): Sovereign
     gatewayId: 'gw-a',
     providerModelId: 'base-v1',
     displayName: 'Base',
+    sovereignNameAr: 'نموذج اختبار',
+    sovereignNoteAr: 'للاختبار وحده.',
     mediaType: 'image',
     capabilities: ['image-generation'],
     qualityTier: 'high',

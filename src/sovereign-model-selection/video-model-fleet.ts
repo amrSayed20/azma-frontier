@@ -30,6 +30,8 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
     gatewayId: 'magic-hour',
     providerModelId: 'ltx-2.3',                // REQUIRES_VERIFICATION
     displayName: 'LTX 2.3',
+    sovereignNameAr: 'الحركة الخفيفة',
+    sovereignNoteAr: 'مقاطعُ قصيرة سريعة الإنجاز.',
     mediaType: 'video',
     capabilities: ['video-generation'],
     qualityTier: 'standard',                    // REQUIRES_VERIFICATION
@@ -49,7 +51,14 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
       modelId: 'ltx-2-3',
     },
     verificationStatus: 'production-authorized',
-    productionAuthorized: true,
+    // ── THE FOUNDER'S DESIGNATION, 2026-09-25 ──────────────────────
+    //   «قد اختصصت ثلاثة مزودين فقط من المزود الرئيسي» — one for images and
+    //   the infographic, two for video and its editing. This model is not
+    //   among them, so production never routes to it. Its entry is kept, not
+    //   deleted: the Empire's record of what it verified, what it costs and
+    //   what it can do is worth more than the few lines it occupies, and a
+    //   designation that changes should change a flag, not resurrect a file.
+    productionAuthorized: false,
     active: true,
     internalNotes:
       'Production authorized by Chief Architect 2026-08-27 (Phase III). Magic Hour-hosted. ' +
@@ -61,6 +70,8 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
     gatewayId: 'magic-hour',
     providerModelId: 'kling-3.0',              // REQUIRES_VERIFICATION
     displayName: 'Kling 3.0',
+    sovereignNameAr: 'الحركة المتّزنة',
+    sovereignNoteAr: 'حركةٌ هادئة وثباتٌ في المشهد.',
     mediaType: 'video',
     capabilities: ['video-generation'],
     qualityTier: 'high',                        // REQUIRES_VERIFICATION
@@ -80,7 +91,14 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
       modelId: 'kling-3-0',
     },
     verificationStatus: 'production-authorized',
-    productionAuthorized: true,
+    // ── THE FOUNDER'S DESIGNATION, 2026-09-25 ──────────────────────
+    //   «قد اختصصت ثلاثة مزودين فقط من المزود الرئيسي» — one for images and
+    //   the infographic, two for video and its editing. This model is not
+    //   among them, so production never routes to it. Its entry is kept, not
+    //   deleted: the Empire's record of what it verified, what it costs and
+    //   what it can do is worth more than the few lines it occupies, and a
+    //   designation that changes should change a flag, not resurrect a file.
+    productionAuthorized: false,
     active: true,
     internalNotes:
       'Production authorized by Chief Architect 2026-08-27 (Phase III). Magic Hour-hosted. ' +
@@ -92,6 +110,8 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
     gatewayId: 'magic-hour',
     providerModelId: 'seedance-2.0',           // VERIFIED 2026-09-22: docs.magichour.ai /v1/image-to-video model enum
     displayName: 'Seedance 2.0',
+    sovereignNameAr: 'الحركة الراقصة',
+    sovereignNoteAr: 'حركةٌ حيّة وانتقالاتٌ سلسة — للتوليد والتعديل.',
     mediaType: 'video',
     capabilities: ['video-generation'],
     qualityTier: 'high',                        // REQUIRES_VERIFICATION
@@ -130,6 +150,8 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
     gatewayId: 'magic-hour',
     providerModelId: 'veo3.1',                 // VERIFIED 2026-09-22: docs.magichour.ai /v1/image-to-video model enum
     displayName: 'Veo 3.1',
+    sovereignNameAr: 'الحركة السينمائيّة',
+    sovereignNoteAr: 'مشهدٌ متكامل بإيقاعٍ سينمائيّ — للتوليد والتعديل.',
     mediaType: 'video',
     capabilities: ['video-generation'],
     qualityTier: 'ultra',                       // REQUIRES_VERIFICATION
@@ -165,6 +187,8 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
     gatewayId: 'openai-video',
     providerModelId: 'sora-2',               // REQUIRES_VERIFICATION
     displayName: 'Sora 2',
+    sovereignNameAr: 'الحركة الواسعة',
+    sovereignNoteAr: 'مشاهدُ أطول وأوسع.',
     mediaType: 'video',
     capabilities: ['video-generation'],
     qualityTier: 'ultra',                      // REQUIRES_VERIFICATION
@@ -184,7 +208,14 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
       modelId: 'sora-2',
     },
     verificationStatus: 'production-authorized',
-    productionAuthorized: true,
+    // ── THE FOUNDER'S DESIGNATION, 2026-09-25 ──────────────────────
+    //   Three models are designated: one for images and the infographic,
+    //   two for video and its editing. This is not among them, so production
+    //   never routes to it. The entry is kept, not deleted — what the Empire
+    //   verified about it, what it costs and what it can do is worth more
+    //   than the lines it occupies, and a designation that changes should
+    //   change a flag rather than resurrect a file.
+    productionAuthorized: false,
     active: false,  // No provider adapter — production-authorized but not yet dispatchable
     internalNotes:
       'Production authorized by Chief Architect 2026-08-27 (Phase III). OpenAI model. ' +

@@ -168,7 +168,11 @@ describe('9–10 · the provider identifiers are the verified ones', () => {
     // A model that cannot take an image is refused even if active.
     const ltx = selector.select(buildAnimationIntent('slow push in', 'ltx-2-3', 5));
     expect(ltx.selected).toBe(false);
-    if (!ltx.selected) expect(ltx.reason).toBe('capability-unavailable');
+    // UPDATED 2026-09-25. ltx-2-3 was withdrawn from production by the
+    // Founder's designation, so the selector refuses it one step earlier
+    // and says so more precisely. What this guard protects — that an
+    // unavailable model is refused and never substituted — is unchanged.
+    if (!ltx.selected) expect(ltx.reason).toBe('required-model-unavailable');
   });
 });
 

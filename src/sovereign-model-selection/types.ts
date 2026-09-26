@@ -115,7 +115,24 @@ export interface SovereignMediaModelDescriptor {
    * Marked "REQUIRES_VERIFICATION" in internalNotes for approved-candidate entries.
    */
   readonly providerModelId: string;
+  /**
+   * An engineer's label. It carries the provider's own product name and is
+   * therefore NEVER rendered to a Creator — see `sovereignNameAr`.
+   */
   readonly displayName: string;
+  /**
+   * What this model is, in the Creator's tongue and in terms of what it does
+   * for them — never who built it.
+   *
+   * FOUND 2026-09-25: the Founder saw two provider product names on his own
+   * screen. `displayName` held «Nano Banana 2», «Seedream 4», «Veo 3.1»,
+   * «Kling 3.0», and the animation chooser rendered it straight through. The
+   * Knowledge Source Abstraction Principle is not a rule about knowledge
+   * alone: the Empire never exposes a provider to a Creator, in any Chamber.
+   */
+  readonly sovereignNameAr: string;
+  /** One line on what choosing it means for the work. Shown beside the name. */
+  readonly sovereignNoteAr: string;
   readonly mediaType: MediaType;
 
   // ── Capability ───────────────────────────────────────────────────────────

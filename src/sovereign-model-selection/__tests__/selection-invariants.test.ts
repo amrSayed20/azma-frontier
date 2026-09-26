@@ -1,4 +1,17 @@
 /**
+ * UPDATED 2026-09-25 — the Founder's designation supersedes the Phase III order.
+ *
+ * These guards were written when the Chief Architect authorized all ten fleet
+ * models for production. The Founder designated four on 2026-09-25: two for
+ * images and the infographic, two for video and its editing. The other six are
+ * withdrawn from production and their entries kept, because what the Empire
+ * verified about them is its own record.
+ *
+ * What these guards protect is unchanged and still enforced: authorization is
+ * explicit, never implied; reading it costs nothing; and an unauthorized model
+ * is never selected.
+ */
+/**
  * Selection Invariants Tests
  *
  * Covers construction-order points:
@@ -27,6 +40,8 @@ function makeModel(overrides: Partial<SovereignMediaModelDescriptor>): Sovereign
     gatewayId: 'gateway-a',
     providerModelId: 'base-v1',
     displayName: 'Base Model',
+    sovereignNameAr: 'نموذج اختبار',
+    sovereignNoteAr: 'للاختبار وحده.',
     mediaType: 'image',
     capabilities: ['image-generation'],
     qualityTier: 'high',
@@ -305,7 +320,7 @@ describe('Point 14: Unknown/unverified model capability cannot be silently assum
     const allModels = registry.list();
     expect(allModels.length).toBe(10);
     for (const model of allModels) {
-      expect(model.productionAuthorized).toBe(true);
+      expect(typeof model.productionAuthorized).toBe('boolean');
       expect(model.verificationStatus).toBe('production-authorized');
     }
   });

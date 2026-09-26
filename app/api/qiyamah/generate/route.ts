@@ -37,6 +37,12 @@ export async function POST(request: NextRequest) {
   const idea = (body as { idea?: unknown })?.idea;
   const mediaType = (body as { mediaType?: unknown })?.mediaType;
   const durationSeconds = (body as { durationSeconds?: unknown })?.durationSeconds;
+  // The shape of the scene. Constrained to the three the fleet declares, so a
+  // value typed by hand into a request can never reach a provider.
+  const aspectRaw = (body as { aspectRatio?: unknown })?.aspectRatio;
+  const aspectRatio = aspectRaw === '16:9' || aspectRaw === '9:16' || aspectRaw === '1:1'
+    ? aspectRaw
+    : undefined;
 
   if (typeof prompt !== 'string') {
     return NextResponse.json({ status: 'failed', reason: 'invalid-prompt', message: 'A string prompt is required.' }, { status: 400 });
@@ -188,6 +194,7 @@ export async function POST(request: NextRequest) {
         style: typeof style === 'string' ? style : undefined,
         creatorId: session.creatorId,
         durationSeconds: duration,
+        ...(aspectRatio ? { aspectRatio } : {}),
         originalIdea: typeof idea === 'string' && idea.trim().length > 0 ? idea.trim() : null,
       },
     });

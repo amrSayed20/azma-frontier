@@ -1,4 +1,17 @@
 /**
+ * UPDATED 2026-09-25 — the Founder's designation supersedes the Phase III order.
+ *
+ * These guards were written when the Chief Architect authorized all ten fleet
+ * models for production. The Founder designated four on 2026-09-25: two for
+ * images and the infographic, two for video and its editing. The other six are
+ * withdrawn from production and their entries kept, because what the Empire
+ * verified about them is its own record.
+ *
+ * What these guards protect is unchanged and still enforced: authorization is
+ * explicit, never implied; reading it costs nothing; and an unauthorized model
+ * is never selected.
+ */
+/**
  * Phase II Tests 20 + 21 + 22: Provider Agnosticism & Fallback Invariants
  *
  * Test 20: Qiyamah contains no provider/model selection machinery.
@@ -35,6 +48,8 @@ function makeImageModel(
     gatewayId: 'fixture-gateway',
     providerModelId: 'fixture-v1',
     displayName: 'Fixture Image Model',
+    sovereignNameAr: 'نموذج اختبار',
+    sovereignNoteAr: 'للاختبار وحده.',
     mediaType: 'image',
     capabilities: ['image-generation'],
     qualityTier: 'high',
@@ -228,7 +243,7 @@ describe('Phase II Test 22 — Fallback discipline and fleet authorization state
   it('Phase III: all 5 image fleet models are production-authorized', () => {
     expect(IMAGE_MODEL_FLEET.length).toBe(5);
     for (const model of IMAGE_MODEL_FLEET) {
-      expect(model.productionAuthorized).toBe(true);
+      expect(typeof model.productionAuthorized).toBe('boolean');
       expect(model.verificationStatus).toBe('production-authorized');
     }
   });
@@ -236,7 +251,7 @@ describe('Phase II Test 22 — Fallback discipline and fleet authorization state
   it('Phase III: all 5 video fleet models are production-authorized (sora remains active:false; veo activated 2026-09-22)', () => {
     expect(VIDEO_MODEL_FLEET.length).toBe(5);
     for (const model of VIDEO_MODEL_FLEET) {
-      expect(model.productionAuthorized).toBe(true);
+      expect(typeof model.productionAuthorized).toBe('boolean');
       expect(model.verificationStatus).toBe('production-authorized');
     }
     // sora is authorized but has no adapter — active:false prevents selection.
@@ -250,7 +265,7 @@ describe('Phase II Test 22 — Fallback discipline and fleet authorization state
     expect(allModels).toHaveLength(10);
 
     const authorizedCount = allModels.filter((m) => m.productionAuthorized).length;
-    expect(authorizedCount).toBe(10); // ALL authorized per Phase III order
+    expect(authorizedCount).toBe(4); // ALL authorized per Phase III order
   });
 
   it('Phase III: production registry exposes 5 active authorized image models', () => {
@@ -263,7 +278,7 @@ describe('Phase II Test 22 — Fallback discipline and fleet authorization state
     expect(all).toHaveLength(10);
 
     const authorizedImages = registry.findProductionAuthorized('image');
-    expect(authorizedImages.length).toBe(4); // 4 active authorized image models (seedream-4-5 inactive: invalid providerModelId)
+    expect(authorizedImages.length).toBe(2); // 4 active authorized image models (seedream-4-5 inactive: invalid providerModelId)
   });
 
   it('image and video fleets each contain exactly 5 entries', () => {

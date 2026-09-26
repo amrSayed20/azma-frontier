@@ -18,7 +18,9 @@ import type { SovereignMediaModelDescriptor } from '../types';
 function makeModel(overrides: Partial<SovereignMediaModelDescriptor>): SovereignMediaModelDescriptor {
   return {
     modelId: 'base', providerId: 'provider-a', gatewayId: 'gw-a', providerModelId: 'base-v1',
-    displayName: 'Base', mediaType: 'image', capabilities: ['image-generation'],
+    displayName: 'Base',
+    sovereignNameAr: 'نموذج اختبار',
+    sovereignNoteAr: 'للاختبار وحده.', mediaType: 'image', capabilities: ['image-generation'],
     qualityTier: 'high', maxImageResolution: '1k', supportedAspectRatios: ['16:9'],
     characteristicHints: [], supportedStyleIds: [],
     costCatalogKey: { gatewayId: 'gw-a', capabilityTarget: 'image-generation' },

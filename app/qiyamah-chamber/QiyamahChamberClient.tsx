@@ -81,7 +81,15 @@ interface QiyamahChamberClientProps {
   readonly chamberVision?:      ImperialVisionDocument;
   readonly generationAvailable?: boolean;
   /** Models verified and active for animating an image — derived by the page from the fleet. */
-  readonly animationModels?:    readonly { readonly modelId: string; readonly displayName: string; readonly durationSeconds: number }[];
+  readonly animationModels?:    readonly { readonly modelId: string; readonly displayName: string; readonly noteAr?: string; readonly durationSeconds: number }[];
+  /**
+   * Every duration the designated models can actually produce, in order, read
+   * from the fleet. The Chamber offered 4, 6 and 8 written by hand while the
+   * cinematic model is verified to 56 seconds.
+   */
+  readonly durationLadder?:     readonly number[];
+  /** The shapes every designated model accepts — horizontal, vertical, square. */
+  readonly aspectOptions?:      readonly string[];
 }
 
 export function QiyamahChamberClient({
@@ -89,6 +97,8 @@ export function QiyamahChamberClient({
   chamberVision,
   generationAvailable = true,
   animationModels = [],
+  durationLadder = [],
+  aspectOptions = [],
 }: QiyamahChamberClientProps) {
   const { goTo } = useConstitutionalNavigation();
   const { triggerInvitation } = useInstallInvitation();
@@ -123,6 +133,9 @@ export function QiyamahChamberClient({
   const [style,              setStyle]              = useState('cinematic');
   const [mediaType,          setMediaType]          = useState<'image' | 'video'>('image');
   const [durationSeconds,    setDurationSeconds]    = useState<number>(6);
+  // The shape of the scene. Defaults to the first the designated models all
+  // accept, so a Creator who never touches it still gets something valid.
+  const [aspectRatio,        setAspectRatio]        = useState<string>('16:9');
   const [constructedPrompt,  setConstructedPrompt]  = useState('');
   // Tracks the initial Qiyamah expansion so the Creator can restore it after editing
   const [originalConstructedPrompt, setOriginalConstructedPrompt] = useState('');
@@ -508,6 +521,7 @@ export function QiyamahChamberClient({
       };
       if (mediaType === 'video') {
         requestBody['durationSeconds'] = durationSeconds;
+        requestBody['aspectRatio'] = aspectRatio;
       }
       // Minted BEFORE the request and remembered: this is what makes a lost
       // response recoverable instead of repeatable.
@@ -1010,11 +1024,19 @@ export function QiyamahChamberClient({
                 </button>
               </div>
 
-              {mediaType === 'video' && (
+              {mediaType === 'video' && durationLadder.length > 0 && (
                 <div className="duration-picker" role="group" aria-label="مدة الفيديو">
-                  <p className="duration-label">مدة الفيديو</p>
+                  <p className="duration-label">
+                    مدة الفيديو
+                    <span className="duration-max">حتّى {durationLadder[durationLadder.length - 1]} ثانية</span>
+                  </p>
+                  {/* MEASURED 2026-09-25: this list read 4, 6, 8 — written by hand
+                      in the interface — while the designated cinematic model is
+                      VERIFIED to 56 seconds. It is now every duration the
+                      designated models can actually produce, read from the fleet,
+                      so it cannot drift from what they accept. */}
                   <div className="duration-options">
-                    {([4, 6, 8] as const).map((d) => (
+                    {durationLadder.map((d) => (
                       <button
                         key={d}
                         type="button"
@@ -1025,6 +1047,33 @@ export function QiyamahChamberClient({
                         {d}ث
                       </button>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {mediaType === 'video' && aspectOptions.length > 1 && (
+                <div className="aspect-picker" role="group" aria-label="امتداد المشهد">
+                  <p className="duration-label">امتداد المشهد</p>
+                  {/* The Founder asked for it and it did not exist. Only shapes
+                      every designated model accepts are offered — offering one
+                      that half of them refuse would be offering a refusal. */}
+                  <div className="duration-options">
+                    {aspectOptions.map((ratio) => {
+                      const label = ratio === '16:9' ? 'أفقيّ' : ratio === '9:16' ? 'رأسيّ' : 'مربّع';
+                      return (
+                        <button
+                          key={ratio}
+                          type="button"
+                          className={`duration-btn aspect-btn${aspectRatio === ratio ? ' duration-btn--active' : ''}`}
+                          onClick={() => setAspectRatio(ratio)}
+                          disabled={stage === 'constructing'}
+                          title={ratio}
+                        >
+                          <span className={`aspect-glyph aspect-glyph--${ratio.replace(':', '-')}`} aria-hidden="true" />
+                          {label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1453,7 +1502,12 @@ export function QiyamahChamberClient({
                       {/* The model is a real choice only when the fleet offers more
                           than one; a single model is stated, not dressed as a menu. */}
                       {animationModels.length === 1 ? (
-                        <p className="asset-animate-model">النموذج: {animationModels[0].displayName}</p>
+                        <p className="asset-animate-model">
+                          <span className="animate-model-name">{animationModels[0].displayName}</span>
+                          {animationModels[0].noteAr && (
+                            <span className="animate-model-note">{animationModels[0].noteAr}</span>
+                          )}
+                        </p>
                       ) : (
                         <div className="asset-animate-models" role="radiogroup" aria-label="نموذج الحركة">
                           {animationModels.map((m) => (
@@ -1466,7 +1520,8 @@ export function QiyamahChamberClient({
                                 onChange={() => setAnimateModelId(m.modelId)}
                                 disabled={animateState === 'running'}
                               />
-                              {m.displayName}
+                              <span className="animate-model-name">{m.displayName}</span>
+                              {m.noteAr && <span className="animate-model-note">{m.noteAr}</span>}
                             </label>
                           ))}
                         </div>
