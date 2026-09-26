@@ -276,6 +276,8 @@ export function QiyamahChamberClient({
   const [uploadError,   setUploadError]   = useState<string | null>(null);
   const [uploadedAsset, setUploadedAsset] = useState<UploadedItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  /** The act's own door, separate from the section at the foot of the page. */
+  const actDoorInputRef = useRef<HTMLInputElement>(null);
 
   // ── Data fetchers ───────────────────────────────────────────────────────────
   const fetchGenerations = () => {
@@ -351,6 +353,46 @@ export function QiyamahChamberClient({
       });
   };
 
+  /**
+   * ── AN OLD DEMAND DOES NOT GREET THE NEXT ONE ───────────────────────────
+   *
+   *   The Founder, 2026-09-26: «المطالبة القديمة تظل موجودة بحقل النص بعد
+   *   الخروج من الحجرة والعودة إليها».
+   *
+   *   MEASURED on the live release, walking his exact path — exit by the
+   *   door, the Foyer, the القيامة card — and by the browser's back button,
+   *   in a fresh context: all three fields came back empty, and nothing was
+   *   in sessionStorage or localStorage. It does not reproduce there, and
+   *   saying «works for me» would be worthless to him.
+   *
+   *   The mechanism that produces exactly what he describes is the browser's
+   *   own form restoration — session restore and bfcache write the previous
+   *   text back into the <textarea> in the DOM after load. React holds these
+   *   as controlled inputs whose state is '', and a controlled input whose
+   *   value has not CHANGED is never re-rendered, so React never overwrites
+   *   what the browser put there. The Creator reads an old demand while the
+   *   Chamber believes the field is empty — which is why «بناء المشهد» sits
+   *   disabled in front of visible text.
+   *
+   *   So the DOM is made to agree with the state on entry, once. It clears
+   *   only what the browser restored, because React's own value for every one
+   *   of these fields is '' at this moment.
+   */
+  useEffect(() => {
+    const clearRestored = () => {
+      for (const field of document.querySelectorAll<HTMLTextAreaElement>('.genesis-section textarea')) {
+        if (field.value !== '') field.value = '';
+      }
+    };
+    clearRestored();
+    // A bfcache restore fires `pageshow` with persisted=true, and that can
+    // land AFTER this component has mounted — so clearing once at mount is
+    // not enough on the path most likely to show the fault.
+    const onShow = (e: PageTransitionEvent) => { if (e.persisted) clearRestored(); };
+    window.addEventListener('pageshow', onShow);
+    return () => window.removeEventListener('pageshow', onShow);
+  }, []);
+
   useEffect(() => {
     fetch('/api/auth/me')
       .then((r) => r.json())
@@ -377,7 +419,12 @@ export function QiyamahChamberClient({
   }, []);
 
   // ── Upload handler ──────────────────────────────────────────────────────────
-  const uploadFile = async (file: File) => {
+  /**
+   * Returns the new asset's id, so a caller that needed an asset in hand — an
+   * act standing in front of an empty picker — can select it immediately
+   * instead of asking the Creator to find it again among a hundred.
+   */
+  const uploadFile = async (file: File): Promise<string | null> => {
     setUploadError(null);
     setIsUploading(true);
     try {
@@ -397,11 +444,13 @@ export function QiyamahChamberClient({
           const without = prev.filter((u) => u.assetId !== newItem.assetId);
           return [newItem, ...without];
         });
-      } else {
-        setUploadError(data.message ?? 'فشل الرفع — حاوِل مرة أخرى.');
+        return newItem.assetId || null;
       }
+      setUploadError(data.message ?? 'فشل الرفع — حاوِل مرة أخرى.');
+      return null;
     } catch {
       setUploadError('البوابة لا تستجيب — حاوِل مرة أخرى.');
+      return null;
     } finally {
       setIsUploading(false);
     }
@@ -768,14 +817,24 @@ export function QiyamahChamberClient({
    * them, and what they brought. Both lists are already loaded; neither was
    * ever offered as a starting point for an act.
    */
-  const editableAssets = [
-    ...generations
-      .filter((g) => g.mediaType !== 'video' && g.assetId)
-      .map((g) => ({ assetId: g.assetId as string, url: g.assetUrl, label: g.originalIdea ?? g.prompt })),
-    ...uploadedItems
-      .filter((u) => u.capabilityTarget === 'VISUAL')
-      .map((u) => ({ assetId: u.assetId, url: u.url, label: 'أصلٌ رفعته' })),
-  ];
+  const editableAssets = (() => {
+    // MEASURED 2026-09-26: 31 pickable generations and 35 Vault images, of
+    // which 28 are THE SAME ASSET. Concatenating the two lists showed each of
+    // those twice — and the second copy was labelled «أصلٌ رفعته» to a Creator
+    // who had uploaded nothing. A generation deposits into the Vault, so the
+    // two lists overlap by construction; the id decides, and the generation's
+    // own words win because they say what the picture is.
+    const byId = new Map<string, { assetId: string; url: string; label: string }>();
+    for (const g of generations) {
+      if (g.mediaType === 'video' || !g.assetId) continue;
+      byId.set(g.assetId, { assetId: g.assetId, url: g.assetUrl, label: g.originalIdea ?? g.prompt });
+    }
+    for (const u of uploadedItems) {
+      if (u.capabilityTarget !== 'VISUAL' || byId.has(u.assetId)) continue;
+      byId.set(u.assetId, { assetId: u.assetId, url: u.url, label: 'أصلٌ رفعته' });
+    }
+    return [...byId.values()];
+  })();
 
   const COST_CAPABILITY_OF_ACT = {
     image: 'image-generation',
@@ -807,6 +866,58 @@ export function QiyamahChamberClient({
   const hasGalleryContent = generations.length > 0 || uploadedItems.length > 0;
 
   const buildSceneDisabled = stage === 'constructing' || (inputMode === 'idea' ? !idea.trim() : !externalPrompt.trim());
+
+  /**
+   * ── A DOOR WHERE THE ASSET IS NEEDED ────────────────────────────────────
+   *
+   *   The Founder, 2026-09-26: «لا يمكن رفع أصل من الجهاز... خاصية السحب
+   *   والإفلات لا تؤتي بنتيجة».
+   *
+   *   MEASURED against the live release: the mechanism was not broken. A
+   *   click-to-choose uploaded a real file, and a synthetic drop fired with
+   *   defaultPrevented=true and reached the server. What was broken is WHERE:
+   *   the Empire's only upload door sat at y=1340, below a 1200px viewport,
+   *   in a separate section at the foot of the page — while the act that
+   *   needs an asset stands at the top. A browser does not scroll the page
+   *   for a Creator who is holding a file, so there was nothing under the
+   *   cursor to drop onto. «لا تؤتي بنتيجة» was an exact description.
+   *
+   *   No second upload is built. This is the same `uploadFile`, the same
+   *   route, the same Vault — placed where the hand already is, and it hands
+   *   the act what it just received so nobody has to go looking for it.
+   */
+  const AssetDoor = ({ onReceived }: { onReceived: (assetId: string) => void }) => {
+    const take = async (file: File | undefined) => {
+      if (!file || isUploading) return;
+      const assetId = await uploadFile(file);
+      if (assetId) onReceived(assetId);
+    };
+    return (
+      <div
+        className={`asset-door${isDragging ? ' asset-door--over' : ''}`}
+        role="button"
+        tabIndex={0}
+        aria-label="ارفع صورةً من جهازك"
+        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(e) => { e.preventDefault(); setIsDragging(false); void take(e.dataTransfer.files[0]); }}
+        onClick={() => !isUploading && actDoorInputRef.current?.click()}
+        onKeyDown={(e) => e.key === 'Enter' && actDoorInputRef.current?.click()}
+      >
+        <input
+          ref={actDoorInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={(e) => { void take(e.target.files?.[0]); e.target.value = ''; }}
+        />
+        <span className="asset-door-icon" aria-hidden="true">⬆</span>
+        <span className="asset-door-label">
+          {isUploading ? 'جارٍ الرفع…' : 'أو ارفع صورةً من جهازك — اسحبها هنا أو انقر'}
+        </span>
+      </div>
+    );
+  };
 
   const StyleRegistry = ({ disabled }: { disabled?: boolean }) => (
     <div className="style-registry" role="radiogroup" aria-label="نمط التجسيد">
@@ -1170,9 +1281,14 @@ export function QiyamahChamberClient({
               {mediaType === 'video' && videoSource === 'asset' && (
                 <div className="edit-act" role="group" aria-label="تحريك أصل">
                   {editableAssets.length === 0 && !animateAssetId ? (
-                    <p className="edit-act-empty">
-                      لا صورَ لديك بعد. أنشئ صورةً أوّلاً، ثمّ عُد لتبعث فيها الحركة.
-                    </p>
+                    <>
+                      {/* An empty picker used to be a dead end. It is now the
+                          one place a Creator most needs the door. */}
+                      <p className="edit-act-empty">
+                        لا صورَ لديك بعد — ارفع واحدةً من جهازك، أو أنشئ صورةً ثمّ عُد.
+                      </p>
+                      <AssetDoor onReceived={setAnimateAssetId} />
+                    </>
                   ) : (
                     <>
                       <p className="edit-act-label">أيّ صورةٍ تُحرّك؟</p>
@@ -1191,6 +1307,7 @@ export function QiyamahChamberClient({
                           </button>
                         ))}
                       </div>
+                      <AssetDoor onReceived={setAnimateAssetId} />
 
                       <label className="edit-act-label" htmlFor="video-animate-instruction">
                         كيف تتحرّك؟
@@ -1198,6 +1315,7 @@ export function QiyamahChamberClient({
                       <textarea
                         id="video-animate-instruction"
                         className="edit-act-input"
+                        autoComplete="off"
                         rows={2}
                         maxLength={1000}
                         value={animateInstruction}
@@ -1283,6 +1401,7 @@ export function QiyamahChamberClient({
                     <textarea
                       id="qiyamah-idea"
                       className="idea-textarea"
+                      autoComplete="off"
                       placeholder="أي فكرة بسيطة — في جملة أو جملتين…"
                       value={idea}
                       onChange={(e) => { setIdea(e.target.value); setMaterialNotice(null); if (e.target.value.trim().length === 0) setMaterialAssetId(null); }}
@@ -1304,6 +1423,7 @@ export function QiyamahChamberClient({
                     <textarea
                       id="qiyamah-external"
                       className="idea-textarea"
+                      autoComplete="off"
                       placeholder="اكتب محثك الخاص بأي لغة…"
                       value={externalPrompt}
                       onChange={(e) => setExternalPrompt(e.target.value)}
@@ -1337,9 +1457,12 @@ export function QiyamahChamberClient({
               {mediaType === 'edit' && (
                 <div className="edit-act" role="group" aria-label="تعديل أصل">
                   {editableAssets.length === 0 && !editingAssetId ? (
-                    <p className="edit-act-empty">
-                      لا أصولَ لديك بعد. أنشئ صورةً أوّلاً، ثمّ عُد هنا لتُغيّر فيها.
-                    </p>
+                    <>
+                      <p className="edit-act-empty">
+                        لا أصولَ لديك بعد — ارفع صورةً من جهازك، أو أنشئ واحدةً ثمّ عُد.
+                      </p>
+                      <AssetDoor onReceived={setEditingAssetId} />
+                    </>
                   ) : (
                     <>
                       <p className="edit-act-label">أيّ أصلٍ تُعدّل؟</p>
@@ -1358,6 +1481,7 @@ export function QiyamahChamberClient({
                           </button>
                         ))}
                       </div>
+                      <AssetDoor onReceived={setEditingAssetId} />
 
                       <label className="edit-act-label" htmlFor="edit-act-instruction">
                         ما الذي تريد تغييره فيه؟
@@ -1365,6 +1489,7 @@ export function QiyamahChamberClient({
                       <textarea
                         id="edit-act-instruction"
                         className="edit-act-input"
+                        autoComplete="off"
                         rows={3}
                         maxLength={1000}
                         value={editInstruction}
@@ -1506,6 +1631,7 @@ export function QiyamahChamberClient({
                 <p className="external-choice-label">المشهد النهائي للتجسيد — عدّله إن شئت</p>
                 <textarea
                   className="idea-textarea"
+                      autoComplete="off"
                   value={constructedPrompt}
                   onChange={(e) => setConstructedPrompt(e.target.value)}
                   rows={4}
@@ -1561,6 +1687,7 @@ export function QiyamahChamberClient({
                 <p className="external-choice-label">المشهد النهائي للتجسيد — عدّله إن شئت</p>
                 <textarea
                   className="idea-textarea"
+                      autoComplete="off"
                   value={constructedPrompt}
                   onChange={(e) => setConstructedPrompt(e.target.value)}
                   rows={4}
