@@ -124,3 +124,25 @@ describe('4 · an old demand does not greet the next one', () => {
     expect((CLIENT.match(/autoComplete="off"/g) ?? []).length).toBeGreaterThanOrEqual(4);
   });
 });
+
+describe('5 · an asset that cannot be seen is not offered', () => {
+  /**
+   * SEEN BY EYE on the live release, and by nothing else: two tiles in the
+   * picker were black and empty. The Creator would pick one blind — and the
+   * edit and upscale routes resolve the same address off disk, so they refuse
+   * it with «تعذّر الوصول إلى هذه الصورة» and the refusal reads as the
+   * Creator's fault. Offering it is offering a refusal.
+   */
+  it('a tile that cannot be drawn reports itself', () => {
+    expect((CLIENT.match(/onError=\{\(\) => setUnreachableAssetIds/g) ?? []).length).toBe(2);
+  });
+
+  it('and leaves the picker', () => {
+    expect(CLIENT).toContain('.filter((a) => !unreachableAssetIds.includes(a.assetId));');
+  });
+
+  it('taking any selection it was carrying with it', () => {
+    expect(CLIENT).toContain('if (editingAssetId && unreachableAssetIds.includes(editingAssetId)) setEditingAssetId(null);');
+    expect(CLIENT).toContain('if (animateAssetId && unreachableAssetIds.includes(animateAssetId)) setAnimateAssetId(null);');
+  });
+});

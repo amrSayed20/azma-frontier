@@ -817,6 +817,15 @@ export function QiyamahChamberClient({
    * them, and what they brought. Both lists are already loaded; neither was
    * ever offered as a starting point for an act.
    */
+  /**
+   * Assets whose bytes the browser could not fetch. SEEN 2026-09-26 on the
+   * live release: two tiles in the picker were black and empty. An asset the
+   * Creator cannot SEE is one they would pick blind — and the edit route
+   * resolves the same address off disk, so it would refuse them anyway with
+   * «تعذّر الوصول إلى هذه الصورة». Offering them is offering a refusal.
+   */
+  const [unreachableAssetIds, setUnreachableAssetIds] = useState<readonly string[]>([]);
+
   const editableAssets = (() => {
     // MEASURED 2026-09-26: 31 pickable generations and 35 Vault images, of
     // which 28 are THE SAME ASSET. Concatenating the two lists showed each of
@@ -833,8 +842,16 @@ export function QiyamahChamberClient({
       if (u.capabilityTarget !== 'VISUAL' || byId.has(u.assetId)) continue;
       byId.set(u.assetId, { assetId: u.assetId, url: u.url, label: 'أصلٌ رفعته' });
     }
-    return [...byId.values()];
+    return [...byId.values()].filter((a) => !unreachableAssetIds.includes(a.assetId));
   })();
+
+  useEffect(() => {
+    // A selection that has just been proven unreadable must not survive the
+    // tile that carried it — otherwise the run button stays lit on an asset
+    // the route will refuse, and the refusal reads as the Creator's fault.
+    if (editingAssetId && unreachableAssetIds.includes(editingAssetId)) setEditingAssetId(null);
+    if (animateAssetId && unreachableAssetIds.includes(animateAssetId)) setAnimateAssetId(null);
+  }, [unreachableAssetIds, editingAssetId, animateAssetId]);
 
   const COST_CAPABILITY_OF_ACT = {
     image: 'image-generation',
@@ -1303,7 +1320,12 @@ export function QiyamahChamberClient({
                             title={a.label}
                           >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={a.url} alt={a.label} />
+                            <img
+                              src={a.url}
+                              alt={a.label}
+                              onError={() => setUnreachableAssetIds((prev) =>
+                                prev.includes(a.assetId) ? prev : [...prev, a.assetId])}
+                            />
                           </button>
                         ))}
                       </div>
@@ -1477,7 +1499,12 @@ export function QiyamahChamberClient({
                             title={a.label}
                           >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={a.url} alt={a.label} />
+                            <img
+                              src={a.url}
+                              alt={a.label}
+                              onError={() => setUnreachableAssetIds((prev) =>
+                                prev.includes(a.assetId) ? prev : [...prev, a.assetId])}
+                            />
                           </button>
                         ))}
                       </div>
