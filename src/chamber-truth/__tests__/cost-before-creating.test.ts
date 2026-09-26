@@ -123,6 +123,15 @@ describe('5 · it is asked for the act the Creator has chosen', () => {
     }
   });
 
+  it('it is never asked before the Chamber knows who is asking', () => {
+    // MEASURED walking as a stranger: this fired on mount, ahead of the
+    // identity check, so every newcomer's console carried a 401. The route
+    // was right to refuse; the Chamber was wrong to ask.
+    expect(CLIENT).toContain('if (!creatorPresent) return;');
+    expect(CLIENT).toContain('setCreatorPresent(true);');
+    expect(CLIENT).toContain('}, [mediaType, creatorPresent]);');
+  });
+
   it('a price that cannot be fetched never blocks the work', () => {
     expect(CLIENT).toContain('// A price we cannot fetch is simply not shown. It never blocks the work.');
   });

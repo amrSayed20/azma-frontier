@@ -125,6 +125,16 @@ export function QiyamahChamberClient({
 
   // ── Identity ────────────────────────────────────────────────────────────────
   const [displayName, setDisplayName] = useState<string | null>(null);
+  /**
+   * Set only once /api/auth/me has confirmed a Creator is here.
+   *
+   * MEASURED 2026-09-26 walking the Chamber as a stranger: the cost door I
+   * had opened fired on mount, before the identity check could send an
+   * anonymous visitor to /signup — so every newcomer's console carried a 401
+   * from /api/sovereign/economy/estimate. The route was right to refuse; the
+   * Chamber was wrong to ask a door it had not yet earned.
+   */
+  const [creatorPresent, setCreatorPresent] = useState(false);
 
   // ── Gallery data ────────────────────────────────────────────────────────────
   const [generations,   setGenerations]   = useState<readonly GenerationRecord[]>([]);
@@ -447,6 +457,7 @@ export function QiyamahChamberClient({
       // for an account made before it.
         if (!data.authenticated) { goTo('/signup'); return; }
         setDisplayName(data.displayName ?? null);
+        setCreatorPresent(true);
         fetchGenerations();
         fetchUploadedItems();
         let materialAssetId: string | null = null;
@@ -921,6 +932,8 @@ export function QiyamahChamberClient({
   useEffect(() => {
     let abandoned = false;
     setCost(null);
+    // Never before the Chamber knows who is asking — see creatorPresent.
+    if (!creatorPresent) return;
     void (async () => {
       try {
         const res = await fetch('/api/sovereign/economy/estimate', {
@@ -936,7 +949,7 @@ export function QiyamahChamberClient({
     })();
     return () => { abandoned = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mediaType]);
+  }, [mediaType, creatorPresent]);
 
   const hasGalleryContent = generations.length > 0 || uploadedItems.length > 0;
 
