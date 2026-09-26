@@ -275,6 +275,8 @@ export function QiyamahChamberClient({
   const [isUploading,   setIsUploading]   = useState(false);
   const [uploadError,   setUploadError]   = useState<string | null>(null);
   const [uploadedAsset, setUploadedAsset] = useState<UploadedItem | null>(null);
+  /** Every VISUAL asset the Creator owns — the picker's authority. */
+  const [vaultVisuals, setVaultVisuals] = useState<readonly { assetId: string; url: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   /** The act's own door, separate from the section at the foot of the page. */
   const actDoorInputRef = useRef<HTMLInputElement>(null);
@@ -287,11 +289,30 @@ export function QiyamahChamberClient({
       .catch(() => { /* gallery is an enhancement, not a gate */ });
   };
 
+  /**
+   * ── TWO LISTS, ONE CALL, AND THEY ARE NOT THE SAME LIST ────────────────
+   *
+   *   MEASURED 2026-09-26: `uploadedItems` filters to
+   *   `providerId === 'creator-upload'` — assets the Creator brought from
+   *   their own device, which is what its name says and what the upload
+   *   section needs. It is NOT the Vault. Building the act's asset picker on
+   *   it offered one tile out of thirty-five, because thirty-four of the
+   *   Creator's pictures were made by the Chamber, not uploaded.
+   *
+   *   The picker's authority is every VISUAL asset the Creator owns, whatever
+   *   produced it. Both come from the one request; neither is inferred from
+   *   the other.
+   */
   const fetchUploadedItems = () => {
     fetch('/api/vault/assets')
       .then((r) => r.json())
       .then((result) => {
         if (result.status !== 'succeeded' || !Array.isArray(result.assets)) return;
+        setVaultVisuals(
+          (result.assets as { assetId: string; secureStorageUri?: string; capabilityTarget?: string }[])
+            .filter((a) => a.capabilityTarget === 'VISUAL' && Boolean(a.secureStorageUri))
+            .map((a) => ({ assetId: a.assetId, url: a.secureStorageUri as string })),
+        );
         const items: UploadedItem[] = result.assets
           .filter((a: { metadata?: { providerId?: string } }) => a.metadata?.providerId === 'creator-upload')
           .map((a: { assetId: string; secureStorageUri: string; capabilityTarget: string; createdAt: number }) => ({
@@ -444,6 +465,11 @@ export function QiyamahChamberClient({
           const without = prev.filter((u) => u.assetId !== newItem.assetId);
           return [newItem, ...without];
         });
+        if (newItem.capabilityTarget === 'VISUAL' && newItem.assetId && newItem.url) {
+          setVaultVisuals((prev) => prev.some((a) => a.assetId === newItem.assetId)
+            ? prev
+            : [{ assetId: newItem.assetId, url: newItem.url }, ...prev]);
+        }
         return newItem.assetId || null;
       }
       setUploadError(data.message ?? 'فشل الرفع — حاوِل مرة أخرى.');
@@ -854,9 +880,9 @@ export function QiyamahChamberClient({
       if (g.mediaType === 'video') continue;
       wordsByUri.set(g.assetUrl, g.originalIdea ?? g.prompt);
     }
-    return uploadedItems
-      .filter((u) => u.capabilityTarget === 'VISUAL' && !unreachableAssetIds.includes(u.assetId))
-      .map((u) => ({ assetId: u.assetId, url: u.url, label: wordsByUri.get(u.url) ?? 'أصلٌ رفعته' }));
+    return vaultVisuals
+      .filter((a) => !unreachableAssetIds.includes(a.assetId))
+      .map((a) => ({ assetId: a.assetId, url: a.url, label: wordsByUri.get(a.url) ?? 'أصلٌ رفعته' }));
   })();
 
   useEffect(() => {

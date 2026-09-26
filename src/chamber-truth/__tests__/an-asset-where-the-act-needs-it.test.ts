@@ -40,15 +40,20 @@ describe('1 · the Vault says which assets exist', () => {
    * written with the FILE id. POSTing an edit with one answered 404.
    */
   it('the picker is built from the Vault, not from the generation list', () => {
-    expect(CLIENT).toContain('return uploadedItems');
-    expect(CLIENT).toContain(".filter((u) => u.capabilityTarget === 'VISUAL' && !unreachableAssetIds.includes(u.assetId))");
+    // MEASURED 2026-09-26: built on `uploadedItems` this offered ONE tile of
+    // thirty-five, because that list filters to providerId 'creator-upload' —
+    // assets brought from a device. Thirty-four of the Creator's pictures were
+    // made by the Chamber. The picker's authority is every VISUAL asset owned.
+    expect(CLIENT).toContain('return vaultVisuals');
+    expect(CLIENT).toContain("a.capabilityTarget === 'VISUAL' && Boolean(a.secureStorageUri)");
+    expect(CLIENT).not.toContain('return uploadedItems');
     expect(CLIENT).not.toContain('assetId: g.assetId as string');
   });
 
   it('a generation supplies only the words, joined by the exact storage URI', () => {
     expect(CLIENT).toContain('const wordsByUri = new Map<string, string>();');
     expect(CLIENT).toContain('wordsByUri.set(g.assetUrl, g.originalIdea ?? g.prompt);');
-    expect(CLIENT).toContain("label: wordsByUri.get(u.url) ?? 'أصلٌ رفعته'");
+    expect(CLIENT).toContain("label: wordsByUri.get(a.url) ?? 'أصلٌ رفعته'");
   });
 
   it('one asset, one tile — by construction, since the Vault holds each once', () => {
@@ -57,6 +62,7 @@ describe('1 · the Vault says which assets exist', () => {
     // No second list is concatenated in; there is nothing to duplicate.
     expect(block).not.toContain('...generations');
     expect(block).not.toContain('...uploadedItems');
+    expect(block).not.toContain('...vaultVisuals');
   });
 });
 
@@ -152,7 +158,7 @@ describe('5 · an asset that cannot be seen is not offered', () => {
   });
 
   it('and leaves the picker', () => {
-    expect(CLIENT).toContain("!unreachableAssetIds.includes(u.assetId)");
+    expect(CLIENT).toContain("!unreachableAssetIds.includes(a.assetId)");
   });
 
   it('taking any selection it was carrying with it', () => {
