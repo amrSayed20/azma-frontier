@@ -277,6 +277,8 @@ export function QiyamahChamberClient({
   const [uploadedAsset, setUploadedAsset] = useState<UploadedItem | null>(null);
   /** Every VISUAL asset the Creator owns — the picker's authority. */
   const [vaultVisuals, setVaultVisuals] = useState<readonly { assetId: string; url: string }[]>([]);
+  /** The storage addresses of everything the Creator has accepted — it lives in the Vault now. */
+  const [acceptedUris, setAcceptedUris] = useState<readonly string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   /** The act's own door, separate from the section at the foot of the page. */
   const actDoorInputRef = useRef<HTMLInputElement>(null);
@@ -308,10 +310,26 @@ export function QiyamahChamberClient({
       .then((r) => r.json())
       .then((result) => {
         if (result.status !== 'succeeded' || !Array.isArray(result.assets)) return;
+        const all = result.assets as {
+          assetId: string; secureStorageUri?: string; capabilityTarget?: string; lifecycleState?: string;
+        }[];
         setVaultVisuals(
-          (result.assets as { assetId: string; secureStorageUri?: string; capabilityTarget?: string }[])
+          all
             .filter((a) => a.capabilityTarget === 'VISUAL' && Boolean(a.secureStorageUri))
             .map((a) => ({ assetId: a.assetId, url: a.secureStorageUri as string })),
+        );
+        // ── The Founder, 2026-09-26: «لماذا تتجمّع الأصول في القيامة؟ مكانها
+        //    الطبيعي بعد الاعتماد هو الخزانة».
+        //
+        //    He is right, and it is what makes the acceptance step mean
+        //    something. القيامة is a chamber of creation, not a warehouse:
+        //    what is still in hand stays on its floor, and what the Creator
+        //    has accepted has a home. The truth is the asset's own
+        //    lifecycleState — FINAL — not a list this page happens to
+        //    remember, so it survives a reload and a different device.
+        setAcceptedUris(
+          all.filter((a) => a.lifecycleState === 'FINAL' && a.secureStorageUri)
+             .map((a) => a.secureStorageUri as string),
         );
         const items: UploadedItem[] = result.assets
           .filter((a: { metadata?: { providerId?: string } }) => a.metadata?.providerId === 'creator-upload')
@@ -1095,6 +1113,20 @@ export function QiyamahChamberClient({
       fetchGenerations();
       setAnimatedResult({ forRecordId: animatingRecordId ?? '', assetId: result.asset.assetId, url: result.asset.secureStorageUri });
       setAnimateState('ready');
+      // ── The Founder, 2026-09-26: «الأصل الناتج من التحريك لا يُعرض بالأعلى
+      //    في حقل عرض الصورة أو الفيديو».
+      //
+      //    An act run from the top produced a real asset and showed it only
+      //    beside the card it started from. Every act now lands in the one
+      //    place this Chamber shows a result, with the next acts on it —
+      //    which is the whole point of the loop closing.
+      if (animatingRecordId === null) {
+        setGeneratedAssetUrl(result.asset.secureStorageUri);
+        setGeneratedAssetId(result.asset.assetId);
+        setGeneratedAssetType('video');
+        setStage('result');
+        triggerInvitation();
+      }
       setAnimatingRecordId(null);
     } catch {
       setAnimateError('البوابة لا تستجيب. أعِد المحاولة.');
@@ -1126,6 +1158,7 @@ export function QiyamahChamberClient({
       fetchGenerations();
       setGeneratedAssetId(result.asset.assetId);
       setGeneratedAssetUrl(result.asset.secureStorageUri);
+      setGeneratedAssetType('image');
       setUpscaleState('ready');
     } catch {
       setUpscaleError('تعذّر الاتصال. لم يُحفظ شيء.');
@@ -1179,6 +1212,13 @@ export function QiyamahChamberClient({
       setEditState('ready');
       setEditingAssetId(null);
       setEditInstruction('');
+      // An edit is an act like any other: what it makes is shown where this
+      // Chamber shows what it makes.
+      setGeneratedAssetUrl(result.asset.secureStorageUri);
+      setGeneratedAssetId(result.asset.assetId);
+      setGeneratedAssetType('image');
+      setStage('result');
+      triggerInvitation();
     } catch {
       setEditError('تعذّر الاتصال. لم يُحفظ شيء.');
       setEditState('failed');
@@ -2047,13 +2087,29 @@ export function QiyamahChamberClient({
 
       </div>
 
-      {/* ── Gallery — only when the Creator has real content ───────────── */}
+      {/* ── The floor of the workshop — what is still in hand ───────────
+          The Founder, 2026-09-26: «لماذا تتجمّع الأصول في القيامة؟ مكانها
+          الطبيعي بعد الاعتماد هو الخزانة». This was «إرثك السيادي» and held
+          everything ever made, for ever. A legacy is kept in a vault; a
+          workshop floor holds the work in hand. */}
       {hasGalleryContent && (
-        <section className="your-generations" aria-label="الإرث السيادي">
-          <h3>إرثك السيادي</h3>
+        <section className="your-generations" aria-label="تحت يدك">
+          <h3>تحت يدك</h3>
+          {acceptedUris.length > 0 && (
+            <p className="moved-to-vault">
+              {acceptedUris.length} أصلاً اعتمدتَه انتقل إلى خزانتك.{' '}
+              <button
+                type="button"
+                className="moved-to-vault-link"
+                onClick={() => goTo('/sovereign-vault-palace')}
+              >
+                افتح قصر الخزانة ←
+              </button>
+            </p>
+          )}
           <div className="generations-grid">
 
-            {generations.map((g) => (
+            {generations.filter((g) => !acceptedUris.includes(g.assetUrl)).map((g) => (
               <div className="generation-card" key={g.recordId}>
                 <span className="gallery-type-badge badge-generated">مُولَّد</span>
                 {g.mediaType === 'video' ? (
