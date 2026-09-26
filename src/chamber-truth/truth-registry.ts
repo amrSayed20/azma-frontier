@@ -159,6 +159,16 @@ export const CHAMBER_TRUTH = {
         requiresExistingAsset: true,
       },
       {
+        id: 'accept-generated-asset',
+        performs:
+          "Records the Creator's word that a generated asset is right, raising it from "
+          + 'INTERMEDIATE to FINAL. Creates nothing and changes no bytes.',
+        performsAr:
+          'تُثبّت اعتمادك لما أُنشئ لك — فيصير أصلاً معتمداً بكلمتك لا بمجرّد إنتاجه.',
+        boundary: { kind: 'route', at: 'app/api/vault/assets/[assetId]/accept', methods: ['POST'] },
+        requiresExistingAsset: true,
+      },
+      {
         id: 'review-generations',
         performs: 'Lists this Creator\'s own generations.',
         performsAr:

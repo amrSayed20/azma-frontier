@@ -222,6 +222,7 @@ export async function POST(
     prompt: instruction,
     style: 'animate-asset',
     assetUrl: persisted.assetUrl,
+    assetId: outcome.asset.assetId,
     originalIdea: instruction,
     mediaType: 'video',
   });

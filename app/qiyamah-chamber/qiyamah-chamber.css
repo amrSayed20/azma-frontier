@@ -1441,3 +1441,32 @@
   font-size: 0.85em;
   opacity: 0.6;
 }
+
+
+/* The one style that binds a designated model. It read as the fourteenth of
+   fourteen; what distinguishes it is now visible. */
+.style-tile-mark {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.82em;
+  line-height: 1.4;
+  color: var(--qiyamah-gold, #D4AF37);
+  opacity: 0.85;
+}
+
+
+/* ── THE CREATOR'S WORD ON WHAT WAS MADE ─────────────────────────
+   Every generated asset was deposited as INTERMEDIATE and nothing ever read
+   that state. Accepting is not saving — the asset was always safe; this is the
+   Creator saying it is right. */
+.gallery-accept-btn { font-weight: 600; }
+.gallery-accepted-mark {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.85em;
+  color: var(--qiyamah-gold, #D4AF37);
+  opacity: 0.9;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+.generation-card-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }

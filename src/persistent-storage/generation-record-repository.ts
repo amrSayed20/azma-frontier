@@ -24,6 +24,12 @@ export interface GenerationRecord {
   readonly originalIdea: string | null;
   /** 'image' or 'video'. Defaults to 'image' for records created before this column was added. */
   readonly mediaType: string;
+  /**
+   * The sovereign asset this generation became, so the Chamber that created it
+   * can act on it — edit it, animate it, place it. Null on records written
+   * before the link was declared; those recover it from `assetUrl`.
+   */
+  readonly assetId: string | null;
 }
 
 export interface NewGenerationRecord {
@@ -35,6 +41,12 @@ export interface NewGenerationRecord {
   readonly originalIdea?: string | null;
   /** 'image' or 'video'. Defaults to 'image' when omitted. */
   readonly mediaType?: string;
+  /**
+   * The sovereign asset this generation was deposited as. Optional only
+   * because a caller may not have it; when it is known it must be recorded,
+   * or the Chamber cannot act on what it created.
+   */
+  readonly assetId?: string | null;
 }
 
 export function recordGeneration(db: DatabaseSync, record: NewGenerationRecord): GenerationRecord {
@@ -42,15 +54,16 @@ export function recordGeneration(db: DatabaseSync, record: NewGenerationRecord):
   const generatedAt = Date.now();
   const originalIdea = record.originalIdea ?? null;
   const mediaType = record.mediaType ?? 'image';
+  const assetId = record.assetId ?? null;
   db.prepare(
-    'INSERT INTO generation_records (record_id, creator_id, prompt, style, asset_url, generated_at, original_idea, media_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-  ).run(recordId, record.creatorId, record.prompt, record.style, record.assetUrl, generatedAt, originalIdea, mediaType);
-  return { recordId, creatorId: record.creatorId, prompt: record.prompt, style: record.style, assetUrl: record.assetUrl, generatedAt, originalIdea, mediaType };
+    'INSERT INTO generation_records (record_id, creator_id, prompt, style, asset_url, asset_id, generated_at, original_idea, media_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  ).run(recordId, record.creatorId, record.prompt, record.style, record.assetUrl, assetId, generatedAt, originalIdea, mediaType);
+  return { recordId, creatorId: record.creatorId, prompt: record.prompt, style: record.style, assetUrl: record.assetUrl, assetId, generatedAt, originalIdea, mediaType };
 }
 
 export function getGenerationRecord(db: DatabaseSync, recordId: string, creatorId: string): GenerationRecord | null {
   const row = db
-    .prepare('SELECT record_id, creator_id, prompt, style, asset_url, generated_at, original_idea, media_type FROM generation_records WHERE record_id = ? AND creator_id = ?')
+    .prepare('SELECT record_id, creator_id, prompt, style, asset_url, asset_id, generated_at, original_idea, media_type FROM generation_records WHERE record_id = ? AND creator_id = ?')
     .get(recordId, creatorId);
   if (!row) return null;
   return {
@@ -62,6 +75,7 @@ export function getGenerationRecord(db: DatabaseSync, recordId: string, creatorI
     generatedAt: row.generated_at as number,
     originalIdea: (row.original_idea as string | null) ?? null,
     mediaType: (row.media_type as string | null) ?? 'image',
+    assetId: (row.asset_id as string | null) ?? null,
   };
 }
 
@@ -73,7 +87,7 @@ export function listGenerationsForCreator(db: DatabaseSync, creatorId: string): 
   // Ordered by rowid as a tiebreaker: two records inserted within the same
   // millisecond would otherwise have no deterministic order.
   const rows = db
-    .prepare('SELECT record_id, creator_id, prompt, style, asset_url, generated_at, original_idea, media_type FROM generation_records WHERE creator_id = ? ORDER BY generated_at DESC, rowid DESC')
+    .prepare('SELECT record_id, creator_id, prompt, style, asset_url, asset_id, generated_at, original_idea, media_type FROM generation_records WHERE creator_id = ? ORDER BY generated_at DESC, rowid DESC')
     .all(creatorId);
   return rows.map((row) => ({
     recordId: row.record_id as string,
@@ -84,6 +98,7 @@ export function listGenerationsForCreator(db: DatabaseSync, creatorId: string): 
     generatedAt: row.generated_at as number,
     originalIdea: (row.original_idea as string | null) ?? null,
     mediaType: (row.media_type as string | null) ?? 'image',
+    assetId: (row.asset_id as string | null) ?? null,
   }));
 }
 

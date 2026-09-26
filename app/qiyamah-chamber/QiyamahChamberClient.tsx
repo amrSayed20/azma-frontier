@@ -67,6 +67,15 @@ interface GenerationRecord {
   readonly generatedAt: number;
   readonly originalIdea?: string | null;
   readonly mediaType?:  string;
+  /**
+   * The sovereign asset this generation became.
+   *
+   * FOUND 2026-09-25: editing was offered on uploaded assets alone, and the
+   * reason was not a hidden control — this record never carried which asset
+   * the Chamber had created, so there was nothing to act on. Null on records
+   * written before the link was declared.
+   */
+  readonly assetId?:    string | null;
 }
 
 interface UploadedItem {
@@ -179,6 +188,26 @@ export function QiyamahChamberClient({
   const [animateError, setAnimateError] = useState<string | null>(null);
   const [animatedResult, setAnimatedResult] = useState<{ forRecordId: string; assetId: string; url: string } | null>(null);
   const [editState, setEditState] = useState<'ready' | 'running' | 'failed'>('ready');
+  /**
+   * ── THE CREATOR'S WORD ON WHAT WAS MADE FOR THEM ──────────────────
+   *
+   *   The Founder, 2026-09-25, asked for a review before the work is treated
+   *   as done. Measured first: every generated asset is already deposited as
+   *   INTERMEDIATE — the Vault's own word for «not the Creator's final word»
+   *   — and nothing in the Empire read that state. The asset is safe from the
+   *   moment it exists; what was missing was the Creator saying it is right.
+   */
+  const [acceptedAssetIds, setAcceptedAssetIds] = useState<readonly string[]>([]);
+  const [acceptingAssetId, setAcceptingAssetId] = useState<string | null>(null);
+
+  const acceptAsset = async (assetId: string) => {
+    setAcceptingAssetId(assetId);
+    try {
+      const res = await fetch(`/api/vault/assets/${encodeURIComponent(assetId)}/accept`, { method: 'POST' });
+      if (res.ok) setAcceptedAssetIds((prev) => [...prev, assetId]);
+    } catch { /* the question went unanswered; the asset is unharmed either way */ }
+    setAcceptingAssetId(null);
+  };
   const [editError, setEditError] = useState<string | null>(null);
   const [editedAssetId, setEditedAssetId] = useState<string | null>(null);
   // Set only when the route refuses with 'requires-adoption' — Article 5.5.
@@ -684,6 +713,15 @@ export function QiyamahChamberClient({
           >
             <span className="style-tile-name">{s.nameAr}</span>
             <span className="style-tile-tagline">{s.tagline}</span>
+            {/* The Founder, 2026-09-25: «الإنفوجراف الذي لا أرى أي إعلان
+                عنه في القيامة حتى العرض التوضيحي». It sat as the
+                fourteenth tile in a row of fourteen, indistinguishable, while
+                it is the one style that BINDS a designated model — the Empire
+                refuses rather than substitutes for it. What is different about
+                it is now said. */}
+            {s.id === 'infographic' && (
+              <span className="style-tile-mark">يُجيد الحرف والترتيب</span>
+            )}
           </button>
         ))}
       </div>
@@ -846,12 +884,13 @@ export function QiyamahChamberClient({
     <main className="qiyamah-viewport">
       <ChamberDemonstration
         chamberId="qiyamah-chamber"
-        outcomeAr="صورةٌ أو فيديو أصليّ، محفوظٌ في خزانتك باسمك — لا معاينةً تزول بإغلاق الصفحة."
+        outcomeAr="أصلٌ سياديّ تملكه — صورةٌ أو إنفوغرافٌ أو مقطعٌ — محفوظٌ في خزانتك باسمك، ثمّ هو طيّعٌ لك تُعدّله وتُحرّكه."
         stepsAr={[
             'صِف فكرتك في جملةٍ أو جملتين، أو أحضر محثّك الجاهز.',
-            'اختر ما تُريده: صورة أم فيديو، وبأيّ نمطٍ بصريّ.',
+            'اختر ما تصنع: صورة، أو مقطعاً تختار مدّته وامتداده، أو إنفوغرافاً يُجيد الحرف والترتيب.',
             'ابنِ المشهد — تقرأ القيامة فكرتك وتوسّعها قبل التجسيد.',
-            'جسِّد. الناتج يُودَع خزانتك فور اكتماله.',
+            'جسِّد، والناتج يُودَع خزانتك أصلاً سياديّاً باسمك.',
+            'ثمّ أعِد عليه: عدّله بكلماتك، أو حرّك صورتك إلى مقطع.',
         ]}
       />
 
@@ -1465,13 +1504,53 @@ export function QiyamahChamberClient({
                       {/* Offered only for images, and only when a model verified to
                           animate an image is active — the page derives that from the
                           fleet. No model, no control. */}
+                      {/* ── EDITING WHAT THE CHAMBER ITSELF CREATED ─────────────
+                          The Founder, 2026-09-25: «أين مربع اختيار التعديل على
+                          صورة أو فيديو؟»
+
+                          MEASURED: the edit panel was offered on uploaded assets
+                          alone. A Creator could edit a picture they brought from
+                          their own device and could NOT edit one القيامة had just
+                          made for them — in the Chamber of creation itself. The
+                          route never restricted it; only the interface did. */}
+                      {g.mediaType !== 'video' && g.assetId && (
+                        <button
+                          className="gallery-edit-btn"
+                          aria-label="عدّل هذه الصورة"
+                          title="عدّل هذه الصورة"
+                          onClick={() => {
+                            setEditingAssetId(editingAssetId === g.assetId ? null : (g.assetId ?? null));
+                            setEditInstruction('');
+                            setEditState('ready');
+                          }}
+                        >
+                          ✎ تعديل
+                        </button>
+                      )}
+                      {g.assetId && !acceptedAssetIds.includes(g.assetId) && (
+                        <button
+                          className="gallery-edit-btn gallery-accept-btn"
+                          aria-label="اعتمد هذا الأصل"
+                          title="اعتمده أصلاً نهائيّاً في خزانتك"
+                          disabled={acceptingAssetId === g.assetId}
+                          onClick={() => void acceptAsset(g.assetId as string)}
+                        >
+                          {acceptingAssetId === g.assetId ? '…' : '✓ اعتماد'}
+                        </button>
+                      )}
+                      {g.assetId && acceptedAssetIds.includes(g.assetId) && (
+                        <span className="gallery-accepted-mark" title="أصلٌ معتمد بكلمتك">✓ معتمد</span>
+                      )}
+                      {/* Its label was the bare glyph ▶, which a Creator reads as
+                          «play», not «animate». A control says what it does. */}
                       {g.mediaType !== 'video' && animationModels.length > 0 && (
                         <button
                           className="gallery-edit-btn gallery-animate-btn"
                           aria-label="حرّك هذه الصورة"
+                          title="حرّك هذه الصورة إلى مقطع"
                           onClick={() => void openAnimate(g)}
                         >
-                          ▶
+                          ▶ تحريك
                         </button>
                       )}
                       <button

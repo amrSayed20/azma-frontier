@@ -319,6 +319,10 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
       prompt: request.prompt.trim(),
       style,
       assetUrl: persisted.assetUrl,
+      // The asset this became. It was known here all along and written only
+      // into the observability trail, so the gallery — the one thing a
+      // Creator reads — could not act on what the Chamber had just created.
+      assetId: persisted.assetId,
       originalIdea: request.originalIdea ?? null,
     });
     console.log(
@@ -512,6 +516,7 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
       prompt: trimmedPrompt,
       style,
       assetUrl: storedUrl,
+      assetId,
       originalIdea: request.originalIdea ?? null,
       mediaType: 'video',
     });

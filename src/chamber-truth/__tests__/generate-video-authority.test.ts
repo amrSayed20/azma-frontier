@@ -137,13 +137,22 @@ describe('ENTITLEMENT 16–20 · the decision is made before the provider', () =
 });
 
 describe('BOUNDARIES 21–25 · nothing else moved', () => {
-  it('Qiyamah declares exactly these seven capabilities, in order', () => {
+  // Updated deliberately 2026-09-25. The Founder asked for «التجلّي والتعديل
+  // على الأصل الناتج قبل الحفظ في الخزانة» — a review before the work is
+  // treated as finished. Measured first: every generated asset was already
+  // deposited as INTERMEDIATE, the Vault's own word for «not the Creator's
+  // final word», and nothing in the Empire read that state. The eighth
+  // capability is the Creator's word itself; it creates nothing and changes
+  // no bytes, so what this guard protects — that QIYAMAH generates and does
+  // not assemble — is unchanged.
+  it('Qiyamah declares exactly these eight capabilities, in order', () => {
     expect(QIYAMAH.capabilities.map((c) => c.id)).toEqual([
       'generate-image',
       'generate-video',
       'expand-intent',
       'edit-inside-asset',
       'animate-asset',
+      'accept-generated-asset',
       'review-generations',
       'discard-generation',
     ]);

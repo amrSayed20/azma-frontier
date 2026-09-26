@@ -155,6 +155,30 @@ function migrateGenerationRecordsTable(db: DatabaseSync): void {
       db.exec(`ALTER TABLE generation_records ADD COLUMN ${column.ddl}`);
     }
   }
+
+  // ── RECOVERING A LINK THAT WAS ALWAYS THERE ───────────────────────
+  //
+  //   Every generation was deposited into the Creator's Vault as a sovereign
+  //   asset, and the record of it never held which asset that was — so the
+  //   Chamber of creation could not edit or animate what it had just created.
+  //   MEASURED on production 2026-09-25: 38 of 43 existing records already
+  //   match a Vault asset on `asset_url` exactly. The link existed and was
+  //   never written down.
+  //
+  //   Matched only where the URI is unambiguous, and never overwritten: a row
+  //   that already knows its asset keeps what it knows. The five that match
+  //   nothing stay null and the Chamber offers no action on them rather than
+  //   guessing one.
+  db.exec(`
+    UPDATE generation_records
+       SET asset_id = (
+             SELECT v.asset_id FROM vault_assets v
+              WHERE v.secure_storage_uri = generation_records.asset_url
+                AND v.subscriber_tenant_id = generation_records.creator_id
+              LIMIT 1
+           )
+     WHERE asset_id IS NULL
+  `);
 }
 
 export function createDatabase(path: string = defaultDbPath()): DatabaseSync {

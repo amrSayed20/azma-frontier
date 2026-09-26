@@ -113,6 +113,45 @@ export function adoptLegacyAsset(
   return Number(result.changes) > 0;
 }
 
+/**
+ * The Creator accepts what the Chamber made for them.
+ *
+ * ─── WHY THIS IS THE WHOLE OF IT ─────────────────────────────────────────────
+ *
+ *   The Founder, 2026-09-25, asked for «التجلّي والتعديل على الأصل
+ *   الناتج قبل الحفظ في الخزانة أو المعاينة» — a review before the work
+ *   is treated as done.
+ *
+ *   MEASURED before building anything: every asset القيامة makes is ALREADY
+ *   deposited as INTERMEDIATE, which is the Vault's own word for «not yet the
+ *   Creator's final word». 65 assets carry it on production. And nothing in
+ *   the Empire reads that state — not one line changes what a Creator sees
+ *   because of it. The review the Founder asked for was half built and
+ *   entirely silent.
+ *
+ *   So no new state, no new table, no pending-bytes held in memory. The asset
+ *   is safe in the Vault from the moment it exists, which is what stopped the
+ *   earlier losses; what was missing is the Creator saying «this one is
+ *   right». That is this function.
+ *
+ *   Scoped to the owner, so one Creator cannot accept another's work.
+ */
+export function acceptAsset(
+  db: DatabaseSync,
+  assetId: string,
+  subscriberTenantId: string,
+  acceptedAtMs: number = Date.now(),
+): boolean {
+  const result = db
+    .prepare(
+      `UPDATE vault_assets
+       SET lifecycle_state = ?, last_modified_by = ?, last_modified_at = ?
+       WHERE asset_id = ? AND subscriber_tenant_id = ?`,
+    )
+    .run(LifecycleState.FINAL, subscriberTenantId, acceptedAtMs, assetId, subscriberTenantId);
+  return Number(result.changes) > 0;
+}
+
 export function getVaultAsset(db: DatabaseSync, assetId: string): VaultAsset | null {
   const row = db
     .prepare(

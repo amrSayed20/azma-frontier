@@ -133,6 +133,9 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     prompt TEXT NOT NULL,
     style TEXT,
     asset_url TEXT NOT NULL,
+    -- The sovereign asset this generation became, so the Chamber can act on
+    -- what it created. See GENERATION_RECORDS_MIGRATION_COLUMNS.
+    asset_id TEXT,
     generated_at INTEGER NOT NULL
   )`,
   // Billing Foundation (Execution Package IV) — a new table, added
@@ -568,6 +571,24 @@ export const GENERATION_RECORDS_MIGRATION_COLUMNS: readonly { readonly name: str
   // can render <video> elements correctly. DEFAULT 'image' keeps all pre-existing
   // rows valid without data migration.
   { name: 'media_type', ddl: "media_type TEXT NOT NULL DEFAULT 'image'" },
+  /**
+   * The sovereign asset this generation became.
+   *
+   * ─── THE INCIDENT THIS ENCODES ─────────────────────────────────────────
+   *
+   *   The Founder, 2026-09-25: «أين مربع اختيار التعديل على صورة أو
+   *   فيديو؟» — and editing was offered on uploaded assets alone. Traced
+   *   past the interface: القيامة deposits everything it makes into the
+   *   Creator's Vault as a sovereign asset, and this record — the only thing
+   *   the gallery reads — never held which asset that was. Editing what the
+   *   Chamber of creation had just created was not hidden; it was impossible,
+   *   because nothing knew what to edit.
+   *
+   *   MEASURED on the live database the same day: 38 of 43 records already
+   *   match a Vault asset by `asset_url`. The link existed and was never
+   *   declared. It is declared now, and old rows recover it from that match.
+   */
+  { name: 'asset_id', ddl: 'asset_id TEXT' },
 ];
 
 /**
