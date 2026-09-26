@@ -127,6 +127,30 @@ const CREATION_EVENT_KEYS = [
   // engine, and a derived asset claiming its parent's provider would misname
   // the thing that actually produced its bytes.
   'providerId',
+  // ── AND EVERY ECONOMIC CLAIM ABOUT THE PARENT'S OWN CREATION ────────────
+  //
+  //   MEASURED 2026-09-27, on the first live upscale this Empire ever ran:
+  //   the derived asset carried BOTH `providerCreditsCharged: 150` — its
+  //   parent's generation charge — and `mutationProviderCreditsCharged: 25`,
+  //   its own. A reader could attribute 150 to the upscale, or add them and
+  //   report 175 for an operation that cost 25.
+  //
+  //   This list was written before economic fields existed, so it could not
+  //   know them. That is the shape of the fault: a hand-written list of what
+  //   to strip silently stops being complete the moment a field is added
+  //   beside it. Every key a derivation writes about ITSELF is namespaced
+  //   `mutation*`; every key about the parent's own creation is stripped here.
+  'providerJobId',
+  'providerCreditsCharged',
+  'providerCreditUnit',
+  'generationOperationId',
+  // The parent's production conditions describe the parent's output, not the
+  // child's — an upscale changes them by definition.
+  'producedSeconds',
+  'durationSeconds',
+  'outputWidth',
+  'outputHeight',
+  'outputFps',
 ] as const;
 
 /** The parent's metadata minus every claim about the parent's own creation. */

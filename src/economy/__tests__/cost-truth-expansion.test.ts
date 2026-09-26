@@ -142,7 +142,41 @@ describe('5 · no capability invents a cost it did not incur', () => {
   });
 });
 
-describe('6 · no historical fabrication and no second authority', () => {
+describe('6 · a child never carries its parent’s charge', () => {
+  /**
+   * SEEN on the first live upscale this Empire ever ran: the derived asset
+   * carried BOTH `providerCreditsCharged: 150` — its parent's GENERATION
+   * charge — and `mutationProviderCreditsCharged: 25`, its own. A reader
+   * could attribute 150 to the upscale, or add them and report 175 for an
+   * operation that cost 25.
+   *
+   * CREATION_EVENT_KEYS was written before any economic field existed, so it
+   * could not know them. That is the shape of this fault: a hand-written
+   * strip list stops being complete the moment a field is added beside it.
+   */
+  it('every economic claim about the parent’s own creation is stripped', () => {
+    for (const k of ['providerCreditsCharged', 'providerCreditUnit', 'providerJobId', 'generationOperationId']) {
+      expect(MUTATION).toContain(`'${k}',`);
+    }
+  });
+
+  it('the parent’s production conditions are stripped too — a derivation changes them', () => {
+    for (const k of ['producedSeconds', 'durationSeconds', 'outputWidth', 'outputHeight', 'outputFps']) {
+      expect(MUTATION).toContain(`'${k}',`);
+    }
+  });
+
+  it('what the derivation writes about ITSELF is namespaced, so it survives', () => {
+    // The strip list removes bare keys; the mutation's own keys all begin
+    // `mutation`, which is what keeps the two accounts apart.
+    const start = MUTATION.indexOf('const CREATION_EVENT_KEYS = [');
+    const list = MUTATION.slice(start, MUTATION.indexOf('] as const;', start));
+    expect(list).not.toMatch(/'mutation/);
+    expect(MUTATION).toContain('mutationProviderCreditsCharged');
+  });
+});
+
+describe('7 · no historical fabrication and no second authority', () => {
   it('no migration writes a charge onto an existing asset', () => {
     const db = read('src/persistent-storage/db.ts');
     expect(db).not.toMatch(/mutationProviderCreditsCharged/);
