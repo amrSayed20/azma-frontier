@@ -75,13 +75,50 @@ describe('2 · a workshop floor, not a warehouse', () => {
     expect(CLIENT).toContain('setAcceptedUris(');
   });
 
-  it('nothing is hidden — the floor says how much went and opens the door', () => {
-    expect(CLIENT).toContain('أصلاً اعتمدتَه انتقل إلى خزانتك');
+  it('nothing is hidden — the floor says what was accepted and opens the door', () => {
+    expect(CLIENT).toContain('وكلّ أصولك محفوظةٌ في خزانتك');
     expect(CLIENT).toContain("goTo('/sovereign-vault-palace')");
   });
 
   it('the floor is named for what it holds', () => {
-    expect(CLIENT).toContain('<h3>تحت يدك</h3>');
+    expect(CLIENT).toContain('<h3>بانتظار كلمتك</h3>');
     expect(CLIENT).not.toContain('<h3>إرثك السيادي</h3>');
+    expect(CLIENT).not.toContain('<h3>تحت يدك</h3>');
+  });
+});
+
+describe('3 · an act has one door, and it is at the top', () => {
+  /**
+   * The Founder, 2026-09-26: «ولا زال التحريك يتم من الأصول أسفل الصفحة».
+   *
+   * Every act now stands at the head of the Chamber with a full picker and a
+   * door to bring an asset in. A card at the foot offering ✎ and ▶ was a
+   * SECOND door to a capability that already had one — the same duplication
+   * removed from the infographic, which let the act a Creator chose disagree
+   * with what the Chamber made.
+   */
+  it('no card animates', () => {
+    expect(CLIENT).not.toContain('gallery-animate-btn');
+    expect(CLIENT).not.toContain('openAnimate(g)');
+    expect(CLIENT).not.toContain('حرّك هذه الصورة');
+  });
+
+  it('no card edits', () => {
+    expect(CLIENT).not.toContain('عدّل هذه الصورة');
+  });
+
+  it('and the panels those buttons opened are gone with them, not left unreachable', () => {
+    expect(CLIENT).not.toContain('animatingRecordId === g.recordId');
+    expect(CLIENT).not.toContain('animatedResult.forRecordId === g.recordId');
+  });
+
+  it('the card keeps only what belongs to a single asset: the word, and removal', () => {
+    expect(CLIENT).toContain('اعتمد هذا الأصل');
+    expect(CLIENT).toContain('حذف هذا التوليد');
+  });
+
+  it('the acts themselves are untouched at the top', () => {
+    expect(CLIENT).toContain("{mediaType === 'video' && videoSource === 'asset' && (");
+    expect(CLIENT).toContain("{mediaType === 'edit' && (");
   });
 });

@@ -2106,11 +2106,22 @@ export function QiyamahChamberClient({
           everything ever made, for ever. A legacy is kept in a vault; a
           workshop floor holds the work in hand. */}
       {hasGalleryContent && (
-        <section className="your-generations" aria-label="تحت يدك">
-          <h3>تحت يدك</h3>
+        <section className="your-generations" aria-label="بانتظار كلمتك">
+          {/* ── The Founder, three times: «لماذا تتجمّع الأصول في القيامة»,
+                 «الأصول لا تزال تظهر», «ولا زال التحريك يتم من الأصول أسفل
+                 الصفحة».
+                 He is right each time, and they are one ruling. The acts live
+                 at the top now, each with a full picker and a door to bring an
+                 asset in — so a card at the foot offering ✎ and ▶ was a SECOND
+                 door to a capability that already had one, exactly the
+                 duplication removed from the infographic.
+                 What is left has one meaning: work awaiting his word. It
+                 shrinks to nothing as he gives it, and what he has accepted
+                 lives in the Vault. */}
+          <h3>بانتظار كلمتك</h3>
           {acceptedUris.length > 0 && (
             <p className="moved-to-vault">
-              {acceptedUris.length} أصلاً اعتمدتَه انتقل إلى خزانتك.{' '}
+              اعتمدتَ {acceptedUris.length} — وكلّ أصولك محفوظةٌ في خزانتك.{' '}
               <button
                 type="button"
                 className="moved-to-vault-link"
@@ -2191,20 +2202,6 @@ export function QiyamahChamberClient({
                           their own device and could NOT edit one القيامة had just
                           made for them — in the Chamber of creation itself. The
                           route never restricted it; only the interface did. */}
-                      {g.mediaType !== 'video' && g.assetId && (
-                        <button
-                          className="gallery-edit-btn"
-                          aria-label="عدّل هذه الصورة"
-                          title="عدّل هذه الصورة"
-                          onClick={() => {
-                            setEditingAssetId(editingAssetId === g.assetId ? null : (g.assetId ?? null));
-                            setEditInstruction('');
-                            setEditState('ready');
-                          }}
-                        >
-                          ✎ تعديل
-                        </button>
-                      )}
                       {g.assetId && !acceptedAssetIds.includes(g.assetId) && (
                         <button
                           className="gallery-edit-btn gallery-accept-btn"
@@ -2219,18 +2216,6 @@ export function QiyamahChamberClient({
                       {g.assetId && acceptedAssetIds.includes(g.assetId) && (
                         <span className="gallery-accepted-mark" title="أصلٌ معتمد بكلمتك">✓ معتمد</span>
                       )}
-                      {/* Its label was the bare glyph ▶, which a Creator reads as
-                          «play», not «animate». A control says what it does. */}
-                      {g.mediaType !== 'video' && animationModels.length > 0 && (
-                        <button
-                          className="gallery-edit-btn gallery-animate-btn"
-                          aria-label="حرّك هذه الصورة"
-                          title="حرّك هذه الصورة إلى مقطع"
-                          onClick={() => void openAnimate(g)}
-                        >
-                          ▶ تحريك
-                        </button>
-                      )}
                       <button
                         className="delete-btn"
                         aria-label="حذف هذا التوليد"
@@ -2241,83 +2226,7 @@ export function QiyamahChamberClient({
                     </div>
                   )}
 
-                  {animatingRecordId === g.recordId && (
-                    <div className="asset-edit-panel asset-animate-panel">
-                      <label className="asset-edit-label" htmlFor={`animate-${g.recordId}`}>
-                        كيف تريد أن تتحرّك هذه الصورة؟
-                      </label>
-                      <textarea
-                        id={`animate-${g.recordId}`}
-                        className="asset-edit-input"
-                        value={animateInstruction}
-                        onChange={(e) => setAnimateInstruction(e.target.value)}
-                        placeholder="مثال: أبقِ التكوين كما هو بينما تتقدّم الكاميرا ببطء ويتغيّر الضوء طبيعياً."
-                        rows={3}
-                        maxLength={1000}
-                        disabled={animateState === 'running'}
-                      />
-                      {/* The model is a real choice only when the fleet offers more
-                          than one; a single model is stated, not dressed as a menu. */}
-                      {animationModels.length === 1 ? (
-                        <p className="asset-animate-model">
-                          <span className="animate-model-name">{animationModels[0].nameAr}</span>
-                          {animationModels[0].noteAr && (
-                            <span className="animate-model-note">{animationModels[0].noteAr}</span>
-                          )}
-                        </p>
-                      ) : (
-                        <div className="asset-animate-models" role="radiogroup" aria-label="نموذج الحركة">
-                          {animationModels.map((m) => (
-                            <label key={m.modelId} className="asset-animate-model-option">
-                              <input
-                                type="radio"
-                                name={`animate-model-${g.recordId}`}
-                                value={m.modelId}
-                                checked={animateModelId === m.modelId}
-                                onChange={() => setAnimateModelId(m.modelId)}
-                                disabled={animateState === 'running'}
-                              />
-                              <span className="animate-model-name">{m.nameAr}</span>
-                              {m.noteAr && <span className="animate-model-note">{m.noteAr}</span>}
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                      {animateState === 'running' && (
-                        <p className="asset-edit-status" role="status">
-                          التحريك قيد التنفيذ — قد يستغرق دقائق. لا تغلق الصفحة.
-                        </p>
-                      )}
-                      {animateState === 'failed' && animateError && (
-                        <p className="asset-edit-error" role="alert">{animateError}</p>
-                      )}
-                      <div className="asset-edit-actions">
-                        <button
-                          className="asset-edit-run asset-animate-run"
-                          disabled={animateState === 'running' || !animateAssetId || animateInstruction.trim().length === 0}
-                          onClick={() => void handleAnimateAsset()}
-                        >
-                          {animateState === 'running' ? 'جارٍ…' : 'حرّك'}
-                        </button>
-                        <button
-                          className="asset-edit-cancel"
-                          disabled={animateState === 'running'}
-                          onClick={() => { setAnimatingRecordId(null); setAnimateError(null); }}
-                        >
-                          إلغاء
-                        </button>
-                      </div>
-                    </div>
-                  )}
 
-                  {/* Shown only after the derived video is really in the Vault: the
-                      src is the stored file, and the gallery above was re-read. */}
-                  {animatedResult && animatedResult.forRecordId === g.recordId && (
-                    <div className="asset-animate-result">
-                      <video className="generation-thumb generation-thumb-video asset-animate-video" src={animatedResult.url} controls playsInline />
-                      <p className="asset-edit-status">تحرّكت الصورة وحُفظ الفيديو أصلاً جديداً في خزائنك.</p>
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
