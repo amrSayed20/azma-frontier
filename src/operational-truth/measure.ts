@@ -44,6 +44,8 @@
  */
 
 import { statfsSync } from 'fs';
+import { getHeapStatistics } from 'v8';
+import { totalmem } from 'os';
 
 export type OperationalTier = 'NORMAL' | 'WARNING' | 'CRITICAL';
 
@@ -74,8 +76,26 @@ export interface ProviderReadiness {
 }
 
 export interface OperationalState {
-  /** Heap utilisation percent, or null when it could not be taken. */
+  /**
+   * Heap used as a percent of the heap's actual CEILING, or null when it
+   * could not be taken.
+   *
+   * ── WHY NOT heapUsed / heapTotal ──────────────────────────────────────
+   *
+   *   MEASURED 2026-09-26: this read `heapUsed / heapTotal` and production
+   *   reported 96% — CRITICAL — permanently. `heapTotal` is what V8 has
+   *   committed FROM THE OS AT THIS MOMENT, and V8 grows it on demand while
+   *   keeping it close to what is in use. A freshly started, empty Node
+   *   process measures 73% by that formula and 0% by this one.
+   *
+   *   Production's true figure: 143.8 MB used of a ~2240 MB ceiling — six
+   *   percent. The Empire had been screaming CRITICAL at a healthy process,
+   *   and a permanent false alarm is worse than none: it teaches everyone to
+   *   ignore the one alarm that will matter.
+   */
   readonly heapUtilizationPct: number | null;
+  /** Resident memory as a percent of the machine's, or null. The other real pressure. */
+  readonly rssPct: number | null;
   readonly memoryTier: OperationalTier;
   /** Disk used percent, or null when the filesystem could not be read. */
   readonly diskUsedPct: number | null;
@@ -83,15 +103,43 @@ export interface OperationalState {
   readonly providers: readonly ProviderReadiness[];
   /** The providers that are missing and stop revenue. */
   readonly missingRevenueProviders: readonly ProviderReadiness[];
-  /** The worst of what was actually measured. */
+  /**
+   * Whether the Empire can take money at all — reported BESIDE the operational
+   * tier, never folded into it.
+   *
+   * Folding it in made every reading CRITICAL for a reason that has nothing to
+   * do with whether anything is failing right now, which is how an alarm stops
+   * being read. «Nothing is wrong, and we cannot be paid» is two facts, and
+   * the Founder is owed both.
+   */
+  readonly revenueReady: boolean;
+  /** The worst of what is actually FAILING — memory and disk. Not revenue. */
   readonly overallTier: OperationalTier;
   readonly measuredAtMs: number;
 }
 
+/**
+ * ── THE GATEWAY IS NAMED BY THE CODE, NOT BY THIS FILE ──────────────────────
+ *
+ *   This manifest listed three STRIPE keys as revenue-critical. The Empire
+ *   implements no Stripe gateway: `src/economy/payment` holds a provider-
+ *   neutral `IPaymentGateway` contract and one adapter, for Paymob, and the
+ *   Founder has ruled the gateway will be XPay. Three keys that will never be
+ *   set were therefore reporting CRITICAL for ever.
+ *
+ *   A gateway is «configured» when EVERY key of at least one supported gateway
+ *   is present. Adding XPay is adding an entry here and an adapter beside the
+ *   Paymob one — not editing a condition scattered through the Empire.
+ */
+export const PAYMENT_GATEWAYS: readonly { readonly id: string; readonly nameAr: string; readonly keys: readonly string[] }[] = [
+  {
+    id: 'paymob',
+    nameAr: 'بوّابة الدفع',
+    keys: ['PAYMOB_API_KEY', 'PAYMOB_INTEGRATION_ID', 'PAYMOB_IFRAME_ID', 'PAYMOB_HMAC_SECRET'],
+  },
+];
+
 const PROVIDER_MANIFEST: readonly Omit<ProviderReadiness, 'configured'>[] = [
-  { key: 'STRIPE_SECRET_KEY',                    nameAr: 'مفتاح الدفع',            revenueCritical: true },
-  { key: 'STRIPE_WEBHOOK_SECRET',                nameAr: 'إشعار الدفع',            revenueCritical: true },
-  { key: 'STRIPE_PRICE_ID_CREATOR_MONTHLY',      nameAr: 'سعر الاشتراك',           revenueCritical: true },
   { key: 'GEMINI_API_KEY',                       nameAr: 'جسر التركيب المعرفيّ',   revenueCritical: false },
   { key: 'OPENAI_API_KEY',                       nameAr: 'مزوّد الصور',            revenueCritical: false },
   { key: 'VOICE_CLONING_API_KEY',                nameAr: 'استنساخ الصوت',          revenueCritical: false },
@@ -99,9 +147,20 @@ const PROVIDER_MANIFEST: readonly Omit<ProviderReadiness, 'configured'>[] = [
 
 export function measureOperationalState(now: number = Date.now()): OperationalState {
   const mem = process.memoryUsage();
-  const heapUtilizationPct = mem.heapTotal > 0
-    ? Math.round((mem.heapUsed / mem.heapTotal) * 100)
-    : null;
+
+  // The ceiling V8 will not grow past — the only denominator under which a
+  // percentage means «how close to failing». See the note on the field.
+  let heapUtilizationPct: number | null = null;
+  try {
+    const limit = getHeapStatistics().heap_size_limit;
+    if (limit > 0) heapUtilizationPct = Math.round((mem.heapUsed / limit) * 100);
+  } catch { /* a runtime without v8 statistics says null, never a default */ }
+
+  let rssPct: number | null = null;
+  try {
+    const machine = totalmem();
+    if (machine > 0) rssPct = Math.round((mem.rss / machine) * 100);
+  } catch { /* null says «not taken» */ }
 
   let diskUsedPct: number | null = null;
   try {
@@ -119,19 +178,31 @@ export function measureOperationalState(now: number = Date.now()): OperationalSt
     : evaluateTier(diskUsedPct, OPERATIONAL_THRESHOLDS.disk.warningPct, OPERATIONAL_THRESHOLDS.disk.criticalPct);
 
   // Presence only. A key's value never leaves the process that holds it.
-  const providers: ProviderReadiness[] = PROVIDER_MANIFEST.map((p) => ({
-    ...p,
-    configured: Boolean(process.env[p.key]),
+  const gatewayEntries: ProviderReadiness[] = PAYMENT_GATEWAYS.map((g) => ({
+    key: g.keys.join('+'),
+    nameAr: g.nameAr,
+    revenueCritical: true,
+    configured: g.keys.every((k) => Boolean(process.env[k])),
   }));
-  const missingRevenueProviders = providers.filter((p) => p.revenueCritical && !p.configured);
 
+  const providers: ProviderReadiness[] = [
+    ...gatewayEntries,
+    ...PROVIDER_MANIFEST.map((p) => ({ ...p, configured: Boolean(process.env[p.key]) })),
+  ];
+  const missingRevenueProviders = providers.filter((p) => p.revenueCritical && !p.configured);
+  const revenueReady = gatewayEntries.some((g) => g.configured);
+
+  // Only what is FAILING. «We cannot be paid» is reported as revenueReady,
+  // beside this, because an alarm that is always on is an alarm nobody reads.
   const overallTier: OperationalTier =
-    memoryTier === 'CRITICAL' || diskTier === 'CRITICAL' || missingRevenueProviders.length > 0 ? 'CRITICAL'
+    memoryTier === 'CRITICAL' || diskTier === 'CRITICAL' ? 'CRITICAL'
     : memoryTier === 'WARNING' || diskTier === 'WARNING' ? 'WARNING'
     : 'NORMAL';
 
   return {
     heapUtilizationPct,
+    rssPct,
+    revenueReady,
     memoryTier,
     diskUsedPct,
     diskTier,

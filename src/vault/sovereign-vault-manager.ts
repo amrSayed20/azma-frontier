@@ -21,7 +21,7 @@ import {
   DerivationKind, DerivationPermission, LifecycleState, isDerivable,
 } from './sovereign-vault-types';
 import { IVaultManager } from '../orchestrator/fleet-materialization/fleet/fleet-dispatcher';
-import { getDb, insertVaultAsset, getVaultAsset, listVaultAssetsForTenant, linkGoalToVaultAsset, getProject } from '../persistent-storage';
+import { getDb, insertVaultAsset, getVaultAsset, findVaultAssetByContentDigest, listVaultAssetsForTenant, linkGoalToVaultAsset, getProject } from '../persistent-storage';
 
 export class SovereignVaultManager implements IVaultManager {
   /**
@@ -58,6 +58,34 @@ export class SovereignVaultManager implements IVaultManager {
     // Generates the universal asset ID representing the user's sovereign ownership
     // (Using standard generation logic in place of a full crypto package dependency)
     const newAssetId = `asset_${now}_${Math.random().toString(36).substring(2, 9)}`;
+
+    // ── THE SAME BYTES ARE NOT DEPOSITED TWICE ─────────────────────────────
+    //
+    //   The Founder, 2026-09-26: «لا أريد ملء الخزائن بأصول مكرّرة... ستواجهنا
+    //   مشكلة تخزين مع زيادة أعداد المشتركين».
+    //
+    //   It is checked HERE because this method is the one chokepoint every
+    //   asset in the Empire passes through — upload, generation, derivation,
+    //   voice, video, the Chamber of Evidence. Guarding the upload route alone
+    //   would have left every other path free to duplicate.
+    //
+    //   It refuses rather than repairs, as this method does everywhere else:
+    //   the caller learns which asset the Creator already owns and decides
+    //   what to do with the bytes it had just written. A path that cannot
+    //   cheaply hash its bytes supplies no digest and nothing changes for it.
+    //
+    //   Scoped to one tenant: two Creators owning identical bytes each own
+    //   their own asset, and neither learns anything about the other.
+    if (deposit.contentDigest) {
+      const existing = findVaultAssetByContentDigest(db, deposit.subscriberTenantId, deposit.contentDigest);
+      if (existing) {
+        throw new SovereignDepositError(
+          'DUPLICATE_CONTENT',
+          'this Creator already owns an asset with these exact bytes',
+          existing.assetId,
+        );
+      }
+    }
 
     // ── Lineage resolution — Articles 5.3, 5.5, and directive Article 7 ─────
     //
@@ -143,6 +171,11 @@ export class SovereignVaultManager implements IVaultManager {
       createdBy: deposit.createdBy ?? deposit.subscriberTenantId,
       lastModifiedBy: null,
       lastModifiedAt: null,
+      // Recorded at birth so the next deposit of the same bytes can be refused.
+      // deriveAsset already puts it in metadata; the column is the indexed copy.
+      contentDigest: deposit.contentDigest
+        ?? (deposit.metadata as { contentDigest?: string } | undefined)?.contentDigest
+        ?? null,
     };
 
     // Commit to the structural ownership layer

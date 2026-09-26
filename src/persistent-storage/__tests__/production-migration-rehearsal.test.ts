@@ -92,7 +92,15 @@ describeIfAvailable('B1/B2 — migration rehearsed on the real production table'
     const columns = new Set(
       (db.prepare('PRAGMA table_info(vault_assets)').all() as { name: string }[]).map((r) => r.name),
     );
-    expect(columns.size).toBe(20); // 9 original + 11 provenance
+    // 9 original + 11 provenance + content_digest (2026-09-26).
+    // The Founder: «لا أريد ملء الخزائن بأصول مكرّرة... ستواجهنا مشكلة تخزين
+    // مع زيادة أعداد المشتركين». The digest already existed inside the JSON
+    // metadata of every derived asset, where no query could reach it; as an
+    // INDEXED column it answers «does this Creator already own these exact
+    // bytes?» in one lookup at any number of subscribers. Nullable, so every
+    // pre-existing row is untouched and answers «unknown», never «duplicate».
+    expect(columns.size).toBe(21);
+    expect(columns.has('content_digest')).toBe(true);
     for (const expected of ['parent_asset_id', 'root_asset_id', 'version', 'derivation', 'creation_chamber', 'project_id', 'lifecycle_state', 'derivation_permission', 'created_by', 'last_modified_by', 'last_modified_at']) {
       expect(columns.has(expected)).toBe(true);
     }

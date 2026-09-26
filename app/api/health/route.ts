@@ -154,11 +154,13 @@ export async function GET(request: NextRequest) {
     'NORMAL';
 
   // ── Provider configuration (presence only — never expose key values) ───
+  //   The Stripe keys were reported here and nowhere implemented: this Empire
+  //   holds a provider-neutral IPaymentGateway and one adapter, for Paymob,
+  //   and the Founder has ruled the gateway will be XPay. What is reported is
+  //   now whatever the payment layer actually declares.
   const providers = {
     openai:         !!process.env.OPENAI_API_KEY        ? 'CONFIGURED' : 'MISSING',
-    stripeSecret:   !!process.env.STRIPE_SECRET_KEY     ? 'CONFIGURED' : 'MISSING',
-    stripeWebhook:  !!process.env.STRIPE_WEBHOOK_SECRET ? 'CONFIGURED' : 'MISSING',
-    stripePrice:    !!process.env.STRIPE_PRICE_ID_CREATOR_MONTHLY ? 'CONFIGURED' : 'MISSING',
+    paymentGateway: operational.revenueReady ? 'CONFIGURED' : 'MISSING',
     voiceCloning:   !!process.env.VOICE_CLONING_API_KEY ? 'CONFIGURED' : 'NOT_CONFIGURED',
     founderAccount: !!process.env.FOUNDER_EMAIL         ? 'CONFIGURED' : 'MISSING',
     // Gemini carries the Chamber of Evidence's synthesis — the composed Arabic
@@ -169,10 +171,8 @@ export async function GET(request: NextRequest) {
   };
 
   const allProvidersReady =
-    providers.openai        === 'CONFIGURED' &&
-    providers.stripeSecret  === 'CONFIGURED' &&
-    providers.stripeWebhook === 'CONFIGURED' &&
-    providers.stripePrice   === 'CONFIGURED' &&
+    providers.openai         === 'CONFIGURED' &&
+    providers.paymentGateway === 'CONFIGURED' &&
     providers.founderAccount === 'CONFIGURED';
 
   // ── Overall status ─────────────────────────────────────────────────────
@@ -225,10 +225,24 @@ export async function GET(request: NextRequest) {
     },
 
     memory: {
-      heapUsed:         humanBytes(mem.heapUsed),
-      heapTotal:        humanBytes(mem.heapTotal),
-      rss:              humanBytes(mem.rss),
-      heapUtilizationPct: `${Math.round((mem.heapUsed / mem.heapTotal) * 100)}%`,
+      heapUsed:  humanBytes(mem.heapUsed),
+      // Kept, and named for what it is: what V8 has committed right now. It
+      // is NOT a ceiling, and dividing by it reported 96% on a healthy
+      // process — see the note in src/operational-truth/measure.ts.
+      heapCommitted: humanBytes(mem.heapTotal),
+      rss:       humanBytes(mem.rss),
+      heapUtilizationPct: operational.heapUtilizationPct !== null
+        ? `${operational.heapUtilizationPct}%`
+        : 'unavailable',
+      rssPct: operational.rssPct !== null ? `${operational.rssPct}%` : 'unavailable',
+    },
+
+    // Two facts, not one: whether anything is failing, and whether the Empire
+    // can be paid. Folding the second into the first made every reading
+    // CRITICAL, which is how an alarm stops being read.
+    revenue: {
+      ready: operational.revenueReady,
+      missing: operational.missingRevenueProviders.map((p) => p.nameAr),
     },
 
     providers,

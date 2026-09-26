@@ -174,6 +174,16 @@ export interface SovereignVaultDeposit {
   secureStorageUri: string;          // Cloud URL for media, or direct document URI for structural
   metadata: VaultAssetMetadata;
 
+  /**
+   * The SHA-256 of the bytes being deposited.
+   *
+   * Supplying it asks the Vault to refuse a duplicate: if this Creator already
+   * owns an asset with these exact bytes, the deposit is rejected with
+   * DUPLICATE_CONTENT naming the asset they already have. A path that cannot
+   * cheaply hash its bytes omits it and nothing changes for it.
+   */
+  contentDigest?: string;
+
   // ── PHASE C: provenance at the moment of creation ─────────────────────────
   //
   // `creationChamber` is REQUIRED, and that is the whole mechanism. Every asset
@@ -226,15 +236,20 @@ export type DepositRejection =
   /** An asset cannot be its own parent. */
   | 'CIRCULAR_LINEAGE'
   /** The named project does not exist or belongs to another Creator. */
-  | 'PROJECT_NOT_OWNED';
+  | 'PROJECT_NOT_OWNED'
+  /** This Creator already owns an asset with these exact bytes. */
+  | 'DUPLICATE_CONTENT';
 
 /** Thrown by `depositAsset` when a deposit violates the constitution. */
 export class SovereignDepositError extends Error {
   public readonly rejection: DepositRejection;
-  constructor(rejection: DepositRejection, detail: string) {
+  /** On DUPLICATE_CONTENT, the asset the Creator already owns. */
+  public readonly existingAssetId?: string;
+  constructor(rejection: DepositRejection, detail: string, existingAssetId?: string) {
     super(`[SovereignVault] ${rejection}: ${detail}`);
     this.name = 'SovereignDepositError';
     this.rejection = rejection;
+    this.existingAssetId = existingAssetId;
   }
 }
 
@@ -295,6 +310,8 @@ export interface VaultAsset {
   /** Who last changed its record, and when. Article 8.4. */
   lastModifiedBy?: string | null;
   lastModifiedAt?: number | null;
+  /** SHA-256 of this asset's own bytes — the queryable copy of what metadata holds. */
+  contentDigest?: string | null;
 }
 
 /**

@@ -37,8 +37,8 @@ export function insertVaultAsset(db: DatabaseSync, asset: VaultAsset): void {
   db.prepare(
     `INSERT INTO vault_assets
       (asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at,
-       parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at, content_digest)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     asset.assetId,
     asset.subscriberTenantId,
@@ -61,7 +61,31 @@ export function insertVaultAsset(db: DatabaseSync, asset: VaultAsset): void {
     asset.createdBy ?? asset.subscriberTenantId,
     asset.lastModifiedBy ?? null,
     asset.lastModifiedAt ?? null,
+    // The digest is a column so it can be INDEXED. It also stays in metadata
+    // where deriveAsset already writes it — the column is the queryable copy,
+    // not a second truth: both are written from the same bytes.
+    asset.contentDigest ?? (asset.metadata as { contentDigest?: string } | undefined)?.contentDigest ?? null,
   );
+}
+
+/**
+ * The asset this Creator already owns with exactly these bytes, or null.
+ *
+ * The Founder, 2026-09-26: «لا أريد ملء الخزائن بأصول مكرّرة... ستواجهنا مشكلة
+ * تخزين مع زيادة أعداد المشتركين». Scoped to one tenant by the same index that
+ * answers it: two Creators owning identical bytes each own their own asset,
+ * and neither can learn anything about the other from this lookup.
+ */
+export function findVaultAssetByContentDigest(
+  db: DatabaseSync,
+  subscriberTenantId: string,
+  contentDigest: string,
+): VaultAsset | null {
+  const row = db
+    .prepare('SELECT asset_id FROM vault_assets WHERE subscriber_tenant_id = ? AND content_digest = ? LIMIT 1')
+    .get(subscriberTenantId, contentDigest) as { asset_id?: string } | undefined;
+  if (!row?.asset_id) return null;
+  return getVaultAsset(db, row.asset_id);
 }
 
 /**

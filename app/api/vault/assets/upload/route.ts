@@ -5,6 +5,11 @@ import { AssetFamily, SourceChamber, DerivationKind } from '../../../../../src/v
 import { CapabilityTarget } from '../../../../../src/core/sovereign-orchestrator/qiyamah-intent-types';
 import { persistUploadedAsset } from '../../../../../src/vault/vault-asset-upload-storage';
 import { validateUploadContent, rejectionSpokenAr, MAX_UPLOAD_BYTES } from '../../../../../src/vault/upload-content-validation';
+import { digestOf } from '../../../../../src/vault/sovereign-asset-mutation';
+import { SovereignDepositError } from '../../../../../src/vault/sovereign-vault-types';
+import { getDb, getVaultAsset } from '../../../../../src/persistent-storage';
+import { unlink } from 'fs/promises';
+import { join, basename } from 'path';
 
 export const dynamic = 'force-dynamic';
 
@@ -121,7 +126,24 @@ export async function POST(request: NextRequest) {
       ? voiceDisplayNameRaw.trim()
       : undefined;
 
-  const asset = await vaultManager.depositAsset({
+  /**
+   * ── THE SAME FILE IS NOT KEPT TWICE ─────────────────────────────────────
+   *
+   *   The Founder, 2026-09-26: «لا أريد ملء الخزائن بأصول مكرّرة... ستواجهنا
+   *   مشكلة تخزين مع زيادة أعداد المشتركين».
+   *
+   *   The Vault refuses the duplicate — see depositAsset, where it is checked
+   *   for every path, not just this one. What belongs HERE is what only this
+   *   route knows: bytes were written to disk a moment ago, and if the deposit
+   *   is refused they are unreferenced. They are removed before answering.
+   *
+   *   The Creator is answered with SUCCESS and their existing asset. They
+   *   asked for this file to be in their Vault; it is. Telling them «rejected»
+   *   would be true of the row and false of what they wanted.
+   */
+  let asset;
+  try {
+    asset = await vaultManager.depositAsset({
     // No chamber CREATED this — the Creator did, on their own device. The
     // Khazain are where it materially enters the Empire, and `derivation`
     // states the truth that generation had no part in it. Article 10 forbids
@@ -134,13 +156,37 @@ export async function POST(request: NextRequest) {
     capabilityTarget: capability.capabilityTarget,
     assetFamily: capability.assetFamily,
     secureStorageUri: persisted.assetUrl,
+    contentDigest: digestOf(bytes),
     metadata: {
       fileSizeBytes: bytes.length,
       providerId: 'creator-upload',
+      contentDigest: digestOf(bytes),
       ...(isVoice ? { isVoiceAsset: true } : {}),
       ...(voiceDisplayName ? { voiceDisplayName } : {}),
     },
-  });
+    });
+  } catch (err) {
+    const duplicate = err instanceof SovereignDepositError
+      && err.rejection === 'DUPLICATE_CONTENT'
+      && err.existingAssetId;
+    if (!duplicate) throw err;
+
+    // NO ORPHAN. The bytes were written a moment ago and nothing references
+    // them — the same rule the edit and upscale routes keep.
+    try {
+      const uploadsDir = process.env.UPLOADS_DIR ?? join(process.cwd(), 'public', 'uploads');
+      await unlink(join(uploadsDir, basename(persisted.assetUrl)));
+    } catch { /* already gone */ }
+
+    const existing = getVaultAsset(getDb(), err.existingAssetId as string);
+    if (!existing) throw err;
+    return NextResponse.json({
+      status: 'succeeded',
+      asset: existing,
+      alreadyHeld: true,
+      message: 'هذا الملفّ في خزانتك بالفعل — أعدناك إليه بدل حفظ نسخةٍ ثانية.',
+    });
+  }
 
   return NextResponse.json({ status: 'succeeded', asset });
 }

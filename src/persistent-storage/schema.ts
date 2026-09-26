@@ -695,6 +695,17 @@ export const VAULT_ASSETS_MIGRATION_COLUMNS: readonly { readonly name: string; r
   { name: 'created_by', ddl: 'created_by TEXT' },
   { name: 'last_modified_by', ddl: 'last_modified_by TEXT' },
   { name: 'last_modified_at', ddl: 'last_modified_at INTEGER' },
+  /**
+   * The SHA-256 of the asset's own bytes.
+   *
+   * The Founder, 2026-09-26: «لا أريد ملء الخزائن بأصول مكرّرة... ستواجهنا
+   * مشكلة تخزين مع زيادة أعداد المشتركين». The digest already existed — it was
+   * computed for every DERIVED asset to prove an output differs from its
+   * parent — but it lived inside a JSON blob, where no query could reach it.
+   * As a column with an index it answers «does this Creator already own these
+   * exact bytes?» in one lookup, at any number of subscribers.
+   */
+  { name: 'content_digest', ddl: 'content_digest TEXT' },
 ];
 
 /** Columns added to `creators` after its original creation — applied via ALTER TABLE for pre-existing databases. */
@@ -771,6 +782,8 @@ export const INDEX_STATEMENTS: readonly string[] = [
   'CREATE INDEX IF NOT EXISTS idx_credit_ledger_reference ON credit_ledger(reference_id)',
   'CREATE INDEX IF NOT EXISTS idx_credit_ledger_status ON credit_ledger(creator_id, status)',
   // Payment transactions: reconciliation lookups by creator and by provider order
+  // One Creator's bytes, looked up by their digest — the duplicate guard.
+  'CREATE INDEX IF NOT EXISTS idx_vault_assets_digest ON vault_assets(subscriber_tenant_id, content_digest)',
   'CREATE INDEX IF NOT EXISTS idx_payment_transactions_creator ON payment_transactions(creator_id, created_at)',
   'CREATE INDEX IF NOT EXISTS idx_payment_transactions_provider_order ON payment_transactions(provider_order_id)',
   // The Sunnah is searched by subject across all collections, and fetched by
