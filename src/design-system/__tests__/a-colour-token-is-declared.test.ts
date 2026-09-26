@@ -79,6 +79,20 @@ describe('a colour token is declared, or it is not used', () => {
     expect(offences).toEqual([]);
   });
 
+  it('a control in the chamber of creation paints its own surface', () => {
+    // SEEN BY EYE, never by measurement: .edit-act-input declared its geometry
+    // and nothing else, so the browser drew a white box with black ink inside a
+    // dark chamber — every rule it DID declare was valid, so nothing complained.
+    const css = readFileSync(join(ROOT, 'app/qiyamah-chamber/qiyamah-chamber.css'), 'utf8');
+    for (const cls of ['.edit-act-input', '.edit-act-run', '.next-act', '.source-btn']) {
+      const start = css.indexOf(`${cls} {`);
+      expect(start).toBeGreaterThan(-1);
+      const rule = css.slice(start, css.indexOf('}', start));
+      expect(rule).toMatch(/background\s*:/);
+      expect(rule).toMatch(/(^|[^-])color\s*:/m);
+    }
+  });
+
   it('the chamber of creation uses its own declared palette', () => {
     const qiyamah = readFileSync(join(ROOT, 'app/qiyamah-chamber/qiyamah-chamber.css'), 'utf8');
     // The three exact tokens that were falling silently, by name, so their
