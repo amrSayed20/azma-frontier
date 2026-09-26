@@ -4,6 +4,7 @@ import { QiyamahChamberExperience } from '@/src/imperial-experience-engine';
 import { QiyamahChamberClient } from './QiyamahChamberClient';
 import { getVisionDocument } from '@/src/chamber-vision';
 import { VIDEO_MODEL_FLEET } from '@/src/sovereign-model-selection/video-model-fleet';
+import { IMAGE_MODEL_FLEET } from '@/src/sovereign-model-selection/image-model-fleet';
 
 /**
  * QIYAMAH CHAMBER, PACKAGE I: wrapped in its own IXE Experience Pipeline
@@ -67,8 +68,21 @@ export default async function QiyamahChamberPage() {
 
   //   Only the shapes every designated model accepts — offering one that half
   //   of them refuse would be offering a refusal.
-  const aspectOptions = ['16:9', '9:16', '1:1'].filter(
-    (ratio) => videoModels.length > 0 && videoModels.every((m) => m.supportedAspectRatios?.includes(ratio)),
+  const SHAPES = ['16:9', '9:16', '1:1'] as const;
+  const shapesEveryModelAccepts = (fleet: { supportedAspectRatios?: readonly string[] }[]) =>
+    SHAPES.filter((r) => fleet.length > 0 && fleet.every((m) => m.supportedAspectRatios?.includes(r)));
+
+  const aspectOptions = shapesEveryModelAccepts(videoModels);
+
+  //   MEASURED 2026-09-26: the shapes were read from the VIDEO fleet alone, so
+  //   the chooser appeared for a clip and never for a picture — while the
+  //   designated image model is VERIFIED to accept all three, and the whole
+  //   chain behind it (route → generation service → adapter's `aspect_ratio`)
+  //   was already carrying the value. A Creator could not make a vertical or a
+  //   square picture: a finished engine behind a shut door. Same derivation,
+  //   the picture's own fleet.
+  const imageAspectOptions = shapesEveryModelAccepts(
+    IMAGE_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active),
   );
 
   return (
@@ -80,6 +94,7 @@ export default async function QiyamahChamberPage() {
         animationModels={animationModels}
         durationLadder={durationLadder}
         aspectOptions={aspectOptions}
+        imageAspectOptions={imageAspectOptions}
       />
     </QiyamahChamberExperience>
   );

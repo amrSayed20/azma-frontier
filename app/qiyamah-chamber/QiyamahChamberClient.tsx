@@ -97,8 +97,10 @@ interface QiyamahChamberClientProps {
    * cinematic model is verified to 56 seconds.
    */
   readonly durationLadder?:     readonly number[];
-  /** The shapes every designated model accepts — horizontal, vertical, square. */
+  /** The shapes every designated VIDEO model accepts — horizontal, vertical, square. */
   readonly aspectOptions?:      readonly string[];
+  /** The shapes every designated IMAGE model accepts. A picture has a shape too. */
+  readonly imageAspectOptions?: readonly string[];
 }
 
 export function QiyamahChamberClient({
@@ -108,6 +110,7 @@ export function QiyamahChamberClient({
   animationModels = [],
   durationLadder = [],
   aspectOptions = [],
+  imageAspectOptions = [],
 }: QiyamahChamberClientProps) {
   const { goTo } = useConstitutionalNavigation();
   const { triggerInvitation } = useInstallInvitation();
@@ -158,6 +161,9 @@ export function QiyamahChamberClient({
   // The shape of the scene. Defaults to the first the designated models all
   // accept, so a Creator who never touches it still gets something valid.
   const [aspectRatio,        setAspectRatio]        = useState<string>('16:9');
+  // Which fleet's shapes are offered follows the act: a clip's fleet for a
+  // clip, a picture's for a picture. An edit keeps the shape of its source.
+  const shapesForAct = mediaType === 'video' ? aspectOptions : imageAspectOptions;
   const [constructedPrompt,  setConstructedPrompt]  = useState('');
   // Tracks the initial Qiyamah expansion so the Creator can restore it after editing
   const [originalConstructedPrompt, setOriginalConstructedPrompt] = useState('');
@@ -566,6 +572,9 @@ export function QiyamahChamberClient({
       };
       if (mediaType === 'video') {
         requestBody['durationSeconds'] = durationSeconds;
+      }
+      // A picture has a shape too, and the route has always accepted it.
+      if (shapesForAct.includes(aspectRatio)) {
         requestBody['aspectRatio'] = aspectRatio;
       }
       // Minted BEFORE the request and remembered: this is what makes a lost
@@ -1203,14 +1212,14 @@ export function QiyamahChamberClient({
                 </div>
               )}
 
-              {mediaType === 'video' && aspectOptions.length > 1 && (
+              {mediaType !== 'edit' && shapesForAct.length > 1 && (
                 <div className="aspect-picker" role="group" aria-label="امتداد المشهد">
                   <p className="duration-label">امتداد المشهد</p>
                   {/* The Founder asked for it and it did not exist. Only shapes
                       every designated model accepts are offered — offering one
                       that half of them refuse would be offering a refusal. */}
                   <div className="duration-options">
-                    {aspectOptions.map((ratio) => {
+                    {shapesForAct.map((ratio) => {
                       const label = ratio === '16:9' ? 'أفقيّ' : ratio === '9:16' ? 'رأسيّ' : 'مربّع';
                       return (
                         <button

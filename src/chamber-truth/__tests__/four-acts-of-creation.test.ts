@@ -79,7 +79,27 @@ describe('3 · each act is offered only what it can use', () => {
   });
 });
 
-describe('4 · no provider name reaches a Creator through these controls', () => {
+describe('4 · a picture has a shape too', () => {
+  it('the shapes offered follow the act, not the video fleet alone', () => {
+    // MEASURED 2026-09-26: the chooser read the VIDEO fleet, so it appeared for
+    // a clip and never for a picture — while the whole chain behind it (route →
+    // generation service → adapter aspect_ratio) already carried the value and
+    // the designated image model is VERIFIED to accept all three shapes.
+    expect(CLIENT).toContain("const shapesForAct = mediaType === 'video' ? aspectOptions : imageAspectOptions;");
+    expect(CLIENT).toContain("{mediaType !== 'edit' && shapesForAct.length > 1 && (");
+  });
+
+  it('the image shapes are derived from the image fleet, never written by hand', () => {
+    expect(PAGE).toContain('IMAGE_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active)');
+    expect(PAGE).toContain('const imageAspectOptions = shapesEveryModelAccepts(');
+  });
+
+  it('the chosen shape is sent for every act that offers one', () => {
+    expect(CLIENT).toContain("if (shapesForAct.includes(aspectRatio)) {");
+  });
+});
+
+describe('5 · no provider name reaches a Creator through these controls', () => {
   it('the animation models carry a sovereign name, not a product name', () => {
     expect(PAGE).toContain('nameAr: m.sovereignNameAr,');
     expect(CLIENT).not.toContain('animationModels[0].displayName');
