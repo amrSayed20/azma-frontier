@@ -176,6 +176,21 @@ export interface MutationRequest {
     readonly providerId: string;
     readonly providerModelId: string;
     readonly providerJobId?: string;
+    /**
+     * What the provider actually charged for THIS mutation, in the provider's
+     * OWN unit — never cash, never AZMA Units.
+     *
+     * MEASURED 2026-09-27: all three mutation adapters (edit, animate,
+     * upscale) already returned `creditsCharged` from the provider's completed
+     * job, and all three routes referenced it zero times. The charge existed
+     * in hand at the moment of derivation and was discarded — the same fault
+     * the video path had before the Cost Truth repair.
+     *
+     * The unit travels with the quantity, always. A number alone becomes
+     * dollars in the mind of whoever reads it next.
+     */
+    readonly creditsCharged?: number | null;
+    readonly creditUnit?: string;
   };
   /**
    * What the OUTPUT is. A modified image is still VISUAL, so this is
@@ -277,6 +292,14 @@ export async function deriveAsset(request: MutationRequest): Promise<MutationOut
             mutationProviderId: request.providerProvenance.providerId,
             mutationProviderModelId: request.providerProvenance.providerModelId,
             ...(request.providerProvenance.providerJobId ? { mutationProviderJobId: request.providerProvenance.providerJobId } : {}),
+            // Quantity and unit together, or neither. An absent charge is
+            // absent — never written as zero, which would mean «free».
+            ...(typeof request.providerProvenance.creditsCharged === 'number'
+              ? {
+                  mutationProviderCreditsCharged: request.providerProvenance.creditsCharged,
+                  mutationProviderCreditUnit: request.providerProvenance.creditUnit ?? 'magic-hour-credits',
+                }
+              : {}),
           }
         : {}),
       mutationOperationId: request.operationId,

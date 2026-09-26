@@ -204,6 +204,10 @@ export async function POST(
       providerId: produced.providerId,
       providerModelId: produced.providerModelId,
       providerJobId: produced.providerJobId,
+      // The provider's own charge for this operation. The adapter has always
+      // returned it; nothing ever read it.
+      creditsCharged: produced.creditsCharged,
+      creditUnit: 'magic-hour-credits',
     },
   });
 
