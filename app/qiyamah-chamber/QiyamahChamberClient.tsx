@@ -90,7 +90,7 @@ interface QiyamahChamberClientProps {
   readonly chamberVision?:      ImperialVisionDocument;
   readonly generationAvailable?: boolean;
   /** Models verified and active for animating an image — derived by the page from the fleet. */
-  readonly animationModels?:    readonly { readonly modelId: string; readonly displayName: string; readonly noteAr?: string; readonly durationSeconds: number }[];
+  readonly animationModels?:    readonly { readonly modelId: string; readonly nameAr: string; readonly noteAr?: string; readonly durationSeconds: number }[];
   /**
    * Every duration the designated models can actually produce, in order, read
    * from the fleet. The Chamber offered 4, 6 and 8 written by hand while the
@@ -140,7 +140,20 @@ export function QiyamahChamberClient({
   const [externalPrompt,     setExternalPrompt]     = useState('');
   const [qiyamahReading,     setQiyamahReading]     = useState('');
   const [style,              setStyle]              = useState('cinematic');
-  const [mediaType,          setMediaType]          = useState<'image' | 'video'>('image');
+  /**
+   * ── FOUR ACTS, NOT TWO ──────────────────────────────────────
+   *
+   *   The Founder, 2026-09-25: «مربعات الانتاج صوره او فيديو فقط اين مربع
+   *   اختيار التعديل؟» — and again, plainly: «اريد حقل اختيار مثل
+   *   بطاقه صوره وفيديو وتعديل وانفوجرافيك — لا بالاسفل.»
+   *
+   *   I had put editing and the infographic where they were true but unseen:
+   *   editing on a card at the bottom of the gallery, the infographic as the
+   *   fourteenth style tile of fourteen. Both were reachable and neither was
+   *   an act a Creator could choose when deciding what to make. They are four
+   *   acts of creation, and the Chamber of creation offers four.
+   */
+  const [mediaType,          setMediaType]          = useState<'image' | 'video' | 'edit' | 'infographic'>('image');
   const [durationSeconds,    setDurationSeconds]    = useState<number>(6);
   // The shape of the scene. Defaults to the first the designated models all
   // accept, so a Creator who never touches it still gets something valid.
@@ -546,7 +559,10 @@ export function QiyamahChamberClient({
         prompt: constructedPrompt.trim(),
         style,
         idea: ideaForRecord,
-        mediaType,
+        // The route decides between an image path and a video path, so it is
+        // told what is being MADE. The act the Creator chose — an infographic,
+        // an edit — shapes the request above; it is not a third kind of file.
+        mediaType: mediaType === 'video' ? 'video' : 'image',
       };
       if (mediaType === 'video') {
         requestBody['durationSeconds'] = durationSeconds;
@@ -592,7 +608,9 @@ export function QiyamahChamberClient({
       }
       if (result.status === 'succeeded') {
         setGeneratedAssetUrl(result.asset.assetUrl);
-        setGeneratedAssetType(mediaType);
+        // What was MADE, not which act was chosen: an infographic is a
+        // picture, and an edit returns one. Only video is video.
+        setGeneratedAssetType(mediaType === 'video' ? 'video' : 'image');
         setStage('result');
         fetchGenerations();
         triggerInvitation();
@@ -693,6 +711,20 @@ export function QiyamahChamberClient({
     ? resolveAvailableActions({ threshold: 'chamber', chamberState: 'complete', chamber })
     : [];
 
+  /**
+   * Everything of the Creator's that can be edited: what the Chamber made for
+   * them, and what they brought. Both lists are already loaded; neither was
+   * ever offered as a starting point for an act.
+   */
+  const editableAssets = [
+    ...generations
+      .filter((g) => g.mediaType !== 'video' && g.assetId)
+      .map((g) => ({ assetId: g.assetId as string, url: g.assetUrl, label: g.originalIdea ?? g.prompt })),
+    ...uploadedItems
+      .filter((u) => u.capabilityTarget === 'VISUAL')
+      .map((u) => ({ assetId: u.assetId, url: u.url, label: 'أصلٌ رفعته' })),
+  ];
+
   const hasGalleryContent = generations.length > 0 || uploadedItems.length > 0;
 
   const buildSceneDisabled = stage === 'constructing' || (inputMode === 'idea' ? !idea.trim() : !externalPrompt.trim());
@@ -701,7 +733,11 @@ export function QiyamahChamberClient({
     <div className="style-registry" role="radiogroup" aria-label="نمط التجسيد">
       <p className="style-registry-label">نمط التجسيد</p>
       <div className="style-registry-available">
-        {ALL_STYLES.map((s) => (
+        {/* The infographic left this grid on 2026-09-26: it became one of the
+            four acts, and a capability with two doors lets the act a Creator
+            chose disagree with what the Chamber makes. ALL_STYLES keeps it —
+            the review line still names a style by id. */}
+        {ALL_STYLES.filter((s) => s.id !== 'infographic').map((s) => (
           <button
             key={s.id}
             type="button"
@@ -713,15 +749,6 @@ export function QiyamahChamberClient({
           >
             <span className="style-tile-name">{s.nameAr}</span>
             <span className="style-tile-tagline">{s.tagline}</span>
-            {/* The Founder, 2026-09-25: «الإنفوجراف الذي لا أرى أي إعلان
-                عنه في القيامة حتى العرض التوضيحي». It sat as the
-                fourteenth tile in a row of fourteen, indistinguishable, while
-                it is the one style that BINDS a designated model — the Empire
-                refuses rather than substitutes for it. What is different about
-                it is now said. */}
-            {s.id === 'infographic' && (
-              <span className="style-tile-mark">يُجيد الحرف والترتيب</span>
-            )}
           </button>
         ))}
       </div>
@@ -971,7 +998,39 @@ export function QiyamahChamberClient({
           {generationAvailable &&
             (stage === 'idea' || stage === 'constructing') && (
             <div className="genesis-form">
+              {/* The four acts of creation, chosen before anything else. */}
+              <div className="media-type-toggle" role="radiogroup" aria-label="ماذا تصنع؟">
+                {([
+                  ['image',       'صورة',      'مشهدٌ أصليّ من فكرتك'],
+                  ['video',       'فيديو',     'مقطعٌ تختار مدّته وامتداده'],
+                  ['infographic', 'إنفوغرافيك', 'حرفٌ مقروء وترتيبٌ منظّم'],
+                  ['edit',        'تعديل',      'غيّر في أصلٍ تملكه'],
+                ] as const).map(([mode, label, hint]) => (
+                  <button
+                    key={mode}
+                    role="radio"
+                    aria-checked={mediaType === mode}
+                    className={`media-type-btn${mediaType === mode ? ' media-type-btn--active' : ''}`}
+                    onClick={() => {
+                      setMediaType(mode);
+                      // The infographic BINDS one designated model, and the
+                      // Empire refuses rather than substitutes for it. Choosing
+                      // the act chooses the style it requires.
+                      if (mode === 'infographic') setStyle('infographic');
+                      else if (style === 'infographic') setStyle('cinematic');
+                    }}
+                    disabled={stage === 'constructing'}
+                    title={hint}
+                  >
+                    <span className="media-type-name">{label}</span>
+                    <span className="media-type-hint">{hint}</span>
+                  </button>
+                ))}
+              </div>
 
+              {/* An edit takes an asset and an instruction, not an idea. */}
+              {mediaType !== 'edit' && (
+                <>
               {/* Mode tab switcher */}
               <div className="mode-tab-switcher" role="tablist" aria-label="وضع الإدخال">
                 <button
@@ -1038,30 +1097,84 @@ export function QiyamahChamberClient({
                   </div>
                 </>
               )}
+                </>
+              )}
 
-              <StyleRegistry disabled={stage === 'constructing'} />
+              {/* An edit has no style to choose — it changes an asset that
+                  already has one. An infographic's style is the act itself, and
+                  it BINDS a designated model, so it is not re-offered as one
+                  choice among fourteen. */}
+              {(mediaType === 'image' || mediaType === 'video') && (
+                <StyleRegistry disabled={stage === 'constructing'} />
+              )}
+              {mediaType === 'infographic' && (
+                <p className="act-bound-note">
+                  الإنفوغرافيك له رَيْشتُه وحده — تُجيد الحرف المقروء والتخطيط المنظّم، ولا تُستبدَل بسواها.
+                </p>
+              )}
 
-              {/* Media type toggle — صورة / فيديو */}
-              <div className="media-type-toggle" role="radiogroup" aria-label="نوع المحتوى">
-                <button
-                  role="radio"
-                  aria-checked={mediaType === 'image'}
-                  className={`media-type-btn${mediaType === 'image' ? ' media-type-btn--active' : ''}`}
-                  onClick={() => setMediaType('image')}
-                  disabled={stage === 'constructing'}
-                >
-                  صورة
-                </button>
-                <button
-                  role="radio"
-                  aria-checked={mediaType === 'video'}
-                  className={`media-type-btn${mediaType === 'video' ? ' media-type-btn--active' : ''}`}
-                  onClick={() => setMediaType('video')}
-                  disabled={stage === 'constructing'}
-                >
-                  فيديو
-                </button>
-              </div>
+              {/* ── THE ACT OF EDITING, WHERE AN ACT IS CHOSEN ──────────────
+                  It existed — on a card at the bottom of the gallery, reachable
+                  and unseen. The Founder asked for it among the acts a Creator
+                  chooses from. Nothing new is built: the same instruction, the
+                  same route, the same handler. What changed is where it is. */}
+              {mediaType === 'edit' && (
+                <div className="edit-act" role="group" aria-label="تعديل أصل">
+                  {editableAssets.length === 0 ? (
+                    <p className="edit-act-empty">
+                      لا أصولَ لديك بعد. أنشئ صورةً أوّلاً، ثمّ عُد هنا لتُغيّر فيها.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="edit-act-label">أيّ أصلٍ تُعدّل؟</p>
+                      <div className="edit-act-assets">
+                        {editableAssets.map((a) => (
+                          <button
+                            key={a.assetId}
+                            type="button"
+                            className={`edit-act-asset${editingAssetId === a.assetId ? ' edit-act-asset--on' : ''}`}
+                            onClick={() => setEditingAssetId(a.assetId)}
+                            disabled={editState === 'running'}
+                            title={a.label}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={a.url} alt={a.label} />
+                          </button>
+                        ))}
+                      </div>
+
+                      <label className="edit-act-label" htmlFor="edit-act-instruction">
+                        ما الذي تريد تغييره فيه؟
+                      </label>
+                      <textarea
+                        id="edit-act-instruction"
+                        className="edit-act-input"
+                        rows={3}
+                        maxLength={1000}
+                        value={editInstruction}
+                        onChange={(e) => setEditInstruction(e.target.value)}
+                        placeholder="مثال: غيّر الخلفية إلى رفوف مكتبة خشبية، وأبقِ الباقي كما هو."
+                        disabled={editState === 'running'}
+                      />
+
+                      {editState === 'running' && (
+                        <p className="edit-act-status" role="status">التعديل قيد التنفيذ… لا تغلق الصفحة.</p>
+                      )}
+                      {editState === 'failed' && editError && (
+                        <p className="edit-act-error" role="alert">{editError}</p>
+                      )}
+
+                      <button
+                        className="edit-act-run"
+                        disabled={editState === 'running' || !editingAssetId || editInstruction.trim().length === 0}
+                        onClick={() => { if (editingAssetId) void handleEditAsset(editingAssetId); }}
+                      >
+                        {editState === 'running' ? '⏳ التعديل جارٍ…' : '✎ نفّذ التعديل'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
 
               {mediaType === 'video' && durationLadder.length > 0 && (
                 <div className="duration-picker" role="group" aria-label="مدة الفيديو">
@@ -1128,7 +1241,10 @@ export function QiyamahChamberClient({
                     {producingNotice ?? (inputMode === 'idea' ? 'القيامة تبني المشهد السيادي…' : 'القيامة تقرأ محثك…')}
                   </p>
                 </div>
-              ) : (
+              ) : mediaType === 'edit' ? null : (
+                /* An edit has its own act and its own button. Offering
+                   «بناء المشهد» beside it would offer a second thing to
+                   press that does something else entirely. */
                 <button
                   className="trigger-genesis-btn"
                   onClick={handleBuildScene}
@@ -1264,6 +1380,8 @@ export function QiyamahChamberClient({
               <p className="generating-text pulse-text">
                 {mediaType === 'video'
                   ? 'يتم الآن توليد الفيديو السيادي...'
+                  : mediaType === 'infographic'
+                  ? 'تُرتَّب الآن المعلومة في صورةٍ تُقرأ...'
                   : 'تتم الآن عملية النفخ والبعث الرقمي...'}
               </p>
             </div>
@@ -1582,7 +1700,7 @@ export function QiyamahChamberClient({
                           than one; a single model is stated, not dressed as a menu. */}
                       {animationModels.length === 1 ? (
                         <p className="asset-animate-model">
-                          <span className="animate-model-name">{animationModels[0].displayName}</span>
+                          <span className="animate-model-name">{animationModels[0].nameAr}</span>
                           {animationModels[0].noteAr && (
                             <span className="animate-model-note">{animationModels[0].noteAr}</span>
                           )}
@@ -1599,7 +1717,7 @@ export function QiyamahChamberClient({
                                 onChange={() => setAnimateModelId(m.modelId)}
                                 disabled={animateState === 'running'}
                               />
-                              <span className="animate-model-name">{m.displayName}</span>
+                              <span className="animate-model-name">{m.nameAr}</span>
                               {m.noteAr && <span className="animate-model-note">{m.noteAr}</span>}
                             </label>
                           ))}

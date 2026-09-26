@@ -38,7 +38,7 @@ export default async function QiyamahChamberPage() {
     // sovereign name and what choosing it means for the work.
     .map((m) => ({
       modelId: m.modelId,
-      displayName: m.sovereignNameAr,
+      nameAr: m.sovereignNameAr,
       noteAr: m.sovereignNoteAr,
       durationSeconds: m.supportedDurationsSeconds?.[0] ?? Math.min(5, m.maxDurationSeconds ?? 5),
     }));

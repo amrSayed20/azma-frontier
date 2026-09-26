@@ -1443,17 +1443,6 @@
 }
 
 
-/* The one style that binds a designated model. It read as the fourteenth of
-   fourteen; what distinguishes it is now visible. */
-.style-tile-mark {
-  display: block;
-  margin-top: 4px;
-  font-size: 0.82em;
-  line-height: 1.4;
-  color: var(--qiyamah-gold, #D4AF37);
-  opacity: 0.85;
-}
-
 
 /* ── THE CREATOR'S WORD ON WHAT WAS MADE ─────────────────────────
    Every generated asset was deposited as INTERMEDIATE and nothing ever read
@@ -1464,9 +1453,79 @@
   display: inline-flex;
   align-items: center;
   font-size: 0.85em;
-  color: var(--qiyamah-gold, #D4AF37);
+  color: var(--gold-neon);
   opacity: 0.9;
   padding: 0 6px;
   white-space: nowrap;
 }
 .generation-card-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+
+/* ── FOUR ACTS OF CREATION ───────────────────────────────────
+   The Founder asked for them where an act is chosen, not at the bottom of a
+   gallery. Each says what it makes, so the choice is made by intent. */
+.media-type-toggle { display: flex; flex-wrap: wrap; gap: 8px; }
+/* max-content here sized each button to its hint on ONE line, which pushed the
+   four acts into two rows of two. The hint wraps; the act's NAME does not. */
+.media-type-btn { flex: 1 1 140px; min-width: 0; text-align: center; }
+.media-type-name { display: block; font-weight: 700; white-space: nowrap; }
+.media-type-hint {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.82em;
+  line-height: 1.45;
+  opacity: 0.62;
+}
+
+.act-bound-note {
+  margin: 10px 0 0;
+  font-size: 0.9em;
+  line-height: 1.6;
+  color: var(--gold-neon);
+  opacity: 0.88;
+}
+
+/* ── EDITING, AS AN ACT ────────────────────────────────────
+   The Creator's own assets in front of them, at the moment they choose to
+   change one — not found by scrolling to a card. */
+.edit-act { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.edit-act-label { margin: 0; font-size: 0.92em; opacity: 0.8; }
+.edit-act-empty { margin: 0; font-size: 0.92em; line-height: 1.7; opacity: 0.7; }
+.edit-act-assets { display: flex; flex-wrap: wrap; gap: 8px; }
+.edit-act-asset {
+  padding: 0;
+  width: 84px;
+  height: 84px;
+  border: 2px solid rgba(212, 175, 55, 0.28);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.16s;
+}
+.edit-act-asset img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.edit-act-asset:hover { border-color: rgba(212, 175, 55, 0.6); }
+.edit-act-asset--on { border-color: var(--gold-neon); }
+.edit-act-input {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  line-height: 1.6;
+  padding: 10px 12px;
+  border-radius: 4px;
+  resize: vertical;
+}
+.edit-act-run { align-self: flex-start; }
+.edit-act-status, .edit-act-error { margin: 0; font-size: 0.92em; line-height: 1.6; }
+
+
+/* ── A CARD OPENS TO THE WIDTH ITS PANEL NEEDS ────────────────
+   MEASURED 2026-09-26: .generation-card is a fixed 130px, and the edit and
+   animate panels render inside it — a radiogroup with its reasons wrapped to
+   one or two words a line, which the Founder photographed. The card keeps its
+   thumbnail width until a panel opens, then takes the width that panel is
+   readable at. */
+.generation-card:has(.asset-edit-panel) { width: 320px; max-width: 100%; }
+.generation-card:has(.asset-edit-panel) .generation-thumb { height: 180px; }
+.asset-animate-models { flex-direction: column; gap: 0.6rem; }
+.asset-animate-result .asset-animate-video { height: auto; max-height: 260px; }
