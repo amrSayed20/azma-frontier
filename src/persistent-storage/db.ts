@@ -179,6 +179,40 @@ function migrateGenerationRecordsTable(db: DatabaseSync): void {
            )
      WHERE asset_id IS NULL
   `);
+
+  //   ── AND THE ROWS THAT KNEW THE WRONG ASSET ────────────────────────────
+  //
+  //   MEASURED ON PRODUCTION 2026-09-26, from the Founder's own question
+  //   «أفى نموذج استخدم فى العمليتين»: every image generation had been
+  //   writing the FILE id into asset_id while the Vault minted its own. The
+  //   id was never null, so the recovery above skipped these rows — and
+  //   editing, animating or upscaling a picture the Chamber had just made
+  //   answered `404 الأصل غير موجود`. Three of the Founder's own images from
+  //   that day were dead this way.
+  //
+  //   Repaired by the same exact key the recovery above trusts: the storage
+  //   URI, which is unique per file. Only rows whose asset_id matches NO
+  //   Vault row are touched, and only where the URI resolves to exactly one
+  //   asset the same Creator owns — a row that already points at a real asset
+  //   keeps what it knows.
+  db.exec(`
+    UPDATE generation_records
+       SET asset_id = (
+             SELECT v.asset_id FROM vault_assets v
+              WHERE v.secure_storage_uri = generation_records.asset_url
+                AND v.subscriber_tenant_id = generation_records.creator_id
+              LIMIT 1
+           )
+     WHERE asset_id IS NOT NULL
+       AND NOT EXISTS (
+             SELECT 1 FROM vault_assets w WHERE w.asset_id = generation_records.asset_id
+           )
+       AND EXISTS (
+             SELECT 1 FROM vault_assets x
+              WHERE x.secure_storage_uri = generation_records.asset_url
+                AND x.subscriber_tenant_id = generation_records.creator_id
+           )
+  `);
 }
 
 export function createDatabase(path: string = defaultDbPath()): DatabaseSync {

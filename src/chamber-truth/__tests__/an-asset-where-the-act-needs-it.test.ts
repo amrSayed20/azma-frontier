@@ -31,18 +31,32 @@ const ROOT = process.cwd();
 const CLIENT = readFileSync(join(ROOT, 'app/qiyamah-chamber/QiyamahChamberClient.tsx'), 'utf8');
 const CSS = readFileSync(join(ROOT, 'app/qiyamah-chamber/qiyamah-chamber.css'), 'utf8');
 
-describe('1 · one asset, one tile', () => {
-  it('the picker is keyed by asset id, not built by concatenation', () => {
-    expect(CLIENT).toContain('const byId = new Map<string, { assetId: string; url: string; label: string }>();');
-    expect(CLIENT).toContain('if (u.capabilityTarget !== \'VISUAL\' || byId.has(u.assetId)) continue;');
+describe('1 · the Vault says which assets exist', () => {
+  /**
+   * The Founder, 2026-09-26: «ما زال تحريك الصورة يتم من أسفل الصورة — المربع
+   * لأعلى لا يعمل». Measured, and exactly right: the card at the bottom
+   * resolves the sovereign id from the Vault by exact storage URI, while this
+   * picker trusted `generation.assetId` — a field production proved was being
+   * written with the FILE id. POSTing an edit with one answered 404.
+   */
+  it('the picker is built from the Vault, not from the generation list', () => {
+    expect(CLIENT).toContain('return uploadedItems');
+    expect(CLIENT).toContain(".filter((u) => u.capabilityTarget === 'VISUAL' && !unreachableAssetIds.includes(u.assetId))");
+    expect(CLIENT).not.toContain('assetId: g.assetId as string');
   });
 
-  it('a generation keeps its own words rather than being called an upload', () => {
-    // The generation loop runs first and the Vault loop skips ids it already
-    // holds, so «أصلٌ رفعته» can only reach an asset the Chamber did not make.
+  it('a generation supplies only the words, joined by the exact storage URI', () => {
+    expect(CLIENT).toContain('const wordsByUri = new Map<string, string>();');
+    expect(CLIENT).toContain('wordsByUri.set(g.assetUrl, g.originalIdea ?? g.prompt);');
+    expect(CLIENT).toContain("label: wordsByUri.get(u.url) ?? 'أصلٌ رفعته'");
+  });
+
+  it('one asset, one tile — by construction, since the Vault holds each once', () => {
     const start = CLIENT.indexOf('const editableAssets = (() => {');
     const block = CLIENT.slice(start, CLIENT.indexOf('})();', start));
-    expect(block.indexOf('label: g.originalIdea')).toBeLessThan(block.indexOf("label: 'أصلٌ رفعته'"));
+    // No second list is concatenated in; there is nothing to duplicate.
+    expect(block).not.toContain('...generations');
+    expect(block).not.toContain('...uploadedItems');
   });
 });
 
@@ -138,7 +152,7 @@ describe('5 · an asset that cannot be seen is not offered', () => {
   });
 
   it('and leaves the picker', () => {
-    expect(CLIENT).toContain('.filter((a) => !unreachableAssetIds.includes(a.assetId));');
+    expect(CLIENT).toContain("!unreachableAssetIds.includes(u.assetId)");
   });
 
   it('taking any selection it was carrying with it', () => {

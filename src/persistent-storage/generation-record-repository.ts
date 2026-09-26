@@ -61,6 +61,27 @@ export function recordGeneration(db: DatabaseSync, record: NewGenerationRecord):
   return { recordId, creatorId: record.creatorId, prompt: record.prompt, style: record.style, assetUrl: record.assetUrl, assetId, generatedAt, originalIdea, mediaType };
 }
 
+/**
+ * The Vault mints its OWN asset id on deposit. The generation is recorded
+ * before that deposit happens — a deposit failure must never turn a succeeded
+ * generation into a reported failure — so the true id is learned a moment
+ * late, and written here.
+ *
+ * MEASURED ON PRODUCTION 2026-09-26: without this, every image generation
+ * stored `persisted.assetId` — the FILE id — in `asset_id`. That id exists in
+ * no Vault row, so editing, animating or upscaling a picture the Chamber had
+ * just made answered `404 الأصل غير موجود`. Three of the Founder's own images
+ * from that day were dead this way. The video path had the same fault.
+ */
+export function linkGenerationToVaultAsset(
+  db: DatabaseSync,
+  recordId: string,
+  vaultAssetId: string,
+): void {
+  db.prepare('UPDATE generation_records SET asset_id = ? WHERE record_id = ?')
+    .run(vaultAssetId, recordId);
+}
+
 export function getGenerationRecord(db: DatabaseSync, recordId: string, creatorId: string): GenerationRecord | null {
   const row = db
     .prepare('SELECT record_id, creator_id, prompt, style, asset_url, asset_id, generated_at, original_idea, media_type FROM generation_records WHERE record_id = ? AND creator_id = ?')

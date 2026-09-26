@@ -32,7 +32,7 @@ import { randomUUID } from 'crypto';
 import { persistGeneratedImage, persistGeneratedVideo, detectVideoFormat } from './asset-storage';
 import { getGenerationOrchestrator } from '../core/sovereign-ai-integration/provider-bootstrap';
 import { isRateLimited, recordGeneration as recordRateLimitedGeneration } from './rate-limiter';
-import { getDb, recordGeneration as persistGenerationRecord } from '../persistent-storage';
+import { getDb, recordGeneration as persistGenerationRecord, linkGenerationToVaultAsset } from '../persistent-storage';
 import { SovereignVaultManager } from '../vault/sovereign-vault-manager';
 import { AssetFamily, SourceChamber } from '../vault/sovereign-vault-types';
 import { CapabilityTarget } from '../core/sovereign-orchestrator/qiyamah-intent-types';
@@ -87,9 +87,9 @@ async function depositGeneratedAssetIntoVault(params: {
   /** The provider model that produced the bytes — recorded, never assumed. */
   readonly providerModelId: string | null;
   readonly operationId: string;
-}): Promise<void> {
+}): Promise<string | null> {
   try {
-    await vaultManager.depositAsset({
+    const deposited = await vaultManager.depositAsset({
       operationId: params.assetId,
       subscriberTenantId: params.creatorId,
       capabilityTarget: CapabilityTarget.VISUAL,
@@ -106,10 +106,15 @@ async function depositGeneratedAssetIntoVault(params: {
         ...(params.style ? { generationStyle: params.style } : {}),
       },
     });
+    // The Vault mints its own id. Returning it is what lets the generation
+    // record point at the asset that EXISTS, instead of at the file id — the
+    // fault that made every fresh picture un-editable.
+    return deposited.assetId;
   } catch (err) {
     // Honest degrade — a Vault deposit failure must never turn an
     // already-successful generation into a reported failure.
     console.error('[VaultDeposit] deposit failed:', err instanceof Error ? err.message : String(err));
+    return null;
   }
 }
 
@@ -123,9 +128,9 @@ async function depositVideoAssetIntoVault(params: {
   readonly resolvedProviderId: string;
   readonly providerModelId: string | null;
   readonly operationId: string;
-}): Promise<void> {
+}): Promise<string | null> {
   try {
-    await vaultManager.depositAsset({
+    const deposited = await vaultManager.depositAsset({
       operationId: params.assetId,
       subscriberTenantId: params.creatorId,
       capabilityTarget: CapabilityTarget.MOTION,
@@ -143,8 +148,10 @@ async function depositVideoAssetIntoVault(params: {
         ...(params.style ? { generationStyle: params.style } : {}),
       },
     });
+    return deposited.assetId;
   } catch (err) {
     console.error('[VaultDeposit] video deposit failed:', err instanceof Error ? err.message : String(err));
+    return null;
   }
 }
 
@@ -314,7 +321,7 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
     const persisted = await persistGeneratedImage(providerResult.bytes, providerResult.mimeType);
     trail.stage('file-persisted', { assetId: persisted.assetId });
     recordRateLimitedGeneration();
-    persistGenerationRecord(getDb(), {
+    const generationRecord = persistGenerationRecord(getDb(), {
       creatorId: request.creatorId ?? null,
       prompt: request.prompt.trim(),
       style,
@@ -325,6 +332,9 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
       assetId: persisted.assetId,
       originalIdea: request.originalIdea ?? null,
     });
+    // Until the Vault answers, the file id is all that is known. It is
+    // replaced the moment the deposit returns the sovereign one.
+    let sovereignAssetId = persisted.assetId;
     console.log(
       '[SovereignGeneration] generation-record',
       JSON.stringify({
@@ -341,7 +351,7 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
       // fall back to the legacy Magic Hour image provider ID.
       const resolvedProviderId =
         orchestrationResult.response.providerId ?? 'magic-hour-image';
-      await depositGeneratedAssetIntoVault({
+      const vaultAssetId = await depositGeneratedAssetIntoVault({
         assetId: persisted.assetId,
         creatorId: request.creatorId,
         assetUrl: persisted.assetUrl,
@@ -352,12 +362,30 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
         operationId: trail.operationId,
       });
       trail.stage('asset-deposited', { assetId: persisted.assetId, providerModelId: executedModel });
+      // ── THE ID THAT EXISTS, NOT THE ID THAT WAS CONVENIENT ─────────────
+      //   MEASURED ON PRODUCTION 2026-09-26: the record and the response both
+      //   carried `persisted.assetId` — the FILE id — while the Vault minted
+      //   its own. Editing, animating or upscaling a picture the Chamber had
+      //   just made answered `404 الأصل غير موجود`. Both now carry the id the
+      //   Vault actually holds.
+      if (vaultAssetId) {
+        sovereignAssetId = vaultAssetId;
+        // Honest degrade, for the same reason the deposit degrades: a link
+        // written late must never turn a succeeded generation into a failure.
+        try {
+          if (generationRecord?.recordId) {
+            linkGenerationToVaultAsset(getDb(), generationRecord.recordId, vaultAssetId);
+          }
+        } catch (err) {
+          console.error('[VaultLink] could not link generation to asset:', err instanceof Error ? err.message : String(err));
+        }
+      }
     }
-    trail.done({ assetId: persisted.assetId });
+    trail.done({ assetId: sovereignAssetId });
     return {
       status: 'succeeded',
       asset: {
-        assetId: persisted.assetId,
+        assetId: sovereignAssetId,
         assetUrl: persisted.assetUrl,
         prompt: request.prompt.trim(),
         style,
@@ -511,7 +539,7 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
   const storedUrl = persisted.assetUrl;
 
   try {
-    persistGenerationRecord(getDb(), {
+    const generationRecord = persistGenerationRecord(getDb(), {
       creatorId: request.creatorId ?? null,
       prompt: trimmedPrompt,
       style,
@@ -520,6 +548,7 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
       originalIdea: request.originalIdea ?? null,
       mediaType: 'video',
     });
+    let sovereignAssetId = assetId;
     trail.stage('record-inserted', { assetId });
 
     console.log(
@@ -536,7 +565,7 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
 
     if (request.creatorId) {
       const resolvedProviderId = orchestrationResult.response.providerId ?? 'magic-hour-video';
-      await depositVideoAssetIntoVault({
+      const vaultAssetId = await depositVideoAssetIntoVault({
         assetId,
         creatorId: request.creatorId,
         assetUrl: storedUrl,
@@ -548,13 +577,26 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
         operationId: trail.operationId,
       });
       trail.stage('asset-deposited', { assetId, providerModelId: executedModel });
+      if (vaultAssetId) {
+        sovereignAssetId = vaultAssetId;
+        // Honest degrade, for the same reason the deposit degrades: a link
+        // written late must never turn a succeeded generation into a failure.
+        try {
+          if (generationRecord?.recordId) {
+            linkGenerationToVaultAsset(getDb(), generationRecord.recordId, vaultAssetId);
+          }
+        } catch (err) {
+          console.error('[VaultLink] could not link generation to asset:', err instanceof Error ? err.message : String(err));
+        }
+      }
     }
-    trail.done({ assetId });
+    trail.done({ assetId: sovereignAssetId });
 
     return {
       status: 'succeeded',
       asset: {
-        assetId,
+        // The sovereign id, so the Chamber can act on the clip it just made.
+        assetId: sovereignAssetId,
         assetUrl: storedUrl,
         prompt: trimmedPrompt,
         style,

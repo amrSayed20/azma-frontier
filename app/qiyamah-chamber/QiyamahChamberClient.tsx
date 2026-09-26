@@ -827,22 +827,36 @@ export function QiyamahChamberClient({
   const [unreachableAssetIds, setUnreachableAssetIds] = useState<readonly string[]>([]);
 
   const editableAssets = (() => {
-    // MEASURED 2026-09-26: 31 pickable generations and 35 Vault images, of
-    // which 28 are THE SAME ASSET. Concatenating the two lists showed each of
-    // those twice — and the second copy was labelled «أصلٌ رفعته» to a Creator
-    // who had uploaded nothing. A generation deposits into the Vault, so the
-    // two lists overlap by construction; the id decides, and the generation's
-    // own words win because they say what the picture is.
-    const byId = new Map<string, { assetId: string; url: string; label: string }>();
+    /**
+     * ── THE VAULT SAYS WHICH ASSETS EXIST; THE GALLERY SAYS WHAT THEY ARE
+     *    CALLED ────────────────────────────────────────────────────────────
+     *
+     *   The Founder, 2026-09-26: «ما زال تحريك الصورة يتم من أسفل الصورة —
+     *   المربع لأعلى لا يعمل».
+     *
+     *   MEASURED, and he was exactly right. The card at the bottom resolves
+     *   the sovereign id by matching the Vault's stored URI — «exact key; no
+     *   guess», as `openAnimate` has always said. This picker trusted
+     *   `generation.assetId` instead, and PRODUCTION proved that field was
+     *   being written with the FILE id: `POST /api/vault/assets/<it>/edit`
+     *   answered `404 الأصل غير موجود`. Every tile built from a generation
+     *   carried an id the Vault has never held.
+     *
+     *   The root is repaired in generation-service, and the rows already
+     *   written that way are repaired by migration. This is the second lock:
+     *   the picker is built from the VAULT, which is the authority on what
+     *   exists, and takes a generation's words only as a label, joined by
+     *   the same exact key the card trusts. A tile can no longer carry an id
+     *   the Vault does not hold, whatever any record says.
+     */
+    const wordsByUri = new Map<string, string>();
     for (const g of generations) {
-      if (g.mediaType === 'video' || !g.assetId) continue;
-      byId.set(g.assetId, { assetId: g.assetId, url: g.assetUrl, label: g.originalIdea ?? g.prompt });
+      if (g.mediaType === 'video') continue;
+      wordsByUri.set(g.assetUrl, g.originalIdea ?? g.prompt);
     }
-    for (const u of uploadedItems) {
-      if (u.capabilityTarget !== 'VISUAL' || byId.has(u.assetId)) continue;
-      byId.set(u.assetId, { assetId: u.assetId, url: u.url, label: 'أصلٌ رفعته' });
-    }
-    return [...byId.values()].filter((a) => !unreachableAssetIds.includes(a.assetId));
+    return uploadedItems
+      .filter((u) => u.capabilityTarget === 'VISUAL' && !unreachableAssetIds.includes(u.assetId))
+      .map((u) => ({ assetId: u.assetId, url: u.url, label: wordsByUri.get(u.url) ?? 'أصلٌ رفعته' }));
   })();
 
   useEffect(() => {
