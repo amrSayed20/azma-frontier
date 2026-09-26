@@ -55,6 +55,8 @@ interface MagicHourJobResponse {
   id: string;
   status: 'draft' | 'queued' | 'rendering' | 'complete' | 'error' | 'canceled';
   credits_charged: number;
+  /** The provider's own statement of what it PRODUCED — not what was asked for. */
+  end_seconds?: number;
   downloads?: Array<{ url: string; expires_at: string }>;
   error?: { message?: string; code?: string } | null;
   fps?: number;
@@ -332,7 +334,37 @@ export class MagicHourVideoAdapter implements AIProviderAdapter {
     const startedAt = Date.now();
     const client = getMagicHourClient();
 
-    const endSeconds = (input.request.context.metadata['endSeconds'] as number | undefined) ?? 4;
+    // ── THE DURATION THE CREATOR CHOSE, NOT A NUMBER WRITTEN HERE ─────────
+    //
+    //   MEASURED on production 2026-09-26, operation
+    //   57b0af62-921f-454b-8d27-aebd785fa3d7: the Creator selected 6 seconds,
+    //   the Chamber sent 6, the route validated 6, the service put 6 into the
+    //   orchestration metadata under `durationSeconds`, and the orchestrator
+    //   passed it through verbatim — and this line read `endSeconds`, a key
+    //   NOTHING in the text-to-video path has ever written. It fell to 4, and
+    //   the provider's own record confirms `end_seconds: 4`, 97 frames at
+    //   24fps, 4.096 seconds. Every duration the fleet offers — up to 56
+    //   seconds — produced exactly 4.
+    //
+    //   `durationSeconds` is what the sovereign path provides, so that is what
+    //   is read. `endSeconds` is kept ahead of it because the image-to-video
+    //   binding names its own option that way and is already correct; neither
+    //   caller is changed.
+    //
+    //   The `?? 4` is gone. A duration that cannot be established is refused,
+    //   not invented — the same rule that makes the model selector refuse
+    //   rather than substitute. A silent default here charged a Creator for a
+    //   production they did not ask for.
+    const requestedSeconds =
+      (input.request.context.metadata['endSeconds'] as number | undefined)
+      ?? (input.request.context.metadata['durationSeconds'] as number | undefined);
+    if (typeof requestedSeconds !== 'number' || !Number.isFinite(requestedSeconds) || requestedSeconds <= 0) {
+      throw new Error(
+        '[MagicHourVideoAdapter] no duration was supplied for this production; '
+        + 'refusing rather than substituting one',
+      );
+    }
+    const endSeconds = requestedSeconds;
     const aspectRatio = (input.request.context.metadata['aspectRatio'] as string | undefined) ?? '16:9';
     const resolution = (input.request.context.metadata['resolution'] as string | undefined) ?? '720p';
 
@@ -368,6 +400,11 @@ export class MagicHourVideoAdapter implements AIProviderAdapter {
       {
         aspectRatio, resolution, endSeconds,
         providerModelId: selectedProviderModelId ?? 'default',
+        // What was ASKED FOR and what was MADE are two facts. The Vault
+        // recorded the request and described it as the result; the provider's
+        // own completed job states what it actually produced.
+        magicHourRequestedSeconds: endSeconds,
+        magicHourProducedSeconds: typeof job.end_seconds === 'number' ? job.end_seconds : null,
         magicHourEstimatedCredits: estimatedCredits,
         magicHourCreditAdjustment: creditAdjustment,
         magicHourFps: job.fps,

@@ -67,6 +67,7 @@ export class OperationLedgerManager implements ILedgerManager {
           current_state = ?,
           allocated_provider_id = ?,
           external_job_id = ?,
+          actual_resource_cost = ?,
           resolved_at = ?,
           updated_at = ?
          WHERE operation_id = ?`,
@@ -75,6 +76,22 @@ export class OperationLedgerManager implements ILedgerManager {
         newState,
         updates?.allocatedProviderId ?? entry.allocatedProviderId ?? null,
         updates?.externalJobId ?? entry.externalJobId ?? null,
+        // ── THE COLUMN THAT EXISTED AND COULD NOT BE WRITTEN ──────────────
+        //
+        //   MEASURED 2026-09-26: `actual_resource_cost` was null on all 28
+        //   rows, and the reason was structural — this statement did not name
+        //   it. Nothing could have filled it, however much a caller wanted to.
+        //
+        //   UNITS, AND WHY THEY ARE NOT THE SAME HERE:
+        //   `estimated_resource_cost` is an AZMA internal constant per
+        //   capability (WRITING 1 · VISUAL 5 · AUDIO 10 · MOTION 50). This
+        //   column now carries the PROVIDER'S OWN CHARGE, in the provider's
+        //   own unit. The two are NOT comparable and must never be subtracted
+        //   from one another. The unit itself is recorded beside the number in
+        //   the asset's metadata (`providerCreditUnit`), because this column
+        //   has nowhere to hold it — a REAL with no unit is exactly the kind
+        //   of value that later reads as dollars. It is not dollars.
+        updates?.actualResourceCost ?? entry.actualResourceCost ?? null,
         updates?.resolvedAt ?? entry.resolvedAt ?? null,
         now,
         operationId,

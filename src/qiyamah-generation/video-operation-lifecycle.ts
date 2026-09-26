@@ -265,7 +265,24 @@ async function runProduction(operationId: string, request: VideoGenerationReques
   if (result.status === 'succeeded') {
     writeStored(operationId, { assetId: result.asset.assetId, assetUrl: result.asset.assetUrl });
     try {
-      await manager.updateState(operationId, OperationState.DEPOSITED, { resolvedAt: Date.now() });
+      // -- THE LEDGER'S OWN COLUMNS, SEALED IN THE TRANSITION IT ALREADY
+      //    MAKES --------------------------------------------------------
+      //   MEASURED 2026-09-26: allocated_provider_id and external_job_id were
+      //   null on every row, and actual_resource_cost on all 28 — not because
+      //   the facts were unknown, but because this call passed only a
+      //   timestamp. `updates` has always accepted them.
+      //
+      //   The charge is the PROVIDER'S, in the PROVIDER'S unit. The unit is
+      //   recorded with the asset, because this column cannot hold one.
+      await manager.updateState(operationId, OperationState.DEPOSITED, {
+        resolvedAt: Date.now(),
+        ...(result.production?.allocatedProviderId
+          ? { allocatedProviderId: result.production.allocatedProviderId } : {}),
+        ...(result.production?.externalJobId
+          ? { externalJobId: result.production.externalJobId } : {}),
+        ...(typeof result.production?.providerCharge === 'number'
+          ? { actualResourceCost: result.production.providerCharge } : {}),
+      });
     } catch { /* sealed */ }
     return;
   }

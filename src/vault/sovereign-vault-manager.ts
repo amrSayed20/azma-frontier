@@ -77,7 +77,20 @@ export class SovereignVaultManager implements IVaultManager {
     //   Scoped to one tenant: two Creators owning identical bytes each own
     //   their own asset, and neither learns anything about the other.
     if (deposit.contentDigest) {
-      const existing = findVaultAssetByContentDigest(db, deposit.subscriberTenantId, deposit.contentDigest);
+      //   The LOOKUP is allowed to fail; the DEPOSIT is not. MEASURED
+      //   2026-09-26: a test double that did not carry this function made the
+      //   lookup throw, and the honest-degrade around the caller swallowed it
+      //   — a real generated video was silently never deposited. A guard that
+      //   can destroy the thing it guards is worse than no guard. A duplicate
+      //   it genuinely finds still refuses; a lookup it cannot perform says
+      //   nothing and lets the deposit through.
+      let existing = null;
+      try {
+        existing = findVaultAssetByContentDigest(db, deposit.subscriberTenantId, deposit.contentDigest);
+      } catch (err) {
+        console.error('[SovereignVault] duplicate lookup unavailable, depositing anyway:',
+          err instanceof Error ? err.message : String(err));
+      }
       if (existing) {
         throw new SovereignDepositError(
           'DUPLICATE_CONTENT',

@@ -87,9 +87,30 @@ export interface VideoGeneratedAsset {
   readonly originalIdea: string | null;
 }
 
+/**
+ * What the production itself established, as distinct from what was asked for.
+ *
+ * These travel back so the operation ledger's own columns — which have existed
+ * unfilled since it was written — can be sealed by the lifecycle's existing
+ * DEPOSITED transition. No new table, no new call, no second write.
+ */
+export interface ProductionFacts {
+  readonly allocatedProviderId: string;
+  readonly externalJobId: string | null;
+  /**
+   * The provider's charge IN THE PROVIDER'S OWN UNIT — never cash, and never
+   * comparable with `estimated_resource_cost`, which is an AZMA constant.
+   */
+  readonly providerCharge: number | null;
+  readonly providerChargeUnit: string | null;
+  /** What the provider says it made, when it says it. */
+  readonly producedSeconds: number | null;
+}
+
 export interface VideoGenerationSuccess {
   readonly status: 'succeeded';
   readonly asset: VideoGeneratedAsset;
+  readonly production?: ProductionFacts;
 }
 
 export type VideoGenerationResult = VideoGenerationSuccess | GenerationFailure;

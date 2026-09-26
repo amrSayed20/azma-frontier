@@ -15,6 +15,17 @@ jest.mock('../../persistent-storage', () => ({
   getDb: jest.fn(() => 'fake-db-handle'),
   recordGeneration: jest.fn(),
   insertVaultAsset: jest.fn(),
+  // MEASURED 2026-09-27: without these, depositAsset called an undefined
+  // function, the honest-degrade around it swallowed the throw, and a real
+  // generated video was silently never deposited — the double's gap looked
+  // exactly like a production defect. A double that does not mirror its
+  // module tests something that does not exist.
+  findVaultAssetByContentDigest: jest.fn(() => null),
+  linkGenerationToVaultAsset: jest.fn(),
+  getVaultAsset: jest.fn(() => null),
+  getProject: jest.fn(() => null),
+  listVaultAssetsForTenant: jest.fn(() => []),
+  linkGoalToVaultAsset: jest.fn(),
 }));
 
 // ─── IMPORTS ──────────────────────────────────────────────────────────────────
@@ -127,15 +138,34 @@ describe('Qiyamah First Generation Path — Generation Service', () => {
     successOrchestration();
     mockPersistGeneratedImage.mockResolvedValue({ assetId: 'abc-125', assetUrl: '/generated-assets/abc-125.png' });
 
-    await generateImage({ prompt: 'a sovereign citadel', style: 'cinematic', creatorId: 'creator-42' });
+    // ── THE OPERATION THAT MADE IT, NOT THE FILE IT BECAME ──────────────
+    //   This assertion read `originatingOperationId: 'abc-125'` — the FILE id
+    //   — and so encoded the very defect the forensic audit of 2026-09-26
+    //   found on production: 104 of 119 assets named a file where the column
+    //   is named for an operation. The caller supplies the operation id, so
+    //   the assertion is made against THAT, never against «any string».
+    await generateImage({
+      prompt: 'a sovereign citadel', style: 'cinematic', creatorId: 'creator-42',
+      operationId: 'op-abc-125',
+    });
 
     expect(mockInsertVaultAsset).toHaveBeenCalledWith('fake-db-handle', expect.objectContaining({
       subscriberTenantId: 'creator-42',
-      originatingOperationId: 'abc-125',
+      originatingOperationId: 'op-abc-125',
       capabilityTarget: CapabilityTarget.VISUAL,
       assetFamily: AssetFamily.MEDIA,
       secureStorageUri: '/generated-assets/abc-125.png',
-      metadata: expect.objectContaining({ generationPrompt: 'a sovereign citadel', generationStyle: 'cinematic' }),
+      metadata: expect.objectContaining({
+        generationPrompt: 'a sovereign citadel',
+        generationStyle: 'cinematic',
+        generationOperationId: 'op-abc-125',
+        // The digest of the bytes actually kept, not of anything said about them.
+        contentDigest: expect.stringMatching(/^[0-9a-f]{64}$/),
+      }),
+    }));
+    // And never the file id, which is what it used to hold.
+    expect(mockInsertVaultAsset).not.toHaveBeenCalledWith('fake-db-handle', expect.objectContaining({
+      originatingOperationId: 'abc-125',
     }));
   });
 

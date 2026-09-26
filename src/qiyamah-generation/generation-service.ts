@@ -33,8 +33,9 @@ import { persistGeneratedImage, persistGeneratedVideo, detectVideoFormat } from 
 import { getGenerationOrchestrator } from '../core/sovereign-ai-integration/provider-bootstrap';
 import { isRateLimited, recordGeneration as recordRateLimitedGeneration } from './rate-limiter';
 import { getDb, recordGeneration as persistGenerationRecord, linkGenerationToVaultAsset } from '../persistent-storage';
+import { digestOf } from '../vault/sovereign-asset-mutation';
 import { SovereignVaultManager } from '../vault/sovereign-vault-manager';
-import { AssetFamily, SourceChamber } from '../vault/sovereign-vault-types';
+import { AssetFamily, SourceChamber, SovereignDepositError } from '../vault/sovereign-vault-types';
 import { CapabilityTarget } from '../core/sovereign-orchestrator/qiyamah-intent-types';
 import { buildImageCreationIntent, buildVideoCreationIntent, getProductionSelector } from '../sovereign-model-selection';
 import { beginOperation, safeDetail } from './generation-observability';
@@ -87,10 +88,18 @@ async function depositGeneratedAssetIntoVault(params: {
   /** The provider model that produced the bytes — recorded, never assumed. */
   readonly providerModelId: string | null;
   readonly operationId: string;
+  /** The provider's own job identity, so a charge stays reconstructable. */
+  readonly providerJobId: string | null;
+  /** The provider's actual charge, IN THE PROVIDER'S OWN UNIT. Never cash. */
+  readonly providerCreditsCharged: number | null;
+  /** SHA-256 of the bytes that were actually kept. */
+  readonly contentDigest: string;
 }): Promise<string | null> {
   try {
     const deposited = await vaultManager.depositAsset({
-      operationId: params.assetId,
+      // The operation that made it, not the file it became — the same repair
+      // the video deposit needed, for the same reason.
+      operationId: params.operationId,
       subscriberTenantId: params.creatorId,
       capabilityTarget: CapabilityTarget.VISUAL,
       assetFamily: AssetFamily.MEDIA,
@@ -98,11 +107,18 @@ async function depositGeneratedAssetIntoVault(params: {
       // The chamber that materially produced this asset. Article 10.
       creationChamber: SourceChamber.QIYAMAH,
 
+      contentDigest: params.contentDigest,
       metadata: {
         providerId: params.resolvedProviderId,
         ...(params.providerModelId ? { generationModel: params.providerModelId } : {}),
         generationOperationId: params.operationId,
         generationPrompt: params.prompt,
+        // The unit travels with the number, always.
+        ...(params.providerCreditsCharged !== null
+          ? { providerCreditsCharged: params.providerCreditsCharged, providerCreditUnit: 'magic-hour-credits' }
+          : {}),
+        ...(params.providerJobId ? { providerJobId: params.providerJobId } : {}),
+        contentDigest: params.contentDigest,
         ...(params.style ? { generationStyle: params.style } : {}),
       },
     });
@@ -111,8 +127,14 @@ async function depositGeneratedAssetIntoVault(params: {
     // fault that made every fresh picture un-editable.
     return deposited.assetId;
   } catch (err) {
-    // Honest degrade — a Vault deposit failure must never turn an
-    // already-successful generation into a reported failure.
+    //   A Creator PAID for this production. If the Vault refuses it because
+    //   they already own these exact bytes, the right answer is the asset
+    //   they already have — not silence, and not a second copy. Any other
+    //   refusal degrades honestly: a Vault failure must never turn an
+    //   already-successful generation into a reported failure.
+    if (err instanceof SovereignDepositError && err.rejection === 'DUPLICATE_CONTENT' && err.existingAssetId) {
+      return err.existingAssetId;
+    }
     console.error('[VaultDeposit] deposit failed:', err instanceof Error ? err.message : String(err));
     return null;
   }
@@ -124,14 +146,27 @@ async function depositVideoAssetIntoVault(params: {
   readonly assetUrl: string;
   readonly prompt: string;
   readonly style: string | null;
+  /** What the Creator ASKED FOR. */
   readonly durationSeconds: number;
+  /** What the provider says it MADE. Null when the provider did not state it. */
+  readonly producedSeconds: number | null;
   readonly resolvedProviderId: string;
   readonly providerModelId: string | null;
   readonly operationId: string;
+  /** The provider's own job identity, so cost stays reconstructable. */
+  readonly providerJobId: string | null;
+  /** The provider's actual charge, IN THE PROVIDER'S OWN UNIT. Never cash. */
+  readonly providerCreditsCharged: number | null;
+  /** SHA-256 of the bytes that were actually kept. */
+  readonly contentDigest: string;
 }): Promise<string | null> {
   try {
     const deposited = await vaultManager.depositAsset({
-      operationId: params.assetId,
+      // ── THE OPERATION THAT MADE IT, NOT THE FILE IT BECAME ───────────
+      //   MEASURED 2026-09-26: this column held the FILE id on 104 of 119
+      //   assets, while the true operation id sat beside it in metadata. The
+      //   column named for the operation now holds the operation.
+      operationId: params.operationId,
       subscriberTenantId: params.creatorId,
       capabilityTarget: CapabilityTarget.MOTION,
       assetFamily: AssetFamily.MEDIA,
@@ -139,17 +174,38 @@ async function depositVideoAssetIntoVault(params: {
       // The chamber that materially produced this asset. Article 10.
       creationChamber: SourceChamber.QIYAMAH,
 
+      contentDigest: params.contentDigest,
       metadata: {
         providerId: params.resolvedProviderId,
         ...(params.providerModelId ? { generationModel: params.providerModelId } : {}),
         generationOperationId: params.operationId,
         generationPrompt: params.prompt,
+        // ── REQUESTED AND PRODUCED ARE TWO FACTS ─────────────────────────
+        //   MEASURED 2026-09-26: this asset recorded `durationSeconds: 6`
+        //   while its own file is 4.096 seconds. The request was written and
+        //   described as the result. Both are kept now, and neither is
+        //   inferred from the other.
         durationSeconds: params.durationSeconds,
+        ...(params.producedSeconds !== null ? { producedSeconds: params.producedSeconds } : {}),
+        // ── THE CHARGE, IN THE PROVIDER'S OWN UNIT ───────────────────────
+        //   672 of these is 672 MagicHour credits. It is NOT 672 of anything
+        //   else, and above all it is not dollars. The unit travels with the
+        //   number so no later reader can mistake one for the other.
+        ...(params.providerCreditsCharged !== null
+          ? { providerCreditsCharged: params.providerCreditsCharged, providerCreditUnit: 'magic-hour-credits' }
+          : {}),
+        ...(params.providerJobId ? { providerJobId: params.providerJobId } : {}),
+        contentDigest: params.contentDigest,
         ...(params.style ? { generationStyle: params.style } : {}),
       },
     });
     return deposited.assetId;
   } catch (err) {
+    // Same rule as the image deposit: a paid production is never lost to the
+    // duplicate guard — the Creator is given the asset they already own.
+    if (err instanceof SovereignDepositError && err.rejection === 'DUPLICATE_CONTENT' && err.existingAssetId) {
+      return err.existingAssetId;
+    }
     console.error('[VaultDeposit] video deposit failed:', err instanceof Error ? err.message : String(err));
     return null;
   }
@@ -360,6 +416,13 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
         resolvedProviderId,
         providerModelId: executedModel,
         operationId: trail.operationId,
+        providerJobId: typeof providerMeta['magicHourJobId'] === 'string'
+          ? (providerMeta['magicHourJobId'] as string) : null,
+        providerCreditsCharged: typeof providerMeta['magicHourCreditsCharged'] === 'number'
+          ? (providerMeta['magicHourCreditsCharged'] as number) : null,
+        // The digest of the bytes actually kept — never of the prompt, never
+        // of anything the provider said about them.
+        contentDigest: digestOf(rawBytes),
       });
       trail.stage('asset-deposited', { assetId: persisted.assetId, providerModelId: executedModel });
       // ── THE ID THAT EXISTS, NOT THE ID THAT WAS CONVENIENT ─────────────
@@ -565,6 +628,15 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
 
     if (request.creatorId) {
       const resolvedProviderId = orchestrationResult.response.providerId ?? 'magic-hour-video';
+      // Everything below is already in hand at this point. None of it was
+      // read before, so all of it was lost the moment this function returned.
+      const providerJobId = typeof providerMeta['magicHourJobId'] === 'string'
+        ? (providerMeta['magicHourJobId'] as string) : null;
+      const providerCreditsCharged = typeof providerMeta['magicHourCreditsCharged'] === 'number'
+        ? (providerMeta['magicHourCreditsCharged'] as number) : null;
+      const producedSeconds = typeof providerMeta['magicHourProducedSeconds'] === 'number'
+        ? (providerMeta['magicHourProducedSeconds'] as number) : null;
+
       const vaultAssetId = await depositVideoAssetIntoVault({
         assetId,
         creatorId: request.creatorId,
@@ -572,11 +644,24 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
         prompt: trimmedPrompt,
         style,
         durationSeconds: request.durationSeconds,
+        producedSeconds,
         resolvedProviderId,
         providerModelId: executedModel,
         operationId: trail.operationId,
+        providerJobId,
+        providerCreditsCharged,
+        // The digest of the bytes actually kept — not of the prompt, not of
+        // anything the provider said about them.
+        contentDigest: digestOf(videoBytes),
       });
-      trail.stage('asset-deposited', { assetId, providerModelId: executedModel });
+      trail.stage('asset-deposited', {
+        assetId, providerModelId: executedModel, providerJobId,
+        // The charge enters the Empire's own record here for the first time,
+        // named in the provider's unit so it can never read as cash.
+        providerCreditsCharged, providerCreditUnit: 'magic-hour-credits',
+        requestedSeconds: request.durationSeconds, producedSeconds,
+      });
+
       if (vaultAssetId) {
         sovereignAssetId = vaultAssetId;
         // Honest degrade, for the same reason the deposit degrades: a link
@@ -603,6 +688,17 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
         durationSeconds: request.durationSeconds,
         generatedAt: new Date().toISOString(),
         originalIdea: request.originalIdea ?? null,
+      },
+      production: {
+        allocatedProviderId: orchestrationResult.response.providerId ?? 'magic-hour-video',
+        externalJobId: typeof providerMeta['magicHourJobId'] === 'string'
+          ? (providerMeta['magicHourJobId'] as string) : null,
+        providerCharge: typeof providerMeta['magicHourCreditsCharged'] === 'number'
+          ? (providerMeta['magicHourCreditsCharged'] as number) : null,
+        providerChargeUnit: typeof providerMeta['magicHourCreditsCharged'] === 'number'
+          ? 'magic-hour-credits' : null,
+        producedSeconds: typeof providerMeta['magicHourProducedSeconds'] === 'number'
+          ? (providerMeta['magicHourProducedSeconds'] as number) : null,
       },
     };
   } catch (error) {
