@@ -133,6 +133,25 @@ export interface OperationalState {
  */
 export const PAYMENT_GATEWAYS: readonly { readonly id: string; readonly nameAr: string; readonly keys: readonly string[] }[] = [
   {
+    // ── THE SELECTED GATEWAY, 2026-09-27 ──────────────────────────────────
+    //
+    //   Exactly the two keys the server path needs, and no more:
+    //
+    //     XPAY_SECRET_KEY      sk_test_* | sk_live_*   creates the session
+    //     XPAY_WEBHOOK_SECRET  whsec_*                 verifies the event
+    //
+    //   A PUBLISHABLE key (pk_*) is deliberately NOT listed. MEASURED
+    //   2026-09-27: XPay answered a pk_test_ key with HTTP 403
+    //   `permission_denied — Required: CHECKOUT_SESSIONS_READ`. It is a valid
+    //   key on a real account, but it is the browser's key, and Hosted
+    //   Checkout never touches the browser's key. Listing it would let the
+    //   Empire report itself ready to take money on a credential that cannot
+    //   open a single checkout session.
+    id: 'xpay',
+    nameAr: 'بوّابة الدفع',
+    keys: ['XPAY_SECRET_KEY', 'XPAY_WEBHOOK_SECRET'],
+  },
+  {
     id: 'paymob',
     nameAr: 'بوّابة الدفع',
     keys: ['PAYMOB_API_KEY', 'PAYMOB_INTEGRATION_ID', 'PAYMOB_IFRAME_ID', 'PAYMOB_HMAC_SECRET'],
