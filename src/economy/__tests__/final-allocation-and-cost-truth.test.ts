@@ -15,6 +15,8 @@
  *   it is a decorated guess.
  */
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import {
   CREDIT_ACQUISITION, CREDIT_USD, CREDIT_EGP, FX,
   QIYAMAH_COST_TRUTH, costTruthFor, resolveCost,
@@ -236,9 +238,7 @@ describe('7 · UNKNOWN stays UNKNOWN — nothing is estimated into existence', (
 
 describe('8 · this is cost, and touches nothing that is price', () => {
   it('the module names no customer price, subscription, margin or AZMA Unit', () => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const src = require('fs').readFileSync(
-      require('path').join(process.cwd(), 'src/economy/cost-engine/qiyamah-cost-truth.ts'), 'utf8')
+    const src = readFileSync(join(process.cwd(), 'src/economy/cost-engine/qiyamah-cost-truth.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     for (const w of ['priceEgp', 'azmaUnits', 'subscription', 'margin', 'CREDIT_PACKS', 'profit']) {
       expect(src).not.toContain(w);
