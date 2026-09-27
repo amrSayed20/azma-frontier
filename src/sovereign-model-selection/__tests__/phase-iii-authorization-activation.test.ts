@@ -131,23 +131,50 @@ describe('Point 1 — All ten fleet models have productionAuthorized: true', () 
     }
   });
 
-  it('all 5 video fleet models are production-authorized', () => {
-    expect(VIDEO_MODEL_FLEET).toHaveLength(5);
+  // ── SIX AND ELEVEN, AND WHY THE COUNT ALONE WAS NEVER THE POINT ─────
+  //
+  //   `minimax-h3` was registered 2026-09-27 as a DORMANT, TEST-ONLY binding
+  //   under the Controlled Model Test Enablement order — productionAuthorized
+  //   false, active false — so the fleets became 6 and 11.
+  //
+  //   These guards exist so a model cannot appear or vanish in silence. A raw
+  //   total expresses that only weakly: it trips on any registration, dormant
+  //   or not, and says nothing about what the Empire actually dispatches. The
+  //   count is kept AND the ACTIVE ALLOCATION is now asserted beside it, which
+  //   is the constitutional invariant: registering a dormant binding must not
+  //   move a single model into or out of production.
+  it('the video fleet holds 6 bindings, of which exactly two are the allocation', () => {
+    expect(VIDEO_MODEL_FLEET).toHaveLength(6);
     for (const model of VIDEO_MODEL_FLEET) {
       expect(typeof model.productionAuthorized).toBe('boolean');
-      expect(model.verificationStatus).toBe('production-authorized');
+      // The dormant test binding is the one entry that is not yet proven, and
+      // it says so in its own verificationStatus rather than borrowing one.
+      expect(['production-authorized', 'approved-candidate']).toContain(model.verificationStatus);
+      if (model.modelId === 'minimax-h3') {
+        expect(model.productionAuthorized).toBe(false);
+        expect(model.active).toBe(false);
+        expect(model.verificationStatus).toBe('approved-candidate');
+      } else {
+        expect(model.verificationStatus).toBe('production-authorized');
+      }
     }
+    // The invariant that matters: registration changed no allocation.
+    expect(IMAGE_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active).map((m) => m.modelId).sort())
+      .toEqual(['nano-banana-2', 'nano-banana-pro']);
+    expect(VIDEO_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active).map((m) => m.modelId).sort())
+      .toEqual(['seedance-2-0', 'veo-3-1']);
   });
 
-  it('combined: all 10 models are production-authorized — zero remain as approved-candidate', () => {
+  it('combined: 11 bindings, and the only candidate is the dormant test one', () => {
     const all = [...IMAGE_MODEL_FLEET, ...VIDEO_MODEL_FLEET];
-    expect(all).toHaveLength(10);
+    expect(all).toHaveLength(11);
 
     const unauthorized = all.filter((m) => !m.productionAuthorized);
     const stillCandidate = all.filter((m) => m.verificationStatus === 'approved-candidate');
 
-    expect(unauthorized.length).toBeLessThanOrEqual(6);
-    expect(stillCandidate).toHaveLength(0);
+    expect(unauthorized.length).toBeLessThanOrEqual(7);
+    // Exactly one, and it is the dormant test binding — never a production model.
+    expect(stillCandidate.map((m) => m.modelId)).toEqual(['minimax-h3']);
   });
 
   it('veo-3-1 is production-authorized and active (Magic Hour-hosted, proof order 2026-09-22); sora-2 is authorized but inactive (no adapter)', () => {
@@ -172,9 +199,11 @@ describe('Point 1 — All ten fleet models have productionAuthorized: true', () 
 describe('Point 2 — Production registry exposes authorized models', () => {
   beforeEach(() => resetProductionRegistryForTests());
 
-  it('registry holds all 10 fleet models', () => {
+  it('registry holds all 11 fleet bindings, dormant ones included', () => {
+    // The registry holds every BINDING; `findProductionAuthorized` is what
+    // decides what may be dispatched, and that is asserted separately below.
     const registry = getProductionRegistry();
-    expect(registry.size()).toBe(10);
+    expect(registry.size()).toBe(11);
   });
 
   it('findProductionAuthorized("image") returns 4 active authorized image models (seedream-4-5 inactive: invalid providerModelId)', () => {
@@ -834,7 +863,7 @@ describe('Point 20 — ZERO real provider generations during Phase III', () => {
   it('production registry rebuild (after resetProductionRegistryForTests) is a pure in-memory operation', () => {
     resetProductionRegistryForTests();
     const registry = getProductionRegistry(); // rebuilds from fleet arrays — no API call
-    expect(registry.size()).toBe(10);
+    expect(registry.size()).toBe(11);
     // Registry construction is pure data — no Magic Hour call, no credit charge
   });
 });

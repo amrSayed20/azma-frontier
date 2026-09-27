@@ -18,6 +18,26 @@ export interface GenerationRequest {
   readonly originalIdea?: string | null;
   /** One id per attempt, minted by the route; threaded to the provider and back. */
   readonly operationId?: string;
+  /**
+   * ── TEST-ONLY MODEL BINDING ─ NOT A CREATOR OPTION ─────────────────
+   *
+   *   An AZMA fleet model id — never a provider string — that a Founder-gated
+   *   internal test path may name so a controlled comparison can hold every
+   *   other variable fixed.
+   *
+   *   THE PRODUCTION ROUTE NEVER SETS THIS. `app/api/qiyamah/generate` does
+   *   not read it, does not forward it, and does not know it exists, so no
+   *   browser request can carry it into a normal generation — not because a
+   *   check rejects it, but because nothing on that path ever looks for it.
+   *   That is the whole authorization design: the override lives on a
+   *   separate surface, behind `verifyFounderSession`, rather than as a field
+   *   a creator might learn to send.
+   *
+   *   It resolves through the sovereign fleet, so a dormant binding can be
+   *   addressed for a test WITHOUT becoming dispatchable — the selector is
+   *   not consulted and its authorized pool is not widened.
+   */
+  readonly testOnlyModelId?: string;
 }
 
 export interface GeneratedAsset {
@@ -74,6 +94,8 @@ export interface VideoGenerationRequest {
   readonly originalIdea?: string | null;
   /** One id per attempt, minted by the route; threaded to the provider and back. */
   readonly operationId?: string;
+  /** TEST-ONLY fleet model id — see the note on GenerationRequest. */
+  readonly testOnlyModelId?: string;
 }
 
 export interface VideoGeneratedAsset {

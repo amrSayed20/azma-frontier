@@ -180,6 +180,61 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
       'Veo 3.1 production-proof order; the proof record is the evidence it dispatches.',
   },
   {
+    // ── A DORMANT BINDING, REGISTERED FOR ONE CONTROLLED TEST ──────────
+    //
+    //   Registered under the Controlled Model Test Enablement order of
+    //   2026-09-27, which states plainly: «This directive DOES NOT authorize
+    //   either model for normal production» and «Do NOT remove Seedance».
+    //
+    //   `productionAuthorized: false` and `active: false` are what keep it
+    //   dormant, and they are not decoration. The selector's very first step
+    //   filters the fleet to `productionAuthorized && active`, so a normal
+    //   creator request CANNOT reach this model — not because a condition
+    //   elsewhere forbids it, but because it is never in the pool at all.
+    //   Even an explicit `requiredModelId` is refused with
+    //   'required-model-unavailable', because that filter runs on the
+    //   authorized pool and not on the fleet.
+    //
+    //   It is addressable ONLY through the Founder-gated test path, which
+    //   resolves an AZMA fleet id — never a provider string — and never
+    //   touches the selector.
+    modelId: 'minimax-h3',
+    providerId: MAGIC_HOUR_VIDEO_PROVIDER_ID,
+    gatewayId: 'magic-hour',
+    providerModelId: 'minimax-h3',             // VERIFIED 2026-09-27: docs.magichour.ai /v1/text-to-video model enum
+    displayName: 'MiniMax H3',
+    sovereignNameAr: 'حركة قيد الاختبار',
+    sovereignNoteAr: 'بنيةٌ تحت الاختبار وحده — لا تُعرض على منشئ.',
+    mediaType: 'video',
+    capabilities: ['video-generation'],
+    qualityTier: 'standard',                   // REQUIRES_VERIFICATION
+    maxVideoResolution: '1080p',               // DOCUMENTED 2026-09-27: «Supports 480p, 720p, 1080p» — not yet measured
+    supportedAspectRatios: ['16:9', '9:16', '1:1'],  // DOCUMENTED 2026-09-27 — not yet measured
+    minDurationSeconds: 1,                     // DOCUMENTED 2026-09-27: «any integer from 1 to 30»
+    maxDurationSeconds: 30,                    // DOCUMENTED 2026-09-27 (same source)
+    supportsTextToVideo: true,                 // DOCUMENTED 2026-09-27: present in the text-to-video model enum
+    supportsImageToVideo: undefined,           // REQUIRES_VERIFICATION
+    supportsAudio: undefined,                  // REQUIRES_VERIFICATION — the provider documents an `audio` toggle
+    supportsCharacterConsistency: undefined,   // REQUIRES_VERIFICATION
+    characteristicHints: [],
+    supportedStyleIds: [],
+    costCatalogKey: {
+      gatewayId: 'magic-hour',
+      capabilityTarget: 'video-generation',
+      modelId: 'minimax-h3',
+    },
+    verificationStatus: 'approved-candidate',
+    productionAuthorized: false,               // TEST-ONLY. Not a production allocation.
+    active: false,                             // TEST-ONLY. The selector never sees it.
+    internalNotes:
+      'TEST-ONLY dormant binding, registered 2026-09-27 under the Controlled Model Test Enablement ' +
+      'order so that exactly one controlled comparison against the Seedance reference can be run ' +
+      'through the Founder-gated test path. It is NOT an allocation, NOT a replacement for Seedance, ' +
+      'and NOT visible to any creator. Its capability figures are the provider DOCUMENTATION, not ' +
+      'measurements — nothing here has been proven by a production. Activating it would require a ' +
+      'separate constitutional order.',
+  },
+  {
     // Sora 2 is OpenAI's video model. No AZMA provider adapter exists for video.
     // active: false prevents this model from being selected.
     modelId: 'sora-2',

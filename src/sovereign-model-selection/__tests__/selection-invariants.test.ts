@@ -311,17 +311,26 @@ describe('Point 14: Unknown/unverified model capability cannot be silently assum
     if (!result.selected) expect(result.reason).toBe('all-candidates-unverified');
   });
 
-  it('Phase III: all 10 fleet models are production-authorized', () => {
+  it('Phase III: 11 bindings registered, and only the dormant test one is a candidate', () => {
+    // `minimax-h3` joined the fleet 2026-09-27 as TEST-ONLY. A binding that is
+    // not yet proven declares `approved-candidate` rather than borrowing the
+    // status of models that were authorized by the Chief Architect.
     const { getProductionRegistry } = require('../production-registry');
     const { resetProductionRegistryForTests } = require('../production-registry');
     resetProductionRegistryForTests();
     const registry = getProductionRegistry();
 
     const allModels = registry.list();
-    expect(allModels.length).toBe(10);
+    expect(allModels.length).toBe(11);
     for (const model of allModels) {
       expect(typeof model.productionAuthorized).toBe('boolean');
-      expect(model.verificationStatus).toBe('production-authorized');
+      if (model.modelId === 'minimax-h3') {
+        expect(model.verificationStatus).toBe('approved-candidate');
+        expect(model.productionAuthorized).toBe(false);
+        expect(model.active).toBe(false);
+      } else {
+        expect(model.verificationStatus).toBe('production-authorized');
+      }
     }
   });
 });

@@ -38,6 +38,8 @@ import { SovereignVaultManager } from '../vault/sovereign-vault-manager';
 import { AssetFamily, SourceChamber, SovereignDepositError } from '../vault/sovereign-vault-types';
 import { CapabilityTarget } from '../core/sovereign-orchestrator/qiyamah-intent-types';
 import { buildImageCreationIntent, buildVideoCreationIntent, getProductionSelector } from '../sovereign-model-selection';
+import { IMAGE_MODEL_FLEET } from '../sovereign-model-selection/image-model-fleet';
+import { VIDEO_MODEL_FLEET } from '../sovereign-model-selection/video-model-fleet';
 import { beginOperation, safeDetail } from './generation-observability';
 import type { OperationTrail, FailureCategory } from './generation-observability';
 import type { GenerationRequest, GenerationResult, GenerationFailure, VideoGenerationRequest, VideoGenerationResult } from './types';
@@ -222,6 +224,37 @@ async function depositVideoAssetIntoVault(params: {
   }
 }
 
+
+/**
+ * ── A TEST-ONLY BINDING, RESOLVED THROUGH THE SOVEREIGN FLEET ───────────
+ *
+ *   Registered under the Controlled Model Test Enablement order of 2026-09-27
+ *   so that exactly two controlled comparisons can hold every variable fixed
+ *   but the model.
+ *
+ *   It resolves an AZMA FLEET ID and returns that entry's own binding. An
+ *   arbitrary provider string cannot pass through here: a caller naming
+ *   'minimax-h3-turbo' or 'gpt-image-2' gets null, because those are not
+ *   fleet ids. That is the guarantee section V of the order asks for —
+ *   provider model names stay implementation details of a registered binding.
+ *
+ *   It deliberately does NOT consult the selector. The selector's authorized
+ *   pool is `productionAuthorized && active`, and widening it — even
+ *   conditionally — would put a dormant model one boolean away from normal
+ *   routing. Nothing here touches that pool, so a dormant binding stays
+ *   undispatchable by every ordinary path while remaining addressable by name
+ *   on this one.
+ */
+function resolveTestOnlyBinding(
+  modelId: string,
+  mediaType: 'image' | 'video',
+): { providerId: string; modelId: string; providerModelId: string } | null {
+  const fleet = mediaType === 'video' ? VIDEO_MODEL_FLEET : IMAGE_MODEL_FLEET;
+  const entry = fleet.find((m) => m.modelId === modelId);
+  if (!entry) return null;
+  return { providerId: entry.providerId, modelId: entry.modelId, providerModelId: entry.providerModelId };
+}
+
 const MAX_PROMPT_LENGTH = 1000;
 
 function validate(request: GenerationRequest): string | null {
@@ -261,7 +294,20 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
   // duration-unavailable) are surfaced as provider-error — AZMA never
   // silently downgrades a Creator requirement.
   const creationIntent = buildImageCreationIntent(request.prompt.trim(), style);
-  const selectionResult = getProductionSelector().select(creationIntent);
+  // A Founder-gated controlled test may name the binding. With no override
+  // this expression IS the selector call, unchanged, so normal production
+  // resolves exactly as it did before this field existed.
+  const testBinding = request.testOnlyModelId
+    ? resolveTestOnlyBinding(request.testOnlyModelId, 'image')
+    : null;
+  if (request.testOnlyModelId && !testBinding) {
+    return failAt(trail, 'provider-error', 'select', 'selection',
+      'The requested capability is not available.',
+      `test-only model '${request.testOnlyModelId}' is not a registered AZMA fleet id`);
+  }
+  const selectionResult = testBinding
+    ? ({ selected: true, selection: testBinding } as ReturnType<ReturnType<typeof getProductionSelector>['select']>)
+    : getProductionSelector().select(creationIntent);
   trail.stage('selected', selectionResult.selected
     ? { providerId: selectionResult.selection.providerId, modelId: selectionResult.selection.modelId, providerModelId: selectionResult.selection.providerModelId }
     : { selected: false, reason: selectionResult.reason });
@@ -495,7 +541,19 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
   const style = request.style?.trim() || null;
 
   const creationIntent = buildVideoCreationIntent(trimmedPrompt, style, request.durationSeconds);
-  const selectionResult = getProductionSelector().select(creationIntent);
+  // Same seam as the image path: absent an override, this is the selector
+  // call verbatim.
+  const testBinding = request.testOnlyModelId
+    ? resolveTestOnlyBinding(request.testOnlyModelId, 'video')
+    : null;
+  if (request.testOnlyModelId && !testBinding) {
+    return failAt(trail, 'provider-error', 'select', 'selection',
+      'The requested capability is not available.',
+      `test-only model '${request.testOnlyModelId}' is not a registered AZMA fleet id`);
+  }
+  const selectionResult = testBinding
+    ? ({ selected: true, selection: testBinding } as ReturnType<ReturnType<typeof getProductionSelector>['select']>)
+    : getProductionSelector().select(creationIntent);
   trail.stage('selected', selectionResult.selected
     ? { providerId: selectionResult.selection.providerId, modelId: selectionResult.selection.modelId, providerModelId: selectionResult.selection.providerModelId }
     : { selected: false, reason: selectionResult.reason });

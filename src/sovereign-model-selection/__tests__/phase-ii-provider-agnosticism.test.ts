@@ -248,24 +248,30 @@ describe('Phase II Test 22 — Fallback discipline and fleet authorization state
     }
   });
 
-  it('Phase III: all 5 video fleet models are production-authorized (sora remains active:false; veo activated 2026-09-22)', () => {
-    expect(VIDEO_MODEL_FLEET.length).toBe(5);
+  // ── A DORMANT BINDING JOINED THE FLEET, AND CHANGED NO ALLOCATION ────
+  //   `minimax-h3`, registered 2026-09-27 as TEST-ONLY under the Controlled
+  //   Model Test Enablement order. What these guards must hold is not a total
+  //   but the fact that nothing moved into or out of production because of it.
+  it('Phase III: the video fleet holds 6 bindings; only the two allocated ones are dispatchable', () => {
+    expect(VIDEO_MODEL_FLEET.length).toBe(6);
     for (const model of VIDEO_MODEL_FLEET) {
       expect(typeof model.productionAuthorized).toBe('boolean');
-      expect(model.verificationStatus).toBe('production-authorized');
     }
-    // sora is authorized but has no adapter — active:false prevents selection.
-    // veo was activated under the Veo 3.1 production-proof order (Magic Hour-hosted).
+    // sora has no adapter; minimax-h3 is dormant by order. Neither dispatches.
     const inactive = VIDEO_MODEL_FLEET.filter((m) => !m.active);
-    expect(inactive.map((m) => m.modelId).sort()).toEqual(['sora-2']);
+    expect(inactive.map((m) => m.modelId).sort()).toEqual(['minimax-h3', 'sora-2']);
+    // The allocation itself — unchanged.
+    expect(VIDEO_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active).map((m) => m.modelId).sort())
+      .toEqual(['seedance-2-0', 'veo-3-1']);
   });
 
-  it('Phase III: all ten fleet models are production-authorized', () => {
+  it('Phase III: 11 bindings, and the authorized count is untouched at 4', () => {
     const allModels = [...IMAGE_MODEL_FLEET, ...VIDEO_MODEL_FLEET];
-    expect(allModels).toHaveLength(10);
+    expect(allModels).toHaveLength(11);
 
+    // The dormant binding added none: still the Founder's four designations.
     const authorizedCount = allModels.filter((m) => m.productionAuthorized).length;
-    expect(authorizedCount).toBe(4); // ALL authorized per Phase III order
+    expect(authorizedCount).toBe(4);
   });
 
   it('Phase III: production registry exposes 5 active authorized image models', () => {
@@ -275,18 +281,21 @@ describe('Phase II Test 22 — Fallback discipline and fleet authorization state
     const registry = getProductionRegistry();
 
     const all = registry.list();
-    expect(all).toHaveLength(10);
+    expect(all).toHaveLength(11);
 
     const authorizedImages = registry.findProductionAuthorized('image');
     expect(authorizedImages.length).toBe(2); // 4 active authorized image models (seedream-4-5 inactive: invalid providerModelId)
   });
 
-  it('image and video fleets each contain exactly 5 entries', () => {
+  it('the image fleet holds 5 entries and the video fleet 6 — the sixth is dormant', () => {
     const imageModels = IMAGE_MODEL_FLEET.filter((m) => m.mediaType === 'image');
     const videoModels = VIDEO_MODEL_FLEET.filter((m) => m.mediaType === 'video');
 
     expect(imageModels).toHaveLength(5);
-    expect(videoModels).toHaveLength(5);
+    expect(videoModels).toHaveLength(6);
+    // And the sixth is the test binding, not a production one.
+    expect(videoModels.filter((m) => !m.productionAuthorized && !m.active).map((m) => m.modelId).sort())
+      .toEqual(['minimax-h3', 'sora-2']);
   });
 
   it('Phase III: production selector selects an authorized model for a standard image intent', () => {
