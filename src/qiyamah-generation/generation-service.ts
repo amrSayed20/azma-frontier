@@ -29,7 +29,7 @@
  */
 
 import { randomUUID } from 'crypto';
-import { persistGeneratedImage, persistGeneratedVideo, detectVideoFormat } from './asset-storage';
+import { persistGeneratedImage, persistGeneratedVideo, detectVideoFormat, type PersistedVideo } from './asset-storage';
 import { getGenerationOrchestrator } from '../core/sovereign-ai-integration/provider-bootstrap';
 import { isRateLimited, recordGeneration as recordRateLimitedGeneration } from './rate-limiter';
 import { getDb, recordGeneration as persistGenerationRecord, linkGenerationToVaultAsset } from '../persistent-storage';
@@ -660,13 +660,22 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
   }
   trail.stage('downloaded', { bytes: videoBytes.length, mimeType: videoFormat });
 
-  let persisted: { assetId: string; assetUrl: string };
+  // The silence boundary runs inside persistGeneratedVideo, before the bytes
+  // become a file. A provider master that cannot be made silent is refused
+  // here, by the storage-error path that already existed — never deposited.
+  let persisted: PersistedVideo;
   try {
     persisted = await persistGeneratedVideo(videoBytes, videoFormat);
   } catch (err) {
     return failAt(trail, 'storage-error', 'persist', 'storage', 'Failed to keep the generated video.', safeDetail(err));
   }
-  trail.stage('file-persisted', { assetId: persisted.assetId });
+  trail.stage('file-persisted', {
+    assetId: persisted.assetId,
+    // What the boundary found and what it did about it.
+    providerAudioStreams: persisted.silence.before.audioStreams,
+    audioStreamsRemoved: persisted.silence.audioStreamsRemoved,
+    finalAudioStreams: persisted.silence.after.audioStreams,
+  });
   const assetId = persisted.assetId;
   const storedUrl = persisted.assetUrl;
 
@@ -726,8 +735,9 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
         outputFps: typeof providerMeta['magicHourFps'] === 'number'
           ? (providerMeta['magicHourFps'] as number) : null,
         // The digest of the bytes actually kept — not of the prompt, not of
-        // anything the provider said about them.
-        contentDigest: digestOf(videoBytes),
+        // anything the provider said about them, and NOT of what the provider
+        // sent when silence enforcement had to remove an audio stream from it.
+        contentDigest: digestOf(persisted.bytes),
       });
       trail.stage('asset-deposited', {
         assetId, providerModelId: executedModel, providerJobId,

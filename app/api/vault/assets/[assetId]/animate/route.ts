@@ -184,14 +184,23 @@ export async function POST(
   }
 
   // ── Ours from here ─────────────────────────────────────────────────────────
+  //   The silence boundary runs inside persistGeneratedVideo. An animation the
+  //   provider returns with sound is silenced BEFORE it becomes a file, so the
+  //   bytes on disk are `persisted.bytes` — and everything downstream derives
+  //   from those, never from what the provider sent.
   const persisted = await persistGeneratedVideo(produced.bytes, videoFormat);
-  trail.stage('file-persisted', { assetId: persisted.assetId });
+  trail.stage('file-persisted', {
+    assetId: persisted.assetId,
+    providerAudioStreams: persisted.silence.before.audioStreams,
+    audioStreamsRemoved: persisted.silence.audioStreamsRemoved,
+    finalAudioStreams: persisted.silence.after.audioStreams,
+  });
 
   const outcome = await deriveAsset({
     parentAssetId: parent.assetId,
     ownerId: session.creatorId,
     parentBytes,
-    outputBytes: produced.bytes,
+    outputBytes: persisted.bytes,
     outputStorageUri: persisted.assetUrl,
     chamber: SourceChamber.QIYAMAH,
     derivation: DerivationKind.ANIMATED,

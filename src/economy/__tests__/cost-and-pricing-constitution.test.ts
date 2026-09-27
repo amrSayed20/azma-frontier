@@ -236,7 +236,12 @@ describe('13–14 · a cost never detaches from its operation or its asset', () 
   });
 
   it('the asset keeps its own digest, so the thing charged for is identifiable', () => {
-    expect(SERVICE).toContain('contentDigest: digestOf(videoBytes),');
+    // TIGHTENED 2026-09-27: the video digest was taken from the provider's
+    // bytes. Post-Production Silence Enforcement may remove an audio stream
+    // before the master is written, so the identifiable thing is the file that
+    // exists — `persisted.bytes` — not what the provider sent. The charge and
+    // the operation it belongs to are untouched by this.
+    expect(SERVICE).toContain('contentDigest: digestOf(persisted.bytes),');
     expect(SERVICE).toContain('contentDigest: digestOf(rawBytes),');
   });
 });

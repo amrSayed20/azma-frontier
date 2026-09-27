@@ -138,7 +138,15 @@ describe('7–8 · the ledger receives the provider’s identity and job', () =>
 
 describe('9 · a generated asset is digested from its own bytes', () => {
   it('the video path digests the bytes it kept', () => {
-    expect(SERVICE).toContain('contentDigest: digestOf(videoBytes),');
+    // ── TIGHTENED 2026-09-27, under Post-Production Silence Enforcement ──
+    //   This read `digestOf(videoBytes)` — the bytes the PROVIDER sent. Once
+    //   the silence boundary began removing an audio stream before the master
+    //   was written, those two stopped being the same file, and the digest of
+    //   the provider's bytes would have described a file that is not on disk.
+    //   `persisted.bytes` IS the file. The rule did not change; the only bytes
+    //   that satisfy it did.
+    expect(SERVICE).toContain('contentDigest: digestOf(persisted.bytes),');
+    expect(SERVICE).not.toContain('digestOf(videoBytes)');
   });
 
   it('the image path digests the bytes it kept', () => {
@@ -151,7 +159,9 @@ describe('9 · a generated asset is digested from its own bytes', () => {
   });
 
   it('never a digest of the prompt or of provider words', () => {
-    expect(SERVICE).not.toMatch(/digestOf\((?!videoBytes|rawBytes)/);
+    // Only the two byte-sources that are actually written to disk may be
+    // digested — the silenced video master, and the raw image bytes.
+    expect(SERVICE).not.toMatch(/digestOf\((?!persisted\.bytes|rawBytes)/);
   });
 });
 

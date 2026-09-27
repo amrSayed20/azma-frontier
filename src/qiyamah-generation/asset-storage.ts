@@ -17,6 +17,7 @@
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
+import { enforceSovereignSilence, type SilenceOutcome } from './sovereign-video-silence';
 
 // In production UPLOADS_DIR=/var/www/azma-uploads (Nginx-served, www-data accessible).
 // In development fallback: public/generated-assets (Next.js static, dev only).
@@ -56,6 +57,17 @@ export async function persistGeneratedImage(
   };
 }
 
+export interface PersistedVideo extends PersistedAsset {
+  /**
+   * The bytes actually written. NOT necessarily the bytes handed in — silence
+   * enforcement may have removed an audio stream. Every caller must digest,
+   * hash and derive from THESE, or the record would describe a file that does
+   * not exist on disk.
+   */
+  readonly bytes: Buffer;
+  readonly silence: SilenceOutcome;
+}
+
 /**
  * Keep a generated VIDEO's bytes, the way images have always been kept.
  *
@@ -64,15 +76,35 @@ export async function persistGeneratedImage(
  * sovereign asset whose bytes live only at a provider is not sovereign
  * (Constitution Art. 5: assets stay inside AZMA OS, independent of providers).
  * The bytes are fetched once, here, and the asset points at our own file.
+ *
+ * ─── AND THE SILENCE BOUNDARY LIVES HERE ────────────────────────────────────
+ *
+ *   Every sovereign video in the Empire — generated from an idea, or animated
+ *   from an existing asset — becomes a file through THIS function and no other.
+ *   That is why the rule is enforced here rather than at the two call sites: a
+ *   boundary placed at a chokepoint cannot be forgotten by a path added later,
+ *   because a path that does not call this creates no asset at all.
+ *
+ *   It runs after the provider's bytes have arrived and BEFORE they are written
+ *   as the master, so the file that enters the Vault has already passed
+ *   `audio streams = 0`. Measured 2026-09-27: the provider returns an audible
+ *   track even when asked not to, so the request could never have been enough.
+ *
+ *   A master that arrives silent is written exactly as it arrived.
  */
-export async function persistGeneratedVideo(bytes: Buffer, mimeType: string = 'video/mp4'): Promise<PersistedAsset> {
+export async function persistGeneratedVideo(bytes: Buffer, mimeType: string = 'video/mp4'): Promise<PersistedVideo> {
   const assetId = randomUUID();
   const ext = mimeType === 'video/webm' ? 'webm' : 'mp4';
   const fileName = `${assetId}.${ext}`;
+
+  // Before it is a file, it must be silent. A throw here refuses the deposit
+  // through the caller's existing failure handling — never a silent pass.
+  const silence = await enforceSovereignSilence(bytes, ext);
+
   const dir = generatedAssetsDir();
   await mkdir(dir, { recursive: true });
-  await writeFile(join(dir, fileName), bytes);
-  return { assetId, assetUrl: `/generated-assets/${fileName}` };
+  await writeFile(join(dir, fileName), silence.bytes);
+  return { assetId, assetUrl: `/generated-assets/${fileName}`, bytes: silence.bytes, silence };
 }
 
 /** MP4 (ISO BMFF 'ftyp' at offset 4) or WebM (EBML header). Anything else is not a video we keep. */

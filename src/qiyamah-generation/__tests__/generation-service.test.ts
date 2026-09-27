@@ -348,6 +348,12 @@ const STORED_VIDEO_URL = '/generated-assets/vid-0001.mp4';
 // A minimal ISO BMFF header: size + 'ftyp' at offset 4 — what detectVideoFormat needs.
 const MP4_BYTES = Buffer.concat([Buffer.from([0x00, 0x00, 0x00, 0x18]), Buffer.from('ftypisom'), Buffer.alloc(16, 0)]);
 
+/** What the silence boundary reports for a master that arrived already silent. */
+const SILENT_FACTS = {
+  videoStreams: 1, audioStreams: 0, durationSeconds: 4,
+  videoCodec: 'h264', width: 1280, height: 720, frameRate: '24/1',
+} as const;
+
 /**
  * Since 2026-09-22 the service DOWNLOADS the provider's video and keeps the
  * bytes — the provider URL expires in 24h and was never a sovereign asset.
@@ -361,7 +367,22 @@ function successVideoOrchestration(content = VIDEO_URL) {
     ok: true,
     arrayBuffer: async () => MP4_BYTES.buffer.slice(MP4_BYTES.byteOffset, MP4_BYTES.byteOffset + MP4_BYTES.byteLength),
   });
-  mockPersistGeneratedVideo.mockResolvedValue({ assetId: 'vid-0001', assetUrl: STORED_VIDEO_URL });
+  // The double returns what the real function returns, INCLUDING the bytes it
+  // wrote and the silence outcome. A double that cannot produce production's
+  // own shape hides the defect it was meant to catch — this repository has
+  // paid for that lesson once already.
+  mockPersistGeneratedVideo.mockResolvedValue({
+    assetId: 'vid-0001',
+    assetUrl: STORED_VIDEO_URL,
+    bytes: MP4_BYTES,
+    silence: {
+      bytes: MP4_BYTES,
+      before: SILENT_FACTS,
+      after: SILENT_FACTS,
+      remuxed: false,
+      audioStreamsRemoved: 0,
+    },
+  });
 }
 
 describe('Qiyamah Video Generation Path — generateVideo()', () => {
