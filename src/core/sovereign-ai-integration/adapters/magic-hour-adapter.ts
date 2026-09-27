@@ -208,6 +208,29 @@ function buildRawResponse(
 
 // ─── IMAGE GENERATION ADAPTER ─────────────────────────────────────────────────
 
+/**
+ * ── THE SOVEREIGN SILENCE BOUNDARY ──────────────────────────────
+ *
+ *   A sovereign video master carries no audio.
+ *
+ *   MEASURED 2026-09-27 with ffprobe on every sovereign video this Empire has
+ *   produced: each carried 1 video stream AND 1 audio stream. Neither request
+ *   sent an `audio` field, so what arrived was the PROVIDER'S default — and a
+ *   default is not a boundary. It belongs to the provider, it may differ per
+ *   model, and it can change without notice.
+ *
+ *   `false` is sent EXPLICITLY, and from one named constant, so the rule has
+ *   a single source and a reader can see it at the point of dispatch. It is
+ *   not a UI choice, not a prompt instruction, and not an omission — those
+ *   were exactly the three ways the Empire had of appearing silent without
+ *   being so. Every video model passes through here, including a test-only
+ *   binding, so none of them can be silent by luck.
+ *
+ *   Optional audio, if it is ever wanted, is a separate capability under a
+ *   separate order. Until then this value has no other setting.
+ */
+export const SOVEREIGN_VIDEO_AUDIO = false as const;
+
 export const MAGIC_HOUR_IMAGE_PROVIDER_ID = 'magic-hour-image' as const;
 export const MAGIC_HOUR_IMAGE_MODEL_ID = 'magic-hour-ai-image-generator' as const;
 // Authorized free-launch model — Chief Architect approval 2026-08-23. Never changed without a new authorization.
@@ -379,6 +402,8 @@ export class MagicHourVideoAdapter implements AIProviderAdapter {
       end_seconds: endSeconds,
       aspect_ratio: aspectRatio,
       resolution,
+      // The boundary, not a default — see SOVEREIGN_VIDEO_AUDIO.
+      audio: SOVEREIGN_VIDEO_AUDIO,
       style: { prompt: input.request.prompt },
       ...(selectedProviderModelId ? { model: selectedProviderModelId } : {}),
     });

@@ -36,6 +36,7 @@
  *   which are authorized and active, and the route asks the selector.
  */
 
+import { SOVEREIGN_VIDEO_AUDIO } from './magic-hour-adapter';
 import {
   authHeaders,
   engineBase,
@@ -99,6 +100,9 @@ export async function animateImageViaProvider(
       name: 'azma-sovereign-animate',
       model: options.providerModelId,
       end_seconds: options.endSeconds,
+      // The same boundary as the text-to-video path, from the same constant.
+      // A rule stated once cannot hold on one route and lapse on the other.
+      audio: SOVEREIGN_VIDEO_AUDIO,
       style: { prompt: instruction },
       assets: { image_file_path: filePath },
     }),
