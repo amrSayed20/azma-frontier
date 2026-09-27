@@ -256,12 +256,48 @@ body:has(.ras-amr-viewport) {
 /* ── Stage — centre column, between the rails ── */
 .ras-center      { grid-column: 2; grid-row: 2; }
 
+/* ═══════════════════════════════════════════════════════════════
+   THE RAILS SCROLL. THEY DID NOT.
+
+   The Founder, 2026-09-28: «القائمتان الجانبيتان الاسكرول متوقّف
+   وباقي القائمة أسفل الشاشة», and «حقل توجيه المخرج لا يستجيب
+   للكتابة», and «مشكلة zoom بالمتصفّح».
+
+   MEASURED on the live release — one defect under all three:
+
+     الشريط الأيمن (أصول الإنتاج)    مقصوص    يُمرَّر
+     ───────────────────────────────────────────────
+     1440×900  (100%)                  0px      —
+     1366×768  (لابتوب)               83px      لا
+     1152×720  (125%)                 215px     لا
+      960×600  (150%)                 335px     لا
+
+   Browser zoom does not scale a page — it SHRINKS the CSS viewport.
+   The chamber is `position: fixed; inset: 0` with a fixed header row
+   and a 160px timeline row, so every pixel zoom takes comes out of
+   the rails; and both rails were `overflow: hidden`, with
+   `body:has(.ras-amr-viewport)` hidden too. Nothing could scroll.
+
+   So at 125% the director's own direction field sat at top=783px in
+   a 720px window: present in the DOM, typeable by a script, and
+   unreachable by a hand. «لا يستجيب للكتابة» was exact — the field
+   was not there to be typed into. The same fold swallowed material
+   arriving from الحُجّة الدامغة: it lands in that field.
+
+   `min-height: 0` is not decoration: a grid item defaults to
+   `min-height: auto`, refuses to shrink below its content, and its
+   own `overflow-y` then never has anything to scroll.
+   ═══════════════════════════════════════════════════════════════ */
+
 /* ── Command Rail (left) ─────────────────────── */
 .ras-panel-left {
   flex: 0 0 220px;
   min-width: 0;
+  min-height: 0;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   background: var(--panel-bg);
@@ -273,8 +309,11 @@ body:has(.ras-amr-viewport) {
 .ras-panel-right {
   flex: 0 0 240px;
   min-width: 0;
+  min-height: 0;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   background: var(--panel-bg);
@@ -693,6 +732,23 @@ body:has(.ras-amr-viewport) {
    Compact (400–899px) — 3-col narrow. HP 150% DPI (471px) is here.
    Phone   (< 400px)  — Scroll stack. Timeline sticky.
    ═══════════════════════════════════════════════════════════════ */
+
+/* ── SHORT VIEWPORTS — WHICH IS WHAT ZOOM ACTUALLY MAKES ────────
+   Every composition above is a WIDTH. Browser zoom takes height too,
+   and nothing here ever accounted for it: a 1440×900 screen at 125%
+   is 1152×720, which lands in «Desktop standard» and narrows the
+   rails — while 180px of height vanishes with no rule to receive it.
+   The fixed header and the 160px timeline keep their pixels, so the
+   loss is paid entirely by the stage and the rails.
+
+   The rails scroll now, so nothing is lost either way. These give the
+   stage its room back rather than making the Creator scroll for it. */
+@media (max-height: 820px) {
+  .ras-amr-viewport { --ras-timeline-row: 136px; }
+}
+@media (max-height: 700px) {
+  .ras-amr-viewport { --ras-timeline-row: 116px; --ras-header-row: 46px; }
+}
 
 /* ── Desktop wide (≥ 1200px) ──────────────────────────────────── */
 @media (min-width: 1200px) {
@@ -6407,3 +6463,73 @@ body:has(.ras-amr-viewport) {
 .scenes-produce-btn:disabled { opacity: 0.55; cursor: progress; }
 .scenes-notice { margin: 10px 0 0; font-size: var(--rt-md); line-height: 1.75; color: #A8955B; }
 .scenes-result { margin-top: 12px; width: 100%; max-width: 640px; border-radius: 3px; background: #000; }
+
+/* ═══════════════════════════════════════════════════════════════
+   WHAT ARRIVED, AND THE ACT THAT FINISHES THE WORK
+   Both added 2026-09-28 from the Founder's own walk of the room.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* One arrival line for the whole chamber. It was inside a tab, so an
+   asset carried here from the القصر السيادي announced itself to a
+   Creator standing somewhere else. */
+.ras-arrival-notice {
+  /* NOT a grid item. Every row of this shell is explicitly assigned — the
+     header, the two rails, the stage, the template strip, the timeline — and
+     a new child with no `grid-row` would open an implicit fifth row and push
+     the whole chamber upward. A transient line that can be dismissed does not
+     get to move the room; it rests over it, under the header. */
+  position: fixed;
+  top: var(--ras-header-row);
+  inset-inline: 0;
+  z-index: 60;
+  margin: 0;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  /* An overlay paints its own ground: over a workspace, a translucent
+     wash would leave the sentence unreadable against whatever happens to
+     be beneath it. */
+  background: #1a1509;
+  border-block-end: 1px solid var(--neon-gold-border);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  color: var(--text-main);
+  font-size: 13px;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.ras-arrival-dismiss {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--neon-gold-border);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text-main);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ras-arrival-dismiss:hover { background: rgba(212, 175, 55, 0.18); }
+.ras-arrival-dismiss:focus-visible { outline: 2px solid var(--neon-gold-border); outline-offset: 2px; }
+
+/* The produce act where the arranging happens. Same definition as the
+   one in ✦ الإنتاج (see `productionActs`) — only its surroundings differ,
+   because here it has to say why it has appeared. */
+.ras-montage-produce {
+  margin-top: auto;
+  padding: 12px;
+  border-block-start: 1px solid var(--neon-gold-border);
+  background: rgba(212, 175, 55, 0.05);
+}
+
+.ras-montage-produce-hint {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-dim, var(--text-main));
+  text-align: center;
+}

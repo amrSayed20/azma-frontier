@@ -2334,6 +2334,35 @@ export default function RasAmrChamber() {
           id?: string; titleAr?: string; secureStorageUri?: string;
           assetFamily?: string; capabilityTarget?: string;
         };
+        /**
+         * ─── AN ARRIVAL THAT FAILS MUST SAY SO ──────────────────────────
+         *
+         *   The Founder, 2026-09-28: «أخذتُ أصلاً من الخزانة لأذهب به إلى
+         *   رأس الأمر فلم يأتِ هناك».
+         *
+         *   REPRODUCED by writing the Palace's own envelope four ways: with
+         *   every field the asset arrives; with `secureStorageUri`, or
+         *   `assetFamily`, or `capabilityTarget` missing it arrives NOWHERE
+         *   and NOTHING is said. The Palace's own type marks all three
+         *   optional, so a treasure without a stored file — or one filed
+         *   before those fields existed — crossed the door and vanished, and
+         *   the Creator was left to conclude the Chamber had refused them.
+         *
+         *   A condition that is not met is spoken. Silence is not an answer
+         *   a room may give about something a Creator carried to it.
+         */
+        const missing = [
+          !payload.id ? 'هويّة الأصل' : '',
+          !payload.secureStorageUri ? 'ملفّ الأصل' : '',
+          !payload.assetFamily ? 'نوع الأصل' : '',
+          !payload.capabilityTarget ? 'قدرة الأصل' : '',
+        ].filter(Boolean);
+        if (missing.length > 0) {
+          setDemandNotice(
+            `وصل «${payload.titleAr ?? 'الأصل'}» من القصر السيادي ناقصاً (${missing.join(' · ')}) — `
+            + 'فلم يدخل المشهد. استدعِه من «◆ استدعِ من الخزانة السيادية» في هذه الحجرة.',
+          );
+        }
         if (payload.id && payload.secureStorageUri && payload.assetFamily && payload.capabilityTarget) {
           const queueItem: QueueItem = {
             id: payload.id,
@@ -2349,8 +2378,15 @@ export default function RasAmrChamber() {
           };
           setQueue((prev) => [queueItem, ...prev.filter((a) => a.id !== queueItem.id)]);
           setActiveAsset(queueItem);
+          // A success says so too. The asset lands in a rail the Creator may
+          // not be looking at, and an arrival nobody is told about is
+          // indistinguishable from the silent loss above.
+          setDemandNotice(`وصل «${queueItem.title}» من القصر السيادي، وهو الأصل النشط الآن.`);
         }
-      } catch { /* malformed payload — show banner only */ }
+      } catch {
+        // A payload we cannot read is still an arrival the Creator attempted.
+        setDemandNotice('وصل أصلٌ من القصر السيادي بصيغةٍ لم نستطع قراءتها — استدعِه من الخزانة السيادية في هذه الحجرة.');
+      }
       setKernelContinuity('palace-treasure');
       return;
     }
@@ -2590,6 +2626,47 @@ export default function RasAmrChamber() {
     setFilmNotice('الإنتاج ما زال جارياً. سيظهر في خزانتك فور اكتماله.');
     setIsFilming(false);
   };
+
+  /**
+   * ─── THE ACT THAT FINISHES THE WORK, WHERE THE WORK IS DONE ───────────────
+   *
+   *   The Founder, 2026-09-28: «لا يوجد زرّ لإنتاج الأصل بعد ترتيبه».
+   *
+   *   MEASURED on the live release, in ✂ المونتاج — the mode a Creator
+   *   arranges in — the ONLY control carrying any production meaning was
+   *   «✦ الإنتاج» itself: the name of another mode. «أنتِج الفيلم» existed,
+   *   and existed only after you already knew to leave the room you were
+   *   working in. A capability a Creator cannot find where they are standing
+   *   is not a capability they have.
+   *
+   *   So the act renders in both places and is DEFINED once. Two copies of a
+   *   button that spends a Creator's Balance would eventually disagree about
+   *   when it may be pressed, and the Creator would meet whichever copy they
+   *   happened to reach.
+   */
+  const productionActs = (where: 'section' | 'montage') => (
+    <div className="production-acts">
+      <button
+        className={`ras-render-btn ${isRendering ? 'rendering' : ''}`}
+        onClick={triggerMasterRender}
+        disabled={isRendering || !canCompile}
+        title={!canCompile ? 'استدعِ أصلاً حقيقياً من الخزانة السيادية أولاً' : 'يُجمّع مخطّط المشهد — خطّةٌ لا ملف'}
+      >
+        {isRendering ? '⏳ تجميع…' : '🎬 تجميع المشهد'}
+      </button>
+      <button
+        className={`ras-render-btn ras-film-btn ${isFilming ? 'rendering' : ''}`}
+        data-testid={`rasamr-produce-scene-film-${where}`}
+        onClick={() => { void produceSceneFilm(); }}
+        disabled={isFilming || placedLayerCount === 0}
+        title={placedLayerCount === 0
+          ? 'ضع أصلاً واحداً على الأقلّ في مشهدك أوّلاً'
+          : `إنتاج فيلم mp4 من ${placedLayerCount} طبقة في مشهدك`}
+      >
+        {isFilming ? '⏳ الفيلم يُنتَج…' : '✦ أنتِج الفيلم'}
+      </button>
+    </div>
+  );
 
   const triggerMasterRender = async () => {
     if (!activeAsset?.isRealAsset || !sessionCanvas) return;
@@ -4210,6 +4287,27 @@ export default function RasAmrChamber() {
             kept in two places is not a separation. */}
       </header>
 
+      {/* ── WHAT ARRIVED, SAID WHERE THE CREATOR IS ─────────────────────────
+          This line used to live inside the التوجيه tab, beside the field a
+          demand lands in. That is the right place for a demand and the wrong
+          place for everything else: an asset carried here from the القصر
+          السيادي lands in the assets rail, and a Creator standing in ✂
+          المونتاج was told about it on a tab they were not on — which is the
+          same silence, arranged more politely.
+
+          The room has one arrival line, and it is part of the room. */}
+      {demandNotice && (
+        <p className="ras-arrival-notice" role="status">
+          {demandNotice}
+          <button
+            type="button"
+            className="ras-arrival-dismiss"
+            onClick={() => setDemandNotice(null)}
+            aria-label="إخفاء الإشعار"
+          >✕</button>
+        </p>
+      )}
+
       {/* template-preview-gate rendered outside viewport above */}
 
       {/* The template banner was removed — see the tombstone above
@@ -4862,27 +4960,7 @@ export default function RasAmrChamber() {
                 <p>المونتاج يُشكّل ما تملك؛ وهنا يصير فيلماً في خزانتك.</p>
               </header>
 
-              <div className="production-acts">
-                <button
-                  className={`ras-render-btn ${isRendering ? 'rendering' : ''}`}
-                  onClick={triggerMasterRender}
-                  disabled={isRendering || !canCompile}
-                  title={!canCompile ? 'استدعِ أصلاً حقيقياً من الخزانة السيادية أولاً' : 'يُجمّع مخطّط المشهد — خطّةٌ لا ملف'}
-                >
-                  {isRendering ? '⏳ تجميع…' : '🎬 تجميع المشهد'}
-                </button>
-                <button
-                  className={`ras-render-btn ras-film-btn ${isFilming ? 'rendering' : ''}`}
-                  data-testid="rasamr-produce-scene-film-section"
-                  onClick={() => { void produceSceneFilm(); }}
-                  disabled={isFilming || placedLayerCount === 0}
-                  title={placedLayerCount === 0
-                    ? 'ضع أصلاً واحداً على الأقلّ في مشهدك أوّلاً'
-                    : `إنتاج فيلم mp4 من ${placedLayerCount} طبقة في مشهدك`}
-                >
-                  {isFilming ? '⏳ الفيلم يُنتَج…' : '✦ أنتِج الفيلم'}
-                </button>
-              </div>
+              {productionActs('section')}
               {(filmNotice || filmUrl) && (
                 <div className="scene-film-outcome">
                   {filmNotice && <p className="scenes-notice">{filmNotice}</p>}
@@ -5276,7 +5354,9 @@ export default function RasAmrChamber() {
                 <label className="creator-intent-label" htmlFor="creator-intent-input">
                   ما الذي تريد من هذا المشهد؟
                 </label>
-                {demandNotice && <p className="creator-intent-notice">{demandNotice}</p>}
+                {/* The arrival line moved to the chamber itself — see the
+                    `ras-arrival-notice` above. One notice, one place, seen
+                    from every tab and both modes. */}
 
                 {/* Scenes written in الحُجّة الدامغة, produced here. The
                     workshop that produces them is never named to the Creator —
@@ -5975,6 +6055,29 @@ export default function RasAmrChamber() {
               </div>
             </div>
           )}
+
+          {/* ── AND THE SAME ACT, WHERE THE ARRANGING HAPPENS ──────────────
+              It appears once something is actually placed: an empty scene
+              has nothing to produce, and an act offered before it can be
+              taken is a promise the room cannot keep. See `productionActs`
+              for why this is the same definition and not a second button. */}
+          {workMode === 'montage' && placedLayerCount > 0 && (
+            <div className="ras-montage-produce">
+              <p className="ras-montage-produce-hint">
+                {placedLayerCount} طبقة في مشهدك — يمكنك إنتاجه الآن.
+              </p>
+              {productionActs('montage')}
+              {(filmNotice || filmUrl) && (
+                <div className="scene-film-outcome">
+                  {filmNotice && <p className="scenes-notice">{filmNotice}</p>}
+                  {filmUrl && (
+                    // eslint-disable-next-line jsx-a11y/media-has-caption
+                    <video className="scenes-result" src={filmUrl} controls playsInline />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </aside>
 
       </div>{/* end ras-body-grid */}
@@ -6073,7 +6176,11 @@ export default function RasAmrChamber() {
                 <div className="ras-timeline-ruler" style={{ position: 'relative' }}>
                   {ticks.map((tick) => (
                     <div key={tick} className="ras-ruler-tick" style={{ left: `${(tick / totalDuration) * 100}%` }}>
-                      <span>{tick}s</span>
+                      {/* «ث», not «s». Every other second in this room is
+                          written «ث» — the forms, the temporal directive,
+                          the hints — and the ruler alone spoke Latin to a
+                          Creator, beside every number they read. */}
+                      <span>{tick}ث</span>
                     </div>
                   ))}
                   {isPlaying && totalDuration > 0 && (
@@ -6130,7 +6237,7 @@ export default function RasAmrChamber() {
                                 onPointerMove={handleTimelinePointerMove}
                                 onPointerUp={handleTimelinePointerUp}
                                 aria-label={`مشهد مرئي ${idx + 1}: من ${start}ث إلى ${start + dur}ث`}
-                                aria-pressed={isSelected} title={`${start}s → ${start + dur}s`}
+                                aria-pressed={isSelected} title={`${start}ث ← ${start + dur}ث`}
                               >
                                 <span className="timeline-node-index">{roleIcon || (idx + 1)}</span>
                                 <div
@@ -6172,7 +6279,7 @@ export default function RasAmrChamber() {
                                 onPointerUp={handleTimelinePointerUp}
                                 aria-label={`أصل صوتي ${idx + 1}: من ${start}ث إلى ${start + dur}ث`}
                                 aria-pressed={isSelected}
-                                title={`${audioLabel || 'صوت'} — ${start}s → ${start + dur}s${trimStart != null ? ` (قص من ${trimStart}s)` : ''}${trimEnd != null ? ` (إلى ${trimEnd}s)` : ''}`}
+                                title={`${audioLabel || 'صوت'} — ${start}ث ← ${start + dur}ث${trimStart != null ? ` (قص من ${trimStart}ث)` : ''}${trimEnd != null ? ` (إلى ${trimEnd}ث)` : ''}`}
                               >
                                 <span className="timeline-node-index">🎵{idx + 1}</span>
                                 {/* Trim region handles — drag to set trimStart/trimEnd without leaving timeline */}
