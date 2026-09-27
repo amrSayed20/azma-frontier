@@ -100,7 +100,10 @@ describe('2 · the cost truth never reaches a browser', () => {
   it('neither surface holds a price of its own', () => {
     // A price written twice is a price that will disagree with itself, and a
     // Creator would be held to whichever screen they happened to read.
-    for (const src of [ARRIVAL, CLIENT]) {
+    // On the stripped view: the digit convention is explained in a comment
+    // that quotes a policy price as its example, and a comment is not a second
+    // price record. What must hold no price is the code that renders one.
+    for (const src of [ARRIVAL, CLIENT].map(strip)) {
       for (const n of ['99', '249', '499', '1200', '1,200', '1375', '3450', '6900', '16670', '16,670']) {
         expect(src).not.toContain(n);
       }

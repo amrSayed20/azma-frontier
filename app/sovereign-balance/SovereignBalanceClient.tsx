@@ -147,7 +147,8 @@ export function SovereignBalanceClient({
 
       {failureAr && <p className="balance-failure" role="alert">{failureAr}</p>}
 
-      <section className="balance-rules" aria-label="قواعد الرصيد">
+      <section className="balance-rules" aria-labelledby="balance-rules-title">
+        <h2 id="balance-rules-title" className="balance-section-title">قواعد الرصيد</h2>
         <p>{notices.standardValidity}</p>
         <p>{notices.carryForward}</p>
         <p className="balance-rule-emphatic">{notices.notASubscription}</p>
@@ -156,9 +157,22 @@ export function SovereignBalanceClient({
         <p>{notices.notTransferable}</p>
       </section>
 
-      <section className="balance-gift" aria-label="وحدات الهدية">
+      <section className="balance-gift" aria-labelledby="balance-gift-title">
+        <h2 id="balance-gift-title" className="balance-section-title">وحدات الهدية</h2>
         <p>{giftNoticeAr}</p>
       </section>
+
+      {/*
+        SEEN, not reasoned about: this room had no way out. A Creator sent here
+        by the paywall arrived at a page with four prices and no door — and the
+        Empire is a living city, not a funnel. Where the door leads follows who
+        is standing in it.
+      */}
+      <nav className="balance-exit">
+        <a href={authenticated ? '/imperial-foyer' : '/'}>
+          {authenticated ? '← عُد إلى البهو الإمبراطوري' : '← عُد إلى البوابة'}
+        </a>
+      </nav>
     </main>
   );
 }

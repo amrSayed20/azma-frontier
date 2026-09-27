@@ -184,7 +184,33 @@
 .balance-rules p:last-child,
 .balance-gift p:last-child { margin-bottom: 0; }
 
+.balance-section-title {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--azma-text-sacred);
+}
+
 .balance-rule-emphatic { color: var(--azma-text-sacred); }
+
+.balance-exit {
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.balance-exit a {
+  color: var(--azma-text-muted);
+  text-decoration: none;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--azma-gold-2);
+  border-radius: var(--azma-radius-panel);
+  background: var(--azma-surface);
+  transition: color 200ms ease, border-color 200ms ease;
+}
+
+.balance-exit a:hover { color: var(--azma-text-sacred); border-color: var(--azma-gold-4); }
+.balance-exit a:focus-visible { outline: 2px solid var(--azma-gold-7); outline-offset: 3px; }
 
 .balance-gift {
   border-color: var(--azma-gold-4);

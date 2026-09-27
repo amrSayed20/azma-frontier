@@ -40,8 +40,11 @@ page.on('response', async (res) => {
 });
 
 // ── 1 · THE END OF THE VISITOR'S JOURNEY ───────────────────────────────────
-await page.goto(BASE, { waitUntil: 'networkidle' });
+// NOT 'networkidle': the gate keeps a presence channel open, so the network
+// never goes quiet and the wait times out on a page that loaded perfectly.
+await page.goto(BASE, { waitUntil: 'domcontentloaded' });
 // The closing beat appears once the ceremony has finished speaking.
+await page.waitForSelector('.arrival-value', { timeout: 20000 }).catch(() => {});
 await page.waitForTimeout(7000);
 
 const beat = page.locator('.arrival-value');
@@ -74,12 +77,22 @@ const lang = await page.locator('.arrival-language').boundingBox().catch(() => n
 const overlaps = lang && beatBox
   && lang.y < beatBox.y + beatBox.height && lang.y + lang.height > beatBox.y
   && lang.x < beatBox.x + beatBox.width && lang.x + lang.width > beatBox.x;
-// It is viewport-fixed, so it may float over the beat's box; what must not
-// happen is it covering a package row.
-const firstRow = await page.locator('.arrival-value-package').first().boundingBox().catch(() => null);
-const coversARow = lang && firstRow
-  && lang.y < firstRow.y + firstRow.height && lang.y + lang.height > firstRow.y;
-check('the language switcher covers no package row', !coversARow, overlaps ? 'inside the beat’s box, clear of the rows' : 'clear');
+// CORRECTED after LOOKING at the first deployed screenshot: this checked only
+// the package rows, and the switcher was resting on the SECOND LINE OF THE
+// GIFT SENTENCE — a collision the guard was built to miss. It now measures
+// every piece of text in the beat.
+const hits = [];
+for (const sel of ['.arrival-value-package', '.arrival-value-gift', '.arrival-value-title']) {
+  const boxes = await page.locator(sel).all();
+  for (const el of boxes) {
+    const b = await el.boundingBox().catch(() => null);
+    if (!b || !lang) continue;
+    if (lang.y < b.y + b.height && lang.y + lang.height > b.y
+      && lang.x < b.x + b.width && lang.x + lang.width > b.x) hits.push(sel);
+  }
+}
+check('the language switcher covers nothing the beat says', hits.length === 0,
+  hits.length ? `COVERS: ${[...new Set(hits)].join(', ')}` : (overlaps ? 'inside the beat’s box, clear of its text' : 'clear'));
 
 // ── 2 · THE COST TRUTH IS IN NO BUNDLE ─────────────────────────────────────
 const leaked = [];
@@ -94,12 +107,15 @@ check('no cost-truth figure or provider name in any downloaded script',
 await page.screenshot({ path: 'scripts/proof-harness/gate-closing-beat.png', fullPage: true });
 
 // ── 3 · THE BALANCE SURFACE, READ BY A VISITOR ─────────────────────────────
-await page.goto(`${BASE}/sovereign-balance`, { waitUntil: 'networkidle' });
+await page.goto(`${BASE}/sovereign-balance`, { waitUntil: 'domcontentloaded' });
+await page.waitForSelector('.balance-packages', { timeout: 20000 }).catch(() => {});
 check('the Balance surface answers a visitor', await page.locator('.balance-packages').count() === 1);
 check('it names four packages', await page.locator('.balance-package').count() === 4);
 const shut = await page.locator('.balance-package-shut').allInnerTexts();
 check('it offers no button it cannot honour', shut.length === 4 && await page.locator('.balance-package-buy').count() === 0,
   shut[0]?.replace(/\s+/g, ' ').slice(0, 50));
+check('and the room has a door out of it', await page.locator('.balance-exit a').count() === 1,
+  (await page.locator('.balance-exit a').innerText().catch(() => '')).trim());
 const rules = (await page.locator('.balance-rules').innerText().catch(() => '')).replace(/\s+/g, ' ');
 check('it states the 28-day rule in both halves',
   rules.includes('ثمانية وعشرون يوماً') && rules.includes('لا يُردّ المتبقّي نقداً') && rules.includes('وإن لم تشترِ'));
@@ -114,8 +130,8 @@ if (!email || !password) {
   console.log('\nSKIPPED the Chamber steps: no AZMA_VERIFY_EMAIL / AZMA_VERIFY_PASSWORD in the environment.');
   console.log('Set them to measure the per-step cost lines as a real Creator.');
 } else {
-  const login = await context.request.post(`${BASE}/api/sovereign/auth`, {
-    data: { action: 'login', email, password },
+  const login = await context.request.post(`${BASE}/api/auth/login`, {
+    data: { email, password },
   });
   check('the Creator is admitted', login.ok(), `HTTP ${login.status()}`);
 

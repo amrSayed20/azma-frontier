@@ -720,9 +720,12 @@
   z-index: 2;
   width: min(100%, 60rem);
   margin-top: var(--azma-space-10);
-  /* Bottom room for the viewport-anchored language switcher, which floats
-     over whatever the page's last element happens to be. */
-  padding: var(--azma-space-6) var(--azma-space-4) var(--azma-space-16);
+  /* SEEN, not reasoned about: at 64px of bottom padding the language
+     switcher — fixed at 6% of the VIEWPORT from its bottom — came to rest on
+     the second line of the gift sentence. The clearance has to be written in
+     the switcher's own unit, or it is right at one window height and wrong at
+     the next: 6vh for where it sits, plus its own height and air. */
+  padding: var(--azma-space-6) var(--azma-space-4) calc(6vh + 72px);
   border-top: 1px solid rgba(var(--azma-gold-rgb), 0.18);
   color: var(--azma-text-primary);
 }
