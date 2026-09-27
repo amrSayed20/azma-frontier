@@ -18,6 +18,29 @@
  *   These guards hold the rule at the only place it can be true — the moment
  *   of dispatch — and they hold it on BOTH video routes from ONE constant, so
  *   it cannot lapse on one while holding on the other.
+ *
+ * ─── AND WHAT THE LIVE PROOF THEN MEASURED ──────────────────────────────────
+ *
+ *   Read this before believing the Empire's videos are silent. THEY ARE NOT.
+ *
+ *   One 4-second production, 2026-09-27, on release 20260927-071712-594df00,
+ *   with `audio: false` verified in the SHIPPED bundle and a prompt that said
+ *   nothing whatever about sound:
+ *
+ *     operation   35084820-e44b-43a1-a3db-a0e678cecd46
+ *     model       seedance-2.0
+ *     result      video streams 1   AUDIO STREAMS 1
+ *                 aac, 32kHz stereo, 134 kb/s, peak -7.0 dB, RMS -24.4 dB
+ *
+ *   Not a muted track — an audible one. And the provider's own output.mp4 is
+ *   BYTE-IDENTICAL to the deposited asset (sha256 ff31e610…), so the track is
+ *   the provider's: nothing in AZMA added it and nothing in AZMA can be blamed
+ *   for it.
+ *
+ *   So the REQUEST boundary is closed and proven; the OUTCOME is not silent.
+ *   Every guard below is about the request, and none of them claims otherwise.
+ *   Removing the stream would take a post-production stripping stage, which
+ *   the order that opened this work forbids building without a new one.
  */
 
 import { readFileSync } from 'fs';
@@ -148,5 +171,28 @@ describe('I–J · nothing else moved', () => {
     // The charge the adapters report is unchanged and still in provider units.
     expect(T2V).toContain('magicHourCreditsCharged: job.credits_charged,');
     expect(I2V).toContain("creditsCharged: typeof finished.credits_charged === 'number' ? finished.credits_charged : null,");
+  });
+});
+
+describe('K · the measured outcome is recorded, so no one can mistake it', () => {
+  it('the file itself states that the live proof found an audible track', () => {
+    // A closure report can be lost. A guard cannot: if someone ever deletes
+    // this record while the stream is still there, the suite says so.
+    const self = read('src/core/sovereign-ai-integration/__tests__/sovereign-video-is-silent.test.ts');
+    expect(self).toContain('AUDIO STREAMS 1');
+    expect(self).toContain('seedance-2.0');
+    expect(self).toContain('the OUTCOME is not silent');
+  });
+
+  it('and the fleet records it as measured, not as unverified', () => {
+    const seedance = VIDEO_MODEL_FLEET.find((m) => m.modelId === 'seedance-2-0')!;
+    // MEASURED: it emits audio and ignores the parameter asking it not to.
+    expect(seedance.supportsAudio).toBe(true);
+  });
+
+  it('no stripping stage was built — the boundary is a request parameter only', () => {
+    for (const src of [T2V, I2V, SERVICE]) {
+      expect(src).not.toMatch(/ffmpeg|-an|AudioPolicy|AudioEngine|stripAudio|removeAudio|muxWithout/i);
+    }
   });
 });

@@ -121,7 +121,16 @@ export const VIDEO_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
     maxDurationSeconds: 8,                      // REQUIRES_VERIFICATION
     supportsTextToVideo: true,                  // REQUIRES_VERIFICATION
     supportsImageToVideo: true,                 // VERIFIED 2026-09-22: listed in the /v1/image-to-video model enum
-    supportsAudio: undefined,                   // REQUIRES_VERIFICATION
+    // -- MEASURED 2026-09-27, under the Audio Silence Boundary order --------
+    //   `audio: false` was sent explicitly on /v1/text-to-video (verified in
+    //   the shipped bundle of release 20260927-071712-594df00) and this model
+    //   returned a 4s master carrying an AUDIBLE AAC track: 32kHz stereo,
+    //   134 kb/s, peak -7.0 dB, RMS -24.4 dB. The provider's own output.mp4 is
+    //   BYTE-IDENTICAL to the deposited asset (sha256 ff31e610...), so the
+    //   track is the provider's and nothing inside AZMA added it.
+    //   So: this model emits audio, and it does not honour the parameter that
+    //   asks it not to. Recorded as measured, never inferred.
+    supportsAudio: true,                        // MEASURED 2026-09-27: emits audio unconditionally; ignores `audio: false`
     supportsCharacterConsistency: undefined,    // REQUIRES_VERIFICATION
     characteristicHints: [],
     supportedStyleIds: [],
