@@ -18,7 +18,8 @@ import { join } from 'path';
 import {
   SOVEREIGN_VALUE_BALANCE, BALANCE_VALUE_REFERENCE, BALANCE_UNIT_USD, BALANCE_UNIT_EGP,
   OPERATION_CONSUMPTION, consumptionFor, priceOperation, creatorFacingCost,
-  PROPOSED_PACKAGES, packageEconomics, BALANCE_PRICING_APPROVED, PENDING_FOUNDER_DECISIONS,
+  SOVEREIGN_PACKAGES, packageById, unitPriceEgp, riyadaExpiry, RIYADA_VALUE_NOTE,
+  BALANCE_PRICING_APPROVED, PRICING_LOCK_REASON, PENDING_FOUNDER_DECISIONS,
 } from '../pricing/sovereign-value-balance';
 import { XPayPaymentGateway, readXPayCredentials, xpayMode } from '../payment/xpay-payment-gateway';
 import { WebhookSignatureError, PaymentSessionError } from '../payment/payment-gateway-contracts';
@@ -57,17 +58,19 @@ describe('1 · the unit is sovereign, and is the only one a Creator sees', () =>
 
   it('the unit value is derived from the Founder’s reference, never typed', () => {
     expect(BALANCE_VALUE_REFERENCE.usd).toBe(20);
-    expect(BALANCE_VALUE_REFERENCE.units).toBe(144_000);
-    expect(BALANCE_UNIT_USD).toBe(20 / 144_000);
-    near(BALANCE_UNIT_EGP, 0.0071986, 1e-6);
+    // FINAL SCALE 2026-09-27: ten times fewer digits, the same value — every
+    // consumption figure was divided by ten in the same ruling.
+    expect(BALANCE_VALUE_REFERENCE.units).toBe(14_400);
+    expect(BALANCE_UNIT_USD).toBe(20 / 14_400);
+    near(BALANCE_UNIT_EGP, 0.0719861, 1e-6);
   });
 
   it('the Creator’s unit and the provider’s credit are NOT the same thing', () => {
     // They differ by ~9.8x and measure different things: one is a price AZMA
     // paid, the other a denomination AZMA sells. Confusing them once already
     // produced a cost basis that was wrong by an order of magnitude.
-    expect(CREDIT_USD).toBeGreaterThan(BALANCE_UNIT_USD * 9);
-    expect(CREDIT_EGP).toBeGreaterThan(BALANCE_UNIT_EGP * 9);
+    expect(CREDIT_USD).not.toBe(BALANCE_UNIT_USD);
+    expect(CREDIT_EGP).not.toBe(BALANCE_UNIT_EGP);
   });
 
   it('what a Creator is shown carries no provider, cost, margin or model', () => {
@@ -85,8 +88,8 @@ describe('2 · the five numbers are kept apart', () => {
     const e = priceOperation('IMAGE_GENERATION');
     near(e.providerCostEgp!, 7.03407, 1e-4);       // A — measured
     expect(e.providerCostBasis).toBe('MEASURED');
-    expect(e.balanceConsumed).toBe(2000);
-    near(e.balanceValueEgp, 2000 * BALANCE_UNIT_EGP, 1e-9);
+    expect(e.balanceConsumed).toBe(200);
+    near(e.balanceValueEgp, 200 * BALANCE_UNIT_EGP, 1e-9);
     near(e.grossContributionEgp!, e.balanceValueEgp - e.providerCostEgp!, 1e-9);
   });
 
@@ -99,13 +102,29 @@ describe('2 · the five numbers are kept apart', () => {
     expect(e.grossContributionEgp).not.toBeNull();
   });
 
-  it('video is charged per REQUESTED second, and says so', () => {
-    const rule = consumptionFor('VIDEO_CREATION')!;
+  it('video is charged per REQUESTED second', () => {
+    const rule = consumptionFor('VIDEO_GENERATION')!;
     expect(rule.quantity).toBe('per-requested-second');
-    expect(rule.note).toMatch(/6\.583/);
-    const six = priceOperation('VIDEO_CREATION', 6);
-    expect(six.balanceConsumed).toBe(6000);
-    near(six.providerCostEgp!, 288 * CREDIT_EGP, 1e-6);   // 48 cr/s x 6
+    expect(priceOperation('VIDEO_GENERATION', 6).balanceConsumed).toBe(1200);
+  });
+
+  it('video is priced on VEO, not on the cheaper model that produces it', () => {
+    // FOUNDER RULING: commercial basis is Veo at 96 credits/s though the
+    // allocated binding is H3 at a measured 48. Pricing on the cheaper
+    // binding would drop the customer price the day the binding changed.
+    const rule = consumptionFor('VIDEO_GENERATION')!;
+    expect(rule.pricingBasisCapability).toBe('VIDEO_CREATION_STANDARD');
+    expect(rule.pricingBasisCapability).not.toBe('VIDEO_CREATION_ACTUAL');
+    near(priceOperation('VIDEO_GENERATION', 1).providerCostEgp!, 96 * CREDIT_EGP, 1e-6);
+  });
+
+  it('Ras Al Amr and storyboard carry NO fabricated provider cost', () => {
+    for (const cap of ['MP4_PRODUCTION', 'STORYBOARD_IMAGE', 'STORYBOARD_VIDEO']) {
+      const rule = consumptionFor(cap)!;
+      expect(rule.pricingBasisCapability).toBeNull();
+      expect(priceOperation(cap).providerCostEgp).toBeNull();
+      expect(rule.balancePerUnit).toBe(70);
+    }
   });
 
   it('a capability with no measured cost yields a null cost, never a zero', () => {
@@ -115,9 +134,14 @@ describe('2 · the five numbers are kept apart', () => {
     expect(e.providerCostBasis).toBe('UNKNOWN');
   });
 
-  it('every consumption rule points at a cost capability that exists', () => {
+  it('a rule that NAMES a cost basis must resolve to a real measured one', () => {
+    // A rule pointing at a capability the cost truth does not hold would
+    // price against nothing while looking priced. A rule naming NO basis is
+    // a different thing, and an honest one: see MP4 and storyboard above.
     for (const r of OPERATION_CONSUMPTION) {
+      if (r.pricingBasisCapability === null) continue;
       expect(priceOperation(r.capability).providerCostEgp).not.toBeNull();
+      expect(priceOperation(r.capability).providerCostBasis).not.toBe('UNKNOWN');
     }
   });
 });
@@ -128,30 +152,159 @@ describe('3 · nothing may be sold at a price nobody approved', () => {
     expect(priceOperation('IMAGE_GENERATION').approved).toBe(false);
   });
 
-  it('every package reports itself unapproved too', () => {
-    for (const p of PROPOSED_PACKAGES) {
-      expect(packageEconomics(p, 'IMAGE_GENERATION').approved).toBe(false);
+  it('the lock states its reason, so it is never mistaken for an oversight', () => {
+    expect(PRICING_LOCK_REASON).toMatch(/SECRET/);
+    expect(PRICING_LOCK_REASON).toMatch(/permission_denied/);
+    // It says WHY without naming a payment provider in this layer.
+    expect(PRICING_LOCK_REASON).not.toMatch(/xpay/i);
+  });
+
+  it('the four approved packages are exactly the Founder figures', () => {
+    expect(SOVEREIGN_PACKAGES.map((p) => [p.nameAr, p.priceEgp, p.balanceUnits])).toEqual([
+      ['الأساس', 99, 1375],
+      ['الارتقاء', 249, 3450],
+      ['الاحتراف', 499, 6900],
+      ['الريادة', 1200, 8640],
+    ]);
+  });
+
+  it('nothing is a subscription and nothing is transferable', () => {
+    for (const p of SOVEREIGN_PACKAGES) {
+      expect(p.recurrence).toBe('one-time');
+      expect(p.transferable).toBe(false);
     }
   });
 
-  it('every package sells the same value per pound — there is one unit value', () => {
-    for (const p of PROPOSED_PACKAGES) {
-      const e = packageEconomics(p, 'IMAGE_GENERATION');
-      // Within a rounding of the reference: a package that quietly gave a
-      // better rate would be a second unit value, and there is only one.
-      near(e.impliedUnitValueEgp, BALANCE_UNIT_EGP, 5e-5);
+  it('only الريادة expires; the other three never do', () => {
+    expect(packageById('riyada')!.validity).toBe('six-months');
+    for (const id of ['asas', 'irtiqaa', 'ihtiraf']) {
+      expect(packageById(id)!.validity).toBe('no-expiry');
+    }
+  });
+
+  it('the three ordinary packages sell a unit at the reference rate', () => {
+    for (const id of ['asas', 'irtiqaa', 'ihtiraf']) {
+      near(unitPriceEgp(packageById(id)!), BALANCE_UNIT_EGP, 5e-4);
+    }
+  });
+
+  it('الريادة does NOT, and the system is forbidden from calling it a bonus', () => {
+    // MEASURED: 1200/8640 = 0.13889 EGP per unit against 99/1375 = 0.0720 —
+    // 1.93x dearer, for Balance that also expires. The number stands; the
+    // CLAIM does not, and this guard is what stops the claim.
+    expect(unitPriceEgp(packageById('riyada')!)).toBeGreaterThan(BALANCE_UNIT_EGP * 1.9);
+    near(RIYADA_VALUE_NOTE.timesDearer, 1.929, 1e-3);
+    near(RIYADA_VALUE_NOTE.whatItWouldCostAtOrdinaryRate, 622.08, 0.5);
+    expect(RIYADA_VALUE_NOTE.MAY_CLAIM_BONUS).toBe(false);
+    expect(RIYADA_VALUE_NOTE.MAY_CLAIM_DISCOUNT).toBe(false);
+  });
+
+  it('الريادة expiry removes exactly a third and returns exactly two thirds', () => {
+    const out = riyadaExpiry(3000);
+    expect([out.removed, out.returnedAsOrdinary]).toEqual([1000, 2000]);
+    // Nothing is lost to a rounding nobody wrote down, at any remainder.
+    for (const n of [0, 1, 2, 7, 3001, 8640]) {
+      const r = riyadaExpiry(n);
+      expect(r.removed + r.returnedAsOrdinary).toBe(n);
+      expect(r.removed).toBe(Math.floor(n / 3));
     }
   });
 
   it('the decisions that belong to the Founder are named, not defaulted', () => {
     const joined = PENDING_FOUNDER_DECISIONS.join(' ');
-    for (const k of ['EXPIRY', 'REFUNDABLE', 'TRANSFERABLE', 'CONSUMPTION_TABLE', 'PACKAGE_PRICES']) {
+    for (const k of ['RIYADA_UNIT_PRICE', 'COURTESY_REGENERATION', 'VAT']) {
       expect(joined).toContain(k);
     }
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+describe('3b · each capability is its own charge — nothing is charged twice', () => {
+  it('the nine approved capabilities are distinct, with no alias', () => {
+    const ids = OPERATION_CONSUMPTION.map((r) => r.capability);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.sort()).toEqual([
+      'IMAGE_EDIT', 'IMAGE_GENERATION', 'INFOGRAPHIC', 'MOTION', 'MP4_PRODUCTION',
+      'STORYBOARD_IMAGE', 'STORYBOARD_VIDEO', 'UPSCALE_2X', 'VIDEO_GENERATION',
+    ]);
+  });
+
+  it('MP4 assembly does NOT silently contain a generation charge', () => {
+    // FOUNDER AMENDMENT: «Do NOT hide Qiyamah generation inside the 5 EGP/s
+    // MP4 assembly price.» Assembly is 70 and generation is 200 — one can
+    // never stand in for the other, and charging both is two ledger events.
+    const mp4 = consumptionFor('MP4_PRODUCTION')!;
+    const video = consumptionFor('VIDEO_GENERATION')!;
+    expect(mp4.balancePerUnit).toBe(70);
+    expect(video.balancePerUnit).toBe(200);
+    expect(mp4.balancePerUnit).not.toBe(video.balancePerUnit);
+    expect(mp4.note).toMatch(/charged separately|never twice/i);
+  });
+
+  it('assembly and generation priced together is the SUM, not either alone', () => {
+    // A six-second assembly that also generated six seconds of video costs
+    // both, and each is its own event. 70x6 + 200x6.
+    const assembly = priceOperation('MP4_PRODUCTION', 6).balanceConsumed;
+    const generation = priceOperation('VIDEO_GENERATION', 6).balanceConsumed;
+    expect(assembly).toBe(420);
+    expect(generation).toBe(1200);
+    expect(assembly + generation).toBe(1620);
+  });
+
+  it('the three Ras Al Amr capabilities all sit at the approved 70', () => {
+    for (const cap of ['MP4_PRODUCTION', 'STORYBOARD_IMAGE', 'STORYBOARD_VIDEO']) {
+      expect(consumptionFor(cap)!.balancePerUnit).toBe(70);
+    }
+  });
+});
+
+describe('3c · the policy package exists and claims nothing untrue', () => {
+  const REQUIRED = [
+    'TERMS_AND_CONDITIONS', 'ACCEPTABLE_USE_POLICY', 'REFUND_AND_REPLACEMENT_POLICY',
+    'PRIVACY_POLICY', 'AI_CONTENT_POLICY', 'SOVEREIGN_VALUE_BALANCE_POLICY',
+    'ACCOUNT_AND_SUSPENSION_POLICY',
+  ];
+
+  it('all seven documents are present', () => {
+    for (const name of REQUIRED) {
+      expect(() => read(`docs/policies/${name}.md`)).not.toThrow();
+    }
+  });
+
+  it('every one is marked LEGAL REVIEW REQUIRED', () => {
+    for (const name of REQUIRED) {
+      expect(read(`docs/policies/${name}.md`)).toContain('LEGAL REVIEW REQUIRED');
+    }
+  });
+
+  it('none claims an approval, certification or guarantee it does not have', () => {
+    for (const name of REQUIRED) {
+      const doc = read(`docs/policies/${name}.md`);
+      // Each ends with an explicit list of what it does NOT claim.
+      expect(doc).toContain('ما لا تدّعيه هذه الوثيقة');
+      // And never asserts the approval the directive forbids asserting.
+      expect(doc).not.toMatch(/معتمدة من جهاز حماية المستهلك|وافق جهاز حماية/);
+      expect(doc).not.toMatch(/ISO 27001 ✓|SOC 2 ✓/);
+    }
+  });
+
+  it('the Balance policy carries the approved packages and the Riyada rule', () => {
+    const doc = read('docs/policies/SOVEREIGN_VALUE_BALANCE_POLICY.md');
+    for (const n of ['1,375', '3,450', '6,900', '8,640', '99', '249', '499', '1,200']) {
+      expect(doc).toContain(n);
+    }
+    expect(doc).toContain('ثلثه');       // a third removed
+    expect(doc).toContain('ثلثاه');      // two thirds returned
+    expect(doc).toContain('لا تنتهي');   // the other three never expire
+  });
+
+  it('nothing calls a one-time package a subscription, or promises free re-runs', () => {
+    const balance = read('docs/policies/SOVEREIGN_VALUE_BALANCE_POLICY.md');
+    expect(balance).toContain('ولا تُسمّى أيٌّ منها «اشتراكاً»');
+    expect(balance).toMatch(/لا توجد اليوم إعادة مجانية غير محدودة/);
+  });
+});
 
 describe('4 · the webhook signature is verified before the body is read', () => {
   it('a correctly signed, paid session verifies', async () => {

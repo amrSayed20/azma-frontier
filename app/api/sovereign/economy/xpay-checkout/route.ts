@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { verifySession } from '@/src/authentication';
-import { getCreditPack } from '@/src/economy/payment/credit-packs';
-import type { CreditPackId } from '@/src/economy/payment/credit-packs';
+import { getCreditPack, VALID_PACK_IDS } from '@/src/economy/payment/credit-packs';
 import { getXPayGateway } from '@/src/economy/payment/xpay-payment-gateway';
 import { PaymentSessionError } from '@/src/economy/payment/payment-gateway-contracts';
 import { BALANCE_PRICING_APPROVED } from '@/src/economy/pricing/sovereign-value-balance';
@@ -10,7 +9,7 @@ import { BALANCE_PRICING_APPROVED } from '@/src/economy/pricing/sovereign-value-
 export const dynamic = 'force-dynamic';
 
 const SESSION_COOKIE = 'azma_session';
-const VALID_PACK_IDS: readonly CreditPackId[] = ['start', 'create', 'achieve'];
+
 
 /**
  * POST /api/sovereign/economy/xpay-checkout
@@ -54,7 +53,7 @@ export async function POST(request: NextRequest) {
   }
 
   const packId = (body as { packId?: unknown })?.packId;
-  if (typeof packId !== 'string' || !VALID_PACK_IDS.includes(packId as CreditPackId)) {
+  if (typeof packId !== 'string' || !VALID_PACK_IDS.includes(packId)) {
     return NextResponse.json({ error: 'invalid_pack_id', valid: VALID_PACK_IDS }, { status: 400 });
   }
 
@@ -67,7 +66,7 @@ export async function POST(request: NextRequest) {
   }
 
   // AZMA's own record. This is the only source of the amount.
-  const pack = getCreditPack(packId as CreditPackId);
+  const pack = getCreditPack(packId);
 
   const origin = request.headers.get('origin') ?? process.env['NEXT_PUBLIC_BASE_URL'] ?? 'https://azmaos.com';
   // One key per logical purchase, so a retried press is replayed by XPay

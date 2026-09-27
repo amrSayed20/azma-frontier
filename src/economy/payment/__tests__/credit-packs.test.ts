@@ -1,36 +1,65 @@
-import { CREDIT_PACKS, getCreditPack, resolveStripePriceId } from '../credit-packs';
+import { CREDIT_PACKS, getCreditPack, VALID_PACK_IDS } from '../credit-packs';
+import { SOVEREIGN_PACKAGES } from '../../pricing/sovereign-value-balance';
 
-// SCENARIO 25: Credit pack integrity
-describe('Credit Pack definitions', () => {
-  it('has exactly 3 packs: start, create, achieve', () => {
-    const ids = CREDIT_PACKS.map((p) => p.packId);
-    expect(ids).toEqual(['start', 'create', 'achieve']);
+/**
+ * ─── THE PRICE RECORD THE WEBHOOK TRUSTS ────────────────────────────────────
+ *
+ *   FINAL FOUNDER DECISION 2026-09-27 replaced START / CREATE / ACHIEVE
+ *   (800 / 2,400 / 6,000 units) with four named packages. Nothing was ever
+ *   sold at the old prices: no payment gateway has ever been configured on
+ *   this server.
+ *
+ *   The Stripe price-ID resolver these tests also covered is gone with the
+ *   Stripe purchase route it served. The gateway is XPay, and a second
+ *   checkout surface pointing at an unconfigurable gateway is a surface that
+ *   can only ever mislead.
+ */
+describe('the four approved packages', () => {
+  it('are exactly the Founder’s four, in order', () => {
+    expect(CREDIT_PACKS.map((p) => p.packId)).toEqual(['asas', 'irtiqaa', 'ihtiraf', 'riyada']);
+    expect(VALID_PACK_IDS).toEqual(['asas', 'irtiqaa', 'ihtiraf', 'riyada']);
   });
 
-  it('packs have correct EGP prices', () => {
-    expect(getCreditPack('start').priceEgp).toBe(99);
-    expect(getCreditPack('create').priceEgp).toBe(249);
-    expect(getCreditPack('achieve').priceEgp).toBe(499);
+  it('carry the approved prices', () => {
+    expect(getCreditPack('asas').priceEgp).toBe(99);
+    expect(getCreditPack('irtiqaa').priceEgp).toBe(249);
+    expect(getCreditPack('ihtiraf').priceEgp).toBe(499);
+    expect(getCreditPack('riyada').priceEgp).toBe(1200);
   });
 
-  it('packs have correct AZMA unit quantities', () => {
-    expect(getCreditPack('start').azmaUnits).toBe(800);
-    expect(getCreditPack('create').azmaUnits).toBe(2400);
-    expect(getCreditPack('achieve').azmaUnits).toBe(6000);
+  it('grant the approved Balance', () => {
+    expect(getCreditPack('asas').azmaUnits).toBe(1375);
+    expect(getCreditPack('irtiqaa').azmaUnits).toBe(3450);
+    expect(getCreditPack('ihtiraf').azmaUnits).toBe(6900);
+    expect(getCreditPack('riyada').azmaUnits).toBe(8640);
   });
 
-  it('throws for unknown pack ID', () => {
-    expect(() => getCreditPack('unknown' as never)).toThrow();
+  it('only الريادة expires', () => {
+    expect(getCreditPack('riyada').validity).toBe('six-months');
+    for (const id of ['asas', 'irtiqaa', 'ihtiraf']) {
+      expect(getCreditPack(id).validity).toBe('no-expiry');
+    }
   });
 
-  it('resolveStripePriceId returns null when env var is unset', () => {
-    delete process.env['STRIPE_PRICE_START'];
-    expect(resolveStripePriceId('start')).toBeNull();
+  it('are ONE record with the pricing layer — never a second copy', () => {
+    // A price written twice is a price that will eventually disagree with
+    // itself, and the webhook would honour whichever copy it happened to read.
+    for (const p of SOVEREIGN_PACKAGES) {
+      const pack = getCreditPack(p.packageId);
+      expect([pack.priceEgp, pack.azmaUnits]).toEqual([p.priceEgp, p.balanceUnits]);
+    }
+    expect(CREDIT_PACKS).toHaveLength(SOVEREIGN_PACKAGES.length);
   });
 
-  it('resolveStripePriceId returns env var value when set', () => {
-    process.env['STRIPE_PRICE_START'] = 'price_test_12345';
-    expect(resolveStripePriceId('start')).toBe('price_test_12345');
-    delete process.env['STRIPE_PRICE_START'];
+  it('throws for an unknown package rather than returning a default', () => {
+    expect(() => getCreditPack('unknown')).toThrow();
+    // Never the first pack, never a zero-priced one.
+    expect(() => getCreditPack('')).toThrow();
+  });
+
+  it('the superseded ids are gone, so an old client cannot buy at an old price', () => {
+    for (const dead of ['start', 'create', 'achieve']) {
+      expect(() => getCreditPack(dead)).toThrow();
+    }
   });
 });

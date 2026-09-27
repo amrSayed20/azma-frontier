@@ -12,8 +12,8 @@ function makeGateway(overrides: Partial<WebhookVerificationResult> = {}): IPayme
     paymentIntentId: 'pi_test_001',
     metadata: {
       creator_id: 'creator-webhook-001',
-      pack_id: 'start',
-      azma_units: '800',
+      pack_id: 'asas',
+      azma_units: '1375',
       idempotency_key: 'idem-webhook-001',
     },
     amountReceived: 9900,
@@ -49,17 +49,17 @@ afterEach(() => {
 
 // SCENARIO 26: Successful webhook credits AZMA units
 describe('handlePaymentWebhook', () => {
-  it('credits 800 AZMA units on a valid checkout.session.completed event', async () => {
+  it('credits 1375 units of Balance on a valid checkout.session.completed event', async () => {
     const gateway = makeGateway();
     const result = await handlePaymentWebhook(db, gateway, 'raw-body', 'sig');
     expect(result.processed).toBe(true);
     expect(result.reason).toBe('credited');
-    expect(result.azmaUnitsGranted).toBe(800);
+    expect(result.azmaUnitsGranted).toBe(1375);
     expect(result.creatorId).toBe('creator-webhook-001');
 
     const repo = new CreatorCreditRepository(db);
     const bal = repo.getBalance('creator-webhook-001');
-    expect(bal.availableUnits).toBe(800);
+    expect(bal.availableUnits).toBe(1375);
   });
 
   // SCENARIO 27: Invalid signature returns processed:false
@@ -78,7 +78,7 @@ describe('handlePaymentWebhook', () => {
 
     const repo = new CreatorCreditRepository(db);
     const bal = repo.getBalance('creator-webhook-001');
-    expect(bal.availableUnits).toBe(800); // still 800, not 1600
+    expect(bal.availableUnits).toBe(1375); // still 1375, not 2750
   });
 
   // SCENARIO 29: Irrelevant event type ignored
@@ -111,7 +111,7 @@ describe('handlePaymentWebhook', () => {
         verified: true,
         eventType: 'checkout.session.completed',
         paymentIntentId: 'pi_test_missing_meta',
-        metadata: { pack_id: 'start' },   // creator_id and azma_units intentionally absent
+        metadata: { pack_id: 'asas' },   // creator_id and azma_units intentionally absent
         amountReceived: 9900,
         currency: 'egp',
       } as WebhookVerificationResult),

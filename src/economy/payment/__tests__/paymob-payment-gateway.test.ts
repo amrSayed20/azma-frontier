@@ -18,8 +18,8 @@ const TEST_IFRAME_ID = '789';
 const TEST_HMAC_SECRET = 'test-hmac-secret-for-unit-tests';
 
 const CREATOR_ID = 'creator-paymob-001';
-const PACK_ID = 'start';
-const AZMA_UNITS = 800;
+const PACK_ID = 'asas';
+const AZMA_UNITS = 1375;
 const PRICE_EGP = 99;
 const IDEMPOTENCY_KEY = 'idem-paymob-test-001';
 
@@ -442,7 +442,7 @@ describe('Full pipeline: Paymob webhook → credit grant [MOCKED]', () => {
 
   it('SCENARIO: wrong creator (tampered merchant_order_id) — cannot forge credits for another creator', async () => {
     // Attacker provides a merchant_order_id that belongs to someone else's transaction
-    seedTransaction({ idempotencyKey: 'victim-idem', creatorId: 'victim-creator', packId: 'start', azmaUnits: 800 });
+    seedTransaction({ idempotencyKey: 'victim-idem', creatorId: 'victim-creator', packId: 'asas', azmaUnits: 1375 });
     // Attacker builds a valid HMAC over a payload pointing to victim's order
     const obj = makePaymobObj({ order: { id: 77777, merchant_order_id: 'victim-idem' } });
     // If attacker doesn't have HMAC_SECRET, the sig will fail — tested in invalid HMAC scenario.
@@ -457,7 +457,7 @@ describe('Full pipeline: Paymob webhook → credit grant [MOCKED]', () => {
 
   it('SCENARIO: tampered azma_units in payment_transactions — pack definition blocks mismatch', async () => {
     // Seed with mismatched azma_units (wrong amount for the pack)
-    seedTransaction({ azmaUnits: 9999, packId: 'start' }); // start pack = 800 units, not 9999
+    seedTransaction({ azmaUnits: 9999, packId: 'asas' }); // start pack = 800 units, not 9999
     const obj = makePaymobObj();
     const result = await handlePaymentWebhook(db, gateway, makeWebhookPayload(obj), obj.hmac as string);
 
@@ -492,32 +492,32 @@ describe('PaymobPaymentGateway currency support', () => {
 
 describe('Credit pack validation in full pipeline [MOCKED]', () => {
   it('processes start pack (800 units, 99 EGP → 9900 piastres)', async () => {
-    seedTransaction({ packId: 'start', azmaUnits: 800 });
+    seedTransaction({ packId: 'asas', azmaUnits: 1375 });
     const obj = makePaymobObj({ amount_cents: 9900 });
     const result = await handlePaymentWebhook(db, gateway, makeWebhookPayload(obj), obj.hmac as string);
     expect(result.processed).toBe(true);
-    expect(result.azmaUnitsGranted).toBe(800);
+    expect(result.azmaUnitsGranted).toBe(1375);
   });
 
   it('processes create pack (2400 units)', async () => {
-    seedTransaction({ packId: 'create', azmaUnits: 2400, idempotencyKey: 'idem-create-001' });
+    seedTransaction({ packId: 'irtiqaa', azmaUnits: 3450, idempotencyKey: 'idem-create-001' });
     const obj = makePaymobObj({
       amount_cents: 24900,
       order: { id: 77777, merchant_order_id: 'idem-create-001' },
     });
     const result = await handlePaymentWebhook(db, gateway, makeWebhookPayload(obj), obj.hmac as string);
     expect(result.processed).toBe(true);
-    expect(result.azmaUnitsGranted).toBe(2400);
+    expect(result.azmaUnitsGranted).toBe(3450);
   });
 
   it('processes achieve pack (6000 units)', async () => {
-    seedTransaction({ packId: 'achieve', azmaUnits: 6000, idempotencyKey: 'idem-achieve-001' });
+    seedTransaction({ packId: 'ihtiraf', azmaUnits: 6900, idempotencyKey: 'idem-achieve-001' });
     const obj = makePaymobObj({
       amount_cents: 49900,
       order: { id: 77777, merchant_order_id: 'idem-achieve-001' },
     });
     const result = await handlePaymentWebhook(db, gateway, makeWebhookPayload(obj), obj.hmac as string);
     expect(result.processed).toBe(true);
-    expect(result.azmaUnitsGranted).toBe(6000);
+    expect(result.azmaUnitsGranted).toBe(6900);
   });
 });

@@ -3,7 +3,7 @@
 // The launch payment path is Paymob (EGP, credit-first economy).
 //
 // POST /api/billing/checkout
-// Body: { packId: 'start' | 'create' | 'achieve', successUrl?: string, cancelUrl?: string }
+// Body: { packId: one of the approved package ids, successUrl?, cancelUrl? }
 // Response: { status: 'succeeded', checkoutUrl: string, pack: { packId, displayName, azmaUnits, priceEgp } }
 //         | { status: 'failed', message: string }
 //
@@ -16,7 +16,7 @@ import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '../../../../src/authentication';
 import { getDb } from '../../../../src/persistent-storage/db';
-import { getCreditPack } from '../../../../src/economy/payment/credit-packs';
+import { getCreditPack, VALID_PACK_IDS as PACK_IDS } from '../../../../src/economy/payment/credit-packs';
 import { getPaymobPaymentGateway } from '../../../../src/economy/payment/paymob-payment-gateway';
 import type { CreditPackId } from '../../../../src/economy/payment/credit-packs';
 import { internalReturnPath, returnUrl } from '../../../../src/economy/payment/return-destination';
@@ -26,7 +26,12 @@ import { isVerified } from '../../../../src/identity/sovereign-identity-contract
 export const dynamic = 'force-dynamic';
 
 const SESSION_COOKIE = 'azma_session';
-const VALID_PACK_IDS = new Set<CreditPackId>(['start', 'create', 'achieve']);
+// ── ONE VOCABULARY, READ FROM THE PRICE RECORD ─────────────────────────────
+//   This was a hand-written Set of three ids. When the Founder's final
+//   packages replaced them on 2026-09-27 the list did not follow, and this
+//   route went on accepting names the price record no longer knew — which is
+//   how a checkout surface starts quoting a package that does not exist.
+const VALID_PACK_IDS = new Set<CreditPackId>(PACK_IDS);
 
 export async function POST(request: NextRequest) {
   // Authenticate Creator

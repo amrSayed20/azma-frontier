@@ -35,7 +35,7 @@ const IDENTITY: VerifiedIdentity = {
   displayName: 'Buyer',
 };
 
-function checkout(body: Record<string, unknown> = { packId: 'start' }) {
+function checkout(body: Record<string, unknown> = { packId: 'asas' }) {
   return CHECKOUT(
     new NextRequest('http://localhost/api/billing/checkout', {
       method: 'POST',
@@ -103,7 +103,7 @@ describe('an unverified identity cannot begin a subscription', () => {
 describe('the return destination cannot be aimed outside the Empire', () => {
   it('refuses an external successUrl without failing the purchase', async () => {
     seed('verified-2', true);
-    const response = await checkout({ packId: 'start', successUrl: 'https://evil.example/harvest' });
+    const response = await checkout({ packId: 'asas', successUrl: 'https://evil.example/harvest' });
     // Still reaches the gateway — the destination was replaced, not the request.
     expect(response.status).toBe(503);
     expect(gatewayMock).toHaveBeenCalled();
@@ -111,7 +111,7 @@ describe('the return destination cannot be aimed outside the Empire', () => {
 
   it('accepts an internal path', async () => {
     seed('verified-3', true);
-    const response = await checkout({ packId: 'start', successUrl: '/sovereign-vault-palace' });
+    const response = await checkout({ packId: 'asas', successUrl: '/sovereign-vault-palace' });
     expect(response.status).toBe(503);
   });
 });
