@@ -324,8 +324,10 @@ describe('Point 14: Unknown/unverified model capability cannot be silently assum
     expect(allModels.length).toBe(11);
     for (const model of allModels) {
       expect(typeof model.productionAuthorized).toBe('boolean');
-      if (model.modelId === 'minimax-h3') {
-        expect(model.verificationStatus).toBe('approved-candidate');
+      // RETIRED 2026-09-27 by the final allocation — not deleted, so their
+      // verificationStatus still records what was once established of them.
+      if (model.modelId === 'seedance-2-0' || model.modelId === 'nano-banana-pro') {
+        expect(model.verificationStatus).toBe('production-authorized');
         expect(model.productionAuthorized).toBe(false);
         expect(model.active).toBe(false);
       } else {

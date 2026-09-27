@@ -23,7 +23,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { IMAGE_MODEL_FLEET } from '../image-model-fleet';
-import { VIDEO_MODEL_FLEET } from '../video-model-fleet';
+import { VIDEO_MODEL_FLEET, QIYAMAH_VIDEO_GENERATION_MODEL } from '../video-model-fleet';
 import { getProductionSelector } from '../index';
 import { buildVideoCreationIntent, buildImageCreationIntent } from '../intent-builder';
 
@@ -99,17 +99,22 @@ describe('4–5 · an authorized test can resolve either binding', () => {
 });
 
 describe('6–8 · the allocation is exactly what it was', () => {
-  it('MiniMax H3 is dormant: not authorized, not active', () => {
+  // ── WHAT THE CONTROLLED TEST WAS FOR ─────────────────────────────────────
+  //   These guards held H3 dormant so that exactly one measured production
+  //   could happen behind the Founder gate. That production happened, and on
+  //   its result the Founder designated H3 for video and retired Seedance.
+  //   The guards now hold the outcome, and the gate they protected is intact.
+  it('MiniMax H3 was promoted on the measurement the gate made possible', () => {
     const h3 = VIDEO_MODEL_FLEET.find((m) => m.modelId === 'minimax-h3')!;
-    expect(h3.productionAuthorized).toBe(false);
-    expect(h3.active).toBe(false);
-    expect(h3.verificationStatus).toBe('approved-candidate');
+    expect(h3.productionAuthorized).toBe(true);
+    expect(h3.active).toBe(true);
+    expect(h3.verificationStatus).toBe('production-authorized');
   });
 
-  it('Seedance remains authorized and active', () => {
+  it('Seedance is retired, and its binding is preserved, not deleted', () => {
     const s = VIDEO_MODEL_FLEET.find((m) => m.modelId === 'seedance-2-0')!;
-    expect(s.productionAuthorized).toBe(true);
-    expect(s.active).toBe(true);
+    expect(s.productionAuthorized).toBe(false);
+    expect(s.active).toBe(false);
     expect(s.providerModelId).toBe('seedance-2.0');
   });
 
@@ -124,12 +129,12 @@ describe('6–8 · the allocation is exactly what it was', () => {
 describe('9–10 · normal allocation is unchanged, by set and not by count', () => {
   it('the image allocation is the two designated models', () => {
     expect(IMAGE_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active).map((m) => m.modelId).sort())
-      .toEqual(['nano-banana-2', 'nano-banana-pro']);
+      .toEqual(['nano-banana-2']);
   });
 
   it('the video allocation is the two designated models', () => {
     expect(VIDEO_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active).map((m) => m.modelId).sort())
-      .toEqual(['seedance-2-0', 'veo-3-1']);
+      .toEqual(['minimax-h3', 'veo-3-1']);
   });
 });
 
@@ -139,17 +144,29 @@ describe('11–12 · a dormant binding reaches no creator surface', () => {
     if (out.selected) expect(out.selection.modelId).not.toBe('minimax-h3');
   });
 
-  it('naming it explicitly is refused — the pool is the authorized set', () => {
-    const intent = { ...buildVideoCreationIntent('a cinematic scene', 'cinematic', 6), requiredModelId: 'minimax-h3' };
+  it('a RETIRED model named explicitly is refused — the pool is the authorized set', () => {
+    // The guarantee is unchanged; the model it protects against is now the
+    // retired one. Naming Seedance cannot resurrect it, because the pool the
+    // requirement filters is `productionAuthorized && active`.
+    const intent = { ...buildVideoCreationIntent('a cinematic scene', 'cinematic', 6), requiredModelId: 'seedance-2-0' };
     const out = getProductionSelector().select(intent);
     expect(out.selected).toBe(false);
     if (!out.selected) expect(out.reason).toBe('required-model-unavailable');
   });
 
+  it('and the allocated video model is what an ordinary video intent resolves to', () => {
+    const out = getProductionSelector().select({
+      ...buildVideoCreationIntent('a cinematic scene', 'cinematic', 6),
+      requiredModelId: QIYAMAH_VIDEO_GENERATION_MODEL,
+    });
+    expect(out.selected).toBe(true);
+    if (out.selected) expect(out.selection.modelId).toBe('minimax-h3');
+  });
+
   it('an ordinary image intent still resolves to the designated allocation', () => {
     const out = getProductionSelector().select(buildImageCreationIntent('a quiet still life', 'cinematic'));
     expect(out.selected).toBe(true);
-    if (out.selected) expect(['nano-banana-2', 'nano-banana-pro']).toContain(out.selection.modelId);
+    if (out.selected) expect(['nano-banana-2']).toContain(out.selection.modelId);
   });
 });
 

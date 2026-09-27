@@ -134,7 +134,7 @@ describe('5 · a provider model is not a sovereign capability', () => {
 
   it('the allocation is the two decided families, unchanged', () => {
     const live = VIDEO_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active);
-    expect(live.map((m) => m.modelId).sort()).toEqual(['seedance-2-0', 'veo-3-1']);
+    expect(live.map((m) => m.modelId).sort()).toEqual(['minimax-h3', 'veo-3-1']);
   });
 });
 

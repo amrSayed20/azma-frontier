@@ -39,7 +39,7 @@ import { AssetFamily, SourceChamber, SovereignDepositError } from '../vault/sove
 import { CapabilityTarget } from '../core/sovereign-orchestrator/qiyamah-intent-types';
 import { buildImageCreationIntent, buildVideoCreationIntent, getProductionSelector } from '../sovereign-model-selection';
 import { IMAGE_MODEL_FLEET } from '../sovereign-model-selection/image-model-fleet';
-import { VIDEO_MODEL_FLEET } from '../sovereign-model-selection/video-model-fleet';
+import { VIDEO_MODEL_FLEET, QIYAMAH_VIDEO_GENERATION_MODEL } from '../sovereign-model-selection/video-model-fleet';
 import { beginOperation, safeDetail } from './generation-observability';
 import type { OperationTrail, FailureCategory } from './generation-observability';
 import type { GenerationRequest, GenerationResult, GenerationFailure, VideoGenerationRequest, VideoGenerationResult } from './types';
@@ -556,7 +556,14 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
 
   const style = request.style?.trim() || null;
 
-  const creationIntent = buildVideoCreationIntent(trimmedPrompt, style, request.durationSeconds);
+  const creationIntent = {
+    ...buildVideoCreationIntent(trimmedPrompt, style, request.durationSeconds),
+    // The Founder's final allocation of 2026-09-27. Stated as a REQUIREMENT,
+    // which the selector answers with that model or refuses — it never
+    // substitutes. Veo stays authorized for MOTION, so without this the video
+    // pool holds two models and the winner would come from array order.
+    requiredModelId: QIYAMAH_VIDEO_GENERATION_MODEL,
+  };
   // Same seam as the image path: absent an override, this is the selector
   // call verbatim.
   const testBinding = request.testOnlyModelId

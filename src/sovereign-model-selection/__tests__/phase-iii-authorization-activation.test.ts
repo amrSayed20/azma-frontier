@@ -150,19 +150,20 @@ describe('Point 1 — All ten fleet models have productionAuthorized: true', () 
       // The dormant test binding is the one entry that is not yet proven, and
       // it says so in its own verificationStatus rather than borrowing one.
       expect(['production-authorized', 'approved-candidate']).toContain(model.verificationStatus);
-      if (model.modelId === 'minimax-h3') {
-        expect(model.productionAuthorized).toBe(false);
+      // Every video binding is now production-authorized in STATUS — including
+      // the retired one, whose status records what was established of it. What
+      // separates them is the allocation flags, not the verification.
+      expect(model.verificationStatus).toBe('production-authorized');
+      if (model.modelId === 'seedance-2-0') {
+        expect(model.productionAuthorized).toBe(false);   // RETIRED 2026-09-27
         expect(model.active).toBe(false);
-        expect(model.verificationStatus).toBe('approved-candidate');
-      } else {
-        expect(model.verificationStatus).toBe('production-authorized');
       }
     }
     // The invariant that matters: registration changed no allocation.
     expect(IMAGE_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active).map((m) => m.modelId).sort())
-      .toEqual(['nano-banana-2', 'nano-banana-pro']);
+      .toEqual(['nano-banana-2']);
     expect(VIDEO_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active).map((m) => m.modelId).sort())
-      .toEqual(['seedance-2-0', 'veo-3-1']);
+      .toEqual(['minimax-h3', 'veo-3-1']);
   });
 
   it('combined: 11 bindings, and the only candidate is the dormant test one', () => {
@@ -172,9 +173,10 @@ describe('Point 1 — All ten fleet models have productionAuthorized: true', () 
     const unauthorized = all.filter((m) => !m.productionAuthorized);
     const stillCandidate = all.filter((m) => m.verificationStatus === 'approved-candidate');
 
-    expect(unauthorized.length).toBeLessThanOrEqual(7);
-    // Exactly one, and it is the dormant test binding — never a production model.
-    expect(stillCandidate.map((m) => m.modelId)).toEqual(['minimax-h3']);
+    expect(unauthorized.length).toBeLessThanOrEqual(8);
+    // None: the last candidate was promoted on 2026-09-27, on one measured
+    // production, and no binding is left claiming a status it has not earned.
+    expect(stillCandidate.map((m) => m.modelId)).toEqual([]);
   });
 
   it('veo-3-1 is production-authorized and active (Magic Hour-hosted, proof order 2026-09-22); sora-2 is authorized but inactive (no adapter)', () => {
@@ -206,9 +208,9 @@ describe('Point 2 — Production registry exposes authorized models', () => {
     expect(registry.size()).toBe(11);
   });
 
-  it('findProductionAuthorized("image") returns 4 active authorized image models (seedream-4-5 inactive: invalid providerModelId)', () => {
+  it('findProductionAuthorized("image") returns the ONE allocated image model', () => {
     const authorized = getProductionRegistry().findProductionAuthorized('image');
-    expect(authorized).toHaveLength(2);
+    expect(authorized.map((m) => m.modelId)).toEqual(['nano-banana-2']);
     for (const m of authorized) {
       expect(m.productionAuthorized).toBe(true);
       expect(m.active).toBe(true);
@@ -223,7 +225,7 @@ describe('Point 2 — Production registry exposes authorized models', () => {
     const ids = authorized.map((m) => m.modelId).sort();
     // The Founder designated two models for video and its editing on
     // 2026-09-25. kling-3-0 and ltx-2-3 are withdrawn from production.
-    expect(ids).toEqual(['seedance-2-0', 'veo-3-1']);
+    expect(ids).toEqual(['minimax-h3', 'veo-3-1']);
   });
 });
 
@@ -857,7 +859,7 @@ describe('Point 20 — ZERO real provider generations during Phase III', () => {
     const authorizedCount = allModels.filter((m) => m.productionAuthorized).length;
 
     // Reading productionAuthorized is a pure property access — no network, no credits
-    expect(authorizedCount).toBe(4);
+    expect(authorizedCount).toBe(3);   // the final allocation: image, video, motion
   });
 
   it('production registry rebuild (after resetProductionRegistryForTests) is a pure in-memory operation', () => {

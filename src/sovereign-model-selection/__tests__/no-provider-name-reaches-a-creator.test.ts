@@ -79,7 +79,7 @@ describe("the Founder's designation of 2026-09-25", () => {
   // consequence of three was measured: six styles ask for a quality tier
   // above `standard` and the selector refuses rather than downgrade in
   // silence. nano-banana-pro is the same family at `ultra`.
-  const DESIGNATED = ['nano-banana-2', 'nano-banana-pro', 'seedance-2-0', 'veo-3-1'];
+  const DESIGNATED = ['nano-banana-2', 'minimax-h3', 'veo-3-1'];
 
   it('production routes to those three and to nothing else', () => {
     const authorized = EVERY_MODEL.filter((m) => m.productionAuthorized).map((m) => m.modelId);

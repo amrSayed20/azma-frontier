@@ -94,8 +94,33 @@ export const IMAGE_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
     sovereignNoteAr: 'تُجيد الحرف المقروء والتخطيط المرتّب — وهي وحدها للإنفوغراف.',
     mediaType: 'image',
     capabilities: ['image-generation'],
-    qualityTier: 'standard',                    // REQUIRES_VERIFICATION
-    maxImageResolution: '1k',                   // REQUIRES_VERIFICATION (the endpoint accepts up to 4k; per-model cap not documented)
+    // ── THE FOUNDER'S FINAL ALLOCATION, 2026-09-27 ─────────────────
+    //
+    //   One model per capability. Where there is one designated model, a
+    //   quality filter can no longer choose a better one — it can only refuse
+    //   the Founder's own choice. So this tier is set by the DESIGNATION, and
+    //   is marked as such rather than dressed as a measurement nobody made.
+    //   Every tier in this file was, and the retired ones still are, a
+    //   REQUIRES_VERIFICATION guess.
+    //
+    //   MEASURED 2026-09-27 under the Controlled Model Tests: 1376x768 at
+    //   resolution '1k' for 100 credits, photographic, no artefact — and it
+    //   rendered «قصر الخزانة السيادية» legibly where the retired video model
+    //   produced malformed Arabic.
+    //
+    //   WHY THE TIER HAD TO MOVE: at 'standard' this model was excluded from
+    //   six of the Chamber's fourteen styles, because the filter demands
+    //   'high' for cinematic and 'ultra' for advertising. That is why a second
+    //   image model was added beside it on 2026-09-25 — and why the reference
+    //   image of 2026-09-27 resolved to Pro at 150 credits although this model
+    //   had already been designated. A designation the machinery silently
+    //   overrides is not a designation.
+    //
+    //   The resolution cap is OMITTED, not raised. The selector reads an absent
+    //   cap as «no declared cap», which is exactly what is true: the endpoint
+    //   documents up to 4k and the per-model cap is undocumented. Writing '2k'
+    //   would be inventing a measurement to pass a filter.
+    qualityTier: 'ultra',                       // FOUNDER'S DESIGNATION 2026-09-27 — not a measurement
     supportedAspectRatios: ['16:9', '1:1', '9:16'],  // VERIFIED 2026-09-22: the generator's aspect_ratio enum
     characteristicHints: ['legible-text', 'structured-layout', 'iconography', 'clean-background'],
     // ── THE ONE IMAGE MODEL OF THIS EMPIRE ─────────────────────────
@@ -219,9 +244,23 @@ export const IMAGE_MODEL_FLEET: readonly SovereignMediaModelDescriptor[] = [
     //   family, `ultra` tier, so every style the Chamber offers can be
     //   served. The infographic still REQUIRES nano-banana-2 and this
     //   does not touch that.
-    productionAuthorized: true,
-    active: true,
+    //
+    // ── AND RETIRED, 2026-09-27, BY THE FINAL ALLOCATION ───────────
+    //
+    //   The ruling above is superseded. The Founder's final allocation names
+    //   Nano Banana 2 for images AND the infographic; Pro is not in that table.
+    //   The six styles it was added to cover are now served by raising Nano
+    //   Banana 2's own tier — which is what the 2026-09-25 designation had
+    //   always meant and the machinery had silently overridden.
+    //
+    //   RETIRED, NOT DELETED. Its entry, its assets, its generations, its
+    //   provider jobs and its measured 150-credit history all stand untouched.
+    //   Only new production stops here.
+    productionAuthorized: false,   // RETIRED 2026-09-27 — the Founder's final allocation
+    active: false,                 // RETIRED 2026-09-27 — history preserved, new production stopped
     internalNotes:
+      'RETIRED for new production 2026-09-27 by the final allocation of the Founder (Nano Banana 2 ' +
+      'is the one image model). History, assets and cost records preserved. ' +
       'Production authorized by Chief Architect 2026-08-27 (Phase III). ' +
       'All capability data requires real-world verification.',
   },

@@ -132,9 +132,12 @@ describe('E · the model-test path obeys the same boundary', () => {
 });
 
 describe('F–H · the allocation is untouched by this closure', () => {
-  it('Seedance remains authorized and active', () => {
+  it('Seedance is RETIRED — the final allocation of 2026-09-27', () => {
     const s = VIDEO_MODEL_FLEET.find((m) => m.modelId === 'seedance-2-0')!;
-    expect([s.productionAuthorized, s.active]).toEqual([true, true]);
+    // Retired, NOT deleted: the binding, its provider string and its history
+    // all remain. Only new production stops.
+    expect([s.productionAuthorized, s.active]).toEqual([false, false]);
+    expect(s.providerModelId).toBe('seedance-2.0');
   });
 
   it('Veo remains authorized and active', () => {
@@ -142,19 +145,19 @@ describe('F–H · the allocation is untouched by this closure', () => {
     expect([v.productionAuthorized, v.active]).toEqual([true, true]);
   });
 
-  it('MiniMax H3 remains dormant, test-only', () => {
+  it('MiniMax H3 is the designated video generation model', () => {
     const h = VIDEO_MODEL_FLEET.find((m) => m.modelId === 'minimax-h3')!;
-    expect([h.productionAuthorized, h.active]).toEqual([false, false]);
+    expect([h.productionAuthorized, h.active]).toEqual([true, true]);
   });
 
   it('the image allocation is unchanged', () => {
     expect(IMAGE_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active).map((m) => m.modelId).sort())
-      .toEqual(['nano-banana-2', 'nano-banana-pro']);
+      .toEqual(['nano-banana-2']);
   });
 
   it('and the video allocation is unchanged', () => {
     expect(VIDEO_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active).map((m) => m.modelId).sort())
-      .toEqual(['seedance-2-0', 'veo-3-1']);
+      .toEqual(['minimax-h3', 'veo-3-1']);
   });
 });
 

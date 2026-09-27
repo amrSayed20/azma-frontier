@@ -235,17 +235,22 @@ describe('I/J · no provider production is retriggered and no operation duplicat
 describe('K–R · nothing outside the boundary moved', () => {
   it('K/Q/R · the video allocation is exactly the two designated models', () => {
     expect(VIDEO_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active).map((m) => m.modelId).sort())
-      .toEqual(['seedance-2-0', 'veo-3-1']);
+      .toEqual(['minimax-h3', 'veo-3-1']);
   });
 
-  it('P · MiniMax H3 remains test-only and dormant', () => {
+  it('P · MiniMax H3 is the designated video generation model, and Seedance is retired', () => {
+    // The dormant binding of the morning became the allocation the same day,
+    // on one controlled measurement. Its first production carried an audio
+    // stream the boundary removed — which is why the boundary is not optional.
     const h = VIDEO_MODEL_FLEET.find((m) => m.modelId === 'minimax-h3')!;
-    expect([h.productionAuthorized, h.active]).toEqual([false, false]);
+    expect([h.productionAuthorized, h.active]).toEqual([true, true]);
+    const s = VIDEO_MODEL_FLEET.find((m) => m.modelId === 'seedance-2-0')!;
+    expect([s.productionAuthorized, s.active]).toEqual([false, false]);
   });
 
   it('K · the image allocation is unchanged', () => {
     expect(IMAGE_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active).map((m) => m.modelId).sort())
-      .toEqual(['nano-banana-2', 'nano-banana-pro']);
+      .toEqual(['nano-banana-2']);
   });
 
   it('L · no prompt changed, and the boundary carries no prompt at all', () => {

@@ -148,9 +148,13 @@ describe('9–10 · the provider identifiers are the verified ones', () => {
     const registry = new SovereignModelRegistry();
     for (const m of VIDEO_MODEL_FLEET) registry.register(m);
     const selector = new SovereignModelSelector(registry, () => null);
+    // RETIRED 2026-09-27: Seedance is no longer dispatchable, so naming it for
+    // motion is refused rather than answered. That refusal IS the guarantee
+    // this test exists for — the selector never substitutes another model for
+    // one the Creator required.
     const seedance = selector.select(buildAnimationIntent('slow push in', 'seedance-2-0', 5));
-    expect(seedance.selected).toBe(true);
-    if (seedance.selected) expect(seedance.selection.providerModelId).toBe('seedance-2.0');
+    expect(seedance.selected).toBe(false);
+    if (!seedance.selected) expect(seedance.reason).toBe('required-model-unavailable');
     // Veo: activated by its production-proof order (2026-09-22); the exact identifier, nothing else.
     const veo = selector.select(buildAnimationIntent('slow push in', 'veo-3-1', 4));
     expect(veo.selected).toBe(true);

@@ -257,21 +257,25 @@ describe('Phase II Test 22 — Fallback discipline and fleet authorization state
     for (const model of VIDEO_MODEL_FLEET) {
       expect(typeof model.productionAuthorized).toBe('boolean');
     }
-    // sora has no adapter; minimax-h3 is dormant by order. Neither dispatches.
+    // sora has no adapter; seedance is RETIRED by the final allocation of
+    // 2026-09-27. Neither dispatches, for entirely different reasons.
     const inactive = VIDEO_MODEL_FLEET.filter((m) => !m.active);
-    expect(inactive.map((m) => m.modelId).sort()).toEqual(['minimax-h3', 'sora-2']);
+    expect(inactive.map((m) => m.modelId).sort()).toEqual(['seedance-2-0', 'sora-2']);
     // The allocation itself — unchanged.
     expect(VIDEO_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active).map((m) => m.modelId).sort())
-      .toEqual(['seedance-2-0', 'veo-3-1']);
+      .toEqual(['minimax-h3', 'veo-3-1']);
   });
 
-  it('Phase III: 11 bindings, and the authorized count is untouched at 4', () => {
+  it('Phase III: 11 bindings, and the final allocation authorizes 3', () => {
     const allModels = [...IMAGE_MODEL_FLEET, ...VIDEO_MODEL_FLEET];
     expect(allModels).toHaveLength(11);
 
-    // The dormant binding added none: still the Founder's four designations.
-    const authorizedCount = allModels.filter((m) => m.productionAuthorized).length;
-    expect(authorizedCount).toBe(4);
+    // The final allocation of 2026-09-27: one image model, one video model,
+    // one motion model. Retiring two did not delete their bindings — the
+    // count of BINDINGS is unchanged at 11, which is the point of retiring
+    // rather than deleting.
+    expect(allModels.filter((m) => m.productionAuthorized).map((m) => m.modelId).sort())
+      .toEqual(['minimax-h3', 'nano-banana-2', 'veo-3-1']);
   });
 
   it('Phase III: production registry exposes 5 active authorized image models', () => {
@@ -284,7 +288,9 @@ describe('Phase II Test 22 — Fallback discipline and fleet authorization state
     expect(all).toHaveLength(11);
 
     const authorizedImages = registry.findProductionAuthorized('image');
-    expect(authorizedImages.length).toBe(2); // 4 active authorized image models (seedream-4-5 inactive: invalid providerModelId)
+    // ONE image model, by the final allocation of 2026-09-27. Nano Banana Pro
+    // was retired the same day; its binding and its 150-credit history remain.
+    expect(authorizedImages.map((m: { modelId: string }) => m.modelId)).toEqual(['nano-banana-2']);
   });
 
   it('the image fleet holds 5 entries and the video fleet 6 — the sixth is dormant', () => {
@@ -293,9 +299,9 @@ describe('Phase II Test 22 — Fallback discipline and fleet authorization state
 
     expect(imageModels).toHaveLength(5);
     expect(videoModels).toHaveLength(6);
-    // And the sixth is the test binding, not a production one.
+    // And the ones that cannot dispatch are the retired and the adapterless.
     expect(videoModels.filter((m) => !m.productionAuthorized && !m.active).map((m) => m.modelId).sort())
-      .toEqual(['minimax-h3', 'sora-2']);
+      .toEqual(['seedance-2-0', 'sora-2']);
   });
 
   it('Phase III: production selector selects an authorized model for a standard image intent', () => {

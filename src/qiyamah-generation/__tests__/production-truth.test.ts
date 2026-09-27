@@ -186,7 +186,7 @@ describe('10–11 · the asynchronous contract and idempotency are intact', () =
 describe('12 · the video allocation is unchanged', () => {
   it('exactly two video models are production-authorized and active', () => {
     const live = VIDEO_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active);
-    expect(live.map((m) => m.modelId).sort()).toEqual(['seedance-2-0', 'veo-3-1']);
+    expect(live.map((m) => m.modelId).sort()).toEqual(['minimax-h3', 'veo-3-1']);
   });
 
   it('their wire bindings are the ones the provider verified', () => {

@@ -102,9 +102,9 @@ describe('4 · the rate belongs to the model, not to the capability', () => {
    */
   it('both authorised video models exist and are distinct bindings', () => {
     const live = VIDEO_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active);
-    expect(live.map((m) => m.modelId).sort()).toEqual(['seedance-2-0', 'veo-3-1']);
+    expect(live.map((m) => m.modelId).sort()).toEqual(['minimax-h3', 'veo-3-1']);
     const byId = Object.fromEntries(live.map((m) => [m.modelId, m]));
-    expect(byId['seedance-2-0'].providerModelId).not.toBe(byId['veo-3-1'].providerModelId);
+    expect(byId['minimax-h3'].providerModelId).not.toBe(byId['veo-3-1'].providerModelId);
   });
 
   it('no single video rate is hard-coded anywhere', () => {
@@ -115,7 +115,7 @@ describe('4 · the rate belongs to the model, not to the capability', () => {
 
   it('the image allocation is unchanged and is the one the edit runs on', () => {
     const live = IMAGE_MODEL_FLEET.filter((m) => m.productionAuthorized && m.active);
-    expect(live.map((m) => m.modelId).sort()).toEqual(['nano-banana-2', 'nano-banana-pro']);
+    expect(live.map((m) => m.modelId).sort()).toEqual(['nano-banana-2']);
     expect(EDITING_ADAPTER).toContain("export const IMAGE_EDIT_MODEL_ID = 'nano-banana-2' as const;");
   });
 });
