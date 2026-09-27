@@ -306,7 +306,23 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
       `test-only model '${request.testOnlyModelId}' is not a registered AZMA fleet id`);
   }
   const selectionResult = testBinding
-    ? ({ selected: true, selection: testBinding } as ReturnType<ReturnType<typeof getProductionSelector>['select']>)
+    ? ({
+        selected: true,
+        selection: {
+          ...testBinding,
+          // ── THE SHAPE COMES FROM THE INTENT, AS IT DOES FOR THE SELECTOR ──
+          //   The real selector returns `aspectRatio: intent.aspectRatio` and
+          //   `resolution: intent.resolution` — it passes the intent through.
+          //   Without these two lines the override passed NEITHER, and the
+          //   adapter fell back to its own `?? '16:9'` and `?? '1k'`. Those
+          //   happen to equal what a cinematic intent asks for today, so a
+          //   controlled test would have looked faithful while its dimensions
+          //   came from a different authority than the reference's did. A limit
+          //   borrowed from another authority is not the limit that governs.
+          aspectRatio: creationIntent.aspectRatio,
+          resolution: creationIntent.resolution,
+        },
+      } as ReturnType<ReturnType<typeof getProductionSelector>['select']>)
     : getProductionSelector().select(creationIntent);
   trail.stage('selected', selectionResult.selected
     ? { providerId: selectionResult.selection.providerId, modelId: selectionResult.selection.modelId, providerModelId: selectionResult.selection.providerModelId }

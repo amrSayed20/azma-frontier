@@ -292,6 +292,16 @@ describe('security · this is a pipeline stage, not a media tool anyone can poin
     expect(importers).toHaveLength(1);
   });
 
+  it('the Founder-gated model test cannot bypass the boundary either', () => {
+    // It dispatches through generateVideo, which persists through the one
+    // chokepoint. A test-only binding gets no route of its own to a file.
+    const testRoute = read('app/api/sovereign/model-test/route.ts');
+    expect(testRoute).toContain('generateVideo({');
+    expect(testRoute).not.toContain('persistGeneratedVideo');
+    expect(testRoute).not.toContain('writeFile');
+    expect(testRoute).not.toMatch(/audio|silence/i);
+  });
+
   it('it takes bytes, never a caller-supplied path into our storage', () => {
     // The only paths it touches are ones it made itself inside a temp dir.
     expect(SILENCE).toContain('export async function enforceSovereignSilence(\n  bytes: Buffer,');
