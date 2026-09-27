@@ -18,8 +18,9 @@ import { join } from 'path';
 import {
   SOVEREIGN_VALUE_BALANCE, BALANCE_VALUE_REFERENCE, BALANCE_UNIT_USD, BALANCE_UNIT_EGP,
   OPERATION_CONSUMPTION, consumptionFor, priceOperation, creatorFacingCost,
-  SOVEREIGN_PACKAGES, packageById, unitPriceEgp, riyadaExpiry, RIYADA_VALUE_NOTE,
-  BALANCE_PRICING_APPROVED, PRICING_LOCK_REASON, PENDING_FOUNDER_DECISIONS,
+  SOVEREIGN_PACKAGES, packageById, unitPriceEgp, riyadaExpiry, RIYADA_COMPOSITION,
+  standardCycleEnd, STANDARD_CYCLE_MS, CARRY_FORWARD_WINDOW,
+  BALANCE_PRICING_APPROVED, PAYMENT_PROOF_STATUS, GIFT_BALANCE, PENDING_FOUNDER_DECISIONS,
 } from '../pricing/sovereign-value-balance';
 import { XPayPaymentGateway, readXPayCredentials, xpayMode } from '../payment/xpay-payment-gateway';
 import { WebhookSignatureError, PaymentSessionError } from '../payment/payment-gateway-contracts';
@@ -146,17 +147,29 @@ describe('2 · the five numbers are kept apart', () => {
   });
 });
 
-describe('3 · nothing may be sold at a price nobody approved', () => {
-  it('the pricing table is explicitly NOT approved', () => {
-    expect(BALANCE_PRICING_APPROVED).toBe(false);
-    expect(priceOperation('IMAGE_GENERATION').approved).toBe(false);
+describe('3 · the prices are approved; taking money is a separate gate', () => {
+  it('the pricing gate is CLOSED — every figure is the Founder’s final one', () => {
+    expect(BALANCE_PRICING_APPROVED).toBe(true);
+    expect(priceOperation('IMAGE_GENERATION').approved).toBe(true);
   });
 
-  it('the lock states its reason, so it is never mistaken for an oversight', () => {
-    expect(PRICING_LOCK_REASON).toMatch(/SECRET/);
-    expect(PRICING_LOCK_REASON).toMatch(/permission_denied/);
-    // It says WHY without naming a payment provider in this layer.
-    expect(PRICING_LOCK_REASON).not.toMatch(/xpay/i);
+  it('but payment is NOT proven, and the two are separate facts', () => {
+    // A flag meaning «approved» AND «proven» becomes false the moment those
+    // disagree — which is exactly where they stand. So they are two.
+    expect(PAYMENT_PROOF_STATUS.pricingApproved).toBe(true);
+    expect(PAYMENT_PROOF_STATUS.paymentProvenInSandbox).toBe(false);
+    expect(PAYMENT_PROOF_STATUS.paymentProvenInProduction).toBe(false);
+    expect(PAYMENT_PROOF_STATUS.blockedBy).toMatch(/SECRET/);
+    expect(PAYMENT_PROOF_STATUS.blockedBy).toMatch(/permission_denied/);
+    // And it says why without naming a payment provider in this layer.
+    expect(PAYMENT_PROOF_STATUS.blockedBy).not.toMatch(/xpay/i);
+  });
+
+  it('nothing can be sold anyway: the checkout refuses with no gateway', () => {
+    const route = read('app/api/sovereign/economy/xpay-checkout/route.ts');
+    expect(route).toContain("error: 'payment_gateway_unavailable'");
+    expect(route).toContain('const gateway = getXPayGateway();');
+    expect(route).toContain('if (!gateway) {');
   });
 
   it('the four approved packages are exactly the Founder figures', () => {
@@ -164,7 +177,7 @@ describe('3 · nothing may be sold at a price nobody approved', () => {
       ['الأساس', 99, 1375],
       ['الارتقاء', 249, 3450],
       ['الاحتراف', 499, 6900],
-      ['الريادة', 1200, 8640],
+      ['الريادة', 1200, 16670],
     ]);
   });
 
@@ -175,11 +188,40 @@ describe('3 · nothing may be sold at a price nobody approved', () => {
     }
   });
 
-  it('only الريادة expires; the other three never do', () => {
+  it('the three standard packages run a 28-day cycle; الريادة runs six months', () => {
     expect(packageById('riyada')!.validity).toBe('six-months');
     for (const id of ['asas', 'irtiqaa', 'ihtiraf']) {
-      expect(packageById(id)!.validity).toBe('no-expiry');
+      expect(packageById(id)!.validity).toBe('twenty-eight-days');
     }
+    expect(STANDARD_CYCLE_MS).toBe(28 * 24 * 60 * 60 * 1000);
+  });
+
+  it('at a cycle end nothing is refunded in cash, and ALL of it carries', () => {
+    for (const n of [0, 1, 7, 1375, 6900]) {
+      const out = standardCycleEnd(n);
+      expect(out.carriedForward).toBe(n);   // in full — no third is shaved
+      expect(out.cashRefunded).toBe(0);     // carry-forward is not a refund
+    }
+  });
+
+  it('and it carries ONLY on a new purchase — which is not a subscription', () => {
+    // Nothing renews and no card is charged again. That is the whole
+    // difference, and it is why no surface may call this a subscription.
+    expect(standardCycleEnd(500).requiresNewPurchase).toBe(true);
+  });
+
+  it('the carry window is unruled, so NO balance is expired by this system', () => {
+    // «In the following cycle» has no defined edge. A Creator returning on
+    // day 30 or day 60 must be answered, and the answer changes what they
+    // are owed — so it is not an engineer's to pick.
+    expect(CARRY_FORWARD_WINDOW).toBe('PENDING FOUNDER DECISION');
+  });
+
+  it('الريادة is EXCLUDED from the standard cycle, by name', () => {
+    // Its own rule stands: a third removed, two thirds returned permanently.
+    expect(packageById('riyada')!.validity).not.toBe('twenty-eight-days');
+    const out = riyadaExpiry(3000);
+    expect([out.removed, out.returnedAsOrdinary]).toEqual([1000, 2000]);
   });
 
   it('the three ordinary packages sell a unit at the reference rate', () => {
@@ -188,15 +230,40 @@ describe('3 · nothing may be sold at a price nobody approved', () => {
     }
   });
 
-  it('الريادة does NOT, and the system is forbidden from calling it a bonus', () => {
-    // MEASURED: 1200/8640 = 0.13889 EGP per unit against 99/1375 = 0.0720 —
-    // 1.93x dearer, for Balance that also expires. The number stands; the
-    // CLAIM does not, and this guard is what stops the claim.
-    expect(unitPriceEgp(packageById('riyada')!)).toBeGreaterThan(BALANCE_UNIT_EGP * 1.9);
-    near(RIYADA_VALUE_NOTE.timesDearer, 1.929, 1e-3);
-    near(RIYADA_VALUE_NOTE.whatItWouldCostAtOrdinaryRate, 622.08, 0.5);
-    expect(RIYADA_VALUE_NOTE.MAY_CLAIM_BONUS).toBe(false);
-    expect(RIYADA_VALUE_NOTE.MAY_CLAIM_DISCOUNT).toBe(false);
+  it('الريادة is now at PARITY — the correction closed a 1.93x overcharge', () => {
+    // It was 8,640 units for 1,200 EGP: 0.13889 per unit against 0.0720,
+    // reported rather than shipped. Corrected to 16,670, which is exactly
+    // what 1,200 EGP buys at the reference rate.
+    near(unitPriceEgp(packageById('riyada')!), BALANCE_UNIT_EGP, 1e-5);
+    near(RIYADA_COMPOSITION.timesDearerThanOrdinary, 1.0, 1e-3);
+    expect(RIYADA_COMPOSITION.supersededUnits).toBe(8_640);
+  });
+
+  it('its composition sums to its balance — 13,892 + 2,778 = 16,670', () => {
+    expect(RIYADA_COMPOSITION.baseUnits + RIYADA_COMPOSITION.bonusUnits)
+      .toBe(RIYADA_COMPOSITION.totalUnits);
+    expect(RIYADA_COMPOSITION.totalUnits).toBe(packageById('riyada')!.balanceUnits);
+    expect(RIYADA_COMPOSITION.baseValueEgp + RIYADA_COMPOSITION.bonusValueEgp)
+      .toBe(packageById('riyada')!.priceEgp);
+  });
+
+  it('and the 2,778 may still NOT be called a bonus — they were bought', () => {
+    // 1,200 EGP buys exactly 16,670 at the standard rate, so nothing is
+    // given. The composition describes the price; it does not add to it.
+    expect(RIYADA_COMPOSITION.MAY_CLAIM_BONUS).toBe(false);
+    expect(RIYADA_COMPOSITION.MAY_CLAIM_DISCOUNT).toBe(false);
+  });
+
+  it('gift Balance is offered as a DISCRETION, never as an entitlement', () => {
+    expect(GIFT_BALANCE.isEntitlement).toBe(false);
+    expect(GIFT_BALANCE.isPromised).toBe(false);
+    // «قد تمنح» — may grant. Never «تمنح», which is a promise.
+    expect(GIFT_BALANCE.noticeAr).toContain('قد تمنح');
+    expect(GIFT_BALANCE.noticeAr).toContain('تفضّلٌ لا استحقاق');
+    // It names no amount and no condition that could read as a contract.
+    expect(GIFT_BALANCE.noticeAr).not.toMatch(/[0-9٠-٩]/);
+    // A granted gift behaves like ordinary purchased Balance.
+    expect([GIFT_BALANCE.expires, GIFT_BALANCE.transferable]).toEqual([false, false]);
   });
 
   it('الريادة expiry removes exactly a third and returns exactly two thirds', () => {
@@ -212,7 +279,7 @@ describe('3 · nothing may be sold at a price nobody approved', () => {
 
   it('the decisions that belong to the Founder are named, not defaulted', () => {
     const joined = PENDING_FOUNDER_DECISIONS.join(' ');
-    for (const k of ['RIYADA_UNIT_PRICE', 'COURTESY_REGENERATION', 'VAT']) {
+    for (const k of ['RIYADA_BONUS_WORDING', 'COURTESY_REGENERATION', 'VAT']) {
       expect(joined).toContain(k);
     }
   });
@@ -289,14 +356,32 @@ describe('3c · the policy package exists and claims nothing untrue', () => {
     }
   });
 
-  it('the Balance policy carries the approved packages and the Riyada rule', () => {
+  it('the Balance policy carries the approved packages and both expiry rules', () => {
     const doc = read('docs/policies/SOVEREIGN_VALUE_BALANCE_POLICY.md');
-    for (const n of ['1,375', '3,450', '6,900', '8,640', '99', '249', '499', '1,200']) {
+    for (const n of ['1,375', '3,450', '6,900', '16,670', '99', '249', '499', '1,200']) {
       expect(doc).toContain(n);
     }
-    expect(doc).toContain('ثلثه');       // a third removed
-    expect(doc).toContain('ثلثاه');      // two thirds returned
-    expect(doc).toContain('لا تنتهي');   // the other three never expire
+    expect(doc).toContain('ثلثه');        // Riyada: a third removed
+    expect(doc).toContain('ثلثاه');       // Riyada: two thirds returned
+    expect(doc).toContain('٢٨ يوماً');    // the standard cycle
+  });
+
+  it('and it tells the WHOLE 28-day truth, not the comfortable half of it', () => {
+    // «Your balance carries over» alone would be a half-truth: the carrying
+    // is conditional on buying again. Both halves, or neither.
+    const doc = read('docs/policies/SOVEREIGN_VALUE_BALANCE_POLICY.md');
+    expect(doc).toContain('يُرحَّل');                 // it carries forward
+    expect(doc).toContain('مشروطٌ بشراء جديد');       // ...only if you buy again
+    expect(doc).toContain('ولا يعود إليك مال');       // and no cash comes back
+    expect(doc).toContain('وليس هذا اشتراكاً');       // and it is not a subscription
+  });
+
+  it('the gift notice is a discretion on the page a Creator reads', () => {
+    const doc = read('docs/policies/SOVEREIGN_VALUE_BALANCE_POLICY.md');
+    expect(doc).toContain('قد تمنح الإمبراطورية');
+    expect(doc).toContain('تفضّلٌ لا استحقاق');
+    // No amount and no condition that could read as a promise.
+    expect(doc).toContain('لا نَعِد بمقدارها');
   });
 
   it('nothing calls a one-time package a subscription, or promises free re-runs', () => {
@@ -477,7 +562,7 @@ describe('9 · the dependency direction is preserved', () => {
     // Allowed: Balance -> Cost Truth. Forbidden: Balance -> Magic Hour.
     expect(BALANCE).toContain("from '../cost-engine/qiyamah-cost-truth'");
     expect(BALANCE).not.toMatch(/magic-hour|magichour|MagicHour/i);
-    expect(BALANCE).not.toMatch(/xpay/i);
+    expect(BALANCE).not.toMatch(/xpay/i);
   });
 
   it('the sovereign boundary has its OWN word for «the money arrived»', () => {
@@ -525,5 +610,49 @@ describe('9 · the dependency direction is preserved', () => {
     const GW = read('src/economy/payment/xpay-payment-gateway.ts');
     expect(GW).toContain('implements IPaymentGateway');
     expect(GW).toContain("readonly gatewayId = 'xpay';");
+  });
+});
+
+/**
+ * ─── WHAT A REPLACED GATEWAY ALMOST TOOK WITH IT ────────────────────────────
+ *
+ *   The Paymob checkout this route supersedes had TWO guards the Empire paid
+ *   for after real audits: money is never taken from an identity nobody has
+ *   proven, and a Creator is never returned to a host the caller chose. When
+ *   the gateway was replaced, neither guard travelled — the NEWER, sanctioned
+ *   path was the weaker one. Found by reading the two routes side by side on
+ *   2026-09-27, before either had ever taken a pound.
+ */
+describe('10 · the checkout route carries the guards the older one earned', () => {
+  const ROUTE = read('app/api/sovereign/economy/xpay-checkout/route.ts');
+
+  it('a session alone does not reach the gateway — identity must be proven', () => {
+    expect(ROUTE).toContain('verificationStateForCreator');
+    expect(ROUTE).toContain('isVerified({ verificationState:');
+    expect(ROUTE).toContain("error: 'identity_not_verified'");
+    // And the refusal comes BEFORE anything that could open a payment session.
+    expect(ROUTE.indexOf('isVerified(')).toBeLessThan(ROUTE.indexOf('createPaymentSession'));
+  });
+
+  it('the identity question is the same one the older route asks', () => {
+    const OLD = read('app/api/billing/checkout/route.ts');
+    for (const token of ['verificationStateForCreator', 'isVerified({ verificationState:']) {
+      expect(OLD).toContain(token);
+      expect(ROUTE).toContain(token);
+    }
+  });
+
+  it('the return destination is the Empire’s, never a header the caller writes', () => {
+    expect(ROUTE).toContain('request.nextUrl.origin');
+    expect(ROUTE).not.toContain("headers.get('origin')");
+    // Both destinations pass through the one rule that refuses absolute URLs.
+    expect(ROUTE).toContain("returnUrl(origin, '/sovereign-balance?paid=1')");
+    expect(ROUTE).toContain("returnUrl(origin, '/sovereign-balance')");
+  });
+
+  it('the page those destinations name actually exists', () => {
+    // A success URL pointing at a route that was never built sends a Creator
+    // to a 404 immediately after paying.
+    expect(() => read('app/sovereign-balance/page.tsx')).not.toThrow();
   });
 });

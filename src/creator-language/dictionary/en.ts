@@ -106,7 +106,7 @@ export const en: Dictionary = {
   'action.enterChamber': 'Enter Qiyamah',
   'action.subscribe': 'Subscribe',
   'action.signInToGenerate': 'Sign in to generate',
-  'action.subscribeToGenerate': 'Subscribe to generate',
+  'action.subscribeToGenerate': 'Top up your Balance to generate',
   'action.retryGeneration': 'Try again',
   'action.generateAnother': 'Generate another',
 };

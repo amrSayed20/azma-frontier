@@ -18,6 +18,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { CHAMBER_TRUTH } from '../truth-registry';
+import { consumptionFor } from '@/src/economy/pricing/sovereign-value-balance';
 import { IMAGE_MODEL_FLEET } from '@/src/sovereign-model-selection/image-model-fleet';
 import { VIDEO_MODEL_FLEET } from '@/src/sovereign-model-selection/video-model-fleet';
 
@@ -103,8 +104,16 @@ describe('3 · no provider name crosses to a Creator', () => {
 
 describe('4 · an unknown price is stated as unknown, never as zero', () => {
   it('the route only quotes a number when the catalog says available', () => {
-    expect(ROUTE).toContain("const priced = estimate.availability === 'available';");
-    expect(ROUTE).toContain('estimatedAzmaUnits: priced ? estimate.estimatedAzmaUnits : null,');
+    // TIGHTENED 2026-09-27: the source of a quoted number moved from the
+    // legacy catalog — which still said 'pending-discovery' for everything,
+    // so a Creator was told every capability was unpriced — to the Founder's
+    // approved consumption table. The rule is untouched: a number is quoted
+    // only when one is known, and what is not known is null, never zero.
+    expect(ROUTE).toContain('const priced = balanceConsumed !== null;');
+    expect(ROUTE).toContain('estimatedAzmaUnits: balanceConsumed,');
+    // A capability with no approved consumption maps to null, not to 0.
+    expect(ROUTE).toContain("'text-to-speech':   null,");
+    expect(ROUTE).not.toMatch(/estimatedAzmaUnits:\s*0/);
   });
 
   it('the Chamber says so rather than printing a confident 0', () => {
@@ -113,14 +122,65 @@ describe('4 · an unknown price is stated as unknown, never as zero', () => {
 });
 
 describe('5 · it is asked for the act the Creator has chosen', () => {
-  it('each of the four acts maps to a capability the route accepts', () => {
-    expect(CLIENT).toContain("image: 'image-generation',");
-    expect(CLIENT).toContain("infographic: 'image-generation',");
-    expect(CLIENT).toContain("video: 'video-generation',");
-    expect(CLIENT).toContain("edit: 'image-editing',");
+  it('each of the four acts names the approved operation it consumes', () => {
+    // CORRECTED 2026-09-27: these mapped acts to cost-engine CAPABILITIES, so
+    // the infographic was quoted as an ordinary image generation although the
+    // approved table prices INFOGRAPHIC in its own row. Both read 200 today —
+    // which is precisely why the borrowing was invisible. Each act is quoted
+    // under its own rule now, and the route derives the capability from it.
+    expect(CLIENT).toContain("image: 'IMAGE_GENERATION',");
+    expect(CLIENT).toContain("infographic: 'INFOGRAPHIC',");
+    expect(CLIENT).toContain("video: 'VIDEO_GENERATION',");
+    expect(CLIENT).toContain("edit: 'IMAGE_EDIT',");
+    // The route declares every step this page can name, and no page sends a
+    // capability alongside it — one table, so the pairing cannot be wrong.
+    for (const step of ['IMAGE_GENERATION', 'INFOGRAPHIC', 'VIDEO_GENERATION', 'IMAGE_EDIT', 'MOTION', 'UPSCALE_2X']) {
+      expect(ROUTE).toContain(`${step}:`);
+    }
     for (const c of ['image-generation', 'video-generation', 'image-editing']) {
       expect(ROUTE).toContain(`'${c}'`);
     }
+  });
+
+  it('every step the approved table names is a step the table really carries', () => {
+    // A step the route offers but the pricing layer does not price would be
+    // quoted as «unknown» forever, and nobody would know why.
+    const declared = [...ROUTE.matchAll(/^ {2}([A-Z_0-9]+):\s*\{ capability:/gm)].map((m) => m[1]!);
+    expect(declared.length).toBeGreaterThanOrEqual(6);
+    for (const step of declared) expect(consumptionFor(step)).toBeDefined();
+  });
+
+  it('a clip is quoted on the seconds the Creator chose, and re-quoted when they change', () => {
+    // «تُحاسَب على ما طلبتَه» is only visible if the figure MOVES with the
+    // ladder. It did not: the quote was fetched once per act, with no
+    // quantity at all, so a 6-second clip and a 10-second clip showed the
+    // same number and neither was the charge.
+    expect(CLIENT).toContain('quoteStep(COST_STEP_OF_ACT[mediaType], durationSeconds)');
+    expect(CLIENT).toContain('}, [mediaType, creatorPresent, durationSeconds]);');
+    expect(ROUTE).toContain("rule?.quantity === 'per-requested-second'");
+  });
+
+  it('the two later steps are priced where their own buttons stand', () => {
+    // The Founder, 2026-09-27: «تعرض التكلفه لكل خطوه اثناء الانتاج». Animating
+    // a still and raising an asset's resolution are paid steps that carried no
+    // price at all.
+    expect(CLIENT).toContain("quoteStep('MOTION', motionSeconds)");
+    expect(CLIENT).toContain("quoteStep('UPSCALE_2X')");
+    expect(CLIENT).toContain('{motionCost && <StepCostLine quote={motionCost} />}');
+    expect(CLIENT).toContain('<StepCostLine quote={upscaleCost} />');
+    // One renderer, so three steps cannot describe the same unit differently.
+    expect(CLIENT.match(/function StepCostLine/g)).toHaveLength(1);
+    expect(CLIENT).toContain('{cost && <StepCostLine quote={cost} showBalance />}');
+  });
+
+  it('none of the three steps holds a price of its own', () => {
+    // Every figure comes from the server, which reads the Founder's table.
+    // A number written into this page is a price written twice.
+    const code = strip('app/qiyamah-chamber/QiyamahChamberClient.tsx');
+    for (const rate of ['200', '70', '50']) {
+      expect(code).not.toMatch(new RegExp(`(balancePerUnit|وحدة سياديّة)[^\n]{0,20}${rate}`));
+    }
+    expect(code).not.toContain('OPERATION_CONSUMPTION');
   });
 
   it('it is never asked before the Chamber knows who is asking', () => {
@@ -129,7 +189,13 @@ describe('5 · it is asked for the act the Creator has chosen', () => {
     // was right to refuse; the Chamber was wrong to ask.
     expect(CLIENT).toContain('if (!creatorPresent) return;');
     expect(CLIENT).toContain('setCreatorPresent(true);');
-    expect(CLIENT).toContain('}, [mediaType, creatorPresent]);');
+    // The dependency list gained `durationSeconds` when the clip began being
+    // quoted on its requested seconds; `creatorPresent` still gates it, which
+    // is what this guard is about.
+    expect(CLIENT).toContain('}, [mediaType, creatorPresent, durationSeconds]);');
+    // And the two later steps are gated by the same condition.
+    expect(CLIENT).toContain('if (!creatorPresent || !animateAssetId) return;');
+    expect(CLIENT).toContain('if (!creatorPresent || !generatedAssetId) return;');
   });
 
   it('a price that cannot be fetched never blocks the work', () => {

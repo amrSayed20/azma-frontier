@@ -88,8 +88,16 @@ describe('2 · UNKNOWN is never converted to zero', () => {
 
   it('the Chamber never prints a confident zero for an unknown price', () => {
     const estimate = read('app/api/sovereign/economy/estimate/route.ts');
-    expect(estimate).toContain("const priced = estimate.availability === 'available';");
-    expect(estimate).toContain('estimatedAzmaUnits: priced ? estimate.estimatedAzmaUnits : null,');
+    // TIGHTENED 2026-09-27: the estimate now quotes the APPROVED consumption
+    // table instead of the legacy catalog, which still carried
+    // availability: 'pending-discovery' and told a Creator every capability
+    // was unpriced. The rule is unchanged and the guard is stronger: what is
+    // unknown is null, and null is what reaches the Chamber — never a zero.
+    expect(estimate).toContain('const priced = balanceConsumed !== null;');
+    expect(estimate).toContain('estimatedAzmaUnits: balanceConsumed,');
+    // A capability with no approved consumption maps to null, not to 0.
+    expect(estimate).toContain("'text-to-speech':   null,");
+    expect(estimate).not.toMatch(/estimatedAzmaUnits:\s*0/);
   });
 
   it('a cost the catalog has not established is recorded as pending, not as 0 cost', () => {

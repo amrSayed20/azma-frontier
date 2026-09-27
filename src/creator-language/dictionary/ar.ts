@@ -102,7 +102,10 @@ export const ar: Dictionary = {
   'action.enterChamber': 'ادخل حجرة القيامة',
   'action.subscribe': 'اشترك',
   'action.signInToGenerate': 'سجّل الدخول للتوليد',
-  'action.subscribeToGenerate': 'اشترك للتوليد',
+  // Not «اشترك»: nothing here renews, recurs or needs cancelling, and the
+  //   policy says so in as many words. A label that contradicts the policy
+  //   beneath it is a false statement wherever it is stored.
+  'action.subscribeToGenerate': 'زِد ميزانك للتوليد',
   'action.retryGeneration': 'حاول مجدداً',
   'action.generateAnother': 'توليد جديد',
 };

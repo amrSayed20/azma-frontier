@@ -1,0 +1,197 @@
+/* AZMA OS — ميزان القيمة السيادي · the Balance surface.
+   Built on the Empire's one existing palette (src/design-system/
+   azma-identity.css). No new colour is invented here, and no
+   font-family is declared locally — the Imperial Typography
+   Constitution owns that, platform-wide. */
+
+.balance-viewport {
+  min-height: 100vh;
+  /* Every surface paints its own ground. A panel with geometry and no
+     background inherits the browser's white, which no test and no type
+     checker can see. */
+  background: var(--azma-void);
+  color: var(--azma-text-primary);
+  padding: 3rem 1.25rem 4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2.5rem;
+}
+
+.balance-header {
+  text-align: center;
+  max-width: 44rem;
+}
+
+.balance-kicker {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  color: var(--azma-text-muted);
+}
+
+.balance-title {
+  margin: 0;
+  font-size: 2.1rem;
+  font-weight: 700;
+  color: var(--azma-text-sacred);
+  text-shadow: 0 0 22px var(--azma-glow-soft);
+}
+
+.balance-current {
+  margin: 1rem 0 0;
+  font-size: 1.05rem;
+  color: var(--azma-text-primary);
+}
+
+.balance-current strong {
+  color: var(--azma-text-sacred);
+  font-size: 1.3rem;
+}
+
+/* ── The four packages ──────────────────────────────────────────────── */
+
+.balance-packages {
+  width: 100%;
+  max-width: 68rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1.25rem;
+}
+
+.balance-package {
+  background: var(--azma-surface);
+  border: 1px solid var(--azma-gold-3);
+  border-radius: var(--azma-radius-panel);
+  box-shadow: var(--azma-shadow-sovereign);
+  padding: 1.75rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: center;
+}
+
+.balance-package-name {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--azma-text-sacred);
+}
+
+.balance-package-price {
+  margin: 0.25rem 0 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.balance-package-amount {
+  font-size: 2.3rem;
+  font-weight: 700;
+  color: var(--azma-gold-6);
+  font-variant-numeric: tabular-nums;
+}
+
+.balance-package-currency {
+  font-size: 0.95rem;
+  color: var(--azma-text-muted);
+}
+
+.balance-package-units {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--azma-text-primary);
+}
+
+.balance-package-units strong {
+  color: var(--azma-text-sacred);
+  font-variant-numeric: tabular-nums;
+}
+
+.balance-package-validity {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--azma-text-muted);
+}
+
+.balance-package-buy {
+  margin-top: 0.9rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--azma-void);
+  background: var(--azma-gold-5);
+  border: 1px solid var(--azma-gold-6);
+  border-radius: var(--azma-radius-panel);
+  cursor: pointer;
+  transition: filter 220ms var(--azma-ease-breath, ease);
+}
+
+.balance-package-buy:hover:not(:disabled) { filter: brightness(1.12); }
+.balance-package-buy:disabled { opacity: 0.55; cursor: default; }
+
+.balance-package-buy:focus-visible {
+  outline: 2px solid var(--azma-gold-7);
+  outline-offset: 3px;
+}
+
+.balance-package-shut {
+  margin: 0.9rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--azma-text-muted);
+}
+
+.balance-package-shut a {
+  color: var(--azma-gold-6);
+  text-decoration: underline;
+}
+
+/* ── What the Empire states plainly ─────────────────────────────────── */
+
+.balance-failure {
+  max-width: 44rem;
+  margin: 0;
+  padding: 0.85rem 1.1rem;
+  background: var(--azma-surface);
+  border: 1px solid var(--azma-conflict, var(--azma-gold-3));
+  border-radius: var(--azma-radius-panel);
+  color: var(--azma-text-primary);
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.balance-rules,
+.balance-gift {
+  width: 100%;
+  max-width: 48rem;
+  background: var(--azma-surface);
+  border: 1px solid var(--azma-gold-2);
+  border-radius: var(--azma-radius-panel);
+  padding: 1.5rem 1.6rem;
+  color: var(--azma-text-primary);
+}
+
+.balance-rules p,
+.balance-gift p {
+  margin: 0 0 0.85rem;
+  font-size: 0.98rem;
+  line-height: 1.95;
+}
+
+.balance-rules p:last-child,
+.balance-gift p:last-child { margin-bottom: 0; }
+
+.balance-rule-emphatic { color: var(--azma-text-sacred); }
+
+.balance-gift {
+  border-color: var(--azma-gold-4);
+}
+
+@media (max-width: 560px) {
+  .balance-viewport { padding: 2rem 1rem 3rem; }
+  .balance-title { font-size: 1.7rem; }
+  .balance-package-amount { font-size: 2rem; }
+}

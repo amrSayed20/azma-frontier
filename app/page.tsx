@@ -5,6 +5,11 @@ import { resolveRequestLocale } from "@/src/creator-language/resolve-request-loc
 import { getDictionary, t } from "@/src/creator-language";
 import { resolveAvailableActions } from "@/src/button-engine";
 import { ArrivalExperience } from "@/src/imperial-experience-engine";
+import {
+  creatorFacingPackages,
+  GIFT_BALANCE,
+  SOVEREIGN_VALUE_BALANCE,
+} from "@/src/economy/pricing/sovereign-value-balance";
 
 const SESSION_COOKIE = "azma_session";
 
@@ -39,5 +44,33 @@ export default async function SovereignGate() {
     ? (knownName ? `${t(dict, 'gate.titleKnownDefault')}، ${knownName}` : t(dict, 'gate.titleKnownDefault'))
     : '';
 
-  return <ArrivalExperience title={title} actions={actions} dict={dict} locale={locale} />;
+  /**
+   * ─── WHAT THE VISIT COSTS, SAID AT THE END OF THE VISIT ───────────────────
+   *
+   *   The Founder, 2026-09-27: «وتعرض الباقات فى نهايه رحله الزائر وليس بعد
+   *   تسجيل الدخول وتخبر المستخدم ان هناك وحدات هديه ممكن ان تمنحها
+   *   الامبراطوريه لمشتركين».
+   *
+   *   So the prices are the closing beat of the arrival, reached after the
+   *   ceremony has finished speaking — not a paywall sprung on someone who has
+   *   just registered. A visitor learns what the Empire's power costs while
+   *   they are still free to walk away, which is the only moment the telling
+   *   is worth anything.
+   *
+   *   This is read HERE, on the server, and passed down already reduced to
+   *   what a Creator may see. The pricing module carries the Empire's cost
+   *   truth — provider rates, the dollar acquisition cost, the FX rate — and a
+   *   client component that imported it would publish all of it in a bundle.
+   */
+  return (
+    <ArrivalExperience
+      title={title}
+      actions={actions}
+      dict={dict}
+      locale={locale}
+      packages={creatorFacingPackages()}
+      unitNameAr={SOVEREIGN_VALUE_BALANCE.nameAr}
+      giftNoticeAr={GIFT_BALANCE.noticeAr}
+    />
+  );
 }

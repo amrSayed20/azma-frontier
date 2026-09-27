@@ -428,8 +428,14 @@
 }
 
 /* ── Standing capabilities (not Storyboard beats) ────────────────────── */
+/* FIXED, not absolute — MEASURED consequence of the closing beat below:
+   this sat at 6% from the bottom of `.arrival`, and `.arrival` grows when
+   the packages are rendered, so the switcher slid down THE PAGE and landed
+   on top of the price rows. Anchored to the viewport it cannot collide with
+   content, and on a scene with no packages — where the page is exactly one
+   viewport tall — it renders in the identical place it always did. */
 .arrival-language {
-  position: absolute;
+  position: fixed;
   z-index: 3;
   left: 50%;
   bottom: 6%;
@@ -700,4 +706,97 @@
 
 @media (max-width: 900px) {
   .arrival-wordmark { font-size: 32px; }
+}
+
+/* ── THE CLOSING BEAT: WHAT THE POWER COSTS ───────────────────────────
+   The last thing a visitor reads, after the ceremony has finished
+   speaking. Quiet by construction: the scene's one path forward is the
+   threshold above it, and nothing here may compete with it — no card
+   lift, no accent fill, no button. A price list at the front door of an
+   empire should read like an inscription, not like a shop. */
+
+.arrival-value {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 60rem);
+  margin-top: var(--azma-space-10);
+  /* Bottom room for the viewport-anchored language switcher, which floats
+     over whatever the page's last element happens to be. */
+  padding: var(--azma-space-6) var(--azma-space-4) var(--azma-space-16);
+  border-top: 1px solid rgba(var(--azma-gold-rgb), 0.18);
+  color: var(--azma-text-primary);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .arrival-value { animation: arrival-fade-rise 1.2s 5200ms var(--azma-ease-architectural) both; }
+}
+
+.arrival-value-title {
+  margin: 0 0 var(--azma-space-6);
+  font-size: 1.02rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--azma-text-muted);
+}
+
+.arrival-value-packages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--azma-space-4);
+}
+
+.arrival-value-package {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: var(--azma-space-4) var(--azma-space-3);
+  /* No fill and no shadow: this is an inscription on the scene's own
+     ground, not a panel floating above it. A hairline is enough to
+     separate four readings from one another. */
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.14);
+  border-radius: 4px;
+}
+
+.arrival-value-name {
+  font-size: 1.05rem;
+  color: var(--azma-text-sacred);
+}
+
+.arrival-value-price {
+  font-size: 1.5rem;
+  color: var(--azma-gold-6);
+  font-variant-numeric: tabular-nums;
+}
+
+.arrival-value-currency {
+  font-size: 0.8rem;
+  color: var(--azma-text-muted);
+}
+
+.arrival-value-units {
+  font-size: 0.92rem;
+  color: var(--azma-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.arrival-value-validity {
+  font-size: 0.82rem;
+  color: var(--azma-text-muted);
+}
+
+.arrival-value-gift {
+  margin: var(--azma-space-6) auto 0;
+  max-width: 44rem;
+  font-size: 0.9rem;
+  line-height: 1.9;
+  color: var(--azma-text-muted);
+}
+
+@media (max-width: 560px) {
+  .arrival-value { margin-top: var(--azma-space-10); }
+  .arrival-value-price { font-size: 1.3rem; }
 }

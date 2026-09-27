@@ -70,7 +70,14 @@ export const BALANCE_UNIT_EGP = BALANCE_UNIT_USD * FX.usdToEgp;
 // THE APPROVED PACKAGES
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type PackageValidity = 'no-expiry' | 'six-months';
+/**
+ * `twenty-eight-days` — the three standard packages. The Balance has a
+ *   28-day life, and what remains at the end is NOT refunded in cash. It IS
+ *   carried forward in full if the Creator buys another standard package.
+ *
+ * `six-months` — الريادة alone, under its own approved expiry treatment.
+ */
+export type PackageValidity = 'twenty-eight-days' | 'six-months';
 
 export interface SovereignPackage {
   readonly packageId: string;
@@ -87,10 +94,10 @@ export interface SovereignPackage {
  * ─── APPROVED. DO NOT ALTER A SINGLE FIGURE. ────────────────────────────────
  */
 export const SOVEREIGN_PACKAGES: readonly SovereignPackage[] = [
-  { packageId: 'asas',     nameAr: 'الأساس',   priceEgp: 99,    balanceUnits: 1_375, validity: 'no-expiry',  recurrence: 'one-time', transferable: false },
-  { packageId: 'irtiqaa',  nameAr: 'الارتقاء', priceEgp: 249,   balanceUnits: 3_450, validity: 'no-expiry',  recurrence: 'one-time', transferable: false },
-  { packageId: 'ihtiraf',  nameAr: 'الاحتراف', priceEgp: 499,   balanceUnits: 6_900, validity: 'no-expiry',  recurrence: 'one-time', transferable: false },
-  { packageId: 'riyada',   nameAr: 'الريادة',  priceEgp: 1_200, balanceUnits: 8_640, validity: 'six-months', recurrence: 'one-time', transferable: false },
+  { packageId: 'asas',     nameAr: 'الأساس',   priceEgp: 99,    balanceUnits: 1_375, validity: 'twenty-eight-days', recurrence: 'one-time', transferable: false },
+  { packageId: 'irtiqaa',  nameAr: 'الارتقاء', priceEgp: 249,   balanceUnits: 3_450, validity: 'twenty-eight-days', recurrence: 'one-time', transferable: false },
+  { packageId: 'ihtiraf',  nameAr: 'الاحتراف', priceEgp: 499,   balanceUnits: 6_900, validity: 'twenty-eight-days', recurrence: 'one-time', transferable: false },
+  { packageId: 'riyada',   nameAr: 'الريادة',  priceEgp: 1_200, balanceUnits: 16_670, validity: 'six-months', recurrence: 'one-time', transferable: false },
 ];
 
 export const packageById = (id: string): SovereignPackage | undefined =>
@@ -100,31 +107,52 @@ export const packageById = (id: string): SovereignPackage | undefined =>
 export const unitPriceEgp = (pkg: SovereignPackage): number => pkg.priceEgp / pkg.balanceUnits;
 
 /**
- * ─── A MEASURED FACT ABOUT الريادة, RECORDED AND NOT CORRECTED ──────────────
+ * ─── الريادة, CORRECTED BY THE FOUNDER AND NOW AT PARITY ────────────────────
  *
- *   The three ordinary packages all sell a unit at ≈0.0720 EGP, which is the
- *   reference rate. الريادة sells one at 0.13889 EGP — 1.93 TIMES the price
- *   per unit of الأساس. At the ordinary rate its 8,640 units would cost 622
- *   EGP, so a Creator buying it pays 578 EGP MORE for the same Balance, and
- *   that Balance additionally expires in six months with a third of whatever
- *   remains removed.
+ *   FINAL AMENDMENT 2026-09-27 replaced 8,640 units with 16,670.
  *
- *   The directive describes it as «1,000 EGP normal value + 200 EGP
- *   ADDITIONAL value». The arithmetic does not support the word additional.
+ *   WHAT THE OLD FIGURE WAS: 1,200 EGP for 8,640 units is 0.13889 EGP per
+ *   unit — 1.93 TIMES the rate of every other package, for Balance that also
+ *   expires. A Creator would have paid 578 EGP more than the same Balance
+ *   costs inside الأساس. That was reported rather than quietly shipped, and
+ *   the Founder corrected the number.
  *
- *   The number is the Founder's and stands exactly as ordered. What does NOT
- *   stand is any claim about it: `MAY_CLAIM_BONUS` is false, and a guard
- *   forbids the word «إضافي» or «هدية» or «خصم» on this package anywhere a
- *   Creator can read it. An unreal discount is the one commercial statement
- *   the directive names as forbidden, and it is forbidden here by mechanism
- *   rather than by intention.
+ *   WHAT IT IS NOW: 1,200 / 16,670 = 0.0719856 EGP per unit — the reference
+ *   rate exactly, and by a hair the keenest of the four. The overcharge is
+ *   gone.
+ *
+ *   THE ONE THING STILL NOT A BONUS: the amendment names 2,778 of those units
+ *   a «Leadership Bonus», being the 200 EGP part of a 1,200 EGP price. But
+ *   the Creator PAYS that 200 EGP, and 1,200 EGP buys exactly 16,670 units at
+ *   the standard rate. Nothing here is given: the composition describes how
+ *   the price was reasoned, not value added on top of it.
+ *
+ *   So the units stand exactly as approved and the composition is RECORDED,
+ *   while `MAY_CLAIM_BONUS` stays false — no creator-facing surface may call
+ *   those 2,778 a gift, a bonus or a discount, because they were bought.
+ *   «It MUST NOT claim a discount that is not mathematically real.»
+ *
+ *   SUPERSEDED 2026-09-27 by the carry-forward amendment: الريادة is no
+ *   longer the only package with an end. The three standard packages now run
+ *   a 28-day cycle. The difference that remains is what happens AT the end —
+ *   a standard Balance carries forward in full if the Creator buys again,
+ *   while الريادة loses a third and returns the rest permanently.
  */
-export const RIYADA_VALUE_NOTE = {
+export const RIYADA_COMPOSITION = {
   packageId: 'riyada',
-  unitPriceEgp: 1200 / 8640,
+  /** The Founder's approved composition, recorded as he defined it. */
+  baseUnits: 13_892,
+  bonusUnits: 2_778,
+  baseValueEgp: 1_000,
+  bonusValueEgp: 200,
+  /** 13,892 + 2,778 — and a guard holds this equals the package's own units. */
+  totalUnits: 16_670,
+  unitPriceEgp: 1200 / 16_670,
   ordinaryUnitPriceEgp: 99 / 1375,
-  timesDearer: (1200 / 8640) / (99 / 1375),
-  whatItWouldCostAtOrdinaryRate: 8640 * (99 / 1375),
+  /** ≈1.0 — parity. It was 1.929 before the amendment. */
+  timesDearerThanOrdinary: (1200 / 16_670) / (99 / 1375),
+  supersededUnits: 8_640,
+  /** The Creator paid for every unit, the 2,778 included. */
   MAY_CLAIM_BONUS: false as const,
   MAY_CLAIM_DISCOUNT: false as const,
 } as const;
@@ -143,7 +171,9 @@ export interface RiyadaExpiryOutcome {
  * At the end of the six-month period: a third of what is LEFT is removed, and
  * two thirds return as ordinary Balance.
  *
- *   · The returned Balance NEVER expires.
+ *   · The returned Balance NEVER expires. The 28-day standard cycle does NOT
+ *     apply to it: the amendment that created that cycle excluded الريادة
+ *     from it by name, and this Balance is that package's own outcome.
  *   · It starts no new period and restarts no countdown.
  *   · It is not transferable.
  *
@@ -160,6 +190,70 @@ export function riyadaExpiry(remainingAtExpiry: number): RiyadaExpiryOutcome {
 
 /** Six months, in milliseconds, from the moment the package was granted. */
 export const RIYADA_PERIOD_MS = 182 * 24 * 60 * 60 * 1000;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THE STANDARD 28-DAY CYCLE, AND WHAT CARRIES FORWARD
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** 28 days from the moment a standard package was granted. */
+export const STANDARD_CYCLE_MS = 28 * 24 * 60 * 60 * 1000;
+
+export interface CycleEndOutcome {
+  readonly remainingAtCycleEnd: number;
+  /** Carried into the new Balance when another standard package is bought. */
+  readonly carriedForward: number;
+  /** Cash returned. Always zero — carry-forward is not a refund. */
+  readonly cashRefunded: 0;
+  readonly requiresNewPurchase: true;
+}
+
+/**
+ * ─── THE END OF A STANDARD CYCLE ────────────────────────────────────────────
+ *
+ *   FINAL FOUNDER AMENDMENT 2026-09-27. At 28 days, whatever is left:
+ *
+ *     · is NOT refunded in cash — not any part of it;
+ *     · is carried forward IN FULL into the next standard package;
+ *     · and carries only if the Creator BUYS one.
+ *
+ *   ─── WHY THIS IS NOT A SUBSCRIPTION, AND MUST NEVER BE CALLED ONE ────
+ *
+ *   Nothing renews. No card is charged again. Nothing arrives unless the
+ *   Creator chooses to buy, and if they never buy again, nothing is taken
+ *   from them because nothing was ever scheduled. `requiresNewPurchase` is
+ *   always true, and it is the whole difference between this and a
+ *   subscription — which is a word no surface may use for it.
+ *
+ *   ─── WHAT A CREATOR MUST BE TOLD PLAINLY ─────────────────────────────
+ *
+ *   The Balance DOES have an end. If they do not buy again, what is left
+ *   stops being usable and no money comes back. A carry-forward rule
+ *   described only as «your balance carries over» would be a half-truth,
+ *   because the carrying is conditional on spending again. The policy says
+ *   both halves, and a guard holds that it does.
+ */
+export function standardCycleEnd(remainingAtCycleEnd: number): CycleEndOutcome {
+  const remaining = Math.max(0, Math.floor(remainingAtCycleEnd));
+  return {
+    remainingAtCycleEnd: remaining,
+    // In full. Nothing is shaved off for carrying — that is the Riyada rule,
+    // and it does not apply here.
+    carriedForward: remaining,
+    cashRefunded: 0,
+    requiresNewPurchase: true,
+  };
+}
+
+/**
+ * How long a Creator has to buy again before a carried Balance is lost.
+ *
+ * The amendment says «in the following cycle» and does not define its edge.
+ * A Creator who returns on day 30, or on day 60, has to be answered — and
+ * the answer changes what they are owed, so it is not an engineer's to pick.
+ * Until it is ruled, NO Balance is expired by this system: the rule is
+ * documented and unenforced rather than enforced at a boundary nobody set.
+ */
+export const CARRY_FORWARD_WINDOW: 'PENDING FOUNDER DECISION' = 'PENDING FOUNDER DECISION';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WHAT AN OPERATION CONSUMES
@@ -242,33 +336,45 @@ export const consumptionFor = (capability: string): ConsumptionRule | undefined 
   OPERATION_CONSUMPTION.find((r) => r.capability === capability);
 
 /**
- * ─── THE PACKAGE LOCK ───────────────────────────────────────────────────────
+ * ─── THE PRICING GATE — CLOSED 2026-09-27 ───────────────────────────────────
  *
- *   The directive permits this to become true only after SEVEN conditions,
- *   the fifth of which is «production proof passes».
+ *   TRUE. Every price, Balance and consumption figure above is the Founder's
+ *   final approved number, and الريادة — the last one still in dispute — was
+ *   corrected by him to 16,670 in the closing amendment.
  *
- *   It is FALSE, and the reason is not an oversight: no payment-gateway
- *   SECRET key exists on the server. The key supplied was a PUBLISHABLE one,
- *   and the gateway answered it HTTP 403 `permission_denied — Required:
- *   CHECKOUT_SESSIONS_READ`. No sandbox payment and no production payment has
- *   happened, so conditions 4 and 5 are unmet and this stays false.
+ *   ─── WHY THIS FLAG NOW SAYS ONLY ONE THING ───────────────────────────
  *
- *   The gateway is deliberately NOT NAMED here. This layer prices the
- *   Empire's own unit; naming a payment provider in it — even in a sentence
- *   of explanation — is the first inch of the dependency the architecture
- *   forbids, and a guard keeps that inch closed.
+ *   It used to mean two: «the prices are approved» AND «a payment has been
+ *   proven». Those are different facts with different owners, and a flag
+ *   meaning two things becomes false the moment they disagree — which is
+ *   exactly where they stand today.
  *
- *   While it is false the commercial route REFUSES to sell. A price that
- *   quietly works before its proof is the failure this lock exists to
- *   prevent: nobody discovers it until a Creator has been charged by it.
+ *   This one means: THE PRICES ARE APPROVED. That is true.
+ *
+ *   Whether money can be taken is a SEPARATE gate and it is still shut: no
+ *   payment-gateway secret key exists, so the checkout route refuses with
+ *   `payment_gateway_unavailable` whatever this flag says. Nothing can be
+ *   sold today, and the reason is kept where the reason belongs rather than
+ *   borrowed by a flag about prices.
  */
-export const BALANCE_PRICING_APPROVED = false as const;
+export const BALANCE_PRICING_APPROVED = true as const;
 
-/** Exactly why, so the reason is never guessed from the flag alone. */
-export const PRICING_LOCK_REASON =
-  'Sandbox and production payment proof have not been performed: no payment-gateway SECRET ' +
-  'key exists on the server (the key supplied was a PUBLISHABLE one, and the gateway answered ' +
-  'it HTTP 403 permission_denied). Directive XXVII conditions 4 and 5 are unmet.';
+/**
+ * What still prevents a sale — which is NOT the pricing.
+ *
+ * The gateway is deliberately not named: this layer prices the Empire's own
+ * unit, and naming a payment provider in it, even in a sentence of
+ * explanation, is the first inch of a dependency the architecture forbids.
+ */
+export const PAYMENT_PROOF_STATUS = {
+  pricingApproved: true,
+  paymentProvenInSandbox: false,
+  paymentProvenInProduction: false,
+  blockedBy:
+    'No payment-gateway SECRET key exists on the server. The key supplied was a PUBLISHABLE ' +
+    'one, and the gateway answered it HTTP 403 permission_denied. Until a secret key and a ' +
+    'webhook signing secret are configured, no payment can be taken and none is simulated.',
+} as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // THE CALCULATION
@@ -349,8 +455,132 @@ export function creatorFacingCost(capability: string, quantity = 1): CreatorFaci
 // WHAT REMAINS THE FOUNDER'S TO DECIDE
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GIFT BALANCE — WHAT MAY BE GIVEN, SAID SO IT CANNOT BE MISREAD
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The Empire MAY grant Balance to a subscriber. It does not promise to.
+ *
+ * ─── WHY THE WORDING IS THE WHOLE FEATURE ───────────────────────────────────
+ *
+ *   «قد تمنح» is a discretion. «تمنح» is an entitlement a Creator can demand
+ *   and an advertising regulator can hold the Empire to. One letter apart and
+ *   an entirely different promise, so the sentence a Creator reads is fixed
+ *   HERE, once, rather than written afresh by whoever builds the next screen.
+ *
+ *   Two things it must never say: an amount, or a condition that sounds like
+ *   a rule. «Buy the largest package and receive 500» is a contract. What
+ *   this says instead is that gifts exist, arrive by the Empire's own choice,
+ *   and are visible in the ledger when they arrive.
+ *
+ *   Every granted gift is an ordinary ledger credit like any other: it is
+ *   recorded, it does not expire, and it is not transferable.
+ */
+export const GIFT_BALANCE = {
+  /** The one sentence a creator surface may show. Guarded. */
+  noticeAr:
+    'قد تمنح الإمبراطورية وحداتٍ من الميزان هديةً لمشتركيها، في مناسبات تختارها هي. '
+    + 'وهي تفضّلٌ لا استحقاق، ولا تُطلب، وتظهر في سجلّ رصيدك حين تُمنح.',
+  /** Discretionary. Never promised, never scheduled, never an amount. */
+  isEntitlement: false as const,
+  isPromised: false as const,
+  /** A granted gift behaves exactly like purchased ordinary Balance. */
+  expires: false as const,
+  transferable: false as const,
+  /** Granted only by a recorded administrative action. */
+  grantedBy: 'recorded administrative ledger event',
+} as const;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WHAT MAY CROSS TO A BROWSER
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const VALIDITY_AR: Record<PackageValidity, string> = {
+  'twenty-eight-days': '٢٨ يوماً',
+  'six-months': 'ستّة أشهر',
+};
+
+/** Exactly the fields a creator-facing surface may show. */
+export interface CreatorFacingPackage {
+  readonly packageId: string;
+  readonly nameAr: string;
+  readonly priceEgp: number;
+  readonly balanceUnits: number;
+  readonly validityAr: string;
+}
+
+/**
+ * The packages, reduced to what a Creator sees.
+ *
+ * ─── WHY A PROJECTION AND NOT THE ARRAY ─────────────────────────────────────
+ *
+ *   This module imports the cost-truth table: provider credit rates, dollar
+ *   acquisition cost, the FX rate. Importing THIS file from a `'use client'`
+ *   component would bundle that table into JavaScript any visitor can read —
+ *   the Empire's provider costs, published, by accident, through a price list.
+ *
+ *   So nothing client-side imports this module. A server component reads it
+ *   and passes THIS shape down: four names, four prices, four balances, and a
+ *   validity already in Arabic. No cost, no basis, no provider, no margin —
+ *   not because a browser would render them, but because a browser would
+ *   RECEIVE them.
+ */
+export function creatorFacingPackages(): readonly CreatorFacingPackage[] {
+  return SOVEREIGN_PACKAGES.map((p) => ({
+    packageId: p.packageId,
+    nameAr: p.nameAr,
+    priceEgp: p.priceEgp,
+    balanceUnits: p.balanceUnits,
+    validityAr: VALIDITY_AR[p.validity],
+  }));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WHAT A CREATOR IS TOLD — ONE VOCABULARY, NOT ONE PER SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Every sentence a creator-facing surface may say about the Balance, fixed
+ * here once.
+ *
+ * ─── WHY THE WORDS LIVE BESIDE THE NUMBERS ──────────────────────────────────
+ *
+ *   The packages are about to appear on two different surfaces — the end of a
+ *   visitor's journey and the Creator's own Balance page — and more will
+ *   follow. If each screen writes its own sentence about the 28 days, the
+ *   Empire will be making four slightly different promises about the same
+ *   rule, and the one a Creator relies on will be whichever screen they
+ *   happened to read. The policy documents state these same rules in prose;
+ *   these are the same rules in the one place a surface may read them from.
+ *
+ *   `GIFT_BALANCE.noticeAr` deliberately stays where it is: its wording is a
+ *   legal distinction in itself and already carries its own reasoning.
+ */
+export const BALANCE_NOTICES_AR = {
+  /** The three standard packages. Never says «subscription». */
+  standardValidity:
+    'رصيد الباقات الثلاث صلاحيته ثمانية وعشرون يوماً من تاريخ الشراء.',
+  /** The whole 28-day rule, both halves — the second half is the honest one. */
+  carryForward:
+    'وعند انتهاء المدّة لا يُردّ المتبقّي نقداً، ويُرحَّل كاملاً إذا اشتريتَ باقة عادية جديدة. '
+    + 'وإن لم تشترِ، يتوقّف المتبقّي عن الاستعمال ولا يعود إليك مال.',
+  /** Said plainly because the word «package» invites the wrong assumption. */
+  notASubscription:
+    'وليس هذا اشتراكاً: لا تجديد تلقائي، ولا خصم دوري، ولا شيء يُسحب من بطاقتك بلا طلبك، ولا شيء تحتاج إلى إلغائه.',
+  /** الريادة's own ending. Excluded from the 28-day rule by the Founder. */
+  riyadaValidity:
+    'ورصيد الريادة صلاحيته ستّة أشهر، ومستثنىً من قاعدة الثمانية والعشرين يوماً. '
+    + 'وعند انتهائها يُحذف ثلث المتبقّي، ويعود ثلثاه إليك رصيداً عادياً لا ينتهي.',
+  /** The determinism rule. A Creator sees one number, twice. */
+  chargedOnRequested:
+    'وتُحاسَب على ما طلبتَه لا على ما أنتجه النظام: المدّة التي اخترتَها هي المدّة التي تُخصم، ويُعرض عليك الاستهلاك قبل التنفيذ دائماً.',
+  /** Nothing is transferable, in either direction. */
+  notTransferable: 'ولا يُنقل الميزان بين الحسابات.',
+} as const;
+
 export const PENDING_FOUNDER_DECISIONS: readonly string[] = [
-  'RIYADA_UNIT_PRICE — الريادة sells a unit at 1.93x the price of every other package while being described as carrying additional value. The number stands as ordered; the claim does not. See RIYADA_VALUE_NOTE.',
+  'RIYADA_BONUS_WORDING — the approved composition names 2,778 units a «bonus», but the Creator pays the 200 EGP they cost: 1,200 EGP buys exactly 16,670 at the standard rate. The units are correct and final; only the word «bonus» is unsupported, and no surface uses it. See RIYADA_COMPOSITION.',
   'COURTESY_REGENERATION — whether a discretionary free re-run is offered on creative dissatisfaction, and how often. Nothing is granted until this is ruled.',
   'VAT — whether Egyptian VAT applies to the package price, and whether prices are inclusive.',
 ];

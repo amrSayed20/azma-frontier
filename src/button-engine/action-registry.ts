@@ -22,7 +22,15 @@ export const CONSTITUTIONAL_ACTIONS: Readonly<Record<ConstitutionalActionId, Act
   'founder-no-subscription-needed': { labelKey: 'subscribe.founderNotice', kind: 'informational' },
 
   'sign-in-to-generate': { labelKey: 'action.signInToGenerate', href: '/login', kind: 'navigate' },
-  'subscribe-to-generate': { labelKey: 'action.subscribeToGenerate', href: '/subscribe', kind: 'navigate' },
+  /**
+   * REPOINTED 2026-09-27. This sent a Creator whose Balance had run out to
+   * /subscribe — a page offering a single plan that is not among the Founder's
+   * four approved packages, through a payment provider he had already
+   * replaced. The action's id is an engineer's identifier and is left alone;
+   * what a Creator reads and where they land are both corrected. The Balance
+   * is not a subscription, and no surface may call it one.
+   */
+  'subscribe-to-generate': { labelKey: 'action.subscribeToGenerate', href: '/sovereign-balance', kind: 'navigate' },
   'retry-generation': { labelKey: 'action.retryGeneration', kind: 'submit' },
   'generate-another': { labelKey: 'action.generateAnother', kind: 'submit' },
 };

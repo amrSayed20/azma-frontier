@@ -1577,6 +1577,10 @@
   color: var(--text-muted);
 }
 .cost-line strong { color: var(--gold-neon); font-weight: 700; }
+/* The requested seconds, said beside the figure they produced — so the
+   Creator sees why the number is what it is, and sees it move with the
+   ladder. Quieter than the figure; it explains it, it is not it. */
+.cost-basis { opacity: 0.66; font-size: 0.94em; }
 .cost-balance { opacity: 0.72; }
 .cost-trial { color: var(--gold-neon); opacity: 0.85; }
 .cost-line--blocked .cost-blocker { color: var(--crimson-neon); }

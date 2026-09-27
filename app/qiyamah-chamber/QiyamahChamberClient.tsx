@@ -103,6 +103,91 @@ interface QiyamahChamberClientProps {
   readonly imageAspectOptions?: readonly string[];
 }
 
+/**
+ * What the estimate door answers. `estimatedAzmaUnits` is null when the Empire
+ * cannot state a price — which is said as «unknown», never rendered as 0.
+ */
+interface StepQuote {
+  readonly workAr: string;
+  readonly estimatedAzmaUnits: number | null;
+  readonly priced: boolean;
+  readonly canProceed: boolean;
+  readonly availableUnits: number;
+  readonly trialAvailable: boolean;
+  readonly quantity?: number;
+  readonly perSecond?: boolean;
+  readonly blockerAr?: string;
+}
+
+/**
+ * ─── ONE DOOR, ASKED BY NAME ────────────────────────────────────────────────
+ *
+ *   The step is named, and the route derives the capability from it — so this
+ *   page holds no opinion about what anything costs and cannot pair a step
+ *   with the wrong rule. Every figure a Creator sees in this room comes from
+ *   the Founder's approved consumption table, read on the server.
+ *
+ *   `quantity` is the REQUESTED seconds for per-second work. It is the number
+ *   the Creator chose and can see, and the same number the production request
+ *   carries.
+ */
+async function quoteStep(step: string, quantity = 1): Promise<StepQuote | null> {
+  try {
+    const res = await fetch('/api/sovereign/economy/estimate', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ step, quantity }),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as StepQuote;
+  } catch {
+    // A price we cannot fetch is simply not shown. It never blocks the work.
+    return null;
+  }
+}
+
+/**
+ * ─── ONE WAY OF SAYING WHAT A STEP COSTS ────────────────────────────────────
+ *
+ *   Three steps in this room are paid, and each was one hand-written line away
+ *   from telling a Creator something slightly different about the same unit.
+ *   They share this.
+ *
+ *   For per-second work the requested seconds are named beside the figure, so
+ *   the Creator can see WHY the number is what it is — and see it change when
+ *   they move the ladder, which is the only way «تُحاسَب على ما طلبتَه» is
+ *   visible rather than merely true.
+ */
+/**
+ * ─── WESTERN DIGITS FOR FIGURES, ARABIC-INDIC FOR PROSE ─────────────────────
+ *
+ *   The approved policy tables print «99 ج.م» and «16,670», while their prose
+ *   reads «٢٨ يوماً». That split is deliberate and it is kept here: a price a
+ *   Creator may compare, quote or dispute is written the way the policy writes
+ *   it, so the same number is never printed two ways by the Empire. `ar-EG`
+ *   would render ٩٩ — correct Arabic, and a different-looking price from the
+ *   one in the document a Creator is held to.
+ */
+function StepCostLine({ quote, showBalance = false }: { readonly quote: StepQuote; readonly showBalance?: boolean }) {
+  return (
+    <p className={`cost-line${quote.canProceed ? '' : ' cost-line--blocked'}`} role="status">
+      {quote.priced && quote.estimatedAzmaUnits !== null
+        ? (
+          <>
+            {quote.workAr} — <strong>{quote.estimatedAzmaUnits.toLocaleString('en-US')}</strong> وحدة سياديّة
+            {quote.perSecond && quote.quantity
+              ? <span className="cost-basis"> (لمدّة {quote.quantity.toLocaleString('en-US')} ثانية)</span>
+              : null}
+          </>
+        )
+        : <>{quote.workAr} — الكُلفة غير مُقدَّرة بعد</>}
+      {showBalance && <span className="cost-balance">رصيدك {quote.availableUnits.toLocaleString('en-US')}</span>}
+      {quote.trialAvailable && <span className="cost-trial">تجربتك سارية</span>}
+      {quote.blockerAr && <span className="cost-blocker">{quote.blockerAr}</span>}
+    </p>
+  );
+}
+
 export function QiyamahChamberClient({
   dict,
   chamberVision,
@@ -207,10 +292,20 @@ export function QiyamahChamberClient({
   const [upscaleState, setUpscaleState] = useState<'idle' | 'running' | 'ready' | 'failed'>('idle');
   const [upscaleError, setUpscaleError] = useState<string | null>(null);
 
-  const [cost, setCost] = useState<{
-    workAr: string; estimatedAzmaUnits: number | null; priced: boolean;
-    canProceed: boolean; availableUnits: number; trialAvailable: boolean; blockerAr?: string;
-  } | null>(null);
+  const [cost, setCost] = useState<StepQuote | null>(null);
+  /**
+   * ─── THE COST OF EVERY STEP, NOT OF THE FIRST ONE ─────────────────────────
+   *
+   *   The Founder, 2026-09-27: «على ان تعرض التكلفه لكل خطوه اثناء الانتاج».
+   *
+   *   Animating a still and raising an asset's resolution are two paid steps a
+   *   Creator takes AFTER the first production, from a different part of this
+   *   room — and each carried no price at all. A Creator pressed «ابعث الحركة»
+   *   with no idea what it would take from their Balance, which is the exact
+   *   failure the pre-flight quote on the main act exists to prevent.
+   */
+  const [motionCost,  setMotionCost]  = useState<StepQuote | null>(null);
+  const [upscaleCost, setUpscaleCost] = useState<StepQuote | null>(null);
   const [constructedPrompt,  setConstructedPrompt]  = useState('');
   // Tracks the initial Qiyamah expansion so the Creator can restore it after editing
   const [originalConstructedPrompt, setOriginalConstructedPrompt] = useState('');
@@ -922,11 +1017,21 @@ export function QiyamahChamberClient({
     if (animateAssetId && unreachableAssetIds.includes(animateAssetId)) setAnimateAssetId(null);
   }, [unreachableAssetIds, editingAssetId, animateAssetId]);
 
-  const COST_CAPABILITY_OF_ACT = {
-    image: 'image-generation',
-    infographic: 'image-generation',
-    video: 'video-generation',
-    edit: 'image-editing',
+  /**
+   * Each act names the approved operation it consumes.
+   *
+   *   CORRECTED 2026-09-27: this mapped every act to a cost-engine CAPABILITY,
+   *   which sent the infographic to be priced as an ordinary image generation.
+   *   The approved table prices INFOGRAPHIC in its own row. Both rows read 200
+   *   today, so nothing was visibly wrong — and nothing would be visibly wrong
+   *   on the day the Founder changed one of them either, which is the whole
+   *   problem. The act is quoted under its own rule now.
+   */
+  const COST_STEP_OF_ACT = {
+    image: 'IMAGE_GENERATION',
+    infographic: 'INFOGRAPHIC',
+    video: 'VIDEO_GENERATION',
+    edit: 'IMAGE_EDIT',
   } as const;
 
   useEffect(() => {
@@ -935,21 +1040,39 @@ export function QiyamahChamberClient({
     // Never before the Chamber knows who is asking — see creatorPresent.
     if (!creatorPresent) return;
     void (async () => {
-      try {
-        const res = await fetch('/api/sovereign/economy/estimate', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ capability: COST_CAPABILITY_OF_ACT[mediaType] }),
-        });
-        if (!res.ok || abandoned) return;
-        setCost(await res.json());
-      } catch {
-        // A price we cannot fetch is simply not shown. It never blocks the work.
-      }
+      // The seconds the Creator chose. A clip is charged on what was asked
+      // for, so the figure shown must move when the ladder does.
+      const quote = await quoteStep(COST_STEP_OF_ACT[mediaType], durationSeconds);
+      if (!abandoned && quote) setCost(quote);
     })();
     return () => { abandoned = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mediaType, creatorPresent]);
+  }, [mediaType, creatorPresent, durationSeconds]);
+
+  // ── The two later steps, each priced where its own button stands ──────────
+  const motionSeconds = animationModels.find((m) => m.modelId === animateModelId)?.durationSeconds ?? 5;
+
+  useEffect(() => {
+    let abandoned = false;
+    setMotionCost(null);
+    if (!creatorPresent || !animateAssetId) return;
+    void (async () => {
+      const quote = await quoteStep('MOTION', motionSeconds);
+      if (!abandoned && quote) setMotionCost(quote);
+    })();
+    return () => { abandoned = true; };
+  }, [creatorPresent, animateAssetId, motionSeconds]);
+
+  useEffect(() => {
+    let abandoned = false;
+    setUpscaleCost(null);
+    if (!creatorPresent || !generatedAssetId) return;
+    void (async () => {
+      const quote = await quoteStep('UPSCALE_2X');
+      if (!abandoned && quote) setUpscaleCost(quote);
+    })();
+    return () => { abandoned = true; };
+  }, [creatorPresent, generatedAssetId]);
 
   const hasGalleryContent = generations.length > 0 || uploadedItems.length > 0;
 
@@ -1457,6 +1580,8 @@ export function QiyamahChamberClient({
                         </div>
                       )}
 
+                      {motionCost && <StepCostLine quote={motionCost} />}
+
                       {animateState === 'running' && (
                         <p className="edit-act-status" role="status">الحركة قيد البعث… لا تغلق الصفحة.</p>
                       )}
@@ -1695,16 +1820,7 @@ export function QiyamahChamberClient({
                 <p className="construction-error" role="alert">{constructionError}</p>
               )}
 
-              {cost && (
-                <p className={`cost-line${cost.canProceed ? '' : ' cost-line--blocked'}`} role="status">
-                  {cost.priced && cost.estimatedAzmaUnits !== null
-                    ? <>{cost.workAr} — <strong>{cost.estimatedAzmaUnits}</strong> وحدة سياديّة</>
-                    : <>{cost.workAr} — الكُلفة غير مُقدَّرة بعد</>}
-                  <span className="cost-balance">رصيدك {cost.availableUnits}</span>
-                  {cost.trialAvailable && <span className="cost-trial">تجربتك سارية</span>}
-                  {cost.blockerAr && <span className="cost-blocker">{cost.blockerAr}</span>}
-                </p>
-              )}
+              {cost && <StepCostLine quote={cost} showBalance />}
 
               {stage === 'constructing' ? (
                 <div className="construction-progress">
@@ -1975,6 +2091,7 @@ export function QiyamahChamberClient({
                       </>
                     )}
                   </div>
+                  {upscaleCost && upscaleState !== 'ready' && <StepCostLine quote={upscaleCost} />}
                   {upscaleState === 'ready' && (
                     <p className="next-acts-note" role="status">رُفعت الدقّة، وهذا هو الناتج الجديد.</p>
                   )}

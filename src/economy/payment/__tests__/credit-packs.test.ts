@@ -31,13 +31,13 @@ describe('the four approved packages', () => {
     expect(getCreditPack('asas').azmaUnits).toBe(1375);
     expect(getCreditPack('irtiqaa').azmaUnits).toBe(3450);
     expect(getCreditPack('ihtiraf').azmaUnits).toBe(6900);
-    expect(getCreditPack('riyada').azmaUnits).toBe(8640);
+    expect(getCreditPack('riyada').azmaUnits).toBe(16670);
   });
 
-  it('only الريادة expires', () => {
+  it('carry their approved validity — 28 days, and six months for الريادة', () => {
     expect(getCreditPack('riyada').validity).toBe('six-months');
     for (const id of ['asas', 'irtiqaa', 'ihtiraf']) {
-      expect(getCreditPack(id).validity).toBe('no-expiry');
+      expect(getCreditPack(id).validity).toBe('twenty-eight-days');
     }
   });
 

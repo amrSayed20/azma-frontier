@@ -19,6 +19,10 @@ const ROUTE_GATE_IDS: ReadonlyMap<string, ImperialGateId> = new Map([
   ['login', 'login'],
   ['signup', 'signup'],
   ['subscribe', 'subscription'],
+  // The Balance surface supersedes /subscribe's purpose. Same gate identity,
+  // new address — so the Director's transitions treat it as the room it is
+  // rather than as an unrecognised route with no continuity at all.
+  ['sovereign-balance', 'subscription'],
 ]);
 
 /** Resolves a Next.js pathname to its Imperial Gate identity, or null if the route isn't a Gate. */
