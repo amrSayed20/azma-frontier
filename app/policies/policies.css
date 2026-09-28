@@ -1,0 +1,135 @@
+/* AZMA OS — the policy surface.
+   Built on the Empire's one existing palette (src/design-system/
+   azma-identity.css). No new colour, and no local font-family: the
+   Imperial Typography Constitution owns that platform-wide. */
+
+.policy-viewport {
+  min-height: 100vh;
+  /* Every surface paints its own ground. */
+  background: var(--azma-void);
+  color: var(--azma-text-primary);
+  padding: 2.5rem 1.25rem 4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.75rem;
+}
+
+.policy-back {
+  width: 100%;
+  max-width: 54rem;
+  font-size: 0.95rem;
+}
+
+.policy-back a {
+  color: var(--azma-text-muted);
+  text-decoration: none;
+  display: inline-block;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--azma-gold-2);
+  border-radius: var(--azma-radius-panel);
+  background: var(--azma-surface);
+}
+
+.policy-back a:hover { color: var(--azma-text-sacred); border-color: var(--azma-gold-4); }
+.policy-back a:focus-visible { outline: 2px solid var(--azma-gold-7); outline-offset: 3px; }
+.policy-back-end { margin-top: 0.5rem; }
+
+.policy-header {
+  width: 100%;
+  max-width: 54rem;
+  text-align: center;
+}
+
+.policy-kicker {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  color: var(--azma-text-muted);
+}
+
+.policy-title {
+  margin: 0;
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--azma-text-sacred);
+  text-shadow: 0 0 20px var(--azma-glow-soft);
+}
+
+.policy-meta {
+  margin: 0.7rem 0 0;
+  font-size: 0.9rem;
+  color: var(--azma-text-muted);
+}
+
+/* ── The instrument itself ──────────────────────────────────────────
+   Pre-formatted on purpose: a ratified text is displayed with its own
+   line breaks and its own numbering, and nothing reinterprets it
+   between the words and the reader. */
+.policy-body {
+  width: 100%;
+  max-width: 54rem;
+  background: var(--azma-surface);
+  border: 1px solid var(--azma-gold-2);
+  border-radius: var(--azma-radius-panel);
+  padding: 1.75rem 1.6rem;
+  color: var(--azma-text-primary);
+  font-size: 0.97rem;
+  line-height: 1.95;
+  white-space: pre-wrap;
+  /* A long URL or an address must not push the page sideways. */
+  overflow-wrap: anywhere;
+}
+
+/* ── The list ───────────────────────────────────────────────────── */
+
+.policy-list {
+  width: 100%;
+  max-width: 54rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.policy-list-item {
+  background: var(--azma-surface);
+  border: 1px solid var(--azma-gold-2);
+  border-radius: var(--azma-radius-panel);
+  padding: 1.1rem 1.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.policy-list-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.6rem;
+  text-decoration: none;
+}
+
+.policy-list-name {
+  font-size: 1.12rem;
+  font-weight: 600;
+  color: var(--azma-text-sacred);
+}
+
+.policy-list-en {
+  font-size: 0.88rem;
+  color: var(--azma-text-muted);
+}
+
+.policy-list-meta {
+  font-size: 0.85rem;
+  color: var(--azma-text-muted);
+}
+
+@media (max-width: 560px) {
+  .policy-viewport { padding: 1.75rem 1rem 3rem; }
+  .policy-title { font-size: 1.5rem; }
+  .policy-body { padding: 1.25rem 1.1rem; font-size: 0.94rem; }
+}
