@@ -89,7 +89,15 @@
 .gates-row { display: flex; gap: 30px; justify-content: center; width: 100%; flex-wrap: wrap; }
 
 /* The Portals / Cards */
-.gate-card { position: relative; width: 280px; height: 160px; max-width: 90vw; background: linear-gradient(180deg, rgba(20, 15, 5, 0.9) 0%, rgba(5, 5, 5, 0.95) 100%); border: 1px solid var(--neon-gold-dim); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; cursor: pointer; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 15px rgba(212, 175, 55, 0.05); }
+/* ─── A CARD SIZED FOR LESS TEXT THAN IT HOLDS ─────────────────────────────
+   MEASURED on the live release: five of these clipped 50px each at 1440×900,
+   three at 125%, two at 150% — `height: 160px` with `overflow: hidden`, on a
+   page that does not scroll. The cards were sized for their icon and name;
+   each also carries a description, and the description is the 50px nobody
+   could read. A fixed height is a promise about content, and this one had
+   stopped being true. `min-height` keeps the row even while letting a card
+   grow to what it actually says. */
+.gate-card { position: relative; width: 280px; min-height: 160px; height: auto; max-width: 90vw; background: linear-gradient(180deg, rgba(20, 15, 5, 0.9) 0%, rgba(5, 5, 5, 0.95) 100%); border: 1px solid var(--neon-gold-dim); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; cursor: pointer; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 15px rgba(212, 175, 55, 0.05); }
 .gate-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--neon-gold-primary), transparent); opacity: 0.5; transition: 0.4s; }
 
 .gate-icon { font-size: 40px; z-index: 2; transition: 0.4s; text-shadow: 0 0 20px rgba(255,215,0,0.4); }

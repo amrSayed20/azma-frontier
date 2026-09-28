@@ -250,9 +250,30 @@
 
 /* ── Atmospheric background ─────────────────────────────────────────── */
 
+/* ─── THE SAME FOLD رأس الأمر HAD ──────────────────────────────────────────
+   The Founder, 2026-09-28: «مشكلة zoom بالمتصفّح في أكثر من حجرة ومنهم رأس
+   الأمر». رأس الأمر was repaired first; this audit then asked the same
+   question of every room. MEASURED on the live release:
+
+       1440×900 (100%)     nothing trapped
+       1152×720 (125%)     main.hujjah-viewport  59px, no way to scroll
+        960×600 (150%)     main.hujjah-viewport 154px, no way to scroll
+
+   `position: fixed; inset: 0` pins the room to the window, so content that
+   outgrows the window has nowhere to go and the page itself cannot scroll to
+   it. At 100% nothing is trapped — zoom creates the defect, which is why it
+   was never seen from a full-size screen.
+
+   `min-height: 0` is not decoration: a flex column child defaults to
+   `min-height: auto`, refuses to shrink below its content, and the overflow
+   rule above it then never engages. */
 .hujjah-viewport {
   position: fixed;
   inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  min-height: 0;
   color: var(--text-main);
   /* Sovereign Typography System's own font authority (tokens.ts
      TYPOGRAPHY.family / --azma-font-family) — restored from a partial

@@ -66,9 +66,22 @@
    VIEWPORT + ATMOSPHERE
    ═══════════════════════════════════════════════════════════════ */
 
+/* ─── AND HERE IT IS NOT EVEN ZOOM ─────────────────────────────────────────
+   MEASURED on the live release:
+
+       1440×900 (100%)     main.palace-viewport 80px trapped
+       1152×720 (125%)     main.palace-viewport 40px trapped
+        960×600 (150%)     main.palace-viewport 40px trapped
+
+   Unlike الحجّة الدامغة, this room clips at FULL SIZE: 80px of it has been
+   unreachable on an ordinary screen, with `overflow: hidden` below a
+   `position: fixed; inset: 0` and a page that cannot scroll. Nobody reported
+   it because the missing 80px is at the bottom, where a room is expected to
+   end. */
 .palace-viewport {
   position: fixed;
   inset: 0;
+  min-height: 0;
   color: var(--text-main);
   /* Sovereign Typography System's own font authority (tokens.ts
      TYPOGRAPHY.family / --azma-font-family) — restored from a partial
@@ -77,7 +90,9 @@
   direction: rtl;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
 }
 
 .palace-ambient {
