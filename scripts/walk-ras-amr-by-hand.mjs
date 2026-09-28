@@ -256,11 +256,27 @@ else {
   if (emptyVault) say(false, 'الخزانة السيادية بلا أصول — لا يمكن إتمام طريق المونتاج');
   else if (await inject.count() === 0) say(false, 'زرّ «⚡ حقن» غير موجود بجوار الأصل');
   else {
-    const before = await page.locator('.queue-item-card').count();
-    await inject.click({ timeout: 15000 }).catch(() => {});
-    await page.waitForTimeout(4500);
-    const after = await page.locator('.queue-item-card').count();
-    say(after > before, 'أصلٌ مُستدعى يظهر في طابور الأصول', `${before} → ${after}`);
+    // A returning Creator arrives with a canvas already restored, so a count
+    // that does not grow proves nothing: the asset chosen must be one the
+    // queue does not already hold, and it is named when it arrives.
+    const queued = (await page.locator('.queue-item-card').allInnerTexts())
+      .map((t) => t.replace(/\s+/g, ' ').trim());
+    const chips = page.locator('.hud-asset-item-chip');
+    const chipCount = await chips.count();
+    let picked = null;
+    for (let i = 0; i < chipCount; i += 1) {
+      const name = (await chips.nth(i).locator('.hud-item-name').innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
+      if (name && !queued.some((q) => q.includes(name.slice(0, 18)))) { picked = { i, name }; break; }
+    }
+    if (!picked) say(false, 'كلّ أصول الخزانة في الطابور بالفعل — الاستدعاء لم يُختبر');
+    else {
+      const before = await page.locator('.queue-item-card').count();
+      await chips.nth(picked.i).locator('.hud-inject-btn').click({ timeout: 15000 }).catch(() => {});
+      await page.waitForTimeout(4500);
+      const after = await page.locator('.queue-item-card').count();
+      say(after > before, 'أصلٌ مُستدعى يظهر في طابور الأصول',
+        `«${picked.name.slice(0, 24)}» · ${before} → ${after}`);
+    }
   }
   const close = page.locator('.hud-close-btn').first();
   if (await close.count() > 0 && await close.isVisible().catch(() => false)) {

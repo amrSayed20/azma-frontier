@@ -3060,9 +3060,19 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
     if (!vaultAssetsLoaded || !sessionCanvas || queue.length > 0) return;
     const canvasNodes = sessionCanvas.tracks.flatMap((t) => t.nodes);
     if (canvasNodes.length === 0) return;
+    // ─── THE RAIL LISTS ASSETS, AND THE CANVAS LISTS NODES ────────────────
+    //   MEASURED on production 2026-09-28 by pressing «⚡ حقن» by hand: the
+    //   rail showed three cards, one press added one asset, and six cards
+    //   appeared. One asset used in three shots is three NODES and one
+    //   ASSET — and three queue items carrying the same `id`, which is the
+    //   React key. Duplicate keys make the rail's own count untrue and its
+    //   render order unstable. An asset already staged is not staged twice.
+    const seenAssetIds = new Set<string>();
     const reconstructed: QueueItem[] = canvasNodes.flatMap((node) => {
       const asset = vaultAssets.find((a) => a.assetId === node.assetId);
       if (!asset) return [];
+      if (seenAssetIds.has(asset.assetId)) return [];
+      seenAssetIds.add(asset.assetId);
       const prompt = typeof asset.metadata.generationPrompt === 'string' ? asset.metadata.generationPrompt : null;
       return [{
         id: asset.assetId,

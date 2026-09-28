@@ -41,3 +41,11 @@ it('scenes that arrive are shown in the world that holds them', () => {
   const compose = PAGE.slice(at, at + 3000);
   expect(compose).toContain("setWorkMode('storyboard')");
 });
+
+it('the asset rail lists each asset once, however many shots use it', () => {
+  // MEASURED: three cards, one «⚡ حقن», six cards. The rail was built from
+  // canvas NODES, so one asset placed three times became three items sharing
+  // one React key.
+  const at = PAGE.indexOf('const reconstructed: QueueItem[]');
+  expect(PAGE.slice(at - 600, at + 400)).toContain('seenAssetIds');
+});
