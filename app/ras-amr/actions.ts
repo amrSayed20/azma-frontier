@@ -100,10 +100,17 @@ export async function composeStoryboardFromBrief(input: {
 
   if (composed.scenes.length === 0) {
     // Each failure says something true and none of them names a provider.
+    // ─── A FAILURE THAT IS NOT THE CREATOR'S FAULT MUST NOT SOUND LIKE ONE ──
+    //   MEASURED 2026-09-28 by pressing «✦ أنشئ المشاهد» by hand: an ordinary
+    //   Arabic idea came back «رُفضت صياغة الفكرة كما كُتبت. أعد صياغتها»,
+    //   which told the Creator their own words were the problem when the
+    //   Empire's capacity was. Only a sentence that names the real cause tells
+    //   them whether to rewrite, to wait, or to ask for less.
     const spoken =
       composed.failure === 'NOT_A_STRUCTURE' ? 'لم تتحوّل الفكرة إلى مشاهد مرتّبة. أعد صياغتها بتفصيلٍ أوضح.'
+      : composed.failure === 'EXHAUSTED'   ? 'ما طلبتَه أطول ممّا يتّسع له التفكيك مرّةً واحدة. قلّل عدد المشاهد أو اختصر المواصفات.'
       : composed.failure === 'TIMED_OUT'   ? 'استغرق التفكيك أطول من المتاح. أعد المحاولة.'
-      : composed.failure === 'REFUSED'     ? 'رُفضت صياغة الفكرة كما كُتبت. أعد صياغتها.'
+      : composed.failure === 'REFUSED'     ? 'تعذّر التفكيك الآن — والأمر ليس في صياغتك. أعد المحاولة بعد قليل.'
       : composed.failure === 'EMPTY'       ? 'لم يعد من التفكيك شيء. أعد المحاولة.'
       : composed.failure === 'UNREACHABLE' ? 'لم يكتمل الاتّصال بالتفكيك. أعد المحاولة.'
       : composed.failure === 'NO_KEY'      ? 'تفكيك الفكر إلى مشاهد غير مهيّأ في الإمبراطوريّة بعد.'

@@ -33,6 +33,16 @@ const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models
 const TRANSLATE_TIMEOUT_MS = 4_000;
 const SYNTHESIS_TIMEOUT_MS = 12_000;
 
+/**
+ * Composing a storyboard is a deliberate act with a waiting state on screen,
+ * so it is allowed the room a translation is not. MEASURED 2026-09-28: at
+ * 1,200 tokens the provider answered 200 and carried no text at all, with
+ * nothing left for the scenes; the allowance was spent before the first
+ * visible word. A cap costs nothing until it is used.
+ */
+const STRUCTURE_TIMEOUT_MS = 30_000;
+const STRUCTURE_MAX_TOKENS = 8_192;
+
 function apiKey(): string | null {
   return process.env.GEMINI_API_KEY ?? null;
 }
@@ -61,6 +71,7 @@ export type BridgeFailure =
   | 'NO_KEY'          // the Empire never configured the bridge
   | 'REFUSED'         // the provider answered, and said no
   | 'TIMED_OUT'       // it did not answer in time
+  | 'EXHAUSTED'       // it began an answer and ran out of allowance mid-way
   | 'EMPTY'           // it answered with nothing usable
   | 'UNREACHABLE';    // the request never completed
 
@@ -130,12 +141,31 @@ async function askGeminiOnce(
     if (!response.ok) return { text: null, failure: 'REFUSED', httpStatus: response.status };
 
     const data = await response.json() as {
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
+      candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
     };
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    return typeof text === 'string' && text.trim().length > 0
-      ? { text: text.trim(), failure: null, httpStatus: response.status }
-      : { text: null, failure: 'EMPTY', httpStatus: response.status };
+    const candidate = data.candidates?.[0];
+    // Every part, not only the first: a model that returns its answer in two
+    // parts had the whole answer thrown away by reading `parts[0]` alone.
+    const text = (candidate?.content?.parts ?? [])
+      .map((p) => p.text ?? '')
+      .join('')
+      .trim();
+    if (text.length > 0) return { text, failure: null, httpStatus: response.status };
+
+    // ─── AN ANSWER THAT DID NOT FIT ──────────────────────────────────────
+    //   MEASURED on production 2026-09-28, pressing «✦ أنشئ المشاهد» by hand
+    //   with three unrelated ideas — Arabic and English alike: the provider
+    //   answered 200 every time and carried no text, and the Chamber told the
+    //   Creator «لم يعد من التفكيك شيء. أعد المحاولة» — a sentence that sends
+    //   them to press the same button forever. An allowance spent before the
+    //   first visible word is not an empty answer; it is an answer that did
+    //   not fit, and the two are not repaired by the same act.
+    const exhausted = candidate?.finishReason === 'MAX_TOKENS';
+    return {
+      text: null,
+      failure: exhausted ? 'EXHAUSTED' : 'EMPTY',
+      httpStatus: response.status,
+    };
   } catch (err) {
     // An abort is the timeout we set; anything else never reached the provider.
     const aborted = err instanceof Error && err.name === 'AbortError';
@@ -641,7 +671,7 @@ export async function composeSceneStructure(input: {
         evidence ? `\nالأدلّة:\n${evidence}` : '',
       ].join('\n');
 
-  const outcome = await askGeminiOutcome(system, user, SYNTHESIS_TIMEOUT_MS, 1_200, 0.45);
+  const outcome = await askGeminiOutcome(system, user, STRUCTURE_TIMEOUT_MS, STRUCTURE_MAX_TOKENS, 0.45);
   if (!outcome.text) {
     return { scenes: [], failure: outcome.failure, httpStatus: outcome.httpStatus };
   }

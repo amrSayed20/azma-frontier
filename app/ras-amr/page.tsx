@@ -4518,7 +4518,10 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                       });
                       // Carried to the scenes rather than left to find them:
                       // the Creator asked for this and it is ready.
-                      setActiveWorkspaceTab('direction');
+                      // The scenes live in the storyboard world — sending a
+                      // Creator to a montage tab instead would deliver them to
+                      // a room their own work is not in.
+                      setWorkMode('storyboard');
                       setBriefNotice(null);
                     } catch {
                       setBriefNotice('تعذّر التفكيك الآن. أعد المحاولة.');

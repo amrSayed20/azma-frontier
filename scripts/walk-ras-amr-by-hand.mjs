@@ -9,9 +9,10 @@
  * control that is present but does nothing FAILS, which is the whole point:
  * a button that renders is not a button that works.
  *
- * It spends nothing. Every act that would commission a provider is pressed
- * only as far as the confirmation the Empire shows before spending, and the
- * walk stops there and says so.
+ * It spends nothing on providers. Composing a storyboard is text, and it is
+ * pressed. Every act that would commission a paid render is pressed only as
+ * far as the confirmation the Empire shows before spending, and the walk
+ * stops there and says so.
  */
 
 import { chromium } from 'playwright';
@@ -54,106 +55,250 @@ if (await enter.count() > 0) {
     '«فهمت — ادخل الحجرة» تُغلق لوحة العرض');
 }
 
-// ── 1 · the two worlds, pressed ────────────────────────────────────────────
+// ── 1 · the intent gate — the room's real first step ──────────────────────
+//   MEASURED: the workspace does not exist until a Creator answers «ماذا
+//   تريد أن تصنع؟». A walk that reaches for the work bar first is testing a
+//   room nobody is standing in yet.
+console.log('\n── بوّابة النيّة ──');
+const gate = page.locator('.ras-intent-gate');
+if (await gate.count() > 0 && await gate.first().isVisible().catch(() => false)) {
+  const cards = await page.locator('.ras-intent-card').count();
+  say(cards > 0, 'البوّابة تعرض اختياراً للبدء', `${cards} بطاقة`);
+
+  // a · a template card is a PREVIEW, and must prove it by opening one
+  const tpl = page.locator('.ras-intent-template').first();
+  const tplName = (await tpl.locator('.ras-intent-card-name').innerText().catch(() => '')).trim();
+  await tpl.click({ timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(2500);
+  const preview = await page.locator('.ras-template-preview-gate').first().isVisible().catch(() => false);
+  say(preview, 'بطاقة قالبٍ تفتح المعاينة', `«${tplName}»`);
+
+  if (preview) {
+    // b · the preview's own play button must actually move the demo
+    const play = page.locator('.ras-tp-demo-play-btn').first();
+    if (await play.count() === 0) say(false, 'زرّ «شاهد الهيكل» غير موجود');
+    else {
+      await play.click().catch(() => {});
+      await page.waitForTimeout(2600);
+      const playing = await page.locator('.ras-tp-demo-controls').first().isVisible().catch(() => false);
+      say(playing, '«▶ شاهد الهيكل» يُشغِّل المعاينة فعلاً');
+      await page.locator('.ras-tp-demo-stop-btn').first().click().catch(() => {});
+      await page.waitForTimeout(900);
+    }
+    // c · «معاينة قالب آخر» must return without committing
+    const back = page.locator('.ras-tp-back-btn').first();
+    if (await back.count() === 0) say(false, 'زرّ «معاينة قالب آخر» غير موجود');
+    else {
+      await back.click().catch(() => {});
+      await page.waitForTimeout(1800);
+      say(await gate.first().isVisible().catch(() => false), '«معاينة قالب آخر» يعود إلى البوّابة دون التزام');
+    }
+  }
+
+  // d · a direct-entry card must open the workspace
+  const blank = page.locator('.ras-intent-mode', { hasText: 'لوحة فارغة' }).first();
+  if (await blank.count() === 0) say(false, 'بطاقة «لوحة فارغة» غير موجودة');
+  else {
+    await blank.click({ timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(4000);
+    const opened = await page.locator('.ras-work-bar').first().isVisible().catch(() => false);
+    say(opened, '«لوحة فارغة» تفتح لوح العمل');
+  }
+} else say(true, 'الحجرة فُتحت مباشرة على اللوح');
+
+// ── 2 · the two worlds, pressed ────────────────────────────────────────────
+//   Each world is judged by the surface belonging to IT alone, never by the
+//   hint printed on the button — that hint is on screen in both worlds.
 console.log('\n── العالَمان ──');
-for (const [name, mustSee] of [
-  ['عالَم الستوري بورد', 'من فكرةٍ إلى مشاهد'],
-  ['المونتاج', 'المشهد'],
+for (const [name, ownSurface, surfaceAr] of [
+  ['عالَم الستوري بورد', '#creator-intent-storyboard', 'حقل توجيه الستوري بورد'],
+  ['المونتاج', '.ras-tab-bar', 'شريط التبويبات'],
 ]) {
   const btn = page.locator('.ras-work-btn', { hasText: name });
   if (await btn.count() === 0) { say(false, `زرّ «${name}» غير موجود`); continue; }
-  await btn.first().click();
-  await page.waitForTimeout(1800);
+  await btn.first().click({ timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(2000);
   const selected = await btn.first().getAttribute('aria-selected');
-  const visible = await page.getByText(mustSee, { exact: false }).first().isVisible().catch(() => false);
-  say(selected === 'true' && visible, `«${name}» يُضغط ويُبدّل المعروض`, `aria-selected=${selected} · «${mustSee}» ${visible ? 'ظهر' : 'لم يظهر'}`);
+  const visible = await page.locator(ownSurface).first().isVisible().catch(() => false);
+  say(selected === 'true' && visible, `«${name}» يُضغط ويُبدّل المعروض`,
+    `aria-selected=${selected} · ${surfaceAr} ${visible ? 'ظهر' : 'لم يظهر'}`);
 }
 
-// ── 2 · every montage tab, pressed, must change what is shown ─────────────
+// ── 3 · every montage tab, pressed, must change what is shown ─────────────
 console.log('\n── تبويبات المونتاج ──');
-await page.locator('.ras-work-btn', { hasText: 'المونتاج' }).first().click();
-await page.waitForTimeout(1500);
+await page.locator('.ras-work-btn', { hasText: 'المونتاج' }).first().click().catch(() => {});
+await page.waitForTimeout(1600);
 let previous = '';
 for (const tab of ['المشهد', 'التوجيه', 'الصوت', 'الترجمة', 'المشروع']) {
   const t = page.locator('.ras-tab-btn', { hasText: new RegExp(`^${tab}$`) });
   if (await t.count() === 0) { say(false, `تبويب «${tab}» غير موجود`); continue; }
-  await t.first().click();
-  await page.waitForTimeout(1400);
+  await t.first().click({ timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(1500);
   const body = (await page.locator('.ras-tab-content').first().innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
-  say(body.length > 0 && body !== previous, `«${tab}» يفتح محتوى خاصّاً به`, `${body.slice(0, 42)}…`);
+  say(body.length > 0 && body !== previous, `«${tab}» يفتح محتوى خاصّاً به`, `${body.slice(0, 40)}…`);
   previous = body;
 }
 
-// ── 3 · the fields — typed into, and they must keep what was typed ────────
+// ── 4 · the fields — typed into, and they must keep what was typed ────────
 console.log('\n── الحقول ──');
 async function type(selector, text, label) {
   const f = page.locator(selector);
-  if (await f.count() === 0) { say(false, `${label} غير موجود`); return; }
+  if (await f.count() === 0) { say(false, `${label} غير موجود`); return false; }
   try {
-    await f.first().click({ timeout: 5000 });
-    await f.first().fill(text, { timeout: 5000 });
+    await f.first().click({ timeout: 6000 });
+    await f.first().fill(text, { timeout: 6000 });
     const kept = await f.first().inputValue();
     say(kept === text, `${label} يقبل الكتابة ويحتفظ بها`, kept.slice(0, 26));
-  } catch (e) { say(false, `${label} رفض الكتابة`, String(e).split('\n')[0].slice(0, 50)); }
+    return kept === text;
+  } catch (e) { say(false, `${label} رفض الكتابة`, String(e).split('\n')[0].slice(0, 50)); return false; }
 }
-await page.locator('.ras-tab-btn', { hasText: /^التوجيه$/ }).first().click();
-await page.waitForTimeout(1200);
+await page.locator('.ras-tab-btn', { hasText: /^التوجيه$/ }).first().click().catch(() => {});
+await page.waitForTimeout(1400);
 await type('#creator-intent-montage', 'إيقاع هادئ ولقطات قريبة', 'حقل توجيه المخرج (المونتاج)');
 
-await page.locator('.ras-work-btn', { hasText: 'عالَم الستوري بورد' }).first().click();
-await page.waitForTimeout(1500);
+await page.locator('.ras-work-btn', { hasText: 'عالَم الستوري بورد' }).first().click().catch(() => {});
+await page.waitForTimeout(1800);
 await type('#creator-intent-storyboard', 'نبرة وقورة وإضاءة جانبيّة', 'حقل توجيه المخرج (الستوري بورد)');
-await type('[data-testid="rasamr-brief"] textarea', 'فيلم قصير عن أدب طلب العلم', 'حقل الفكرة');
 
-// ── 4 · the template proposes and must not erase ──────────────────────────
-console.log('\n── القالب يقترح ولا يمحو ──');
-const tplOpener = page.locator('button', { hasText: /قوالب البداية/ });
-if (await tplOpener.count() > 0) {
-  await tplOpener.first().click();
-  await page.waitForTimeout(1200);
-  const anyTpl = page.locator('button', { hasText: /سينمائي|كشف|تجاري|سوشيال|قصة/ }).first();
-  if (await anyTpl.count() > 0) {
-    const before = await page.locator('#creator-intent-storyboard').inputValue().catch(() => '');
-    await anyTpl.click().catch(() => {});
-    await page.waitForTimeout(1600);
-    const after = await page.locator('#creator-intent-storyboard').inputValue().catch(() => '');
-    say(before === '' ? after.length > 0 : after === before,
-      'قالبٌ لا يمحو ما كتبه المنشئ', `قبل «${before.slice(0, 18)}» بعد «${after.slice(0, 18)}»`);
-  } else say(false, 'لم يظهر قالبٌ للاختيار');
-} else say(false, 'زرّ «قوالب البداية» غير موجود');
+// The Director is ONE faculty: what was typed in one world must be there in
+// the other, or a Creator has two Directors and does not know which obeyed.
+await page.locator('.ras-work-btn', { hasText: 'المونتاج' }).first().click().catch(() => {});
+await page.waitForTimeout(1600);
+await page.locator('.ras-tab-btn', { hasText: /^التوجيه$/ }).first().click().catch(() => {});
+await page.waitForTimeout(1400);
+const carried = await page.locator('#creator-intent-montage').inputValue().catch(() => '');
+say(carried === 'نبرة وقورة وإضاءة جانبيّة', 'توجيه المخرج واحدٌ عبر العالَمين', `«${carried.slice(0, 26)}»`);
 
-// ── 5 · the Vault door — his own assets ───────────────────────────────────
-console.log('\n── باب الخزانة ──');
-const summon = page.locator('button', { hasText: /استدعِ من الخزانة السيادية/ }).first();
-if (await summon.count() === 0) say(false, 'زرّ «استدعِ من الخزانة السيادية» غير موجود');
-else {
-  await summon.click();
-  await page.waitForTimeout(3500);
-  const opened = await page.evaluate(() => {
-    const t = document.body.innerText;
-    return /الخزانة|أصولك|اختر أصلاً|لا توجد/.test(t);
-  });
-  say(opened, 'الباب يفتح على أصول الخزانة');
-  const asset = page.locator('button, [role="button"]').filter({ hasText: /قارورة|صورة|فيديو|أصل/ }).first();
-  if (await asset.count() > 0) {
-    await asset.click().catch(() => {});
-    await page.waitForTimeout(3000);
-    const queued = await page.locator('.queue-card, [class*="queue-card"]').count();
-    say(queued > 0, 'أصلٌ مُستدعى يظهر في طابور الأصول', `${queued} في الطابور`);
-  } else say(false, 'لم يظهر أصلٌ للاختيار من الخزانة');
+// ── 5 · the idea board — written into, and pressed ────────────────────────
+console.log('\n── لوح الفكرة ──');
+await page.locator('.ras-work-btn', { hasText: 'عالَم الستوري بورد' }).first().click().catch(() => {});
+await page.waitForTimeout(1600);
+const boardThere = await page.locator('[data-testid="rasamr-brief"]').first().isVisible().catch(() => false);
+say(boardThere, 'لوح «اكتب فكرتك» حاضرٌ دون بحث');
+let composed = false;
+if (boardThere) {
+  const okIdea = await type('#ras-brief-idea', 'أدب طلب العلم عند السلف وكيف كان الطالب يرحل لأجل مسألة واحدة', 'حقل الفكرة');
+  await type('#ras-brief-specs', 'نبرة وقورة، إيقاع هادئ، لقطات واسعة للصحراء والمخطوطات', 'حقل المواصفات');
+  await type('#ras-brief-count', '3', 'حقل عدد المشاهد');
+
+  const composeBtn = page.locator('[data-testid="rasamr-brief-compose"]').first();
+  if (await composeBtn.count() === 0) say(false, 'زرّ «✦ أنشئ المشاهد» غير موجود');
+  else {
+    const wasDisabled = await composeBtn.isDisabled();
+    say(okIdea && !wasDisabled, 'زرّ «✦ أنشئ المشاهد» يستيقظ بعد كتابة الفكرة', wasDisabled ? 'ظلّ مُعطَّلاً' : 'صار مفعَّلاً');
+    if (!wasDisabled) {
+      await composeBtn.click().catch(() => {});
+      // text composition, not a paid render — the walk waits for it
+      await page.waitForTimeout(3000);
+      let arrived = false;
+      for (let i = 0; i < 40; i += 1) {
+        arrived = await page.locator('[data-testid="rasamr-storyboard"]').first().isVisible().catch(() => false);
+        if (arrived) break;
+        await page.waitForTimeout(3000);
+      }
+      composed = arrived;
+      const notice = (await page.locator('.brief-notice').first().innerText().catch(() => '')).trim();
+      say(arrived, 'الضغط على «أنشئ المشاهد» يُنزل مشاهد حقيقية في نفس العالَم',
+        arrived ? '' : `ما ظهر بدلها: «${notice.slice(0, 60)}» · العالَم المعروض: ${await page.locator('.ras-tab-bar').first().isVisible().catch(() => false) ? 'المونتاج' : 'الستوري بورد'}`);
+    }
+  }
 }
 
-// ── 6 · the acts that SPEND — pressed only to the point of confirmation ───
+// ── 6 · each scene must say where its picture comes from, and let it change
+if (composed) {
+  console.log('\n── مصدر صورة كل مشهد ──');
+  const plans = page.locator('[data-testid="rasamr-scene-plans"]');
+  const planThere = await plans.first().isVisible().catch(() => false);
+  say(planThere, 'الحجرة تسأل: «من أين صورة كلّ مشهد؟»');
+  if (planThere) {
+    const n = await plans.locator('.scene-plan-choice').count();
+    say(n > 0, 'لكلّ مشهدٍ اختيارٌ يُضغط', `${n} زرّاً لِـ ${n / 3} مشاهد`);
+    const firstPlan = plans.locator('.scene-plan').first();
+
+    // «يُنشَأ لي» must open a field asking WHAT is to be created — the Chamber
+    // never buys a picture before the Creator has said what it is for.
+    await firstPlan.locator('.scene-plan-choice', { hasText: 'يُنشَأ لي' }).first().click({ timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(2200);
+    const demand = firstPlan.locator('.scene-plan-demand').first();
+    const demandThere = await demand.isVisible().catch(() => false);
+    say(demandThere, '«يُنشَأ لي» يفتح حقل «ما الذي يُنشَأ لهذا المشهد؟»');
+    if (demandThere) {
+      await demand.fill('صحراء عند الفجر ومخطوط مفتوح على حجر', { timeout: 6000 }).catch(() => {});
+      await page.locator('.scene-plans-head').first().click().catch(() => {});
+      await page.waitForTimeout(2600);
+      const kept = await demand.inputValue().catch(() => '');
+      say(kept.startsWith('صحراء'), 'المطالبة الإنشائية تُكتَب وتُحفظ', kept.slice(0, 28));
+    }
+
+    // «من أصولي» must open a real list of HIS assets, or say plainly it is empty
+    await firstPlan.locator('.scene-plan-choice', { hasText: 'من أصولي' }).first().click({ timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(2200);
+    const sel = firstPlan.locator('.scene-plan-asset').first();
+    const selThere = await sel.isVisible().catch(() => false);
+    const emptyWord = await firstPlan.locator('.scene-plan-empty').first().isVisible().catch(() => false);
+    const options = selThere ? await sel.locator('option').count() : 0;
+    say(selThere || emptyWord, '«من أصولي» يفتح قائمة أصوله أو يقول إنها فارغة',
+      selThere ? `${options - 1} أصلاً` : 'قالت: خزانتك فارغة');
+  }
+}
+
+// ── 7 · the Vault door — his own assets ───────────────────────────────────
+console.log('\n── باب الخزانة ──');
+const summon = page.locator('[data-testid="rasamr-open-vault"]').first();
+if (await summon.count() === 0) say(false, 'زرّ «استدعِ من الخزانة السيادية» غير موجود');
+else {
+  await summon.click({ timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(4000);
+  const opened = await page.locator('.summon-hud-overlay').first().isVisible().catch(() => false);
+  say(opened, 'الباب يفتح على أصول الخزانة');
+  const emptyVault = await page.locator('.hud-empty-state').first().isVisible().catch(() => false);
+  const inject = page.locator('.hud-inject-btn').first();
+  if (emptyVault) say(false, 'الخزانة السيادية بلا أصول — لا يمكن إتمام طريق المونتاج');
+  else if (await inject.count() === 0) say(false, 'زرّ «⚡ حقن» غير موجود بجوار الأصل');
+  else {
+    const before = await page.locator('.queue-item-card').count();
+    await inject.click({ timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(4500);
+    const after = await page.locator('.queue-item-card').count();
+    say(after > before, 'أصلٌ مُستدعى يظهر في طابور الأصول', `${before} → ${after}`);
+  }
+  const close = page.locator('.hud-close-btn').first();
+  if (await close.count() > 0 && await close.isVisible().catch(() => false)) {
+    await close.click().catch(() => {});
+    await page.waitForTimeout(1500);
+    say(!(await page.locator('.summon-hud-overlay').first().isVisible().catch(() => false)), '«✖ إغلاق» يُغلق باب الخزانة');
+  }
+}
+
+// ── 8 · from a summoned asset to a scene that can be produced ─────────────
+console.log('\n── من أصلٍ إلى مشهد ──');
+await page.locator('.ras-work-btn', { hasText: 'المونتاج' }).first().click().catch(() => {});
+await page.waitForTimeout(1600);
+const firstQueued = page.locator('.queue-item-card').first();
+if (await firstQueued.count() === 0) say(false, 'لا يوجد أصل في الطابور — الطريق إلى المشهد لم يُختبر');
+else {
+  await firstQueued.click({ timeout: 10000 }).catch(() => {});
+  await page.waitForTimeout(2200);
+  const addBtn = page.locator('.creator-action-primary').first();
+  if (await addBtn.count() === 0) say(false, 'زرّ «➕ أضف إلى المشهد» لا يظهر بعد اختيار الأصل');
+  else {
+    const lbl = (await addBtn.innerText().catch(() => '')).trim();
+    await addBtn.click({ timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(4000);
+    const layers = await page.locator('.composition-surface .layer-asset-img, .composition-surface > *').count();
+    say(layers > 0, `«${lbl}» يضع الأصل فعلاً في المشهد`, `${layers} طبقة على السطح`);
+  }
+}
+
+// ── 9 · the acts that SPEND — pressed only to the point of confirmation ───
 console.log('\n── أفعال تُنفق: تُفحص ولا تُنفَّذ ──');
-await page.locator('.ras-work-btn', { hasText: 'المونتاج' }).first().click();
-await page.waitForTimeout(1500);
-for (const [label, testid] of [
-  ['✦ أنتِج الفيلم', 'rasamr-produce-scene-film-montage'],
-  ['🎬 تجميع المشهد', null],
+for (const [label, sel, world] of [
+  ['✦ أنتِج الفيلم', '[data-testid="rasamr-produce-scene-film-montage"]', 'المونتاج'],
+  ['🎬 أنتج هذه المشاهد', '[data-testid="rasamr-produce-scenes"]', 'عالَم الستوري بورد'],
 ]) {
-  const b = testid
-    ? page.locator(`[data-testid="${testid}"]`)
-    : page.locator('button', { hasText: /تجميع المشهد/ });
+  await page.locator('.ras-work-btn', { hasText: world }).first().click({ timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(1800);
+  const b = page.locator(sel);
   if (await b.count() === 0) { say(false, `«${label}» غير موجود`); continue; }
   const disabled = await b.first().isDisabled();
   const title = await b.first().getAttribute('title');
@@ -163,7 +308,7 @@ for (const [label, testid] of [
 console.log(`\n── أخطاء الطرفية (${[...new Set(consoleErrors)].length}) ──`);
 for (const e of [...new Set(consoleErrors)].slice(0, 6)) console.log(`   ✗ ${e}`);
 
-await page.screenshot({ path: 'scripts/proof-harness/ras-walk.png' });
+await page.screenshot({ path: 'scripts/proof-harness/ras-walk.png', fullPage: false });
 const bad = results.filter((r) => !r.ok);
 console.log(`\n${results.length - bad.length}/${results.length} اجتازت · ${BASE}`);
 for (const f of bad) console.log(`   ⚠ ${f.what}`);
