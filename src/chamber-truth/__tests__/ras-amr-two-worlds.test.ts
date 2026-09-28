@@ -36,3 +36,23 @@ it('the Director is one field over one state, rendered in both worlds', () => {
 it('a template proposes a direction and never erases one', () => {
   expect(PAGE).toContain('directorIntentPreset && !creatorDirectorIntent.trim()');
 });
+
+it('the two worlds say what they are, on the surface', () => {
+  // The hint existed in a `title` attribute: invisible without a hover, and
+  // invisible on a touch screen entirely. A stranger «لا يعرف شيئا عن
+  // الامبراطوريه» cannot hover their way to an explanation.
+  const at = PAGE.indexOf('className="ras-work-bar"');
+  const bar = PAGE.slice(at, PAGE.indexOf('ras-tab-bar', at));
+  expect(bar).toContain('className="ras-work-hint"');
+  expect(bar).not.toContain('title={hint}');
+});
+
+it('and neither of them is cut off in a narrow rail', () => {
+  // Renaming «✦ الإنتاج» (8 chars) to «✦ عالَم الستوري بورد» (19) pushed the
+  // second button off the edge of a 220px rail: the Founder photographed
+  // «✂ ال».
+  const css = readFileSync(join(process.cwd(), 'app/ras-amr/ras-amr.css'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  const at = css.indexOf('.ras-work-bar {');
+  expect(css.slice(at, css.indexOf('}', at))).toContain('flex-wrap: wrap');
+});

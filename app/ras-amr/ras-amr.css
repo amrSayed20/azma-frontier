@@ -384,8 +384,28 @@ body:has(.ras-amr-viewport) {
 .spatial-empty-layer-n { font-weight: 700; color: #D4AF37; flex-shrink: 0; }
 .spatial-empty-layer-name { overflow-wrap: anywhere; }
 
+/* ── THE TWO WORLDS, WHOLE AND EXPLAINED ────────────────────────────
+   The Founder, 2026-09-28, photographing his own screen: «انظر كم انّ
+   الحجره ضيقه … الجزء تقطع من زر الانتاج».
+
+   He is right, and it was my own doing. I renamed «✦ الإنتاج» — eight
+   characters — to «✦ عالَم الستوري بورد», nineteen, inside a rail that
+   is 220px wide at his width. Two buttons at `white-space: nowrap`
+   with 16px of padding each measure ~293px together, so the second
+   went off the edge: «✂ ال». The name that fixed the understanding
+   broke the layout.
+
+   They wrap now, and each takes the full row when they do — these are
+   the two most important controls in the room and a Creator must be
+   able to read both.
+
+   And the sentence that says what each world IS existed already, in a
+   `title` attribute: invisible without a hover, and invisible to a
+   touch screen entirely. A stranger «لا يعرف شيئا عن الامبراطوريه»
+   cannot hover their way to an explanation. It is on the surface. */
 .ras-work-bar {
   display: flex;
+  flex-wrap: wrap;
   flex-shrink: 0;
   gap: 6px;
   padding: 8px 10px 0;
@@ -399,10 +419,23 @@ body:has(.ras-amr-viewport) {
   background: transparent;
   border: 1px solid rgba(212, 175, 55, 0.22);
   border-radius: 4px 4px 0 0;
-  padding: 8px 16px;
+  padding: 9px 14px;
   cursor: pointer;
-  white-space: nowrap;
+  flex: 1 1 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: start;
   transition: color 0.18s, background 0.18s;
+}
+.ras-work-name { display: block; }
+.ras-work-hint {
+  display: block;
+  font-size: var(--rt-3xs);
+  font-weight: 400;
+  opacity: 0.72;
 }
 .ras-work-btn:hover:not(.ras-work-active) { background: rgba(212, 175, 55, 0.07); }
 .ras-work-active {
@@ -866,7 +899,13 @@ body:has(.ras-amr-viewport) {
 /* ── Desktop standard (900–1199px) ──────────────────────────────
    125% DPI Windows laptops report ~1093px CSS width → lives here. */
 @media (min-width: 900px) and (max-width: 1199px) {
-  .ras-amr-viewport { --ras-rail-left: 200px; --ras-rail-right: 220px; }
+  /* WIDENED 2026-09-28 from 200/220. The room's own vocabulary grew —
+     «عالَم الستوري بورد», «توجيه المخرج — كيف يُجمَّع ما تملك», «استدعِ من
+     الخزانة السيادية» — and a rail sized for «الإنتاج» wraps every one of
+     them into two and three lines. The Founder's photograph is what that
+     looks like: «مساحه القائمه على الجانبين ضيقه».
+     The stage keeps the majority: at 1152px it is 1152 − 500 = 652px. */
+  .ras-amr-viewport { --ras-rail-left: 234px; --ras-rail-right: 266px; }
 }
 
 /* ── Compact 3-column (400–899px) ───────────────────────────────

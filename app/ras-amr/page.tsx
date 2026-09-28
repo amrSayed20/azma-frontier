@@ -4927,9 +4927,11 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                 aria-selected={workMode === mode}
                 className={`ras-work-btn ${workMode === mode ? 'ras-work-active' : ''}`}
                 onClick={() => setWorkMode(mode)}
-                title={hint}
               >
-                {label}
+                {/* The hint was a `title`: a stranger cannot hover their way
+                    to an explanation, and a touch screen has no hover at all. */}
+                <span className="ras-work-name">{label}</span>
+                <span className="ras-work-hint">{hint}</span>
               </button>
             ))}
           </div>
