@@ -668,6 +668,40 @@ export default function ImperialFoyer() {
           );
         })}
       </div>
+
+      {/*
+        ─── WHAT THE EMPIRE OWES THE CREATOR, AT THE FOOT OF THE ROOM ────────
+          The Founder, 2026-09-28: «فى اسفل هذه الحجره ضع بطاقه للسياسات
+          وكذلك بطاقه للميزان».
+
+          It also closes the placement he ruled on earlier the same day: the
+          Balance «توجد فى نهايه المنصه». The Foyer is the hinge every Creator
+          passes through between every other room, so its foot IS the end of
+          the platform — reachable from anywhere, and met by nobody at the
+          door.
+
+          These are NOT chambers, and they do not pretend to be. A chamber is
+          entered through `launchChamber`, which prepares an interaction
+          session and announces a Creator's arrival. A ledger and a policy are
+          read, not entered, so they are plain links — quieter by construction
+          than the four rooms above them, because the work is up there.
+      */}
+      <nav className="foyer-ledger" aria-label="الميزان والسياسات">
+        <a className="foyer-ledger-card" href="/sovereign-balance">
+          <span className="ledger-glyph" aria-hidden="true">⚖</span>
+          <span className="ledger-identity">
+            <span className="ledger-name">ميزان القيمة السيادي</span>
+            <span className="ledger-role">رصيدك والباقات</span>
+          </span>
+        </a>
+        <a className="foyer-ledger-card" href="/policies">
+          <span className="ledger-glyph" aria-hidden="true">§</span>
+          <span className="ledger-identity">
+            <span className="ledger-name">السياسات</span>
+            <span className="ledger-role">ما تلتزم به الإمبراطورية تجاهك</span>
+          </span>
+        </a>
+      </nav>
     </main>
   );
 }

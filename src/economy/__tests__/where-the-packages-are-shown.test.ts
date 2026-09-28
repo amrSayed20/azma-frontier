@@ -175,6 +175,46 @@ describe('3 · the packages are where the money is spent, not at the door', () =
   });
 });
 
+describe('3b · the end of the platform is at the foot of the hinge', () => {
+  const FOYER = read('app/imperial-foyer/page.tsx');
+  const FOYER_CSS = read('app/imperial-foyer/imperial-foyer.css');
+
+  it('the Foyer carries a card for the Balance and one for the policies', () => {
+    // FOUNDER'S RULING 2026-09-28: «فى اسفل هذه الحجره ضع بطاقه
+    // للسياسات وكذلك بطاقه للميزان» — which also settles where the
+    // Balance lives, «توجد فى نهايه المنصه». The Foyer is the hinge every
+    // Creator passes through between every other room, so its foot IS that end.
+    expect(FOYER).toContain('className="foyer-ledger"');
+    expect(FOYER).toContain('href="/sovereign-balance"');
+    expect(FOYER).toContain('href="/policies"');
+  });
+
+  it('they are at the FOOT of the room, below the four chambers', () => {
+    expect(FOYER.indexOf('foyer-chambers')).toBeLessThan(FOYER.indexOf('foyer-ledger'));
+  });
+
+  it('and they do not pretend to be chambers', () => {
+    // A chamber is entered through `launchChamber`, which prepares an
+    // interaction session and announces a Creator's arrival. A ledger and a
+    // policy are READ, not entered.
+    const at = FOYER.indexOf('className="foyer-ledger"');
+    const block = FOYER.slice(at, FOYER.indexOf('</nav>', at));
+    expect(block).not.toContain('launchChamber');
+    expect(block).not.toContain('<button');
+  });
+
+  it('the cards are painted, and reachable by a finger', () => {
+    expect(FOYER_CSS).toContain('.foyer-ledger-card');
+    const at = FOYER_CSS.indexOf('.foyer-ledger-card {');
+    const rule = FOYER_CSS.slice(at, FOYER_CSS.indexOf('}', at));
+    for (const decl of ['background', 'border', 'min-height: 44px']) {
+      expect(rule).toContain(decl);
+    }
+    // The Foyer is the one room with a light composition; the cards have one.
+    expect(FOYER_CSS.slice(FOYER_CSS.indexOf('.foyer-ledger'))).toContain('prefers-color-scheme: light');
+  });
+});
+
 describe('4 · the Balance surface tells the truth about what it can do', () => {
   it('a visitor may read it without a session', () => {
     // The Founder ruled the prices are not to appear only after logging in.

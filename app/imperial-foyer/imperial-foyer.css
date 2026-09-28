@@ -700,3 +700,86 @@
 :root[data-theme='light'] .foyer-logout-btn:hover:not(:disabled) { color: rgba(26, 23, 16, 0.85); border-color: rgba(100, 80, 20, 0.55); }
 :root[data-theme='light'] .foyer-install-btn { background: rgba(0, 0, 0, 0.03); border-color: rgba(40, 100, 60, 0.3); color: rgba(30, 80, 45, 0.75); }
 :root[data-theme='light'] .foyer-install-btn:hover { background: rgba(40, 100, 60, 0.08); border-color: rgba(40, 100, 60, 0.55); color: rgba(30, 80, 45, 1); }
+
+/* ── THE FOOT OF THE ROOM: THE BALANCE AND THE POLICIES ──────────────
+   The Founder, 2026-09-28: «فى اسفل هذه الحجره ضع بطاقه للسياسات
+   وكذلك بطاقه للميزان» — which also settles where the Balance lives,
+   «فى نهايه المنصه». The Foyer is the hinge every Creator passes
+   through between every other room, so its foot IS that end.
+
+   Deliberately quieter than the four chamber cards above: no seal, no
+   presence state, no hover lift. The work is up there; this is what
+   the Empire owes, kept where it can be found and not where it
+   competes. */
+.foyer-ledger {
+  width: 100%;
+  max-width: 52rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.foyer-ledger-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.95rem 1.1rem;
+  min-height: 44px;
+  border: 1px solid rgba(212, 175, 55, 0.20);
+  border-radius: 10px;
+  background: rgba(212, 175, 55, 0.04);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.25s ease, background 0.25s ease;
+}
+
+.foyer-ledger-card:hover {
+  border-color: rgba(212, 175, 55, 0.45);
+  background: rgba(212, 175, 55, 0.08);
+}
+
+.foyer-ledger-card:focus-visible {
+  outline: 2px solid rgba(212, 175, 55, 0.7);
+  outline-offset: 3px;
+}
+
+.ledger-glyph {
+  flex: 0 0 auto;
+  font-size: 1.3rem;
+  color: #d4b966;
+  opacity: 0.85;
+}
+
+.ledger-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.ledger-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #e8e4dc;
+}
+
+.ledger-role {
+  font-size: 0.83rem;
+  color: rgba(232, 228, 220, 0.55);
+}
+
+/* The light composition the Foyer alone carries. */
+@media (prefers-color-scheme: light) {
+  .foyer-ledger-card {
+    border-color: rgba(100, 80, 20, 0.25);
+    background: rgba(100, 80, 20, 0.05);
+  }
+  .foyer-ledger-card:hover {
+    border-color: rgba(100, 80, 20, 0.5);
+    background: rgba(100, 80, 20, 0.09);
+  }
+  .ledger-glyph { color: #8a6a10; }
+  .ledger-name  { color: #1a1710; }
+  .ledger-role  { color: rgba(26, 23, 16, 0.6); }
+}
