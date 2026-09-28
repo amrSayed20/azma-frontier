@@ -5,6 +5,7 @@ import { QiyamahChamberClient } from './QiyamahChamberClient';
 import { getVisionDocument } from '@/src/chamber-vision';
 import { VIDEO_MODEL_FLEET } from '@/src/sovereign-model-selection/video-model-fleet';
 import { IMAGE_MODEL_FLEET } from '@/src/sovereign-model-selection/image-model-fleet';
+import { creatorFacingPackages } from '@/src/economy/pricing/sovereign-value-balance';
 
 /**
  * QIYAMAH CHAMBER, PACKAGE I: wrapped in its own IXE Experience Pipeline
@@ -95,6 +96,11 @@ export default async function QiyamahChamberPage() {
         durationLadder={durationLadder}
         aspectOptions={aspectOptions}
         imageAspectOptions={imageAspectOptions}
+        /* Read on the SERVER. The pricing module carries the Empire's cost
+           truth — provider rates, the dollar basis, the FX rate — and a
+           `'use client'` import of it would publish all of it in a bundle.
+           Four names, four prices, four balances, an Arabic validity. */
+        packages={creatorFacingPackages()}
       />
     </QiyamahChamberExperience>
   );

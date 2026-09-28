@@ -87,6 +87,11 @@ interface UploadedItem {
 
 interface QiyamahChamberClientProps {
   readonly dict:                Dictionary;
+  /**
+   * The approved packages, projected by the Server Component. Shown at the
+   * request to produce — never at the door. See the panel's own note.
+   */
+  readonly packages?:           readonly ChamberPackage[];
   readonly chamberVision?:      ImperialVisionDocument;
   readonly generationAvailable?: boolean;
   /** Models verified and active for animating an image — derived by the page from the fleet. */
@@ -188,6 +193,20 @@ function StepCostLine({ quote, showBalance = false }: { readonly quote: StepQuot
   );
 }
 
+/**
+ * Exactly what a Creator may see of a package. NOT the pricing module's own
+ * type: importing that module into a `'use client'` file would pull the
+ * Empire's provider costs, dollar basis and FX rate into a bundle any visitor
+ * can open. A Server Component projects these four fields and nothing else.
+ */
+interface ChamberPackage {
+  readonly packageId: string;
+  readonly nameAr: string;
+  readonly priceEgp: number;
+  readonly balanceUnits: number;
+  readonly validityAr: string;
+}
+
 export function QiyamahChamberClient({
   dict,
   chamberVision,
@@ -196,6 +215,7 @@ export function QiyamahChamberClient({
   durationLadder = [],
   aspectOptions = [],
   imageAspectOptions = [],
+  packages = [],
 }: QiyamahChamberClientProps) {
   const { goTo } = useConstitutionalNavigation();
   const { triggerInvitation } = useInstallInvitation();
@@ -1821,6 +1841,43 @@ export function QiyamahChamberClient({
               )}
 
               {cost && <StepCostLine quote={cost} showBalance />}
+
+              {/* ── WHERE THE MONEY IS ABOUT TO BE SPENT ────────────────────
+                  FOUNDER'S RULING, 2026-09-28: «لا اريد ان تكون صفحه
+                  الاشتراكات والباقات (الميزان) فى بدايه دخول الزائر للمنصه —
+                  انها تظهر له عند طلب اجراء عمليه انتاجيه».
+
+                  They stood at the gate, as the last thing a stranger read
+                  before entering. A price list is the wrong thing to meet
+                  someone with at a door; it is the right thing to have within
+                  reach at the moment of spending. So it stands beside the
+                  cost of the act the Creator is about to take, and nowhere
+                  earlier. */}
+              {packages.length > 0 && (
+                <section className="chamber-packages" aria-label="باقات الميزان">
+                  <p className="chamber-packages-lead">
+                    {cost && !cost.canProceed
+                      ? 'رصيدك لا يكفي لهذا العمل. وهذه الباقات:'
+                      : 'ولزيادة ميزانك:'}
+                  </p>
+                  <ul className="chamber-packages-row">
+                    {packages.map((p) => (
+                      <li key={p.packageId} className="chamber-package">
+                        <span className="chamber-package-name">{p.nameAr}</span>
+                        <span className="chamber-package-price">
+                          {p.priceEgp.toLocaleString('en-US')}<span className="chamber-package-currency">ج.م</span>
+                        </span>
+                        <span className="chamber-package-units">
+                          {p.balanceUnits.toLocaleString('en-US')} وحدة
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <a className="chamber-packages-link" href="/sovereign-balance">
+                    ميزان القيمة السيادي ←
+                  </a>
+                </section>
+              )}
 
               {stage === 'constructing' ? (
                 <div className="construction-progress">

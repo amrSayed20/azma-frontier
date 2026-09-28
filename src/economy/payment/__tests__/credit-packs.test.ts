@@ -34,10 +34,12 @@ describe('the four approved packages', () => {
     expect(getCreditPack('riyada').azmaUnits).toBe(16670);
   });
 
-  it('carry their approved validity — 28 days, and six months for الريادة', () => {
-    expect(getCreditPack('riyada').validity).toBe('six-months');
-    for (const id of ['asas', 'irtiqaa', 'ihtiraf']) {
-      expect(getCreditPack(id).validity).toBe('twenty-eight-days');
+  it('carry their approved validity — none of them expires', () => {
+    // FOUNDER'S RULING 2026-09-28: «ألغِ الـ28 يوم». The 28-day cycle and
+    // الريادة's six months are cancelled, under POLICY: REFUNDS & CREDIT
+    // BALANCE v1.0 §4.
+    for (const id of ['asas', 'irtiqaa', 'ihtiraf', 'riyada']) {
+      expect(getCreditPack(id).validity).toBe('does-not-expire');
     }
   });
 

@@ -157,6 +157,18 @@ export function SovereignBalanceClient({
         <p>{notices.notTransferable}</p>
       </section>
 
+      {/* ── THE INSTRUMENT A CREATOR IS HELD TO ────────────────────────
+          Linked only now. While the Refunds policy said credits do not
+          expire and this surface said 28 days, a Creator who followed the
+          link met two Empire promises about their own balance that
+          contradicted each other. The Founder ruled on 2026-09-28; they
+          agree; the door opens. */}
+      <nav className="balance-policy-link">
+        <a href="/policies/refunds-and-credit-balance">
+          سياسة الاسترداد ورصيد الوحدات ←
+        </a>
+      </nav>
+
       <section className="balance-gift" aria-labelledby="balance-gift-title">
         <h2 id="balance-gift-title" className="balance-section-title">وحدات الهدية</h2>
         <p>{giftNoticeAr}</p>

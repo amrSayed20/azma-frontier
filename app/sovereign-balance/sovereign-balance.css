@@ -221,3 +221,24 @@
   .balance-title { font-size: 1.7rem; }
   .balance-package-amount { font-size: 2rem; }
 }
+
+/* The instrument a Creator is held to, reachable from the surface that
+   spends their Balance. */
+.balance-policy-link {
+  width: 100%;
+  max-width: 48rem;
+  text-align: center;
+  font-size: 0.92rem;
+}
+
+.balance-policy-link a {
+  color: var(--azma-text-muted);
+  text-decoration: none;
+  display: inline-block;
+  min-height: 44px;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--azma-gold-2);
+}
+
+.balance-policy-link a:hover { color: var(--azma-text-sacred); border-color: var(--azma-gold-4); }
+.balance-policy-link a:focus-visible { outline: 2px solid var(--azma-gold-7); outline-offset: 3px; }

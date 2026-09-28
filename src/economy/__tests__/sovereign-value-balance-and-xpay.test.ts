@@ -18,8 +18,8 @@ import { join } from 'path';
 import {
   SOVEREIGN_VALUE_BALANCE, BALANCE_VALUE_REFERENCE, BALANCE_UNIT_USD, BALANCE_UNIT_EGP,
   OPERATION_CONSUMPTION, consumptionFor, priceOperation, creatorFacingCost,
-  SOVEREIGN_PACKAGES, packageById, unitPriceEgp, riyadaExpiry, RIYADA_COMPOSITION,
-  standardCycleEnd, STANDARD_CYCLE_MS, CARRY_FORWARD_WINDOW,
+  SOVEREIGN_PACKAGES, packageById, unitPriceEgp, RIYADA_COMPOSITION,
+  VALIDITY_AR, BALANCE_NOTICES_AR,
   BALANCE_PRICING_APPROVED, PAYMENT_PROOF_STATUS, GIFT_BALANCE, PENDING_FOUNDER_DECISIONS,
 } from '../pricing/sovereign-value-balance';
 import { XPayPaymentGateway, readXPayCredentials, xpayMode } from '../payment/xpay-payment-gateway';
@@ -188,40 +188,51 @@ describe('3 · the prices are approved; taking money is a separate gate', () => 
     }
   });
 
-  it('the three standard packages run a 28-day cycle; الريادة runs six months', () => {
-    expect(packageById('riyada')!.validity).toBe('six-months');
-    for (const id of ['asas', 'irtiqaa', 'ihtiraf']) {
-      expect(packageById(id)!.validity).toBe('twenty-eight-days');
+  it('NO package expires — the 28 days and the six months are cancelled', () => {
+    // FOUNDER'S RULING 2026-09-28: «كذلك نعم ألغِ الـ28 يوم», under POLICY:
+    // REFUNDS & CREDIT BALANCE v1.0 §4 — «Paid credits … do not expire merely
+    // because time has passed». Two of his own instruments had said opposite
+    // things about the same money; this is which one governs.
+    for (const p of SOVEREIGN_PACKAGES) {
+      expect(p.validity).toBe('does-not-expire');
     }
-    expect(STANDARD_CYCLE_MS).toBe(28 * 24 * 60 * 60 * 1000);
+    expect(Object.keys(VALIDITY_AR)).toEqual(['does-not-expire']);
+    expect(VALIDITY_AR['does-not-expire']).toBe('لا تنتهي');
   });
 
-  it('at a cycle end nothing is refunded in cash, and ALL of it carries', () => {
-    for (const n of [0, 1, 7, 1375, 6900]) {
-      const out = standardCycleEnd(n);
-      expect(out.carriedForward).toBe(n);   // in full — no third is shaved
-      expect(out.cashRefunded).toBe(0);     // carry-forward is not a refund
+  it('and the machinery that could compute an expiry is GONE, not disabled', () => {
+    // Removed and not left behind a flag: a function that can still compute a
+    // deduction from a Creator's Balance is a deduction waiting for a caller,
+    // and the Empire's own rule is that what is rejected is removed, never
+    // covered. This reads the source, because a deleted export cannot be
+    // imported to be asserted about.
+    const pricing = read('src/economy/pricing/sovereign-value-balance.ts');
+    const code = pricing
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    for (const gone of [
+      'export function riyadaExpiry', 'export const RIYADA_PERIOD_MS',
+      'export function standardCycleEnd', 'export const STANDARD_CYCLE_MS',
+      'export const CARRY_FORWARD_WINDOW',
+    ]) {
+      expect(code).not.toContain(gone);
     }
+    // …and the tombstone records what stood there, so the removal is history
+    // rather than an absence someone later mistakes for an omission.
+    expect(pricing).toContain('TOMBSTONE');
+    expect(pricing).toContain('riyadaExpiry(n)');
   });
 
-  it('and it carries ONLY on a new purchase — which is not a subscription', () => {
-    // Nothing renews and no card is charged again. That is the whole
-    // difference, and it is why no surface may call this a subscription.
-    expect(standardCycleEnd(500).requiresNewPurchase).toBe(true);
-  });
-
-  it('the carry window is unruled, so NO balance is expired by this system', () => {
-    // «In the following cycle» has no defined edge. A Creator returning on
-    // day 30 or day 60 must be answered, and the answer changes what they
-    // are owed — so it is not an engineer's to pick.
-    expect(CARRY_FORWARD_WINDOW).toBe('PENDING FOUNDER DECISION');
-  });
-
-  it('الريادة is EXCLUDED from the standard cycle, by name', () => {
-    // Its own rule stands: a third removed, two thirds returned permanently.
-    expect(packageById('riyada')!.validity).not.toBe('twenty-eight-days');
-    const out = riyadaExpiry(3000);
-    expect([out.removed, out.returnedAsOrdinary]).toEqual([1000, 2000]);
+  it('what a Creator is TOLD no longer promises an ending', () => {
+    // A superseded rule may not survive in a sentence about someone's money.
+    const joined = Object.values(BALANCE_NOTICES_AR).join(' ');
+    expect(joined).toContain('رصيدك لا ينتهي');
+    expect(joined).not.toContain('ثمانية وعشرون يوماً');
+    expect(joined).not.toContain('يُحذف ثلث');
+    expect(joined).not.toContain('يتوقّف المتبقّي عن الاستعمال');
+    // What does NOT change: it is still not cash, and still not a subscription.
+    expect(joined).toContain('لا يُردّ الرصيد نقداً');
+    expect(joined).toContain('وليس هذا اشتراكاً');
   });
 
   it('the three ordinary packages sell a unit at the reference rate', () => {
@@ -266,15 +277,12 @@ describe('3 · the prices are approved; taking money is a separate gate', () => 
     expect([GIFT_BALANCE.expires, GIFT_BALANCE.transferable]).toEqual([false, false]);
   });
 
-  it('الريادة expiry removes exactly a third and returns exactly two thirds', () => {
-    const out = riyadaExpiry(3000);
-    expect([out.removed, out.returnedAsOrdinary]).toEqual([1000, 2000]);
-    // Nothing is lost to a rounding nobody wrote down, at any remainder.
-    for (const n of [0, 1, 2, 7, 3001, 8640]) {
-      const r = riyadaExpiry(n);
-      expect(r.removed + r.returnedAsOrdinary).toBe(n);
-      expect(r.removed).toBe(Math.floor(n / 3));
-    }
+  it('الريادة keeps its 16,670 units — only its ending was cancelled', () => {
+    // The parity correction of 2026-09-27 stands untouched. What went is the
+    // six-month clock that removed a third of a real Balance by time.
+    expect(packageById('riyada')!.balanceUnits).toBe(16_670);
+    expect(RIYADA_COMPOSITION.totalUnits).toBe(16_670);
+    expect(packageById('riyada')!.validity).toBe('does-not-expire');
   });
 
   it('the decisions that belong to the Founder are named, not defaulted', () => {
@@ -356,24 +364,31 @@ describe('3c · the policy package exists and claims nothing untrue', () => {
     }
   });
 
-  it('the Balance policy carries the approved packages and both expiry rules', () => {
+  it('the Balance policy carries the approved packages, and no expiry at all', () => {
     const doc = read('docs/policies/SOVEREIGN_VALUE_BALANCE_POLICY.md');
     for (const n of ['1,375', '3,450', '6,900', '16,670', '99', '249', '499', '1,200']) {
       expect(doc).toContain(n);
     }
-    expect(doc).toContain('ثلثه');        // Riyada: a third removed
-    expect(doc).toContain('ثلثاه');       // Riyada: two thirds returned
-    expect(doc).toContain('٢٨ يوماً');    // the standard cycle
+    // REWRITTEN 2026-09-28: it used to require «ثلثه» · «ثلثاه» · «٢٨ يوماً».
+    // The Founder cancelled both rules, so a guard demanding them would now be
+    // holding the document to a promise he withdrew.
+    expect(doc).toContain('رصيدك لا ينتهي');
+    expect(doc).toContain('لا تنتهي');
+    // The cancelled rule survives ONLY inside the record of its cancellation.
+    const beforeTheRecord = doc.slice(0, doc.indexOf('ما أُلغي بهذا البند'));
+    expect(beforeTheRecord).not.toContain('ثمانية وعشرون يوماً');
   });
 
-  it('and it tells the WHOLE 28-day truth, not the comfortable half of it', () => {
-    // «Your balance carries over» alone would be a half-truth: the carrying
-    // is conditional on buying again. Both halves, or neither.
+  it('and it still tells the half that did NOT change: this is not cash', () => {
+    // What went is the ending. What stays is that a Balance is not money: it
+    // is not refunded, not withdrawn, not transferred to a bank — and not a
+    // subscription. Removing an expiry must not quietly soften any of that.
     const doc = read('docs/policies/SOVEREIGN_VALUE_BALANCE_POLICY.md');
-    expect(doc).toContain('يُرحَّل');                 // it carries forward
-    expect(doc).toContain('مشروطٌ بشراء جديد');       // ...only if you buy again
-    expect(doc).toContain('ولا يعود إليك مال');       // and no cash comes back
-    expect(doc).toContain('وليس هذا اشتراكاً');       // and it is not a subscription
+    expect(doc).toContain('لا يُصرف');
+    expect(doc).toContain('وليس هذا اشتراكاً');
+    expect(doc).toContain('ولا يُنقل الميزان بين الحسابات');
+    // And the cancellation is RECORDED in the document, not silently applied.
+    expect(doc).toContain('ألغى المؤسّس ذلك في 2026-09-28');
   });
 
   it('the gift notice is a discretion on the page a Creator reads', () => {

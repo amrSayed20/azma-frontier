@@ -5,11 +5,6 @@ import { resolveRequestLocale } from "@/src/creator-language/resolve-request-loc
 import { getDictionary, t } from "@/src/creator-language";
 import { resolveAvailableActions } from "@/src/button-engine";
 import { ArrivalExperience } from "@/src/imperial-experience-engine";
-import {
-  creatorFacingPackages,
-  GIFT_BALANCE,
-  SOVEREIGN_VALUE_BALANCE,
-} from "@/src/economy/pricing/sovereign-value-balance";
 
 const SESSION_COOKIE = "azma_session";
 
@@ -45,32 +40,19 @@ export default async function SovereignGate() {
     : '';
 
   /**
-   * ─── WHAT THE VISIT COSTS, SAID AT THE END OF THE VISIT ───────────────────
+   * ─── NO PRICE AT THE DOOR ─────────────────────────────────────────────────
    *
-   *   The Founder, 2026-09-27: «وتعرض الباقات فى نهايه رحله الزائر وليس بعد
-   *   تسجيل الدخول وتخبر المستخدم ان هناك وحدات هديه ممكن ان تمنحها
-   *   الامبراطوريه لمشتركين».
+   *   The four packages were rendered here as the arrival's closing beat.
    *
-   *   So the prices are the closing beat of the arrival, reached after the
-   *   ceremony has finished speaking — not a paywall sprung on someone who has
-   *   just registered. A visitor learns what the Empire's power costs while
-   *   they are still free to walk away, which is the only moment the telling
-   *   is worth anything.
+   *   FOUNDER'S RULING, 2026-09-28: «لا اريد ان تكون صفحه الاشتراكات والباقات
+   *   (الميزان) فى بدايه دخول الزائر للمنصه». His earlier «نهاية رحلة الزائر»
+   *   was not the end of this ceremony — the ceremony is the BEGINNING of the
+   *   entry, and a stranger at a door is not met with a price list.
    *
-   *   This is read HERE, on the server, and passed down already reduced to
-   *   what a Creator may see. The pricing module carries the Empire's cost
-   *   truth — provider rates, the dollar acquisition cost, the FX rate — and a
-   *   client component that imported it would publish all of it in a bundle.
+   *   They appear where the money is about to be spent, and they live at the
+   *   end of the platform on ميزان القيمة. The gate carries no cost truth at
+   *   all now, which also means this Server Component no longer imports the
+   *   pricing module.
    */
-  return (
-    <ArrivalExperience
-      title={title}
-      actions={actions}
-      dict={dict}
-      locale={locale}
-      packages={creatorFacingPackages()}
-      unitNameAr={SOVEREIGN_VALUE_BALANCE.nameAr}
-      giftNoticeAr={GIFT_BALANCE.noticeAr}
-    />
-  );
+  return <ArrivalExperience title={title} actions={actions} dict={dict} locale={locale} />;
 }

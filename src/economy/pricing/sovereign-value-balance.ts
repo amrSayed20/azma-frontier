@@ -71,13 +71,30 @@ export const BALANCE_UNIT_EGP = BALANCE_UNIT_USD * FX.usdToEgp;
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * `twenty-eight-days` — the three standard packages. The Balance has a
- *   28-day life, and what remains at the end is NOT refunded in cash. It IS
- *   carried forward in full if the Creator buys another standard package.
+ * ─── THE BALANCE DOES NOT EXPIRE ────────────────────────────────────────────
  *
- * `six-months` — الريادة alone, under its own approved expiry treatment.
+ *   FOUNDER'S RULING, 2026-09-28: «كذلك نعم ألغِ الـ28 يوم».
+ *
+ *   It settles a contradiction between two of his own instruments. POLICY:
+ *   REFUNDS & CREDIT BALANCE v1.0, §4:
+ *
+ *       «Paid credits purchased by the user do not expire merely because time
+ *        has passed … the balance remains in the account and does not lapse.»
+ *
+ *   against the BALANCE EXPIRY & CARRY-FORWARD AMENDMENT of 2026-09-27, which
+ *   gave the three standard packages 28 days and الريادة six months with a
+ *   third of the remainder removed. Both were his. They could not both be true
+ *   of the same money, and the policy governs.
+ *
+ *   ─── ONE THING INFERRED, AND SAID OUT LOUD RATHER THAN BURIED ────────
+ *
+ *   He named the 28 days. الريادة's six-month rule removed a third of a real
+ *   Balance BY THE PASSAGE OF TIME, which is exactly what §4 forbids of «paid
+ *   credits» — and الريادة is paid. So it goes with them. If he meant الريادة
+ *   to keep its own ending, one word restores it; this note exists so that
+ *   inference is visible in the law itself and not only in a commit.
  */
-export type PackageValidity = 'twenty-eight-days' | 'six-months';
+export type PackageValidity = 'does-not-expire';
 
 export interface SovereignPackage {
   readonly packageId: string;
@@ -94,10 +111,10 @@ export interface SovereignPackage {
  * ─── APPROVED. DO NOT ALTER A SINGLE FIGURE. ────────────────────────────────
  */
 export const SOVEREIGN_PACKAGES: readonly SovereignPackage[] = [
-  { packageId: 'asas',     nameAr: 'الأساس',   priceEgp: 99,    balanceUnits: 1_375, validity: 'twenty-eight-days', recurrence: 'one-time', transferable: false },
-  { packageId: 'irtiqaa',  nameAr: 'الارتقاء', priceEgp: 249,   balanceUnits: 3_450, validity: 'twenty-eight-days', recurrence: 'one-time', transferable: false },
-  { packageId: 'ihtiraf',  nameAr: 'الاحتراف', priceEgp: 499,   balanceUnits: 6_900, validity: 'twenty-eight-days', recurrence: 'one-time', transferable: false },
-  { packageId: 'riyada',   nameAr: 'الريادة',  priceEgp: 1_200, balanceUnits: 16_670, validity: 'six-months', recurrence: 'one-time', transferable: false },
+  { packageId: 'asas',     nameAr: 'الأساس',   priceEgp: 99,    balanceUnits: 1_375, validity: 'does-not-expire', recurrence: 'one-time', transferable: false },
+  { packageId: 'irtiqaa',  nameAr: 'الارتقاء', priceEgp: 249,   balanceUnits: 3_450, validity: 'does-not-expire', recurrence: 'one-time', transferable: false },
+  { packageId: 'ihtiraf',  nameAr: 'الاحتراف', priceEgp: 499,   balanceUnits: 6_900, validity: 'does-not-expire', recurrence: 'one-time', transferable: false },
+  { packageId: 'riyada',   nameAr: 'الريادة',  priceEgp: 1_200, balanceUnits: 16_670, validity: 'does-not-expire', recurrence: 'one-time', transferable: false },
 ];
 
 export const packageById = (id: string): SovereignPackage | undefined =>
@@ -158,102 +175,28 @@ export const RIYADA_COMPOSITION = {
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// الريادة — WHAT HAPPENS AFTER SIX MONTHS
+// TOMBSTONE — الريادة'S SIX MONTHS, AND THE STANDARD 28-DAY CYCLE
 // ─────────────────────────────────────────────────────────────────────────────
-
-export interface RiyadaExpiryOutcome {
-  readonly remainingAtExpiry: number;
-  readonly removed: number;
-  readonly returnedAsOrdinary: number;
-}
-
-/**
- * At the end of the six-month period: a third of what is LEFT is removed, and
- * two thirds return as ordinary Balance.
- *
- *   · The returned Balance NEVER expires. The 28-day standard cycle does NOT
- *     apply to it: the amendment that created that cycle excluded الريادة
- *     from it by name, and this Balance is that package's own outcome.
- *   · It starts no new period and restarts no countdown.
- *   · It is not transferable.
- *
- * The removed third is floored and the returned part takes the remainder, so
- * the two always sum to exactly what was there. A Creator never loses a unit
- * to a rounding rule nobody wrote down, and the Empire never returns one it
- * did not have.
- */
-export function riyadaExpiry(remainingAtExpiry: number): RiyadaExpiryOutcome {
-  const remaining = Math.max(0, Math.floor(remainingAtExpiry));
-  const removed = Math.floor(remaining / 3);
-  return { remainingAtExpiry: remaining, removed, returnedAsOrdinary: remaining - removed };
-}
-
-/** Six months, in milliseconds, from the moment the package was granted. */
-export const RIYADA_PERIOD_MS = 182 * 24 * 60 * 60 * 1000;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// THE STANDARD 28-DAY CYCLE, AND WHAT CARRIES FORWARD
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** 28 days from the moment a standard package was granted. */
-export const STANDARD_CYCLE_MS = 28 * 24 * 60 * 60 * 1000;
-
-export interface CycleEndOutcome {
-  readonly remainingAtCycleEnd: number;
-  /** Carried into the new Balance when another standard package is bought. */
-  readonly carriedForward: number;
-  /** Cash returned. Always zero — carry-forward is not a refund. */
-  readonly cashRefunded: 0;
-  readonly requiresNewPurchase: true;
-}
-
-/**
- * ─── THE END OF A STANDARD CYCLE ────────────────────────────────────────────
- *
- *   FINAL FOUNDER AMENDMENT 2026-09-27. At 28 days, whatever is left:
- *
- *     · is NOT refunded in cash — not any part of it;
- *     · is carried forward IN FULL into the next standard package;
- *     · and carries only if the Creator BUYS one.
- *
- *   ─── WHY THIS IS NOT A SUBSCRIPTION, AND MUST NEVER BE CALLED ONE ────
- *
- *   Nothing renews. No card is charged again. Nothing arrives unless the
- *   Creator chooses to buy, and if they never buy again, nothing is taken
- *   from them because nothing was ever scheduled. `requiresNewPurchase` is
- *   always true, and it is the whole difference between this and a
- *   subscription — which is a word no surface may use for it.
- *
- *   ─── WHAT A CREATOR MUST BE TOLD PLAINLY ─────────────────────────────
- *
- *   The Balance DOES have an end. If they do not buy again, what is left
- *   stops being usable and no money comes back. A carry-forward rule
- *   described only as «your balance carries over» would be a half-truth,
- *   because the carrying is conditional on spending again. The policy says
- *   both halves, and a guard holds that it does.
- */
-export function standardCycleEnd(remainingAtCycleEnd: number): CycleEndOutcome {
-  const remaining = Math.max(0, Math.floor(remainingAtCycleEnd));
-  return {
-    remainingAtCycleEnd: remaining,
-    // In full. Nothing is shaved off for carrying — that is the Riyada rule,
-    // and it does not apply here.
-    carriedForward: remaining,
-    cashRefunded: 0,
-    requiresNewPurchase: true,
-  };
-}
-
-/**
- * How long a Creator has to buy again before a carried Balance is lost.
- *
- * The amendment says «in the following cycle» and does not define its edge.
- * A Creator who returns on day 30, or on day 60, has to be answered — and
- * the answer changes what they are owed, so it is not an engineer's to pick.
- * Until it is ruled, NO Balance is expired by this system: the rule is
- * documented and unenforced rather than enforced at a boundary nobody set.
- */
-export const CARRY_FORWARD_WINDOW: 'PENDING FOUNDER DECISION' = 'PENDING FOUNDER DECISION';
+//
+//   REMOVED 2026-09-28 by the Founder's ruling «كذلك نعم ألغِ الـ28 يوم»,
+//   under POLICY: REFUNDS & CREDIT BALANCE v1.0 §4 — «Paid credits purchased
+//   by the user do not expire merely because time has passed».
+//
+//   What stood here computed deductions from a Creator's Balance by the clock:
+//
+//     · `riyadaExpiry(n)`      — removed ⌊n/3⌋ of what was left at six months
+//     · `RIYADA_PERIOD_MS`     — 182 days
+//     · `standardCycleEnd(n)`  — ended a Balance at 28 days unless bought again
+//     · `STANDARD_CYCLE_MS`    — 28 days
+//     · `CARRY_FORWARD_WINDOW` — the undecided edge of «the following cycle»
+//
+//   They are DELETED, not disabled behind a flag. A function that can still
+//   compute a deduction is a deduction waiting for a caller, and the Empire's
+//   own rule is that what is rejected is removed and never covered.
+//
+//   Nothing replaces them, because nothing takes the place of time here: a
+//   paid Balance is spent by its owner, or it stays.
+//
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WHAT AN OPERATION CONSUMES
@@ -497,8 +440,7 @@ export const GIFT_BALANCE = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const VALIDITY_AR: Record<PackageValidity, string> = {
-  'twenty-eight-days': '٢٨ يوماً',
-  'six-months': 'ستّة أشهر',
+  'does-not-expire': 'لا تنتهي',
 };
 
 /** Exactly the fields a creator-facing surface may show. */
@@ -558,20 +500,30 @@ export function creatorFacingPackages(): readonly CreatorFacingPackage[] {
  *   legal distinction in itself and already carries its own reasoning.
  */
 export const BALANCE_NOTICES_AR = {
-  /** The three standard packages. Never says «subscription». */
+  /**
+   * REWRITTEN 2026-09-28. It read «صلاحيته ثمانية وعشرون يوماً» — and the
+   * Founder cancelled that. A sentence about a Creator's money is the last
+   * place a superseded rule may survive.
+   */
   standardValidity:
-    'رصيد الباقات الثلاث صلاحيته ثمانية وعشرون يوماً من تاريخ الشراء.',
-  /** The whole 28-day rule, both halves — the second half is the honest one. */
+    'رصيدك لا ينتهي. ما اشتريتَه يبقى في حسابك، ولا يسقط بمرور الوقت مهما طالت المدّة التي لا تستعمل فيها المنصّة.',
+  /**
+   * What replaced the carry-forward half. There is nothing to carry forward
+   * now, because nothing ends — and saying «يُرحَّل» about a Balance that
+   * never lapses would invent a condition the Creator does not have to meet.
+   */
   carryForward:
-    'وعند انتهاء المدّة لا يُردّ المتبقّي نقداً، ويُرحَّل كاملاً إذا اشتريتَ باقة عادية جديدة. '
-    + 'وإن لم تشترِ، يتوقّف المتبقّي عن الاستعمال ولا يعود إليك مال.',
+    'ولا يُردّ الرصيد نقداً ولا يُصرف ولا يُحوَّل إلى حساب بنكي — وهذا مستقلٌّ تماماً عن بقائه: فهو باقٍ، وغير قابل للصرف.',
   /** Said plainly because the word «package» invites the wrong assumption. */
   notASubscription:
-    'وليس هذا اشتراكاً: لا تجديد تلقائي، ولا خصم دوري، ولا شيء يُسحب من بطاقتك بلا طلبك، ولا شيء تحتاج إلى إلغائه.',
-  /** الريادة's own ending. Excluded from the 28-day rule by the Founder. */
+    'وليس هذا اشتراكاً: لا تجديد تلقائي، ولا خصم دوري، ولا شيء يُسحب من بطاقتك بلا طلبك، ولا شيء تحتاج إلى إلغائه. '
+    + 'وانتهاء أيّ اشتراك أو عدم تجديده لا يمسّ رصيدك المشترى.',
+  /**
+   * الريادة no longer has an ending of its own. Its six months removed a
+   * third of a real Balance by the clock, which is what §4 forbids.
+   */
   riyadaValidity:
-    'ورصيد الريادة صلاحيته ستّة أشهر، ومستثنىً من قاعدة الثمانية والعشرين يوماً. '
-    + 'وعند انتهائها يُحذف ثلث المتبقّي، ويعود ثلثاه إليك رصيداً عادياً لا ينتهي.',
+    'ويسري هذا على الريادة كما يسري على غيرها: لا مدّة تنتهي، ولا يُحذف منها شيء بمرور الوقت.',
   /** The determinism rule. A Creator sees one number, twice. */
   chargedOnRequested:
     'وتُحاسَب على ما طلبتَه لا على ما أنتجه النظام: المدّة التي اخترتَها هي المدّة التي تُخصم، ويُعرض عليك الاستهلاك قبل التنفيذ دائماً.',

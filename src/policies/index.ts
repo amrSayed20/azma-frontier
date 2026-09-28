@@ -54,35 +54,37 @@ export const POLICIES_NOT_YET_PUBLISHABLE: readonly string[] = [
 ];
 
 /**
- * ─── THE ONE CONTRADICTION THAT MUST NOT BE PUBLISHED TWICE ──────────────────
+ * ─── THE CONTRADICTION, AND THE RULING THAT ENDED IT ────────────────────────
  *
- *   The Founder's Refunds & Credit Balance policy, §4:
+ *   For a few hours the Empire held two of the Founder's own instruments that
+ *   said opposite things about the same money.
  *
+ *   POLICY: REFUNDS & CREDIT BALANCE v1.0, §4:
  *       «Paid credits purchased by the user do not expire merely because time
- *        has passed … the balance remains in the account and does not lapse»
+ *        has passed.»
  *
- *   The Founder's own BALANCE EXPIRY & CARRY-FORWARD AMENDMENT, in force in
- *   `src/economy/pricing/sovereign-value-balance.ts` and on the live Balance
- *   surface:
+ *   BALANCE EXPIRY & CARRY-FORWARD AMENDMENT, 2026-09-27:
+ *       الأساس · الارتقاء · الاحتراف — ٢٨ يوماً، وإن لم يشترِ الخالق باقةً
+ *       جديدة «يتوقّف المتبقّي عن الاستعمال»؛ والريادة ستّة أشهر ثم يُحذف
+ *       ثلث المتبقّي.
  *
- *       الأساس · الارتقاء · الاحتراف — صلاحية ٢٨ يوماً، وإن لم يشترِ الخالق
- *       باقةً جديدة «يتوقّف المتبقّي عن الاستعمال ولا يعود إليه مال»
- *       الريادة — ستّة أشهر، ثم يُحذف ثلث المتبقّي
+ *   Nothing was published while they disagreed, because a Creator must never
+ *   be able to reach two Empire promises about their own balance that
+ *   contradict each other.
  *
- *   Both are his. They cannot both be true of the same money, and publishing
- *   both would have the Empire promising a Creator two opposite things about
- *   their own balance — which is the one thing pricing honesty cannot survive.
+ *   FOUNDER'S RULING, 2026-09-28: «كذلك نعم ألغِ الـ28 يوم». The policy
+ *   governs. The pricing layer was changed to match — not the other way round
+ *   — and every function that could compute an expiry was deleted rather than
+ *   disabled.
  *
- *   So this flag exists, and it is what the Balance surface reads before it
- *   links to the policy. Nothing is deleted and nothing is decided here: the
- *   contradiction is held visible until the Founder says which instrument
- *   governs.
+ *   The record is kept rather than erased: a rule that governed real money,
+ *   even briefly, is part of what the Empire has to be able to account for.
  */
 export const EXPIRY_RULE_IN_CONFLICT = {
   policySays: 'Paid credits do not expire merely because time has passed.',
   codeAndArabicPolicySay:
-    'الباقات الثلاث العادية صلاحيتها ٢٨ يوماً، والريادة ستّة أشهر ثم يُحذف ثلث المتبقّي.',
-  resolvedBy: null as string | null,
-  /** While false, no creator-facing surface links to the Refunds policy. */
-  MAY_PUBLISH: false as const,
+    'كانت: الباقات الثلاث ٢٨ يوماً، والريادة ستّة أشهر ثم يُحذف ثلث المتبقّي. أُلغيت.',
+  resolvedBy: 'FOUNDER RULING 2026-09-28 — «كذلك نعم ألغِ الـ28 يوم». The policy governs.' as string | null,
+  /** The two instruments agree now, so the policy may be reached by a Creator. */
+  MAY_PUBLISH: true as const,
 } as const;

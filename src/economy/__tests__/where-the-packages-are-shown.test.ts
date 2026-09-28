@@ -89,8 +89,12 @@ describe('2 · the cost truth never reaches a browser', () => {
   });
 
   it('a server component reads it and passes the projection down', () => {
-    expect(GATE).toContain('creatorFacingPackages()');
+    // The GATE no longer does — it carries no price at all since the Founder's
+    // ruling of 2026-09-28. The two that do are the Balance surface and the
+    // Chamber, and both are Server Components.
     expect(PAGE).toContain('creatorFacingPackages()');
+    expect(read('app/qiyamah-chamber/page.tsx')).toContain('creatorFacingPackages()');
+    expect(strip(GATE)).not.toContain('creatorFacingPackages()');
     // The gate's page is a Server Component: it must not declare itself a
     // client one, or the import above ships the cost table after all.
     expect(strip(GATE)).not.toContain("'use client'");
@@ -111,58 +115,59 @@ describe('2 · the cost truth never reaches a browser', () => {
   });
 });
 
-describe('3 · the packages are shown at the end of the visit, not after logging in', () => {
-  it('the arrival receives them and renders them as its closing beat', () => {
-    expect(ARRIVAL).toContain('readonly packages?: readonly ArrivalPackage[]');
-    expect(ARRIVAL).toContain('className="arrival-value"');
-    // Only once the ceremony has finished speaking.
-    expect(ARRIVAL).toContain("phase !== 'entering'");
-    // Below the threshold — the scene's one path forward stays first.
-    expect(ARRIVAL.indexOf('className="arrival-threshold"'))
-      .toBeLessThan(ARRIVAL.indexOf('className="arrival-value"'));
+describe('3 · the packages are where the money is spent, not at the door', () => {
+  const CHAMBER = read('app/qiyamah-chamber/QiyamahChamberClient.tsx');
+  const CHAMBER_PAGE = read('app/qiyamah-chamber/page.tsx');
+
+  it('the gate carries no price at all', () => {
+    // FOUNDER'S RULING 2026-09-28: «لا اريد ان تكون صفحه الاشتراكات والباقات
+    // (الميزان) فى بدايه دخول الزائر للمنصه». His earlier «نهاية رحلة الزائر»
+    // was read as the end of the arrival ceremony; the ceremony is the
+    // BEGINNING of the entry, and a stranger at a door is not met with a
+    // price list.
+    expect(ARRIVAL).not.toContain('className="arrival-value"');
+    expect(ARRIVAL).not.toContain('arrival-value-price');
+    expect(strip(GATE)).not.toContain('creatorFacingPackages()');
+    // Removed and not hidden: no flag, no condition, no dormant markup.
+    expect(strip(ARRIVAL)).not.toContain('packages');
+    // The tombstone records why, so the absence is history and not an omission.
+    expect(ARRIVAL).toContain('TOMBSTONE: THE CLOSING BEAT');
   });
 
-  it('and it offers a visitor no purchase control, because a visitor has no account', () => {
-    const at = ARRIVAL.indexOf('className="arrival-value"');
-    const beat = ARRIVAL.slice(at, ARRIVAL.indexOf('className="arrival-language"'));
-    expect(beat).not.toContain('<button');
-    expect(beat).not.toContain('checkout');
+  it('they appear at the request to produce, beside what that act costs', () => {
+    expect(CHAMBER).toContain('className="chamber-packages"');
+    // Beside the cost line, so the Creator reads the charge and the remedy in
+    // one place rather than hunting for one of them.
+    expect(CHAMBER.indexOf('<StepCostLine quote={cost} showBalance />'))
+      .toBeLessThan(CHAMBER.indexOf('className="chamber-packages"'));
   });
 
-  it('the closing beat is styled, so it is not four unpainted rows', () => {
-    const css = read('src/imperial-experience-engine/experiences/arrival/arrival.css');
-    for (const cls of [
-      '.arrival-value', '.arrival-value-packages', '.arrival-value-package',
-      '.arrival-value-price', '.arrival-value-units', '.arrival-value-gift',
-    ]) {
-      expect(css).toContain(cls);
+  it('and they say plainly when the Balance will not cover the act', () => {
+    expect(CHAMBER).toContain('رصيدك لا يكفي لهذا العمل');
+  });
+
+  it('the end of the platform is still reachable from there', () => {
+    expect(CHAMBER).toContain('href="/sovereign-balance"');
+  });
+
+  it('the Chamber holds no price of its own — the server projects them', () => {
+    expect(CHAMBER_PAGE).toContain('creatorFacingPackages()');
+    expect(CHAMBER).not.toContain('sovereign-value-balance');
+    expect(CHAMBER).not.toContain('qiyamah-cost-truth');
+    for (const n of ['99', '249', '499', '1,375', '3,450', '6,900', '16,670']) {
+      expect(strip(CHAMBER)).not.toContain(n);
     }
   });
 
-  it('the gift is told, as a discretion and never as an entitlement', () => {
-    expect(GATE).toContain('GIFT_BALANCE');
-    expect(ARRIVAL).toContain('giftNoticeAr');
-    expect(CLIENT).toContain('giftNoticeAr');
+  it('the gift is told where the packages now are, not at the door', () => {
     expect(GIFT_BALANCE.noticeAr).toContain('قد تمنح');
-    expect(GIFT_BALANCE.noticeAr).toContain('تفضّلٌ لا استحقاق');
     expect(GIFT_BALANCE.isEntitlement).toBe(false);
-    expect(GIFT_BALANCE.isPromised).toBe(false);
-    // Never an amount, never a condition that reads like a rule.
     expect(GIFT_BALANCE.noticeAr).not.toMatch(/[0-9]/);
+    expect(CLIENT).toContain('giftNoticeAr');
   });
 
   it('no surface calls الريادة’s composition a bonus, a gift or a discount', () => {
-    // RIYADA_COMPOSITION.MAY_CLAIM_BONUS is false: 1,200 EGP buys exactly
-    // 16,670 units at the ordinary reference rate, so the 2,778 the amendment
-    // calls a «bonus» were bought, not given. The number stands; the word is
-    // forbidden on any surface a Creator reads.
-    //
-    // «خصم» alone is NOT in this list, deliberately: «لم يُخصم شيء» — nothing
-    // was deducted — shares its root and is the opposite of a claim. What is
-    // forbidden is the CLAIM forms, so the guard names those instead of
-    // banning a root and then being loosened later to let a true sentence
-    // through.
-    for (const src of [ARRIVAL, CLIENT, GATE].map(strip)) {
+    for (const src of [ARRIVAL, CLIENT, GATE, CHAMBER].map(strip)) {
       for (const claim of ['مكافأة', 'هدية مع', 'bonus', 'وفّر', 'خصم خاص', 'بخصم', 'خصماً', 'مجاناً']) {
         expect(src).not.toContain(claim);
       }
@@ -194,13 +199,19 @@ describe('4 · the Balance surface tells the truth about what it can do', () => 
     expect(CLIENT).toContain('لم يُخصم شيء');
   });
 
-  it('it states the 28-day rule in BOTH halves, and الريادة’s exception', () => {
-    expect(BALANCE_NOTICES_AR.standardValidity).toContain('ثمانية وعشرون يوماً');
-    expect(BALANCE_NOTICES_AR.carryForward).toContain('لا يُردّ المتبقّي نقداً');
-    expect(BALANCE_NOTICES_AR.carryForward).toContain('وإن لم تشترِ');
+  it('it states that the Balance does not expire, and what that does NOT mean', () => {
+    // FOUNDER'S RULING 2026-09-28: «ألغِ الـ28 يوم». The notices used to
+    // promise an ending in both halves; they promise no ending now — and the
+    // half that did not change is held here so removing the expiry cannot
+    // quietly soften it.
+    expect(BALANCE_NOTICES_AR.standardValidity).toContain('رصيدك لا ينتهي');
+    expect(BALANCE_NOTICES_AR.carryForward).toContain('لا يُردّ الرصيد نقداً');
     expect(BALANCE_NOTICES_AR.notASubscription).toContain('وليس هذا اشتراكاً');
-    expect(BALANCE_NOTICES_AR.riyadaValidity).toContain('ستّة أشهر');
-    expect(BALANCE_NOTICES_AR.riyadaValidity).toContain('ثلث');
+    expect(BALANCE_NOTICES_AR.riyadaValidity).toContain('لا مدّة تنتهي');
+    for (const notice of Object.values(BALANCE_NOTICES_AR)) {
+      expect(notice).not.toContain('ثمانية وعشرون يوماً');
+      expect(notice).not.toContain('ستّة أشهر');
+    }
     // Every notice is RENDERED from the constant, never retyped on the page.
     for (const key of Object.keys(BALANCE_NOTICES_AR)) {
       expect(CLIENT).toContain(`notices.${key}`);

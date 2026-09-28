@@ -1695,3 +1695,66 @@
   text-underline-offset: 3px;
 }
 .moved-to-vault-link:hover { color: var(--text-main); }
+
+/* ── THE PACKAGES, WHERE THE MONEY IS ABOUT TO BE SPENT ───────────
+   FOUNDER'S RULING 2026-09-28: they stood at the gate, as the last
+   thing a stranger read before entering. A price list is the wrong
+   thing to meet someone with at a door and the right thing to have
+   within reach at the moment of spending — so it sits beside the cost
+   of the act, and nowhere earlier. Quiet by construction: it must
+   never outweigh the work. */
+.chamber-packages {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 7px;
+  background: rgba(212, 175, 55, 0.05);
+}
+
+.chamber-packages-lead {
+  margin: 0 0 8px;
+  font-size: 0.88em;
+  color: var(--text-muted);
+}
+
+.chamber-packages-row {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chamber-package {
+  flex: 1 1 88px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 6px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.3);
+  text-align: center;
+}
+
+.chamber-package-name  { font-size: 0.86em; color: var(--text-main); }
+.chamber-package-price { font-size: 1.05em; color: var(--gold-neon); font-variant-numeric: tabular-nums; }
+.chamber-package-currency { font-size: 0.62em; color: var(--text-muted); margin-inline-start: 2px; }
+.chamber-package-units { font-size: 0.78em; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.chamber-packages-link {
+  display: inline-block;
+  margin-top: 9px;
+  min-height: 44px;
+  padding: 11px 4px 0;
+  font-size: 0.86em;
+  color: var(--gold-neon);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.chamber-packages-link:hover { border-color: var(--gold-neon); }
+.chamber-packages-link:focus-visible { outline: 2px solid var(--gold-neon); outline-offset: 3px; }

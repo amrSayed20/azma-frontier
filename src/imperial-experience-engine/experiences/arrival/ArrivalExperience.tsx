@@ -64,28 +64,11 @@ function getIsReturningServerSnapshot(): boolean {
   return false;
 }
 
-/**
- * Exactly what a Creator may see of a package — projected on the server (see
- * app/page.tsx). Deliberately NOT the pricing module's own type: importing
- * that module here would pull the Empire's cost truth into this bundle.
- */
-interface ArrivalPackage {
-  readonly packageId: string;
-  readonly nameAr: string;
-  readonly priceEgp: number;
-  readonly balanceUnits: number;
-  readonly validityAr: string;
-}
-
 interface Props {
   readonly title: string;
   readonly actions: readonly AvailableAction[];
   readonly dict: Dictionary;
   readonly locale: Locale;
-  /** The approved packages, shown as the closing beat of the visit. */
-  readonly packages?: readonly ArrivalPackage[];
-  readonly unitNameAr?: string;
-  readonly giftNoticeAr?: string;
 }
 
 /**
@@ -210,10 +193,7 @@ interface Props {
  * over time and are unaffected unless their own CSS opts in), not an
  * Arrival-only parallel implementation.
  */
-export function ArrivalExperience({
-  title, actions, dict, locale,
-  packages = [], unitNameAr, giftNoticeAr,
-}: Props) {
+export function ArrivalExperience({ title, actions, dict, locale }: Props) {
   const { phase, beginHandoff } = useExperienceLifecycle({
     revealDurationMs: REVEAL_DURATION_MS,
     handoffDurationMs: HANDOFF_DURATION_MS,
@@ -342,41 +322,23 @@ export function ArrivalExperience({
       )}
 
       {/*
-        ─── THE CLOSING BEAT: WHAT THE POWER COSTS ────────────────────────
-          The Founder, 2026-09-27: the packages belong at the END of the
-          visitor's journey, and not after logging in.
+        ─── TOMBSTONE: THE CLOSING BEAT ────────────────────────────────────
+          The four packages stood here, as the last thing a visitor read
+          before crossing.
 
-          It appears only once the ceremony has finished speaking (phase
-          'stable'), below the threshold, so nothing here competes with the
-          scene's one path forward. And it carries NO purchase control: a
-          visitor has no account to buy with, and the Empire does not put a
-          price in front of a stranger and a button beside it. The Balance
-          surface is where a purchase happens, after an identity exists.
+          FOUNDER'S RULING, 2026-09-28: «لا اريد ان تكون صفحه الاشتراكات
+          والباقات (الميزان) فى بدايه دخول الزائر للمنصه — انها تظهر له عند
+          طلب اجراء عمليه انتاجيه وتوجد فى نهايه المنصه».
 
-          Nothing is called a bonus, a discount or a saving — the Founder's
-          composition of الريادة is not value given above its price, and no
-          creator-facing surface may claim it is.
+          I had read his earlier «نهاية رحلة الزائر» as the end of the
+          arrival ceremony. It is not: the arrival IS the beginning of the
+          entry, and a price list is the wrong thing to meet a stranger
+          with at a door. The packages now appear where the money is about
+          to be spent — at the request to produce — and they live at the
+          end of the platform, on ميزان القيمة.
+
+          Removed, not hidden: no flag, no condition, no dormant markup.
       */}
-      {packages.length > 0 && phase !== 'entering' && (
-        <section className="arrival-value" aria-label={unitNameAr ?? ''}>
-          {unitNameAr && <h2 className="arrival-value-title">{unitNameAr}</h2>}
-          <ol className="arrival-value-packages">
-            {packages.map((p) => (
-              <li key={p.packageId} className="arrival-value-package">
-                <span className="arrival-value-name">{p.nameAr}</span>
-                <span className="arrival-value-price">
-                  {p.priceEgp.toLocaleString('en-US')} <span className="arrival-value-currency">ج.م</span>
-                </span>
-                <span className="arrival-value-units">
-                  {p.balanceUnits.toLocaleString('en-US')} وحدة
-                </span>
-                <span className="arrival-value-validity">{p.validityAr}</span>
-              </li>
-            ))}
-          </ol>
-          {giftNoticeAr && <p className="arrival-value-gift">{giftNoticeAr}</p>}
-        </section>
-      )}
 
       <div className="arrival-language">
         <LocaleSwitcher

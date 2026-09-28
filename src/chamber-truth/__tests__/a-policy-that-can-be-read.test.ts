@@ -110,32 +110,35 @@ describe('2 · the Founder’s text is transcribed, never edited', () => {
   });
 });
 
-describe('3 · two instruments that cannot both be true are not both published', () => {
-  it('the contradiction is stated in full, in both directions', () => {
-    expect(EXPIRY_RULE_IN_CONFLICT.policySays).toContain('do not expire');
-    expect(EXPIRY_RULE_IN_CONFLICT.codeAndArabicPolicySay).toContain('٢٨ يوماً');
-    expect(EXPIRY_RULE_IN_CONFLICT.codeAndArabicPolicySay).toContain('ثلث المتبقّي');
+describe('3 · the contradiction was ruled on, and the ruling reached the code', () => {
+  it('the conflict record says who resolved it and permits publication', () => {
+    // It was held unpublished while two of the Founder's own instruments said
+    // opposite things about the same money. He ruled on 2026-09-28.
+    expect(EXPIRY_RULE_IN_CONFLICT.resolvedBy).not.toBeNull();
+    expect(EXPIRY_RULE_IN_CONFLICT.MAY_PUBLISH).toBe(true);
   });
 
-  it('nobody has resolved it, and the flag says so rather than guessing', () => {
-    expect(EXPIRY_RULE_IN_CONFLICT.resolvedBy).toBeNull();
-    expect(EXPIRY_RULE_IN_CONFLICT.MAY_PUBLISH).toBe(false);
-  });
-
-  it('and the pricing layer is UNCHANGED — his amendment still governs the code', () => {
-    // Nothing was silently switched to match the newer document. The 28-day
-    // rule stands exactly as he ruled it until he says which instrument wins.
+  it('and the pricing layer now agrees with the policy, not with the amendment', () => {
     const pricing = read('src/economy/pricing/sovereign-value-balance.ts');
-    expect(pricing).toContain("validity: 'twenty-eight-days'");
-    expect(pricing).toContain('STANDARD_CYCLE_MS');
-    const arabicPolicy = read('docs/policies/SOVEREIGN_VALUE_BALANCE_POLICY.md');
-    expect(arabicPolicy).toContain('ثمانية وعشرون يوماً');
+    expect(pricing).toContain("validity: 'does-not-expire'");
+    expect(pricing).not.toContain("validity: 'twenty-eight-days'");
+    // Removed, not disabled — a function that can compute a deduction is a
+    // deduction waiting for a caller.
+    const code = pricing.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(code).not.toContain('export function standardCycleEnd');
+    expect(code).not.toContain('export function riyadaExpiry');
   });
 
-  it('no creator-facing surface links to the policy while they disagree', () => {
-    // A Creator must never be able to reach two Empire promises about their
-    // own balance that contradict each other.
+  it('the Arabic policy no longer promises an ending either', () => {
+    const doc = read('docs/policies/SOVEREIGN_VALUE_BALANCE_POLICY.md');
+    expect(doc).toContain('رصيدك لا ينتهي');
+    expect(doc).toContain('ألغى المؤسّس ذلك في 2026-09-28');
+    // What does NOT change: it is still not cash.
+    expect(doc).toContain('لا يُصرف');
+  });
+
+  it('a Creator can now reach the policy from the surface that spends it', () => {
     const balance = read('app/sovereign-balance/SovereignBalanceClient.tsx');
-    expect(balance).not.toContain('/policies/refunds-and-credit-balance');
+    expect(balance).toContain('/policies/refunds-and-credit-balance');
   });
 });
