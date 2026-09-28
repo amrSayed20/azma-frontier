@@ -37,19 +37,27 @@
        الزرّ    [18, 707 → 187, 750]
        الرفيق   [30, 690 → 219, 738]      تداخل: نعم · تصله اليد: لا
 
-   The shared demonstration button is placed logically — `inset-inline-end`,
-   which in Arabic is the LEFT. This companion was placed physically, `left:
-   30px`, which in Arabic is also the left. One rule that follows the language
-   and one that ignores it put both in the same corner, and the Chamber's own
-   explainer — the first thing a stranger reaches for — could not be pressed.
-   `z-index: 900` did not save it: the companion carries a filled opacity
-   animation, so it is composited above regardless of the number.
+   MEASURED AGAIN after a first repair failed to move it — the two controls
+   resolve their sides in DIFFERENT frames:
 
-   Placed logically now, it takes the corner the demonstration button never
-   takes, in whichever language the Creator is reading. */
+       html                      dir=ltr
+       .demo-open-btn            direction: rtl   → inset-inline-end = LEFT
+       .makman-companion         direction: ltr   → inset-inline-start = LEFT
+
+   The document is served `dir="ltr"`; this chamber alone declares `direction:
+   rtl` on its viewport, so the shared demonstration button flips to the left
+   HERE and nowhere else — in رأس الأمر the same button measures at x=1200.
+   A logical property on the companion therefore cannot answer a logical
+   property on the button: they are not logical about the same thing. And
+   `z-index: 900` did not save the button either — the companion carries a
+   filled opacity animation, so it is composited above regardless.
+
+   So the companion is placed by the side it actually has, opposite the corner
+   this chamber's button actually lands in, and the reason is written down
+   rather than inferred. */
 .makman-companion {
   position: fixed;
-  inset-inline-start: 30px;
+  right: 30px;
   bottom: 30px;
   z-index: 150;
   display: flex;

@@ -19,9 +19,13 @@ function block(selector: string): string {
   return at === -1 ? '' : CSS.slice(at, CSS.indexOf('}', at));
 }
 
-it('the companion is placed by a side that follows the language, not a fixed one', () => {
-  // `left` is the same corner the shared demonstration button takes in Arabic.
+it('the companion does not take the corner this chamber\'s explainer lands in', () => {
+  // MEASURED: the button resolves to the LEFT here (its subtree is rtl inside
+  // an ltr document), so the companion must not also be on the left. A
+  // logical property cannot answer it — the two are logical about different
+  // frames — so the side is physical and the measurement is recorded in CSS.
   const b = block('.makman-companion');
-  expect(b).toContain('inset-inline-start');
-  expect(b).not.toMatch(/(^|\s|;)left:/);
+  expect(b).toMatch(/right:\s*30px/);
+  expect(b).not.toMatch(/(^|\s|;)\s*left:/);
+  expect(b).not.toContain('inset-inline-start');
 });
