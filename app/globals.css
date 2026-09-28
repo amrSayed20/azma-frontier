@@ -257,3 +257,47 @@ body {
     padding-block: 12px;
   }
 }
+
+/*
+ * ─── THE PALE BLUE BOX ──────────────────────────────────────────────────────
+ *
+ *   The Founder, 2026-09-28, on a phone: «وعند الضغط يظهر مربع ازرق باهت».
+ *
+ *   MEASURED on an iPhone: every control not carrying `[data-intent]` computes
+ *   `-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4)` — Chrome's own blue
+ *   wash, drawn as a rectangle over whatever shape the control actually has. A
+ *   round button flashes a square.
+ *
+ *   The Empire already refuses it, in src/design-system/azma-interaction.css —
+ *   but only under `[data-intent]`, so it covered the controls the Interaction
+ *   Engine had been taught about and left every other button in seven rooms to
+ *   the browser's default. The same shape as the box-model finding an hour
+ *   earlier: a rule that existed, was correct, and was not platform-wide.
+ *
+ *   ─── AND NOTHING IS TAKEN AWAY WITHOUT BEING REPLACED ─────────────────────
+ *
+ *   «الحجرة تقترح؛ والخالق وحده يقرّر» has a companion in the Interaction
+ *   Constitution: the Citizen must never wonder whether their touch arrived.
+ *   Removing the browser's acknowledgement without giving one of the Empire's
+ *   own would be a quieter defect than the blue box. So a press dims and
+ *   settles — the Empire's own handshake, in its own colour, in the control's
+ *   own shape.
+ */
+button,
+a[href],
+[role="button"],
+input,
+select,
+textarea,
+label {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (pointer: coarse) {
+  button:active,
+  a[href]:active,
+  [role="button"]:active {
+    filter: brightness(1.25);
+    transition: filter 90ms ease-out;
+  }
+}

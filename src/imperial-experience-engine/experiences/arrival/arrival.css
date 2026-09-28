@@ -428,18 +428,34 @@
 }
 
 /* ── Standing capabilities (not Storyboard beats) ────────────────────── */
-/* FIXED, not absolute — MEASURED consequence of the closing beat below:
-   this sat at 6% from the bottom of `.arrival`, and `.arrival` grows when
-   the packages are rendered, so the switcher slid down THE PAGE and landed
-   on top of the price rows. Anchored to the viewport it cannot collide with
-   content, and on a scene with no packages — where the page is exactly one
-   viewport tall — it renders in the identical place it always did. */
+/* ── IN THE FLOW, BECAUSE `fixed` WAS NEVER FIXED HERE ─────────────────
+   The Founder, 2026-09-28, on a phone: «زر اللغه فى الهاتف متداخل».
+
+   MEASURED on an iPhone: the switcher sat at top=1198px in a 664px
+   viewport — 534px BELOW the screen — overlapping the packages beat, the
+   gift sentence, the companion and its three mode buttons. A Creator could
+   not reach it at all; a click on it times out.
+
+   This was my own repair this morning. It had been `absolute` at 6% from
+   the bottom of `.arrival`, and when the closing beat made `.arrival`
+   taller it slid down onto the price rows — so I anchored it to the
+   viewport with `position: fixed`.
+
+   `position: fixed` DOES NOT ANCHOR TO THE VIEWPORT when any ancestor
+   carries a `transform`: the transform becomes the containing block. And
+   `.arrival` is transformed — the arrival variation writes one on every
+   visit. So `fixed` behaved exactly like `absolute`, and the repair
+   repaired nothing while reading as though it had.
+
+   The honest answer is not a third position value. A control that must
+   always be reachable belongs IN THE FLOW: it ends the scene, below the
+   closing beat, and it cannot overlap anything because nothing is
+   underneath it. */
 .arrival-language {
-  position: fixed;
+  position: relative;
   z-index: 3;
-  left: 50%;
-  bottom: 6%;
-  transform: translateX(-50%);
+  align-self: center;
+  margin-block: var(--azma-space-6) var(--azma-space-10);
   opacity: 0;
 }
 
@@ -720,12 +736,10 @@
   z-index: 2;
   width: min(100%, 60rem);
   margin-top: var(--azma-space-10);
-  /* SEEN, not reasoned about: at 64px of bottom padding the language
-     switcher — fixed at 6% of the VIEWPORT from its bottom — came to rest on
-     the second line of the gift sentence. The clearance has to be written in
-     the switcher's own unit, or it is right at one window height and wrong at
-     the next: 6vh for where it sits, plus its own height and air. */
-  padding: var(--azma-space-6) var(--azma-space-4) calc(6vh + 72px);
+  /* The bottom gutter existed only to clear a switcher that floated over
+     this beat. The switcher is in the flow now, so the gutter is ordinary
+     air again. */
+  padding: var(--azma-space-6) var(--azma-space-4) var(--azma-space-6);
   border-top: 1px solid rgba(var(--azma-gold-rgb), 0.18);
   color: var(--azma-text-primary);
 }

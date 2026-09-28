@@ -177,6 +177,52 @@ describe('3b · the two the height rule could not reach', () => {
   });
 });
 
+describe('3c · a press is answered by the Empire, not by the browser', () => {
+  const code = strip(GLOBALS);
+
+  it('the browser’s blue wash is refused on every control, not only the taught ones', () => {
+    // MEASURED on an iPhone: rgba(51, 181, 229, 0.4) on every control without
+    // `[data-intent]` — a square flash drawn over a round button. The Empire
+    // already refused it in azma-interaction.css, but only under that one
+    // attribute, so it covered what the Interaction Engine knew about and left
+    // every other button in seven rooms to Chrome.
+    const at = code.indexOf('-webkit-tap-highlight-color: transparent');
+    expect(at).toBeGreaterThan(-1);
+    const rule = code.slice(code.lastIndexOf('}', at) + 1, at);
+    for (const sel of ['button', 'a[href]', '[role="button"]']) expect(rule).toContain(sel);
+  });
+
+  it('and something of the Empire’s own is given in its place', () => {
+    // The Interaction Constitution: the Citizen must never wonder whether
+    // their touch arrived. Removing the browser's acknowledgement without
+    // giving one would be a quieter defect than the blue box.
+    expect(code).toMatch(/@media \(pointer: coarse\)[\s\S]{0,400}:active[\s\S]{0,200}filter:/);
+  });
+});
+
+describe('3d · a control that must always be reachable is in the flow', () => {
+  it('the gate’s language switcher is no longer positioned over the scene', () => {
+    // MEASURED on an iPhone: top=1198px in a 664px viewport — 534px BELOW the
+    // screen, overlapping the packages beat, the gift sentence, the companion
+    // and its three mode buttons; a click on it times out.
+    //
+    // It had been anchored with `position: fixed`, which DOES NOT anchor to
+    // the viewport when an ancestor carries a `transform` — and `.arrival` is
+    // transformed on every visit. So `fixed` behaved exactly like `absolute`
+    // and the repair read as though it had worked.
+    const css = strip(read('src/imperial-experience-engine/experiences/arrival/arrival.css'));
+    const rule = block(css, '.arrival-language');
+    expect(rule).not.toContain('position: fixed');
+    expect(rule).not.toContain('position: absolute');
+    expect(rule).toContain('align-self: center');
+  });
+
+  it('and the beat above it no longer reserves air for something that floated', () => {
+    const css = strip(read('src/imperial-experience-engine/experiences/arrival/arrival.css'));
+    expect(block(css, '.arrival-value')).not.toContain('calc(6vh');
+  });
+});
+
 describe('4 · the audit refuses to report a health it did not measure', () => {
   const AUDIT = read('scripts/screen-audit-all.mjs');
 
