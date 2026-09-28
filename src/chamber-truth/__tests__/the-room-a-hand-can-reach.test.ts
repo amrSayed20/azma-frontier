@@ -54,14 +54,20 @@ const strip = (src: string) => src
  * can be satisfied — or fooled — by declaration order.
  */
 function block(css: string, selector: string): string {
+  // CORRECTED twice, both times because the guard read less of the file than
+  // the browser does: first it read only the FIRST block for a selector, and
+  // the rule asked about lived in the second; then it demanded `selector {`
+  // and could not see a rule written as `.a,\n.b {` — which is how the
+  // scroll-end gutter is written, since it is the same rule for both rails.
+  // A guard that parses CSS more narrowly than a browser reports repairs as
+  // missing and invites someone to "fix" a file that was already correct.
   const blocks: string[] = [];
-  let from = 0;
-  for (;;) {
-    const at = css.indexOf(`${selector} {`, from);
-    if (at === -1) break;
-    const end = css.indexOf('}', at);
-    blocks.push(css.slice(at, end));
-    from = end + 1;
+  // `selectorList { declarations }`. A block whose body contains braces — a
+  // @media wrapper — simply does not match, and the rules inside it do, which
+  // is what a check about a selector wants.
+  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const inList = m[1]!.split(',').some((s) => s.trim() === selector);
+    if (inList) blocks.push(m[2]!);
   }
   if (blocks.length === 0) throw new Error(`selector not found: ${selector}`);
   return blocks.join('\n');
