@@ -238,10 +238,46 @@ cmd_deploy() {
   info "sha256 $local_sum"
 
   # 3 ── upload
+  #
+  # ── A DROPPED LINK IS NOT A FAILED DEPLOYMENT ────────────────────────────
+  #
+  #   MEASURED 2026-09-28: three consecutive deployments died here with
+  #   «Connection reset by peer» / «scp: Connection closed» on a 10MB
+  #   artifact, while the server itself was healthy — ssh answered, load 0.00,
+  #   25% disk, 6GB free. The link drops mid-transfer; the deployment is
+  #   perfectly good.
+  #
+  #   Nothing is weakened by retrying: the SHA-256 gate below is unchanged and
+  #   still the only thing that lets a byte of this artifact become live, and a
+  #   partial or corrupt transfer fails it exactly as before. What changes is
+  #   that a flaky network no longer costs a full rebuild, and that the
+  #   Chief Engineer is not tempted into an unsanctioned `scp -r` to get a
+  #   repair onto the server.
+  #
+  #   The keepalives are why most retries will not be needed: an idle TCP
+  #   stream through a NAT that forgets it is exactly what «reset by peer»
+  #   describes.
   step "Uploading"
-  scp -q -o BatchMode=yes -i "$SSH_KEY" "$ARTIFACT" "$REMOTE:/tmp/azma-release.tar.gz" \
-    || die "upload failed — the live release was not touched"
-  ok "artifact delivered"
+  local upload_attempts=4
+  local attempt=1
+  while :; do
+    if scp -q -o BatchMode=yes \
+         -o ServerAliveInterval=15 -o ServerAliveCountMax=8 \
+         -o ConnectTimeout=30 -o TCPKeepAlive=yes \
+         -C -i "$SSH_KEY" "$ARTIFACT" "$REMOTE:/tmp/azma-release.tar.gz"; then
+      break
+    fi
+    if [ "$attempt" -ge "$upload_attempts" ]; then
+      die "upload failed after $upload_attempts attempts — the live release was not touched"
+    fi
+    warn "upload attempt $attempt failed — the live release is untouched; retrying"
+    # A partial file left behind would fail the checksum anyway; it is removed
+    # so the next attempt starts from nothing rather than appending to a ghost.
+    remote "rm -f /tmp/azma-release.tar.gz" >/dev/null 2>&1 || true
+    attempt=$((attempt + 1))
+    sleep $((attempt * 5))
+  done
+  ok "artifact delivered$([ "$attempt" -gt 1 ] && printf ' (attempt %s)' "$attempt")"
 
   # 4 ── integrity gate: nothing on the server changes until this passes
   step "Verifying integrity"
