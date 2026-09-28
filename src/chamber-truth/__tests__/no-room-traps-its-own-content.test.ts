@@ -98,6 +98,34 @@ describe('2 · deliberate clipping is a decision, and stays one', () => {
   });
 });
 
+describe('2b · a region may shrink, and may not vanish', () => {
+  it('رأس الأمر — the workspace content keeps a floor', () => {
+    // MEASURED with the التوجيه tab active: 155px at 1152×720, 34px at
+    // 1280×620, 1px at 1152×560, 0px at 1024×500. The director's field was
+    // in the page the whole time, at top=437, inside a container squeezed to
+    // nothing — every sibling in that rail is `flex-shrink: 0`, so the one
+    // region carrying the Creator's work was the only one that could yield.
+    const rule = block(strip(read('app/ras-amr/ras-amr.css')), '.ras-tab-content');
+    expect(rule).toMatch(/min-height:\s*(\d{2,})px/);
+    const floor = Number(/min-height:\s*(\d+)px/.exec(rule)![1]);
+    expect(floor).toBeGreaterThanOrEqual(120);
+    // It must still be able to shrink below its content and scroll.
+    expect(rule).toContain('overflow-y: auto');
+  });
+
+  it('قصر الخزانة — the gate keeps its height so the room can scroll to it', () => {
+    // The last keypad row sits at 428–472px at EVERY viewport height and fell
+    // off any window shorter than 472px. `min-height: 100vh` had been added
+    // for this and could not work alone: the gate still had the default
+    // `flex-shrink: 1`, shrank to the viewport, and `justify-content: center`
+    // pushed its own rows out of the shrunken box — the parent saw a child
+    // that fitted, generated no overflow, and scrolled nowhere.
+    const css = strip(read('app/sovereign-vault-palace/sovereign-vault.css'));
+    expect(block(css, '.palace-gate')).toContain('flex-shrink: 0');
+    expect(block(css, '.palace-gate')).toContain('min-height: 100vh');
+  });
+});
+
 describe('3 · the rooms already measured clean stay unpinned', () => {
   it.each([
     ['القيامة', 'app/qiyamah-chamber/qiyamah-chamber.css'],

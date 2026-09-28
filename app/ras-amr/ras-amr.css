@@ -484,7 +484,28 @@ body:has(.ras-amr-viewport) {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  /* ── IT MAY SHRINK. IT MAY NOT VANISH. ─────────────────────────────
+     The Founder, 2026-09-28, with the التوجيه tab open on his own screen:
+     «لا يوجد حقل ادخال التوجيه».
+
+     MEASURED — the height of this container with that tab active:
+
+         1152×720   155px   the field is there
+         1280×620    34px
+         1152×560     1px
+         1024×500     0px
+
+     The field was in the page the whole time, at top=437. `min-height: 0`
+     is what lets a flex item shrink far enough for its own `overflow-y` to
+     engage — and it is also what lets its siblings squeeze it out of
+     existence. Every sibling in this rail is `flex-shrink: 0`, so the one
+     region carrying the Creator's work was the only one that could yield,
+     and it yielded all the way.
+
+     A floor keeps both properties: it still shrinks below its content and
+     scrolls, and it can no longer disappear. What does not fit now makes
+     the rail scroll, which it does. */
+  min-height: 150px;
 }
 .ras-tab-content::-webkit-scrollbar { width: 3px; }
 .ras-tab-content::-webkit-scrollbar-track { background: transparent; }
@@ -6607,6 +6628,9 @@ body:has(.ras-amr-viewport) {
    one in ✦ الإنتاج (see `productionActs`) — only its surroundings differ,
    because here it has to say why it has appeared. */
 .ras-montage-produce {
+  /* It yields nothing, so it cannot be what squeezes the tab content out —
+     it is three lines tall and the rail scrolls for both. */
+  flex-shrink: 0;
   margin-top: auto;
   padding: 12px;
   border-block-start: 1px solid var(--neon-gold-border);

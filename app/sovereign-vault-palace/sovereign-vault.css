@@ -157,6 +157,21 @@
 }
 
 /* Nothing in the gate may be squeezed out of existence to fit. */
+/* ── AND THE GATE ITSELF MUST NOT SHRINK ───────────────────────────────
+   The Founder, 2026-09-28, photographing the keypad: the «0» row below the
+   screen edge. MEASURED: the last key sits at 428–472px at EVERY viewport
+   height, so it falls off any window shorter than 472px — which is what a
+   laptop gives at 150% zoom once browser chrome is subtracted.
+
+   `min-height: 100vh` was added earlier for exactly this and could not work
+   alone: as a flex item this gate still had the default `flex-shrink: 1`, so
+   it shrank to whatever the viewport was and `justify-content: center` then
+   pushed its own rows out of the top and bottom of the shrunken box. The
+   parent saw a child that fitted, generated no overflow, and scrolled
+   nowhere — the keypad was clipped by a box that had been told it fitted.
+
+   `.palace-gate > *` already refuses to shrink; the gate did not. */
+.palace-gate { flex-shrink: 0; }
 .palace-gate > * { flex-shrink: 0; }
 
 @keyframes sealPulse {
