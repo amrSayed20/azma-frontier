@@ -66,14 +66,35 @@ describe('1 · a room pinned to the window can be scrolled inside', () => {
   });
 });
 
-describe('2 · a card is not sized for less text than it holds', () => {
-  it('the Vault’s gates grow to what they actually say', () => {
-    const rule = block(strip(read('app/sovereign-vault/sovereign-vault.css')), '.gate-card');
-    // It was `height: 160px` with `overflow: hidden`: five cards clipped 50px
-    // each at full size, and the 50px was the description under the name.
-    expect(rule).toContain('min-height: 160px');
-    expect(rule).toContain('height: auto');
-    expect(rule).not.toMatch(/(^|;)\s*height:\s*160px/);
+describe('2 · deliberate clipping is a decision, and stays one', () => {
+  const CSS = read('app/sovereign-vault/sovereign-vault.css');
+
+  it('the Vault’s gate cards keep their fixed height and their cut glow', () => {
+    // CORRECTED THE SAME DAY IT WAS WRITTEN. The sweep reported five of these
+    // trapping 50px and I changed `height: 160px` to `min-height` +
+    // `height: auto`, reading the 50px as a description nobody could see.
+    //
+    // MEASURED inside a live card afterwards: the only overflowing child is
+    // `.gate-portal-effect` — `position: absolute; bottom: -50px; height:
+    // 100px`, an empty glow hung half outside the card FOR `overflow: hidden`
+    // to cut. The card holds an icon and a name; both fit. The description
+    // lives outside the card entirely.
+    //
+    // So this guard holds the card as it was designed, and the sweep was
+    // corrected instead. A repair aimed at a measurement rather than at a
+    // defect is a change to a certified surface bought with nothing.
+    const rule = block(strip(CSS), '.gate-card');
+    expect(rule).toContain('height: 160px');
+    expect(rule).toContain('overflow: hidden');
+    const glow = block(strip(CSS), '.gate-portal-effect');
+    expect(glow).toContain('position: absolute');
+    expect(glow).toContain('bottom: -50px');
+  });
+
+  it('the sweep no longer calls that decision a defect', () => {
+    const audit = read('scripts/zoom-audit-all-chambers.mjs');
+    expect(audit).toContain('inFlowOverflows');
+    expect(audit).toContain("getComputedStyle(k).position === 'absolute'");
   });
 });
 

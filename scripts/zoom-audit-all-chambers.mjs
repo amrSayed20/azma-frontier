@@ -75,6 +75,18 @@ for (const [name, path] of CHAMBERS) {
           // A decorative layer carries no content a hand needs to reach.
           if (el.getAttribute('aria-hidden') === 'true') continue;
           if (s.pointerEvents === 'none' && (el.textContent || '').trim().length === 0) continue;
+          // CORRECTED after it cost a certified surface a pointless edit: the
+          // Vault's gate cards were reported as trapping 50px, and the 50px was
+          // `.gate-portal-effect` — an empty glow hung at `bottom: -50px` for
+          // `overflow: hidden` to cut, exactly as designed. Overflow produced
+          // ONLY by out-of-flow, textless children is a decision, not a trap.
+          const inFlowOverflows = [...el.children].some((k) => {
+            if (getComputedStyle(k).position === 'absolute') return false;
+            if ((k.textContent || '').trim().length === 0 && k.children.length === 0) return false;
+            const kb = k.getBoundingClientRect();
+            return kb.bottom > el.getBoundingClientRect().bottom + 2;
+          });
+          if (!inFlowOverflows) continue;
           const r = el.getBoundingClientRect();
           if (r.width < 80 || r.height < 60) continue;
           // Only content actually inside the visible page counts.
