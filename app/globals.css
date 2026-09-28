@@ -1,4 +1,36 @@
 /*
+ * ─── ONE BOX MODEL FOR THE WHOLE EMPIRE ─────────────────────────────────────
+ *
+ *   MEASURED 2026-09-28, auditing every room on 13 screens: قلب الإمبراطورية
+ *   forced the page to scroll SIDEWAYS on ALL THIRTEEN — phones, tablets,
+ *   laptops, and a 1920×1080 desktop alike — and ميزان القيمة did the same on
+ *   every phone. One cause, and not a layout one:
+ *
+ *       main.foyer-viewport   box-sizing: content-box
+ *                             width: 100%  →  344px
+ *                             padding: 32px 24px 48px
+ *                             actual width 392px in a 360px window
+ *
+ *   With `content-box`, padding is ADDED to a full-width element, so every
+ *   room that pads its own viewport is wider than the screen by exactly its
+ *   padding.
+ *
+ *   SEVEN stylesheets in this repository each declare `box-sizing: border-box`
+ *   for themselves — ras-amr, qiyamah, hujjah, the Palace, the Vault, makman,
+ *   creator-access. The Empire had no baseline, so the two rooms that never
+ *   wrote their own copy were the two that overflowed. This is that baseline.
+ *   The seven are unaffected: they already set the same value.
+ *
+ *   A rule repeated in seven places and absent from the eighth is not a style;
+ *   it is a fact about the platform that nobody had written down.
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/*
  * REGISTRATION GATEWAY, PACKAGE I (2026-07-23): a safe global fallback,
  * not a redesign — without this, any page whose own content doesn't
  * cover a full 100vh (or whose viewport wrapper turns transparent, see
@@ -150,3 +182,39 @@ body {
   transform: translateY(-2px);
   box-shadow: 0 8px 32px 0 rgba(212, 175, 55, 0.15);
 } 
+/*
+ * ─── A CONTROL A FINGER CAN ACTUALLY HIT ────────────────────────────────────
+ *
+ *   MEASURED 2026-09-28 across every room on six touch screens. The same few
+ *   shared controls were under the 44px floor Apple and Google both publish,
+ *   in every chamber at once, because they ARE the same controls:
+ *
+ *       «؟ كيف تعمل هذه الحجرة»   152×39   in all seven rooms
+ *       «⮜ قلب الإمبراطورية»      125×31   in all six that have an exit
+ *       «رمزك السرّي» · «بصمتك»   112×39 · 87×39
+ *       «تعديل الغاية السيادية»   270×36
+ *
+ *   Height is what fails, almost never width — these are wide buttons with
+ *   tight vertical padding, designed for a cursor that lands where it is
+ *   pointed. A thumb does not.
+ *
+ *   `pointer: coarse` asks the DEVICE, not the screen size: a 1180px tablet
+ *   is touched and a 960px zoomed laptop is not, and a width breakpoint
+ *   cannot tell them apart. Nothing changes for a mouse.
+ *
+ *   `min-height` only. A blanket `min-width` would break controls that are
+ *   deliberately narrow in a row, and the measurement says width is not the
+ *   failure.
+ */
+@media (pointer: coarse) {
+  button,
+  a[href],
+  [role="button"],
+  select,
+  input[type="button"],
+  input[type="submit"],
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 44px;
+  }
+}

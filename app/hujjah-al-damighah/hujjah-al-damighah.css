@@ -2070,17 +2070,33 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ── A CENTRED OVERLAY CLIPS WHAT IT CANNOT CENTRE ──────────────────────
+   MEASURED 2026-09-28 on phones: this trapped 162px on a 360×640 screen,
+   150px on an iPhone, 118px on a Pixel, 70px in landscape — and nothing on
+   a tablet, which is why it had never been seen.
+
+   `align-items: center` on a fixed, full-screen flex box is the classic
+   shape of this: when the child is taller than the box, centring pushes its
+   top ABOVE the container's top edge, and an overflow that starts at a
+   negative offset cannot be scrolled to. The remedy is not to stop centring
+   — it is to centre with `margin: auto` on the child, which yields to the
+   edges instead of overrunning them. The same defect, and the same shape,
+   as the Palace's keypad gate. */
 .tongue-selector {
   position: fixed;
   inset: 0;
   z-index: 100;
   display: flex;
-  align-items: center;
   justify-content: center;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--chamber-bg);
 }
 
 .tongue-selector-inner {
+  /* Centred when there is room; flush to the top when there is not. */
+  margin: auto;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
