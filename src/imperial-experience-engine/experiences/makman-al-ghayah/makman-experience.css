@@ -30,9 +30,26 @@
   to   { opacity: 1; }
 }
 
+/* ─── TWO CONTROLS MUST NOT PARK IN ONE CORNER ─────────────────────────────
+   MEASURED on production 2026-09-29, by reaching for «؟ كيف تعمل هذه الحجرة»
+   with a hand:
+
+       الزرّ    [18, 707 → 187, 750]
+       الرفيق   [30, 690 → 219, 738]      تداخل: نعم · تصله اليد: لا
+
+   The shared demonstration button is placed logically — `inset-inline-end`,
+   which in Arabic is the LEFT. This companion was placed physically, `left:
+   30px`, which in Arabic is also the left. One rule that follows the language
+   and one that ignores it put both in the same corner, and the Chamber's own
+   explainer — the first thing a stranger reaches for — could not be pressed.
+   `z-index: 900` did not save it: the companion carries a filled opacity
+   animation, so it is composited above regardless of the number.
+
+   Placed logically now, it takes the corner the demonstration button never
+   takes, in whichever language the Creator is reading. */
 .makman-companion {
   position: fixed;
-  left: 30px;
+  inset-inline-start: 30px;
   bottom: 30px;
   z-index: 150;
   display: flex;
