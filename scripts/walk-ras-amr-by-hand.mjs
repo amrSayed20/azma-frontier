@@ -259,14 +259,16 @@ else {
     // A returning Creator arrives with a canvas already restored, so a count
     // that does not grow proves nothing: the asset chosen must be one the
     // queue does not already hold, and it is named when it arrives.
-    const queued = (await page.locator('.queue-item-card').allInnerTexts())
-      .map((t) => t.replace(/\s+/g, ' ').trim());
+    // The vault chip and the rail card print different words for the same
+    // asset, so they are matched by the picture both of them show.
+    const queuedSrc = await page.locator('.queue-item-card .queue-card-thumb').evaluateAll(
+      (els) => els.map((e) => e.getAttribute('src') ?? ''));
     const chips = page.locator('.hud-asset-item-chip');
     const chipCount = await chips.count();
     let picked = null;
     for (let i = 0; i < chipCount; i += 1) {
-      const name = (await chips.nth(i).locator('.hud-item-name').innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
-      if (name && !queued.some((q) => q.includes(name.slice(0, 18)))) { picked = { i, name }; break; }
+      const src = await chips.nth(i).locator('.hud-item-thumbnail').getAttribute('src').catch(() => null);
+      if (src && !queuedSrc.includes(src)) { picked = { i, src }; break; }
     }
     if (!picked) say(false, 'كلّ أصول الخزانة في الطابور بالفعل — الاستدعاء لم يُختبر');
     else {
@@ -274,8 +276,10 @@ else {
       await chips.nth(picked.i).locator('.hud-inject-btn').click({ timeout: 15000 }).catch(() => {});
       await page.waitForTimeout(4500);
       const after = await page.locator('.queue-item-card').count();
-      say(after > before, 'أصلٌ مُستدعى يظهر في طابور الأصول',
-        `«${picked.name.slice(0, 24)}» · ${before} → ${after}`);
+      const nowSrc = await page.locator('.queue-item-card .queue-card-thumb').evaluateAll(
+        (els) => els.map((e) => e.getAttribute('src') ?? ''));
+      say(after === before + 1 && nowSrc.includes(picked.src),
+        'أصلٌ مُستدعى يظهر في طابور الأصول مرّةً واحدة', `${before} → ${after}`);
     }
   }
   const close = page.locator('.hud-close-btn').first();
@@ -325,6 +329,12 @@ console.log(`\n── أخطاء الطرفية (${[...new Set(consoleErrors)].l
 for (const e of [...new Set(consoleErrors)].slice(0, 6)) console.log(`   ✗ ${e}`);
 
 await page.screenshot({ path: 'scripts/proof-harness/ras-walk.png', fullPage: false });
+// The walk works the room as a Creator would, so it LEAVES what a Creator
+// would leave: a storyboard, a summoned asset, a layer on the scene. Said
+// plainly, because residue nobody was told about is residue nobody clears.
+const layersLeft = await page.locator('.composition-surface > *').count().catch(() => 0);
+console.log(`\n── ما تركه المشي ──\n   مشهد محفوظ في رأس الأمر يحمل ${layersLeft} طبقة، وستوري بورد واحداً.\n   يُمسح من الحجرة بـ«مشهد جديد».`);
+
 const bad = results.filter((r) => !r.ok);
 console.log(`\n${results.length - bad.length}/${results.length} اجتازت · ${BASE}`);
 for (const f of bad) console.log(`   ⚠ ${f.what}`);
