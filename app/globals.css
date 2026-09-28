@@ -217,4 +217,43 @@ body {
   input[type="radio"] {
     min-height: 44px;
   }
+
+  /*
+   * ─── THE TWO THE RULE ABOVE COULD NOT REACH ───────────────────────────────
+   *
+   *   Re-measured after it shipped. It closed every wide-but-short button in
+   *   the Empire — «؟ كيف تعمل هذه الحجرة» 152×39, «⮜ قلب الإمبراطورية»
+   *   125×31, «رمزك السرّي» 112×39, «تعديل الغاية السيادية» 270×36, and
+   *   thirteen to fifty-three controls in رأس الأمر. Two kinds survived, each
+   *   for its own reason, and neither is an oversight in the measurement:
+   *
+   *   ١ · THE COMPANION'S THREE MODES — «○ ◉ ◎», silent, text and voice.
+   *       They came out 22×44 and 26×44: the height rule WORKED, and their
+   *       failure is WIDTH. They are drawn as circles — `width: 26px;
+   *       height: 26px` — and they are the only round controls in the Empire,
+   *       which is exactly why a blanket `min-width` was refused: it would
+   *       have stretched every deliberately narrow control in a row to serve
+   *       three buttons. They are named instead.
+   *
+   *       Their rule is written SIX times — arrival, login, signup, hujjah,
+   *       the Foyer, the Palace — so six copies carried one defect. This is
+   *       the seventh place, and the only one that speaks about touch.
+   *
+   *   ٢ · «وثّق حسابك» and «ادخل بحسابك» — 52×16 on the Balance surface.
+   *       `min-height` DOES NOT APPLY TO AN INLINE ELEMENT. They are plain
+   *       `<a>` inside a sentence, so the rule matched them and did nothing
+   *       at all: a selector that matches is not a rule that applies.
+   */
+  .companion-mode-btn {
+    min-width: 44px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .balance-package-shut a,
+  .balance-exit a {
+    display: inline-block;
+    min-height: 44px;
+    padding-block: 12px;
+  }
 }

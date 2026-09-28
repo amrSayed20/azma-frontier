@@ -116,16 +116,64 @@ describe('3 · one touch floor, asked of the device and not the screen size', ()
     }
   });
 
-  it('and does not impose a width, because width was never the failure', () => {
+  it('and imposes no BLANKET width, because width was almost never the failure', () => {
     // Measured: these are wide buttons with tight vertical padding. A blanket
-    // min-width would break controls deliberately narrow in a row.
+    // min-width would stretch every deliberately narrow control in a row.
+    //
+    // TIGHTENED after re-measuring: three round controls DO fail on width, and
+    // they are named one by one below rather than served by widening
+    // everything. So the blanket list must still carry no min-width, and the
+    // check now reads that list precisely instead of a character count.
     const at = code.indexOf('@media (pointer: coarse)');
-    const rule = code.slice(at, at + 600);
-    expect(rule).not.toContain('min-width');
+    const blanket = code.slice(at, code.indexOf('}', code.indexOf('min-height', at)));
+    expect(blanket).toContain('button');
+    expect(blanket).not.toContain('min-width');
   });
 
   it('nothing changes for a mouse', () => {
     expect(code).not.toMatch(/@media \(max-width[^)]*\)\s*\{[^}]*min-height:\s*44px/);
+  });
+});
+
+describe('3b · the two the height rule could not reach', () => {
+  const code = strip(GLOBALS);
+
+  it('the companion’s three modes are round, so they are named by width too', () => {
+    // Re-measured after the height rule shipped: 22×44 and 26×44. The height
+    // WORKED; the failure is width. They are the only circular controls in the
+    // Empire, which is why a blanket `min-width` was refused — it would have
+    // stretched every deliberately narrow control in a row to serve three.
+    const at = code.indexOf('.companion-mode-btn');
+    expect(at).toBeGreaterThan(code.indexOf('@media (pointer: coarse)'));
+    const rule = code.slice(at, code.indexOf('}', at));
+    expect(rule).toContain('min-width: 44px');
+    expect(rule).toContain('height: 44px');
+  });
+
+  it('their rule is written in six other places, and this is the one about touch', () => {
+    // Six copies carried one defect. Recorded so the count cannot grow
+    // unnoticed, and so nobody "fixes" one copy and believes it done.
+    const copies = [
+      'src/imperial-experience-engine/experiences/arrival/arrival.css',
+      'src/imperial-experience-engine/experiences/login/login-experience.css',
+      'src/imperial-experience-engine/experiences/signup/signup-experience.css',
+      'app/hujjah-al-damighah/hujjah-al-damighah.css',
+      'app/imperial-foyer/imperial-foyer.css',
+      'app/sovereign-vault-palace/sovereign-vault.css',
+    ];
+    for (const f of copies) expect(read(f)).toContain('.companion-mode-btn');
+    expect(copies).toHaveLength(6);
+  });
+
+  it('an inline link is given a box before it is given a height', () => {
+    // `min-height` does not apply to an inline element. The rule matched
+    // «وثّق حسابك» and did nothing at all — a selector that matches is
+    // not a rule that applies.
+    const at = code.indexOf('.balance-package-shut a');
+    expect(at).toBeGreaterThan(-1);
+    const rule = code.slice(at, code.indexOf('}', at));
+    expect(rule).toContain('display: inline-block');
+    expect(rule).toContain('min-height: 44px');
   });
 });
 
