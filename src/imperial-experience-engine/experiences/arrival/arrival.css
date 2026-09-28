@@ -527,11 +527,25 @@
    (with Revelation, Beat 4) rather than only at the end, since the
    Constitution asks that the visitor never feel alone from the point
    the Empire becomes aware of them onward. */
+/* ── THE SAME TRAP, THE SAME ANSWER ────────────────────────────────────
+   MEASURED on an iPhone right after the language switcher was moved into
+   the flow: the companion still covered it. Its box is [38, 1241, 354, 70]
+   in a 664px viewport — `position: fixed` and yet 577px below the fold,
+   because `.arrival` carries a transform and a transform becomes the
+   containing block for every fixed descendant inside it.
+
+   So the companion was never floating either. It was sitting at the bottom
+   of a 1349px page, exactly where the switcher had just been put, and the
+   two landed on each other: 1257 inside 1241–1311.
+
+   Both belong in the flow, in the order the scene reads: the closing beat,
+   then the tongue, then the companion. Nothing is layered over anything,
+   so nothing can cover anything. */
 .arrival-companion {
-  position: fixed;
+  position: relative;
   z-index: 3;
-  left: 30px;
-  bottom: 30px;
+  align-self: center;
+  margin-block-end: var(--azma-space-10);
   display: flex;
   align-items: center;
   gap: 10px;
