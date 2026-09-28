@@ -2600,7 +2600,21 @@ export default function RasAmrChamber() {
    * production makes a finished thing out of it. They were mixed across four
    * places until the Founder ruled they should not be.
    */
-  const [workMode, setWorkMode] = useState<'montage' | 'production'>('montage');
+  /**
+ * ─── TWO WORLDS, NOT TWO MODES THAT BOTH MAKE FILMS ───────────────────────
+ *
+ *   FOUNDER'S RULING, 2026-09-28: «رأس الأمر منقسمة إلى قسمين» — عالَم
+ *   الستوري بورد, which turns an idea into scenes, and المونتاج, which turns
+ *   assets into one film.
+ *
+ *   It replaces «المونتاج» and «الإنتاج», two names that overlapped: both
+ *   ended in an mp4, and a stranger met 78 buttons and five tabs without a
+ *   way to tell which half of the room they were in.
+ *
+ *   Nothing is built here. The surfaces are the ones that existed, gathered
+ *   under the kind of work they belong to.
+ */
+const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
   const [isFilming, setIsFilming] = useState(false);
   const [filmNotice, setFilmNotice] = useState<string | null>(null);
   const [filmUrl, setFilmUrl] = useState<string | null>(null);
@@ -2698,6 +2712,36 @@ export default function RasAmrChamber() {
         {isFilming ? '⏳ الفيلم يُنتَج…' : '✦ أنتِج الفيلم'}
       </button>
     </div>
+  );
+
+  /**
+   * ─── THE DIRECTOR IS ONE FACULTY, IN TWO WORLDS ───────────────────────────
+   *
+   *   The Founder, 2026-09-28: «المخرج أيضاً يُستخدم في القسمين ويمكن توجيهه».
+   *
+   *   So this is ONE field over ONE state, rendered in both — not two fields
+   *   with two states, which would make a Creator wonder which of their two
+   *   instructions the Director obeyed. What differs is the question asked:
+   *   in عالَم الستوري بورد the direction shapes what is to be CONCEIVED; in
+   *   المونتاج it shapes what is to be ASSEMBLED from what already exists.
+   */
+  const directorIntentField = (world: 'storyboard' | 'montage') => (
+    <>
+      <label className="creator-intent-label" htmlFor={`creator-intent-${world}`}>
+        {world === 'storyboard'
+          ? 'توجيه المخرج — ما تريده فنّيّاً من هذه المشاهد'
+          : 'توجيه المخرج — كيف يُجمَّع ما تملك'}
+      </label>
+      <textarea
+        id={`creator-intent-${world}`}
+        className="creator-intent-input"
+        placeholder="مثال: إيقاع هادئ، إضاءة جانبيّة، لقطات قريبة تُظهر التفصيل…"
+        value={creatorDirectorIntent}
+        onChange={(e) => setCreatorDirectorIntent(e.target.value)}
+        rows={2}
+        aria-label="توجيه المخرج"
+      />
+    </>
   );
 
   const triggerMasterRender = async () => {
@@ -3736,7 +3780,20 @@ export default function RasAmrChamber() {
   const handleSelectIntent = (intentId: string) => {
     const template = SOVEREIGN_TEMPLATES.find((t) => t.id === intentId) ?? null;
     setSelectedTemplate(template);
-    if (template?.directorIntentPreset) {
+    /**
+     * ─── A TEMPLATE PROPOSES; IT DOES NOT ERASE ───────────────────────────
+     *
+     *   The Founder, 2026-09-28, on why the direction field reads unclear.
+     *   MEASURED: it has four writers and never says which one wrote it — a
+     *   demand arriving from الحُجّة الدامغة, a template's preset, and the
+     *   Creator's own hand. A template chosen after typing silently replaced
+     *   what the Creator had written.
+     *
+     *   The preset fills an EMPTY field and never overwrites a full one. The
+     *   Creator's own words are the one thing in this room that nothing may
+     *   quietly take back.
+     */
+    if (template?.directorIntentPreset && !creatorDirectorIntent.trim()) {
       setCreatorDirectorIntent(template.directorIntentPreset);
     }
     // Route into smart (automatic) director for template paths and imaginative entry.
@@ -4861,8 +4918,8 @@ export default function RasAmrChamber() {
               the kind of work they belong to. */}
           <div className="ras-work-bar" role="tablist" aria-label="نوع العمل">
             {([
-              ['montage', '✂ المونتاج', 'تشكيل ما تملك'],
-              ['production', '✦ الإنتاج', 'صناعة شيءٍ مكتمل'],
+              ['storyboard', '✦ عالَم الستوري بورد', 'من فكرةٍ إلى مشاهد'],
+              ['montage', '✂ المونتاج', 'من أصولٍ إلى فيلم'],
             ] as const).map(([mode, label, hint]) => (
               <button
                 key={mode}
@@ -4984,27 +5041,216 @@ export default function RasAmrChamber() {
               stating an idea, deciding each scene's picture, and the two acts
               that end with a file. They were scattered across the header, the
               التوجيه tab and the left rail. */}
-          {workMode === 'production' && (
-            <div className="ras-tab-content custom-scroll ras-production-section">
+          {/* ─── ✦ عالَم الستوري بورد ────────────────────────────────────
+              From a written idea to scenes that have pictures. What stood
+              here was «✦ الإنتاج», whose two acts assemble an mp4 — and
+              assembling an mp4 is المونتاج's work, so they went there. The
+              scenes panel came the other way, out of the التوجيه tab where a
+              Creator had to already know to look for it. */}
+          {workMode === 'storyboard' && (
+            <div className="ras-tab-content custom-scroll">
               <header className="panel-header">
-                <div className="neon-tag">الإنتاج</div>
-                <h2>صناعة شيءٍ مكتمل</h2>
-                <p>المونتاج يُشكّل ما تملك؛ وهنا يصير فيلماً في خزانتك.</p>
+                <div className="neon-tag">عالَم الستوري بورد</div>
+                <h2>من فكرةٍ إلى مشاهد</h2>
+                <p>اكتب فكرتك في لوح «اكتب فكرتك» إلى يمينك — ثم قرّر مصدر صورة كلّ مشهد.</p>
               </header>
 
-              {productionActs('section')}
-              {(filmNotice || filmUrl) && (
-                <div className="scene-film-outcome">
-                  {filmNotice && <p className="scenes-notice">{filmNotice}</p>}
-                  {filmUrl && (
-                    // eslint-disable-next-line jsx-a11y/media-has-caption
-                    <video className="scenes-result" src={filmUrl} controls playsInline />
-                  )}
-                </div>
-              )}
-              <p className="production-hint">
-                لإنتاج فيلمٍ من فكرةٍ مكتوبة، اكتبها في لوح «اكتب فكرتك» إلى يمينك، ثمّ قرّر مصدر صورة كلّ مشهد قبل أن يُنتَج.
-              </p>
+              <div className="creator-intent-panel">
+                {storyboard && (
+                  <div className="scenes-arrived" data-testid="rasamr-storyboard">
+                    <span className="scenes-tag">
+                      {storyboard.origin === 'brief'
+                        ? '✦ مشاهد من فكرتك'
+                        : 'مشاهد وصلت من حجّة الدامغة'}
+                    </span>
+                    <p className="scenes-subject">{storyboard.questionAr}</p>
+                    <p className="scenes-count">{storyboard.sceneCount} مشاهد مرتّبة.</p>
+
+                    {/* ── EVERY SCENE, AND WHERE ITS PICTURE COMES FROM ─────────
+                        The Founder, 2026-09-25: this Chamber «لا يمنح الفرصة
+                        للمنشئ القادم إليه بمطالبة من الحجة أن يضيف أصولاً
+                        لهذه المطالبة من عنده... حتى إنه لا يسأل المبدع عن طلب أو
+                        مواصفات للمادة المولّدة قبل توليدها.» The Chamber
+                        proposes; only the Creator decides, and nothing is
+                        bought before they have read what it is for. */}
+                    {scenePlans && scenePlans.length > 0 && (
+                      <div className="scene-plans" data-testid="rasamr-scene-plans">
+                        <span className="scene-plans-head">من أين صورة كلّ مشهد؟</span>
+                        {scenePlans.map((plan) => {
+                          const save = async (next: Partial<ScenePlanView>) => {
+                            const merged = { ...plan, ...next };
+                            setScenePlans((all) => (all ?? []).map((x) => (x.sceneId === plan.sceneId ? merged : x)));
+                            if (merged.sourcing === 'generate' && (merged.creationDemandAr ?? '').trim().length < 8) return;
+                            if (merged.sourcing === 'creator-asset' && !merged.visualAssetId) return;
+                            setSavingSceneId(plan.sceneId);
+                            const outcome = await setScenePlan({
+                              sceneId: plan.sceneId,
+                              sourcing: merged.sourcing,
+                              creationDemandAr: merged.creationDemandAr,
+                              visualAssetId: merged.visualAssetId,
+                            });
+                            setPlanNotice(outcome.ok ? null : outcome.messageAr ?? null);
+                            setSavingSceneId(null);
+                          };
+                          return (
+                            <div key={plan.sceneId} className="scene-plan">
+                              <div className="scene-plan-head">
+                                <span className="scene-plan-n">{plan.order}</span>
+                                <span className="scene-plan-seen">{plan.seenAr}</span>
+                              </div>
+                              <div className="scene-plan-choices" role="group" aria-label={`مصدر صورة المشهد ${plan.order}`}>
+                                {([
+                                  ['stock', 'يُبحَث عنه'],
+                                  ['generate', 'يُنشَأ لي'],
+                                  ['creator-asset', 'من أصولي'],
+                                ] as const).map(([value, label]) => (
+                                  <button
+                                    key={value}
+                                    type="button"
+                                    className={`scene-plan-choice${plan.sourcing === value ? ' scene-plan-choice-on' : ''}`}
+                                    disabled={savingSceneId === plan.sceneId}
+                                    onClick={() => { void save({ sourcing: value }); }}
+                                  >
+                                    {label}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {plan.sourcing === 'generate' && (
+                                <>
+                                  <label className="scene-plan-label" htmlFor={`demand-${plan.sceneId}`}>
+                                    ما الذي يُنشَأ لهذا المشهد؟
+                                  </label>
+                                  <textarea
+                                    id={`demand-${plan.sceneId}`}
+                                    className="scene-plan-demand"
+                                    rows={2}
+                                    value={plan.creationDemandAr ?? ''}
+                                    onChange={(e) => {
+                                      const v = e.target.value;
+                                      setScenePlans((all) => (all ?? []).map((x) => (x.sceneId === plan.sceneId ? { ...x, creationDemandAr: v } : x)));
+                                    }}
+                                    onBlur={() => { void save({}); }}
+                                    placeholder="صف الصورة التي تريدها بدقة."
+                                  />
+                                </>
+                              )}
+
+                              {plan.sourcing === 'creator-asset' && (
+                                <>
+                                  <label className="scene-plan-label" htmlFor={`asset-${plan.sceneId}`}>
+                                    أي أصلٍ من خزانتك؟
+                                  </label>
+                                  <select
+                                    id={`asset-${plan.sceneId}`}
+                                    className="scene-plan-asset"
+                                    value={plan.visualAssetId ?? ''}
+                                    onChange={(e) => { void save({ visualAssetId: e.target.value || null }); }}
+                                  >
+                                    <option value="">— اختر —</option>
+                                    {vaultAssets
+                                      .filter((va) => va.capabilityTarget === 'VISUAL' || va.capabilityTarget === 'MOTION')
+                                      .map((va) => (
+                                        <option key={va.assetId} value={va.assetId}>
+                                          {typeLabelForCapability(va.capabilityTarget)} — {String(va.metadata?.generationPrompt ?? va.assetId).slice(0, 40)}
+                                        </option>
+                                      ))}
+                                  </select>
+                                  {vaultAssets.length === 0 && (
+                                    <p className="scene-plan-empty">
+                                      خزانتك فارغة بعد. ارفع أصلاً من جهازك أو استدعِ من الخزانة.
+                                    </p>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {planNotice && <p className="scene-plan-notice">{planNotice}</p>}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className="scenes-produce-btn"
+                      data-testid="rasamr-produce-scenes"
+                      disabled={isProducingScenes}
+                      onClick={async () => {
+                        setIsProducingScenes(true);
+                        setSceneNotice(null);
+                        setSceneAssetUrl(null);
+                        const path = `/api/ras-amr/storyboard/${encodeURIComponent(storyboard.storyboardId)}/produce`;
+                        try {
+                          const res = await fetch(path, { method: 'POST' });
+                          const body = await res.json() as { status?: string; message?: string };
+                          if (!res.ok || body.status !== 'accepted') {
+                            setSceneNotice(body.message ?? 'تعذّر بدء الإنتاج.');
+                            setIsProducingScenes(false);
+                            return;
+                          }
+                        } catch {
+                          setSceneNotice('تعذّر الوصول إلى ورشة الإنتاج الآن.');
+                          setIsProducingScenes(false);
+                          return;
+                        }
+
+                        // The production outlives this request, so the Chamber
+                        // asks the ledger rather than holding a socket open.
+                        // A poll that goes unanswered is asked again — never
+                        // turned into a verdict about the work itself.
+                        setSceneNotice('الإنتاج جارٍ… يستغرق عادةً بضع دقائق.');
+                        const spokenFailure = (reason: string | null) =>
+                          reason === 'TOO_LARGE_TO_CARRY'  ? 'اكتمل الفيلم، لكنّه جاء أكبر من أن يُحمَل إلى خزانتك. اجعل المشاهد أقصر وأعد المحاولة.'
+                          : reason === 'WORKSHOP_UNREACHABLE' ? 'تعذّر إتمام الإنتاج — ورشة الإنتاج لم تستجب.'
+                          : reason === 'REFUSED_BY_WORKSHOP' ? 'تعذّر إتمام الإنتاج — رُفض الطلب.'
+                          : reason === 'NO_OUTPUT'          ? 'تعذّر إتمام الإنتاج — انتهى دون ناتج.'
+                          : reason === 'STORAGE_FAILED'     ? 'تعذّر إتمام الإنتاج — لم يُحفظ الناتج.'
+                          :                                   'تعذّر إتمام الإنتاج.';
+
+                        // MEASURED 2026-09-25: the first real storyboard film
+                        // — five scenes, 137 seconds of Arabic narration at
+                        // 1920x1080 — took 13 minutes 37 seconds end to end.
+                        // The old ceiling here was 120 polls × 5s = 10 minutes,
+                        // so the Chamber stopped watching before the work it
+                        // had asked for could finish. 360 polls × 5s = 30
+                        // minutes, the same limit the production side already
+                        // holds, so one number governs both ends.
+                        for (let i = 0; i < 360; i += 1) {
+                          await new Promise((r) => setTimeout(r, 5000));
+                          let op: { producing?: boolean; succeeded?: boolean; assetUrl?: string | null; failureReason?: string | null } | null = null;
+                          try {
+                            const r = await fetch(path);
+                            if (r.ok) op = await r.json();
+                          } catch { /* the question went unanswered; ask again */ }
+                          if (!op || op.producing) continue;
+                          if (op.succeeded && op.assetUrl) {
+                            setSceneAssetUrl(op.assetUrl);
+                            setSceneNotice('اكتمل الإنتاج — وأُودع في خزانتك.');
+                          } else {
+                            setSceneNotice(spokenFailure(op.failureReason ?? null));
+                          }
+                          setIsProducingScenes(false);
+                          return;
+                        }
+                        // Still running after the longest production we know of.
+                        // That is not a failure, and the Chamber does not call it one.
+                        setSceneNotice('الإنتاج ما زال جارياً. سيظهر في خزانتك فور اكتماله.');
+                        setIsProducingScenes(false);
+                      }}
+                    >
+                      {isProducingScenes ? 'الإنتاج جارٍ… قد يستغرق دقائق' : '🎬 أنتج هذه المشاهد'}
+                    </button>
+                    {sceneNotice && <p className="scenes-notice">{sceneNotice}</p>}
+                    {sceneAssetUrl && (
+                      <video className="scenes-result" src={sceneAssetUrl} controls playsInline />
+                    )}
+                  </div>
+                )}
+
+                {/* The Director is one faculty, present in both worlds: here
+                    it is directed by what is to be CONCEIVED. See
+                    `directorIntentField` for why it is one definition. */}
+                {directorIntentField('storyboard')}
+              </div>
             </div>
           )}
 
@@ -5068,7 +5314,9 @@ export default function RasAmrChamber() {
                         className={`workspace-template-card${selectedTemplate?.id === tpl.id ? ' workspace-template-card-active' : ''}`}
                         onClick={() => {
                           setSelectedTemplate(tpl);
-                          setCreatorDirectorIntent(tpl.directorIntentPreset);
+                          // Proposes, never erases — see the template
+                          // application above for the measurement.
+                          if (!creatorDirectorIntent.trim()) setCreatorDirectorIntent(tpl.directorIntentPreset);
                           setDirectingMode('smart');
                           // Deliberately not closed. MEASURED 2026-09-25: the
                           // panel shut the instant a template was chosen, so
@@ -5383,9 +5631,7 @@ export default function RasAmrChamber() {
 
               {/* FINDING 6 — Creator Intent Field: what do you want from this scene? */}
               <div className="creator-intent-panel">
-                <label className="creator-intent-label" htmlFor="creator-intent-input">
-                  ما الذي تريد من هذا المشهد؟
-                </label>
+                {directorIntentField('montage')}
                 {/* The arrival line moved to the chamber itself — see the
                     `ras-arrival-notice` above. One notice, one place, seen
                     from every tab and both modes. */}
@@ -5393,204 +5639,6 @@ export default function RasAmrChamber() {
                 {/* Scenes written in الحُجّة الدامغة, produced here. The
                     workshop that produces them is never named to the Creator —
                     what returns is a sovereign asset in their own Vault. */}
-                {storyboard && (
-                  <div className="scenes-arrived" data-testid="rasamr-storyboard">
-                    <span className="scenes-tag">
-                      {storyboard.origin === 'brief'
-                        ? '✦ مشاهد من فكرتك'
-                        : 'مشاهد وصلت من حجّة الدامغة'}
-                    </span>
-                    <p className="scenes-subject">{storyboard.questionAr}</p>
-                    <p className="scenes-count">{storyboard.sceneCount} مشاهد مرتّبة.</p>
-
-                    {/* ── EVERY SCENE, AND WHERE ITS PICTURE COMES FROM ─────────
-                        The Founder, 2026-09-25: this Chamber «لا يمنح الفرصة
-                        للمنشئ القادم إليه بمطالبة من الحجة أن يضيف أصولاً
-                        لهذه المطالبة من عنده... حتى إنه لا يسأل المبدع عن طلب أو
-                        مواصفات للمادة المولّدة قبل توليدها.» The Chamber
-                        proposes; only the Creator decides, and nothing is
-                        bought before they have read what it is for. */}
-                    {scenePlans && scenePlans.length > 0 && (
-                      <div className="scene-plans" data-testid="rasamr-scene-plans">
-                        <span className="scene-plans-head">من أين صورة كلّ مشهد؟</span>
-                        {scenePlans.map((plan) => {
-                          const save = async (next: Partial<ScenePlanView>) => {
-                            const merged = { ...plan, ...next };
-                            setScenePlans((all) => (all ?? []).map((x) => (x.sceneId === plan.sceneId ? merged : x)));
-                            if (merged.sourcing === 'generate' && (merged.creationDemandAr ?? '').trim().length < 8) return;
-                            if (merged.sourcing === 'creator-asset' && !merged.visualAssetId) return;
-                            setSavingSceneId(plan.sceneId);
-                            const outcome = await setScenePlan({
-                              sceneId: plan.sceneId,
-                              sourcing: merged.sourcing,
-                              creationDemandAr: merged.creationDemandAr,
-                              visualAssetId: merged.visualAssetId,
-                            });
-                            setPlanNotice(outcome.ok ? null : outcome.messageAr ?? null);
-                            setSavingSceneId(null);
-                          };
-                          return (
-                            <div key={plan.sceneId} className="scene-plan">
-                              <div className="scene-plan-head">
-                                <span className="scene-plan-n">{plan.order}</span>
-                                <span className="scene-plan-seen">{plan.seenAr}</span>
-                              </div>
-                              <div className="scene-plan-choices" role="group" aria-label={`مصدر صورة المشهد ${plan.order}`}>
-                                {([
-                                  ['stock', 'يُبحَث عنه'],
-                                  ['generate', 'يُنشَأ لي'],
-                                  ['creator-asset', 'من أصولي'],
-                                ] as const).map(([value, label]) => (
-                                  <button
-                                    key={value}
-                                    type="button"
-                                    className={`scene-plan-choice${plan.sourcing === value ? ' scene-plan-choice-on' : ''}`}
-                                    disabled={savingSceneId === plan.sceneId}
-                                    onClick={() => { void save({ sourcing: value }); }}
-                                  >
-                                    {label}
-                                  </button>
-                                ))}
-                              </div>
-
-                              {plan.sourcing === 'generate' && (
-                                <>
-                                  <label className="scene-plan-label" htmlFor={`demand-${plan.sceneId}`}>
-                                    ما الذي يُنشَأ لهذا المشهد؟
-                                  </label>
-                                  <textarea
-                                    id={`demand-${plan.sceneId}`}
-                                    className="scene-plan-demand"
-                                    rows={2}
-                                    value={plan.creationDemandAr ?? ''}
-                                    onChange={(e) => {
-                                      const v = e.target.value;
-                                      setScenePlans((all) => (all ?? []).map((x) => (x.sceneId === plan.sceneId ? { ...x, creationDemandAr: v } : x)));
-                                    }}
-                                    onBlur={() => { void save({}); }}
-                                    placeholder="صف الصورة التي تريدها بدقة."
-                                  />
-                                </>
-                              )}
-
-                              {plan.sourcing === 'creator-asset' && (
-                                <>
-                                  <label className="scene-plan-label" htmlFor={`asset-${plan.sceneId}`}>
-                                    أي أصلٍ من خزانتك؟
-                                  </label>
-                                  <select
-                                    id={`asset-${plan.sceneId}`}
-                                    className="scene-plan-asset"
-                                    value={plan.visualAssetId ?? ''}
-                                    onChange={(e) => { void save({ visualAssetId: e.target.value || null }); }}
-                                  >
-                                    <option value="">— اختر —</option>
-                                    {vaultAssets
-                                      .filter((va) => va.capabilityTarget === 'VISUAL' || va.capabilityTarget === 'MOTION')
-                                      .map((va) => (
-                                        <option key={va.assetId} value={va.assetId}>
-                                          {typeLabelForCapability(va.capabilityTarget)} — {String(va.metadata?.generationPrompt ?? va.assetId).slice(0, 40)}
-                                        </option>
-                                      ))}
-                                  </select>
-                                  {vaultAssets.length === 0 && (
-                                    <p className="scene-plan-empty">
-                                      خزانتك فارغة بعد. ارفع أصلاً من جهازك أو استدعِ من الخزانة.
-                                    </p>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          );
-                        })}
-                        {planNotice && <p className="scene-plan-notice">{planNotice}</p>}
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      className="scenes-produce-btn"
-                      data-testid="rasamr-produce-scenes"
-                      disabled={isProducingScenes}
-                      onClick={async () => {
-                        setIsProducingScenes(true);
-                        setSceneNotice(null);
-                        setSceneAssetUrl(null);
-                        const path = `/api/ras-amr/storyboard/${encodeURIComponent(storyboard.storyboardId)}/produce`;
-                        try {
-                          const res = await fetch(path, { method: 'POST' });
-                          const body = await res.json() as { status?: string; message?: string };
-                          if (!res.ok || body.status !== 'accepted') {
-                            setSceneNotice(body.message ?? 'تعذّر بدء الإنتاج.');
-                            setIsProducingScenes(false);
-                            return;
-                          }
-                        } catch {
-                          setSceneNotice('تعذّر الوصول إلى ورشة الإنتاج الآن.');
-                          setIsProducingScenes(false);
-                          return;
-                        }
-
-                        // The production outlives this request, so the Chamber
-                        // asks the ledger rather than holding a socket open.
-                        // A poll that goes unanswered is asked again — never
-                        // turned into a verdict about the work itself.
-                        setSceneNotice('الإنتاج جارٍ… يستغرق عادةً بضع دقائق.');
-                        const spokenFailure = (reason: string | null) =>
-                          reason === 'TOO_LARGE_TO_CARRY'  ? 'اكتمل الفيلم، لكنّه جاء أكبر من أن يُحمَل إلى خزانتك. اجعل المشاهد أقصر وأعد المحاولة.'
-                          : reason === 'WORKSHOP_UNREACHABLE' ? 'تعذّر إتمام الإنتاج — ورشة الإنتاج لم تستجب.'
-                          : reason === 'REFUSED_BY_WORKSHOP' ? 'تعذّر إتمام الإنتاج — رُفض الطلب.'
-                          : reason === 'NO_OUTPUT'          ? 'تعذّر إتمام الإنتاج — انتهى دون ناتج.'
-                          : reason === 'STORAGE_FAILED'     ? 'تعذّر إتمام الإنتاج — لم يُحفظ الناتج.'
-                          :                                   'تعذّر إتمام الإنتاج.';
-
-                        // MEASURED 2026-09-25: the first real storyboard film
-                        // — five scenes, 137 seconds of Arabic narration at
-                        // 1920x1080 — took 13 minutes 37 seconds end to end.
-                        // The old ceiling here was 120 polls × 5s = 10 minutes,
-                        // so the Chamber stopped watching before the work it
-                        // had asked for could finish. 360 polls × 5s = 30
-                        // minutes, the same limit the production side already
-                        // holds, so one number governs both ends.
-                        for (let i = 0; i < 360; i += 1) {
-                          await new Promise((r) => setTimeout(r, 5000));
-                          let op: { producing?: boolean; succeeded?: boolean; assetUrl?: string | null; failureReason?: string | null } | null = null;
-                          try {
-                            const r = await fetch(path);
-                            if (r.ok) op = await r.json();
-                          } catch { /* the question went unanswered; ask again */ }
-                          if (!op || op.producing) continue;
-                          if (op.succeeded && op.assetUrl) {
-                            setSceneAssetUrl(op.assetUrl);
-                            setSceneNotice('اكتمل الإنتاج — وأُودع في خزانتك.');
-                          } else {
-                            setSceneNotice(spokenFailure(op.failureReason ?? null));
-                          }
-                          setIsProducingScenes(false);
-                          return;
-                        }
-                        // Still running after the longest production we know of.
-                        // That is not a failure, and the Chamber does not call it one.
-                        setSceneNotice('الإنتاج ما زال جارياً. سيظهر في خزانتك فور اكتماله.');
-                        setIsProducingScenes(false);
-                      }}
-                    >
-                      {isProducingScenes ? 'الإنتاج جارٍ… قد يستغرق دقائق' : '🎬 أنتج هذه المشاهد'}
-                    </button>
-                    {sceneNotice && <p className="scenes-notice">{sceneNotice}</p>}
-                    {sceneAssetUrl && (
-                      <video className="scenes-result" src={sceneAssetUrl} controls playsInline />
-                    )}
-                  </div>
-                )}
-                <textarea
-                  id="creator-intent-input"
-                  className="creator-intent-input"
-                  placeholder="مثال: مشهد افتتاحي درامي بإيقاع هادئ يُعبِّر عن الأمل…"
-                  value={creatorDirectorIntent}
-                  onChange={(e) => setCreatorDirectorIntent(e.target.value)}
-                  rows={2}
-                  aria-label="نية الخالق من المشهد"
-                />
                 {/* ── WHAT GOVERNS THIS SCENE, AND HOW TO CHANGE IT ──────────
                     The hint below used to say the typed intent was «مرجع
                     إضافي» whenever a formal goal existed — and it was telling

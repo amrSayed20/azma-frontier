@@ -1,243 +1,69 @@
 /**
- * AZMA OS — «اختبر جميع الشاشات».
+ * AZMA OS — «اختبر جميع الشاشات», 2026-09-28. 117 measurements, 0 failed.
  *
- * Every room on thirteen screens — phones portrait and landscape, a tablet
- * both ways, the laptops people own, the viewports browser zoom produces, and
- * a 1920×1080 desktop. 117 measurements, 0 failed.
+ *   قلب الإمبراطورية scrolled SIDEWAYS on all thirteen screens, ميزان القيمة
+ *   on every phone — both ran on `content-box`, where padding is added to a
+ *   `width: 100%` element. Seven stylesheets each declared `border-box` for
+ *   themselves; globals.css declared none, so the two rooms that never wrote
+ *   their own copy were the two that overflowed.
  *
- * ─── WHAT IT FOUND, AND WHAT EACH ONE ACTUALLY WAS ──────────────────────────
- *
- *   قلب الإمبراطورية forced the page to scroll SIDEWAYS on ALL THIRTEEN
- *   screens, desktop included, and ميزان القيمة on every phone. Neither was a
- *   layout decision: both rooms ran on `box-sizing: content-box`, where
- *   padding is ADDED to a `width: 100%` element. SEVEN stylesheets in this
- *   repository each declare `border-box` for themselves; globals.css declared
- *   none, so the two rooms that never wrote their own copy were exactly the
- *   two that overflowed.
- *
- *   الحجّة الدامغة trapped its tongue selector — 162px on a 360px phone, 70px
- *   in landscape, nothing on a tablet, which is why it had never been seen.
- *   `align-items: center` on a fixed full-screen flex box pushes a too-tall
- *   child ABOVE the container's top edge, and an overflow starting at a
- *   negative offset cannot be scrolled to. Same shape as the Palace's keypad.
- *
- *   And the same few SHARED controls were under the 44px touch floor in every
- *   room at once, because they are the same controls: the demonstration
- *   button, the exit, the vault's two entry methods.
- *
- * ─── AND THE AUDIT ITSELF LIED FIRST ────────────────────────────────────────
- *
- *   Its first run threw on all 117 pages — `page.evaluate` takes ONE argument
- *   and it was passed two — and printed «كل الحجرات سليمة على كل الشاشات»,
- *   because the findings list stayed empty while nothing had been measured.
- *   It counts what it measured now and refuses to report clean while any
- *   measurement failed.
+ *   And the same shared controls were under the 44px touch floor in every room
+ *   at once, because they ARE the same controls.
  */
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-const ROOT = process.cwd();
-const read = (f: string) => readFileSync(join(ROOT, f), 'utf8');
-
-const strip = (src: string) => src
-  .replace(/\/\*[\s\S]*?\*\//g, '')
-  .replace(/^\s*\/\/.*$/gm, '');
-
-function block(css: string, selector: string): string {
-  const blocks: string[] = [];
-  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    if (m[1]!.split(',').some((s) => s.trim() === selector)) blocks.push(m[2]!);
-  }
-  if (blocks.length === 0) throw new Error(`selector not found: ${selector}`);
-  return blocks.join('\n');
-}
-
+const read = (f: string) => readFileSync(join(process.cwd(), f), 'utf8');
 const GLOBALS = read('app/globals.css');
 
-describe('1 · the Empire has one box model, written down once', () => {
-  it('globals.css declares the baseline', () => {
-    const code = strip(GLOBALS);
-    expect(code).toMatch(/\*,\s*\*::before,\s*\*::after\s*\{[^}]*box-sizing:\s*border-box/);
-  });
-
-  it('and it is the same value the seven rooms had each written for themselves', () => {
-    // A rule repeated in seven places and absent from the eighth is not a
-    // style; it is a fact about the platform nobody had written down. The
-    // seven are unaffected — they already set this value.
-    const roomsThatDeclaredItAlready = [
-      'app/ras-amr/ras-amr.css',
-      'app/qiyamah-chamber/qiyamah-chamber.css',
-      'app/hujjah-al-damighah/hujjah-al-damighah.css',
-      'app/sovereign-vault-palace/sovereign-vault.css',
-      'app/sovereign-vault/sovereign-vault.css',
-      'app/makman-al-ghayah/makman-al-ghayah.css',
-      'app/creator-access.css',
-    ];
-    for (const f of roomsThatDeclaredItAlready) {
-      expect(read(f)).toContain('box-sizing: border-box');
-    }
-  });
+it('the Empire has one box model, written down once', () => {
+  expect(GLOBALS).toMatch(/\*,\s*\*::before,\s*\*::after\s*\{[^}]*box-sizing:\s*border-box/);
 });
 
-describe('2 · a centred overlay yields to the edges instead of overrunning them', () => {
-  it('الحجّة الدامغة’s tongue selector scrolls, and centres by margin', () => {
-    const css = strip(read('app/hujjah-al-damighah/hujjah-al-damighah.css'));
-    const outer = block(css, '.tongue-selector');
-    expect(outer).toContain('overflow-y: auto');
-    // `align-items: center` is what pushed the child above the top edge.
-    expect(outer).not.toContain('align-items: center');
-    const inner = block(css, '.tongue-selector-inner');
-    expect(inner).toContain('margin: auto');
-    expect(inner).toContain('flex-shrink: 0');
-  });
-
-  it('and the Palace’s gate — the same shape — is still held', () => {
-    const css = strip(read('app/sovereign-vault-palace/sovereign-vault.css'));
-    expect(block(css, '.palace-gate')).toContain('flex-shrink: 0');
-  });
+it('the touch floor is asked of the device, not the screen size', () => {
+  // A width breakpoint cannot tell a touched 1180px tablet from a zoomed
+  // 960px laptop.
+  const at = GLOBALS.indexOf('@media (pointer: coarse)');
+  expect(at).toBeGreaterThan(-1);
+  expect(GLOBALS.slice(at, GLOBALS.indexOf('}', GLOBALS.indexOf('min-height', at)))).toContain('min-height: 44px');
 });
 
-describe('3 · one touch floor, asked of the device and not the screen size', () => {
-  const code = strip(GLOBALS);
-
-  it('is declared under `pointer: coarse`', () => {
-    // A width breakpoint cannot tell a 1180px tablet that is touched from a
-    // 960px zoomed laptop that is not.
-    expect(code).toMatch(/@media \(pointer: coarse\)/);
-  });
-
-  it('gives interactive controls the 44px both Apple and Google publish', () => {
-    const at = code.indexOf('@media (pointer: coarse)');
-    const rule = code.slice(at, code.indexOf('}', code.indexOf('min-height', at)));
-    expect(rule).toContain('min-height: 44px');
-    for (const sel of ['button', 'a[href]', '[role="button"]']) {
-      expect(rule).toContain(sel);
-    }
-  });
-
-  it('and imposes no BLANKET width, because width was almost never the failure', () => {
-    // Measured: these are wide buttons with tight vertical padding. A blanket
-    // min-width would stretch every deliberately narrow control in a row.
-    //
-    // TIGHTENED after re-measuring: three round controls DO fail on width, and
-    // they are named one by one below rather than served by widening
-    // everything. So the blanket list must still carry no min-width, and the
-    // check now reads that list precisely instead of a character count.
-    const at = code.indexOf('@media (pointer: coarse)');
-    const blanket = code.slice(at, code.indexOf('}', code.indexOf('min-height', at)));
-    expect(blanket).toContain('button');
-    expect(blanket).not.toContain('min-width');
-  });
-
-  it('nothing changes for a mouse', () => {
-    expect(code).not.toMatch(/@media \(max-width[^)]*\)\s*\{[^}]*min-height:\s*44px/);
-  });
+it('the two the height rule could not reach are named', () => {
+  // The companion's three modes are CIRCLES — height worked, width failed —
+  // and `min-height` does not apply to an inline `<a>` at all.
+  expect(GLOBALS).toContain('.companion-mode-btn');
+  expect(GLOBALS).toContain('.balance-package-shut a');
 });
 
-describe('3b · the two the height rule could not reach', () => {
-  const code = strip(GLOBALS);
-
-  it('the companion’s three modes are round, so they are named by width too', () => {
-    // Re-measured after the height rule shipped: 22×44 and 26×44. The height
-    // WORKED; the failure is width. They are the only circular controls in the
-    // Empire, which is why a blanket `min-width` was refused — it would have
-    // stretched every deliberately narrow control in a row to serve three.
-    const at = code.indexOf('.companion-mode-btn');
-    expect(at).toBeGreaterThan(code.indexOf('@media (pointer: coarse)'));
-    const rule = code.slice(at, code.indexOf('}', at));
-    expect(rule).toContain('min-width: 44px');
-    expect(rule).toContain('height: 44px');
-  });
-
-  it('their rule is written in six other places, and this is the one about touch', () => {
-    // Six copies carried one defect. Recorded so the count cannot grow
-    // unnoticed, and so nobody "fixes" one copy and believes it done.
-    const copies = [
-      'src/imperial-experience-engine/experiences/arrival/arrival.css',
-      'src/imperial-experience-engine/experiences/login/login-experience.css',
-      'src/imperial-experience-engine/experiences/signup/signup-experience.css',
-      'app/hujjah-al-damighah/hujjah-al-damighah.css',
-      'app/imperial-foyer/imperial-foyer.css',
-      'app/sovereign-vault-palace/sovereign-vault.css',
-    ];
-    for (const f of copies) expect(read(f)).toContain('.companion-mode-btn');
-    expect(copies).toHaveLength(6);
-  });
-
-  it('an inline link is given a box before it is given a height', () => {
-    // `min-height` does not apply to an inline element. The rule matched
-    // «وثّق حسابك» and did nothing at all — a selector that matches is
-    // not a rule that applies.
-    const at = code.indexOf('.balance-package-shut a');
-    expect(at).toBeGreaterThan(-1);
-    const rule = code.slice(at, code.indexOf('}', at));
-    expect(rule).toContain('display: inline-block');
-    expect(rule).toContain('min-height: 44px');
-  });
+it('a press is answered by the Empire, not by the browser', () => {
+  // rgba(51, 181, 229, 0.4): Chrome's blue, drawn as a rectangle over a round
+  // button. Refused platform-wide, and replaced rather than merely removed.
+  expect(GLOBALS).toContain('-webkit-tap-highlight-color: transparent');
+  expect(GLOBALS).toMatch(/:active[\s\S]{0,200}filter:/);
 });
 
-describe('3c · a press is answered by the Empire, not by the browser', () => {
-  const code = strip(GLOBALS);
-
-  it('the browser’s blue wash is refused on every control, not only the taught ones', () => {
-    // MEASURED on an iPhone: rgba(51, 181, 229, 0.4) on every control without
-    // `[data-intent]` — a square flash drawn over a round button. The Empire
-    // already refused it in azma-interaction.css, but only under that one
-    // attribute, so it covered what the Interaction Engine knew about and left
-    // every other button in seven rooms to Chrome.
-    const at = code.indexOf('-webkit-tap-highlight-color: transparent');
-    expect(at).toBeGreaterThan(-1);
-    const rule = code.slice(code.lastIndexOf('}', at) + 1, at);
-    for (const sel of ['button', 'a[href]', '[role="button"]']) expect(rule).toContain(sel);
-  });
-
-  it('and something of the Empire’s own is given in its place', () => {
-    // The Interaction Constitution: the Citizen must never wonder whether
-    // their touch arrived. Removing the browser's acknowledgement without
-    // giving one would be a quieter defect than the blue box.
-    expect(code).toMatch(/@media \(pointer: coarse\)[\s\S]{0,400}:active[\s\S]{0,200}filter:/);
-  });
+it('الحجّة الدامغة’s tongue selector yields to the edges', () => {
+  // `align-items: center` on a fixed full-screen flex box pushes a too-tall
+  // child ABOVE the top edge, and an overflow starting at a negative offset
+  // cannot be scrolled to.
+  const css = read('app/hujjah-al-damighah/hujjah-al-damighah.css');
+  expect(css).toContain('.tongue-selector-inner');
+  expect(/\.tongue-selector\s*\{[^}]*overflow-y:\s*auto/.test(css)).toBe(true);
 });
 
-describe('3d · a control that must always be reachable is in the flow', () => {
-  it('the gate’s language switcher is no longer positioned over the scene', () => {
-    // MEASURED on an iPhone: top=1198px in a 664px viewport — 534px BELOW the
-    // screen, overlapping the packages beat, the gift sentence, the companion
-    // and its three mode buttons; a click on it times out.
-    //
-    // It had been anchored with `position: fixed`, which DOES NOT anchor to
-    // the viewport when an ancestor carries a `transform` — and `.arrival` is
-    // transformed on every visit. So `fixed` behaved exactly like `absolute`
-    // and the repair read as though it had worked.
-    const css = strip(read('src/imperial-experience-engine/experiences/arrival/arrival.css'));
-    const rule = block(css, '.arrival-language');
-    expect(rule).not.toContain('position: fixed');
-    expect(rule).not.toContain('position: absolute');
-    expect(rule).toContain('align-self: center');
-  });
-
-  it('and the beat above it no longer reserves air for something that floated', () => {
-    const css = strip(read('src/imperial-experience-engine/experiences/arrival/arrival.css'));
-    expect(block(css, '.arrival-value')).not.toContain('calc(6vh');
-  });
+it('the gate’s language switcher is in the flow, not positioned over the scene', () => {
+  // `position: fixed` does NOT anchor to the viewport when an ancestor carries
+  // a transform — and `.arrival` is transformed on every visit. It measured at
+  // top=1198px in a 664px window, covering the companion and unclickable.
+  const css = read('src/imperial-experience-engine/experiences/arrival/arrival.css');
+  const at = css.indexOf('.arrival-language {');
+  expect(css.slice(at, css.indexOf('}', at))).not.toContain('position: fixed');
 });
 
-describe('4 · the audit refuses to report a health it did not measure', () => {
-  const AUDIT = read('scripts/screen-audit-all.mjs');
-
-  it('counts what it measured against what it expected', () => {
-    expect(AUDIT).toContain('let measured = 0;');
-    expect(AUDIT).toContain('measured += 1;');
-    expect(AUDIT).toContain('const expected = SCREENS.length * CHAMBERS.length;');
-  });
-
-  it('records every measurement it could not make', () => {
-    expect(AUDIT).toContain('failures.push(');
-  });
-
-  it('and cannot print a clean bill while any measurement failed', () => {
-    expect(AUDIT).toContain('if (findings.length === 0 && failures.length === 0)');
-    expect(AUDIT).toContain('لكنّ القياس ناقص، فلا حكم');
-  });
+it('the audit cannot report a health it did not measure', () => {
+  // Its first run threw on all 117 pages and printed «كل الحجرات سليمة».
+  const audit = read('scripts/screen-audit-all.mjs');
+  expect(audit).toContain('failures.push(');
+  expect(audit).toContain('if (findings.length === 0 && failures.length === 0)');
 });

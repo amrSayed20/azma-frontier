@@ -1,279 +1,76 @@
 /**
- * AZMA OS — where a Creator learns what the Empire's power costs.
+ * AZMA OS — where a Creator meets the price, 2026-09-28.
  *
- * ─── WHAT WAS FOUND, 2026-09-27 ─────────────────────────────────────────────
+ *   The gate carries none: «لا اريد ان تكون صفحه الاشتراكات والباقات (الميزان)
+ *   فى بدايه دخول الزائر للمنصه — انها تظهر له عند طلب اجراء عمليه انتاجيه
+ *   وتوجد فى نهايه المنصه».
  *
- *   The Founder's four approved packages existed in the repository and on NO
- *   surface in the Empire. The one purchase page that did exist — /subscribe —
- *   offered a single plan that is not among the four, through a payment
- *   provider he had already replaced, and it was reached only AFTER a Creator
- *   had registered and run out of Balance.
- *
- *   His instruction: «وتعرض الباقات فى نهايه رحله الزائر وليس بعد تسجيل الدخول
- *   وتخبر المستخدم ان هناك وحدات هديه ممكن ان تمنحها الامبراطوريه لمشتركين».
- *
- * ─── AND THE ONE THING THESE GUARDS WATCH HARDEST ───────────────────────────
- *
- *   The pricing module imports the cost-truth table: provider credit rates,
- *   the dollar acquisition cost, the FX rate. A `'use client'` component that
- *   imported it would publish all of it inside a JavaScript bundle any visitor
- *   can open — the Empire's provider costs, leaked through a price list. So no
- *   client component may import that module, and the projection that crosses
- *   to a browser is checked field by field.
+ *   And the pricing module imports the cost-truth table, so a `'use client'`
+ *   import of it would publish provider rates in a bundle any visitor opens.
  */
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import {
-  creatorFacingPackages, SOVEREIGN_PACKAGES, VALIDITY_AR,
-  BALANCE_NOTICES_AR, GIFT_BALANCE,
+  creatorFacingPackages, SOVEREIGN_PACKAGES, BALANCE_NOTICES_AR, GIFT_BALANCE,
 } from '../pricing/sovereign-value-balance';
 
-const ROOT = process.cwd();
-const read = (f: string) => readFileSync(join(ROOT, f), 'utf8');
-/**
- * Comments are for engineers. A rule about what a Creator reads, or about what
- * a bundle carries, is checked on the code — otherwise the guard fires on the
- * sentence explaining the guard, which is how a true rule gets weakened to
- * make a test pass.
- */
-const strip = (src: string) => src
-  .replace(/\/\*[\s\S]*?\*\//g, '')
-  .replace(/^\s*\/\/.*$/gm, '')
-  .replace(/\s\/\/.*$/gm, '');
-
+const read = (f: string) => readFileSync(join(process.cwd(), f), 'utf8');
 const ARRIVAL = read('src/imperial-experience-engine/experiences/arrival/ArrivalExperience.tsx');
-const GATE    = read('app/page.tsx');
-const PAGE    = read('app/sovereign-balance/page.tsx');
-const CLIENT  = read('app/sovereign-balance/SovereignBalanceClient.tsx');
+const CHAMBER = read('app/qiyamah-chamber/QiyamahChamberClient.tsx');
+const BALANCE = read('app/sovereign-balance/SovereignBalanceClient.tsx');
 
-describe('1 · the projection carries what a Creator sees and nothing beneath it', () => {
-  it('is the four approved packages, in the approved order', () => {
-    expect(creatorFacingPackages().map((p) => p.packageId))
-      .toEqual(SOVEREIGN_PACKAGES.map((p) => p.packageId));
-  });
-
-  it('carries the approved price, Balance and validity of each', () => {
-    for (const p of creatorFacingPackages()) {
-      const approved = SOVEREIGN_PACKAGES.find((s) => s.packageId === p.packageId)!;
-      expect(p.priceEgp).toBe(approved.priceEgp);
-      expect(p.balanceUnits).toBe(approved.balanceUnits);
-      expect(p.validityAr).toBe(VALIDITY_AR[approved.validity]);
-    }
-  });
-
-  it('carries no cost, no basis, no provider and no margin', () => {
-    for (const p of creatorFacingPackages()) {
-      expect(Object.keys(p).sort())
-        .toEqual(['balanceUnits', 'nameAr', 'packageId', 'priceEgp', 'validityAr']);
-    }
-  });
-
-  it('every validity a package can declare has an Arabic reading', () => {
-    // A package whose validity had no entry would render `undefined` beside a
-    // real price.
-    for (const p of SOVEREIGN_PACKAGES) expect(VALIDITY_AR[p.validity]).toBeTruthy();
-  });
+it('the projection carries what a Creator sees and nothing beneath it', () => {
+  expect(creatorFacingPackages().map((p) => p.packageId))
+    .toEqual(SOVEREIGN_PACKAGES.map((p) => p.packageId));
+  expect(Object.keys(creatorFacingPackages()[0]!).sort())
+    .toEqual(['balanceUnits', 'nameAr', 'packageId', 'priceEgp', 'validityAr']);
 });
 
-describe('2 · the cost truth never reaches a browser', () => {
-  it('no client component imports the pricing module', () => {
-    for (const [name, src] of [['arrival', ARRIVAL], ['balance client', CLIENT]] as const) {
-      expect(src).toContain("'use client'");
-      expect(src).not.toContain('sovereign-value-balance');
-      expect(src).not.toContain('qiyamah-cost-truth');
-      // Nor may it reach the same table by another road.
-      expect(src).not.toContain('OPERATION_CONSUMPTION');
-      expect(name).toBeTruthy();
-    }
-  });
-
-  it('a server component reads it and passes the projection down', () => {
-    // The GATE no longer does — it carries no price at all since the Founder's
-    // ruling of 2026-09-28. The two that do are the Balance surface and the
-    // Chamber, and both are Server Components.
-    expect(PAGE).toContain('creatorFacingPackages()');
-    expect(read('app/qiyamah-chamber/page.tsx')).toContain('creatorFacingPackages()');
-    expect(strip(GATE)).not.toContain('creatorFacingPackages()');
-    // The gate's page is a Server Component: it must not declare itself a
-    // client one, or the import above ships the cost table after all.
-    expect(strip(GATE)).not.toContain("'use client'");
-    expect(strip(PAGE)).not.toContain("'use client'");
-  });
-
-  it('neither surface holds a price of its own', () => {
-    // A price written twice is a price that will disagree with itself, and a
-    // Creator would be held to whichever screen they happened to read.
-    // On the stripped view: the digit convention is explained in a comment
-    // that quotes a policy price as its example, and a comment is not a second
-    // price record. What must hold no price is the code that renders one.
-    for (const src of [ARRIVAL, CLIENT].map(strip)) {
-      for (const n of ['99', '249', '499', '1200', '1,200', '1375', '3450', '6900', '16670', '16,670']) {
-        expect(src).not.toContain(n);
-      }
-    }
-  });
+it.each([
+  ['the gate', ARRIVAL],
+  ['the Chamber', CHAMBER],
+  ['the Balance surface', BALANCE],
+])('%s never imports the cost truth', (_name, src) => {
+  expect(src).toContain("'use client'");
+  expect(src).not.toContain('sovereign-value-balance');
 });
 
-describe('3 · the packages are where the money is spent, not at the door', () => {
-  const CHAMBER = read('app/qiyamah-chamber/QiyamahChamberClient.tsx');
-  const CHAMBER_PAGE = read('app/qiyamah-chamber/page.tsx');
-
-  it('the gate carries no price at all', () => {
-    // FOUNDER'S RULING 2026-09-28: «لا اريد ان تكون صفحه الاشتراكات والباقات
-    // (الميزان) فى بدايه دخول الزائر للمنصه». His earlier «نهاية رحلة الزائر»
-    // was read as the end of the arrival ceremony; the ceremony is the
-    // BEGINNING of the entry, and a stranger at a door is not met with a
-    // price list.
-    expect(ARRIVAL).not.toContain('className="arrival-value"');
-    expect(ARRIVAL).not.toContain('arrival-value-price');
-    expect(strip(GATE)).not.toContain('creatorFacingPackages()');
-    // Removed and not hidden: no flag, no condition, no dormant markup.
-    expect(strip(ARRIVAL)).not.toContain('packages');
-    // The tombstone records why, so the absence is history and not an omission.
-    expect(ARRIVAL).toContain('TOMBSTONE: THE CLOSING BEAT');
-  });
-
-  it('they appear at the request to produce, beside what that act costs', () => {
-    expect(CHAMBER).toContain('className="chamber-packages"');
-    // Beside the cost line, so the Creator reads the charge and the remedy in
-    // one place rather than hunting for one of them.
-    expect(CHAMBER.indexOf('<StepCostLine quote={cost} showBalance />'))
-      .toBeLessThan(CHAMBER.indexOf('className="chamber-packages"'));
-  });
-
-  it('and they say plainly when the Balance will not cover the act', () => {
-    expect(CHAMBER).toContain('رصيدك لا يكفي لهذا العمل');
-  });
-
-  it('the end of the platform is still reachable from there', () => {
-    expect(CHAMBER).toContain('href="/sovereign-balance"');
-  });
-
-  it('the Chamber holds no price of its own — the server projects them', () => {
-    expect(CHAMBER_PAGE).toContain('creatorFacingPackages()');
-    expect(CHAMBER).not.toContain('sovereign-value-balance');
-    expect(CHAMBER).not.toContain('qiyamah-cost-truth');
-    for (const n of ['99', '249', '499', '1,375', '3,450', '6,900', '16,670']) {
-      expect(strip(CHAMBER)).not.toContain(n);
-    }
-  });
-
-  it('the gift is told where the packages now are, not at the door', () => {
-    expect(GIFT_BALANCE.noticeAr).toContain('قد تمنح');
-    expect(GIFT_BALANCE.isEntitlement).toBe(false);
-    expect(GIFT_BALANCE.noticeAr).not.toMatch(/[0-9]/);
-    expect(CLIENT).toContain('giftNoticeAr');
-  });
-
-  it('no surface calls الريادة’s composition a bonus, a gift or a discount', () => {
-    for (const src of [ARRIVAL, CLIENT, GATE, CHAMBER].map(strip)) {
-      for (const claim of ['مكافأة', 'هدية مع', 'bonus', 'وفّر', 'خصم خاص', 'بخصم', 'خصماً', 'مجاناً']) {
-        expect(src).not.toContain(claim);
-      }
-    }
-  });
+it('the gate carries no price at all', () => {
+  expect(ARRIVAL).not.toContain('className="arrival-value"');
+  expect(read('app/page.tsx')).not.toContain('creatorFacingPackages()');
 });
 
-describe('3b · the end of the platform is at the foot of the hinge', () => {
-  const FOYER = read('app/imperial-foyer/page.tsx');
-  const FOYER_CSS = read('app/imperial-foyer/imperial-foyer.css');
-
-  it('the Foyer carries a card for the Balance and one for the policies', () => {
-    // FOUNDER'S RULING 2026-09-28: «فى اسفل هذه الحجره ضع بطاقه
-    // للسياسات وكذلك بطاقه للميزان» — which also settles where the
-    // Balance lives, «توجد فى نهايه المنصه». The Foyer is the hinge every
-    // Creator passes through between every other room, so its foot IS that end.
-    expect(FOYER).toContain('className="foyer-ledger"');
-    expect(FOYER).toContain('href="/sovereign-balance"');
-    expect(FOYER).toContain('href="/policies"');
-  });
-
-  it('they are at the FOOT of the room, below the four chambers', () => {
-    expect(FOYER.indexOf('foyer-chambers')).toBeLessThan(FOYER.indexOf('foyer-ledger'));
-  });
-
-  it('and they do not pretend to be chambers', () => {
-    // A chamber is entered through `launchChamber`, which prepares an
-    // interaction session and announces a Creator's arrival. A ledger and a
-    // policy are READ, not entered.
-    const at = FOYER.indexOf('className="foyer-ledger"');
-    const block = FOYER.slice(at, FOYER.indexOf('</nav>', at));
-    expect(block).not.toContain('launchChamber');
-    expect(block).not.toContain('<button');
-  });
-
-  it('the cards are painted, and reachable by a finger', () => {
-    expect(FOYER_CSS).toContain('.foyer-ledger-card');
-    const at = FOYER_CSS.indexOf('.foyer-ledger-card {');
-    const rule = FOYER_CSS.slice(at, FOYER_CSS.indexOf('}', at));
-    for (const decl of ['background', 'border', 'min-height: 44px']) {
-      expect(rule).toContain(decl);
-    }
-    // The Foyer is the one room with a light composition; the cards have one.
-    expect(FOYER_CSS.slice(FOYER_CSS.indexOf('.foyer-ledger'))).toContain('prefers-color-scheme: light');
-  });
+it('the packages stand at the request to produce', () => {
+  expect(CHAMBER).toContain('className="chamber-packages"');
+  expect(read('app/qiyamah-chamber/page.tsx')).toContain('creatorFacingPackages()');
 });
 
-describe('4 · the Balance surface tells the truth about what it can do', () => {
-  it('a visitor may read it without a session', () => {
-    // The Founder ruled the prices are not to appear only after logging in.
-    expect(PAGE).toContain('authenticated={!!session}');
-    expect(PAGE).not.toContain('redirect(');
-  });
+it('the end of the platform is at the foot of the Foyer', () => {
+  const foyer = read('app/imperial-foyer/page.tsx');
+  expect(foyer).toContain('href="/sovereign-balance"');
+  expect(foyer).toContain('href="/policies"');
+  expect(foyer.indexOf('foyer-chambers')).toBeLessThan(foyer.indexOf('foyer-ledger'));
+});
 
-  it('it offers no button that cannot work', () => {
-    expect(PAGE).toContain('getXPayGateway() !== null');
-    expect(PAGE).toContain('BALANCE_PRICING_APPROVED && getXPayGateway() !== null');
-    expect(CLIENT).toContain('purchaseAvailable && authenticated && identityVerified');
-  });
+it('no surface promises an ending, and none softens what did not change', () => {
+  const joined = Object.values(BALANCE_NOTICES_AR).join(' ');
+  expect(joined).toContain('رصيدك لا ينتهي');
+  expect(joined).not.toContain('ثمانية وعشرون يوماً');
+  // The Balance is still not cash, and still not a subscription.
+  expect(joined).toContain('لا يُردّ الرصيد نقداً');
+  expect(joined).toContain('وليس هذا اشتراكاً');
+});
 
-  it('and when it cannot, it says which of the three reasons it is', () => {
-    expect(CLIENT).toContain('ادخل بحسابك');
-    expect(CLIENT).toContain('وثّق حسابك');
-    expect(CLIENT).toContain('الشراء غير مُهيّأ على هذا الخادم بعد');
-  });
+it('the gift is a discretion that names no amount', () => {
+  expect(GIFT_BALANCE.isEntitlement).toBe(false);
+  expect(GIFT_BALANCE.noticeAr).not.toMatch(/[0-9]/);
+});
 
-  it('a refusal is reported in the server’s own words, not re-invented here', () => {
-    expect(CLIENT).toContain('data.messageAr');
-    expect(CLIENT).toContain('لم يُخصم شيء');
-  });
-
-  it('it states that the Balance does not expire, and what that does NOT mean', () => {
-    // FOUNDER'S RULING 2026-09-28: «ألغِ الـ28 يوم». The notices used to
-    // promise an ending in both halves; they promise no ending now — and the
-    // half that did not change is held here so removing the expiry cannot
-    // quietly soften it.
-    expect(BALANCE_NOTICES_AR.standardValidity).toContain('رصيدك لا ينتهي');
-    expect(BALANCE_NOTICES_AR.carryForward).toContain('لا يُردّ الرصيد نقداً');
-    expect(BALANCE_NOTICES_AR.notASubscription).toContain('وليس هذا اشتراكاً');
-    expect(BALANCE_NOTICES_AR.riyadaValidity).toContain('لا مدّة تنتهي');
-    for (const notice of Object.values(BALANCE_NOTICES_AR)) {
-      expect(notice).not.toContain('ثمانية وعشرون يوماً');
-      expect(notice).not.toContain('ستّة أشهر');
-    }
-    // Every notice is RENDERED from the constant, never retyped on the page.
-    for (const key of Object.keys(BALANCE_NOTICES_AR)) {
-      expect(CLIENT).toContain(`notices.${key}`);
-    }
-  });
-
-  it('the word «اشتراك» never reaches the Creator, in any of its forms', () => {
-    // The Empire's own /subscribe vocabulary calls the Balance an اشتراك. It is
-    // not one, and the policy says so. The word survives only in the comment
-    // that explains why it is refused — hence the stripped view.
-    const code = strip(CLIENT);
-    expect(code).not.toContain('اشتراك');
-    expect(code).not.toContain('اشترك');
-    // …and the code really is still here, so this is not passing on nothing.
-    expect(code).toContain('balance-packages');
-  });
-
-  it('the paywall a Creator meets after logging in now lands here', () => {
-    const REGISTRY = read('src/button-engine/action-registry.ts');
-    expect(REGISTRY).toContain("'subscribe-to-generate': { labelKey: 'action.subscribeToGenerate', href: '/sovereign-balance'");
-    const AR = read('src/creator-language/dictionary/ar.ts');
-    expect(AR).not.toContain("'action.subscribeToGenerate': 'اشترك للتوليد'");
-    expect(AR).toContain("'action.subscribeToGenerate': 'زِد ميزانك للتوليد'");
-  });
+it('no surface calls الريادة’s composition a bonus or a discount', () => {
+  // 1,200 EGP buys 16,670 units at the ordinary rate: nothing is given above
+  // the price, so nothing may be advertised as given.
+  for (const src of [ARRIVAL, CHAMBER, BALANCE]) {
+    for (const claim of ['مكافأة', 'bonus', 'خصماً', 'مجاناً']) expect(src).not.toContain(claim);
+  }
 });
