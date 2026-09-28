@@ -167,6 +167,26 @@ describe('2 · the act that finishes the work is where the work is done', () => 
   });
 });
 
+describe('2b · every workspace this room has can be reached', () => {
+  it('the five tabs wrap instead of hiding past an invisible edge', () => {
+    // MEASURED on the live release, in a 278px rail holding 362px of names:
+    // الترجمة and المشروع were cut off at EVERY size, full screen included,
+    // and unclickable at 125% and 150%. The bar scrolled horizontally with
+    // `scrollbar-width: none`, so nothing on the surface said they existed —
+    // two of this room's five workspaces a Creator did not have.
+    const rule = block(strip(CSS), '.ras-tab-bar');
+    expect(rule).toContain('flex-wrap: wrap');
+    expect(rule).not.toContain('overflow-x: auto');
+    expect(rule).not.toContain('scrollbar-width: none');
+  });
+
+  it('and the page still declares all five', () => {
+    for (const tab of ['canvas', 'direction', 'audio', 'subtitles', 'project']) {
+      expect(PAGE).toContain(`activeWorkspaceTab === '${tab}'`);
+    }
+  });
+});
+
 describe('3 · nothing that crosses the door disappears in silence', () => {
   it('an incomplete treasure is named, with what it was missing', () => {
     expect(PAGE).toContain('const missing = [');

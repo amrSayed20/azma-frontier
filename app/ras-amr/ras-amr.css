@@ -424,10 +424,28 @@ body:has(.ras-amr-viewport) {
   flex-shrink: 0;
   border-bottom: 1px solid var(--neon-gold-dim);
   background: rgba(0, 0, 0, 0.4);
-  /* If the panel is ever narrower than the five names together, the bar
-     scrolls. It does not cut them: a tab whose name is «الم…» is not a name. */
-  overflow-x: auto;
-  scrollbar-width: none;
+  /* ── THEY WRAP. THEY USED TO HIDE. ──────────────────────────────────
+     The earlier repair chose a horizontal scroll over truncated names —
+     right about the names, wrong about the outcome, because it also set
+     `scrollbar-width: none`. A bar that scrolls with no scrollbar gives a
+     Creator no sign that anything lies past its edge.
+
+     MEASURED on the live release, in a 278px rail holding 362px of names:
+
+         100%   الترجمة · المشروع cut off · المشروع unclickable
+         125%   الترجمة · المشروع cut off · BOTH unclickable
+         150%   الترجمة · المشروع cut off · BOTH unclickable
+
+     So two of this room's five workspaces — الترجمة and المشروع — could not
+     be reached at ANY size, full screen included, and nothing on the surface
+     said they existed. That is not a narrow bar; it is two capabilities a
+     Creator does not have.
+
+     Wrapping costs one row of height, which this rail can now afford since
+     its header stopped taking everything. Five names, all readable, none
+     hidden, none cut. */
+  flex-wrap: wrap;
+  overflow-x: visible;
 }
 .ras-tab-bar::-webkit-scrollbar { display: none; }
 
