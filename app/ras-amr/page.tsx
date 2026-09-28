@@ -4298,7 +4298,23 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
         </div>
       )}
 
-    <main className={`ras-amr-viewport ${injectionFlash ? 'neon-flash-active' : ''}`}>
+      {/* ─── THE ROOM'S EXPLANATION MUST OUTRANK THE ROOM'S OWN GATE ──────
+          MEASURED 2026-09-28 by walking the room through its own buttons:
+          the first press a stranger makes — «فهمت — ادخل الحجرة» — did not
+          land. Playwright reported the button visible, enabled and stable,
+          and then: `.ras-intent-grid … intercepts pointer events`.
+
+              .ras-intent-gate      z-index 200, at the document root
+              .ras-amr-viewport     z-index 1, and it OPENS A STACKING CONTEXT
+              .demo-veil            z-index 1000 — inside that context
+
+          1000 inside a context worth 1 loses to 200 at the root. A z-index
+          means nothing outside its own stacking context, which is the same
+          family of trap as `position: fixed` under a transformed ancestor.
+
+          So the demonstration is rendered beside the gate, not inside the
+          room — same context, where 1000 and 200 finally compare — and a
+          stranger can dismiss the explanation before meeting the gate. */}
       <ChamberDemonstration
         chamberId="ras-amr"
         outcomeAr="فيلمٌ يُودَع في خزانتك — من فكرةٍ تكتبها، أو من أصولٍ تجمعها بنفسك."
@@ -4310,6 +4326,9 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
             'أنتِج — ويُودَع الفيلم في خزانتك.',
         ]}
       />
+
+    <main className={`ras-amr-viewport ${injectionFlash ? 'neon-flash-active' : ''}`}>
+
 
 
       {/* Neon atmosphere — fixed behind all content */}
