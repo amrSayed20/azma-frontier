@@ -754,6 +754,54 @@ body:has(.ras-amr-viewport) {
    Phone   (< 400px)  — Scroll stack. Timeline sticky.
    ═══════════════════════════════════════════════════════════════ */
 
+/* ── THE SCALE FOLLOWS THE RAIL IT IS READ IN ───────────────────
+   The Founder, 2026-09-28: «الخطوط اصبحت كبيره».
+
+   The scale itself is his: 15–23px, set when this room carried 234
+   font-sizes mostly between 9px and 13px and he asked for «تجلٍّ
+   واضح وميسور للمستخدمين». At 100% it is exactly right and nothing
+   below changes it.
+
+   What was never accounted for is that browser zoom MULTIPLIES it
+   while NARROWING what it is read in. MEASURED on the live release:
+
+       zoom   rail width   CSS size   size on the glass
+       100%     280px        23px         23.0px
+       125%     220px        23px         28.8px
+       150%     220px        23px         34.5px
+
+   The rail loses 60px and the letter gains 11 — they move in
+   opposite directions, and a 34px title inside a 220px column is
+   how «تجلٍّ واضح» turns into a wall of words.
+
+   So the steps follow the rail. The breakpoints are the room's own
+   existing compositions, not new ones: below 1200px the rails narrow
+   to 200/220px, and the type narrows with them. Nothing here applies
+   at full size, where the Founder made his ruling. */
+@media (max-width: 1199px) {
+  :root {
+    --rt-3xs: 13px;
+    --rt-2xs: 14px;
+    --rt-xs:  15px;
+    --rt-sm:  16px;
+    --rt-md:  17px;
+    --rt-lg:  18px;
+    --rt-xl:  20px;
+  }
+}
+
+@media (max-width: 899px) {
+  :root {
+    --rt-3xs: 12px;
+    --rt-2xs: 12px;
+    --rt-xs:  13px;
+    --rt-sm:  14px;
+    --rt-md:  15px;
+    --rt-lg:  16px;
+    --rt-xl:  18px;
+  }
+}
+
 /* ── SHORT VIEWPORTS — WHICH IS WHAT ZOOM ACTUALLY MAKES ────────
    Every composition above is a WIDTH. Browser zoom takes height too,
    and nothing here ever accounted for it: a 1440×900 screen at 125%
