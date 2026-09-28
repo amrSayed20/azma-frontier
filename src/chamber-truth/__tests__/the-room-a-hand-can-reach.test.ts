@@ -85,6 +85,17 @@ describe('1 · both rails can be scrolled, at any zoom', () => {
     expect(block(code, sel)).toContain('min-height: 0');
   });
 
+  it('a rail ends clear of what floats over it', () => {
+    // MEASURED only once the rails scrolled, which is the only reason it
+    // could be measured: «؟ كيف تعمل هذه الحجرة» is fixed at the chamber's
+    // bottom with z-index 900, and the produce act newly placed at the rail's
+    // end landed underneath it at 125% and 150% — present, visible, and
+    // unpressable, which is «لا يوجد زرّ» one layer further in.
+    for (const sel of ['.ras-panel-left', '.ras-panel-right']) {
+      expect(block(code, sel)).toContain('padding-block-end');
+    }
+  });
+
   it('the chamber has a composition for a SHORT viewport, not only a narrow one', () => {
     // Every breakpoint the room had was a width. Zoom takes height too.
     expect(code).toMatch(/@media \(max-height: \d+px\)/);

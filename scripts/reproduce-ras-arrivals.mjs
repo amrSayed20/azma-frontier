@@ -90,8 +90,13 @@ const look = () => {
   const visible = items.filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; });
   return {
     'الأصل ظهر في الطابور': visible.length > 0,
-    'رسالة للخالق عن الوصول': [...document.querySelectorAll('*')]
-      .some((e) => /وصل من القصر|تعذّر|لم يصل/.test(e.textContent || '')),
+    // CORRECTED after the repair: the room now has ONE arrival line, and a
+    // check that hunts for a phrase anywhere in the document reports on
+    // whatever the page happens to contain. It reads the line itself.
+    'الحجرة قالت ما حدث': (() => {
+      const n = document.querySelector('.ras-arrival-notice');
+      return n ? (n.innerText || '').replace(/\s+/g, ' ').replace(/✕$/, '').trim().slice(0, 110) : false;
+    })(),
   };
 };
 

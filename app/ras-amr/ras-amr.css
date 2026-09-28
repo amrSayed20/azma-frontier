@@ -289,6 +289,27 @@ body:has(.ras-amr-viewport) {
    own `overflow-y` then never has anything to scroll.
    ═══════════════════════════════════════════════════════════════ */
 
+/* ─── AND A RAIL'S LAST CONTROL MUST CLEAR WHAT FLOATS OVER IT ──────────
+   MEASURED after the rails began scrolling, which is the only reason it
+   could be measured at all: «؟ كيف تعمل هذه الحجرة» is `position: fixed`
+   at the bottom of the chamber with z-index 900, and in RTL it rests over
+   this rail. The produce act, newly placed at the rail's end, landed
+   underneath it:
+
+       1440×900 (100%)   pressable
+       1152×720 (125%)   covered by .demo-open-btn
+        960×600 (150%)   covered by .demo-open-btn
+
+   A control that is present, visible and unpressable is the Founder's
+   «لا يوجد زرّ» all over again, one layer further in. The gutter is the
+   floating button's own height plus its inset, so whatever ends a rail can
+   always be scrolled clear of it. */
+.ras-panel-left,
+.ras-panel-right {
+  padding-block-end: 76px;
+  scroll-padding-block-end: 76px;
+}
+
 /* ── Command Rail (left) ─────────────────────── */
 .ras-panel-left {
   flex: 0 0 220px;
