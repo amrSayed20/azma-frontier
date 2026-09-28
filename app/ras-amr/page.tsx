@@ -2133,6 +2133,24 @@ export default function RasAmrChamber() {
   // decideCinematicDirection falls back to the honest prompt-echo source.
   const [formalGoal, setFormalGoal] = useState<FormalGoalContractView | null>(null);
   const [formalGoalTrackedForId, setFormalGoalTrackedForId] = useState<string | null>(null);
+  /**
+   * ─── A GOAL RECORDED EARLIER IS A DEFAULT, NOT A CAGE ─────────────────────
+   *
+   *   The Founder, 2026-09-28: «المخرج ملتزم بتوجيه قديم من الحجة الدامغة
+   *   سابقاً ولا يبدأ في استلام التوجيه لأصل قديم · ولا يقبل حذف التوجيه
+   *   القديم وادخال توجيهات جديده».
+   *
+   *   An asset carrying a `goalId` in its metadata — written the day it came
+   *   from الحُجّة الدامغة — governed the Director for the rest of its life,
+   *   and the Creator's own words became «مرجع إضافي» the Director never
+   *   used. There was no control anywhere to see that goal, refuse it, or
+   *   replace it. «الحجرة تقترح؛ والخالق وحده يقرّر» was true of everything
+   *   in this room except the one thing that decided what it would make.
+   *
+   *   This remembers a goal the Creator has released, so the fetch below does
+   *   not quietly bring it back on the next render.
+   */
+  const [releasedGoalId, setReleasedGoalId] = useState<string | null>(null);
   // FINDING 6 — placed before multiNodeDirection memo (which consumes it).
   const [creatorDirectorIntent, setCreatorDirectorIntent] = useState<string>('');
   /** The condition of a Creation Demand that did not arrive. */
@@ -2211,6 +2229,8 @@ export default function RasAmrChamber() {
 
   useEffect(() => {
     if (!activeGoalId) return;
+    // A goal the Creator has let go of is not fetched again.
+    if (activeGoalId === releasedGoalId) { setFormalGoal(null); return; }
     let cancelled = false;
     fetch(`/api/sovereign/entry/creator-goal/${activeGoalId}`)
       .then((response) => (response.ok ? response.json() : null))
@@ -2223,7 +2243,7 @@ export default function RasAmrChamber() {
     return () => {
       cancelled = true;
     };
-  }, [activeGoalId]);
+  }, [activeGoalId, releasedGoalId]);
 
   // Imperial Continuity — consumes the InteractionSession the Imperial Foyer
   // writes before departing (sessionStorage['azma.kernel.session']). If
@@ -2422,11 +2442,23 @@ export default function RasAmrChamber() {
     // can use it. Source labeling is handled in the UI display (not in the Director
     // function itself) — the UI shows 'نية الخالق' not 'مصدر رسمي' in this case.
     const _desc = creatorDirectorIntent.trim();
-    const syntheticGoal: FormalGoalContractView | null =
-      !formalGoal && _desc
-        ? { description: _desc, title: _desc.slice(0, 60), priority: 'MEDIUM' as FormalGoalContractView['priority'] }
-        : null;
-    const goalToUse = formalGoal ?? syntheticGoal ?? undefined;
+    const typedGoal: FormalGoalContractView | null = _desc
+      ? { description: _desc, title: _desc.slice(0, 60), priority: 'MEDIUM' as FormalGoalContractView['priority'] }
+      : null;
+    /**
+     * ─── THE CREATOR SPEAKING NOW OUTRANKS A GOAL RECORDED THEN ───────────
+     *
+     *   This read `formalGoal ?? syntheticGoal`, and the synthetic goal was
+     *   only BUILT when there was no formal one — so an old asset's goalId
+     *   won every time and what the Creator typed could not reach the
+     *   Director at all. The order is reversed, and the typed intent is now
+     *   built whenever it exists.
+     *
+     *   Nothing is destroyed: the formal goal still governs a scene the
+     *   Creator has said nothing about, which is the whole reason it was
+     *   recorded. It simply stops outranking the person in the room.
+     */
+    const goalToUse = typedGoal ?? formalGoal ?? undefined;
     // PACKAGE XXXII fix: reason across ALL tracks, not only tracks[0].
     const nodesWithAssets = sessionCanvas.tracks.flatMap((t) => t.nodes)
       .map((node) => {
@@ -5559,11 +5591,31 @@ export default function RasAmrChamber() {
                   rows={2}
                   aria-label="نية الخالق من المشهد"
                 />
-                {creatorDirectorIntent.trim() && !formalGoal && (
-                  <p className="creator-intent-hint">✓ المخرج الآلي سيأخذ نيتك بعين الاعتبار</p>
+                {/* ── WHAT GOVERNS THIS SCENE, AND HOW TO CHANGE IT ──────────
+                    The hint below used to say the typed intent was «مرجع
+                    إضافي» whenever a formal goal existed — and it was telling
+                    the truth about a Director that ignored it. Now it says
+                    which of the two is actually in force, and the old one can
+                    be let go. */}
+                {creatorDirectorIntent.trim() && (
+                  <p className="creator-intent-hint">✓ المخرج الآلي يعمل بنيّتك المكتوبة</p>
                 )}
                 {formalGoal && (
-                  <p className="creator-intent-hint">يُستخدَم الهدف الرسمي من SOEL — النية المكتوبة تعمل كمرجع إضافي</p>
+                  <div className="creator-intent-formal">
+                    <p className="creator-intent-hint">
+                      {creatorDirectorIntent.trim()
+                        ? 'ولهذا الأصل هدفٌ سابق مُسجَّل — نيّتك تعلو عليه الآن.'
+                        : 'يحكم هذا المشهد هدفٌ سابق مُسجَّل لهذا الأصل. اكتب نيّتك فوقه، أو أطلقه.'}
+                    </p>
+                    <p className="creator-intent-formal-body">«{formalGoal.title || formalGoal.description}»</p>
+                    <button
+                      type="button"
+                      className="creator-intent-release"
+                      onClick={() => { setReleasedGoalId(activeGoalId); setFormalGoal(null); }}
+                    >
+                      ✕ أطلِق الهدف السابق
+                    </button>
+                  </div>
                 )}
               </div>
 

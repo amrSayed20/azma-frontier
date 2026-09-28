@@ -6713,3 +6713,36 @@ body:has(.ras-amr-viewport) {
      above it already says what the panel is. */
   .ras-panel-left > .panel-header > p { display: none; }
 }
+
+/* ── THE GOAL THAT GOVERNS, SHOWN AND RELEASABLE ───────────────────────
+   A direction the Creator cannot see is a direction they cannot argue
+   with, and one they cannot release is not a direction — it is a rule. */
+.creator-intent-formal {
+  margin-top: 8px;
+  padding: 9px 11px;
+  background: rgba(212, 175, 55, 0.06);
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  border-radius: 4px;
+}
+
+.creator-intent-formal-body {
+  margin: 6px 0 8px;
+  font-size: var(--rt-2xs);
+  line-height: 1.7;
+  color: var(--text-main);
+}
+
+.creator-intent-release {
+  font: inherit;
+  font-size: var(--rt-3xs);
+  padding: 7px 12px;
+  min-height: 34px;
+  color: var(--text-main);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.creator-intent-release:hover { background: rgba(212, 175, 55, 0.16); }
+.creator-intent-release:focus-visible { outline: 2px solid var(--neon-gold-dim); outline-offset: 2px; }
