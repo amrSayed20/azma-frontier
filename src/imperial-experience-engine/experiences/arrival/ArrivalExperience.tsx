@@ -348,6 +348,32 @@ export function ArrivalExperience({ title, actions, dict, locale }: Props) {
         />
       </div>
 
+      {/*
+        ─── WHAT THE EMPIRE OWES A VISITOR, AT THE FOOT OF ITS DOOR ─────────
+          FOUNDER, 2026-09-28: «ضع في هذه الصفحه بطاقه السياسات وكذلك بطاقه
+          الميزان» — then, the same day: «الغ بطاقه الميزان واستكمل بطاقه
+          السياسات فقط». So one card stands here, not two.
+
+          TOMBSTONE: a card leading to ميزان القيمة stood beside this one for
+          the length of one build and never reached a visitor. Removed whole —
+          markup, styles and words — not hidden behind a flag. The Balance
+          keeps its card at the foot of the Foyer, where a Creator who has
+          already crossed can find it; the door carries no ledger at all.
+
+          The label comes from the visitor's dictionary, like every other word
+          on this surface — the gate is the one place that genuinely speaks
+          more than one tongue.
+      */}
+      <nav className="arrival-ledger" aria-label={t(dict, 'gate.policiesName')}>
+        <a className="arrival-ledger-card" href="/policies">
+          <span className="arrival-ledger-glyph" aria-hidden="true">§</span>
+          <span className="arrival-ledger-identity">
+            <span className="arrival-ledger-name">{t(dict, 'gate.policiesName')}</span>
+            <span className="arrival-ledger-role">{t(dict, 'gate.policiesRole')}</span>
+          </span>
+        </a>
+      </nav>
+
       <div className="arrival-companion">
         <LivingCompanion
           message={t(dict, companionMessageKey)}

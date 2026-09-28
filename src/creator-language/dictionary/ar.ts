@@ -25,6 +25,12 @@ export const ar: Dictionary = {
   'gate.companionMessageIdle': 'خذ وقتك.. الإمبراطورية لا تتعجّل',
   'gate.companionMessageExiting': 'الإمبراطورية تسير معك',
 
+  // The one card at the foot of the door. No price stands at a threshold, and
+  // after the Founder's ruling of 2026-09-28 no ledger does either: the words
+  // for a Balance card were written and are removed with it.
+  'gate.policiesName': 'السياسات',
+  'gate.policiesRole': 'ما تلتزم به الإمبراطورية تجاهك',
+
   'signup.kicker': 'بوابة العبور السيادي',
   'signup.companionMessage': 'لم تغادر الإمبراطورية',
   'signup.companionMessageBorn': 'وُلِدْتَ صانعًا.. تعال',

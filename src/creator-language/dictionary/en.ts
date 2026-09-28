@@ -31,6 +31,9 @@ export const en: Dictionary = {
   'gate.companionMessageIdle': 'Take your time — the Empire does not rush',
   'gate.companionMessageExiting': 'The Empire walks with you',
 
+  'gate.policiesName': 'Policies',
+  'gate.policiesRole': 'What the Empire owes you',
+
   'signup.kicker': 'The Sovereign Passage',
   'signup.companionMessage': 'You have not left the Empire',
   'signup.companionMessageBorn': 'You are born a Creator — come',

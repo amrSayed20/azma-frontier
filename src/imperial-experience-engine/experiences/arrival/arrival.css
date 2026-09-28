@@ -831,3 +831,83 @@
   .arrival-value { margin-top: var(--azma-space-10); }
   .arrival-value-price { font-size: 1.3rem; }
 }
+
+/* ─── THE FOOT OF THE DOOR ──────────────────────────────────────────────────
+     One card, arriving last: the way to the policies. No price and no ledger
+     stands at a threshold — see ArrivalExperience.tsx for the ruling and for
+     the Balance card that was removed from beside it.
+
+     It arrives at 5000ms, after the language: a visitor has read the wordmark,
+     the line under it and the threshold before the Empire states what it owes
+     them. The width is one card's, not a row's, so a single card does not
+     stretch across the door. */
+.arrival-ledger {
+  position: relative;
+  z-index: 3;
+  align-self: center;
+  width: min(100%, 22rem);
+  margin-block-end: var(--azma-space-8);
+  padding-inline: 16px;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .arrival-ledger { animation: arrival-fade-rise 1s 5000ms var(--azma-ease-architectural) both; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrival-ledger { opacity: 1; }
+}
+
+.arrival-ledger-card {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  /* A hand, not only a cursor: 44px is the floor a thumb can land on. */
+  min-height: 44px;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.20);
+  border-radius: 10px;
+  background: rgba(var(--azma-gold-rgb), 0.04);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.25s ease, background 0.25s ease;
+}
+
+.arrival-ledger-card:hover {
+  border-color: rgba(var(--azma-gold-rgb), 0.45);
+  background: rgba(var(--azma-gold-rgb), 0.08);
+}
+
+.arrival-ledger-card:focus-visible {
+  outline: 2px solid rgba(var(--azma-gold-rgb), 0.7);
+  outline-offset: 3px;
+}
+
+.arrival-ledger-glyph {
+  flex: 0 0 auto;
+  font-size: 1.25rem;
+  /* `--azma-gold` is not a token — the scale is --azma-gold-1..8. A var() that
+     names nothing paints nothing, and a glyph nobody can see is a glyph that
+     was never added. */
+  color: var(--azma-gold-6);
+  opacity: 0.85;
+}
+
+.arrival-ledger-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.arrival-ledger-name {
+  font-size: var(--azma-text-small);
+  font-weight: 600;
+  color: var(--azma-text-primary);
+}
+
+.arrival-ledger-role {
+  font-size: var(--azma-text-tiny);
+  color: var(--azma-text-muted);
+}
