@@ -112,6 +112,40 @@ describe('1 · both rails can be scrolled, at any zoom', () => {
   });
 });
 
+describe('1b · a rail’s height is a budget, and the list has a floor', () => {
+  const code = strip(CSS);
+
+  it('the assets header may shrink — it used to take everything first', () => {
+    // MEASURED: `.panel-header` was 861px inside a 668px rail (129%), because
+    // `flex-shrink: 0` is an instruction to take its full height before
+    // anything else is served. `.queue-container` is `flex: 1 1 0%` and was
+    // therefore served nothing: the Creator's 37 assets began at y≈920 in a
+    // 720px window. Even at 1440×900 only 60px of a 148px card showed.
+    const rule = block(code, '.ras-panel-left > .panel-header');
+    expect(rule).toContain('flex: 0 1 auto');
+    expect(rule).toContain('min-height: 0');
+    expect(rule).toMatch(/max-height:\s*\d+%/);
+    expect(rule).toContain('overflow-y: auto');
+  });
+
+  it('and the list is guaranteed a floor it cannot be pushed below', () => {
+    const rule = block(code, '.ras-panel-left > .queue-container');
+    expect(rule).toMatch(/min-height:\s*\d+px/);
+    const floor = Number(/min-height:\s*(\d+)px/.exec(rule)![1]);
+    // Roughly one whole asset card (148px measured). Below that the list
+    // stops being a list and becomes the sliver in the Founder's photograph.
+    expect(floor).toBeGreaterThanOrEqual(150);
+  });
+
+  it('the header’s cap tightens as the screen shortens, never loosens', () => {
+    const caps = [...code.matchAll(/max-height:\s*(\d+)%/g)].map((m) => Number(m[1]));
+    expect(caps.length).toBeGreaterThanOrEqual(3);
+    // 55% at any height, 52% under 820px, 48% under 700px.
+    expect(Math.min(...caps)).toBeLessThanOrEqual(48);
+    expect(Math.max(...caps)).toBeLessThanOrEqual(55);
+  });
+});
+
 describe('2 · the act that finishes the work is where the work is done', () => {
   it('المونتاج offers the production act once something is placed', () => {
     expect(PAGE).toContain("workMode === 'montage' && placedLayerCount > 0");

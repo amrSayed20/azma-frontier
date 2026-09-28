@@ -6554,3 +6554,72 @@ body:has(.ras-amr-viewport) {
   color: var(--text-dim, var(--text-main));
   text-align: center;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   A RAIL'S HEIGHT IS A BUDGET, AND ONE PART HAD SPENT ALL OF IT
+
+   The Founder, 2026-09-28, photographing his own screen with the
+   cursor on the sliver that was left: «انظر عند علامة الفأرة القائمة
+   مغطاة ولا يظهر الجزء صغير».
+
+   MEASURED — `.panel-header` of أصول الإنتاج against the rail it
+   sits in:
+
+       1440×900   header 777px / rail 848px   =  92%   list 71px
+       1152×720   header 861px / rail 668px   = 129%   list  0
+       1152×648   header 861px / rail 602px   = 143%   list  0
+       1024×600   header 861px / rail 554px   = 155%   list  0
+        960×540   header 861px / rail 494px   = 174%   list  0
+
+   Broken down at 1152×720: tag 22 · title 35 · description 50 ·
+   `.brief-compose` 576 · «استدعِ» 74 · «ارفع» 48 · padding ~56.
+
+   `.brief-compose` alone — two textareas, a count and a button — was
+   two thirds of it, and `.panel-header` carried `flex-shrink: 0`, so
+   it took 861px first and left `.queue-container` (`flex: 1 1 0%`)
+   nothing to share. The Creator's own 37 assets began at y≈920 in a
+   720px window. Even at 1440×900 only 60px of a 148px card showed.
+
+   Scrolling the rail — the earlier repair — made that list REACHABLE.
+   It did not make it PRESENT, and a Creator should not have to scroll
+   past a screen and a half of compose fields to see what they own.
+
+   So the rail is budgeted: the header may shrink and scroll on its
+   own, and the list is guaranteed a floor it cannot be pushed below.
+   ═══════════════════════════════════════════════════════════════ */
+
+.ras-panel-left > .panel-header {
+  /* It was `flex-shrink: 0`: an instruction to take everything first. */
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 55%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.ras-panel-left > .queue-container {
+  flex: 1 1 auto;
+  /* Roughly one whole asset card. Below this the list stops being a list
+     and becomes the sliver in the Founder's photograph. */
+  min-height: 190px;
+}
+
+/* On a short screen the compose block is trimmed rather than scrolled:
+   a textarea inside a scrolling box is a worse thing to type into than a
+   slightly shorter textarea. */
+@media (max-height: 820px) {
+  .ras-panel-left > .panel-header { max-height: 52%; }
+  .brief-compose { padding: 11px 13px; gap: 6px; }
+  .brief-idea  { min-height: 58px; }
+  .brief-specs { min-height: 58px; }
+}
+
+@media (max-height: 700px) {
+  .ras-panel-left > .panel-header { max-height: 48%; }
+  .ras-panel-left > .queue-container { min-height: 170px; }
+  .brief-idea  { min-height: 48px; }
+  .brief-specs { min-height: 48px; }
+  /* The description under the title is the one line that can go: the title
+     above it already says what the panel is. */
+  .ras-panel-left > .panel-header > p { display: none; }
+}
