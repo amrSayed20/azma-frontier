@@ -94,24 +94,13 @@ const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
 const VIDEO_EXTS = new Set(['.mp4', '.mov', '.webm', '.avi', '.mkv']);
 const AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac']);
 
-function resolveAssetPath(secureStorageUri: string): string {
-  // Mirror the write paths in vault-asset-upload-storage.ts and
-  // qiyamah-generation/asset-storage.ts so the encoder always reads from
-  // the same root that wrote the file.
-  const uploadsDir = process.env.UPLOADS_DIR;
-  const uploadsBase = uploadsDir ?? join(process.cwd(), 'public', 'uploads');
-  const generatedBase = uploadsDir
-    ? join(uploadsDir, 'generated-assets')
-    : join(process.cwd(), 'public', 'generated-assets');
-  if (secureStorageUri.startsWith('/uploads/')) {
-    return join(uploadsBase, secureStorageUri.slice('/uploads/'.length));
-  }
-  if (secureStorageUri.startsWith('/generated-assets/')) {
-    return join(generatedBase, secureStorageUri.slice('/generated-assets/'.length));
-  }
-  // Unknown URI scheme — legacy fallback.
-  return join(process.cwd(), 'public', secureStorageUri.replace(/^\//, ''));
-}
+// ── THE RULE THAT WROTE THE FILE IS THE RULE THAT FINDS IT ────────────────
+//   This function used to live here as a private copy, and its own comment
+//   said it was "mirroring" the two modules that write assets. A rule kept in
+//   three places is a rule that will be corrected in one, so it moved to the
+//   Vault — which owns assets — and this module now reads the one definition.
+import { resolveAssetPath } from '../../../../vault/asset-bytes';
+export { resolveAssetPath };
 
 function getExt(uri: string): string {
   const dot = uri.lastIndexOf('.');

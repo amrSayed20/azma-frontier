@@ -99,8 +99,17 @@ describeIfAvailable('B1/B2 — migration rehearsed on the real production table'
     // INDEXED column it answers «does this Creator already own these exact
     // bytes?» in one lookup at any number of subscribers. Nullable, so every
     // pre-existing row is untouched and answers «unknown», never «duplicate».
-    expect(columns.size).toBe(21);
+    // + pixel_width, pixel_height (2026-09-29). The Founder, on مكمن الغاية:
+    // «مقاس الأصل ليس ثابتا في جميع المنصات». `platform-adapter.ts` takes one
+    // input — the master's aspect ratio — and nothing in the Empire recorded a
+    // pixel size, so that engine had never been able to run. Columns for the
+    // same reason as the digest: «which of this Creator's assets already fit
+    // TikTok?» is a question asked of every asset, so a query must answer it.
+    // Nullable, because «لا نعرف مقاسه» is a true and frequent state.
+    expect(columns.size).toBe(23);
     expect(columns.has('content_digest')).toBe(true);
+    expect(columns.has('pixel_width')).toBe(true);
+    expect(columns.has('pixel_height')).toBe(true);
     for (const expected of ['parent_asset_id', 'root_asset_id', 'version', 'derivation', 'creation_chamber', 'project_id', 'lifecycle_state', 'derivation_permission', 'created_by', 'last_modified_by', 'last_modified_at']) {
       expect(columns.has(expected)).toBe(true);
     }

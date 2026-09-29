@@ -37,8 +37,8 @@ export function insertVaultAsset(db: DatabaseSync, asset: VaultAsset): void {
   db.prepare(
     `INSERT INTO vault_assets
       (asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at,
-       parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at, content_digest)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at, content_digest, pixel_width, pixel_height)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     asset.assetId,
     asset.subscriberTenantId,
@@ -65,6 +65,10 @@ export function insertVaultAsset(db: DatabaseSync, asset: VaultAsset): void {
     // where deriveAsset already writes it — the column is the queryable copy,
     // not a second truth: both are written from the same bytes.
     asset.contentDigest ?? (asset.metadata as { contentDigest?: string } | undefined)?.contentDigest ?? null,
+    // Measured from the asset's own bytes by the deposit boundary, or NULL
+    // when those bytes could not say. Never a guess, never zero.
+    asset.pixelWidth ?? null,
+    asset.pixelHeight ?? null,
   );
 }
 
@@ -99,7 +103,7 @@ export function listAssetLineage(db: DatabaseSync, rootAssetId: string, subscrib
   const rows = db
     .prepare(
       `SELECT asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at,
-              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at
+              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at, pixel_width, pixel_height
        FROM vault_assets
        WHERE root_asset_id = ? AND subscriber_tenant_id = ?
        ORDER BY version ASC, created_at ASC`,
@@ -180,7 +184,7 @@ export function getVaultAsset(db: DatabaseSync, assetId: string): VaultAsset | n
   const row = db
     .prepare(
       `SELECT asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at,
-              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at
+              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at, pixel_width, pixel_height
        FROM vault_assets WHERE asset_id = ?`,
     )
     .get(assetId);
@@ -206,7 +210,7 @@ export function findVaultAssetByStorageUri(db: DatabaseSync, secureStorageUri: s
   const row = db
     .prepare(
       `SELECT asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at,
-              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at
+              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at, pixel_width, pixel_height
        FROM vault_assets WHERE secure_storage_uri = ? LIMIT 1`,
     )
     .get(secureStorageUri);
@@ -249,7 +253,7 @@ export function listVaultAssetsForTenant(db: DatabaseSync, subscriberTenantId: s
   const rows = db
     .prepare(
       `SELECT asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at,
-              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at
+              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at, pixel_width, pixel_height
        FROM vault_assets WHERE subscriber_tenant_id = ? ORDER BY created_at DESC, rowid DESC`,
     )
     .all(subscriberTenantId);
@@ -316,5 +320,32 @@ function rowToVaultAsset(row: Record<string, unknown>): VaultAsset {
     createdBy: (row.created_by as string | null) ?? null,
     lastModifiedBy: (row.last_modified_by as string | null) ?? null,
     lastModifiedAt: (row.last_modified_at as number | null) ?? null,
+    // NULL travels as null. The ratio is derived from these two by
+    // `toAspectRatio`, never stored, so there is no second copy to drift.
+    pixelWidth: (row.pixel_width as number | null) ?? null,
+    pixelHeight: (row.pixel_height as number | null) ?? null,
   };
+}
+
+/**
+ * Record an asset's measured pixel size.
+ *
+ * Writes only when both numbers are real. There is no call that sets them back
+ * to NULL and none that writes a zero: a measurement that failed leaves the
+ * row saying «لا نعرف», which is the truth and is a state the Chamber can
+ * speak. Returns false when no row was touched, so a caller can report a
+ * partial outcome honestly rather than assume it succeeded.
+ */
+export function recordAssetDimensions(
+  db: DatabaseSync,
+  assetId: string,
+  width: number,
+  height: number,
+): boolean {
+  if (!Number.isInteger(width) || !Number.isInteger(height)) return false;
+  if (width <= 0 || height <= 0) return false;
+  const result = db
+    .prepare('UPDATE vault_assets SET pixel_width = ?, pixel_height = ? WHERE asset_id = ?')
+    .run(width, height, assetId);
+  return Number(result.changes) > 0;
 }

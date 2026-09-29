@@ -22,6 +22,8 @@ import {
 } from './sovereign-vault-types';
 import { IVaultManager } from '../orchestrator/fleet-materialization/fleet/fleet-dispatcher';
 import { getDb, insertVaultAsset, getVaultAsset, findVaultAssetByContentDigest, listVaultAssetsForTenant, linkGoalToVaultAsset, getProject } from '../persistent-storage';
+import { readAssetHead } from './asset-bytes';
+import { readDimensions } from '../asset-dimensions/read-dimensions';
 
 export class SovereignVaultManager implements IVaultManager {
   /**
@@ -157,6 +159,41 @@ export class SovereignVaultManager implements IVaultManager {
       }
     }
 
+    // ── THE ASSET LEARNS ITS OWN SIZE, HERE AND NOWHERE ELSE ───────────────
+    //
+    //   FOUNDER, 2026-09-29, on مكمن الغاية: «مقاس الأصل ليس ثابتا في جميع
+    //   المنصات... فتقوم بتغير الابعاد لتتناسب مع المنصات المحددة من المستخدم».
+    //   `platform-adapter.ts` already decides that and takes one input: the
+    //   master's aspect ratio. MEASURED 2026-09-29 — nothing in the Empire
+    //   recorded a pixel size, so that engine had never been able to run.
+    //
+    //   Measured at THIS boundary for the reason the duplicate guard above is
+    //   here: every asset in the Empire — upload, generation, derivation,
+    //   voice, video, the Chamber of Evidence — passes through this one method.
+    //   A measurement placed in the upload route would have left every other
+    //   path depositing assets that do not know their own shape.
+    //
+    //   It reads the file's own bytes, never a provider's claim, and it
+    //   DEGRADES rather than refuses: the lesson the duplicate lookup learned
+    //   the hard way is written above — «a guard that can destroy the thing it
+    //   guards is worse than no guard». An unreadable file, a format nobody
+    //   taught it, bytes not yet flushed: all of these deposit with a NULL
+    //   size, which means «لا نعرف مقاسه» and is a state the Chamber can say
+    //   out loud. UNKNOWN is never zero.
+    let pixelWidth: number | null = null;
+    let pixelHeight: number | null = null;
+    try {
+      const head = await readAssetHead(deposit.secureStorageUri);
+      const measured = head ? readDimensions(head) : null;
+      if (measured) {
+        pixelWidth = measured.width;
+        pixelHeight = measured.height;
+      }
+    } catch (err) {
+      console.error('[SovereignVault] could not measure asset size, depositing anyway:',
+        err instanceof Error ? err.message : String(err));
+    }
+
     const asset: VaultAsset = {
       assetId: newAssetId,
       subscriberTenantId: deposit.subscriberTenantId,
@@ -189,6 +226,10 @@ export class SovereignVaultManager implements IVaultManager {
       contentDigest: deposit.contentDigest
         ?? (deposit.metadata as { contentDigest?: string } | undefined)?.contentDigest
         ?? null,
+      // Read from the bytes just above. The ratio is derived on demand by
+      // `toAspectRatio` and never stored — one truth, in pixels.
+      pixelWidth,
+      pixelHeight,
     };
 
     // Commit to the structural ownership layer

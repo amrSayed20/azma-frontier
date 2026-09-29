@@ -312,6 +312,16 @@ export interface VaultAsset {
   lastModifiedAt?: number | null;
   /** SHA-256 of this asset's own bytes — the queryable copy of what metadata holds. */
   contentDigest?: string | null;
+  /**
+   * The asset's real pixel size, read from its own bytes at deposit.
+   *
+   * NULL means «لا نعرف مقاس هذا الأصل» and nothing else: a row written before
+   * this existed, a file no longer on disk, or a format the reader was never
+   * taught. مكمن الغاية must be able to say that to a Creator rather than
+   * assume a shape and offer to charge them for adapting it.
+   */
+  pixelWidth?: number | null;
+  pixelHeight?: number | null;
 }
 
 /**

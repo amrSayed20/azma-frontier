@@ -706,6 +706,30 @@ export const VAULT_ASSETS_MIGRATION_COLUMNS: readonly { readonly name: string; r
    * exact bytes?» in one lookup, at any number of subscribers.
    */
   { name: 'content_digest', ddl: 'content_digest TEXT' },
+  /**
+   * The asset's real pixel size, read from its own bytes.
+   *
+   * FOUNDER, 2026-09-29, on مكمن الغاية: «مقاس الأصل ليس ثابتا في جميع
+   * المنصات... فتقوم بتغير الابعاد لتتناسب مع المنصات المحددة من المستخدم».
+   *
+   * `platform-adapter.ts` decides that already, and takes exactly one input:
+   * the master asset's aspect ratio. MEASURED 2026-09-29 — this table had no
+   * width, no height, no aspect, and nothing wrote one into the metadata JSON.
+   * The engine could never run because its one input did not exist.
+   *
+   * Columns, not a JSON key, for the reason `content_digest` is a column: the
+   * Chamber asks «which of this Creator's assets already fit TikTok?» and a
+   * question asked of every asset must be answerable by a query. The ratio is
+   * DERIVED from these two on read (`toAspectRatio`) and never stored — one
+   * truth, in pixels, with no second copy to drift.
+   *
+   * NULL is a real and frequent state: a row written before this existed, a
+   * file that is no longer on disk, a format the reader was never taught. It
+   * means «لا نعرف مقاس هذا الأصل», and the Chamber must say so rather than
+   * assume a shape. UNKNOWN is never zero.
+   */
+  { name: 'pixel_width', ddl: 'pixel_width INTEGER' },
+  { name: 'pixel_height', ddl: 'pixel_height INTEGER' },
 ];
 
 /** Columns added to `creators` after its original creation — applied via ALTER TABLE for pre-existing databases. */
