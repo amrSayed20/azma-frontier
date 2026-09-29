@@ -41,13 +41,26 @@
  *   say it to a Creator.
  */
 
+import { identifyByBytes } from '../vault/upload-content-validation';
+
 export interface PixelDimensions {
   readonly width: number;
   readonly height: number;
 }
 
-/** Every format the Empire actually stores, and nothing speculative. */
+/** The formats this module can MEASURE. A subset of what the Vault accepts. */
 export type AssetImageFormat = 'png' | 'jpeg' | 'webp' | 'gif' | 'mp4';
+
+/** The Vault's own signature table decides the format; this maps it to a reader. */
+const BY_MIME: Readonly<Record<string, AssetImageFormat>> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpeg',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+  'video/mp4': 'mp4',
+  // MOV is ISO base media: the same tkhd walk reads it.
+  'video/quicktime': 'mp4',
+};
 
 const u16be = (b: Uint8Array, at: number) => (b[at] << 8) | b[at + 1];
 const u32be = (b: Uint8Array, at: number) =>
@@ -57,16 +70,30 @@ const u16le = (b: Uint8Array, at: number) => b[at] | (b[at + 1] << 8);
 const ascii = (b: Uint8Array, at: number, len: number) =>
   String.fromCharCode(...b.subarray(at, at + len));
 
-/** The format these bytes actually are — by magic number, never by filename. */
+/**
+ * The format these bytes actually are — asked of the Empire's ONE authority.
+ *
+ * ─── WHY THIS NO LONGER CARRIES ITS OWN TABLE ───────────────────────────────
+ *
+ *   It did, for exactly one build, and the Founder caught it on sight:
+ *   «لماذا بنيت ثلاث محركات موجوده». He was right about this one.
+ *   `src/vault/upload-content-validation.ts` has held the Empire's magic-number
+ *   table all along — it is what decides whether an upload is admitted at all.
+ *
+ *   The second table was not merely redundant, it was WRONG where the first is
+ *   not: it called every file carrying an `ftyp` box an MP4, so a HEIC photo
+ *   from a phone would have been handed to an MP4 box walker. The Vault's table
+ *   separates MP4, MOV, AVIF and HEIC by `ftyp` BRAND, which is the entire
+ *   difficulty of that format family.
+ *
+ *   Null for anything this module cannot measure — including formats the Vault
+ *   rightly accepts, such as WAV or WebM. A sound file has no pixel size, and
+ *   saying so is the truthful answer, not a failure.
+ */
 export function detectFormat(bytes: Uint8Array): AssetImageFormat | null {
   if (bytes.length < 12) return null;
-  if (bytes[0] === 0x89 && ascii(bytes, 1, 3) === 'PNG') return 'png';
-  if (bytes[0] === 0xff && bytes[1] === 0xd8) return 'jpeg';
-  if (ascii(bytes, 0, 4) === 'RIFF' && ascii(bytes, 8, 4) === 'WEBP') return 'webp';
-  if (ascii(bytes, 0, 3) === 'GIF') return 'gif';
-  // An ISO base-media file names its brand in the first box: ftyp.
-  if (ascii(bytes, 4, 4) === 'ftyp') return 'mp4';
-  return null;
+  const identity = identifyByBytes(bytes);
+  return identity ? (BY_MIME[identity.mimeType] ?? null) : null;
 }
 
 /** PNG: the IHDR chunk is mandatory and is always first. */

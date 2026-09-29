@@ -784,6 +784,24 @@ export const GOALS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly
   // what must become observably true for this Goal to be considered successful.
   // Constitutionally distinct from GoalStatus.COMPLETED (operational completion).
   { name: 'success_criteria_json', ddl: 'success_criteria_json TEXT' },
+  /**
+   * When a goal was put away, and by whom.
+   *
+   * FOUNDER, 2026-09-29: «امنع تكدس الاصول والغايات بصفه عامه داخل الحجره».
+   *
+   * Article 6.1 defines «الحذف التشغيلي» as four things at once: hidden from
+   * ordinary display, the REQUEST RECORDED, kept through retention, and
+   * restorable. `status = 'ARCHIVED'` does the hiding; these two do the
+   * recording, which is the half that makes an archive auditable rather than
+   * a disappearance.
+   *
+   * NULL means the goal was never archived — including a goal that was
+   * archived and then restored, where the record of the act lives in its
+   * status history, not in a stale timestamp. Both are cleared on restore so
+   * they can never describe a state the goal is not in.
+   */
+  { name: 'archived_at_ms', ddl: 'archived_at_ms INTEGER' },
+  { name: 'archived_by', ddl: 'archived_by TEXT' },
 ];
 
 /** Run only after CREATORS_MIGRATION_COLUMNS has ensured the columns exist — SQLite cannot index a column that isn't there yet. */

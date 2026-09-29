@@ -37,9 +37,26 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Sign in to view your goals.' }, { status: 401 });
   }
 
+  // ── WHAT THE CHAMBER CARRIES, AND WHAT IT LEAVES BEHIND ─────────────────
+  //
+  //   FOUNDER, 2026-09-29: «امنع تكدس الاصول والغايات بصفه عامه داخل الحجره».
+  //
+  //   MEASURED that day: this returned every goal the Creator had ever made,
+  //   unbounded and unfiltered — 21 goals, 54.4KB, on every open of the room,
+  //   growing for as long as they remain a Creator.
+  //
+  //   Archived goals are now excluded by default (Article 6.1, «إخفاء الأصل
+  //   من العرض العادي») and asked for by name with ?archived=1. The counts
+  //   travel with every response so a page is never mistaken for an ending:
+  //   the Chamber can say «٧ مطويّة» without loading one of them.
   const db = getDb();
-  const goals = new GoalRepository(db).findByTenant(session.creatorId);
-  return NextResponse.json({ status: 'succeeded', goals });
+  const repository = new GoalRepository(db);
+  const wantArchived = request.nextUrl.searchParams.get('archived') === '1';
+  const goals = wantArchived
+    ? repository.findArchivedByTenant(session.creatorId)
+    : repository.findByTenant(session.creatorId);
+  const counts = repository.countByTenant(session.creatorId);
+  return NextResponse.json({ status: 'succeeded', goals, counts, archived: wantArchived });
 }
 
 const REQUIRED_TOP_LEVEL_FIELDS = ['compiledGraph', 'description', 'priority', 'authorization', 'commercialIntent'] as const;

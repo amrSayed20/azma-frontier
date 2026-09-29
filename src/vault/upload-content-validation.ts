@@ -181,6 +181,43 @@ export function extensionOf(fileName: string): string {
  * trusted to decide anything — they are only ever checked for agreement with
  * what the bytes already established.
  */
+/**
+ * What these bytes ARE, decided by the bytes alone — or null.
+ *
+ * ─── ONE TABLE OF MAGIC NUMBERS IN THE EMPIRE ───────────────────────────────
+ *
+ *   Lifted out of `validateUploadContent` on 2026-09-29, unchanged, because a
+ *   second caller appeared: `src/asset-dimensions/read-dimensions.ts` needs to
+ *   know a file's format before it can read its size, and it had written its
+ *   own detector — a second, poorer table that called every `ftyp` file an
+ *   MP4, so a HEIC photo would have been handed to an MP4 box walker.
+ *
+ *   The Founder, 2026-09-29: «لماذا بنيت ثلاث محركات موجوده». He was right
+ *   about this one. SIGNATURES already distinguishes MP4 from MOV, AVIF and
+ *   HEIC by `ftyp` brand, which is the whole difficulty. Extending the
+ *   authority costs one export; duplicating it costs a divergence nobody sees
+ *   until a Creator uploads the file that exposes it.
+ *
+ *   It answers only about SIGNED formats. Plain text and JSON carry no
+ *   signature and are still decided by `validateUploadContent`, where the
+ *   declared type is part of the evidence.
+ */
+export function identifyByBytes(bytes: Uint8Array): ContentIdentity | null {
+  const brand = ftypBrandOf(bytes);
+  for (const signature of SIGNATURES) {
+    if (!matchesAt(bytes, signature.magic, signature.offset)) continue;
+    if (signature.ftypBrands) {
+      if (brand === null || !signature.ftypBrands.includes(brand)) continue;
+    }
+    return {
+      mimeType: signature.mimeType,
+      extension: signature.extension,
+      allowedExtensions: signature.allowedExtensions,
+    };
+  }
+  return null;
+}
+
 export function validateUploadContent(
   bytes: Uint8Array,
   declaredMimeType: string,
@@ -201,19 +238,7 @@ export function validateUploadContent(
     return { ok: false, rejection: 'unsupported-format' };
   }
 
-  let identity: ContentIdentity | null = null;
-  for (const signature of SIGNATURES) {
-    if (!matchesAt(bytes, signature.magic, signature.offset)) continue;
-    if (signature.ftypBrands) {
-      if (brand === null || !signature.ftypBrands.includes(brand)) continue;
-    }
-    identity = {
-      mimeType: signature.mimeType,
-      extension: signature.extension,
-      allowedExtensions: signature.allowedExtensions,
-    };
-    break;
-  }
+  let identity: ContentIdentity | null = identifyByBytes(bytes);
 
   // Plain text and JSON carry no signature. They are accepted only when the
   // bytes decode as UTF-8 without control characters — which is a real check

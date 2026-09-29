@@ -59,3 +59,64 @@ export async function GET(request: NextRequest, context: { params: Promise<{ goa
 
   return NextResponse.json({ goal: responseGoal });
 }
+
+/**
+ * ─── THE DOOR OUT, AND THE DOOR BACK ────────────────────────────────────────
+ *
+ *   FOUNDER, 2026-09-29: «امنع تكدس الاصول والغايات بصفه عامه داخل الحجره».
+ *
+ *   MEASURED that day on production: this route had GET and nothing else, the
+ *   list route had no removal verb, and مكمن الغاية rendered zero controls
+ *   matching حذف / أرشفة / إزالة. 21 goals and 54.4KB travelled on every open
+ *   of the chamber and not one of them could ever be put away.
+ *
+ *   PATCH does exactly one thing and refuses everything else: it sets or
+ *   clears `archived`. It is Article 6.1's «الحذف التشغيلي» — hidden from
+ *   ordinary display, the act recorded, fully restorable — and it is
+ *   deliberately NOT a general-purpose goal editor, because a verb that can
+ *   change anything is a verb whose blast radius nobody can state.
+ *
+ *   THERE IS NO DELETE, AND THERE WILL NOT BE ONE. Article 6.5: «الحذف
+ *   التشغيلي لا يساوي الإتلاف النهائي». `GoalRepository.deleteById` exists
+ *   and keeps no caller: a Creator may put a goal away, never destroy it.
+ */
+export async function PATCH(request: NextRequest, context: { params: Promise<{ goalId: string }> }) {
+  const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
+  const session = sessionId ? verifySession(sessionId) : null;
+
+  if (!session) {
+    return NextResponse.json({ status: 'failed', message: 'سجّل دخولك أوّلاً.' }, { status: 401 });
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ status: 'failed', message: 'الطلب غير مفهوم.' }, { status: 400 });
+  }
+
+  const archived = (body as { archived?: unknown } | null)?.archived;
+  if (typeof archived !== 'boolean') {
+    // Named plainly rather than coerced: a missing field is not a false one,
+    // and guessing here would archive a goal nobody asked to archive.
+    return NextResponse.json(
+      { status: 'failed', message: 'حدّد «archived» صراحةً: true للطيّ، false للاستعادة.' },
+      { status: 400 },
+    );
+  }
+
+  const { goalId } = await context.params;
+  const outcome = soel.setGoalArchived(goalId, session.creatorId, archived);
+
+  if (!outcome.ok) {
+    // The same answer for "no such goal" and "not yours", as GET above, so a
+    // Creator learns nothing about another's goals by probing ids.
+    return NextResponse.json({ status: 'failed', message: 'لا توجد غاية بهذا المعرّف.' }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    status: 'succeeded',
+    archived,
+    message: archived ? 'طُويت الغاية — تستعيدها متى شئت.' : 'استُعيدت الغاية.',
+  });
+}

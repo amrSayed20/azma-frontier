@@ -267,7 +267,7 @@ export const CHAMBER_TRUTH = {
           + 'before the row and the file are destroyed (Constitution Article 6.3).',
         performsAr:
           'تحذف أصلاً تملكه، وتُسجّل شاهدةً تحمل سبب الحذف.',
-        boundary: { kind: 'route', at: 'app/api/vault/assets/[assetId]', methods: ['DELETE'] },
+        boundary: { kind: 'route', at: 'app/api/vault/assets/[assetId]', methods: ['DELETE', 'GET'] },
         requiresExistingAsset: true,
       },
       // ── Custody of identity — how the Vault opens ────────────────────────
@@ -542,10 +542,12 @@ export const CHAMBER_TRUTH = {
       },
       {
         id: 'read-goal',
-        performs: 'Reads one goal the Creator created.',
+        performs:
+          'Reads one goal the Creator created, and puts it away or takes it back out — '
+          + 'the operational hiding of Article 6.1, never the destruction of Article 6.5.',
         performsAr:
-          'تقرأ هدفاً واحداً أنشأتَه.',
-        boundary: { kind: 'route', at: 'app/api/sovereign/entry/creator-goal/[goalId]', methods: ['GET'] },
+          'تقرأ هدفاً واحداً أنشأتَه — وتطويه أو تستعيده.',
+        boundary: { kind: 'route', at: 'app/api/sovereign/entry/creator-goal/[goalId]', methods: ['GET', 'PATCH'] },
         requiresExistingAsset: false,
       },
       {

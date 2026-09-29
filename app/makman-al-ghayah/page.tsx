@@ -100,6 +100,7 @@ const GOAL_STATUS_AR: Record<string, string> = {
   BLOCKED:     'موقوف',
   COMPLETED:   'مكتمل',
   FAILED:      'فشل',
+  ARCHIVED:    'مطويّة',
 };
 
 const GOAL_PRIORITY_AR: Record<string, string> = {
@@ -197,6 +198,11 @@ export default function MakmanAlGhayah() {
 
   // ── Goal Registry ───────────────────────────────────────────────────
   const [goals,             setGoals]             = useState<GoalSummary[]>([]);
+  // Which shelf is open, and how many stand on each. The counts come from the
+  // server with every response, so «٧ مطويّة» is sayable without loading one.
+  const [showingArchived,   setShowingArchived]   = useState(false);
+  const [goalCounts,        setGoalCounts]        = useState<{ open: number; archived: number }>({ open: 0, archived: 0 });
+  const [archivingGoalId,   setArchivingGoalId]   = useState<string | null>(null);
   const [isFetchingGoals,   setIsFetchingGoals]   = useState(false);
   const [selectedGoalId,    setSelectedGoalId]    = useState<string | null>(null);
 
@@ -309,10 +315,20 @@ export default function MakmanAlGhayah() {
   useEffect(() => {
     const assetId = takeDemandFor(sessionStorage, 'makman-al-ghayah');
     if (!assetId) return;
-    fetch('/api/vault/assets')
-      .then((r) => r.json())
-      .then((res: { status?: string; assets?: { assetId: string; metadata?: Record<string, unknown> }[] }) =>
-        res.status === 'succeeded' && Array.isArray(res.assets) ? res.assets : null)
+    // ── ONE ASSET, ASKED FOR BY NAME ───────────────────────────────────────
+    //   MEASURED 2026-09-29: this fetched the Creator's ENTIRE vault — 128
+    //   assets, 131KB — on every open of the chamber, to read one string out
+    //   of one asset's metadata. `resolveDemand` takes a list, so the single
+    //   asset arrives as a list of one and its four honest states are
+    //   untouched: a 404 is `not-in-vault`, an unreachable Vault is still
+    //   `vault-unreachable`, and neither is guessed at.
+    fetch(`/api/vault/assets/${encodeURIComponent(assetId)}`)
+      .then(async (r) => {
+        if (r.status === 404) return [] as { assetId: string; metadata?: Record<string, unknown> }[];
+        if (!r.ok) return null;
+        const res = await r.json() as { status?: string; asset?: { assetId: string; metadata?: Record<string, unknown> } };
+        return res.status === 'succeeded' && res.asset ? [res.asset] : null;
+      })
       .catch(() => null)
       .then((assets) => {
         const arrival = resolveDemand(assets, assetId);
@@ -356,16 +372,49 @@ export default function MakmanAlGhayah() {
     } catch { /* silent — presence is enhancement */ }
   };
 
-  const fetchGoals = async () => {
+  const fetchGoals = async (archived = showingArchived) => {
     setIsFetchingGoals(true);
     try {
-      const r = await fetch('/api/sovereign/entry/creator-goal');
+      const r = await fetch(`/api/sovereign/entry/creator-goal${archived ? '?archived=1' : ''}`);
       if (r.ok) {
-        const data = await r.json() as { status: string; goals: GoalSummary[] };
-        if (data.status === 'succeeded') setGoals(data.goals);
+        const data = await r.json() as {
+          status: string;
+          goals: GoalSummary[];
+          counts?: { open: number; archived: number };
+        };
+        if (data.status === 'succeeded') {
+          setGoals(data.goals);
+          if (data.counts) setGoalCounts(data.counts);
+        }
       }
     } catch { /* silent */ }
     finally { setIsFetchingGoals(false); }
+  };
+
+  /**
+   * Put a goal away, or take it back out — Article 6.1's «الحذف التشغيلي»,
+   * never «الإتلاف النهائي». Nothing is erased and there is no control here
+   * that could erase it.
+   */
+  const handleSetArchived = async (goalId: string, archived: boolean) => {
+    setArchivingGoalId(goalId);
+    try {
+      const r = await fetch(`/api/sovereign/entry/creator-goal/${encodeURIComponent(goalId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archived }),
+      });
+      const d = await r.json() as { status?: string; message?: string };
+      setGoalNotice(d.message ?? (r.ok ? null : 'تعذّر تنفيذ الطلب.'));
+      if (d.status === 'succeeded') {
+        if (selectedGoalId === goalId) setSelectedGoalId(null);
+        await fetchGoals();
+      }
+    } catch {
+      setGoalNotice('تعذّر الوصول إلى الخادم.');
+    } finally {
+      setArchivingGoalId(null);
+    }
   };
 
   const handleSavePurpose = async () => {
@@ -726,6 +775,37 @@ export default function MakmanAlGhayah() {
             </div>
           )}
 
+          {/* ── THE TWO SHELVES ──────────────────────────────────────────────
+              FOUNDER, 2026-09-29: «امنع تكدس الاصول والغايات بصفه عامه داخل
+              الحجره». The archived shelf is named and countable but never
+              loaded with the room — Article 6.1's «إخفاء الأصل من العرض
+              العادي» is a hiding from ordinary display, not from the
+              Creator. */}
+          {(goalCounts.open > 0 || goalCounts.archived > 0) && (
+            <div className="makman-goal-shelves" role="tablist" aria-label="الغايات">
+              <button
+                role="tab"
+                aria-selected={!showingArchived}
+                className={`makman-shelf-btn ${!showingArchived ? 'shelf-active' : ''}`}
+                onClick={() => { setShowingArchived(false); void fetchGoals(false); }}
+              >
+                القائمة ({goalCounts.open})
+              </button>
+              <button
+                role="tab"
+                aria-selected={showingArchived}
+                className={`makman-shelf-btn ${showingArchived ? 'shelf-active' : ''}`}
+                onClick={() => { setShowingArchived(true); void fetchGoals(true); }}
+              >
+                المطويّة ({goalCounts.archived})
+              </button>
+            </div>
+          )}
+
+          {goals.length === 0 && showingArchived && !isFetchingGoals && (
+            <p className="project-status">لا غايةَ مطويّة.</p>
+          )}
+
           {goals.length > 0 && (
             <div className="makman-goals-list">
               {goals.map((goal) => (
@@ -748,6 +828,23 @@ export default function MakmanAlGhayah() {
 
                   {selectedGoalId === goal.goalId && (
                     <div className="goal-card-actions">
+                      {/* ── PUT AWAY, NEVER DESTROYED ────────────────────
+                          Article 6.5: «الحذف التشغيلي لا يساوي الإتلاف
+                          النهائي». There is no control here that erases a
+                          goal, and the route behind this one has no DELETE. */}
+                      <button
+                        className={`import-btn ${archivingGoalId === goal.goalId ? 'importing' : ''}`}
+                        disabled={archivingGoalId === goal.goalId}
+                        title={showingArchived
+                          ? 'تعود الغاية إلى قائمتك'
+                          : 'تُخفى من قائمتك ولا تُحذف — تستعيدها متى شئت'}
+                        onClick={(e) => { e.stopPropagation(); void handleSetArchived(goal.goalId, !showingArchived); }}
+                      >
+                        {archivingGoalId === goal.goalId
+                          ? '…'
+                          : showingArchived ? '↩ استعِد الغاية' : '🗀 اطوِ الغاية'}
+                      </button>
+
                       {isReadingGoal && <p className="project-status">قراءة الهدف…</p>}
 
                       {/* 1 - the Milestone: does this Goal serve the Purpose? */}

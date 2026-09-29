@@ -427,3 +427,44 @@
   text-decoration: line-through;
   cursor: not-allowed;
 }
+/* ─── THE TWO SHELVES ───────────────────────────────────────────────────────
+     A control that sets only geometry inherits the browser's white. Every
+     rule here paints its own background and colour, from the Empire's own
+     token scale, so the shelf is visible on the surface it actually sits on. */
+.makman-goal-shelves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block: 14px 10px;
+}
+
+.makman-shelf-btn {
+  /* A hand, not only a cursor. */
+  min-height: 44px;
+  padding: 9px 18px;
+  font-family: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+  color: var(--azma-text-muted, #A8955B);
+  background: rgba(var(--azma-gold-rgb), 0.04);
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.22);
+  border-radius: 999px;
+  transition: color 0.22s ease, border-color 0.22s ease, background 0.22s ease;
+}
+
+.makman-shelf-btn:hover {
+  color: var(--azma-text-primary, #E8D595);
+  border-color: rgba(var(--azma-gold-rgb), 0.45);
+  background: rgba(var(--azma-gold-rgb), 0.08);
+}
+
+.makman-shelf-btn.shelf-active {
+  color: var(--azma-gold-7, #E8C547);
+  border-color: var(--azma-gold-6, #D4AF37);
+  background: rgba(var(--azma-gold-rgb), 0.12);
+}
+
+.makman-shelf-btn:focus-visible {
+  outline: 2px solid rgba(var(--azma-gold-rgb), 0.7);
+  outline-offset: 3px;
+}

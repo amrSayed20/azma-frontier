@@ -45,6 +45,8 @@
 
 import { GoalState } from '../chambers/makman-al-ghayah/goal-state';
 import type { GoalContract } from '../chambers/makman-al-ghayah/goal-contracts';
+// A value import: the archived status is written, not merely referenced.
+import { GoalStatus } from '../chambers/makman-al-ghayah/goal-contracts';
 import { MakmanGoalRuntime } from '../chambers/makman-al-ghayah/MAKMAN_RUNTIME_CORE_ORCHESTRATION';
 import type { MakmanGoalDistributionBridge } from '../chambers/makman-al-ghayah/MAKMAN_GOAL_DISTRIBUTION_BRIDGE';
 import type { PublicConsumptionBoundary, ConsumptionResponse } from '../chambers/makman-al-ghayah/consumption-boundary';
@@ -138,6 +140,44 @@ export class SovereignOperationalEntryLayer {
     const goal = this.goalState.getGoal(goalId);
     if (!goal || goal.subscriberTenantId !== requesterTenantId) return undefined;
     return goal;
+  }
+
+  /**
+   * ─── A GOAL IS PUT AWAY, NEVER DESTROYED ────────────────────────────────
+   *
+   *   FOUNDER, 2026-09-29: «امنع تكدس الاصول والغايات بصفه عامه داخل الحجره».
+   *
+   *   MEASURED that day on production: 21 goals and 54.4KB travelled on every
+   *   open of مكمن الغاية, unbounded and unfiltered, and the Creator had no
+   *   control anywhere — no route verb, no button — to put a single one away.
+   *
+   *   This is Article 6.1's «الحذف التشغيلي» and only that: the goal is
+   *   hidden from ordinary display, the act is recorded with its time and its
+   *   author, and it is restorable by the same call. Article 6.5 — «الحذف
+   *   التشغيلي لا يساوي الإتلاف النهائي» — is why `GoalRepository.deleteById`
+   *   still has no caller and gains none here.
+   *
+   *   Restoring clears both stamps rather than keeping them as history: a
+   *   goal that is open must not carry a field claiming it is archived. The
+   *   goal returns to CREATED, which is the only status this layer can know
+   *   is true of it — inventing back the status it held before archiving
+   *   would be a claim about work nobody observed.
+   */
+  public setGoalArchived(
+    goalId: string,
+    creatorId: string,
+    archived: boolean,
+  ): { ok: true; goal: GoalContract } | { ok: false; reason: 'GOAL_NOT_FOUND' } {
+    const goal = this.goalState.getGoal(goalId);
+    if (!goal || goal.subscriberTenantId !== creatorId) {
+      return { ok: false, reason: 'GOAL_NOT_FOUND' };
+    }
+    const now = Date.now();
+    const updated: GoalContract = archived
+      ? { ...goal, status: GoalStatus.ARCHIVED, archivedAtMs: now, archivedBy: creatorId, updatedAtMs: now }
+      : { ...goal, status: GoalStatus.CREATED, archivedAtMs: undefined, archivedBy: undefined, updatedAtMs: now };
+    this.goalState.update(updated, { isAuthorized: true });
+    return { ok: true, goal: updated };
   }
 
   /**

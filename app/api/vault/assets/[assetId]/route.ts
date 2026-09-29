@@ -33,6 +33,53 @@ function uploadsDir(): string {
 }
 
 /**
+ * GET /api/vault/assets/[assetId] — one asset, asked for by name.
+ *
+ * ─── A LIST FETCHED TO ANSWER A QUESTION ABOUT ONE ROW ──────────────────────
+ *
+ *   FOUNDER, 2026-09-29: «امنع تكدس الاصول والغايات بصفه عامه داخل الحجره».
+ *
+ *   MEASURED that day: مكمن الغاية downloaded the Creator's ENTIRE vault — 128
+ *   assets, 131KB — on every open, for one reason: to find a single asset by
+ *   its id and read the creation demand out of its metadata. The resource had
+ *   a route already; the route had DELETE and not its most basic verb, so the
+ *   only way to read one asset was to receive all of them.
+ *
+ *   That cost grows with the Creator. A Creator with a thousand assets would
+ *   have paid a megabyte to read one string.
+ *
+ *   Ownership is checked here and the answer is 404 either way, exactly as
+ *   DELETE below does it, so "not yours" and "does not exist" stay
+ *   indistinguishable from outside.
+ */
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ assetId: string }> },
+) {
+  const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
+  const session = sessionId ? verifySession(sessionId) : null;
+
+  if (!session) {
+    return NextResponse.json(
+      { status: 'failed', reason: 'unauthorized', message: 'سجّل دخولك أوّلاً.' },
+      { status: 401 },
+    );
+  }
+
+  const { assetId } = await context.params;
+  const asset = getVaultAsset(getDb(), assetId);
+
+  if (!asset || asset.subscriberTenantId !== session.creatorId) {
+    return NextResponse.json(
+      { status: 'failed', reason: 'not-found', message: 'لا يوجد أصل بهذا المعرّف في خزانتك.' },
+      { status: 404 },
+    );
+  }
+
+  return NextResponse.json({ status: 'succeeded', asset });
+}
+
+/**
  * DELETE /api/vault/assets/[assetId]
  *
  * ─── PHASE C: DELETION NOW LEAVES A RECORD ──────────────────────────────────

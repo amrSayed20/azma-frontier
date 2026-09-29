@@ -17,7 +17,11 @@ import type { VaultAsset } from '../../vault/sovereign-vault-types';
 
 function png(w: number, h: number): Buffer {
   const b = Buffer.alloc(24);
-  b.writeUInt8(0x89, 0); b.write('PNG', 1, 'ascii');
+  // The FULL 8-byte signature. MEASURED 2026-09-29: this fixture wrote only
+  // `0x89 P N G` and the old private detector accepted it — a file that is not
+  // a PNG. The Vault's signature table refused it the moment this module
+  // started asking the Empire's one authority instead of its own.
+  b.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
   b.write('IHDR', 12, 'ascii');
   b.writeUInt32BE(w, 16); b.writeUInt32BE(h, 20);
   return b;

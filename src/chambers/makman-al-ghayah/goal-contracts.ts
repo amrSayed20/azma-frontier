@@ -13,8 +13,37 @@ export enum GoalStatus {
   IN_PROGRESS = 'IN_PROGRESS',
   BLOCKED = 'BLOCKED',
   COMPLETED = 'COMPLETED',
-  FAILED = 'FAILED'
+  FAILED = 'FAILED',
+  /**
+   * ─── THE DOOR OUT ───────────────────────────────────────────────────────
+   *
+   *   FOUNDER, 2026-09-29: «امنع تكدس الاصول والغايات بصفه عامه داخل الحجره».
+   *
+   *   MEASURED the same day: this enum had six states and not one of them was
+   *   an ending a Creator could choose. The per-goal route had only GET, the
+   *   list route had no DELETE, and the chamber rendered zero controls
+   *   matching حذف / أرشفة / إزالة. A goal could be created and never, by any
+   *   means, be put away — so 21 goals and 54KB travelled on every open of the
+   *   chamber, forever, including goals their author had long abandoned.
+   *
+   *   ARCHIVED is the Constitution's own «الحذف التشغيلي» (Article 6.1),
+   *   which it defines exactly: hidden from ordinary display, kept through the
+   *   retention period, restorable, lineage intact — and expressly NOT
+   *   «الإتلاف النهائي» (6.5). Nothing is erased. `deleteById` stays without a
+   *   caller on purpose: a goal may be put away, never destroyed.
+   */
+  ARCHIVED = 'ARCHIVED'
 }
+
+/** The states a goal that is still the Creator's live work can be in. */
+export const OPEN_GOAL_STATUSES: readonly GoalStatus[] = [
+  GoalStatus.CREATED,
+  GoalStatus.PLANNED,
+  GoalStatus.IN_PROGRESS,
+  GoalStatus.BLOCKED,
+  GoalStatus.COMPLETED,
+  GoalStatus.FAILED,
+];
 
 export enum GoalPriority {
   LOW = 'LOW',
@@ -124,6 +153,15 @@ export interface GoalContract {
   readonly createdAtMs: number;
 
   readonly updatedAtMs: number;
+
+  /**
+   * When this goal was put away, and by whom — Article 6.1's «تسجيل طلب
+   * الحذف», the half that makes an archive auditable rather than a
+   * disappearance. Undefined means it never was; both are cleared on restore
+   * so they can never describe a state the goal is not in.
+   */
+  readonly archivedAtMs?: number;
+  readonly archivedBy?: string;
 
   /**
    * PACKAGE XI — COMMERCIAL INTENT DURABLE STORAGE: the real
