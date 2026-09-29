@@ -230,6 +230,9 @@ export class SovereignVaultManager implements IVaultManager {
       // `toAspectRatio` and never stored — one truth, in pixels.
       pixelWidth,
       pixelHeight,
+      // Declared by the depositor, never decided here: the Vault keeps what it
+      // is given for as long as it is told, and «for ever» is the default.
+      expiresAtMs: deposit.expiresAtMs ?? null,
     };
 
     // Commit to the structural ownership layer

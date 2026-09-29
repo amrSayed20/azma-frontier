@@ -38,7 +38,7 @@ import type { ConsumptionResponse } from '@/src/chambers/makman-al-ghayah/consum
 import { takeDemandFor, resolveDemand, spokenDemandArrival } from '@/src/sovereign-creation-demand/arrival';
 import './makman-al-ghayah.css';
 import { ChamberDemonstration } from '@/src/chamber-demonstration';
-import { planReframe, executeReframe } from './reframe-actions';
+import { planReframe, executeReframe, sweepRetention, type RetentionView } from './reframe-actions';
 import { reframablePlatforms } from '@/src/platform-reframe/platform-target';
 
 /** The plan as the page displays it — the server's own shape, narrowed. */
@@ -266,6 +266,7 @@ export default function MakmanAlGhayah() {
   const [reframeBusy,         setReframeBusy]         = useState<'idle' | 'planning' | 'producing'>('idle');
   const [reframeNotice,       setReframeNotice]       = useState<string | null>(null);
   const [reframeDone,         setReframeDone]         = useState<{ label: string; assetId: string; storageUri: string }[]>([]);
+  const [retention,           setRetention]           = useState<RetentionView | null>(null);
 
   // ── Fulfillment + Gap + Investigation (per selected goal) ──────────
   // ── THE MIDDLE OF THE CHAIN, WHICH HAD NO CONTROLS ──────────────────────
@@ -341,6 +342,11 @@ export default function MakmanAlGhayah() {
   useEffect(() => {
     void fetchPurpose();
     void fetchGoals();
+    // ── THE SWEEP RUNS WHERE THE CREATOR ACTUALLY IS ─────────────────────
+    //   This Empire has no background worker — it says so in its own source.
+    //   So a rendition's fifteen days end when its owner next opens the
+    //   Chamber, and they are TOLD what happened and what is about to.
+    void sweepRetention().then(setRetention);
   }, []);
 
   useEffect(() => {
@@ -790,6 +796,31 @@ export default function MakmanAlGhayah() {
               <p className="makman-capability-hint">
                 لتسجيل هدف استراتيجي، انطلق أولاً إلى حجرة رأس الأمر.
               </p>
+            </div>
+          )}
+
+          {/* ── WHAT HAPPENED TO YOUR PLATFORM COPIES, AND WHAT IS ABOUT TO ──
+              FOUNDER: «الإتلاف النهائي بعد إخبار صاحب الأصل» — so the telling
+              is not a courtesy after the act, it is a condition of it. Shown
+              at the top of the Chamber, where a Creator entering cannot miss
+              it, and never as a number they must go looking for. */}
+          {retention && (retention.dueSoon.length > 0 || retention.destroyed.length > 0 || retention.spared.length > 0) && (
+            <div className="makman-retention-notice" data-testid="makman-retention">
+              {retention.dueSoon.map((r, i) => (
+                <p key={`due-${i}`} style={{ margin: '2px 0' }}>
+                  ⏳ نسختُك لـ<strong>{r.label}</strong> تُتلَف خلال {r.daysLeft === 1 ? 'يومٍ واحد' : `${r.daysLeft} أيّام`} — نزِّلها أو ارفعها الآن.
+                </p>
+              ))}
+              {retention.destroyed.map((r, i) => (
+                <p key={`gone-${i}`} style={{ margin: '2px 0' }}>
+                  ✕ انتهت مدّةُ نسختِك لـ<strong>{r.label}</strong> فأُتلِفت — وأصلُك الأب في خزانتك كما هو.
+                </p>
+              ))}
+              {retention.spared.map((r, i) => (
+                <p key={`kept-${i}`} style={{ margin: '2px 0' }}>
+                  ◈ نسختُك لـ<strong>{r.label}</strong>: {r.reasonAr}
+                </p>
+              ))}
             </div>
           )}
 

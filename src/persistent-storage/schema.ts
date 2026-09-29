@@ -730,6 +730,22 @@ export const VAULT_ASSETS_MIGRATION_COLUMNS: readonly { readonly name: string; r
    */
   { name: 'pixel_width', ddl: 'pixel_width INTEGER' },
   { name: 'pixel_height', ddl: 'pixel_height INTEGER' },
+  /**
+   * When this asset stops being kept — and NULL for almost every asset.
+   *
+   * FOUNDER, 2026-09-29: «الاحتفاظ به داخل الخزانة لمدة 15 يوم ثم يحذف»،
+   * و«الإتلاف النهائي بعد إخبار صاحب الأصل».
+   *
+   * Only a PLATFORM RENDITION carries an expiry. The Creator's own master —
+   * uploaded, generated, or composed — is theirs without limit and its column
+   * stays NULL, which is what NULL means here: «هذا الأصل لا ينتهي».
+   *
+   * A column rather than a metadata key for the reason content_digest and the
+   * pixel size are columns: «ما الذي حان أجله؟» is a question asked of every
+   * asset at once, and a question asked of all of them must be answerable by
+   * a query rather than by deserializing every JSON blob in the Vault.
+   */
+  { name: 'expires_at_ms', ddl: 'expires_at_ms INTEGER' },
 ];
 
 /** Columns added to `creators` after its original creation — applied via ALTER TABLE for pre-existing databases. */

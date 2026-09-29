@@ -106,10 +106,16 @@ describeIfAvailable('B1/B2 — migration rehearsed on the real production table'
     // same reason as the digest: «which of this Creator's assets already fit
     // TikTok?» is a question asked of every asset, so a query must answer it.
     // Nullable, because «لا نعرف مقاسه» is a true and frequent state.
-    expect(columns.size).toBe(23);
+    // + expires_at_ms (2026-09-29). FOUNDER: «الاحتفاظ به داخل الخزانة لمدة
+    // 15 يوم ثم يحذف» — a PLATFORM RENDITION ends; a Creator's own master
+    // never does, and its column stays NULL, which is what NULL means here.
+    // A column rather than a metadata key because «ما الذي حان أجله؟» is
+    // asked of every asset at once, and that is a query, not a JSON walk.
+    expect(columns.size).toBe(24);
     expect(columns.has('content_digest')).toBe(true);
     expect(columns.has('pixel_width')).toBe(true);
     expect(columns.has('pixel_height')).toBe(true);
+    expect(columns.has('expires_at_ms')).toBe(true);
     for (const expected of ['parent_asset_id', 'root_asset_id', 'version', 'derivation', 'creation_chamber', 'project_id', 'lifecycle_state', 'derivation_permission', 'created_by', 'last_modified_by', 'last_modified_at']) {
       expect(columns.has(expected)).toBe(true);
     }

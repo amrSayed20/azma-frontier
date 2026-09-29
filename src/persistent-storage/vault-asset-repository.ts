@@ -37,8 +37,8 @@ export function insertVaultAsset(db: DatabaseSync, asset: VaultAsset): void {
   db.prepare(
     `INSERT INTO vault_assets
       (asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at,
-       parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at, content_digest, pixel_width, pixel_height)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at, content_digest, pixel_width, pixel_height, expires_at_ms)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     asset.assetId,
     asset.subscriberTenantId,
@@ -69,6 +69,9 @@ export function insertVaultAsset(db: DatabaseSync, asset: VaultAsset): void {
     // when those bytes could not say. Never a guess, never zero.
     asset.pixelWidth ?? null,
     asset.pixelHeight ?? null,
+    // NULL for every master a Creator owns. Only a platform rendition is
+    // given an ending, and it is given one explicitly at deposit.
+    asset.expiresAtMs ?? null,
   );
 }
 
@@ -103,7 +106,7 @@ export function listAssetLineage(db: DatabaseSync, rootAssetId: string, subscrib
   const rows = db
     .prepare(
       `SELECT asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at,
-              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at, pixel_width, pixel_height
+              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at, pixel_width, pixel_height, expires_at_ms
        FROM vault_assets
        WHERE root_asset_id = ? AND subscriber_tenant_id = ?
        ORDER BY version ASC, created_at ASC`,
@@ -184,7 +187,7 @@ export function getVaultAsset(db: DatabaseSync, assetId: string): VaultAsset | n
   const row = db
     .prepare(
       `SELECT asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at,
-              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at, pixel_width, pixel_height
+              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at, pixel_width, pixel_height, expires_at_ms
        FROM vault_assets WHERE asset_id = ?`,
     )
     .get(assetId);
@@ -210,7 +213,7 @@ export function findVaultAssetByStorageUri(db: DatabaseSync, secureStorageUri: s
   const row = db
     .prepare(
       `SELECT asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at,
-              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at, pixel_width, pixel_height
+              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at, pixel_width, pixel_height, expires_at_ms
        FROM vault_assets WHERE secure_storage_uri = ? LIMIT 1`,
     )
     .get(secureStorageUri);
@@ -253,7 +256,7 @@ export function listVaultAssetsForTenant(db: DatabaseSync, subscriberTenantId: s
   const rows = db
     .prepare(
       `SELECT asset_id, subscriber_tenant_id, originating_operation_id, capability_target, asset_family, secure_storage_uri, metadata, created_at, updated_at,
-              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at, pixel_width, pixel_height
+              parent_asset_id, root_asset_id, version, derivation, creation_chamber, project_id, lifecycle_state, derivation_permission, created_by, last_modified_by, last_modified_at, pixel_width, pixel_height, expires_at_ms
        FROM vault_assets WHERE subscriber_tenant_id = ? ORDER BY created_at DESC, rowid DESC`,
     )
     .all(subscriberTenantId);
@@ -324,6 +327,7 @@ function rowToVaultAsset(row: Record<string, unknown>): VaultAsset {
     // `toAspectRatio`, never stored, so there is no second copy to drift.
     pixelWidth: (row.pixel_width as number | null) ?? null,
     pixelHeight: (row.pixel_height as number | null) ?? null,
+    expiresAtMs: (row.expires_at_ms as number | null) ?? null,
   };
 }
 

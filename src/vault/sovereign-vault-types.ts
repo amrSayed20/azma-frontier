@@ -217,6 +217,12 @@ export interface SovereignVaultDeposit {
 
   /** Who performed the act. Defaults to the owning Creator. Article 5. */
   createdBy?: string | null;
+  /**
+   * When this deposit stops being kept. Omitted — the overwhelming default —
+   * means kept without limit. Only a platform rendition supplies one, and it
+   * supplies it explicitly rather than inheriting a policy from the Vault.
+   */
+  expiresAtMs?: number | null;
 }
 
 /**
@@ -322,6 +328,12 @@ export interface VaultAsset {
    */
   pixelWidth?: number | null;
   pixelHeight?: number | null;
+  /**
+   * When this asset stops being kept. NULL — the overwhelming default — means
+   * it is kept without limit, which is true of every master a Creator owns.
+   * Only a platform rendition is given one.
+   */
+  expiresAtMs?: number | null;
 }
 
 /**

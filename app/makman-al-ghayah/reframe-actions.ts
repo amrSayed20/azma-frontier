@@ -37,6 +37,7 @@ import { CreatorCreditRepository } from '@/src/economy/credit-ledger/credit-ledg
 import { buildReframePlan, reframeUnitCost, type ReframePlan } from '@/src/platform-reframe/reframe-plan';
 import { resolveTarget } from '@/src/platform-reframe/platform-target';
 import { reframeToTarget } from '@/src/platform-reframe/reframe-execution';
+import { RETENTION_MS, sweepExpiredRenditions } from '@/src/platform-reframe/retention';
 
 const SESSION_COOKIE = 'azma_session';
 
@@ -172,6 +173,11 @@ export async function executeReframe(
         creationChamber: SourceChamber.MAKMAN_AL_GHAYAH,
         lifecycleState: LifecycleState.FINAL,
         createdBy: creatorId,
+        // ── ITS END IS SET AT ITS BIRTH ──────────────────────────────────
+        //   FOUNDER: «الاحتفاظ به داخل الخزانة لمدة 15 يوم ثم يحذف».
+        //   Stamped here and nowhere else, so a rendition can never exist
+        //   without an ending while the master beside it has none.
+        expiresAtMs: Date.now() + RETENTION_MS,
         metadata: {
           reframedForPlatform: target.platform,
           reframedForLabel: target.label,
@@ -211,4 +217,38 @@ export async function executeReframe(
     refused,
     unitsCharged,
   };
+}
+
+export interface RetentionView {
+  readonly dueSoon: readonly { readonly label: string; readonly daysLeft: number }[];
+  readonly destroyed: readonly { readonly label: string }[];
+  readonly spared: readonly { readonly label: string; readonly reasonAr: string }[];
+}
+
+/**
+ * Run the retention sweep for the Creator who just opened the Chamber, and
+ * report what it found — so they are TOLD, which is the Founder's condition
+ * on the act: «الإتلاف النهائي بعد إخبار صاحب الأصل».
+ *
+ * It runs here because this Empire has no background worker and says so in its
+ * own source. The one limit is stated rather than hidden: a Creator who never
+ * returns leaves their expired renditions in place — lingering, never served
+ * past their end, and never resurrected.
+ */
+export async function sweepRetention(): Promise<RetentionView> {
+  const empty: RetentionView = { dueSoon: [], destroyed: [], spared: [] };
+  const creatorId = await creator();
+  if (!creatorId) return empty;
+  try {
+    const sweep = sweepExpiredRenditions(getDb(), creatorId);
+    return {
+      dueSoon: sweep.dueSoon.map((r) => ({ label: r.label, daysLeft: r.daysLeft })),
+      destroyed: sweep.destroyed.map((r) => ({ label: r.label })),
+      spared: sweep.spared.map((r) => ({ label: r.label, reasonAr: r.reasonAr })),
+    };
+  } catch (err) {
+    // A sweep that cannot run must not stop a Creator entering their Chamber.
+    console.error('[Makman retention] sweep failed:', err instanceof Error ? err.message : String(err));
+    return empty;
+  }
 }
