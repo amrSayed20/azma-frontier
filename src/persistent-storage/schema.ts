@@ -413,6 +413,44 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     revoked_by TEXT
   )`,
 
+  // ══ A CREATOR'S OWN CLOUD ACCOUNT, LINKED BY THEM ═══════════════════════
+  //
+  //   FOUNDER, 2026-09-29: «أقصد بالسحابة حسابات المستخدم السحابية — مثل جوجل
+  //   درايف أو دروبوكس أو أي كلاود للآيفون — بعد أن يقوم بربطها، للتحميل
+  //   عليها. وليس تخزينًا سحابيًا للمنصّة نفسها.»
+  //
+  //   The Empire owns nothing in that account. It holds one thing: permission
+  //   the Creator granted and may withdraw, kept so a file can be delivered to
+  //   them later without asking again.
+  //
+  //   refresh_token_sealed IS NEVER PLAINTEXT. It is AES-256-GCM, keyed from
+  //   the server's own AZMA_TOKEN_KEY — see src/cloud-destinations/token-vault.ts
+  //   for why a reversible seal is required here and a one-way hash is not.
+  //   The access token is deliberately NOT stored at all: it expires in an
+  //   hour, and a secret kept past its usefulness is a secret kept for nothing.
+  //
+  //   revoked_at, not DELETE: a Creator who unlinks an account has withdrawn a
+  //   permission, and the record that they once granted it is the audit trail
+  //   Article 8.4 asks of every authority in this Empire. The sealed token is
+  //   blanked at that moment — the record survives, the power does not.
+  //
+  //   UNIQUE(creator_id, provider, provider_account_id) so linking the same
+  //   account twice updates one row instead of growing a second grant nobody
+  //   can see to revoke.
+  `CREATE TABLE IF NOT EXISTS cloud_accounts (
+    account_id TEXT PRIMARY KEY,
+    creator_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    provider_account_id TEXT NOT NULL,
+    account_label TEXT,
+    refresh_token_sealed TEXT,
+    scopes TEXT NOT NULL,
+    linked_at INTEGER NOT NULL,
+    last_used_at INTEGER,
+    revoked_at INTEGER,
+    UNIQUE(creator_id, provider, provider_account_id)
+  )`,
+
   `CREATE TABLE IF NOT EXISTS knowledge_investigations (
     investigation_id TEXT PRIMARY KEY,
     goal_id TEXT NOT NULL,
@@ -872,6 +910,7 @@ export const INDEX_STATEMENTS: readonly string[] = [
   'CREATE INDEX IF NOT EXISTS idx_tombstones_owner ON asset_tombstones(owner_id)',
   // The public token is the lookup a visitor's request performs. UNIQUE in the
   // table already implies an index; this names the owner path instead.
+  'CREATE INDEX IF NOT EXISTS idx_cloud_accounts_creator ON cloud_accounts(creator_id)',
   'CREATE INDEX IF NOT EXISTS idx_public_links_owner ON sovereign_public_links(owner_id)',
   'CREATE INDEX IF NOT EXISTS idx_public_links_work ON sovereign_public_links(final_work_asset_id)',
 ];

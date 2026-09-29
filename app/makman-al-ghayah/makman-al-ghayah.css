@@ -601,3 +601,54 @@
 }
 
 .makman-retention-notice strong { color: #E0A860; }
+
+/* ─── THE THREE DOORS, AND THE ACCOUNTS BEHIND ONE OF THEM ─────────────────
+     Constitution v1.1: مكمن is the only centre of external distribution. The
+     doors sit together because a Creator choosing between them is choosing
+     once, not navigating three times. */
+.makman-doors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.makman-cloud-panel {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(var(--azma-gold-rgb), 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+/* Withdrawing a permission is not a destructive act and does not wear a
+   destructive colour — but it is distinct from the gold of an act that
+   proceeds, so a hand never confuses the two. */
+.makman-unlink-btn {
+  min-height: 44px;
+  padding: 7px 14px;
+  font-family: inherit;
+  font-size: 0.79rem;
+  cursor: pointer;
+  color: var(--azma-text-muted, #A8955B);
+  background: rgba(154, 107, 107, 0.08);
+  border: 1px solid rgba(154, 107, 107, 0.35);
+  border-radius: 999px;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.makman-unlink-btn:hover:not(:disabled) {
+  color: #C08A8A;
+  border-color: rgba(192, 138, 138, 0.6);
+}
+
+.makman-unlink-btn:disabled { opacity: 0.45; cursor: default; }
+
+.makman-unlink-btn:focus-visible {
+  outline: 2px solid rgba(var(--azma-gold-rgb), 0.7);
+  outline-offset: 3px;
+}
+
+.makman-download-btn:disabled { opacity: 0.45; cursor: default; }

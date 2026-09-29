@@ -39,6 +39,7 @@ import { takeDemandFor, resolveDemand, spokenDemandArrival } from '@/src/soverei
 import './makman-al-ghayah.css';
 import { ChamberDemonstration } from '@/src/chamber-demonstration';
 import { planReframe, executeReframe, sweepRetention, type RetentionView } from './reframe-actions';
+import { listCloudAccounts, unlinkCloudAccount, uploadAssetToCloud, type CloudView } from './cloud-actions';
 import { reframablePlatforms } from '@/src/platform-reframe/platform-target';
 
 /** The plan as the page displays it — the server's own shape, narrowed. */
@@ -111,6 +112,23 @@ const GOAL_STATUS_AR: Record<string, string> = {
   COMPLETED:   'مكتمل',
   FAILED:      'فشل',
   ARCHIVED:    'مطويّة',
+};
+
+/**
+ * What came back from the linking journey, said in the Chamber's own words.
+ *
+ * The Creator returns from Google's screen carrying a short code. Each one
+ * has a single remedy, and that remedy is what they are told — never a
+ * provider's message, and never a status number.
+ */
+const CLOUD_OUTCOME_AR: Record<string, string> = {
+  linked:          '✓ رُبِط حسابك — صار بإمكانك الرفع إليه.',
+  declined:        'لم تمنح الإذن، ولم يتغيّر شيء.',
+  expired:         'طال الوقت قبل إتمام الربط. ابدأ من جديد.',
+  mismatch:        'لم نتعرّف على هذه العودة. ابدأ الربط من جديد.',
+  unauthorized:    'انتهت جلستك. سجّل دخولك ثمّ أعد الربط.',
+  'already-granted': 'حسابك يمنح الإذن لأزما بالفعل. احذف أزما من أذونات حساب جوجل ثمّ اربطه من جديد.',
+  failed:          'تعذّر ربط الحساب. أعد المحاولة.',
 };
 
 /** The platforms, named as a Creator names them — never as an API key. */
@@ -267,6 +285,12 @@ export default function MakmanAlGhayah() {
   const [reframeNotice,       setReframeNotice]       = useState<string | null>(null);
   const [reframeDone,         setReframeDone]         = useState<{ label: string; assetId: string; storageUri: string }[]>([]);
   const [retention,           setRetention]           = useState<RetentionView | null>(null);
+  // ── THE CREATOR'S OWN CLOUD ────────────────────────────────────────────
+  //   The Empire owns nothing there. It holds one permission, shown here so
+  //   it can be withdrawn as easily as it was granted.
+  const [cloud,               setCloud]               = useState<CloudView | null>(null);
+  const [cloudBusy,           setCloudBusy]           = useState<string | null>(null);
+  const [cloudNotice,         setCloudNotice]         = useState<string | null>(null);
 
   // ── Fulfillment + Gap + Investigation (per selected goal) ──────────
   // ── THE MIDDLE OF THE CHAIN, WHICH HAD NO CONTROLS ──────────────────────
@@ -347,6 +371,16 @@ export default function MakmanAlGhayah() {
     //   So a rendition's fifteen days end when its owner next opens the
     //   Chamber, and they are TOLD what happened and what is about to.
     void sweepRetention().then(setRetention);
+    void listCloudAccounts().then(setCloud);
+    // The link journey ends on Google's screen and returns here with a code.
+    // The Chamber says what happened — the provider's own words never do.
+    try {
+      const outcome = new URLSearchParams(window.location.search).get('cloud');
+      if (outcome) {
+        setCloudNotice(CLOUD_OUTCOME_AR[outcome] ?? 'تعذّر ربط الحساب.');
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    } catch { /* a URL we cannot read changes nothing */ }
   }, []);
 
   useEffect(() => {
@@ -1387,9 +1421,31 @@ export default function MakmanAlGhayah() {
                         {reframeDone.map((d) => (
                           <div key={d.assetId} className="makman-plan-row verdict-fits-as-is makman-done-row">
                             <span>✓ جاهزٌ لـ{d.label}</span>
-                            <a className="makman-download-btn" href={d.storageUri} download>
-                              ↓ نزِّله إلى جهازك
-                            </a>
+                            <span className="makman-doors">
+                              <a className="makman-download-btn" href={d.storageUri} download>
+                                ↓ نزِّله إلى جهازك
+                              </a>
+                              {/* ── THE SECOND DOOR: THE CREATOR'S OWN CLOUD ──
+                                  Shown only when an account is actually linked.
+                                  A button that would fail is not offered. */}
+                              {cloud?.accounts.map((acc) => (
+                                <button
+                                  key={acc.accountId}
+                                  className="makman-download-btn"
+                                  disabled={cloudBusy !== null}
+                                  onClick={async () => {
+                                    setCloudBusy(d.assetId + acc.accountId);
+                                    const r = await uploadAssetToCloud(d.assetId, acc.accountId);
+                                    setCloudNotice(r.messageAr);
+                                    setCloudBusy(null);
+                                  }}
+                                >
+                                  {cloudBusy === d.assetId + acc.accountId
+                                    ? 'يُرفع…'
+                                    : `☁ ارفعه إلى ${acc.accountLabel ?? 'حسابك'}`}
+                                </button>
+                              ))}
+                            </span>
                           </div>
                         ))}
                         <p className="makman-retention-notice">
@@ -1400,6 +1456,50 @@ export default function MakmanAlGhayah() {
                     )}
 
                     {reframeNotice && <p className="project-status">{reframeNotice}</p>}
+
+                    {/* ── HIS OWN CLOUD ACCOUNTS ────────────────────────────
+                        FOUNDER: «حسابات المستخدم السحابية... بعد أن يقوم
+                        بربطها». Listed where the file is handed over, so the
+                        permission can be withdrawn in the same breath it is
+                        used. The Empire shows a label, never a token. */}
+                    <div className="makman-cloud-panel">
+                      <p className="makman-capability-hint">☁ حساباتك السحابيّة</p>
+
+                      {cloud?.accounts.length === 0 && (
+                        <p className="project-status">لم تربط حساباً بعد.</p>
+                      )}
+
+                      {cloud?.accounts.map((acc) => (
+                        <div key={acc.accountId} className="makman-plan-row makman-done-row">
+                          <span>◈ {acc.accountLabel ?? 'حساب جوجل درايف'}</span>
+                          <button
+                            className="makman-unlink-btn"
+                            disabled={cloudBusy !== null}
+                            onClick={async () => {
+                              setCloudBusy(acc.accountId);
+                              const r = await unlinkCloudAccount(acc.accountId);
+                              setCloudNotice(r.messageAr);
+                              setCloud(await listCloudAccounts());
+                              setCloudBusy(null);
+                            }}
+                          >
+                            ✕ فُكَّ الربط
+                          </button>
+                        </div>
+                      ))}
+
+                      {cloud?.available ? (
+                        <a className="makman-download-btn" href="/api/cloud/google/start">
+                          + اربط جوجل درايف
+                        </a>
+                      ) : (
+                        <p className="project-status">
+                          ربطُ الحسابات السحابيّة غير مهيّأ في الإمبراطوريّة بعد.
+                        </p>
+                      )}
+
+                      {cloudNotice && <p className="project-status">{cloudNotice}</p>}
+                    </div>
                   </div>
                 )}
               </div>
