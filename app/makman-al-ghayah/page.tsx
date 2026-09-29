@@ -265,7 +265,7 @@ export default function MakmanAlGhayah() {
   const [reframeBalance,      setReframeBalance]      = useState<number | null>(null);
   const [reframeBusy,         setReframeBusy]         = useState<'idle' | 'planning' | 'producing'>('idle');
   const [reframeNotice,       setReframeNotice]       = useState<string | null>(null);
-  const [reframeDone,         setReframeDone]         = useState<{ label: string; assetId: string }[]>([]);
+  const [reframeDone,         setReframeDone]         = useState<{ label: string; assetId: string; storageUri: string }[]>([]);
 
   // ── Fulfillment + Gap + Investigation (per selected goal) ──────────
   // ── THE MIDDLE OF THE CHAIN, WHICH HAD NO CONTROLS ──────────────────────
@@ -1328,7 +1328,9 @@ export default function MakmanAlGhayah() {
                                   outcome.messageAr,
                                   ...outcome.refused.map((r) => `${r.label}: ${r.reasonAr}`),
                                 ].join(' '));
-                                setReframeDone(outcome.produced.map((r) => ({ label: r.label, assetId: r.assetId })));
+                                setReframeDone(outcome.produced.map((r) => ({
+                                  label: r.label, assetId: r.assetId, storageUri: r.storageUri,
+                                })));
                                 if (outcome.produced.length > 0) setReframePlan(null);
                                 setReframeBusy('idle');
                               }}
@@ -1344,13 +1346,25 @@ export default function MakmanAlGhayah() {
                       </div>
                     )}
 
+                    {/* ── AND NOW IT IS THEIRS TO TAKE ────────────────────
+                        Constitution v1.1: مكمن is the only centre of external
+                        distribution — «سواء بالرفع أو النشر أو التحميل لجهاز
+                        صاحب الأصل». The download is that third door, and it
+                        is the one that needs nothing but a link. */}
                     {reframeDone.length > 0 && (
-                      <div className="makman-plan">
+                      <div className="makman-plan" data-testid="makman-reframe-done">
                         {reframeDone.map((d) => (
-                          <p key={d.assetId} className="makman-plan-row verdict-fits-as-is">
-                            ✓ جاهزٌ لـ{d.label} — في خزانتك.
-                          </p>
+                          <div key={d.assetId} className="makman-plan-row verdict-fits-as-is makman-done-row">
+                            <span>✓ جاهزٌ لـ{d.label}</span>
+                            <a className="makman-download-btn" href={d.storageUri} download>
+                              ↓ نزِّله إلى جهازك
+                            </a>
+                          </div>
                         ))}
+                        <p className="makman-retention-notice">
+                          نسخُ المنصّات محفوظةٌ في خزانتك <strong>خمسة عشر يوماً</strong>، ثمّ تُتلَف —
+                          وأصلُك الأب يبقى بلا حدّ. خُذ ما تريد الآن أو ارفعه إلى حسابك.
+                        </p>
                       </div>
                     )}
 

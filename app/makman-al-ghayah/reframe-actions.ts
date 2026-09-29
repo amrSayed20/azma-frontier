@@ -72,7 +72,13 @@ export async function planReframe(
 export type ExecuteOutcome = {
   readonly ok: boolean;
   readonly messageAr: string;
-  readonly produced: readonly { readonly platform: string; readonly label: string; readonly assetId: string }[];
+  readonly produced: readonly {
+    readonly platform: string;
+    readonly label: string;
+    readonly assetId: string;
+    /** Where the Creator's own browser can fetch it — for the download door. */
+    readonly storageUri: string;
+  }[];
   readonly refused: readonly { readonly platform: string; readonly label: string; readonly reasonAr: string }[];
   readonly unitsCharged: number;
 };
@@ -121,7 +127,7 @@ export async function executeReframe(
   }
 
   const vault = new SovereignVaultManager();
-  const produced: { platform: string; label: string; assetId: string }[] = [];
+  const produced: { platform: string; label: string; assetId: string; storageUri: string }[] = [];
   const refused: { platform: string; label: string; reasonAr: string }[] = [];
   let unitsCharged = 0;
 
@@ -177,7 +183,12 @@ export async function executeReframe(
       });
       ledger.settle(reservation.reservationId, unit, { assetId: rendition.assetId });
       unitsCharged += unit;
-      produced.push({ platform: target.platform, label: target.label, assetId: rendition.assetId });
+      produced.push({
+        platform: target.platform,
+        label: target.label,
+        assetId: rendition.assetId,
+        storageUri: outcome.storageUri,
+      });
     } catch (err) {
       // The file exists but could not be recorded. Releasing is the only
       // honest end: a Creator must not pay for a rendition the Vault refused.

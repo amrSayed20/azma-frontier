@@ -554,3 +554,50 @@
   color: var(--azma-gold-7, #E8C547);
   font-variant-numeric: tabular-nums;
 }
+
+/* ─── THE DOWNLOAD DOOR ────────────────────────────────────────────────────
+     Constitution v1.1: مكمن is the only centre of external distribution, and
+     the download is one of its three doors. */
+.makman-done-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.makman-download-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  text-decoration: none;
+  color: var(--azma-gold-7, #E8C547);
+  background: rgba(var(--azma-gold-rgb), 0.10);
+  border: 1px solid var(--azma-gold-6, #D4AF37);
+  border-radius: 999px;
+  transition: background 0.2s ease;
+}
+
+.makman-download-btn:hover { background: rgba(var(--azma-gold-rgb), 0.20); }
+
+.makman-download-btn:focus-visible {
+  outline: 2px solid rgba(var(--azma-gold-rgb), 0.7);
+  outline-offset: 3px;
+}
+
+/* The warning the Founder asked for: «وهذا للتنبيه». It is stated where the
+   rendition is handed over, not buried in a policy nobody opens. */
+.makman-retention-notice {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  line-height: 1.7;
+  color: var(--azma-text-muted, #A8955B);
+  background: rgba(208, 138, 62, 0.08);
+  border-inline-start: 3px solid #D08A3E;
+  border-radius: 6px;
+}
+
+.makman-retention-notice strong { color: #E0A860; }
