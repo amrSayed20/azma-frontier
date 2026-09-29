@@ -468,3 +468,89 @@
   outline: 2px solid rgba(var(--azma-gold-rgb), 0.7);
   outline-offset: 3px;
 }
+
+/* ─── PREPARING AN ASSET FOR THE PLATFORMS A CREATOR CHOSE ─────────────────
+     Every rule paints its own background and colour from the Empire's token
+     scale. Geometry alone inherits the browser's white, and a control nobody
+     can see is a control that was never added. */
+.makman-reframe-panel {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.20);
+  border-radius: 10px;
+  background: rgba(var(--azma-gold-rgb), 0.03);
+}
+
+.makman-platform-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block: 10px 12px;
+}
+
+.makman-platform-btn {
+  min-height: 44px;           /* a thumb, not only a cursor */
+  padding: 8px 16px;
+  font-family: inherit;
+  font-size: 0.84rem;
+  cursor: pointer;
+  color: var(--azma-text-muted, #A8955B);
+  background: rgba(var(--azma-gold-rgb), 0.04);
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.22);
+  border-radius: 999px;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.makman-platform-btn:hover {
+  color: var(--azma-text-primary, #E8D595);
+  border-color: rgba(var(--azma-gold-rgb), 0.45);
+}
+
+.makman-platform-btn.platform-on {
+  color: var(--azma-gold-7, #E8C547);
+  border-color: var(--azma-gold-6, #D4AF37);
+  background: rgba(var(--azma-gold-rgb), 0.14);
+}
+
+.makman-platform-btn:focus-visible {
+  outline: 2px solid rgba(var(--azma-gold-rgb), 0.7);
+  outline-offset: 3px;
+}
+
+.makman-plan {
+  margin-block: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* The verdict is carried by a stripe as well as by words, so the three
+   outcomes are distinguishable at a glance and not only by reading. */
+.makman-plan-row {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--azma-text-primary, #E8D595);
+  background: rgba(0, 0, 0, 0.25);
+  border-inline-start: 3px solid rgba(var(--azma-gold-rgb), 0.3);
+  border-radius: 6px;
+}
+
+.makman-plan-row.verdict-fits-as-is        { border-inline-start-color: #6FBF73; }
+.makman-plan-row.verdict-reframe           { border-inline-start-color: var(--azma-gold-6, #D4AF37); }
+.makman-plan-row.verdict-needs-regeneration{ border-inline-start-color: #D08A3E; }
+.makman-plan-row.verdict-cannot-say        { border-inline-start-color: #7A7A7A; }
+
+.plan-cost {
+  color: var(--azma-gold-7, #E8C547);
+  font-variant-numeric: tabular-nums;
+}
+
+.makman-plan-total {
+  margin: 4px 0 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--azma-gold-7, #E8C547);
+  font-variant-numeric: tabular-nums;
+}

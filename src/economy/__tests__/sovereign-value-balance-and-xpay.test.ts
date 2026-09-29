@@ -296,13 +296,28 @@ describe('3 · the prices are approved; taking money is a separate gate', () => 
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('3b · each capability is its own charge — nothing is charged twice', () => {
-  it('the nine approved capabilities are distinct, with no alias', () => {
+  it('the ten approved capabilities are distinct, with no alias', () => {
+    // PLATFORM_REFRAME added 2026-09-29 by Founder ruling: «اعاده التاطير
+    // تتكلف 20 نقطه... ولن يكون بمكمن الغايه ايه معاملات من الرصيد بخلاف
+    // اعاده التاطير». It is its own capability precisely so it can never be
+    // confused with MP4_PRODUCTION, which is an assembly and priced per
+    // second — a reframe is one operation on one existing file.
     const ids = OPERATION_CONSUMPTION.map((r) => r.capability);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids.sort()).toEqual([
       'IMAGE_EDIT', 'IMAGE_GENERATION', 'INFOGRAPHIC', 'MOTION', 'MP4_PRODUCTION',
-      'STORYBOARD_IMAGE', 'STORYBOARD_VIDEO', 'UPSCALE_2X', 'VIDEO_GENERATION',
+      'PLATFORM_REFRAME', 'STORYBOARD_IMAGE', 'STORYBOARD_VIDEO', 'UPSCALE_2X',
+      'VIDEO_GENERATION',
     ]);
+  });
+
+  it('a reframe is its own charge, never an assembly charge', () => {
+    const reframe = consumptionFor('PLATFORM_REFRAME')!;
+    expect(reframe.balancePerUnit).toBe(20);
+    expect(reframe.quantity).toBe('per-operation');
+    // No provider is contacted, so there is no measured provider basis behind
+    // it. A null basis is the honest record — it is not a zero cost.
+    expect(reframe.pricingBasisCapability).toBeNull();
   });
 
   it('MP4 assembly does NOT silently contain a generation charge', () => {

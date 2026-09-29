@@ -38,6 +38,16 @@ import type { ConsumptionResponse } from '@/src/chambers/makman-al-ghayah/consum
 import { takeDemandFor, resolveDemand, spokenDemandArrival } from '@/src/sovereign-creation-demand/arrival';
 import './makman-al-ghayah.css';
 import { ChamberDemonstration } from '@/src/chamber-demonstration';
+import { planReframe, executeReframe } from './reframe-actions';
+import { reframablePlatforms } from '@/src/platform-reframe/platform-target';
+
+/** The plan as the page displays it — the server's own shape, narrowed. */
+interface ReframePlanView {
+  masterAspectRatio: string | null;
+  rows: readonly { platform: string; label: string; verdict: string; balanceCost: number; spokenAr: string }[];
+  totalBalanceCost: number;
+  reframeCount: number;
+}
 
 interface RealProduction {
   id: string;
@@ -101,6 +111,19 @@ const GOAL_STATUS_AR: Record<string, string> = {
   COMPLETED:   'مكتمل',
   FAILED:      'فشل',
   ARCHIVED:    'مطويّة',
+};
+
+/** The platforms, named as a Creator names them — never as an API key. */
+const PLATFORM_AR: Record<string, string> = {
+  youtube:            'يوتيوب',
+  tiktok:             'تيك توك',
+  instagram:          'إنستغرام',
+  'instagram-story':  'إنستغرام ستوري',
+  'instagram-reel':   'إنستغرام ريل',
+  facebook:           'فيسبوك',
+  x:                  'إكس',
+  linkedin:           'لينكدإن',
+  snapchat:           'سناب شات',
 };
 
 const GOAL_PRIORITY_AR: Record<string, string> = {
@@ -235,6 +258,14 @@ export default function MakmanAlGhayah() {
   const [shareError, setShareError] = useState<string | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
   const [renderVaultAssetId,  setRenderVaultAssetId]  = useState<string | null>(null);
+  // ── PREPARING ONE ASSET FOR THE PLATFORMS A CREATOR CHOSE ──────────────
+  //   Nothing here spends until the Creator's own word arrives as `approved`.
+  const [chosenPlatforms,     setChosenPlatforms]     = useState<string[]>([]);
+  const [reframePlan,         setReframePlan]         = useState<ReframePlanView | null>(null);
+  const [reframeBalance,      setReframeBalance]      = useState<number | null>(null);
+  const [reframeBusy,         setReframeBusy]         = useState<'idle' | 'planning' | 'producing'>('idle');
+  const [reframeNotice,       setReframeNotice]       = useState<string | null>(null);
+  const [reframeDone,         setReframeDone]         = useState<{ label: string; assetId: string }[]>([]);
 
   // ── Fulfillment + Gap + Investigation (per selected goal) ──────────
   // ── THE MIDDLE OF THE CHAIN, WHICH HAD NO CONTROLS ──────────────────────
@@ -1212,6 +1243,120 @@ export default function MakmanAlGhayah() {
                 )}
 
                 {shareError && <p className="project-status narrative-integrity-violation">{shareError}</p>}
+
+                {/* ── THE PLATFORMS, AND WHAT EACH ONE NEEDS ──────────────
+                    FOUNDER: «مقاس الأصل ليس ثابتا في جميع المنصات... فتقوم
+                    بتغير الابعاد لتتناسب مع المنصات المحددة من المستخدم».
+                    The Creator reads the whole answer — including its price —
+                    before any part of it is approved. */}
+                {renderVaultAssetId && (
+                  <div className="makman-reframe-panel" data-testid="makman-reframe">
+                    <p className="makman-capability-hint">
+                      ◈ لأيّ منصّةٍ تريد تجهيز هذا الأصل؟ المقاسُ يختلف بينها.
+                    </p>
+
+                    <div className="makman-platform-grid" role="group" aria-label="المنصّات">
+                      {reframablePlatforms().map((p) => {
+                        const on = chosenPlatforms.includes(p);
+                        return (
+                          <button
+                            key={p}
+                            type="button"
+                            aria-pressed={on}
+                            className={`makman-platform-btn ${on ? 'platform-on' : ''}`}
+                            onClick={() => {
+                              setReframePlan(null);
+                              setReframeNotice(null);
+                              setChosenPlatforms((prev) =>
+                                prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]);
+                            }}
+                          >
+                            {PLATFORM_AR[p] ?? p}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      className={`import-btn ${reframeBusy === 'planning' ? 'importing' : ''}`}
+                      disabled={chosenPlatforms.length === 0 || reframeBusy !== 'idle'}
+                      onClick={async () => {
+                        setReframeBusy('planning');
+                        setReframeNotice(null);
+                        setReframeDone([]);
+                        const outcome = await planReframe(renderVaultAssetId, chosenPlatforms);
+                        if (outcome.ok) {
+                          setReframePlan(outcome.plan as ReframePlanView);
+                          setReframeBalance(outcome.availableUnits);
+                        } else {
+                          setReframePlan(null);
+                          setReframeNotice(outcome.messageAr);
+                        }
+                        setReframeBusy('idle');
+                      }}
+                    >
+                      {reframeBusy === 'planning' ? 'يُفحص…' : '◈ افحص المقاسات'}
+                    </button>
+
+                    {reframePlan && (
+                      <div className="makman-plan" data-testid="makman-reframe-plan">
+                        {reframePlan.rows.map((row) => (
+                          <p key={row.platform} className={`makman-plan-row verdict-${row.verdict}`}>
+                            {row.spokenAr}
+                            {row.balanceCost > 0 && <span className="plan-cost"> · {row.balanceCost} وحدة</span>}
+                          </p>
+                        ))}
+
+                        {/* The whole price, said once, before the word that spends it. */}
+                        {reframePlan.reframeCount > 0 ? (
+                          <>
+                            <p className="makman-plan-total">
+                              الإجمالي: {reframePlan.totalBalanceCost} وحدة
+                              {reframeBalance !== null && ` · رصيدك ${reframeBalance}`}
+                            </p>
+                            <button
+                              className={`import-btn ${reframeBusy === 'producing' ? 'importing' : ''}`}
+                              disabled={reframeBusy !== 'idle'
+                                || (reframeBalance !== null && reframeBalance < reframePlan.totalBalanceCost)}
+                              onClick={async () => {
+                                setReframeBusy('producing');
+                                setReframeNotice(null);
+                                // `true` is the Creator's explicit word. The
+                                // server refuses anything else.
+                                const outcome = await executeReframe(renderVaultAssetId, chosenPlatforms, true);
+                                setReframeNotice([
+                                  outcome.messageAr,
+                                  ...outcome.refused.map((r) => `${r.label}: ${r.reasonAr}`),
+                                ].join(' '));
+                                setReframeDone(outcome.produced.map((r) => ({ label: r.label, assetId: r.assetId })));
+                                if (outcome.produced.length > 0) setReframePlan(null);
+                                setReframeBusy('idle');
+                              }}
+                            >
+                              {reframeBusy === 'producing'
+                                ? 'يُجهَّز…'
+                                : `✓ وافق واخصم ${reframePlan.totalBalanceCost} وحدة`}
+                            </button>
+                          </>
+                        ) : (
+                          <p className="makman-plan-total">لا شيء يحتاج إعادة تأطير — ولا خصم.</p>
+                        )}
+                      </div>
+                    )}
+
+                    {reframeDone.length > 0 && (
+                      <div className="makman-plan">
+                        {reframeDone.map((d) => (
+                          <p key={d.assetId} className="makman-plan-row verdict-fits-as-is">
+                            ✓ جاهزٌ لـ{d.label} — في خزانتك.
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                    {reframeNotice && <p className="project-status">{reframeNotice}</p>}
+                  </div>
+                )}
               </div>
             )}
 

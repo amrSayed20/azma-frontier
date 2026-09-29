@@ -264,6 +264,25 @@ export const OPERATION_CONSUMPTION: readonly ConsumptionRule[] = [
   //   because no provider charge has been measured for either: the storyboard
   //   provider is open-source and the MP4 assembly runs on our own host.
   //   A null basis is the honest record. It is not a zero cost.
+  // ── مكمن الغاية: THE ONLY BALANCE TRANSACTION IN THAT CHAMBER ──────────
+  //
+  //   FOUNDER, 2026-09-29: «اعاده التاطير تتكلف 20 نقطه تخصم من الرصيد لكل
+  //   منصه يعاد تأطير الاصل ليتناسب معها، ولن يكون بمكمن الغايه ايه معاملات
+  //   من الرصيد بخلاف اعاده التاطير، وهى تتكلف خصم 20 نقطه من رصيد المستخدم
+  //   بعد الحصول على موافقته».
+  //
+  //   PER OPERATION, and one operation is one PLATFORM: three platforms is
+  //   three charges, because three files are produced. Charged only after the
+  //   Creator's explicit approval — `verifyCostApproval` refuses otherwise.
+  //
+  //   `pricingBasisCapability` is null and that is the honest record: the
+  //   reframe is local ffmpeg and contacts no provider, so there is no
+  //   measured provider charge behind it. A null basis is not a zero cost —
+  //   the 20 is the Founder's commercial figure, not a derived one.
+  { capability: 'PLATFORM_REFRAME', balancePerUnit: 20, quantity: 'per-operation',
+    pricingBasisCapability: null,
+    note: 'Founder ruling 2026-09-29. One charge per platform reframed. Local ffmpeg scale+crop — no provider is contacted. The only balance transaction in مكمن الغاية.' },
+
   { capability: 'MP4_PRODUCTION', balancePerUnit: 70, quantity: 'per-requested-second',
     pricingBasisCapability: null,
     note: 'Founder commercial basis 5 EGP/s. Final assembly/export only — if a new paid generation is invoked it is charged separately, and never twice.' },

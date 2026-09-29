@@ -72,6 +72,35 @@ function rendersDir(): string {
   return base ? join(base, 'renders') : join(process.cwd(), 'public', 'renders');
 }
 
+/**
+ * How an asset fills a target rectangle — the one definition in the Empire.
+ *
+ *   contain: preserve aspect ratio, pad to W×H with black.
+ *   cover:   preserve aspect ratio, scale up and CROP to W×H.
+ *   fill:    stretch to exactly W×H (may distort).
+ *
+ * `cover` is what the Founder means by «تستبدل مقاسات الأصل الواحد قدر
+ * المستطاع... بشرط عدم المساس بالجودة»: the aspect ratio is preserved and the
+ * overflow is cropped, so nothing is squeezed and nothing is invented. It is
+ * also, exactly, `platform-adapter.ts`'s `crop-adapt` verdict.
+ *
+ * Lifted out of the node loop on 2026-09-29 because reframing a single asset
+ * for a platform needs the same filter without a whole assembly graph around
+ * it. One rule, two callers — never a second copy of a proven filter string.
+ */
+export function framingFilter(
+  targetW: number,
+  targetH: number,
+  mode: 'contain' | 'cover' | 'fill' = 'contain',
+): string {
+  if (mode === 'cover') {
+    return `scale=${targetW}:${targetH}:force_original_aspect_ratio=increase,crop=${targetW}:${targetH}`;
+  }
+  if (mode === 'fill') return `scale=${targetW}:${targetH}`;
+  return `scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease,`
+    + `pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2:color=black`;
+}
+
 /** XLII — output dimensions per profile.  Default = landscape when profile is absent. */
 const PROFILE_DIMENSIONS: Record<string, { w: number; h: number }> = {
   landscape: { w: 1920, h: 1080 },
@@ -553,11 +582,7 @@ function buildVideoCompositionFilters(
     // contain: preserve aspect ratio, pad to targetW×targetH with black
     // cover:   preserve aspect ratio, scale up and crop to targetW×targetH
     // fill:    stretch to exact targetW×targetH (may distort)
-    const scaleFilter = node.framingMode === 'cover'
-      ? `scale=${targetW}:${targetH}:force_original_aspect_ratio=increase,crop=${targetW}:${targetH}`
-      : node.framingMode === 'fill'
-        ? `scale=${targetW}:${targetH}`
-        : `scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease,pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2:color=black`;
+    const scaleFilter = framingFilter(targetW, targetH, node.framingMode);
 
     if (node.kind === 'video') {
       // VIDEO: trim source to [trimStart, trimEnd], normalise PTS, then shift to output position S.
