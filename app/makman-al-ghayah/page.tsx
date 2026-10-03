@@ -762,6 +762,67 @@ export default function MakmanAlGhayah() {
           </p>
         </header>
 
+        {/* ── THE DOOR OUT OF THE EMPIRE, WHERE ARRIVING EYES LAND ────────
+            FOUNDER, 2026-10-03, after a real Google link: «وصلت إلى مكمن
+            الغاية ولم أجد أي وسيلة ظاهرة لربط Google Drive».
+
+            MEASURED, then LOOKED AT. The panel was present, visible and
+            above the fold by 135px — and its button was cut off below it,
+            under twenty-one goal cards. Counting its presence said it was
+            there; a screenshot said nobody would ever find it.
+
+            A connection status belongs where a Creator's eye lands on
+            arrival, not at the end of a list. It is the FIRST section of
+            this Chamber now, and it states its condition in one line
+            before anything is asked of it. */}
+        <section className="makman-cloud-panel neon-border" data-testid="makman-cloud">
+          <div className="panel-header">
+            <div className="neon-tag">التوزيع الخارجي</div>
+            <h2>☁ حساباتك السحابيّة</h2>
+          </div>
+
+          {/* The condition, said in one line, before anything else. */}
+          <p className="makman-cloud-state">
+            {!cloud ? 'يُقرأ…'
+              : !cloud.available ? '◌ جوجل درايف — غير مهيّأ في الإمبراطوريّة بعد'
+              : cloud.accounts.length > 0 ? `● جوجل درايف — مرتبط (${cloud.accounts.length})`
+              : '○ جوجل درايف — غير مرتبط'}
+          </p>
+
+          {cloud?.accounts.map((acc) => (
+            <div key={acc.accountId} className="makman-plan-row makman-done-row">
+              <span>◈ {acc.accountLabel ?? 'حساب جوجل درايف'}</span>
+              <button
+                className="makman-unlink-btn"
+                disabled={cloudBusy !== null}
+                onClick={async () => {
+                  setCloudBusy(acc.accountId);
+                  const r = await unlinkCloudAccount(acc.accountId);
+                  setCloudNotice(r.messageAr);
+                  setCloud(await listCloudAccounts());
+                  setCloudBusy(null);
+                }}
+              >
+                {cloudBusy === acc.accountId ? '…' : '✕ فُكَّ الربط'}
+              </button>
+            </div>
+          ))}
+
+          {cloud?.available && (
+            <a className="makman-download-btn" href="/api/cloud/google/start">
+              {cloud.accounts.length > 0 ? '+ اربط حساباً آخر' : '+ اربط جوجل درايف'}
+            </a>
+          )}
+
+          {cloud?.available && cloud.accounts.length === 0 && (
+            <p className="makman-capability-hint">
+              يُرفع عملُك إلى حسابك أنت. والإمبراطوريّة لا تملك فيه شيئاً — ترى الملفّات التي تُنشئها هي وحدها.
+            </p>
+          )}
+
+          {cloudNotice && <p className="project-status">{cloudNotice}</p>}
+        </section>
+
         {/* ── Sovereign Purpose ──────────────────────────────────── */}
         <section className="makman-purpose-section neon-border">
           <div className="panel-header">
@@ -857,58 +918,6 @@ export default function MakmanAlGhayah() {
               ))}
             </div>
           )}
-
-          {/* ── HIS OWN CLOUD ACCOUNTS ──────────────────────────────────────
-              FOUNDER: «حسابات المستخدم السحابية... بعد أن يقوم بربطها».
-
-              MEASURED on production 2026-10-03: this panel was nested inside
-              the reframe section, which renders only after a render finishes
-              in the SAME session. So a Creator who had linked an account could
-              not see it, and could not withdraw it — and the Empire went on
-              holding a permission its owner had no way to reach.
-
-              «A Creator who can open a door they cannot shut has been given a
-              hazard, not a capability» — the publish route's own words, and
-              they apply to a grant more than to anything else. It stands at
-              chamber level now, visible whenever its owner is in the room. */}
-          <div className="makman-cloud-panel" data-testid="makman-cloud">
-            <p className="makman-capability-hint">☁ حساباتك السحابيّة</p>
-
-            {cloud?.accounts.length === 0 && (
-              <p className="project-status">لم تربط حساباً بعد.</p>
-            )}
-
-            {cloud?.accounts.map((acc) => (
-              <div key={acc.accountId} className="makman-plan-row makman-done-row">
-                <span>◈ {acc.accountLabel ?? 'حساب جوجل درايف'}</span>
-                <button
-                  className="makman-unlink-btn"
-                  disabled={cloudBusy !== null}
-                  onClick={async () => {
-                    setCloudBusy(acc.accountId);
-                    const r = await unlinkCloudAccount(acc.accountId);
-                    setCloudNotice(r.messageAr);
-                    setCloud(await listCloudAccounts());
-                    setCloudBusy(null);
-                  }}
-                >
-                  ✕ فُكَّ الربط
-                </button>
-              </div>
-            ))}
-
-            {cloud?.available ? (
-              <a className="makman-download-btn" href="/api/cloud/google/start">
-                {cloud.accounts.length > 0 ? '+ اربط حساباً آخر' : '+ اربط جوجل درايف'}
-              </a>
-            ) : (
-              <p className="project-status">
-                ربطُ الحسابات السحابيّة غير مهيّأ في الإمبراطوريّة بعد.
-              </p>
-            )}
-
-            {cloudNotice && <p className="project-status">{cloudNotice}</p>}
-          </div>
 
           {(arrivedDemand || demandNotice) && (
             <div className="makman-capability-hint" data-testid="makman-demand">

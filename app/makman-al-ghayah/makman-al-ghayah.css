@@ -652,3 +652,23 @@
 }
 
 .makman-download-btn:disabled { opacity: 0.45; cursor: default; }
+
+/* ─── THE CONNECTION STATE, SAID BEFORE ANYTHING IS ASKED ──────────────────
+     A Creator returning from Google must land on their own answer. The state
+     line carries its own colour so the condition reads before the words do. */
+.makman-cloud-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  border-radius: 12px;
+  padding: 20px 24px;
+}
+
+.makman-cloud-state {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--azma-text-primary, #E8D595);
+  font-variant-numeric: tabular-nums;
+}

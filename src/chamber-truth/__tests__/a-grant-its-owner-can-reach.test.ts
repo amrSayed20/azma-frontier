@@ -15,7 +15,7 @@ import { join } from 'path';
 
 const PAGE = readFileSync(join(process.cwd(), 'app/makman-al-ghayah/page.tsx'), 'utf8');
 
-it('the cloud accounts panel is not nested inside the render-only section', () => {
+it('the cloud panel is not nested inside the render-only section', () => {
   // The reframe panel opens on `renderVaultAssetId &&`. Anything after that
   // index and before its close is invisible without a finished render.
   const renderGate = PAGE.indexOf('{renderVaultAssetId && (');
@@ -23,6 +23,28 @@ it('the cloud accounts panel is not nested inside the render-only section', () =
   expect(cloudPanel).toBeGreaterThan(-1);
   expect(renderGate).toBeGreaterThan(-1);
   expect(cloudPanel).toBeLessThan(renderGate);
+});
+
+it('and stands where an arriving eye lands — before the Purpose and the goals', () => {
+  // MEASURED, then LOOKED AT, 2026-10-03: moving it to chamber level was not
+  // enough. It sat below twenty-one goal cards with its button cut off under
+  // the fold — present, visible, and findable by nobody. «يجد أمامه مباشرة
+  // حالة Google Drive والاتصال» is a position, not a presence.
+  const cloudPanel = PAGE.indexOf('data-testid="makman-cloud"');
+  const purpose = PAGE.indexOf('makman-purpose-section');
+  const goals = PAGE.indexOf('makman-goals-list');
+  expect(purpose).toBeGreaterThan(-1);
+  expect(goals).toBeGreaterThan(-1);
+  expect(cloudPanel).toBeLessThan(purpose);
+  expect(cloudPanel).toBeLessThan(goals);
+});
+
+it('and states its condition before it asks for anything', () => {
+  // A Creator returning from Google reads an answer, not a button.
+  const at = PAGE.indexOf('data-testid="makman-cloud"');
+  const panel = PAGE.slice(at, at + 1400);
+  expect(panel).toContain('makman-cloud-state');
+  expect(panel).toMatch(/مرتبط/);
 });
 
 it('and every linked account carries its own way out', () => {
