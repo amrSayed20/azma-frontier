@@ -21,6 +21,16 @@ const SESSION_COOKIE = 'azma_session';
 const RETURN_TO = 'https://azmaos.com/makman-al-ghayah';
 
 function back(outcome: string): NextResponse {
+  // ── EVERY ENDING LEAVES A TRACE ─────────────────────────────────────────
+  //   MEASURED 2026-10-03: a real link attempt ended with no account stored
+  //   and NOTHING in the server log, because four of this route's six endings
+  //   returned silently. The one failure that did log was the only one that
+  //   could not have been the cause, so the evidence pointed nowhere.
+  //
+  //   The outcome is a short word this file chose — never a token, never a
+  //   code, never anything Google sent. A route that can fail six ways must
+  //   be able to say which.
+  console.log('[cloud/google] outcome:', outcome);
   const response = NextResponse.redirect(`${RETURN_TO}?cloud=${encodeURIComponent(outcome)}`);
   // The one-use values are spent whatever happened. A state cookie that
   // outlives its exchange is a state cookie that can be replayed.
