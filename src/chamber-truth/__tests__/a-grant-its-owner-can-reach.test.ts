@@ -48,8 +48,18 @@ it('and states its condition before it asks for anything', () => {
 });
 
 it('and every linked account carries its own way out', () => {
+  // BOUNDED BY THE PANEL ITSELF, NOT BY A CHARACTER COUNT.
+  //
+  //   This read `at + 2200` until 2026-10-04, when adding Telegram pushed the
+  //   unlink button to 2300 and the test failed while the button was still
+  //   there. A magic number asserts the file's LENGTH; what is meant is that
+  //   the way out lies inside the accounts panel, which ends where the
+  //   carrier begins. The assertions are unchanged — only the boundary is now
+  //   the thing it always stood for.
   const at = PAGE.indexOf('data-testid="makman-cloud"');
-  const panel = PAGE.slice(at, at + 2200);
+  const carrier = PAGE.indexOf('makman-carrier', at);
+  expect(carrier).toBeGreaterThan(at);
+  const panel = PAGE.slice(at, carrier);
   expect(panel).toContain('cloud?.accounts.map');
   expect(panel).toContain('unlinkCloudAccount');
   expect(panel).toContain('فُكَّ الربط');

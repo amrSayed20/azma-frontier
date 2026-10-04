@@ -16,6 +16,14 @@
  *   no implementation behind it, and mapping it to anything — least of all to
  *   Google's destination — would turn an honest gap into a silent wrong
  *   delivery. A Creator cannot link one today, so nothing can ask for one.
+ *
+ *   `telegram-user` is absent for the OPPOSITE reason, and the difference
+ *   matters: it is fully implemented, and the server is simply not the one who
+ *   delivers for it. The Empire holds no session for that provider — by the
+ *   Founder's ruling of 2026-10-04 — so there is nothing here that could make
+ *   the call. `serverCanDeliver()` says so in words, because a future engineer
+ *   finding a working provider missing from this map will otherwise «fix» it,
+ *   and the fix would be the breach.
  */
 
 import type { CloudProviderId } from './cloud-account-repository';
@@ -36,4 +44,16 @@ export function destinationFor(provider: CloudProviderId): CloudDestination | nu
 /** The providers a Creator can link right now — those with a real binding. */
 export function implementedProviders(): readonly CloudProviderId[] {
   return Object.keys(BY_PROVIDER) as readonly CloudProviderId[];
+}
+
+/**
+ * Whether the SERVER is the party that delivers for this provider.
+ *
+ * False for `telegram-user`: real, reachable, and delivered by the Creator's
+ * own browser. A caller that gets false must refuse rather than look for
+ * another way — there is no other way, and inventing one means holding a
+ * session this Empire has agreed never to hold.
+ */
+export function serverCanDeliver(provider: CloudProviderId): boolean {
+  return BY_PROVIDER[provider] !== undefined;
 }

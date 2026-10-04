@@ -807,3 +807,19 @@
   color: var(--azma-text-muted, #A8955B);
   font-variant-numeric: tabular-nums;
 }
+
+/* The QR a Creator scans with their own Telegram app. It paints its own
+   ground: a code rendered dark-on-dark is a code no camera reads. */
+.makman-tg-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #FFFFFF;
+  border-radius: 10px;
+}
+
+.makman-tg-qr img { display: block; }
+
+.makman-tg-qr .makman-capability-hint { color: #2A2A2A; text-align: center; }

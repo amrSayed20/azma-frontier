@@ -21,7 +21,7 @@ import { encryptToken, decryptToken } from './token-vault';
  * بالرفع أو النشر», and a second registry for the second verb would have split
  * that centre in two.
  */
-export type CloudProviderId = 'google-drive' | 'dropbox' | 'telegram';
+export type CloudProviderId = 'google-drive' | 'dropbox' | 'telegram' | 'telegram-user';
 
 /** What a Creator is shown about an account they linked. Never a token. */
 export interface LinkedCloudAccount {
@@ -31,16 +31,40 @@ export interface LinkedCloudAccount {
   readonly linkedAtMs: number;
   readonly lastUsedAtMs: number | null;
   readonly revokedAtMs: number | null;
+  /**
+   * WHERE the browser must deliver — and only for providers where the BROWSER
+   * is the one delivering.
+   *
+   * ─── WHY THIS IS NOT A BREACH OF THE ABSTRACTION PRINCIPLE ────────────────
+   *
+   *   A provider's internal identifiers are kept off a Creator's screen: they
+   *   see «قناة أزما», never a chat id. That rule protects the Creator from
+   *   the Empire's machinery, and it holds for every server-delivered
+   *   provider — `google-drive` and `telegram` keep this null.
+   *
+   *   For `telegram-user` the browser IS the deliverer. It cannot address a
+   *   peer it is not told, and the value is in any case the Creator's own
+   *   channel, which their own Telegram app shows them. Withholding it would
+   *   not protect anything; it would only make the delivery impossible.
+   *
+   *   It is routing, never a credential. The session it would be useless
+   *   without never comes near this server.
+   */
+  readonly clientTarget: string | null;
 }
 
 type Row = {
   account_id: string;
   provider: string;
+  provider_account_id: string;
   account_label: string | null;
   linked_at: number;
   last_used_at: number | null;
   revoked_at: number | null;
 };
+
+/** The providers whose delivery happens in the Creator's own browser. */
+const CLIENT_DELIVERED: ReadonlySet<string> = new Set(['telegram-user']);
 
 const toAccount = (r: Row): LinkedCloudAccount => ({
   accountId: r.account_id,
@@ -49,6 +73,10 @@ const toAccount = (r: Row): LinkedCloudAccount => ({
   linkedAtMs: r.linked_at,
   lastUsedAtMs: r.last_used_at,
   revokedAtMs: r.revoked_at,
+  // The peer, and only where the browser is the one that must address it.
+  clientTarget: CLIENT_DELIVERED.has(r.provider)
+    ? (r.provider_account_id.slice(r.provider_account_id.lastIndexOf(':') + 1) || null)
+    : null,
 });
 
 /**
@@ -65,7 +93,20 @@ export function linkCloudAccount(
     provider: CloudProviderId;
     providerAccountId: string;
     accountLabel?: string | null;
-    refreshToken: string;
+    /**
+     * NULL means «this provider leaves no secret with the Empire».
+     *
+     * Not an empty string, and not an omitted field: both of those are what a
+     * bug looks like. `null` is a statement, and it is made by exactly one
+     * provider — `telegram-user`, whose session the Founder ruled on
+     * 2026-10-04 must never reach this server. The row then records WHICH
+     * account a Creator linked and WHERE it publishes, and holds no power at
+     * all; the power stays in the Creator's own browser.
+     *
+     * Every other provider must still pass a real token, and `encryptToken`
+     * still refuses when the vault has no key.
+     */
+    refreshToken: string | null;
     scopes: readonly string[];
     nowMs?: number;
   },
@@ -73,7 +114,7 @@ export function linkCloudAccount(
   const now = input.nowMs ?? Date.now();
   // Throws when the vault has no key — a deliberate refusal, never a
   // fallback to plaintext. See token-vault.ts.
-  const sealed = encryptToken(input.refreshToken);
+  const sealed = input.refreshToken === null ? null : encryptToken(input.refreshToken);
 
   db.prepare(
     `INSERT INTO cloud_accounts
@@ -99,7 +140,7 @@ export function linkCloudAccount(
 
   const row = db
     .prepare(
-      `SELECT account_id, provider, account_label, linked_at, last_used_at, revoked_at
+      `SELECT account_id, provider, provider_account_id, account_label, linked_at, last_used_at, revoked_at
        FROM cloud_accounts
        WHERE creator_id = ? AND provider = ? AND provider_account_id = ?`,
     )
@@ -114,7 +155,7 @@ export function listAccountsForCreator(
 ): readonly LinkedCloudAccount[] {
   const rows = db
     .prepare(
-      `SELECT account_id, provider, account_label, linked_at, last_used_at, revoked_at
+      `SELECT account_id, provider, provider_account_id, account_label, linked_at, last_used_at, revoked_at
        FROM cloud_accounts
        WHERE creator_id = ? AND revoked_at IS NULL
        ORDER BY linked_at DESC`,

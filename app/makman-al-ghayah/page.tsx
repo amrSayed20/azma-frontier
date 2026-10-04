@@ -43,6 +43,7 @@ import {
   listCloudAccounts, unlinkCloudAccount, uploadAssetToCloud,
   listDistributableAssets, resolveAssetForDistribution,
   connectTelegramBot, listDistributionReceipts,
+  telegramAppCredentialsForBrowser, linkTelegramUserAccount, recordTelegramUserPublication,
   type CloudView, type DistributableAsset, type DistributionRecordView,
 } from './cloud-actions';
 import { SOVEREIGN_ASSET_DRAG_TYPE, readDraggedAssetId } from '@/src/vault/sovereign-asset-drag';
@@ -320,6 +321,17 @@ export default function MakmanAlGhayah() {
   const [tgBusy,              setTgBusy]              = useState(false);
   // ── THE RECEIPTS — the publish state that survives a refresh ───────────
   const [receipts,            setReceipts]            = useState<readonly DistributionRecordView[]>([]);
+  // ── TELEGRAM BY THE CREATOR'S OWN ACCOUNT ──────────────────────────────
+  //   FOUNDER'S RULING, 2026-10-04: the session never reaches the AZMA
+  //   server. So none of this state ever holds one — a QR image, an identity
+  //   the browser read, and a list of destinations. PARTIAL ZERO-CUSTODY.
+  const [tgUserBusy,          setTgUserBusy]          = useState(false);
+  const [tgQrDataUrl,         setTgQrDataUrl]         = useState<string | null>(null);
+  const [tgIdentity,          setTgIdentity]          = useState<{ telegramUserId: string; username: string | null; displayName: string } | null>(null);
+  const [tgDestinations,      setTgDestinations]      = useState<readonly { peerId: string; title: string; roleAr: string }[]>([]);
+  const [tgNeedsPassword,     setTgNeedsPassword]     = useState(false);
+  const [tgPassword,          setTgPassword]          = useState('');
+  const tgPasswordResolver = useRef<((value: string) => void) | null>(null);
   // ── THE CARRIER: a sovereign asset on its way out of the Empire ────────
   //   `vaultDoor` is a VIEW of the Vault, never a second registry. `carried`
   //   is the one asset currently staged for distribution — a reference the
@@ -764,6 +776,67 @@ export default function MakmanAlGhayah() {
     finally { setIsAssessing(false); }
   };
 
+  /**
+   * Deliver one sovereign asset to Telegram FROM THIS BROWSER.
+   *
+   * ─── THE SERVER IS NEVER IN THE MIDDLE OF THIS ──────────────────────────
+   *
+   *   The bytes are fetched from `/generated-assets/…`, which already refuses
+   *   anyone but this asset's owner — so no second door was built for them.
+   *   They go to Telegram directly from here, over MTProto, using the session
+   *   that lives in this browser and has never been sent anywhere.
+   *
+   *   The server learns exactly three things afterwards: which asset, which
+   *   destination, and what message id came back. It did not witness the send
+   *   and cannot verify it — that would need the session the Empire agreed
+   *   never to hold. PARTIAL ZERO-CUSTODY, and the receipt says so by
+   *   carrying `telegram-user` as its provider.
+   */
+  const publishByCreatorBrowser = async (
+    asset: DistributableAsset,
+    acc: { accountId: string; clientTarget: string | null },
+  ): Promise<{ messageAr: string }> => {
+    if (!acc.clientTarget) return { messageAr: 'هذه الوجهة بلا مقصدٍ محفوظ — اربطها من جديد.' };
+    const app = await telegramAppCredentialsForBrowser();
+    if (!app.ok) return { messageAr: app.messageAr };
+
+    let bytes: Uint8Array;
+    let mimeType: string;
+    try {
+      const got = await fetch(asset.previewUri, { credentials: 'same-origin' });
+      if (!got.ok) return { messageAr: 'لم نجد بايتات هذا الأصل.' };
+      mimeType = got.headers.get('content-type') ?? 'application/octet-stream';
+      bytes = new Uint8Array(await got.arrayBuffer());
+    } catch {
+      return { messageAr: 'لم نجد بايتات هذا الأصل.' };
+    }
+
+    const tg = await import('./telegram-user-client');
+    const dot = asset.previewUri.lastIndexOf('.');
+    const outcome = await tg.publish({
+      apiId: app.apiId, apiHash: app.apiHash,
+      peerId: acc.clientTarget,
+      bytes, mimeType,
+      fileName: `AZMA — ${asset.assetId}${dot >= 0 ? asset.previewUri.slice(dot) : ''}`,
+    });
+
+    // The receipt is written either way — a store that records only successes
+    // makes a failed publication indistinguishable from one never attempted.
+    const recorded = await recordTelegramUserPublication({
+      assetId: asset.assetId,
+      accountId: acc.accountId,
+      providerMessageId: outcome.messageId ?? '',
+      ...(outcome.ok ? {} : { failureReason: outcome.failure ?? 'unreachable' }),
+    });
+    if (outcome.ok) return { messageAr: recorded.messageAr };
+    return {
+      messageAr:
+        outcome.failure === 'unauthorised' ? 'انتهى إذن تيليجرام في هذا المتصفّح — اربط حسابك من جديد.'
+        : outcome.failure === 'rejected' ? 'لم تُقبَل هذه الوسيلة في وجهتك.'
+        : 'لم نصل إلى تيليجرام الآن. أعد المحاولة.',
+    };
+  };
+
   // ── EACH DESTINATION'S OWN STATE ───────────────────────────────────────
   //   Counted per provider. One count for all of them would report «مرتبط»
   //   for a Drive that was never linked, on the strength of a Telegram
@@ -851,6 +924,18 @@ export default function MakmanAlGhayah() {
                 disabled={cloudBusy !== null}
                 onClick={async () => {
                   setCloudBusy(acc.accountId);
+                  // ── UNLINKING A SESSION THE SERVER DOES NOT HOLD ────────
+                  //   Revoking the row alone would leave the authorization
+                  //   alive in this browser AND standing in the Creator's own
+                  //   Telegram session list — the opposite of what «فُكَّ
+                  //   الربط» promises. So Telegram is told first, here.
+                  if (acc.provider === 'telegram-user') {
+                    const app = await telegramAppCredentialsForBrowser();
+                    if (app.ok) {
+                      const tg = await import('./telegram-user-client');
+                      await tg.forgetSession({ apiId: app.apiId, apiHash: app.apiHash });
+                    }
+                  }
                   const r = await unlinkCloudAccount(acc.accountId);
                   setCloudNotice(r.messageAr);
                   setCloud(await listCloudAccounts());
@@ -937,6 +1022,139 @@ export default function MakmanAlGhayah() {
             </div>
           )}
 
+          {/* ── TELEGRAM BY THE CREATOR'S OWN ACCOUNT ──────────────────────
+              FOUNDER'S RULING, 2026-10-04: the session must never reach the
+              AZMA server. So everything below that touches Telegram runs in
+              this browser, and the only things that cross to the server are a
+              label, a destination id, and afterwards a message id.
+
+              PARTIAL ZERO-CUSTODY, in his own words — never «zero custody».
+              The session lives in this browser's storage, on AZMA's origin.
+
+              GramJS is two megabytes and is reached ONLY through
+              `await import()` inside these handlers, so a Creator who never
+              links Telegram never downloads a byte of it. */}
+          {cloud?.telegramUserAvailable && (
+            <div className="makman-telegram-link">
+              <p className="makman-capability-hint">
+                ✦ تيليجرام — بحسابك أنت. امسح الرمز بتطبيقك كما تفعل مع تيليجرام على الحاسوب.
+                إذنُك يبقى في متصفّحك، ولا يصل خادمَ أزما.
+              </p>
+
+              {tgQrDataUrl && (
+                <div className="makman-tg-qr">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={tgQrDataUrl} alt="رمز الدخول إلى تيليجرام" width={200} height={200} />
+                  <p className="makman-capability-hint">
+                    تيليجرام ← الإعدادات ← الأجهزة ← ربط جهاز سطح المكتب
+                  </p>
+                </div>
+              )}
+
+              {tgNeedsPassword && (
+                <>
+                  <input
+                    id="makman-telegram-2fa"
+                    className="makman-telegram-input"
+                    type="password"
+                    autoComplete="off"
+                    dir="ltr"
+                    placeholder="كلمة التحقّق بخطوتين"
+                    value={tgPassword}
+                    onChange={(e) => setTgPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="makman-download-btn"
+                    onClick={() => {
+                      const resolve = tgPasswordResolver.current;
+                      tgPasswordResolver.current = null;
+                      setTgNeedsPassword(false);
+                      const given = tgPassword;
+                      setTgPassword('');
+                      resolve?.(given);
+                    }}
+                  >
+                    ↵ تابِع
+                  </button>
+                </>
+              )}
+
+              {tgDestinations.length > 0 && (
+                <>
+                  <p className="makman-capability-hint">◆ اختر وجهةً تنشر فيها</p>
+                  {tgDestinations.map((d) => (
+                    <button
+                      key={d.peerId}
+                      type="button"
+                      className="makman-download-btn"
+                      disabled={tgUserBusy}
+                      onClick={async () => {
+                        setTgBusy(true);
+                        const r = await linkTelegramUserAccount({
+                          telegramUserId: tgIdentity?.telegramUserId ?? '',
+                          username: tgIdentity?.username ?? null,
+                          peerId: d.peerId,
+                          peerTitle: d.title,
+                        });
+                        setCloudNotice(r.messageAr);
+                        setTgDestinations([]);
+                        setCloud(await listCloudAccounts());
+                        setTgBusy(false);
+                      }}
+                    >
+                      ✦ {d.title} — {d.roleAr}
+                    </button>
+                  ))}
+                </>
+              )}
+
+              <button
+                type="button"
+                className="makman-download-btn"
+                data-testid="makman-telegram-user-connect"
+                disabled={tgUserBusy}
+                onClick={async () => {
+                  setTgBusy(true);
+                  setCloudNotice(null);
+                  setTgQrDataUrl(null);
+                  try {
+                    const app = await telegramAppCredentialsForBrowser();
+                    if (!app.ok) { setCloudNotice(app.messageAr); setTgBusy(false); return; }
+                    const tg = await import('./telegram-user-client');
+                    const qrlib = await import('qrcode');
+
+                    // An already-authorized browser skips the scan entirely.
+                    if (!tg.hasStoredSession()) {
+                      const who = await tg.authorizeWithQr({
+                        apiId: app.apiId, apiHash: app.apiHash,
+                        onQrUrl: async (url: string) => {
+                          setTgQrDataUrl(await qrlib.toDataURL(url, { width: 200, margin: 1 }));
+                        },
+                        onPassword: () => new Promise<string>((resolve) => {
+                          tgPasswordResolver.current = resolve;
+                          setTgNeedsPassword(true);
+                        }),
+                      });
+                      setTgIdentity(who);
+                    } else {
+                      // Already authorized in this browser — no scan is owed.
+                      setTgIdentity(await tg.identify({ apiId: app.apiId, apiHash: app.apiHash }));
+                    }
+                    setTgQrDataUrl(null);
+                    setTgDestinations(await tg.listDestinations({ apiId: app.apiId, apiHash: app.apiHash }));
+                  } catch (e) {
+                    setCloudNotice('لم يتمّ الربط. أعد المحاولة.');
+                    console.error('[telegram-user] link failed:', e instanceof Error ? e.message : e);
+                  }
+                  setTgBusy(false);
+                }}
+              >
+                {tgUserBusy ? 'يُنتظر تيليجرام…' : '✦ اربط حسابك في تيليجرام'}
+              </button>
+            </div>
+          )}
+
           {cloudNotice && <p className="project-status">{cloudNotice}</p>}
 
           {/* ── THE CARRIER: FROM THE VAULT, INTO THE DISTRIBUTION ──────────
@@ -1017,7 +1235,14 @@ export default function MakmanAlGhayah() {
                 onClick={async () => {
                   setCloudBusy(`${carried.assetId}:${acc.accountId}`);
                   setCarryNotice(null);
-                  const r = await uploadAssetToCloud(carried.assetId, acc.accountId);
+                  // ── WHO DELIVERS, DECIDED BY THE PROVIDER ───────────────
+                  //   For every server-delivered provider the Empire spends a
+                  //   credential it holds. For `telegram-user` it holds none,
+                  //   so the delivery happens HERE, in the Creator's browser,
+                  //   and the server is told only what came back.
+                  const r = acc.provider === 'telegram-user'
+                    ? await publishByCreatorBrowser(carried, acc)
+                    : await uploadAssetToCloud(carried.assetId, acc.accountId);
                   setCarryNotice(r.messageAr);
                   setCloud(await listCloudAccounts());
                   // The receipt, re-read from the database — so what the
@@ -1028,10 +1253,12 @@ export default function MakmanAlGhayah() {
                 }}
               >
                 {cloudBusy === `${carried.assetId}:${acc.accountId}`
-                  ? (acc.provider === 'telegram' ? 'يُنشَر…' : 'يُرفع…')
-                  : acc.provider === 'telegram'
-                    ? `✈ انشره في ${acc.accountLabel ?? 'وجهتك'}`
-                    : `☁ ارفعه إلى ${acc.accountLabel ?? 'حسابك'}`}
+                  ? (acc.provider === 'google-drive' ? 'يُرفع…' : 'يُنشَر…')
+                  : acc.provider === 'telegram-user'
+                    ? `✦ انشره بحسابك في ${acc.accountLabel ?? 'وجهتك'}`
+                    : acc.provider === 'telegram'
+                      ? `✈ انشره في ${acc.accountLabel ?? 'وجهتك'}`
+                      : `☁ ارفعه إلى ${acc.accountLabel ?? 'حسابك'}`}
               </button>
             ))}
 

@@ -43,6 +43,13 @@ import {
   identifyBot, identifyChat, telegramAccountKey, chatFromAccountKey,
 } from '@/src/cloud-destinations/telegram-destination';
 import { isTokenVaultConfigured } from '@/src/cloud-destinations/token-vault';
+import {
+  telegramAppCredentials,
+  telegramUserIsConfigured,
+  telegramUserAccountKey,
+  peerFromAccountKey,
+  looksLikeTelegramSession,
+} from '@/src/cloud-destinations/telegram-user-destination';
 
 const SESSION_COOKIE = 'azma_session';
 
@@ -62,20 +69,30 @@ export interface CloudView {
    * flag for both would have hidden an open door behind a closed one.
    */
   readonly telegramAvailable: boolean;
+  /**
+   * Whether the Creator's OWN Telegram account can be linked.
+   *
+   * A third separate condition, and deliberately so. It depends on neither the
+   * Empire's Google secret nor its token vault — the vault holds nothing for
+   * this provider — but only on whether Telegram has registered AZMA as an
+   * application at all.
+   */
+  readonly telegramUserAvailable: boolean;
   readonly accounts: readonly LinkedCloudAccount[];
 }
 
 /** The accounts this Creator has linked. Never a token. */
 export async function listCloudAccounts(): Promise<CloudView> {
   const creatorId = await creator();
-  if (!creatorId) return { available: false, telegramAvailable: false, accounts: [] };
+  if (!creatorId) return { available: false, telegramAvailable: false, telegramUserAvailable: false, accounts: [] };
   const vault = isTokenVaultConfigured();
   const available = googleDriveDestination.identity.configured && vault;
   const telegramAvailable = vault;
+  const telegramUserAvailable = telegramUserIsConfigured();
   try {
-    return { available, telegramAvailable, accounts: listAccountsForCreator(getDb(), creatorId) };
+    return { available, telegramAvailable, telegramUserAvailable, accounts: listAccountsForCreator(getDb(), creatorId) };
   } catch {
-    return { available, telegramAvailable, accounts: [] };
+    return { available, telegramAvailable, telegramUserAvailable, accounts: [] };
   }
 }
 
@@ -136,8 +153,19 @@ export async function uploadAssetToCloud(
   }
   const destination = destinationFor(binding.provider);
   if (!destination) {
-    // A named provider with no implementation behind it. Honest refusal.
-    return { ok: false, messageAr: 'هذه الوجهة غير متاحةٍ في الإمبراطوريّة بعد.' };
+    // TWO DIFFERENT REFUSALS, AND THEY MUST NOT SHARE A SENTENCE.
+    //
+    //   `dropbox` is a name with no implementation — «not available yet» is
+    //   true of it. `telegram-user` is fully implemented and reachable, and
+    //   the server simply holds no session with which to deliver it; saying
+    //   «not available yet» about a working destination would be a lie told
+    //   by a message, which is still a lie.
+    return {
+      ok: false,
+      messageAr: binding.provider === 'telegram-user'
+        ? 'هذه الوجهة تُنشَر من متصفّحك أنت، لا من الخادم. افتح الحجرة وانشر منها.'
+        : 'هذه الوجهة غير متاحةٍ في الإمبراطوريّة بعد.',
+    };
   }
   const isTelegram = binding.provider === 'telegram';
   const verb = isTelegram ? 'نُشِر' : 'رُفِع';
@@ -436,4 +464,177 @@ export async function resolveAssetForDistribution(assetId: string): Promise<Reso
     return { ok: false, messageAr: 'لا يوجد أصل بهذا المعرّف في خزانتك.' };
   }
   return { ok: true, asset: describe(asset) };
+}
+
+/**
+ * ═══ TELEGRAM BY THE CREATOR'S OWN ACCOUNT ═════════════════════════════════
+ *
+ * FOUNDER'S RULING, 2026-10-04 — PARTIAL ZERO-CUSTODY, accepted in those
+ * words and never to be described as zero-custody:
+ *
+ *   «Telegram user sessions MUST NOT be stored on the AZMA server… MUST NOT
+ *    enter cloud_accounts, distribution_receipts, backups, logs, API
+ *    responses, or server-side persistence.»
+ *
+ * So the three actions below are the WHOLE of this provider's server side,
+ * and not one of them takes a credential:
+ *
+ *   `telegramAppCredentialsForBrowser` — hands the Creator's own browser the
+ *       APPLICATION's api_id/api_hash. Not any account's secret; what Telegram
+ *       requires of any client before it may speak MTProto at all.
+ *   `linkTelegramUserAccount`          — records WHICH account and WHERE,
+ *       with no secret of any kind.
+ *   `recordTelegramUserPublication`    — writes the receipt for a publication
+ *       the browser performed.
+ *
+ * ─── WHAT THE SERVER CANNOT DO HERE, AND WHY THAT IS THE DESIGN ─────────────
+ *
+ *   It cannot verify the Telegram identity, and it cannot witness the message.
+ *   Both would require the session it has agreed never to hold. What it CAN
+ *   do, it does without exception: the AZMA session, the Vault's ownership
+ *   boundary, and the account's ownership are all checked on every call, so a
+ *   browser's claim can only ever be written against the Creator's own asset
+ *   and the Creator's own destination.
+ */
+
+/**
+ * The application credentials, for an authenticated Creator's browser only.
+ *
+ * Never baked into the client bundle: a static build is a file anyone may
+ * fetch, and a leaked api_hash is used for someone else's automation until
+ * Telegram bans it — which would take this path away from every Creator at
+ * once.
+ */
+export async function telegramAppCredentialsForBrowser(): Promise<
+  { ok: true; apiId: number; apiHash: string } | { ok: false; messageAr: string }
+> {
+  const creatorId = await creator();
+  if (!creatorId) return { ok: false, messageAr: 'سجّل دخولك أوّلاً.' };
+  const app = telegramAppCredentials();
+  if (!app) return { ok: false, messageAr: 'تيليجرام غير مهيّأ في الإمبراطوريّة بعد.' };
+  return { ok: true, apiId: app.apiId, apiHash: app.apiHash };
+}
+
+/**
+ * Record a destination the Creator's browser authorised — WITHOUT A SECRET.
+ *
+ * Every argument is routing or a label. If anything session-shaped ever
+ * arrives at this door — through a widened parameter, or a «convenience» a
+ * future engineer adds — `looksLikeTelegramSession` refuses the whole call
+ * rather than storing it. That guard is the ruling made executable.
+ */
+export async function linkTelegramUserAccount(input: {
+  telegramUserId: string;
+  username: string | null;
+  peerId: string;
+  peerTitle: string;
+}): Promise<{ ok: boolean; messageAr: string }> {
+  const creatorId = await creator();
+  if (!creatorId) return { ok: false, messageAr: 'سجّل دخولك أوّلاً.' };
+  if (!telegramUserIsConfigured()) {
+    return { ok: false, messageAr: 'تيليجرام غير مهيّأ في الإمبراطوريّة بعد.' };
+  }
+
+  const telegramUserId = String(input.telegramUserId ?? '').trim();
+  const peerId = String(input.peerId ?? '').trim();
+  const peerTitle = String(input.peerTitle ?? '').trim();
+  if (!telegramUserId || !peerId) {
+    return { ok: false, messageAr: 'لم تصل هويّة الحساب أو الوجهة.' };
+  }
+
+  // THE RULING, MADE EXECUTABLE. Checked on every field, not only the ones a
+  // session would plausibly arrive in.
+  for (const value of [telegramUserId, peerId, peerTitle, input.username ?? '']) {
+    if (looksLikeTelegramSession(value)) {
+      console.error('[telegram-user] refused: a session-shaped value reached the server');
+      return { ok: false, messageAr: 'رُفِض الربط — وصل إلى الخادم ما لا يجوز أن يصله.' };
+    }
+  }
+
+  const account = linkCloudAccount(getDb(), {
+    creatorId,
+    provider: 'telegram-user',
+    providerAccountId: telegramUserAccountKey(telegramUserId, peerId),
+    accountLabel: input.username
+      ? `${peerTitle || 'وجهة تيليجرام'} — @${input.username}`
+      : (peerTitle || 'وجهة تيليجرام'),
+    // ── THE WHOLE RULING, IN ONE ARGUMENT ──────────────────────────────
+    //   No token is sealed because no token exists here. The row records
+    //   which destination a Creator may publish to and holds no power to
+    //   do it; the power never left their browser.
+    refreshToken: null,
+    scopes: ['client-publish'],
+  });
+
+  return { ok: true, messageAr: `ارتُبط — سيُنشَر إلى «${account.accountLabel}» بحسابك أنت.` };
+}
+
+/**
+ * Write the receipt for a publication the Creator's browser performed.
+ *
+ * ─── THE MESSAGE ID IS A CLAIM, AND IS RECORDED AS ONE ──────────────────────
+ *
+ *   The server did not witness this send and cannot check it: checking would
+ *   need the session it does not hold. What it checks instead is everything
+ *   within its reach — that the Creator is who the cookie says, that the asset
+ *   is theirs, that the account is theirs and is a `telegram-user` account —
+ *   so a false id can still only ever be attached to the claimant's own asset
+ *   and their own destination.
+ *
+ *   The receipt's `provider` column carries the distinction permanently: a row
+ *   reading `telegram-user` was reported by a browser, and a row reading
+ *   `telegram` was observed by this server. No extra column states it, because
+ *   the provider name already does, exactly and for every row.
+ */
+export async function recordTelegramUserPublication(input: {
+  assetId: string;
+  accountId: string;
+  providerMessageId: string;
+  failureReason?: 'unauthorised' | 'rejected' | 'unreachable';
+}): Promise<{ ok: boolean; messageAr: string }> {
+  const creatorId = await creator();
+  if (!creatorId) return { ok: false, messageAr: 'سجّل دخولك أوّلاً.' };
+
+  const db = getDb();
+  const asset = getVaultAsset(db, String(input.assetId ?? '').trim());
+  if (!asset || asset.subscriberTenantId !== creatorId) {
+    return { ok: false, messageAr: 'لا يوجد أصل بهذا المعرّف في خزانتك.' };
+  }
+
+  const accountId = String(input.accountId ?? '').trim();
+  const binding = readAccountBinding(db, accountId, creatorId);
+  if (!binding || binding.provider !== 'telegram-user') {
+    return { ok: false, messageAr: 'لا توجد وجهة تيليجرام بهذا المعرّف في حسابك.' };
+  }
+
+  const messageId = String(input.providerMessageId ?? '').trim();
+  // A session must not reach the receipt either — the Founder named
+  // `distribution_receipts` explicitly among the places it may not enter.
+  if (looksLikeTelegramSession(messageId)) {
+    console.error('[telegram-user] refused: a session-shaped value reached the receipt');
+    return { ok: false, messageAr: 'رُفِض التسجيل — وصل إلى الخادم ما لا يجوز أن يصله.' };
+  }
+
+  const failed = input.failureReason !== undefined;
+  if (!failed && !/^\d+$/.test(messageId)) {
+    // A Telegram message id is a positive integer. Anything else is not a
+    // publication, and a receipt is never written for one.
+    return { ok: false, messageAr: 'لم يصل معرّف رسالةٍ حقيقيّ — لم يُسجَّل نشر.' };
+  }
+
+  recordDistribution(db, {
+    creatorId,
+    sourceAssetId: asset.assetId,
+    provider: 'telegram-user',
+    accountId,
+    providerTarget: peerFromAccountKey(binding.providerAccountId),
+    providerMessageId: failed ? null : messageId,
+    status: failed ? 'FAILED' : 'PUBLISHED',
+    failureReason: input.failureReason ?? null,
+  });
+
+  if (!failed) markAccountUsed(db, accountId, creatorId);
+  return failed
+    ? { ok: true, messageAr: 'سُجِّل أنّ النشر لم يتمّ.' }
+    : { ok: true, messageAr: 'نُشِر بحسابك، وسُجِّل الإيصال.' };
 }

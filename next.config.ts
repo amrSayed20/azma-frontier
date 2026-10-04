@@ -16,6 +16,33 @@ const NO_CACHE_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
+  // ── MTProto IN A CREATOR'S BROWSER ────────────────────────────────────────
+  //
+  // GramJS ships one build for both runtimes and picks its transport at RUN
+  // time — telegramBaseClient.js reads
+  //
+  //     networkSocket: isNode ? PromisedNetSockets : PromisedWebSockets
+  //
+  // so in a browser it speaks MTProto over WebSocket, as Telegram's own web
+  // clients do. The IMPORT of `net` is static all the same, and a browser has
+  // no `net`, `fs` or `os`. Without these three lines the Chamber does not
+  // build at all:
+  //
+  //     ./node_modules/telegram/extensions/net.js:17
+  //     Module not found: Can't resolve 'net'
+  //
+  // The `browser` condition is the whole point: every one of these resolves
+  // normally on the server, where real code genuinely uses them. Only the
+  // client bundle gets the empty object, and only because nothing there ever
+  // dereferences it.
+  turbopack: {
+    resolveAlias: {
+      net: { browser: './src/node-shims/absent-in-browser.js' },
+      fs: { browser: './src/node-shims/absent-in-browser.js' },
+      os: { browser: './src/node-shims/absent-in-browser.js' },
+    },
+  },
+
   // Version-skew protection. Every build gives Server Actions new ids, so a tab
   // left open across a deployment fires an action the new build has never heard
   // of and Next.js replaces the whole app with its error screen — the black
