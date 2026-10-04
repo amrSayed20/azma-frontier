@@ -39,7 +39,12 @@ import { takeDemandFor, resolveDemand, spokenDemandArrival } from '@/src/soverei
 import './makman-al-ghayah.css';
 import { ChamberDemonstration } from '@/src/chamber-demonstration';
 import { planReframe, executeReframe, sweepRetention, type RetentionView } from './reframe-actions';
-import { listCloudAccounts, unlinkCloudAccount, uploadAssetToCloud, type CloudView } from './cloud-actions';
+import {
+  listCloudAccounts, unlinkCloudAccount, uploadAssetToCloud,
+  listDistributableAssets, resolveAssetForDistribution,
+  type CloudView, type DistributableAsset,
+} from './cloud-actions';
+import { SOVEREIGN_ASSET_DRAG_TYPE, readDraggedAssetId } from '@/src/vault/sovereign-asset-drag';
 import { reframablePlatforms } from '@/src/platform-reframe/platform-target';
 
 /** The plan as the page displays it — the server's own shape, narrowed. */
@@ -291,6 +296,14 @@ export default function MakmanAlGhayah() {
   const [cloud,               setCloud]               = useState<CloudView | null>(null);
   const [cloudBusy,           setCloudBusy]           = useState<string | null>(null);
   const [cloudNotice,         setCloudNotice]         = useState<string | null>(null);
+  // ── THE CARRIER: a sovereign asset on its way out of the Empire ────────
+  //   `vaultDoor` is a VIEW of the Vault, never a second registry. `carried`
+  //   is the one asset currently staged for distribution — a reference the
+  //   server resolved, not bytes the browser handed over.
+  const [vaultDoor,           setVaultDoor]           = useState<readonly DistributableAsset[]>([]);
+  const [carried,             setCarried]             = useState<DistributableAsset | null>(null);
+  const [dropState,           setDropState]           = useState<'idle' | 'over' | 'resolving' | 'rejected'>('idle');
+  const [carryNotice,         setCarryNotice]         = useState<string | null>(null);
 
   // ── Fulfillment + Gap + Investigation (per selected goal) ──────────
   // ── THE MIDDLE OF THE CHAIN, WHICH HAD NO CONTROLS ──────────────────────
@@ -372,6 +385,7 @@ export default function MakmanAlGhayah() {
     //   Chamber, and they are TOLD what happened and what is about to.
     void sweepRetention().then(setRetention);
     void listCloudAccounts().then(setCloud);
+    void listDistributableAssets().then(setVaultDoor);
     // The link journey ends on Google's screen and returns here with a code.
     // The Chamber says what happened — the provider's own words never do.
     try {
@@ -821,6 +835,137 @@ export default function MakmanAlGhayah() {
           )}
 
           {cloudNotice && <p className="project-status">{cloudNotice}</p>}
+
+          {/* ── THE CARRIER: FROM THE VAULT, INTO THE DISTRIBUTION ──────────
+              FOUNDER, 2026-10-04, after a live test: «THE ASSET DOES NOT MOVE
+              WITH THE DRAG. THE DROP TARGET DOES NOT RECEIVE THE ASSET.»
+
+              MEASURED before touching anything: this Chamber had ZERO drag or
+              drop handlers — no source, no target, no dataTransfer contract —
+              while رأس الأمر, الحجّة and القيامة all had one. The drag did not
+              fail; there was nothing built to receive it. And the only path to
+              an upload ran through `reframeDone`, session state filled only by
+              a reframe finished minutes earlier, so an asset ALREADY in the
+              Vault had no route at all.
+
+              What moves is an ASSET ID. Never a File, never a Blob, never
+              bytes. The server resolves it through the ownership boundary it
+              already has, and the Vault stays the source of truth. */}
+          <div className="makman-carrier">
+
+            {/* The drop target. It states its own condition and never claims
+                acceptance before the resolution returns. */}
+            <div
+              className={`makman-drop-target drop-${dropState}${carried ? ' drop-carrying' : ''}`}
+              data-testid="makman-drop-target"
+              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setDropState('over'); }}
+              onDragLeave={() => setDropState((s) => (s === 'over' ? 'idle' : s))}
+              onDrop={async (e) => {
+                e.preventDefault();
+                const assetId = readDraggedAssetId(e.dataTransfer);
+                if (!assetId) {
+                  // A desktop file, a URL, a text selection — none is sovereign.
+                  setDropState('rejected');
+                  setCarryNotice('ما أُفلِت ليس أصلاً سياديّاً من خزانتك.');
+                  return;
+                }
+                setDropState('resolving');
+                setCarryNotice(null);
+                const outcome = await resolveAssetForDistribution(assetId);
+                if (outcome.ok) {
+                  setCarried(outcome.asset);
+                  setDropState('idle');
+                } else {
+                  setDropState('rejected');
+                  setCarryNotice(outcome.messageAr);
+                }
+              }}
+            >
+              {carried ? (
+                <div className="makman-carried">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={carried.previewUri} alt="" className="makman-carried-thumb" />
+                  <span className="makman-carried-name">◈ {carried.labelAr}</span>
+                  <button
+                    className="makman-unlink-btn"
+                    onClick={() => { setCarried(null); setCarryNotice(null); }}
+                  >
+                    ✕ أزِله
+                  </button>
+                </div>
+              ) : (
+                <p className="makman-drop-hint">
+                  {dropState === 'over' ? '◉ أفلِته هنا'
+                    : dropState === 'resolving' ? 'يُتحقَّق من ملكيّتك…'
+                    : dropState === 'rejected' ? '✕ لم يُقبَل'
+                    : '⇣ اسحب أصلاً من خزانتك إلى هنا — أو اضغط عليه'}
+                </p>
+              )}
+            </div>
+
+            {carryNotice && <p className="project-status">{carryNotice}</p>}
+
+            {/* ── THE DESTINATION, ONCE SOMETHING IS CARRIED ──────────────── */}
+            {carried && cloud?.accounts.map((acc) => (
+              <button
+                key={acc.accountId}
+                className="makman-download-btn"
+                disabled={cloudBusy !== null}
+                onClick={async () => {
+                  setCloudBusy(`${carried.assetId}:${acc.accountId}`);
+                  setCarryNotice(null);
+                  const r = await uploadAssetToCloud(carried.assetId, acc.accountId);
+                  setCarryNotice(r.messageAr);
+                  setCloud(await listCloudAccounts());
+                  setCloudBusy(null);
+                }}
+              >
+                {cloudBusy === `${carried.assetId}:${acc.accountId}`
+                  ? 'يُرفع…'
+                  : `☁ ارفعه إلى ${acc.accountLabel ?? 'حسابك'}`}
+              </button>
+            ))}
+
+            {carried && cloud?.accounts.length === 0 && (
+              <p className="makman-capability-hint">اربط حساباً سحابيّاً أعلاه لترفع هذا الأصل إليه.</p>
+            )}
+
+            {/* ── THE VAULT DOOR ──────────────────────────────────────────
+                A VIEW of the Vault, never a second registry. Every card is
+                draggable AND pressable: «كل أصل قابل للاختيار بالضغط لمن لا
+                يستخدم السحب والإفلات». */}
+            <p className="makman-capability-hint">◆ أصولك في الخزانة السيادية</p>
+            <div className="makman-vault-door" data-testid="makman-vault-door">
+              {vaultDoor.length === 0 && (
+                <p className="project-status">لا أصول في خزانتك بعد.</p>
+              )}
+              {vaultDoor.map((a) => (
+                <button
+                  key={a.assetId}
+                  type="button"
+                  className={`makman-vault-card${carried?.assetId === a.assetId ? ' vault-card-on' : ''}`}
+                  draggable
+                  onDragStart={(e) => {
+                    // The Empire's one sovereign-asset drag contract.
+                    e.dataTransfer.setData(SOVEREIGN_ASSET_DRAG_TYPE, a.assetId);
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  onClick={async () => {
+                    setDropState('resolving');
+                    setCarryNotice(null);
+                    const outcome = await resolveAssetForDistribution(a.assetId);
+                    if (outcome.ok) { setCarried(outcome.asset); setDropState('idle'); }
+                    else { setDropState('rejected'); setCarryNotice(outcome.messageAr); }
+                  }}
+                  title={a.labelAr}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={a.previewUri} alt="" className="makman-vault-thumb" draggable={false} />
+                  <span className="makman-vault-kind">{a.kindAr}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </section>
 
         {/* ── Sovereign Purpose ──────────────────────────────────── */}

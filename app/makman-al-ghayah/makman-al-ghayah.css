@@ -672,3 +672,91 @@
   color: var(--azma-text-primary, #E8D595);
   font-variant-numeric: tabular-nums;
 }
+
+/* ─── THE CARRIER: VAULT → MAKMAN → DESTINATION ────────────────────────────
+     The drop target states its own condition in its border and its words at
+     the same time, so the state reads before it is read. */
+.makman-carrier {
+  width: 100%;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(var(--azma-gold-rgb), 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.makman-drop-target {
+  width: 100%;
+  min-height: 96px;
+  box-sizing: border-box;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed rgba(var(--azma-gold-rgb), 0.28);
+  border-radius: 12px;
+  background: rgba(var(--azma-gold-rgb), 0.03);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.makman-drop-target.drop-over {
+  border-color: var(--azma-gold-6, #D4AF37);
+  background: rgba(var(--azma-gold-rgb), 0.10);
+}
+.makman-drop-target.drop-resolving { border-color: rgba(var(--azma-gold-rgb), 0.55); }
+.makman-drop-target.drop-rejected  { border-color: #9A6B6B; background: rgba(154, 107, 107, 0.07); }
+.makman-drop-target.drop-carrying  { border-style: solid; border-color: #6FBF73; background: rgba(111, 191, 115, 0.06); }
+
+.makman-drop-hint {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--azma-text-muted, #A8955B);
+  text-align: center;
+}
+
+.makman-carried { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.makman-carried-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; }
+.makman-carried-name { font-size: 0.9rem; color: var(--azma-text-primary, #E8D595); }
+
+/* ── The Vault door: a view of the Vault, never a second registry ───────── */
+.makman-vault-door {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 190px;
+  overflow-y: auto;
+}
+
+.makman-vault-card {
+  position: relative;
+  width: 84px;
+  min-height: 84px;
+  padding: 0;
+  cursor: grab;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.22);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.2s ease, transform 0.15s ease;
+}
+
+.makman-vault-card:hover { border-color: rgba(var(--azma-gold-rgb), 0.55); transform: translateY(-2px); }
+.makman-vault-card:active { cursor: grabbing; }
+.makman-vault-card.vault-card-on { border-color: #6FBF73; box-shadow: 0 0 0 1px #6FBF73 inset; }
+.makman-vault-card:focus-visible { outline: 2px solid rgba(var(--azma-gold-rgb), 0.7); outline-offset: 2px; }
+
+.makman-vault-thumb { width: 100%; height: 84px; object-fit: cover; display: block; }
+
+.makman-vault-kind {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-end: 0;
+  padding: 2px 7px;
+  font-size: 0.68rem;
+  color: var(--azma-text-primary, #E8D595);
+  background: rgba(0, 0, 0, 0.78);
+  border-start-end-radius: 6px;
+}

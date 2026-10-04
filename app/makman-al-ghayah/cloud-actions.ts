@@ -142,3 +142,88 @@ export async function uploadAssetToCloud(
       : 'لم نصل إلى حسابك الآن. أعد المحاولة.',
   };
 }
+
+/** A sovereign asset as the distribution panel shows it. Never bytes, never a path. */
+export interface DistributableAsset {
+  readonly assetId: string;
+  readonly labelAr: string;
+  readonly kindAr: string;
+  /** For a thumbnail the Creator's own browser is already authorised to fetch. */
+  readonly previewUri: string;
+}
+
+const KIND_AR: Readonly<Record<string, string>> = {
+  VISUAL: 'صورة', MOTION: 'فيديو', AUDIO: 'صوت', WRITING: 'نصّ',
+};
+
+function describe(asset: {
+  assetId: string;
+  capabilityTarget: string;
+  secureStorageUri: string;
+  metadata?: Record<string, unknown>;
+}): DistributableAsset {
+  const m = asset.metadata ?? {};
+  const named =
+    (typeof m.reframedForLabel === 'string' && m.reframedForLabel)
+    || (typeof m.generationPrompt === 'string' && m.generationPrompt.slice(0, 48))
+    || (typeof m.voiceDisplayName === 'string' && m.voiceDisplayName)
+    || null;
+  return {
+    assetId: asset.assetId,
+    labelAr: named || 'أصل من خزانتك',
+    kindAr: KIND_AR[asset.capabilityTarget] ?? 'أصل',
+    previewUri: asset.secureStorageUri,
+  };
+}
+
+/**
+ * The Creator's own assets, for the distribution door.
+ *
+ * Read through the Vault's existing tenant-scoped listing — no second registry
+ * and no second query. The Vault remains the source of truth; this is a view
+ * of it, and nothing here can create, alter or remove an asset.
+ */
+export async function listDistributableAssets(limit = 60): Promise<readonly DistributableAsset[]> {
+  const creatorId = await creator();
+  if (!creatorId) return [];
+  try {
+    const { listVaultAssetsForTenant } = await import('@/src/persistent-storage');
+    return listVaultAssetsForTenant(getDb(), creatorId)
+      .filter((a) => a.assetFamily === 'MEDIA')
+      .slice(0, Math.max(1, Math.min(limit, 200)))
+      .map(describe);
+  } catch {
+    return [];
+  }
+}
+
+export type ResolveOutcome =
+  | { readonly ok: true; readonly asset: DistributableAsset }
+  | { readonly ok: false; readonly messageAr: string };
+
+/**
+ * Turn a dropped sovereign id into an asset — THROUGH THE OWNERSHIP BOUNDARY.
+ *
+ * ─── THIS IS THE WHOLE POINT OF THE DROP TARGET ─────────────────────────────
+ *
+ *   A drop carries an id, and an id from a browser is a claim, not a fact.
+ *   `getVaultAsset` + the tenant comparison is the same gate every other act
+ *   in this Empire passes, and the answer is the same for «no such asset» and
+ *   «not yours» so an id cannot be probed.
+ *
+ *   The panel must not say «قُبِل» before this returns ok — an acceptance
+ *   shown ahead of the resolution is a visual animation standing in for an
+ *   action, which is exactly what the directive forbids.
+ */
+export async function resolveAssetForDistribution(assetId: string): Promise<ResolveOutcome> {
+  const creatorId = await creator();
+  if (!creatorId) return { ok: false, messageAr: 'سجّل دخولك أوّلاً.' };
+  if (typeof assetId !== 'string' || assetId.trim().length === 0) {
+    return { ok: false, messageAr: 'ما أُفلِت ليس أصلاً سياديّاً.' };
+  }
+  const asset = getVaultAsset(getDb(), assetId.trim());
+  if (!asset || asset.subscriberTenantId !== creatorId) {
+    return { ok: false, messageAr: 'لا يوجد أصل بهذا المعرّف في خزانتك.' };
+  }
+  return { ok: true, asset: describe(asset) };
+}
