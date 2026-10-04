@@ -46,6 +46,27 @@ export interface IPublicationRegistry {
   getPublication(publicationId: string): Promise<SovereignPublication | null>;
 }
 
+/**
+ * The durable store behind the registry — Option B, approved 2026-10-04.
+ *
+ * Declared HERE, in the chamber, and implemented in persistent-storage, so the
+ * chamber layer never imports from persistent-storage directly. That is the
+ * same inversion `IGoalRepository` established in goal-state.ts; this is not a
+ * new pattern, and `IPublicationRegistry` above is unchanged.
+ *
+ * `markPublished` returns whether IT performed the transition. That boolean is
+ * the idempotency guarantee: it is a conditional write, so a second observer
+ * of the same due publication is told `false` and records no second event.
+ */
+export interface IPublicationStore {
+  save(publication: SovereignPublication): void;
+  findById(publicationId: string): SovereignPublication | null;
+  /** Publications of one owner whose scheduled moment has arrived, still unpublished. */
+  findDueForTenant(publisherTenantId: string, nowMs: number): readonly SovereignPublication[];
+  /** Transitions exactly once. False means someone else already did it. */
+  markPublished(publicationId: string, nowMs: number): boolean;
+}
+
 // ==========================================
 // 2. THE CONSUMPTION BOUNDARY
 // ==========================================

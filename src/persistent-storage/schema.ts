@@ -437,6 +437,55 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   //   UNIQUE(creator_id, provider, provider_account_id) so linking the same
   //   account twice updates one row instead of growing a second grant nobody
   //   can see to revoke.
+  // ══ THE DURABLE SOVEREIGN PUBLICATION ════════════════════════════════════
+  //
+  //   ARCHITECTURAL DECISION, approved 2026-10-04: OPTION B.
+  //
+  //   `MakmanPublicationRegistry` held publications in `new Map()`, and its own
+  //   contract said what that was: «In production, this maps to the database
+  //   repository holding the master catalog». It was a placeholder, and the
+  //   placeholder was load-bearing — after any restart or deployment,
+  //   `getPublication(id)` returned null and `PublicConsumptionBoundary` threw
+  //   «not found or has been retracted» for a work nobody had retracted.
+  //
+  //   Scheduling could not live on `sovereign_public_links` instead: that
+  //   record is an ACCESS MECHANISM to an already-published work (Article 9.3),
+  //   it carries no access policy, and several links may point at one work —
+  //   which would give one work several contradictory schedules. The Empire's
+  //   own contracts had already answered: `scheduledPublishAt` is declared on
+  //   `SovereignPublication` and on `MakmanCommercialIntent`, and has never
+  //   been declared on a link.
+  //
+  //   REAL COLUMNS, not a serialized blob. The access policy decides whether a
+  //   consumer may watch at all; «which publications are due?» and «which are
+  //   age-restricted?» are questions a query must answer. Only
+  //   `geo_restrictions_json` is JSON, because it is genuinely a list — the
+  //   same reason `dependencies_json` is JSON on `goals`.
+  //
+  //   is_published + published_at + scheduled_publish_at are three facts, not
+  //   one: a publication may be scheduled and not yet published, published
+  //   without ever having been scheduled, or scheduled in the past and
+  //   published late because nothing observed it until now.
+  `CREATE TABLE IF NOT EXISTS sovereign_publications (
+    publication_id TEXT PRIMARY KEY,
+    publisher_tenant_id TEXT NOT NULL,
+    source_compilation_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    cover_art_uri TEXT,
+    distribution_tier TEXT NOT NULL,
+    pricing_base_price REAL,
+    pricing_currency TEXT,
+    pricing_rental_duration_hours REAL,
+    geo_restrictions_json TEXT,
+    requires_age_verification INTEGER NOT NULL DEFAULT 0,
+    is_published INTEGER NOT NULL DEFAULT 0,
+    published_at INTEGER,
+    scheduled_publish_at INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
+
   `CREATE TABLE IF NOT EXISTS cloud_accounts (
     account_id TEXT PRIMARY KEY,
     creator_id TEXT NOT NULL,
@@ -910,6 +959,8 @@ export const INDEX_STATEMENTS: readonly string[] = [
   'CREATE INDEX IF NOT EXISTS idx_tombstones_owner ON asset_tombstones(owner_id)',
   // The public token is the lookup a visitor's request performs. UNIQUE in the
   // table already implies an index; this names the owner path instead.
+  'CREATE INDEX IF NOT EXISTS idx_publications_tenant ON sovereign_publications(publisher_tenant_id)',
+  'CREATE INDEX IF NOT EXISTS idx_publications_due ON sovereign_publications(is_published, scheduled_publish_at)',
   'CREATE INDEX IF NOT EXISTS idx_cloud_accounts_creator ON cloud_accounts(creator_id)',
   'CREATE INDEX IF NOT EXISTS idx_public_links_owner ON sovereign_public_links(owner_id)',
   'CREATE INDEX IF NOT EXISTS idx_public_links_work ON sovereign_public_links(final_work_asset_id)',

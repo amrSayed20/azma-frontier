@@ -62,6 +62,7 @@ import { SovereignOperationalEntryLayer } from './soel';
 import { buildFleetRuntime } from '../orchestrator/fleet-materialization/fleet-factory';
 import { CinematicLedger } from '../persistent-storage/cinematic-ledger-repository';
 import { GoalRepository } from '../persistent-storage/goal-repository';
+import { PublicationRepository } from '../persistent-storage/publication-repository';
 import { SovereignPurposeRepository } from '../persistent-storage/sovereign-purpose-repository';
 import { ObservationRepository } from '../persistent-storage/observation-repository';
 import { FulfillmentAssessmentRepository } from '../persistent-storage/fulfillment-assessment-repository';
@@ -89,7 +90,11 @@ const observationStore = new ObservationRepository(getDb());
 const assessmentStore = new FulfillmentAssessmentRepository(getDb());
 /** Knowledge Investigation Repository: permanent Imperial record of every completed Sovereign Investigation — Final Launch Foundation. */
 const investigationStore = new KnowledgeInvestigationRepository(getDb());
-const publicationRegistry = new MakmanPublicationRegistry();
+// OPTION B, approved 2026-10-04: the registry resolves against durable state
+// in production. Its interface is unchanged; only what stands behind it is.
+// A publication now survives a restart, and `getPublication` stops answering
+// «not found or has been retracted» for a work nobody retracted.
+const publicationRegistry = new MakmanPublicationRegistry(new PublicationRepository(getDb()));
 const renderingBridge = new FlattenedRenderingBridge(fleetRuntime.dispatcher);
 const bridge = new MakmanGoalDistributionBridge(publicationRegistry, renderingBridge, cinemaLedger);
 const policyEngine = new SovereignAccessPolicyEngine();
