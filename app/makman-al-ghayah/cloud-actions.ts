@@ -128,6 +128,21 @@ export async function uploadAssetToCloud(
 
   if (outcome.ok) {
     markAccountUsed(db, accountId, creatorId);
+    // ── THE RECEIPT ────────────────────────────────────────────────────
+    //   A distribution with no recorded receipt cannot be audited. The id
+    //   Google returned is written to the server record, bound to the
+    //   sovereign asset it came from and the account it went to.
+    //
+    //   It is NOT shown to the Creator: it is a provider's internal handle,
+    //   and the Knowledge Source Abstraction Principle keeps a provider's
+    //   machinery off a Creator's screen. They are told the file's name,
+    //   which is the thing they will look for in their own Drive.
+    console.log('[cloud/upload] delivered:', JSON.stringify({
+      sourceAssetId: asset.assetId,
+      accountId,
+      driveFileId: outcome.providerFileId,
+      fileName,
+    }));
     return { ok: true, messageAr: `رُفِع إلى حسابك باسم «${fileName}».` };
   }
 
