@@ -42,7 +42,8 @@ import { planReframe, executeReframe, sweepRetention, type RetentionView } from 
 import {
   listCloudAccounts, unlinkCloudAccount, uploadAssetToCloud,
   listDistributableAssets, resolveAssetForDistribution,
-  type CloudView, type DistributableAsset,
+  connectTelegramBot, listDistributionReceipts,
+  type CloudView, type DistributableAsset, type DistributionRecordView,
 } from './cloud-actions';
 import { SOVEREIGN_ASSET_DRAG_TYPE, readDraggedAssetId } from '@/src/vault/sovereign-asset-drag';
 import { reframablePlatforms } from '@/src/platform-reframe/platform-target';
@@ -134,6 +135,19 @@ const CLOUD_OUTCOME_AR: Record<string, string> = {
   unauthorized:    'انتهت جلستك. سجّل دخولك ثمّ أعد الربط.',
   'already-granted': 'حسابك يمنح الإذن لأزما بالفعل. احذف أزما من أذونات حساب جوجل ثمّ اربطه من جديد.',
   failed:          'تعذّر ربط الحساب. أعد المحاولة.',
+};
+
+/**
+ * What an account is called when the provider gave no name of its own.
+ *
+ * A list that says «حساب جوجل درايف» for a Telegram channel is a list nobody
+ * can revoke from with confidence — the same reason the Drive binding asks for
+ * `openid email` at all.
+ */
+const PROVIDER_FALLBACK_AR: Record<string, string> = {
+  'google-drive': 'حساب جوجل درايف',
+  telegram:       'وجهة تيليجرام',
+  dropbox:        'حساب دروبوكس',
 };
 
 /** The platforms, named as a Creator names them — never as an API key. */
@@ -296,6 +310,16 @@ export default function MakmanAlGhayah() {
   const [cloud,               setCloud]               = useState<CloudView | null>(null);
   const [cloudBusy,           setCloudBusy]           = useState<string | null>(null);
   const [cloudNotice,         setCloudNotice]         = useState<string | null>(null);
+  // ── TELEGRAM: the Creator's own bot, handed over directly ──────────────
+  //   Telegram issues no authorization URL, so there is no journey to a
+  //   provider's screen and back. The credential is typed here, verified
+  //   against Telegram, sealed — and both fields are CLEARED the moment the
+  //   answer arrives, so a bot token never sits in a rendered input.
+  const [tgToken,             setTgToken]             = useState('');
+  const [tgChat,              setTgChat]              = useState('');
+  const [tgBusy,              setTgBusy]              = useState(false);
+  // ── THE RECEIPTS — the publish state that survives a refresh ───────────
+  const [receipts,            setReceipts]            = useState<readonly DistributionRecordView[]>([]);
   // ── THE CARRIER: a sovereign asset on its way out of the Empire ────────
   //   `vaultDoor` is a VIEW of the Vault, never a second registry. `carried`
   //   is the one asset currently staged for distribution — a reference the
@@ -386,6 +410,7 @@ export default function MakmanAlGhayah() {
     void sweepRetention().then(setRetention);
     void listCloudAccounts().then(setCloud);
     void listDistributableAssets().then(setVaultDoor);
+    void listDistributionReceipts().then(setReceipts);
     // The link journey ends on Google's screen and returns here with a code.
     // The Chamber says what happened — the provider's own words never do.
     try {
@@ -739,6 +764,13 @@ export default function MakmanAlGhayah() {
     finally { setIsAssessing(false); }
   };
 
+  // ── EACH DESTINATION'S OWN STATE ───────────────────────────────────────
+  //   Counted per provider. One count for all of them would report «مرتبط»
+  //   for a Drive that was never linked, on the strength of a Telegram
+  //   channel that was.
+  const driveAccounts = (cloud?.accounts ?? []).filter((a) => a.provider === 'google-drive');
+  const telegramAccounts = (cloud?.accounts ?? []).filter((a) => a.provider === 'telegram');
+
   return (
     <MakmanExperience>
     <main className="makman-viewport">
@@ -795,17 +827,25 @@ export default function MakmanAlGhayah() {
             <h2>☁ حساباتك السحابيّة</h2>
           </div>
 
-          {/* The condition, said in one line, before anything else. */}
+          {/* The condition of each destination, said before anything is asked.
+              One line per provider, because one line for both would report a
+              closed door as the state of an open one. */}
           <p className="makman-cloud-state">
             {!cloud ? 'يُقرأ…'
               : !cloud.available ? '◌ جوجل درايف — غير مهيّأ في الإمبراطوريّة بعد'
-              : cloud.accounts.length > 0 ? `● جوجل درايف — مرتبط (${cloud.accounts.length})`
+              : driveAccounts.length > 0 ? `● جوجل درايف — مرتبط (${driveAccounts.length})`
               : '○ جوجل درايف — غير مرتبط'}
+          </p>
+          <p className="makman-cloud-state">
+            {!cloud ? 'يُقرأ…'
+              : !cloud.telegramAvailable ? '◌ تيليجرام — غير مهيّأ في الإمبراطوريّة بعد'
+              : telegramAccounts.length > 0 ? `● تيليجرام — مرتبط (${telegramAccounts.length})`
+              : '○ تيليجرام — غير مرتبط'}
           </p>
 
           {cloud?.accounts.map((acc) => (
             <div key={acc.accountId} className="makman-plan-row makman-done-row">
-              <span>◈ {acc.accountLabel ?? 'حساب جوجل درايف'}</span>
+              <span>{acc.provider === 'telegram' ? '✈' : '◈'} {acc.accountLabel ?? PROVIDER_FALLBACK_AR[acc.provider] ?? 'حسابٌ مرتبط'}</span>
               <button
                 className="makman-unlink-btn"
                 disabled={cloudBusy !== null}
@@ -824,14 +864,77 @@ export default function MakmanAlGhayah() {
 
           {cloud?.available && (
             <a className="makman-download-btn" href="/api/cloud/google/start">
-              {cloud.accounts.length > 0 ? '+ اربط حساباً آخر' : '+ اربط جوجل درايف'}
+              {/* DRIVE accounts, not all accounts. A Creator who linked a
+                  Telegram channel and no Drive would otherwise be invited to
+                  «اربط حساباً آخر» for a provider they never linked once. */}
+              {driveAccounts.length > 0 ? '+ اربط حساباً آخر' : '+ اربط جوجل درايف'}
             </a>
           )}
 
-          {cloud?.available && cloud.accounts.length === 0 && (
+          {cloud?.available && driveAccounts.length === 0 && (
             <p className="makman-capability-hint">
               يُرفع عملُك إلى حسابك أنت. والإمبراطوريّة لا تملك فيه شيئاً — ترى الملفّات التي تُنشئها هي وحدها.
             </p>
+          )}
+
+          {/* ── TELEGRAM: NO JOURNEY TO A PROVIDER'S SCREEN ────────────────
+              Google's link is an anchor to `/api/cloud/google/start` because
+              the grant is made on Google's own page. Telegram issues no such
+              page: the Creator holds the credential already, and hands it
+              over here.
+
+              The token field is `type="password"` with autocomplete off, and
+              BOTH fields are cleared the instant the answer returns — so a
+              bot token never remains in a rendered input, and never lands in
+              the browser's saved form values. */}
+          {cloud?.telegramAvailable && (
+            <div className="makman-telegram-link">
+              <p className="makman-capability-hint">
+                ✈ تيليجرام — أنشئ بوتاً من @BotFather، أضفه مشرفاً في قناتك، ثمّ ضَع رمزه ووجهتك.
+              </p>
+              <input
+                id="makman-telegram-token"
+                className="makman-telegram-input"
+                type="password"
+                autoComplete="off"
+                dir="ltr"
+                placeholder="رمز البوت من @BotFather"
+                value={tgToken}
+                onChange={(e) => setTgToken(e.target.value)}
+                disabled={tgBusy}
+              />
+              <input
+                id="makman-telegram-chat"
+                className="makman-telegram-input"
+                type="text"
+                autoComplete="off"
+                dir="ltr"
+                placeholder="@اسم_القناة أو معرّف المحادثة"
+                value={tgChat}
+                onChange={(e) => setTgChat(e.target.value)}
+                disabled={tgBusy}
+              />
+              <button
+                type="button"
+                className="makman-download-btn"
+                data-testid="makman-telegram-connect"
+                disabled={tgBusy || tgToken.trim().length === 0 || tgChat.trim().length === 0}
+                onClick={async () => {
+                  setTgBusy(true);
+                  setCloudNotice(null);
+                  const r = await connectTelegramBot(tgToken, tgChat);
+                  // Cleared on EVERY outcome, success or refusal: a rejected
+                  // token is still a token, and it does not stay on screen.
+                  setTgToken('');
+                  setTgChat('');
+                  setCloudNotice(r.messageAr);
+                  setCloud(await listCloudAccounts());
+                  setTgBusy(false);
+                }}
+              >
+                {tgBusy ? 'يُتحقَّق من تيليجرام…' : '+ اربط وجهة تيليجرام'}
+              </button>
+            </div>
           )}
 
           {cloudNotice && <p className="project-status">{cloudNotice}</p>}
@@ -917,17 +1020,51 @@ export default function MakmanAlGhayah() {
                   const r = await uploadAssetToCloud(carried.assetId, acc.accountId);
                   setCarryNotice(r.messageAr);
                   setCloud(await listCloudAccounts());
+                  // The receipt, re-read from the database — so what the
+                  // screen says next came from the table, not from a
+                  // remembered success.
+                  setReceipts(await listDistributionReceipts());
                   setCloudBusy(null);
                 }}
               >
                 {cloudBusy === `${carried.assetId}:${acc.accountId}`
-                  ? 'يُرفع…'
-                  : `☁ ارفعه إلى ${acc.accountLabel ?? 'حسابك'}`}
+                  ? (acc.provider === 'telegram' ? 'يُنشَر…' : 'يُرفع…')
+                  : acc.provider === 'telegram'
+                    ? `✈ انشره في ${acc.accountLabel ?? 'وجهتك'}`
+                    : `☁ ارفعه إلى ${acc.accountLabel ?? 'حسابك'}`}
               </button>
             ))}
 
             {carried && cloud?.accounts.length === 0 && (
               <p className="makman-capability-hint">اربط حساباً سحابيّاً أعلاه لترفع هذا الأصل إليه.</p>
+            )}
+
+            {/* ── WHAT ACTUALLY LEFT THE EMPIRE ────────────────────────────
+                FOUNDER'S ORDER, 2026-10-04: «Refresh/re-enter the relevant
+                area and confirm the published state remains truthful».
+
+                A message shown once after a publication proves nothing an
+                hour later. This list is read from `distribution_receipts` on
+                every entry to the Chamber — so «✓ نُشِر» on this screen is
+                the database speaking, and a failure stays visible as a
+                failure instead of vanishing with the page. */}
+            {receipts.length > 0 && (
+              <>
+                <p className="makman-capability-hint">◆ سجلّ التوزيع الخارجي</p>
+                <div data-testid="makman-receipts">
+                  {receipts.map((r) => (
+                    <div key={r.receiptId} className="makman-plan-row makman-done-row">
+                      <span>
+                        {r.status === 'PUBLISHED' ? '✓ نُشِر' : '✕ لم يُنشَر'}
+                        {' — '}{r.providerLabelAr}{' · '}{r.whereAr}
+                      </span>
+                      <span className="makman-receipt-when">
+                        {new Date(r.atMs).toLocaleString('ar-EG')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
 
             {/* ── THE VAULT DOOR ──────────────────────────────────────────

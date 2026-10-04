@@ -486,6 +486,41 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     updated_at INTEGER NOT NULL
   )`,
 
+  // ── THE RECEIPT OF AN EXTERNAL DISTRIBUTION ──────────────────────────────
+  //
+  //   Commit c3c4d34 was named «A distribution leaves a receipt» and left it
+  //   in a console line. A console line is not a receipt: it cannot be read
+  //   back, it cannot be shown to the Creator who asked «did it publish?»,
+  //   and it does not survive a restart.
+  //
+  //   WHAT THIS IS NOT. Not `sovereign_publications` — that holds a work's
+  //   public consumption STATE inside the Empire (its access policy, whether
+  //   it is live, when it is due). This holds the fact that a copy of one
+  //   sovereign asset LEFT the Empire, to which provider, into which place,
+  //   and what identifier that provider gave back. Neither can answer the
+  //   other's question.
+  //
+  //   provider_message_id is the provider's own handle — a Telegram message
+  //   id, a Drive file id. It is a RECEIPT, not a title deed: the asset
+  //   remains the Vault's, and nothing here grants a provider ownership.
+  //
+  //   status is PUBLISHED or FAILED and nothing else. There is no PENDING row,
+  //   because a row is written only after the provider has answered — a
+  //   persisted «in progress» that no process is still carrying would be a
+  //   lie the first time the server restarted mid-upload.
+  `CREATE TABLE IF NOT EXISTS distribution_receipts (
+    receipt_id TEXT PRIMARY KEY,
+    creator_id TEXT NOT NULL,
+    source_asset_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    account_id TEXT NOT NULL,
+    provider_target TEXT,
+    provider_message_id TEXT,
+    status TEXT NOT NULL,
+    failure_reason TEXT,
+    created_at INTEGER NOT NULL
+  )`,
+
   `CREATE TABLE IF NOT EXISTS cloud_accounts (
     account_id TEXT PRIMARY KEY,
     creator_id TEXT NOT NULL,
@@ -929,6 +964,11 @@ export const INDEX_STATEMENTS: readonly string[] = [
   // Payment transactions: reconciliation lookups by creator and by provider order
   // One Creator's bytes, looked up by their digest — the duplicate guard.
   'CREATE INDEX IF NOT EXISTS idx_vault_assets_digest ON vault_assets(subscriber_tenant_id, content_digest)',
+  // «أين نُشِر هذا الأصل؟» — asked of one asset, and of one Creator's whole
+  // distribution history. Both are the same index, creator first so no query
+  // can accidentally cross a tenancy boundary by omitting it.
+  'CREATE INDEX IF NOT EXISTS idx_distribution_receipts_creator ON distribution_receipts(creator_id, created_at)',
+  'CREATE INDEX IF NOT EXISTS idx_distribution_receipts_asset ON distribution_receipts(creator_id, source_asset_id)',
   'CREATE INDEX IF NOT EXISTS idx_payment_transactions_creator ON payment_transactions(creator_id, created_at)',
   'CREATE INDEX IF NOT EXISTS idx_payment_transactions_provider_order ON payment_transactions(provider_order_id)',
   // The Sunnah is searched by subject across all collections, and fetched by

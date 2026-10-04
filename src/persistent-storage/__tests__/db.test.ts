@@ -44,8 +44,10 @@ describe('Persistent Storage Foundation — database connection', () => {
     // is the fifth. And `sovereign_publications` — the durable registry that
     // replaced `new Map<string, SovereignPublication>()`, so a restart stops
     // turning a live work into «not found or has been retracted» — is the
-    // sixth.
-    expect(tables).toEqual(['asset_tombstones', 'authentication_identities', 'cinematic_ledger', 'cloud_accounts', 'consumption_records', 'creator_balances', 'creators', 'credit_ledger', 'fulfillment_assessments', 'generation_records', 'goals', 'hadith_narrations', 'knowledge_investigations', 'library_works', 'observations', 'operation_ledger', 'payment_transactions', 'sessions', 'sovereign_canvases', 'sovereign_projects', 'sovereign_public_links', 'sovereign_publications', 'storyboard_scenes', 'storyboards', 'subscriptions', 'transmitted_reports', 'trial_entitlements', 'vault_assets', 'vault_credentials']);
+    // sixth. And `distribution_receipts` — the durable record that a copy of
+    // a sovereign asset LEFT the Empire, with the provider's own identifier,
+    // replacing a console line that could not be read back — is the seventh.
+    expect(tables).toEqual(['asset_tombstones', 'authentication_identities', 'cinematic_ledger', 'cloud_accounts', 'consumption_records', 'creator_balances', 'creators', 'credit_ledger', 'distribution_receipts', 'fulfillment_assessments', 'generation_records', 'goals', 'hadith_narrations', 'knowledge_investigations', 'library_works', 'observations', 'operation_ledger', 'payment_transactions', 'sessions', 'sovereign_canvases', 'sovereign_projects', 'sovereign_public_links', 'sovereign_publications', 'storyboard_scenes', 'storyboards', 'subscriptions', 'transmitted_reports', 'trial_entitlements', 'vault_assets', 'vault_credentials']);
     db.close();
   });
 

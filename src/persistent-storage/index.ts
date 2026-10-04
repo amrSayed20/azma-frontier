@@ -69,3 +69,13 @@ export {
   touchIdentity,
   resolveIdentity,
 } from './authentication-identity-repository';
+
+// THE RECEIPT OF AN EXTERNAL DISTRIBUTION — مكمن الغاية is the Empire's single
+// centre of external distribution, and this is where it writes down that a
+// copy of a sovereign asset left, to whom, and what identifier came back.
+export type { DistributionReceipt, DistributionStatus } from './distribution-receipt-repository';
+export {
+  recordDistribution,
+  listReceiptsForCreator,
+  listReceiptsForAsset,
+} from './distribution-receipt-repository';

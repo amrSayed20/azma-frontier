@@ -33,6 +33,25 @@ export interface DeliveryRequest {
   /** What the file should be called in the Creator's own drive. */
   readonly fileName: string;
   readonly mimeType: string;
+  /**
+   * WHERE INSIDE THE PROVIDER, when the provider has an inside.
+   *
+   * ─── WHY THIS FIELD EXISTS, AND WHY IT IS OPTIONAL ────────────────────────
+   *
+   *   A Drive grant names its own place: the Creator's own Drive, and
+   *   `drive.file` can reach nowhere else. One grant, one destination.
+   *
+   *   A Telegram bot token names no place at all. The same bot may be admin of
+   *   a channel, a member of a group, and in conversation with one person, and
+   *   a token alone cannot say which of them the Creator meant. The routing is
+   *   NOT a secret — it is a chat id or an `@name` — and so it is carried here
+   *   in the open rather than sealed into the grant beside the token.
+   *
+   *   Providers that have no inside ignore it. It is never a token, never a
+   *   credential, and never a substitute for one: a destination that is handed
+   *   a target but no valid access still fails.
+   */
+  readonly providerTarget?: string;
 }
 
 export type DeliveryOutcome =

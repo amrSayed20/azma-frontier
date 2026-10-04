@@ -760,3 +760,50 @@
   background: rgba(0, 0, 0, 0.78);
   border-start-end-radius: 6px;
 }
+
+/* ── TELEGRAM: THE ONE DESTINATION THE CREATOR TYPES ──────────────────────
+   Google's link is an anchor; this is a form, because Telegram has no screen
+   of its own to send anyone to.
+
+   Each input paints its OWN background and colour. A field given geometry
+   alone renders as browser white on this dark Chamber — invisible to tsc, to
+   the tests, and to a token sweep, and visible only to an eye. */
+.makman-telegram-link {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-block: 10px 0;
+  padding: 12px;
+  background: rgba(var(--azma-gold-rgb), 0.04);
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.18);
+  border-radius: 10px;
+}
+
+.makman-telegram-input {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 0.86rem;
+  color: var(--azma-gold-7, #E8C547);
+  background: rgba(10, 10, 12, 0.72);
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.3);
+  border-radius: 8px;
+}
+
+.makman-telegram-input::placeholder { color: var(--azma-text-muted, #A8955B); opacity: 0.75; }
+
+.makman-telegram-input:focus-visible {
+  outline: 2px solid rgba(var(--azma-gold-rgb), 0.7);
+  outline-offset: 2px;
+}
+
+.makman-telegram-input:disabled { opacity: 0.5; }
+
+/* When a distribution happened, read back from the receipts table. */
+.makman-receipt-when {
+  font-size: 0.74rem;
+  color: var(--azma-text-muted, #A8955B);
+  font-variant-numeric: tabular-nums;
+}

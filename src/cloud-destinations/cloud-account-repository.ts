@@ -11,8 +11,17 @@ import type { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'crypto';
 import { encryptToken, decryptToken } from './token-vault';
 
-/** A provider the Empire can deliver a file to. Names only; no secret here. */
-export type CloudProviderId = 'google-drive' | 'dropbox';
+/**
+ * A provider the Empire can deliver a file to. Names only; no secret here.
+ *
+ * `telegram` is the first that is not a drive — a publication rather than an
+ * upload. It shares this table because it shares the thing the table holds: a
+ * grant a Creator made, sealed, revocable, and belonging to one Creator. The
+ * Constitution names مكمن the single centre of external distribution «سواء
+ * بالرفع أو النشر», and a second registry for the second verb would have split
+ * that centre in two.
+ */
+export type CloudProviderId = 'google-drive' | 'dropbox' | 'telegram';
 
 /** What a Creator is shown about an account they linked. Never a token. */
 export interface LinkedCloudAccount {
@@ -157,6 +166,34 @@ export function readRefreshToken(
     .get(accountId, creatorId) as unknown as { sealed: string | null } | undefined;
   if (!row?.sealed) return null;
   return decryptToken(row.sealed);
+}
+
+/**
+ * WHICH provider a live account belongs to, and where inside it — no token.
+ *
+ * ─── WHY THIS IS NOT PART OF `LinkedCloudAccount` ───────────────────────────
+ *
+ *   `LinkedCloudAccount` is what a Creator's BROWSER receives. A provider's
+ *   own account identifier is that provider's internal machinery, and the
+ *   Knowledge Source Abstraction Principle keeps such machinery off a
+ *   Creator's screen — they see «قناة أزما», never a chat id.
+ *
+ *   The deliverer, on the server, does need it: a Telegram publication cannot
+ *   be routed without the chat. So it is a separate read with a separate
+ *   purpose, creator-scoped like every other, and it carries no secret at all.
+ */
+export function readAccountBinding(
+  db: DatabaseSync,
+  accountId: string,
+  creatorId: string,
+): { provider: CloudProviderId; providerAccountId: string } | null {
+  const row = db
+    .prepare(
+      `SELECT provider, provider_account_id AS pid FROM cloud_accounts
+       WHERE account_id = ? AND creator_id = ? AND revoked_at IS NULL`,
+    )
+    .get(accountId, creatorId) as unknown as { provider: string; pid: string } | undefined;
+  return row ? { provider: row.provider as CloudProviderId, providerAccountId: row.pid } : null;
 }
 
 /** Record that a delivery actually used this grant. */
