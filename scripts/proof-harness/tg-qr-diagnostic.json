@@ -1,0 +1,323 @@
+[
+ {
+  "t": 1791138305043,
+  "kind": "requestfailed",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "failure": "net::ERR_ABORTED"
+ },
+ {
+  "t": 1791138307802,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/14f30daa61a341eb-s.p.1dvyr4e509bu2.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138307802,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/chunks/02t4_uv4lbt0n.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138307802,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/5ad8fdb5805e9b4a-s.p.0-uv4l43gdmt7.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138307802,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/c412b9dae757a56d-s.p.1cdo_ayqo8nkw.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138307803,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/ceec3e50f42c26e3-s.p.0da8nscnv1nkd.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138307803,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/03fc1b4a8d284b5e-s.p.0wiir8udbzjvx.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138307804,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/57215795b8570f5c-s.p.2rixgazldzomk.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138307804,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/280fac012b00b901-s.p.3ihiqn4pviisd.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138307804,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/1bcd0e671759a44c-s.p.2qt3tdwt-y9x_.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138307804,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/2cfdf9cb086e485c-s.p.05osgkk-tzhtp.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138307804,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/c9a0d344f313d307-s.p.3ik2qu-u9tgho.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138316318,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/14f30daa61a341eb-s.p.1dvyr4e509bu2.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138316318,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/chunks/02t4_uv4lbt0n.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138316318,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/5ad8fdb5805e9b4a-s.p.0-uv4l43gdmt7.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138316318,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/c412b9dae757a56d-s.p.1cdo_ayqo8nkw.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138316318,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/ceec3e50f42c26e3-s.p.0da8nscnv1nkd.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138316318,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/03fc1b4a8d284b5e-s.p.0wiir8udbzjvx.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138316318,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/57215795b8570f5c-s.p.2rixgazldzomk.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138316318,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/280fac012b00b901-s.p.3ihiqn4pviisd.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138316318,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/1bcd0e671759a44c-s.p.2qt3tdwt-y9x_.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138316318,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/2cfdf9cb086e485c-s.p.05osgkk-tzhtp.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138316319,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/c9a0d344f313d307-s.p.3ik2qu-u9tgho.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138316841,
+  "kind": "console",
+  "type": "log",
+  "text": "%c[2026-10-04T21:25:16.837] [INFO] - [Running gramJS version 2.26.21] color : #ffff00",
+  "url": "https://azmaos.com/_next/static/chunks/0pgbpybyf7blb.js",
+  "line": 2155,
+  "col": 165550
+ },
+ {
+  "t": 1791138316842,
+  "kind": "console",
+  "type": "error",
+  "text": "[telegram-user] link failed: u.default.type is not a function",
+  "url": "https://azmaos.com/_next/static/chunks/0i0k6rmf35a80.js?dpl=20261004-180441-bcc3513",
+  "line": 0,
+  "col": 20888
+ },
+ {
+  "t": 1791138319853,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/14f30daa61a341eb-s.p.1dvyr4e509bu2.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138319853,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/chunks/02t4_uv4lbt0n.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138319853,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/5ad8fdb5805e9b4a-s.p.0-uv4l43gdmt7.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138319853,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/c412b9dae757a56d-s.p.1cdo_ayqo8nkw.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138319853,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/ceec3e50f42c26e3-s.p.0da8nscnv1nkd.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138319853,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/03fc1b4a8d284b5e-s.p.0wiir8udbzjvx.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138319853,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/57215795b8570f5c-s.p.2rixgazldzomk.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138319853,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/280fac012b00b901-s.p.3ihiqn4pviisd.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138319853,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/1bcd0e671759a44c-s.p.2qt3tdwt-y9x_.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138319853,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/2cfdf9cb086e485c-s.p.05osgkk-tzhtp.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ },
+ {
+  "t": 1791138319853,
+  "kind": "console",
+  "type": "warning",
+  "text": "The resource https://azmaos.com/_next/static/media/c9a0d344f313d307-s.p.3ik2qu-u9tgho.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+  "url": "https://azmaos.com/makman-al-ghayah",
+  "line": 0,
+  "col": 0
+ }
+]

@@ -823,3 +823,19 @@
 .makman-tg-qr img { display: block; }
 
 .makman-tg-qr .makman-capability-hint { color: #2A2A2A; text-align: center; }
+
+/* One row per linkable destination. It paints its own ground so a provider
+   that is not configured still reads as a stated condition, not a gap. */
+.makman-destination-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-block: 8px 0;
+  padding: 10px 12px;
+  background: rgba(var(--azma-gold-rgb), 0.03);
+  border-inline-start: 2px solid rgba(var(--azma-gold-rgb), 0.25);
+  border-radius: 8px;
+}
+
+.makman-destination-row .makman-cloud-state { margin: 0; }
+.makman-destination-row .makman-capability-hint { margin: 0; opacity: 0.8; }

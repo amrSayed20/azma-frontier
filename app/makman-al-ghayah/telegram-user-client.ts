@@ -39,6 +39,7 @@
 
 import { TelegramClient, Api } from 'telegram';
 import { StoreSession } from 'telegram/sessions';
+import { CustomFile } from 'telegram/client/uploads';
 
 /** The key under which GramJS keeps the session, in this browser only. */
 const SESSION_KEY = 'azma.telegram.user';
@@ -86,6 +87,31 @@ async function connected(apiId: number, apiHash: string): Promise<TelegramClient
       // Telegram's own web clients speak MTProto over WebSocket; this is the
       // same transport, not a workaround around a missing one.
       useWSS: true,
+      // ── THESE THREE ARE LOAD-BEARING, AND THE REASON IS MEASURED ────────
+      //
+      //   MEASURED on production 2026-10-04: without them the QR never
+      //   rendered and the browser said
+      //
+      //       TypeError: u.default.type is not a function
+      //
+      //   GramJS builds its InitConnection from the host when the caller
+      //   gives it nothing — telegramBaseClient.js:106-107 reads
+      //
+      //       deviceModel:   clientParams.deviceModel   || os.type()
+      //       systemVersion: clientParams.systemVersion || os.release()
+      //
+      //   and a browser has no `os`. The failure was in the CONSTRUCTOR,
+      //   before any transport and before any QR. Supplying these makes the
+      //   `||` short-circuit, so `os` is never reached on this path.
+      //
+      //   They are not filler. This is the name the Creator sees in Telegram
+      //   → Settings → Devices, which is the list they END this authorization
+      //   from — and ending it there is the whole point of a session that
+      //   lives with its owner. «Unknown» in that list would weaken the one
+      //   control the custody model depends on.
+      deviceModel: 'AZMA OS',
+      systemVersion: 'Browser',
+      appVersion: '1.0',
     });
   }
   await client.connect();
@@ -252,7 +278,31 @@ export async function publish(input: {
   if (!peer) return { ok: false, failure: 'rejected' };
 
   try {
-    const file = new File([new Uint8Array(input.bytes)], input.fileName, { type: input.mimeType });
+    // ── WHY NOT A BROWSER `File`, WHICH IS THE OBVIOUS THING ───────────────
+    //
+    //   MEASURED on production 2026-10-05. Passing one produced, in order:
+    //
+    //       Cannot cast [object File] to any kind of InputMedia
+    //       Cannot use [object File] as file.
+    //
+    //   `uploads.js:174` guards an early attempt at `getInputMedia(file)` with
+    //   a list of types to skip — Buffer, InputFile, InputFileBig, CustomFile,
+    //   and anything with a `read` method. A browser `File` is none of those,
+    //   so it enters that attempt, the cast throws, and the catch RETURNS with
+    //   `media: undefined` — never reaching the branch twenty lines later that
+    //   would have accepted it. `sendFile` then refuses the whole call.
+    //
+    //   `CustomFile` is in that skip list, and GramJS's own docblock names it:
+    //   «A custom file class that mimics the browser's File class. You should
+    //   use this whenever you want to upload a file.» With a buffer supplied,
+    //   `fileToBuffer` returns it directly and no filesystem is touched —
+    //   which is what makes it the browser-safe form, not merely the accepted
+    //   one.
+    //
+    //   Nothing else about the publication changes: same bytes, same name,
+    //   same peer, same session, which never leaves this browser.
+    const bytes = Buffer.from(input.bytes);
+    const file = new CustomFile(input.fileName, bytes.length, '', bytes);
     const sent = await c.sendFile(peer, {
       file,
       // An image stays an image and a video stays a video; forcing documents

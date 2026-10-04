@@ -21,7 +21,20 @@ import { encryptToken, decryptToken } from './token-vault';
  * بالرفع أو النشر», and a second registry for the second verb would have split
  * that centre in two.
  */
-export type CloudProviderId = 'google-drive' | 'dropbox' | 'telegram' | 'telegram-user';
+export type CloudProviderId =
+  | 'google-drive'
+  | 'dropbox'
+  | 'telegram'
+  | 'telegram-user'
+  // ── THE SOCIAL DESTINATIONS ──────────────────────────────────────────────
+  //   `facebook-page` and `instagram-business` are named for what they ACTUALLY
+  //   publish to. Meta removed `publish_actions` in 2018 and offers no official
+  //   way to post to a personal profile, so a provider called «facebook» would
+  //   promise a destination that does not exist.
+  | 'youtube'
+  | 'facebook-page'
+  | 'instagram-business'
+  | 'tiktok';
 
 /** What a Creator is shown about an account they linked. Never a token. */
 export interface LinkedCloudAccount {

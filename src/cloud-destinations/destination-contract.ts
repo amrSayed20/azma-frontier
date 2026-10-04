@@ -52,6 +52,26 @@ export interface DeliveryRequest {
    *   a target but no valid access still fails.
    */
   readonly providerTarget?: string;
+  /**
+   * A URL the PROVIDER itself can fetch the media from — for providers that
+   * refuse to be handed bytes.
+   *
+   * ─── WHY THIS IS NOT A WEAKENING OF THE VAULT ─────────────────────────────
+   *
+   *   Instagram's Content Publishing API takes `image_url` / `video_url` and
+   *   fetches the file with Meta's own servers. There is no bytes path for it.
+   *   So the asset must be reachable without an AZMA session for the seconds
+   *   Meta takes to read it, or Instagram cannot be published to at all.
+   *
+   *   The URL carries a token sealed with the Empire's own key, naming ONE
+   *   asset, ONE owner and an expiry minutes away. It is not a public file and
+   *   it is not a link anyone can mint: forging one requires the server key,
+   *   and holding an old one buys nothing once it has expired.
+   *
+   *   Providers that accept bytes — Drive, Telegram, YouTube, a Facebook Page
+   *   — never receive this field and never need it.
+   */
+  readonly publicMediaUrl?: string;
 }
 
 export type DeliveryOutcome =

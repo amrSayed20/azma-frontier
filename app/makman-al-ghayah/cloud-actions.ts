@@ -43,6 +43,10 @@ import {
   identifyBot, identifyChat, telegramAccountKey, chatFromAccountKey,
 } from '@/src/cloud-destinations/telegram-destination';
 import { isTokenVaultConfigured } from '@/src/cloud-destinations/token-vault';
+import { youtubeDestination } from '@/src/cloud-destinations/youtube-destination';
+import { metaIsConfigured } from '@/src/cloud-destinations/meta-destination';
+import { tiktokIsConfigured } from '@/src/cloud-destinations/tiktok-destination';
+import { mintMediaGrant } from '@/src/cloud-destinations/fetchable-media-grant';
 import {
   telegramAppCredentials,
   telegramUserIsConfigured,
@@ -78,21 +82,35 @@ export interface CloudView {
    * application at all.
    */
   readonly telegramUserAvailable: boolean;
+  /**
+   * Which of the social destinations the Empire can offer AT ALL right now.
+   *
+   * Keyed by the linking flow, not by provider, because one Meta consent opens
+   * both a Page and an Instagram professional account. A key that is false
+   * means the Empire holds no application credential for it — and the Chamber
+   * must say «غير مهيّأ» rather than show a button that cannot work.
+   */
+  readonly offers: Readonly<Record<string, boolean>>;
   readonly accounts: readonly LinkedCloudAccount[];
 }
 
 /** The accounts this Creator has linked. Never a token. */
 export async function listCloudAccounts(): Promise<CloudView> {
   const creatorId = await creator();
-  if (!creatorId) return { available: false, telegramAvailable: false, telegramUserAvailable: false, accounts: [] };
+  if (!creatorId) return { available: false, telegramAvailable: false, telegramUserAvailable: false, offers: {}, accounts: [] };
   const vault = isTokenVaultConfigured();
   const available = googleDriveDestination.identity.configured && vault;
   const telegramAvailable = vault;
   const telegramUserAvailable = telegramUserIsConfigured();
+  const offers: Record<string, boolean> = {
+    youtube: youtubeDestination.identity.configured && vault,
+    meta: metaIsConfigured() && vault,
+    tiktok: tiktokIsConfigured() && vault,
+  };
   try {
-    return { available, telegramAvailable, telegramUserAvailable, accounts: listAccountsForCreator(getDb(), creatorId) };
+    return { available, telegramAvailable, telegramUserAvailable, offers, accounts: listAccountsForCreator(getDb(), creatorId) };
   } catch {
-    return { available, telegramAvailable, telegramUserAvailable, accounts: [] };
+    return { available, telegramAvailable, telegramUserAvailable, offers, accounts: [] };
   }
 }
 
@@ -168,7 +186,14 @@ export async function uploadAssetToCloud(
     };
   }
   const isTelegram = binding.provider === 'telegram';
-  const verb = isTelegram ? 'نُشِر' : 'رُفِع';
+  // ── THE VERB IS A TRUTH CLAIM ──────────────────────────────────────────
+  //   «رُفِع» for a drive. «نُشِر» for a destination that makes the work
+  //   visible. And TikTok gets NEITHER: without its audit the file lands in
+  //   the Creator's own inbox as a draft that a hand must finish, and calling
+  //   that «نُشِر» would be the system lying about what it did.
+  const verb = binding.provider === 'google-drive' ? 'رُفِع'
+    : binding.provider === 'tiktok' ? 'وصل مسوّدةً إلى تيك توك — أتمِمه من التطبيق:'
+    : 'نُشِر';
 
   const refreshToken = readRefreshToken(db, accountId, creatorId);
   if (!refreshToken) {
@@ -194,15 +219,36 @@ export async function uploadAssetToCloud(
   const label = typeof asset.metadata?.reframedForLabel === 'string' ? asset.metadata.reframedForLabel : null;
   const fileName = label ? `AZMA — ${label}${ext}` : `AZMA — ${asset.assetId}${ext}`;
 
-  // For Telegram the chat is the second half of the account key. Drive has no
-  // inside and ignores the field entirely.
-  const providerTarget = isTelegram ? (chatFromAccountKey(binding.providerAccountId) ?? undefined) : undefined;
+  // WHERE INSIDE THE PROVIDER. Telegram keeps the chat in the second half of
+  // its account key; the social destinations ARE their provider account id —
+  // a Page id, an Instagram professional account id. Drive has no inside and
+  // ignores the field entirely.
+  const providerTarget = isTelegram
+    ? (chatFromAccountKey(binding.providerAccountId) ?? undefined)
+    : (binding.provider === 'facebook-page' || binding.provider === 'instagram-business')
+      ? binding.providerAccountId
+      : undefined;
+
+  // ── THE ONE PROVIDER THAT REFUSES BYTES ────────────────────────────────
+  //   Instagram fetches the file with Meta's own servers, so a grant is
+  //   minted for this delivery alone: one asset, one owner, ten minutes,
+  //   sealed with the Empire's key. Every other provider is handed the bytes
+  //   and never sees a URL.
+  let publicMediaUrl: string | undefined;
+  if (binding.provider === 'instagram-business') {
+    const token = mintMediaGrant(asset.assetId, creatorId);
+    if (!token) {
+      return { ok: false, messageAr: 'الإمبراطوريّة غير مهيّأةٍ لفتح هذا الأصل لإنستجرام.' };
+    }
+    publicMediaUrl = `https://azmaos.com/m/${token}`;
+  }
 
   const outcome = await destination.deliver(accessToken, {
     bytes,
     fileName,
     mimeType: MIME_BY_EXT[ext] ?? 'application/octet-stream',
     providerTarget,
+    publicMediaUrl,
   });
 
   if (outcome.ok) {
@@ -218,7 +264,10 @@ export async function uploadAssetToCloud(
     //   and the Knowledge Source Abstraction Principle keeps a provider's
     //   machinery off a Creator's screen. They are told the file's name,
     //   which is the thing they will look for themselves.
-    if (isTelegram) {
+    // ── EVERY EXTERNAL DISTRIBUTION LEAVES A RECEIPT ───────────────────
+    //   Drive was left on a console line by an older package and stays as it
+    //   is under a standing seal. Every provider added since writes here.
+    if (binding.provider !== 'google-drive') {
       recordDistribution(db, {
         creatorId,
         sourceAssetId: asset.assetId,
@@ -244,7 +293,7 @@ export async function uploadAssetToCloud(
   //   indistinguishable from one never attempted, and those two have
   //   different remedies. Only the contract's own reason word is kept —
   //   never the provider's prose, which has passed near a credential.
-  if (isTelegram) {
+  if (binding.provider !== 'google-drive') {
     recordDistribution(db, {
       creatorId,
       sourceAssetId: asset.assetId,
@@ -358,6 +407,8 @@ export interface DistributionRecordView {
 
 const PROVIDER_LABEL_AR: Readonly<Record<string, string>> = {
   'google-drive': 'جوجل درايف', telegram: 'تيليجرام', dropbox: 'دروبوكس',
+  'telegram-user': 'تيليجرام — حسابك', youtube: 'يوتيوب',
+  'facebook-page': 'صفحة فيسبوك', 'instagram-business': 'إنستجرام', tiktok: 'تيك توك',
 };
 
 export async function listDistributionReceipts(): Promise<readonly DistributionRecordView[]> {

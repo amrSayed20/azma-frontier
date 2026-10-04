@@ -30,10 +30,17 @@ import type { CloudProviderId } from './cloud-account-repository';
 import type { CloudDestination } from './destination-contract';
 import { googleDriveDestination } from './google-drive-destination';
 import { telegramDestination } from './telegram-destination';
+import { youtubeDestination } from './youtube-destination';
+import { facebookPageDestination, instagramBusinessDestination } from './meta-destination';
+import { tiktokDestination } from './tiktok-destination';
 
 const BY_PROVIDER: Partial<Record<CloudProviderId, CloudDestination>> = {
   'google-drive': googleDriveDestination,
   telegram: telegramDestination,
+  youtube: youtubeDestination,
+  'facebook-page': facebookPageDestination,
+  'instagram-business': instagramBusinessDestination,
+  tiktok: tiktokDestination,
 };
 
 /** The destination that can actually deliver for this provider, or null. */

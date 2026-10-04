@@ -145,10 +145,52 @@ const CLOUD_OUTCOME_AR: Record<string, string> = {
  * can revoke from with confidence — the same reason the Drive binding asks for
  * `openid email` at all.
  */
+/**
+ * ── THE DESTINATIONS A CREATOR MAY LINK, AS DATA ──────────────────────────
+ *
+ *   Before this table the panel carried a hand-written block per provider, and
+ *   adding four more that way is precisely the drift the directive forbids:
+ *   «Do NOT build four unrelated account systems.»
+ *
+ *   `offerKey` is the LINKING flow, not the provider — one Meta consent opens
+ *   both a Page and an Instagram professional account, so they share a key and
+ *   a button and differ only in what they publish.
+ *
+ *   `capabilityAr` is what the destination can actually do, shown next to the
+ *   connection state, because «متصل» and «يمكن النشر إليه» are not the same
+ *   claim and the Creator must be able to tell them apart.
+ */
+const LINKABLE_DESTINATIONS: ReadonlyArray<{
+  offerKey: string;
+  labelAr: string;
+  href: string;
+  providers: readonly string[];
+  capabilityAr: string;
+}> = [
+  { offerKey: 'youtube', labelAr: 'يوتيوب', href: '/api/cloud/youtube/start',
+    providers: ['youtube'], capabilityAr: 'فيديو إلى قناتك' },
+  { offerKey: 'meta', labelAr: 'فيسبوك وإنستجرام', href: '/api/cloud/meta/start',
+    providers: ['facebook-page', 'instagram-business'],
+    capabilityAr: 'صفحاتك وحسابات إنستجرام الاحترافيّة' },
+  { offerKey: 'tiktok', labelAr: 'تيك توك', href: '/api/cloud/tiktok/start',
+    providers: ['tiktok'], capabilityAr: 'مسوّدة تُتمّها من التطبيق' },
+];
+
 const PROVIDER_FALLBACK_AR: Record<string, string> = {
   'google-drive': 'حساب جوجل درايف',
   telegram:       'وجهة تيليجرام',
   dropbox:        'حساب دروبوكس',
+  'telegram-user':      'وجهة تيليجرام',
+  youtube:              'قناة يوتيوب',
+  'facebook-page':      'صفحة فيسبوك',
+  'instagram-business': 'حساب إنستجرام',
+  tiktok:               'حساب تيك توك',
+};
+
+/** The icon that tells one kind of destination from another at a glance. */
+const PROVIDER_MARK: Record<string, string> = {
+  'google-drive': '◈', telegram: '✈', 'telegram-user': '✦',
+  youtube: '▶', 'facebook-page': '❖', 'instagram-business': '◉', tiktok: '♪',
 };
 
 /** The platforms, named as a Creator names them — never as an API key. */
@@ -918,7 +960,12 @@ export default function MakmanAlGhayah() {
 
           {cloud?.accounts.map((acc) => (
             <div key={acc.accountId} className="makman-plan-row makman-done-row">
-              <span>{acc.provider === 'telegram' ? '✈' : '◈'} {acc.accountLabel ?? PROVIDER_FALLBACK_AR[acc.provider] ?? 'حسابٌ مرتبط'}</span>
+              <span>
+                {PROVIDER_MARK[acc.provider] ?? '◈'}{' '}
+                {acc.accountLabel ?? PROVIDER_FALLBACK_AR[acc.provider] ?? 'حسابٌ مرتبط'}
+                {' · '}
+                <span className="makman-receipt-when">{PROVIDER_FALLBACK_AR[acc.provider] ?? acc.provider}</span>
+              </span>
               <button
                 className="makman-unlink-btn"
                 disabled={cloudBusy !== null}
@@ -961,6 +1008,35 @@ export default function MakmanAlGhayah() {
               يُرفع عملُك إلى حسابك أنت. والإمبراطوريّة لا تملك فيه شيئاً — ترى الملفّات التي تُنشئها هي وحدها.
             </p>
           )}
+
+          {/* ── THE SOCIAL DESTINATIONS, ONE ROW EACH, FROM DATA ───────────
+              «Do NOT build four unrelated account systems.» So there is one
+              list and one rule: a destination states whether the Empire can
+              offer it at all, how many of the Creator's accounts are linked
+              through it, and what it is actually able to publish.
+
+              A provider the Empire holds no credential for says «غير مهيّأ»
+              and offers no button — never a control that cannot work. */}
+          {LINKABLE_DESTINATIONS.map((d) => {
+            const linked = (cloud?.accounts ?? []).filter((a) => d.providers.includes(a.provider));
+            const offered = cloud?.offers?.[d.offerKey] === true;
+            return (
+              <div key={d.offerKey} className="makman-destination-row">
+                <p className="makman-cloud-state">
+                  {!cloud ? 'يُقرأ…'
+                    : !offered ? `◌ ${d.labelAr} — غير مهيّأ في الإمبراطوريّة بعد`
+                    : linked.length > 0 ? `● ${d.labelAr} — مرتبط (${linked.length})`
+                    : `○ ${d.labelAr} — غير مرتبط`}
+                </p>
+                <p className="makman-capability-hint">{d.capabilityAr}</p>
+                {offered && (
+                  <a className="makman-download-btn" href={d.href}>
+                    {linked.length > 0 ? `+ اربط حساباً آخر — ${d.labelAr}` : `+ اربط ${d.labelAr}`}
+                  </a>
+                )}
+              </div>
+            );
+          })}
 
           {/* ── TELEGRAM: NO JOURNEY TO A PROVIDER'S SCREEN ────────────────
               Google's link is an anchor to `/api/cloud/google/start` because
@@ -1254,11 +1330,13 @@ export default function MakmanAlGhayah() {
               >
                 {cloudBusy === `${carried.assetId}:${acc.accountId}`
                   ? (acc.provider === 'google-drive' ? 'يُرفع…' : 'يُنشَر…')
-                  : acc.provider === 'telegram-user'
-                    ? `✦ انشره بحسابك في ${acc.accountLabel ?? 'وجهتك'}`
-                    : acc.provider === 'telegram'
-                      ? `✈ انشره في ${acc.accountLabel ?? 'وجهتك'}`
-                      : `☁ ارفعه إلى ${acc.accountLabel ?? 'حسابك'}`}
+                  : acc.provider === 'google-drive'
+                    ? `☁ ارفعه إلى ${acc.accountLabel ?? 'حسابك'}`
+                    // TikTok is never «انشره»: without its audit the file lands
+                    // as a draft its owner must finish by hand.
+                    : acc.provider === 'tiktok'
+                      ? `♪ أرسِله مسوّدةً إلى ${acc.accountLabel ?? 'تيك توك'}`
+                      : `${PROVIDER_MARK[acc.provider] ?? '✦'} انشره في ${acc.accountLabel ?? 'وجهتك'}`}
               </button>
             ))}
 
