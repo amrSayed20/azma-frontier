@@ -96,7 +96,21 @@ export const youtubeDestination: CloudDestination = {
     // surfaces weeks later when a video will not upload.
     url.searchParams.set('access_type', 'offline');
     url.searchParams.set('prompt', 'consent');
-    url.searchParams.set('include_granted_scopes', 'true');
+    // ── AND `include_granted_scopes` IS DELIBERATELY ABSENT ──────────────
+    //
+    //   MEASURED on production 2026-10-05, from Google's own refusal:
+    //
+    //       This request contains scopes that cannot be requested together:
+    //       [.../auth/youtube.upload, .../auth/drive.file]
+    //       400 invalid_request
+    //
+    //   The Drive binding sets it, and copying that line was the defect. It
+    //   asks Google to ADD every scope the Creator has already granted to this
+    //   request — so a Creator who had linked their Drive was sent to a screen
+    //   asking for YouTube AND Drive at once, which Google refuses outright.
+    //
+    //   YouTube takes its own grant, independent of Drive's. Each lives on its
+    //   own refresh token, and revoking one leaves the other standing.
     return url.toString();
   },
 

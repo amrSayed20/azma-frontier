@@ -82,6 +82,17 @@ it('B · and asks for offline access with a forced consent', () => {
   expect(u.searchParams.get('prompt')).toBe('consent');
 });
 
+it('B · and never asks Google to add the scopes already granted', () => {
+  // MEASURED on production 2026-10-05. With `include_granted_scopes=true`
+  // copied from the Drive binding, a Creator who had linked their Drive was
+  // sent to a screen asking for YouTube AND Drive at once, and Google refused:
+  //   «scopes that cannot be requested together: youtube.upload, drive.file»
+  // YouTube's grant must stand alone.
+  const u = new URL(youtubeDestination.authorizationUrl({ redirectUri: 'https://x/cb', state: 's', nonce: 'n' }));
+  expect(u.searchParams.get('include_granted_scopes')).toBeNull();
+  expect(u.searchParams.get('scope')).not.toContain('drive');
+});
+
 it('B · an image is refused before YouTube is troubled with it', async () => {
   answer(() => ({ body: { id: 'v' } }));
   expect(await youtubeDestination.deliver('tok', {
