@@ -1,0 +1,174 @@
+/**
+ * AZMA OS — POLICY: PRIVACY.
+ *
+ * ─── IT IS THE FOUNDER'S OWN TEXT, WITH THREE NAMED CHANGES ─────────────────
+ *
+ *   The body is `docs/policies/PRIVACY_POLICY.md`, 2026-09-27, transcribed.
+ *   `docs/` never reaches the server — the release artifact is `.next`,
+ *   `package.json`, `package-lock.json` — so a document that lives only there
+ *   can be read by nobody. Text compiled into the build travels with it.
+ *
+ *   What was changed, and nothing else:
+ *
+ *   1. A NEW §4 — «الحسابات التي تربطها بنفسك». The document was written
+ *      before the Empire could hold any account on another platform. It now
+ *      holds sealed credentials for Drive, YouTube, Meta and TikTok, and a
+ *      privacy policy that does not disclose that is not merely incomplete —
+ *      it is wrong. Every sentence in it is written from MEASURED behaviour,
+ *      cited in the comment above the section, not from a template.
+ *      Sections 4–11 became 5–12.
+ *
+ *   2. The internal review scaffolding — the «تحذير للمراجع» block and the
+ *      ⚠️ LEGAL REVIEW REQUIRED labels — was removed. It is addressed to a
+ *      reviewer, not to the Creator. Every SUBSTANTIVE gap it marked survives
+ *      as a plain statement in the Creator's direction, because a promise not
+ *      made must stay unmade. Nothing the Empire does not do became something
+ *      it claims to do.
+ *
+ *   3. The operator's identity and contact were filled from the one policy the
+ *      Founder has already ratified and published — Topline Design, Nasr City
+ *      Cairo, azma.os27@gmail.com. They are not new facts; they are the same
+ *      facts, reachable at a second address.
+ *
+ *   Version 1.0 → 1.1. A legal text whose content changed must not keep the
+ *   number a reader may already have relied on.
+ *
+ *   TWO GAPS REMAIN AND ARE THE FOUNDER'S TO CLOSE, not mine: the server's
+ *   geographic location, and the retention period for server logs. Both are
+ *   stated in the body as unresolved rather than guessed, because a privacy
+ *   policy that invents a jurisdiction is worse than one that admits it has
+ *   not named one.
+ */
+
+import type { PolicyDocument } from './types';
+
+export const PRIVACY_POLICY: PolicyDocument = {
+  slug: 'privacy-policy',
+  titleEn: 'Privacy Policy',
+  titleAr: 'سياسة الخصوصية',
+  language: 'ar',
+  version: '1.1',
+  /**
+   * The Founder's text carried no effective date, and a policy with none does
+   * not govern. It stays null until he names a day.
+   */
+  effectiveDate: null,
+  body: `سياسة الخصوصية — AZMA OS
+
+الإصدار: 1.1 · التاريخ: 2026-10-08
+
+تُشغَّل AZMA OS بواسطة Topline Design — مدينة نصر، القاهرة — azma.os27@gmail.com
+
+كُتبت هذه الوثيقة لتصف ما يفعله النظام فعلاً، لا ما يُفترض أن يفعله. وحيثما لم
+يُحسَم أمرٌ بعد، قيل ذلك صراحةً بدل ادّعاء خلافه.
+
+
+١. ما نجمعه
+
+ما تعطينا إيّاه: البريد الإلكتروني · كلمة المرور (مخزّنة كقيمة مُعمّاة scrypt، لا كنصّ) · ما تكتبه من مطالبات وتوجيهات · ما ترفعه من ملفات.
+
+ما يتولّد عن استخدامك: المحتوى المُنتَج · سجلّات العمليات (وقتها، حالتها، نجاحها أو فشلها) · سجلّ رصيدك وحركته · مُعرّفات الجلسة.
+
+ما يُسجَّل تقنياً: سجلّات خادم تشمل عنوان IP ووقت الطلب — للتشغيل والأمان.
+
+ما لا نجمعه: بيانات بطاقتك — لا تمرّ بخوادمنا أصلاً. ولا نشتري بيانات عنك من أي طرف.
+
+
+٢. لماذا نعالجها
+
+لتشغيل حسابك · لتنفيذ ما تطلبه من عمليات · لحفظ أصولك · لحساب رصيدك وتسوية مشترياتك · لأمان المنصّة ومنع إساءة الاستخدام · للالتزام القانوني عند وجوده.
+
+ولا نستعملها لبيع إعلانات، ولا نبيعها.
+
+
+٣. أطراف ثالثة تُعالِج بياناتك
+
+تشغيل المنصّة يقتضي تمرير بعض البيانات إلى مزوّدي معالجة خارجيين:
+
+· إنتاج المحتوى — يُمرَّر نصّ مطالبتك، والأصل المصدري إن وُجد.
+· معالجة الدفع — يُمرَّر مبلغ العملية ومُعرّفها وبريدك الإلكتروني.
+· استضافة الخوادم — يُمرَّر كل ما يُخزَّن ويُعالَج.
+
+ولا يُمرَّر إليهم بريدك أو هويّتك مع طلبات الإنتاج — طلب الإنتاج يحمل ما يلزم لتنفيذه فقط.
+
+قائمة المعالِجين الفرعيين بأسمائها وولاياتها القضائية، والاتفاقيات المبرمة معهم (DPA)، لم تُوثَّق بعد.
+
+
+٤. الحسابات التي تربطها بنفسك
+
+تتيح لك المنصّة أن تربط حساباتك على منصّات أخرى — جوجل درايف، يوتيوب، فيسبوك، إنستجرام، تيك توك، تيليجرام — لتنشر إليها ما أنتجتَه. وهذا ما يحدث حين تفعل:
+
+ما نطلبه منك: أضيق إذنٍ يكفي للنشر وحده. لا نطلب إذن القراءة، ولا إذن حذف ما لديك، ولا إذن الوصول إلى رسائلك أو جهات اتصالك أو قوائم متابعيك.
+
+ما نحفظه: اسم المنصّة · مُعرّف حسابك لديها · الاسم الظاهر للحساب · قائمة الأذونات التي منحتها · وقت الربط وآخر استعمال · ورمز الوصول نفسه مُعمّى بـAES-256-GCM. مفتاح فكّ التعمية يسكن بيئة الخادم وحدها، ولا يوجد في الكود ولا في أي نسخة احتياطية منه.
+
+ما لا يصل المتصفّح أبداً: رمز الوصول. لا يُعاد إلى صفحةٍ، ولا يُكتب في سجلّ، ولا يظهر في رسالة خطأ.
+
+تيليجرام بحسابك الشخصي حالةٌ مستقلّة: لا تملك تيليجرام إذناً محدوداً للنشر وحده — مفتاحها يفتح الحساب كلّه — فلا نحفظه نحن أصلاً. يبقى في متصفّحك أنت، ويعمل النشر من جهازك مباشرةً. وخانة الرمز لدينا فارغة لهذا الحساب.
+
+ما نُرسله إلى المنصّة: الأصل الذي اخترتَ نشره، والنصّ المرافق له. لا شيء غير ذلك.
+
+ما لا نفعله: لا نقرأ محتواك على تلك المنصّات · لا ننشر شيئاً دون فعلٍ صريحٍ منك · لا ننشر نيابةً عنك تلقائياً · لا نستعمل الربط لجمع بياناتٍ عن متابعيك.
+
+ما نحفظه عن كل نشرة: الأصل الذي نُشر، والمنصّة، والوجهة داخلها، والمُعرّف الذي أعطته المنصّة للمنشور، وحالته ووقته. ولا يحمل هذا السجلّ أيّ رمز وصول.
+
+فكّ الربط: من داخل «مكمن الغاية»، في أي وقت. ويُمحى الرمز المُعمّى في اللحظة نفسها، فلا يبقى لنا وصولٌ إلى حسابك. وما نُشر قبل ذلك يبقى على المنصّة، وحذفه من هناك بيدك أنت.
+
+
+٥. أين تُخزَّن
+
+على خادم تديره AZMA.
+
+الموقع الجغرافي للخادم وأثره على نقل البيانات عبر الحدود لم يُحدَّد في هذه الوثيقة بعد.
+
+
+٦. كم تبقى
+
+· الحساب وبياناته — ما دام الحساب قائماً.
+· محتواك وأصولك — حتى تحذفها أو يُغلق حسابك.
+· سجلّات الدفع والرصيد — تُحفَظ بعد الإغلاق للمدّة التي يوجبها القانون المحاسبي.
+· سجلّات الخادم — مدّة الاحتفاظ لم تُحدَّد بعد.
+
+ومدّة الاحتفاظ بالمحتوى بعد إغلاق الحساب، ومهلة التصدير قبل الحذف، لم تُحدَّدا بعد.
+
+
+٧. حقوقك
+
+الاطّلاع على بياناتك · تصحيح ما هو خطأ · حذف حسابك ومحتواك · تصدير أصولك · الاعتراض على معالجة بعينها · فكّ ربط أي حساب خارجي ربطتَه.
+
+ولممارسة أيٍّ منها راسِلنا على azma.os27@gmail.com. ومهلة الاستجابة لم تُحدَّد بعد.
+
+ولا تدّعي هذه الوثيقة امتثالاً لـGDPR ولا لقانون حماية البيانات المصري؛ تحديد ما ينطبق ومتطلباته يحتاج محامياً.
+
+
+٨. الأمان
+
+ما هو قائم فعلاً: كلمات المرور مُعمّاة بـscrypt · الجلسات على الخادم لا في المتصفّح · النقل عبر HTTPS · بيانات البطاقة لا تصل إلينا · رموز حساباتك الخارجية مُعمّاة بـAES-256-GCM · الأسرار في متغيّرات بيئة لا في الكود.
+
+وما لا نقوله: لا نملك شهادة أمان معتمدة، ولم يُجرَ اختراق اختباري مستقلّ، ولا نضمن استحالة الاختراق. ولا يجوز تعديل هذه الفقرة لتدّعي غير ذلك.
+
+
+٩. ملفّات التتبّع
+
+نستعمل تخزيناً في المتصفّح لإبقائك مسجَّل الدخول ولحفظ تفضيلات عرض بسيطة. ولا نستعمل تتبّعاً إعلانياً ولا تحليلات لطرف ثالث حتى تاريخ هذه الوثيقة.
+
+
+١٠. الأطفال
+
+الخدمة ليست موجّهة لمن هم دون السنّ القانونية للتعاقد. وإن علمنا بحساب لقاصر أغلقناه.
+
+
+١١. التعديل
+
+يُخطَر بالتعديل الجوهري قبل سريانه.
+
+
+١٢. التواصل
+
+azma.os27@gmail.com — Topline Design، مدينة نصر، القاهرة.
+
+
+ما لا تدّعيه هذه الوثيقة
+
+امتثالاً لـGDPR أو لأي إطار حماية بيانات · شهادة ISO 27001 أو SOC 2 · تدقيقاً أمنياً مستقلاً · تسجيلاً لدى جهة حماية بيانات · تشفيراً للمحتوى أثناء التخزين (at rest) — وهو غير مُطبَّق اليوم · اتفاقيات معالجة موقَّعة مع المعالِجين الفرعيين.`,
+};

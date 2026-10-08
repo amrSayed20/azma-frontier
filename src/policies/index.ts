@@ -18,18 +18,28 @@
  *   compiled into the build and therefore reachable; what is only in `docs/`
  *   is a manuscript.
  *
- *   The six Arabic documents are NOT registered yet — moving a legal text is
- *   not a copy-paste, and each needs the Founder's word on whether the version
- *   in `docs/` is the one that governs. They are named in
+ *   Terms and Privacy were published on 2026-10-08, because TikTok — like XPay
+ *   before it — refuses to review an application whose policy URLs open onto a
+ *   wall. Each was transcribed with its changes named in its own file header,
+ *   and each carries a bumped version so no reader relies on a number whose
+ *   text has moved underneath it.
+ *
+ *   The five that remain are NOT registered — moving a legal text is not a
+ *   copy-paste, and each needs the Founder's word on whether the version in
+ *   `docs/` is the one that governs. They are named in
  *   `POLICIES_NOT_YET_PUBLISHABLE` so the gap is counted rather than forgotten.
  */
 
 import type { PolicyDocument } from './types';
 import { REFUNDS_AND_CREDIT_BALANCE } from './refunds-and-credit-balance';
+import { TERMS_OF_SERVICE } from './terms-of-service';
+import { PRIVACY_POLICY } from './privacy-policy';
 
 export type { PolicyDocument, PolicyLanguage } from './types';
 
 export const PUBLISHED_POLICIES: readonly PolicyDocument[] = [
+  TERMS_OF_SERVICE,
+  PRIVACY_POLICY,
   REFUNDS_AND_CREDIT_BALANCE,
 ];
 
@@ -44,10 +54,8 @@ export function policyBySlug(slug: string): PolicyDocument | undefined {
  * read them» is a number rather than an impression.
  */
 export const POLICIES_NOT_YET_PUBLISHABLE: readonly string[] = [
-  'docs/policies/TERMS_AND_CONDITIONS.md',
   'docs/policies/ACCEPTABLE_USE_POLICY.md',
   'docs/policies/REFUND_AND_REPLACEMENT_POLICY.md',
-  'docs/policies/PRIVACY_POLICY.md',
   'docs/policies/AI_CONTENT_POLICY.md',
   'docs/policies/SOVEREIGN_VALUE_BALANCE_POLICY.md',
   'docs/policies/ACCOUNT_AND_SUSPENSION_POLICY.md',
