@@ -124,14 +124,56 @@ it('C · Meta is a binding and refuses to be published to', async () => {
   })).toMatchObject({ ok: false, reason: 'rejected' });
 });
 
-it('C · Meta never asks for business_management', () => {
+it('C · Meta asks for exactly the set that was measured to be necessary', () => {
+  // THIS TEST ONCE FORBADE `business_management`, and that rule was right
+  // until a measurement overturned it.
+  //
+  //   MEASURED on production 2026-10-07/08: with pages_show_list,
+  //   pages_read_engagement and pages_manage_posts all GRANTED,
+  //   `/me/accounts` returned zero Pages — because the Creator's Page is
+  //   owned by a business portfolio and his role on it comes through that
+  //   portfolio. `pages_show_list` reports Pages a person administers
+  //   directly, and a portfolio-held Page is not one of those.
+  //
+  //   Reading a portfolio's Pages requires `business_management`. The narrow
+  //   set was tried first and proven insufficient for a real Creator's real
+  //   Page, so the wider permission is here by evidence, not by convenience.
+  //
+  //   The assertion stays strict on the SET, so nothing further creeps in.
   const scope = new URL(metaOAuthDestination.authorizationUrl({
     redirectUri: 'https://azmaos.com/api/cloud/meta/callback', state: 's', nonce: 'n',
   })).searchParams.get('scope') ?? '';
   expect(scope.split(',')).toEqual([...META_SCOPES]);
-  // It would grant control of a Creator's whole business portfolio for a
-  // capability that posts one file.
-  expect(scope).not.toContain('business_management');
+  expect(META_SCOPES).toEqual([
+    'business_management',
+    'pages_show_list',
+    'pages_read_engagement',
+    'pages_manage_posts',
+    'instagram_basic',
+    'instagram_content_publish',
+  ]);
+});
+
+it('C · a Business Login configuration replaces the scope list, never joins it', () => {
+  // MEASURED on production 2026-10-06: an app built on use cases has no
+  // classic Facebook Login and no scopes of its own, and asking for them is
+  // refused — «نطاقات غير صالحة». The configuration carries the permissions.
+  process.env.META_LOGIN_CONFIG_ID = '1776366460312893';
+  const u = new URL(metaOAuthDestination.authorizationUrl({
+    redirectUri: 'https://azmaos.com/api/cloud/meta/callback', state: 's', nonce: 'n',
+  }));
+  expect(u.searchParams.get('config_id')).toBe('1776366460312893');
+  expect(u.searchParams.get('scope')).toBeNull();
+  delete process.env.META_LOGIN_CONFIG_ID;
+});
+
+it('C · and without a configuration it falls back to the classic scope list', () => {
+  delete process.env.META_LOGIN_CONFIG_ID;
+  const u = new URL(metaOAuthDestination.authorizationUrl({
+    redirectUri: 'https://x/cb', state: 's', nonce: 'n',
+  }));
+  expect(u.searchParams.get('config_id')).toBeNull();
+  expect(u.searchParams.get('scope')).toBe(META_SCOPES.join(','));
 });
 
 it('C · discovery finds a Page and the Instagram account linked to it', async () => {

@@ -46,6 +46,7 @@ const DIALOG = 'https://www.facebook.com/v21.0/dialog/oauth';
  * a Creator's whole business portfolio for a capability that posts one file.
  */
 export const META_SCOPES: readonly string[] = [
+  'business_management',
   'pages_show_list',
   'pages_read_engagement',
   'pages_manage_posts',
@@ -55,6 +56,27 @@ export const META_SCOPES: readonly string[] = [
 
 const appId = () => process.env.META_APP_ID;
 const appSecret = () => process.env.META_APP_SECRET;
+/**
+ * The Facebook Login FOR BUSINESS configuration, when the app uses one.
+ *
+ * ─── WHY THIS EXISTS, AND WHAT IT MEASURED ────────────────────────────────
+ *
+ *   A Meta app built on use cases has no classic Facebook Login product, and
+ *   therefore no scope list of its own. Asking it for scopes produced, on
+ *   production 2026-10-06:
+ *
+ *       نطاقات غير صالحة: pages_show_list, pages_manage_posts, …
+ *
+ *   Business Login takes its permissions from a CONFIGURATION created in the
+ *   app, identified by this id. The permissions live there, not in the request
+ *   — so when a config id is present the request carries it INSTEAD of
+ *   `scope`, never both.
+ *
+ *   It is not a secret: it appears in the authorization URL every Creator
+ *   sees. It is an environment value only because it belongs to the Empire's
+ *   Meta app rather than to this source tree.
+ */
+const loginConfigId = () => process.env.META_LOGIN_CONFIG_ID;
 
 export function metaIsConfigured(): boolean {
   return Boolean(appId() && appSecret());
@@ -105,13 +127,52 @@ export async function discoverMetaDestinations(userAccessToken: string): Promise
   url.searchParams.set('access_token', userAccessToken);
 
   const response = await fetch(url, { signal: AbortSignal.timeout(20_000) });
-  if (!response.ok) return [];
-  const body = (await response.json()) as {
+  const body = (await response.json().catch(() => ({}))) as {
     data?: ReadonlyArray<{
       id?: unknown; name?: unknown; access_token?: unknown;
       instagram_business_account?: { id?: unknown; username?: unknown };
     }>;
+    error?: { message?: unknown; code?: unknown; type?: unknown };
   };
+
+  // ── AN EMPTY LIST AND A FAILED REQUEST ARE NOT THE SAME THING ──────────
+  //   MEASURED on production 2026-10-07: three consenting links in a row
+  //   ended in «meta-no-destinations», and nothing in the Empire could say
+  //   whether Meta had answered «you administer no Page» or had refused the
+  //   call outright. `if (!response.ok) return []` erased the difference.
+  //
+  //   Only the status and Meta's own error CODE are logged — never the token,
+  //   and never Meta's prose, which can echo request parameters.
+  if (!response.ok || body.error) {
+    console.error('[meta/discover] refused:', detailOf(response.status, body),
+      typeof body.error?.type === 'string' ? body.error.type : '');
+    return [];
+  }
+  const count = (body.data ?? []).length;
+  console.log('[meta/discover] pages returned:', count);
+
+  // ── WHEN /me/accounts IS EMPTY, THE PAGES MAY BELONG TO A PORTFOLIO ────
+  //
+  //   MEASURED on production 2026-10-07/08, over several real consents:
+  //
+  //       granted: pages_show_list, pages_read_engagement, pages_manage_posts
+  //       /me/accounts → 0        (with the short token too, so not the exchange)
+  //       /me/businesses → code=100   (no business_management)
+  //
+  //   And the Creator does hold a Page — «شوف عظمة» — but his role on it comes
+  //   THROUGH the business portfolio that owns it. `pages_show_list` reports
+  //   Pages a person administers directly; a Page held by a portfolio is not
+  //   one of those, so the honest answer from Meta was an empty list.
+  //
+  //   So when the direct list is empty, the portfolio is asked instead. This
+  //   path needs `business_management`, which is a wider permission than this
+  //   Empire likes — it is requested ONLY because a narrower one was tried
+  //   first and measured insufficient for a real Creator's real Page.
+  if ((body.data ?? []).length === 0) {
+    const fromPortfolio = await discoverThroughPortfolios(userAccessToken);
+    console.log('[meta/discover] pages via portfolio:', fromPortfolio.length);
+    if (fromPortfolio.length > 0) return fromPortfolio;
+  }
 
   const found: MetaDestination[] = [];
   for (const page of body.data ?? []) {
@@ -124,6 +185,74 @@ export async function discoverMetaDestinations(userAccessToken: string): Promise
       const handle = typeof ig.username === 'string' ? `@${ig.username}` : 'إنستجرام';
       found.push({ kind: 'instagram-business', id: ig.id, label: `${handle} — ${name}`, accessToken: page.access_token });
     }
+  }
+  return found;
+}
+
+/**
+ * The Pages a Creator reaches through a business portfolio.
+ *
+ * Two hops, because Meta models it in two: the portfolios the person belongs
+ * to, then the Pages each portfolio owns. A Page token is requested per Page —
+ * `owned_pages` does not carry one — and a Page whose token cannot be obtained
+ * is skipped rather than returned without the credential that publishes it.
+ */
+async function discoverThroughPortfolios(userAccessToken: string): Promise<readonly MetaDestination[]> {
+  const found: MetaDestination[] = [];
+  try {
+    const biz = new URL(`${GRAPH}/me/businesses`);
+    biz.searchParams.set('access_token', userAccessToken);
+    const businesses = (await (await fetch(biz, { signal: AbortSignal.timeout(20_000) })).json()) as {
+      data?: ReadonlyArray<{ id?: unknown }>; error?: { code?: unknown };
+    };
+    if (businesses.error || !businesses.data?.length) {
+      console.error('[meta/portfolio] unavailable:',
+        businesses.error ? `code=${String(businesses.error.code)}` : 'none');
+      return found;
+    }
+
+    for (const b of businesses.data) {
+      if (typeof b.id !== 'string') continue;
+      for (const edge of ['owned_pages', 'client_pages'] as const) {
+        const pages = new URL(`${GRAPH}/${b.id}/${edge}`);
+        pages.searchParams.set('fields', 'id,name,access_token,instagram_business_account{id,username}');
+        pages.searchParams.set('access_token', userAccessToken);
+        const got = (await (await fetch(pages, { signal: AbortSignal.timeout(20_000) })).json()) as {
+          data?: ReadonlyArray<{
+            id?: unknown; name?: unknown; access_token?: unknown;
+            instagram_business_account?: { id?: unknown; username?: unknown };
+          }>;
+        };
+        for (const page of got.data ?? []) {
+          if (typeof page.id !== 'string') continue;
+          if (found.some((f) => f.id === page.id)) continue;
+
+          // `owned_pages` rarely carries a token; ask the Page for its own.
+          let token = typeof page.access_token === 'string' ? page.access_token : null;
+          if (!token) {
+            const one = new URL(`${GRAPH}/${page.id}`);
+            one.searchParams.set('fields', 'access_token');
+            one.searchParams.set('access_token', userAccessToken);
+            const t = (await (await fetch(one, { signal: AbortSignal.timeout(15_000) })).json()) as
+              { access_token?: unknown };
+            token = typeof t.access_token === 'string' ? t.access_token : null;
+          }
+          // A destination without the credential that publishes to it is not a
+          // destination. It is dropped rather than shown as connected.
+          if (!token) { console.error('[meta/portfolio] no page token for', page.id); continue; }
+
+          const name = typeof page.name === 'string' ? page.name : 'صفحة';
+          found.push({ kind: 'facebook-page', id: page.id, label: name, accessToken: token });
+          const ig = page.instagram_business_account;
+          if (ig && typeof ig.id === 'string') {
+            const handle = typeof ig.username === 'string' ? `@${ig.username}` : 'إنستجرام';
+            found.push({ kind: 'instagram-business', id: ig.id, label: `${handle} — ${name}`, accessToken: token });
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[meta/portfolio] failed:', err instanceof Error ? err.message.slice(0, 120) : 'unknown');
   }
   return found;
 }
@@ -151,7 +280,15 @@ export const metaOAuthDestination: CloudDestination = {
     url.searchParams.set('redirect_uri', redirectUri);
     url.searchParams.set('response_type', 'code');
     url.searchParams.set('state', state);
-    url.searchParams.set('scope', META_SCOPES.join(','));
+    const config = loginConfigId();
+    if (config) {
+      // Business Login: the configuration names the permissions. Sending
+      // `scope` alongside it is what Meta refused — see the header.
+      url.searchParams.set('config_id', config);
+    } else {
+      // Classic Facebook Login, for an app that has the product.
+      url.searchParams.set('scope', META_SCOPES.join(','));
+    }
     return url.toString();
   },
 
@@ -174,6 +311,24 @@ export const metaOAuthDestination: CloudDestination = {
     if (!short.ok) throw new Error(`meta exchange failed: HTTP ${short.status}`);
     const shortBody = (await short.json()) as { access_token?: unknown };
     if (typeof shortBody.access_token !== 'string') throw new Error('meta exchange failed: no access_token');
+
+    // ── DOES THE TOKEN SEE THE PAGES BEFORE WE EXCHANGE IT? ──────────────
+    //   MEASURED 2026-10-07: pages_show_list, pages_read_engagement and
+    //   pages_manage_posts were all granted, and `/me/accounts` still returned
+    //   none. One suspect is this very exchange: a Business Login token is
+    //   scoped to the assets the Creator picked, and trading it for a
+    //   long-lived one may not carry that scoping across.
+    //
+    //   Counting with the SHORT-lived token isolates that. Counts only.
+    try {
+      const before = new URL(`${GRAPH}/me/accounts`);
+      before.searchParams.set('access_token', shortBody.access_token);
+      const seen = (await (await fetch(before, { signal: AbortSignal.timeout(15_000) })).json()) as {
+        data?: ReadonlyArray<unknown>; error?: { code?: unknown };
+      };
+      console.log('[meta/exchange] pages visible to SHORT token:',
+        seen.error ? `error code=${String(seen.error.code)}` : (seen.data ?? []).length);
+    } catch { console.log('[meta/exchange] pages visible to SHORT token: (probe failed)'); }
 
     const second = new URL(`${GRAPH}/oauth/access_token`);
     second.searchParams.set('grant_type', 'fb_exchange_token');

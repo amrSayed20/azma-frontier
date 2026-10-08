@@ -43,8 +43,26 @@ import type { CloudDestination } from './destination-contract';
 
 const SESSION_COOKIE = 'azma_session';
 const RETURN_TO = 'https://azmaos.com/makman-al-ghayah';
-/** A linking that takes longer than this is not a linking in progress. */
-const LINK_TTL_SECONDS = 600;
+/**
+ * How long one linking may stay in progress.
+ *
+ * ─── TEN MINUTES WAS MEASURED AND FOUND TOO SHORT ─────────────────────────
+ *
+ *   MEASURED on production 2026-10-07: a Creator granted Meta consent and
+ *   selected two Pages, and the return was refused with `expired` because the
+ *   `state` cookie had lapsed while he was still inside Meta's screens.
+ *
+ *   Ten minutes fits a single consent screen — Google's, which is what it was
+ *   copied from. Facebook Login for Business is a multi-step flow with an
+ *   asset picker, and a careful person reading what they are granting takes
+ *   longer than that. The window must fit the SLOWEST honest journey, not the
+ *   fastest.
+ *
+ *   Thirty minutes still bounds the risk: `state` remains single-use, httpOnly
+ *   and compared in constant time, and a link left open for half an hour is
+ *   still a link somebody started in this browser.
+ */
+const LINK_TTL_SECONDS = 1800;
 
 export interface LinkFlow {
   /** Distinguishes one provider's in-flight link from another's. */
