@@ -23,7 +23,7 @@
 import { cookies } from 'next/headers';
 import { verifySession } from '@/src/authentication';
 import {
-  getDb, getVaultAsset,
+  getDb, getVaultAsset, getCreator,
   recordDistribution, listReceiptsForCreator,
 } from '@/src/persistent-storage';
 import { resolveAssetPath } from '@/src/vault/asset-bytes';
@@ -46,6 +46,9 @@ import { isTokenVaultConfigured } from '@/src/cloud-destinations/token-vault';
 import { youtubeDestination } from '@/src/cloud-destinations/youtube-destination';
 import { metaIsConfigured } from '@/src/cloud-destinations/meta-destination';
 import { tiktokIsConfigured } from '@/src/cloud-destinations/tiktok-destination';
+import {
+  destinationAccessFor, offerKeyOfProvider, type DestinationAccessState,
+} from '@/src/cloud-destinations/destination-eligibility';
 import { mintMediaGrant } from '@/src/cloud-destinations/fetchable-media-grant';
 import {
   telegramAppCredentials,
@@ -83,35 +86,83 @@ export interface CloudView {
    */
   readonly telegramUserAvailable: boolean;
   /**
-   * Which of the social destinations the Empire can offer AT ALL right now.
+   * WHAT THIS CREATOR CAN ACTUALLY COMPLETE — not what the Empire holds keys for.
    *
-   * Keyed by the linking flow, not by provider, because one Meta consent opens
-   * both a Page and an Instagram professional account. A key that is false
-   * means the Empire holds no application credential for it — and the Chamber
-   * must say «غير مهيّأ» rather than show a button that cannot work.
+   * ─── IT USED TO BE A BOOLEAN, AND THE BOOLEAN WAS A PROMISE WE BROKE ──────
+   *
+   *   `offers[key] === true` meant «the Empire holds a client key», and the
+   *   Chamber drew «+ اربط تيك توك» from it. The platform then refused the
+   *   Creator at its own door. One fact was standing in for another.
+   *
+   *   So the answer is a NAMED STATE carrying its own reason, computed per
+   *   Creator by `destinationAccessFor`. Keyed by the linking flow, not by
+   *   provider, because one Meta consent opens both a Page and an Instagram
+   *   professional account.
    */
-  readonly offers: Readonly<Record<string, boolean>>;
+  readonly destinations: Readonly<Record<string, DestinationAccessState>>;
   readonly accounts: readonly LinkedCloudAccount[];
+  /**
+   * The Creator's OWN linked accounts whose platform refuses them right now,
+   * as accountId → the true reason.
+   *
+   * ─── THE SECOND HALF OF THE SAME DEBT, AND THE WORSE HALF ─────────────────
+   *
+   *   An account linked while a door was open stays linked after the platform
+   *   narrows it. Hiding only the LINK button would still leave a «انشره في»
+   *   button that fails AFTER the promise — a refusal paid for with the
+   *   Creator's time and their belief that it worked.
+   *
+   *   A key present here means: do not offer the publication. Say this.
+   */
+  readonly accountRefusals: Readonly<Record<string, string>>;
 }
 
 /** The accounts this Creator has linked. Never a token. */
 export async function listCloudAccounts(): Promise<CloudView> {
   const creatorId = await creator();
-  if (!creatorId) return { available: false, telegramAvailable: false, telegramUserAvailable: false, offers: {}, accounts: [] };
+  const shut = { available: false, telegramAvailable: false, telegramUserAvailable: false, destinations: {}, accounts: [], accountRefusals: {} };
+  if (!creatorId) return shut;
   const vault = isTokenVaultConfigured();
   const available = googleDriveDestination.identity.configured && vault;
   const telegramAvailable = vault;
   const telegramUserAvailable = telegramUserIsConfigured();
-  const offers: Record<string, boolean> = {
+
+  // ── THE EMPIRE'S READINESS, STILL ASKED — BUT NO LONGER ALONE ──────────
+  const holds: Readonly<Record<string, boolean>> = {
     youtube: youtubeDestination.identity.configured && vault,
     meta: metaIsConfigured() && vault,
     tiktok: tiktokIsConfigured() && vault,
   };
+
+  let creatorEmail: string | null = null;
+  let accounts: readonly LinkedCloudAccount[] = [];
   try {
-    return { available, telegramAvailable, telegramUserAvailable, offers, accounts: listAccountsForCreator(getDb(), creatorId) };
+    const db = getDb();
+    // WHO is asking — because the platform's answer is about THEM, not about us.
+    creatorEmail = getCreator(db, creatorId)?.email ?? null;
+    accounts = listAccountsForCreator(db, creatorId);
   } catch {
-    return { available, telegramAvailable, telegramUserAvailable, offers, accounts: [] };
+    // A database that cannot be read must not be reported as an open door.
+    // `creatorEmail` stays null, so every governed destination reads as
+    // awaiting rather than open, and no button is drawn that cannot work.
   }
+
+  const destinations: Record<string, DestinationAccessState> = {};
+  for (const offerKey of Object.keys(holds)) {
+    destinations[offerKey] = destinationAccessFor({
+      offerKey, empireHoldsCredential: holds[offerKey] === true, creatorEmail,
+    });
+  }
+
+  const accountRefusals: Record<string, string> = {};
+  for (const account of accounts) {
+    const offerKey = offerKeyOfProvider(account.provider);
+    if (!offerKey) continue; // Drive and Telegram answer to nobody's review.
+    const state = destinations[offerKey];
+    if (state && state.access !== 'OPEN') accountRefusals[account.accountId] = state.reasonAr;
+  }
+
+  return { available, telegramAvailable, telegramUserAvailable, destinations, accounts, accountRefusals };
 }
 
 /** Withdraw a grant. The record survives; the power does not. */
@@ -185,6 +236,29 @@ export async function uploadAssetToCloud(
         : 'هذه الوجهة غير متاحةٍ في الإمبراطوريّة بعد.',
     };
   }
+  // ── THE GATE, ON THE PUBLISHING DOOR TOO ───────────────────────────────
+  //   Hiding the button is not closing the door: this action is callable by
+  //   anything that holds the Creator's cookie, and an account linked while a
+  //   platform was open stays linked after it narrows. So the SAME verdict is
+  //   asked again here, before a single byte is read or a grant is opened —
+  //   and a Creator the platform refuses is told so instead of watching a
+  //   publication fail after it was promised.
+  //
+  //   Drive, a Telegram bot and the Creator's own Telegram account are not
+  //   governed by any review: `offerKeyOfProvider` returns null for them and
+  //   this gate never judges them.
+  const governedBy = offerKeyOfProvider(binding.provider);
+  if (governedBy) {
+    const verdict = destinationAccessFor({
+      offerKey: governedBy,
+      empireHoldsCredential: true, // The grant exists, so the credential did.
+      creatorEmail: getCreator(db, creatorId)?.email ?? null,
+    });
+    if (verdict.access !== 'OPEN') {
+      return { ok: false, messageAr: verdict.reasonAr };
+    }
+  }
+
   const isTelegram = binding.provider === 'telegram';
   // ── THE VERB IS A TRUTH CLAIM ──────────────────────────────────────────
   //   «رُفِع» for a drive. «نُشِر» for a destination that makes the work

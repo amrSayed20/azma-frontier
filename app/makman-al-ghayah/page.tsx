@@ -1015,21 +1015,35 @@ export default function MakmanAlGhayah() {
               offer it at all, how many of the Creator's accounts are linked
               through it, and what it is actually able to publish.
 
-              A provider the Empire holds no credential for says «غير مهيّأ»
-              and offers no button — never a control that cannot work. */}
+              A provider the Empire holds no credential for says «غير مهيّأ»,
+              and a platform that has not yet opened its door to THIS Creator
+              says «قيد مراجعة المنصّة». Neither draws a button — never a
+              control that cannot work, and never a door that slams. */}
           {LINKABLE_DESTINATIONS.map((d) => {
             const linked = (cloud?.accounts ?? []).filter((a) => d.providers.includes(a.provider));
-            const offered = cloud?.offers?.[d.offerKey] === true;
+            // ── THE STATE, NOT A BOOLEAN ────────────────────────────────
+            //   `offers[key] === true` meant «the Empire holds a key» and was
+            //   drawn as «+ اربط». The server now answers the question the
+            //   Creator actually has — can I finish this today — and the row
+            //   draws that answer, reason and all.
+            const state = cloud?.destinations?.[d.offerKey];
+            const open = state?.access === 'OPEN';
             return (
               <div key={d.offerKey} className="makman-destination-row">
                 <p className="makman-cloud-state">
-                  {!cloud ? 'يُقرأ…'
-                    : !offered ? `◌ ${d.labelAr} — غير مهيّأ في الإمبراطوريّة بعد`
+                  {!cloud || !state ? 'يُقرأ…'
+                    : state.access === 'NOT_CONFIGURED' ? `◌ ${d.labelAr} — ${state.reasonAr}`
+                    : state.access === 'AWAITING_PLATFORM_REVIEW' ? `◌ ${d.labelAr} — قيد مراجعة المنصّة`
                     : linked.length > 0 ? `● ${d.labelAr} — مرتبط (${linked.length})`
                     : `○ ${d.labelAr} — غير مرتبط`}
                 </p>
-                <p className="makman-capability-hint">{d.capabilityAr}</p>
-                {offered && (
+                <p className="makman-capability-hint">
+                  {/* The reason, where the capability would be — because a
+                      capability the platform has not opened is not a capability
+                      yet. For «غير مهيّأ» the heading above already said it all. */}
+                  {state?.access === 'AWAITING_PLATFORM_REVIEW' ? state.reasonAr : d.capabilityAr}
+                </p>
+                {open && (
                   <a className="makman-download-btn" href={d.href}>
                     {linked.length > 0 ? `+ اربط حساباً آخر — ${d.labelAr}` : `+ اربط ${d.labelAr}`}
                   </a>
@@ -1303,7 +1317,24 @@ export default function MakmanAlGhayah() {
             {carryNotice && <p className="project-status">{carryNotice}</p>}
 
             {/* ── THE DESTINATION, ONCE SOMETHING IS CARRIED ──────────────── */}
-            {carried && cloud?.accounts.map((acc) => (
+            {carried && cloud?.accounts.map((acc) => {
+              // ── A LINKED ACCOUNT ITS PLATFORM NOW REFUSES ─────────────
+              //   Linking is not permission to publish, and a platform may
+              //   narrow what it admits after a grant was made. Offering
+              //   «انشره في» here would promise first and fail after — the
+              //   worse half of the same debt. The reason replaces the
+              //   button; the account itself stays, because nothing is
+              //   wrong with it.
+              const refusedAr = cloud?.accountRefusals?.[acc.accountId];
+              if (refusedAr) {
+                return (
+                  <p key={acc.accountId} className="makman-capability-hint">
+                    {PROVIDER_MARK[acc.provider] ?? '✦'}{' '}
+                    {acc.accountLabel ?? 'وجهتك'} — {refusedAr}
+                  </p>
+                );
+              }
+              return (
               <button
                 key={acc.accountId}
                 className="makman-download-btn"
@@ -1338,7 +1369,8 @@ export default function MakmanAlGhayah() {
                       ? `♪ أرسِله مسوّدةً إلى ${acc.accountLabel ?? 'تيك توك'}`
                       : `${PROVIDER_MARK[acc.provider] ?? '✦'} انشره في ${acc.accountLabel ?? 'وجهتك'}`}
               </button>
-            ))}
+              );
+            })}
 
             {carried && cloud?.accounts.length === 0 && (
               <p className="makman-capability-hint">اربط حساباً سحابيّاً أعلاه لترفع هذا الأصل إليه.</p>
@@ -2075,8 +2107,13 @@ export default function MakmanAlGhayah() {
                               </a>
                               {/* ── THE SECOND DOOR: THE CREATOR'S OWN CLOUD ──
                                   Shown only when an account is actually linked.
-                                  A button that would fail is not offered. */}
-                              {cloud?.accounts.map((acc) => (
+                                  A button that would fail is not offered — and
+                                  an account whose platform refuses this Creator
+                                  WOULD fail, so it is left out here. The reason
+                                  is stated once, in the destinations panel
+                                  above; repeating it beside every reframed
+                                  variant would bury it. */}
+                              {cloud?.accounts.filter((acc) => !cloud?.accountRefusals?.[acc.accountId]).map((acc) => (
                                 <button
                                   key={acc.accountId}
                                   className="makman-download-btn"

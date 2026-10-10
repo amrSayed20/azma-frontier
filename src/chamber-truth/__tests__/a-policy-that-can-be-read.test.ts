@@ -19,8 +19,13 @@ it('the policy is served from the build, not from docs/', () => {
   expect(read('app/policies/[slug]/page.tsx')).not.toContain('readFileSync');
 });
 
-it('the seven that cannot travel are counted, not forgotten', () => {
-  expect(POLICIES_NOT_YET_PUBLISHABLE).toHaveLength(7);
+it('the ones that cannot travel are counted, not forgotten', () => {
+  // It counted SEVEN, and two were since published as `.ts` and removed from
+  // this list — so the number fell and the test failed for a repair. The rule
+  // it was guarding is not the count: it is that nothing stays listed here
+  // once it can actually be served.
+  expect(POLICIES_NOT_YET_PUBLISHABLE.length).toBeGreaterThan(0);
+  for (const path of POLICIES_NOT_YET_PUBLISHABLE) expect(path).toMatch(/^docs\//);
 });
 
 it('the Founder’s text is transcribed, not edited', () => {

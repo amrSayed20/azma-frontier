@@ -25,21 +25,24 @@
  *   · `state` and `nonce` are minted per link and held in httpOnly cookies —
  *     a value the page can read is a value an injected script can read.
  *   · `state` is compared with a constant-time equality, not `===`.
- *   · both gates — provider configured, vault configured — are checked BEFORE
- *     the Creator is sent anywhere, because a Creator who grants permission
- *     and then learns the Empire cannot hold it has been made to do something
- *     for nothing.
+ *   · all THREE gates — provider configured, vault configured, and the
+ *     platform admitting THIS Creator — are checked BEFORE the Creator is sent
+ *     anywhere, because a Creator who grants permission and then learns the
+ *     Empire cannot hold it has been made to do something for nothing. The
+ *     third gate was added 2026-10-10: the first two ask only about the
+ *     Empire, and the provider's own refusal screen does not.
  *   · every ending leaves a trace in the log, because a link that fails
  *     silently is a link nobody can diagnose.
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { verifySession } from '../authentication';
-import { getDb } from '../persistent-storage';
+import { getDb, getCreator } from '../persistent-storage';
 import { mintOAuthValue, safeEquals } from '../identity/providers/google-identity-binding';
 import { isTokenVaultConfigured } from './token-vault';
 import { linkCloudAccount, type CloudProviderId } from './cloud-account-repository';
 import type { CloudDestination } from './destination-contract';
+import { destinationAccessFor } from './destination-eligibility';
 
 const SESSION_COOKIE = 'azma_session';
 const RETURN_TO = 'https://azmaos.com/makman-al-ghayah';
@@ -96,6 +99,29 @@ export async function beginLink(f: LinkFlow, sessionId: string | undefined): Pro
       { status: 'failed', reason: 'capability-unavailable', message: 'الإمبراطورية ليست مهيّأةً بعد لحفظ حسابك بأمان.' },
       { status: 503 },
     );
+  }
+  // ── THE THIRD GATE: DOES THE PLATFORM ADMIT *THIS* CREATOR? ────────────
+  //   The two gates above ask about the EMPIRE. Neither asks the question the
+  //   provider's own screen is about to answer, so a Creator the platform does
+  //   not admit was sent to it and refused there — with our name on the
+  //   journey and the platform's name on the refusal.
+  //
+  //   It belongs HERE, beside them, for the reason already recorded above: a
+  //   Creator must not be made to travel for nothing. Hiding the Chamber's
+  //   button is not enough — this URL is reachable by hand.
+  {
+    const verdict = destinationAccessFor({
+      offerKey: f.key,
+      empireHoldsCredential: true, // Established by the gate above.
+      creatorEmail: getCreator(getDb(), session.creatorId)?.email ?? null,
+    });
+    if (verdict.access !== 'OPEN') {
+      console.log(`[cloud/${f.key}] refused at the door:`, verdict.access);
+      return NextResponse.json(
+        { status: 'failed', reason: 'awaiting-platform-review', message: verdict.reasonAr },
+        { status: 503 },
+      );
+    }
   }
 
   const state = mintOAuthValue();
