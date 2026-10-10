@@ -55,3 +55,11 @@ next-env.d.ts
 # transient release artifact produced by scripts/deploy.sh
 .deploy-artifact.tar.gz
 .reference-pack/
+
+# Proof-harness CAPTURES — screenshots, recordings and wire dumps a run
+# produced. The harness SCRIPTS beside them are source and are committed;
+# their output is evidence from one run and belongs in the report, not here.
+/scripts/proof-harness/*.png
+/scripts/proof-harness/*.json
+/scripts/proof-harness/tiktok-demo/
+/scripts/proof-harness/tiktok-recording/
