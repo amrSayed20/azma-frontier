@@ -319,9 +319,30 @@ export async function POST(request: NextRequest) {
   });
 
   if (result.status === 'failed') {
-    // Release reservation on failure — units returned to available balance
+    // ── D-8 · WHAT HAPPENED TO THE CREATOR'S BALANCE, SAID EXACTLY ────────
+    //
+    //   The release was already here, wrapped in `catch { /* non-fatal */ }`.
+    //   Non-fatal to the REQUEST — but if it threw, units stayed reserved and
+    //   the chamber still showed a bare «تعذّر إتمام الإنتاج». A Creator could
+    //   not tell a failure that cost them nothing from one that held their
+    //   units, and the interface said the same thing either way.
+    //
+    //   Three outcomes, and they are not interchangeable:
+    //     'released'    — units were reserved and are back. PROVEN here.
+    //     'none'        — nothing was ever reserved, so nothing could be taken.
+    //     'unresolved'  — a reservation exists and the release threw. We do
+    //                     NOT claim the Creator was not charged; we say it is
+    //                     unresolved, because that is what is true.
+    let balanceOutcome: 'released' | 'none' | 'unresolved' = 'none';
     if (reservationId) {
-      try { creditRepo.release(reservationId, 'generation_failed'); } catch { /* non-fatal */ }
+      try {
+        creditRepo.release(reservationId, 'generation_failed');
+        balanceOutcome = 'released';
+      } catch (err) {
+        balanceOutcome = 'unresolved';
+        console.error('[qiyamah/generate] reservation release failed:', operationId,
+          err instanceof Error ? err.message.slice(0, 120) : 'unknown');
+      }
     }
     // provider-error → 422 (4xx, not intercepted by Cloudflare); storage-error/unknown → 502
     const httpStatus =
@@ -329,7 +350,7 @@ export async function POST(request: NextRequest) {
       result.reason === 'rate-limited'    ? 429 :
       result.reason === 'provider-error'  ? 422 :
       502;
-    return NextResponse.json(result, { status: httpStatus });
+    return NextResponse.json({ ...result, balanceOutcome }, { status: httpStatus });
   }
 
   // Settle reservation on success using the pre-resolved estimate

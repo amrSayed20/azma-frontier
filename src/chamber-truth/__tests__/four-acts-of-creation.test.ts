@@ -67,7 +67,19 @@ describe('3 · each act is offered only what it can use', () => {
   });
 
   it('the infographic binds its model instead of re-offering a style', () => {
-    expect(CLIENT).toContain("if (mode === 'infographic') setStyle('infographic');");
+    // The rule is unchanged; its home moved. Every entry point to an act now
+    // goes through ONE translator (`openOperation`), so the binding cannot be
+    // honoured by the act chooser and forgotten by the operations centre.
+    expect(CLIENT).toContain("case 'infographic': setMediaType('infographic'); setStyle('infographic'); break;");
+  });
+
+  it('every entry point to an act passes through the one translator', () => {
+    // Two doors reach the same act — a card in the operations centre and the
+    // switcher inside a workspace. If either set state directly, the chamber
+    // could describe one act while configured for another.
+    expect(CLIENT).toContain('function openOperation(id: string) {');
+    expect(CLIENT).toContain('onChoose={openOperation}');
+    expect(CLIENT).toContain('openOperation(mode ===');
   });
 
   it('an act that works on an owned asset is not asked for an idea', () => {
@@ -86,8 +98,16 @@ describe('3 · each act is offered only what it can use', () => {
     // asset you own. He said twice it was «موجود ولكنه غير ظاهر».
     expect(CLIENT).toContain("['asset', 'من أصلٍ تملكه'");
     expect(CLIENT).toContain("{mediaType === 'video' && videoSource === 'asset' && (");
-    const acts = CLIENT.slice(at('<div className="media-type-toggle"'), at('<div className="media-type-toggle"') + 1400);
-    expect(acts).not.toContain("'animate'");
+    // It is still not a fifth BOX in the switcher: the four labels are what a
+    // Creator reads there. The translator maps the asset source to the
+    // `animate` operation id so the rail above can name it truthfully — an
+    // internal identifier, not a visible fifth act.
+    const start = at('<div className="media-type-toggle"');
+    const labels = CLIENT.slice(start, start + 1400);
+    for (const act of ['image', 'video', 'infographic', 'edit']) {
+      expect(labels).toContain(`'${act}',`);
+    }
+    expect(labels).not.toContain("'animate', 'تحريك'");
   });
 
   it('the infographic has one door, not two', () => {

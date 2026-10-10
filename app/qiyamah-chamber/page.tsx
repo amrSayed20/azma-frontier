@@ -6,6 +6,7 @@ import { getVisionDocument } from '@/src/chamber-vision';
 import { VIDEO_MODEL_FLEET } from '@/src/sovereign-model-selection/video-model-fleet';
 import { IMAGE_MODEL_FLEET } from '@/src/sovereign-model-selection/image-model-fleet';
 import { creatorFacingPackages } from '@/src/economy/pricing/sovereign-value-balance';
+import { qiyamahOperations, OPERATION_GROUPS } from '@/src/qiyamah-generation/operation-catalog';
 
 /**
  * QIYAMAH CHAMBER, PACKAGE I: wrapped in its own IXE Experience Pipeline
@@ -16,15 +17,34 @@ import { creatorFacingPackages } from '@/src/economy/pricing/sovereign-value-bal
  * required.
  *
  * Phase 3B Package II — N-4: chamberVision (static data, safe to pass as
- * server component prop) and generationAvailable (truthful capability check,
- * MAGIC_HOUR_API_KEY presence — the boolean never exposes the key itself)
- * are passed to the client so the interface can state what it actually does.
+ * server component prop) is passed to the client so the interface can state
+ * what it actually does.
+ *
+ * ─── D-3, 2026-10-11: ONE KEY NO LONGER SPEAKS FOR SIX OPERATIONS ───────────
+ *
+ *   `generationAvailable = !!process.env.MAGIC_HOUR_API_KEY` was the chamber's
+ *   whole availability signal. One unrelated credential standing in for six
+ *   different questions — and right only by coincidence, because every
+ *   designated model happens to route to that one gateway today.
+ *
+ *   `qiyamahOperations()` asks each operation its own two questions instead:
+ *   does the fleet authorise its designated model, and can this process reach
+ *   that model's gateway. The answer crosses as a NAMED state with its own
+ *   Arabic reason, so a screen never has to infer why something cannot run.
+ *   No credential crosses, and none is derivable from what does.
  */
 export default async function QiyamahChamberPage() {
   const locale = await resolveRequestLocale();
   const dict = getDictionary(locale);
   const chamberVision = getVisionDocument('qiyamah-chamber');
-  const generationAvailable = !!process.env.MAGIC_HOUR_API_KEY;
+  // Each operation, judged against its own pathway. Read on the SERVER: the
+  // gateway list is derived from credential presence, and only the verdict
+  // crosses to the browser.
+  const operations = qiyamahOperations(null);
+  // Kept for the controls this package has not yet reached. It is now DERIVED
+  // from the operations themselves — if nothing can run, nothing is offered —
+  // rather than from one key that answers a different question.
+  const generationAvailable = operations.some((o) => o.runnable);
   // The models a Creator may animate an image with — derived from the fleet
   // at render time, never written in the interface: production-authorized,
   // active, and VERIFIED to take an image. Today that is Seedance 2.0 alone;
@@ -92,6 +112,12 @@ export default async function QiyamahChamberPage() {
         dict={dict}
         chamberVision={chamberVision}
         generationAvailable={generationAvailable}
+        /* Layer A's whole source of truth: the six acts, each with its named
+           availability, its Arabic reason when it cannot run, its required
+           inputs, its cost STEP (never a price — the deferred financial
+           authority is untouched), and its own brief contract. */
+        operations={operations}
+        operationGroups={OPERATION_GROUPS}
         animationModels={animationModels}
         durationLadder={durationLadder}
         aspectOptions={aspectOptions}

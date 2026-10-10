@@ -194,8 +194,27 @@ cmd_deploy() {
     esac
   done
 
-  local release_id
-  release_id="$(date -u +%Y%m%d-%H%M%S)-$(cd "$REPO_ROOT" && git rev-parse --short HEAD 2>/dev/null || echo nogit)"
+  # ── D-9 · A RELEASE LABEL MUST IDENTIFY THE CODE IT CARRIES ───────────────
+  #
+  #   This was `date + git rev-parse --short HEAD` with no marker for a
+  #   modified tree. MEASURED 2026-10-10: the live release read
+  #   `20261010-155232-4e8c43d` while carrying the content of two later
+  #   commits, because it was built from a working tree that HEAD did not
+  #   describe. An investigation that begins from a release name then begins
+  #   from a false statement.
+  #
+  #   A dirty tree now says so in the name, and the exact source identity is
+  #   written INTO the release so it can be read back from the server months
+  #   later without trusting a label at all.
+  local release_commit release_dirty release_id
+  release_commit="$(cd "$REPO_ROOT" && git rev-parse --short HEAD 2>/dev/null || echo nogit)"
+  if [ -n "$(cd "$REPO_ROOT" && git status --porcelain 2>/dev/null)" ]; then
+    release_dirty="dirty"
+    release_id="$(date -u +%Y%m%d-%H%M%S)-${release_commit}-dirty"
+  else
+    release_dirty="clean"
+    release_id="$(date -u +%Y%m%d-%H%M%S)-${release_commit}"
+  fi
 
   step "Release $release_id"
   info "target $REMOTE:$APP_DIR"
@@ -415,6 +434,12 @@ cmd_deploy() {
     rm -rf '$RELEASES_DIR/$release_id'
     mkdir -p '$RELEASES_DIR/$release_id'
     mv -T '$STAGING_DIR/.next' '$RELEASES_DIR/$release_id/.next'
+    {
+      echo 'commit=$release_commit'
+      echo 'tree=$release_dirty'
+      echo build_id=\$(cat '$RELEASES_DIR/$release_id/.next/BUILD_ID' 2>/dev/null || echo unknown)
+      echo 'released_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)'
+    } > '$RELEASES_DIR/$release_id/SOURCE_IDENTITY'
     rm -rf '$STAGING_DIR'
     echo '    ok   $RELEASES_DIR/$release_id'
   "

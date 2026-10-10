@@ -85,6 +85,8 @@ interface UploadedItem {
   readonly uploadedAt:       number;
 }
 
+import { OperationsCenter, type OperationStateView, type OperationGroupView } from './OperationsCenter';
+
 interface QiyamahChamberClientProps {
   readonly dict:                Dictionary;
   /**
@@ -106,6 +108,15 @@ interface QiyamahChamberClientProps {
   readonly aspectOptions?:      readonly string[];
   /** The shapes every designated IMAGE model accepts. A picture has a shape too. */
   readonly imageAspectOptions?: readonly string[];
+  /**
+   * LAYER A's source of truth — the six acts as the SERVER judged them.
+   *
+   * Each carries its own named availability, its Arabic reason when it cannot
+   * run, its required inputs, the cost STEP the existing estimator prices, and
+   * its own brief contract. The browser renders this; it never computes it.
+   */
+  readonly operations?:         readonly OperationStateView[];
+  readonly operationGroups?:    readonly OperationGroupView[];
 }
 
 /**
@@ -194,6 +205,124 @@ function StepCostLine({ quote, showBalance = false }: { readonly quote: StepQuot
 }
 
 /**
+ * ── D-6 · THE FINAL SCENE, IN ONE PLACE ─────────────────────────────────────
+ *
+ *   Two byte-near-identical copies of this editor stood in the chamber, one
+ *   per input mode. They differed in exactly two things — which text «keep
+ *   mine» restores, and what that button is called — so they were one
+ *   responsibility written twice, and the second would have drifted from the
+ *   first at the next edit.
+ *
+ *   Removing a copy was not the fix: each held a behaviour the other did not.
+ *   The responsibility is extracted once and those two differences are
+ *   arguments.
+ *
+ *   It also carries the brief contract's ceiling, because THIS is the text
+ *   that is actually submitted — the Creator may edit it freely here, and a
+ *   field that can be edited past what the server accepts is the old defect
+ *   wearing a new shirt.
+ */
+function FinalSceneEditor({
+  constructedPrompt, setConstructedPrompt, originalConstructedPrompt,
+  mineText, mineLabelAr, capOperationId, operations,
+}: {
+  readonly constructedPrompt: string;
+  readonly setConstructedPrompt: (v: string) => void;
+  readonly originalConstructedPrompt: string;
+  readonly mineText: string;
+  readonly mineLabelAr: string;
+  readonly capOperationId: string;
+  readonly operations: readonly OperationStateView[];
+}) {
+  return (
+    <div className="external-prompt-choice">
+      <p className="external-choice-label">المشهد النهائي للتجسيد — عدّله إن شئت</p>
+      <textarea
+        className="idea-textarea"
+        autoComplete="off"
+        value={constructedPrompt}
+        onChange={(e) => setConstructedPrompt(e.target.value)}
+        rows={6}
+        aria-label="المشهد النهائي — قابل للتعديل"
+      />
+      {/* The scaffold is already inside this text, so the ceiling shown here
+          is the SUBMITTED one — the whole prompt the engine will receive. */}
+      <BriefCapLine operationId={capOperationId} text={constructedPrompt} operations={operations} />
+      <div className="choice-shortcuts">
+        <button type="button" className="secondary-btn" onClick={() => setConstructedPrompt(mineText)}>
+          {mineLabelAr}
+        </button>
+        <button type="button" className="secondary-btn" onClick={() => setConstructedPrompt(originalConstructedPrompt)}>
+          استعِد فهم القيامة
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ── D-1 · THE CEILING, SAID BEFORE A HAND MOVES ─────────────────────────────
+ *
+ *   The three fields that took an instruction carried `maxLength={1000}`: the
+ *   keyboard simply stopped, at a number no provider ever published, with no
+ *   word to the Creator about why. And the field a brief actually began in —
+ *   «فكرتك» — carried no limit at all, so a Creator typed freely and was
+ *   refused by the server at 501 characters AFTER pressing.
+ *
+ *   Both are wrong in the same way: a limit that is enforced but not stated.
+ *   This line states it, from the SERVER'S OWN CONTRACT, and it names whose
+ *   limit it is — the platform's, or the Empire's guard. The field itself is
+ *   left free: the cap bounds EXECUTION, never the keyboard, so nothing a
+ *   Creator wrote is ever destroyed by a keystroke that does not register.
+ */
+function briefCapOf(
+  operationId: string,
+  operations: readonly OperationStateView[],
+): OperationStateView['brief'] | null {
+  return operations.find((o) => o.id === operationId)?.brief ?? null;
+}
+
+function overBriefCap(
+  operationId: string,
+  text: string,
+  operations: readonly OperationStateView[],
+): boolean {
+  const brief = briefCapOf(operationId, operations);
+  return brief ? text.trim().length > brief.effectiveCap : false;
+}
+
+function BriefCapLine({
+  operationId, text, operations,
+}: {
+  readonly operationId: string;
+  readonly text: string;
+  readonly operations: readonly OperationStateView[];
+}) {
+  const brief = briefCapOf(operationId, operations);
+  if (!brief) return null;
+  const used = text.trim().length;
+  const over = used > brief.effectiveCap;
+  return (
+    <div className={`brief-cap${over ? ' brief-cap--over' : ''}`}>
+      <span className="brief-cap-count">
+        {used.toLocaleString('en-US')} / {brief.effectiveCap.toLocaleString('en-US')}
+      </span>
+      <span className="brief-cap-note">
+        {over
+          ? `أطولُ بـ${(used - brief.effectiveCap).toLocaleString('en-US')} حرفاً — اختصرها، ولم يُحذَف منها حرف.`
+          : brief.capNoticeAr}
+      </span>
+      {brief.scaffoldCharacters > 0 && !over && (
+        <span className="brief-cap-scaffold">
+          تُضاف سِقالةُ النمط ({brief.scaffoldCharacters.toLocaleString('en-US')} حرفاً) داخلَ هذا السقف، لا فوقه.
+        </span>
+      )}
+    </div>
+  );
+}
+
+
+/**
  * Exactly what a Creator may see of a package. NOT the pricing module's own
  * type: importing that module into a `'use client'` file would pull the
  * Empire's provider costs, dollar basis and FX rate into a bundle any visitor
@@ -216,6 +345,8 @@ export function QiyamahChamberClient({
   aspectOptions = [],
   imageAspectOptions = [],
   packages = [],
+  operations = [],
+  operationGroups = [],
 }: QiyamahChamberClientProps) {
   const { goTo } = useConstitutionalNavigation();
   const { triggerInvitation } = useInstallInvitation();
@@ -272,6 +403,21 @@ export function QiyamahChamberClient({
    *   acts of creation, and the Chamber of creation offers four.
    */
   const [mediaType,          setMediaType]          = useState<'image' | 'video' | 'edit' | 'infographic'>('image');
+  /**
+   * ── LAYER A ↔ LAYER B · WHICH OPERATION THE CREATOR CHOSE ──────────────
+   *
+   *   `null` is the operations centre — the chamber's mother state, and where
+   *   every journey starts and returns. The six acts used to be discoverable
+   *   in three different places and upscaling in none of them until something
+   *   had already been produced.
+   *
+   *   It is kept SEPARATE from `mediaType` deliberately: `mediaType` is what
+   *   the generate route is told to make, and two operations map to the same
+   *   value (a clip from an idea and a clip from an asset are both 'video').
+   *   Collapsing them would make the centre unable to tell which workspace to
+   *   open.
+   */
+  const [chosenOperation, setChosenOperation] = useState<string | null>(null);
   const [durationSeconds,    setDurationSeconds]    = useState<number>(6);
   // The shape of the scene. Defaults to the first the designated models all
   // accept, so a Creator who never touches it still gets something valid.
@@ -280,6 +426,45 @@ export function QiyamahChamberClient({
   // clip, a picture's for a picture. An edit keeps the shape of its source.
   /** A clip is made from a described idea, or from a still the Creator owns. */
   const [videoSource, setVideoSource] = useState<'idea' | 'asset'>('idea');
+
+  /**
+   * Opening a workspace from the centre. ONE translator, in one place.
+   *
+   * The existing engines are untouched: this sets the same state the act
+   * chooser always set, so every proven handler below runs exactly as it did.
+   * What changed is that six cards now reach five workspaces plus upscale,
+   * instead of four cards reaching four and two operations hiding elsewhere.
+   */
+  function openOperation(id: string) {
+    setChosenOperation(id);
+    setGenerationError(null);
+    setGenerationErrorReason(null);
+    switch (id) {
+      case 'image':       setMediaType('image');  setVideoSource('idea');
+                          if (style === 'infographic') setStyle('cinematic'); break;
+      case 'infographic': setMediaType('infographic'); setStyle('infographic'); break;
+      case 'video':       setMediaType('video'); setVideoSource('idea');
+                          if (style === 'infographic') setStyle('cinematic'); break;
+      case 'animate':     setMediaType('video'); setVideoSource('asset'); break;
+      case 'edit':        setMediaType('edit'); break;
+      case 'upscale':     setMediaType('edit'); break;
+      default: break;
+    }
+  }
+
+  /**
+   * Back to the centre — WITHOUT discarding unsent work.
+   *
+   * The drafts live in their own store keyed by operation and target, so
+   * leaving a workspace neither clears them nor lets them reach another
+   * operation. Only the journey position is reset.
+   */
+  function returnToCenter() {
+    setChosenOperation(null);
+    setStage('idea');
+    setGenerationError(null);
+    setGenerationErrorReason(null);
+  }
 
   const shapesForAct = mediaType === 'video' ? aspectOptions : imageAspectOptions;
 
@@ -350,7 +535,24 @@ export function QiyamahChamberClient({
   // Success is never shown from here — it is shown by the derived asset
   // appearing in the gallery, which only happens after it is really saved.
   const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
-  const [editInstruction, setEditInstruction] = useState('');
+  // ── D-5 · ONE DRAFT PER OPERATION PER TARGET ──────────────────────────
+  //
+  //   `editInstruction` was a single string read by THREE fields: the edit
+  //   act, the per-asset panel in the gallery, and (through the same handler)
+  //   whichever asset happened to be selected. Typing in one changed what
+  //   another displayed, and `handleEditAsset` spent whatever text was last
+  //   typed anywhere against whichever asset the panel had opened.
+  //
+  //   The key is the operation AND its target, because that is what a draft
+  //   actually belongs to. Two entry points onto the SAME asset are one draft
+  //   — that is not a leak, it is the Creator's own work preserved. Two
+  //   different assets, or two different operations, can never see each
+  //   other's words.
+  const [drafts, setDrafts] = useState<Readonly<Record<string, string>>>({});
+  const draftKey = (op: string, target: string | null) => `${op}:${target ?? '-'}`;
+  const draftFor = (op: string, target: string | null) => drafts[draftKey(op, target)] ?? '';
+  const setDraft = (op: string, target: string | null, value: string) =>
+    setDrafts((prev) => ({ ...prev, [draftKey(op, target)]: value }));
 
   // ── animate-asset — a still brought into motion ──────────────────────────
   //
@@ -363,7 +565,15 @@ export function QiyamahChamberClient({
   const [producingNotice, setProducingNotice] = useState<string | null>(null);
   const [animatingRecordId, setAnimatingRecordId] = useState<string | null>(null);
   const [animateAssetId, setAnimateAssetId] = useState<string | null>(null);
-  const [animateInstruction, setAnimateInstruction] = useState('');
+
+  // The six acts read their own draft through these. Every existing field and
+  // handler keeps the name it had; what changed is that the two names no
+  // longer point at one string.
+  const editInstruction = draftFor('edit', editingAssetId);
+  const setEditInstruction = (v: string) => setDraft('edit', editingAssetId, v);
+  const animateInstruction = draftFor('animate', animateAssetId);
+  const setAnimateInstruction = (v: string) => setDraft('animate', animateAssetId, v);
+  // animate's draft lives in the same store, keyed by its own target.
   const [animateModelId, setAnimateModelId] = useState<string>(animationModels[0]?.modelId ?? '');
   const [animateState, setAnimateState] = useState<'ready' | 'running' | 'failed'>('ready');
   const [animateError, setAnimateError] = useState<string | null>(null);
@@ -888,7 +1098,17 @@ export function QiyamahChamberClient({
         const trace = typeof result.operationId === 'string'
           ? ` — العملية ${result.operationId.slice(0, 8)}${typeof result.stage === 'string' ? ` · ${result.stage}` : ''}`
           : '';
-        setGenerationError((result.message ?? 'التوليد لم ينجح.') + trace);
+        // ── D-8 · WHAT HAPPENED TO THEIR BALANCE, FROM THE SERVER ────
+        //   Never asserted here. The route states one of three outcomes and
+        //   the chamber repeats exactly that — including «unresolved», which
+        //   is the one a Creator must never see dressed as «nothing was
+        //   taken». An unknown charge is reported as unknown.
+        const balance =
+          result.balanceOutcome === 'released'   ? ' ولم يُخصَم شيء — أُعيد ما حُجِز إلى رصيدك.'
+          : result.balanceOutcome === 'none'     ? ' ولم يُحجَز من رصيدك شيءٌ لهذه المحاولة.'
+          : result.balanceOutcome === 'unresolved' ? ' وحالةُ ما حُجِز من رصيدك لم تُحسَم بعد — تُراجَع ولا تُترَك.'
+          : '';
+        setGenerationError((result.message ?? 'التوليد لم ينجح.') + trace + balance);
         setGenerationErrorReason(result.reason ?? null);
         setStage('error');
       }
@@ -1242,7 +1462,7 @@ export function QiyamahChamberClient({
   }
 
   async function handleAnimateAsset() {
-    const instruction = animateInstruction.trim();
+    const instruction = draftFor('animate', animateAssetId).trim();
     if (!animateAssetId || instruction.length === 0 || !animateModelId) return;
     setAnimateState('running');
     setAnimateError(null);
@@ -1323,7 +1543,8 @@ export function QiyamahChamberClient({
   }
 
   async function handleEditAsset(assetId: string) {
-    const instruction = editInstruction.trim();
+    // The asset this call was given — never «whatever was last typed».
+    const instruction = draftFor('edit', assetId).trim();
     if (instruction.length === 0) return;
 
     setEditState('running');
@@ -1454,25 +1675,62 @@ export function QiyamahChamberClient({
         <section className="genesis-section">
           <span className="section-label">بؤرة التوليد</span>
 
-          {/* Provider unavailable — truthful blocked state */}
+          {/* ── D-3 · THE BLOCKED STATE IS NOW PER OPERATION ──────────────
+              One banner used to speak for six acts, drawn from
+              `!!MAGIC_HOUR_API_KEY`, and its second line was in English —
+              shown to a Creator who reads Arabic. The operations centre below
+              states each act's own availability and its own reason, so this
+              banner remains only for the case where NOTHING can run. */}
           {!generationAvailable &&
             stage !== 'generating' &&
             stage !== 'result' &&
             stage !== 'error' && (
             <div className="provider-unavailable" role="status">
               <span className="unavailable-icon" aria-hidden="true">◎</span>
-              <p className="unavailable-title">بؤرة التوليد في انتظار مزود</p>
+              <p className="unavailable-title">بؤرة التوليد في انتظار محرّك</p>
               <p className="unavailable-sub">
-                Image generation requires a provider credential to be configured on this server.
+                لا يستطيع أيُّ فعلٍ من أفعال هذه الحجرة أن يَعمل الآن. وستُفتَح أبوابُها فور أن تَصِل الإمبراطوريّةُ إلى محرّكاتها.
               </p>
             </div>
           )}
 
-          {/* ── STAGE: IDEA / CONSTRUCTING ─────────────────────────────── */}
+          {/* ── LAYER A · THE UNIFIED CREATION OPERATIONS CENTER ──────────
+              The chamber's mother state. Every journey starts here and
+              returns here, and every act is discoverable in ONE place. */}
           {generationAvailable &&
+            chosenOperation === null &&
+            (stage === 'idea' || stage === 'constructing') && (
+            <OperationsCenter
+              operations={operations}
+              groups={operationGroups}
+              onChoose={openOperation}
+              quoteStep={(step) => quoteStep(step)}
+              creatorPresent={creatorPresent}
+            />
+          )}
+
+          {/* ── LAYER B · THE OPERATION'S OWN CONFIGURATION WORKSPACE ────
+              It opens only once a card has been pressed, so what is offered
+              is always what the chosen act actually uses. */}
+          {generationAvailable &&
+            chosenOperation !== null &&
             (stage === 'idea' || stage === 'constructing') && (
             <div className="genesis-form">
-              {/* The four acts of creation, chosen before anything else. */}
+              {/* The way back — and it discards nothing. The drafts live in
+                  their own store keyed by operation and target. */}
+              <nav className="ops-rail" aria-label="موضعك">
+                <button type="button" className="ops-rail-back" onClick={returnToCenter}>
+                  ‹ مركزُ العمليّات
+                </button>
+                <span className="ops-rail-sep" aria-hidden="true">›</span>
+                <span className="ops-rail-here">
+                  {operations.find((o) => o.id === chosenOperation)?.nameAr ?? 'التهيئة'}
+                </span>
+              </nav>
+
+              {/* The act chooser stays INSIDE the workspace as a switcher, not
+                  as the place acts are discovered. Discovery is Layer A's; this
+                  is the shortcut for a Creator already configuring one. */}
               <div className="media-type-toggle" role="radiogroup" aria-label="ماذا تصنع؟">
                 {([
                   ['image',       'صورة',      'مشهدٌ أصليّ من فكرتك'],
@@ -1486,12 +1744,12 @@ export function QiyamahChamberClient({
                     aria-checked={mediaType === mode}
                     className={`media-type-btn${mediaType === mode ? ' media-type-btn--active' : ''}`}
                     onClick={() => {
-                      setMediaType(mode);
-                      // The infographic BINDS one designated model, and the
-                      // Empire refuses rather than substitutes for it. Choosing
-                      // the act chooses the style it requires.
-                      if (mode === 'infographic') setStyle('infographic');
-                      else if (style === 'infographic') setStyle('cinematic');
+                      // Through the ONE translator, so the rail above and the
+                      // workspace below can never describe different acts. The
+                      // infographic BINDS one designated model and the Empire
+                      // refuses rather than substitutes, which `openOperation`
+                      // honours for every entry point at once.
+                      openOperation(mode === 'video' && videoSource === 'asset' ? 'animate' : mode);
                     }}
                     disabled={stage === 'constructing'}
                     title={hint}
@@ -1575,12 +1833,12 @@ export function QiyamahChamberClient({
                         className="edit-act-input"
                         autoComplete="off"
                         rows={2}
-                        maxLength={1000}
                         value={animateInstruction}
                         onChange={(e) => setAnimateInstruction(e.target.value)}
                         placeholder="مثال: تقترب الكاميرا ببطء، ويتحرّك الدخان إلى الأعلى."
                         disabled={animateState === 'running'}
                       />
+                      <BriefCapLine operationId="animate" text={animateInstruction} operations={operations} />
 
                       {animationModels.length > 1 && (
                         <div className="asset-animate-models" role="radiogroup" aria-label="نوع الحركة">
@@ -1665,8 +1923,17 @@ export function QiyamahChamberClient({
                       placeholder="أي فكرة بسيطة — في جملة أو جملتين…"
                       value={idea}
                       onChange={(e) => { setIdea(e.target.value); setMaterialNotice(null); if (e.target.value.trim().length === 0) setMaterialAssetId(null); }}
-                      rows={3}
+                      rows={6}
                       disabled={stage === 'constructing'}
+                    />
+                    {/* THE FIELD THE 501-CHARACTER REFUSAL CAME FROM. It had no
+                        stated limit at all, so a Creator wrote freely and was
+                        refused by the server after pressing. Now the ceiling is
+                        read from the server's contract for the act they chose. */}
+                    <BriefCapLine
+                      operationId={mediaType === 'infographic' ? 'infographic' : mediaType === 'video' ? 'video' : 'image'}
+                      text={idea}
+                      operations={operations}
                     />
                     {materialNotice && <p className="material-notice">{materialNotice}</p>}
                   </div>
@@ -1689,6 +1956,11 @@ export function QiyamahChamberClient({
                       onChange={(e) => setExternalPrompt(e.target.value)}
                       rows={4}
                       disabled={stage === 'constructing'}
+                    />
+                    <BriefCapLine
+                      operationId={mediaType === 'infographic' ? 'infographic' : mediaType === 'video' ? 'video' : 'image'}
+                      text={externalPrompt}
+                      operations={operations}
                     />
                   </div>
                 </>
@@ -1719,13 +1991,21 @@ export function QiyamahChamberClient({
                   {editableAssets.length === 0 && !editingAssetId ? (
                     <>
                       <p className="edit-act-empty">
-                        لا أصولَ لديك بعد — ارفع صورةً من جهازك، أو أنشئ واحدةً ثمّ عُد.
+                        {chosenOperation === 'upscale'
+                          ? 'لا أصولَ لديك بعد — ارفع صورةً من جهازك، أو أنشئ واحدةً ثمّ عُد لترفع دقّتها.'
+                          : 'لا أصولَ لديك بعد — ارفع صورةً من جهازك، أو أنشئ واحدةً ثمّ عُد.'}
                       </p>
                       <AssetDoor onReceived={setEditingAssetId} />
                     </>
                   ) : (
                     <>
-                      <p className="edit-act-label">أيّ أصلٍ تُعدّل؟</p>
+                      {/* The question belongs to the ACT, not to the panel it
+                          borrows. MEASURED on the live chamber 2026-10-11: the
+                          upscale workspace asked «أيّ أصلٍ تُعدّل؟» — the wrong
+                          verb for an operation that changes nothing. */}
+                      <p className="edit-act-label">
+                        {chosenOperation === 'upscale' ? 'أيّ أصلٍ تَرفع دقّته؟' : 'أيّ أصلٍ تُعدّل؟'}
+                      </p>
                       <div className="edit-act-assets">
                         {editableAssets.map((a) => (
                           <button
@@ -1748,6 +2028,36 @@ export function QiyamahChamberClient({
                       </div>
                       <AssetDoor onReceived={setEditingAssetId} />
 
+                      {/* ── UPSCALE TAKES NO INSTRUCTION, SO IT IS SHOWN NONE ──
+                          It used to live ONLY inside a result panel, so a
+                          Creator who had produced nothing could not learn it
+                          existed. It is a card in the centre now, and its
+                          workspace is this asset picker and nothing else —
+                          because an upscale is told nothing. The contextual
+                          shortcut on a fresh result stays: two entry points to
+                          one operation, one implementation. */}
+                      {chosenOperation === 'upscale' ? (
+                        <>
+                          <p className="edit-act-hint">
+                            رفعُ الدقّة لا يأخذ تعليمةً — يَرفع تفاصيلَ أصلك كما هو، ويُودِع نسخةً جديدةً في خزانتك.
+                          </p>
+                          {upscaleCost && <StepCostLine quote={upscaleCost} />}
+                          {upscaleState === 'running' && (
+                            <p className="edit-act-status" role="status">الدقّة تُرفَع… لا تغلق الصفحة.</p>
+                          )}
+                          {upscaleState === 'failed' && upscaleError && (
+                            <p className="edit-act-error" role="alert">{upscaleError}</p>
+                          )}
+                          <button
+                            className="edit-act-run"
+                            disabled={upscaleState === 'running' || !editingAssetId}
+                            onClick={() => { if (editingAssetId) void handleUpscaleAsset(editingAssetId); }}
+                          >
+                            {upscaleState === 'running' ? '⏳ الدقّة تُرفَع…' : '⤢ ارفع دقّته'}
+                          </button>
+                        </>
+                      ) : (
+                        <>
                       <label className="edit-act-label" htmlFor="edit-act-instruction">
                         ما الذي تريد تغييره فيه؟
                       </label>
@@ -1756,12 +2066,18 @@ export function QiyamahChamberClient({
                         className="edit-act-input"
                         autoComplete="off"
                         rows={3}
-                        maxLength={1000}
                         value={editInstruction}
                         onChange={(e) => setEditInstruction(e.target.value)}
                         placeholder="مثال: غيّر الخلفية إلى رفوف مكتبة خشبية، وأبقِ الباقي كما هو."
                         disabled={editState === 'running'}
                       />
+                      {/* ── D-1 · THE CEILING IS THE CONTRACT'S, AND IT IS SHOWN ──
+                          `maxLength={1000}` stood on this field and silently
+                          stopped a hand at a number no provider published. The
+                          cap now comes from the server's own contract and is
+                          STATED before the Creator writes — and it bounds
+                          execution, never the keyboard. */}
+                      <BriefCapLine operationId="edit" text={editInstruction} operations={operations} />
 
                       {editState === 'running' && (
                         <p className="edit-act-status" role="status">التعديل قيد التنفيذ… لا تغلق الصفحة.</p>
@@ -1772,11 +2088,14 @@ export function QiyamahChamberClient({
 
                       <button
                         className="edit-act-run"
-                        disabled={editState === 'running' || !editingAssetId || editInstruction.trim().length === 0}
+                        disabled={editState === 'running' || !editingAssetId || editInstruction.trim().length === 0
+                          || overBriefCap('edit', editInstruction, operations)}
                         onClick={() => { if (editingAssetId) void handleEditAsset(editingAssetId); }}
                       >
                         {editState === 'running' ? '⏳ التعديل جارٍ…' : '✎ نفّذ التعديل'}
                       </button>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -1920,33 +2239,22 @@ export function QiyamahChamberClient({
                 </div>
               </div>
 
-              <div className="external-prompt-choice">
-                <p className="external-choice-label">المشهد النهائي للتجسيد — عدّله إن شئت</p>
-                <textarea
-                  className="idea-textarea"
-                      autoComplete="off"
-                  value={constructedPrompt}
-                  onChange={(e) => setConstructedPrompt(e.target.value)}
-                  rows={4}
-                  aria-label="المشهد النهائي — قابل للتعديل"
-                />
-                <div className="choice-shortcuts">
-                  <button
-                    type="button"
-                    className="secondary-btn"
-                    onClick={() => setConstructedPrompt(idea)}
-                  >
-                    أبقِ فكرتي كما هي
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-btn"
-                    onClick={() => setConstructedPrompt(originalConstructedPrompt)}
-                  >
-                    استعِد فهم القيامة
-                  </button>
-                </div>
-              </div>
+              {/* ── D-6 · ONE IMPLEMENTATION, TWO BEHAVIOURS ──────────────
+                  Two copies of this block stood here. They were NOT duplicates
+                  of one responsibility: they differed in which text «keep
+                  mine» restores and what that button is called. So the
+                  responsibility is extracted ONCE and parameterised, and both
+                  behaviours are preserved exactly — deleting either copy would
+                  have silently removed one of them. */}
+              <FinalSceneEditor
+                constructedPrompt={constructedPrompt}
+                setConstructedPrompt={setConstructedPrompt}
+                originalConstructedPrompt={originalConstructedPrompt}
+                mineText={idea}
+                mineLabelAr="أبقِ فكرتي كما هي"
+                capOperationId={mediaType === 'infographic' ? 'infographic' : mediaType === 'video' ? 'video' : 'image'}
+                operations={operations}
+              />
 
               <button
                 className="trigger-genesis-btn"
@@ -1976,33 +2284,22 @@ export function QiyamahChamberClient({
                 </div>
               </div>
 
-              <div className="external-prompt-choice">
-                <p className="external-choice-label">المشهد النهائي للتجسيد — عدّله إن شئت</p>
-                <textarea
-                  className="idea-textarea"
-                      autoComplete="off"
-                  value={constructedPrompt}
-                  onChange={(e) => setConstructedPrompt(e.target.value)}
-                  rows={4}
-                  aria-label="المشهد النهائي — قابل للتعديل"
-                />
-                <div className="choice-shortcuts">
-                  <button
-                    type="button"
-                    className="secondary-btn"
-                    onClick={() => setConstructedPrompt(externalPrompt)}
-                  >
-                    استخدم محثي الأصلي
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-btn"
-                    onClick={() => setConstructedPrompt(originalConstructedPrompt)}
-                  >
-                    استعِد فهم القيامة
-                  </button>
-                </div>
-              </div>
+              {/* ── D-6 · ONE IMPLEMENTATION, TWO BEHAVIOURS ──────────────
+                  Two copies of this block stood here. They were NOT duplicates
+                  of one responsibility: they differed in which text «keep
+                  mine» restores and what that button is called. So the
+                  responsibility is extracted ONCE and parameterised, and both
+                  behaviours are preserved exactly — deleting either copy would
+                  have silently removed one of them. */}
+              <FinalSceneEditor
+                constructedPrompt={constructedPrompt}
+                setConstructedPrompt={setConstructedPrompt}
+                originalConstructedPrompt={originalConstructedPrompt}
+                mineText={externalPrompt}
+                mineLabelAr="استخدم محثي الأصلي"
+                capOperationId={mediaType === 'infographic' ? 'infographic' : mediaType === 'video' ? 'video' : 'image'}
+                operations={operations}
+              />
 
               <button
                 className="trigger-genesis-btn"
@@ -2506,11 +2803,10 @@ export function QiyamahChamberClient({
                       <textarea
                         id={`edit-${u.assetId}`}
                         className="asset-edit-input"
-                        value={editInstruction}
-                        onChange={(e) => setEditInstruction(e.target.value)}
+                        value={draftFor('edit', u.assetId)}
+                        onChange={(e) => setDraft('edit', u.assetId, e.target.value)}
                         placeholder="مثال: غيّر الخلفية إلى رفوف مكتبة خشبية، وأبقِ الباقي كما هو."
                         rows={3}
-                        maxLength={1000}
                         disabled={editState === 'running'}
                       />
 
@@ -2536,7 +2832,7 @@ export function QiyamahChamberClient({
                       <div className="asset-edit-actions">
                         <button
                           className="asset-edit-run"
-                          disabled={editState === 'running' || editInstruction.trim().length === 0}
+                          disabled={editState === 'running' || draftFor('edit', u.assetId).trim().length === 0}
                           onClick={() => void handleEditAsset(u.assetId)}
                         >
                           {editState === 'running' ? 'جارٍ…' : 'نفّذ التعديل'}

@@ -1758,3 +1758,200 @@
 
 .chamber-packages-link:hover { border-color: var(--gold-neon); }
 .chamber-packages-link:focus-visible { outline: 2px solid var(--gold-neon); outline-offset: 3px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LAYER A · THE UNIFIED CREATION OPERATIONS CENTER            (2026-10-11)
+
+   The six acts, in one place, once each. Every rule below paints its own
+   background AND colour: a control given geometry alone is born browser-white
+   on this chamber's near-black ground, and no typecheck or token sweep can
+   see it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ops-center {
+  display: block;
+  margin: 0 0 1.5rem;
+}
+
+.ops-center-lede {
+  margin: 0 0 1.4rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.8;
+  max-width: 58ch;
+}
+
+.ops-group { margin: 0 0 1.6rem; }
+
+.ops-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  margin: 0 0 0.7rem;
+}
+.ops-group-title {
+  color: var(--gold-neon);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.ops-group-note {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.ops-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 0.6rem;
+}
+
+.ops-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  text-align: start;
+  padding: 0.85rem 0.85rem 0.7rem;
+  background: var(--panel-glass);
+  color: var(--text-main);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: 2px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.16s ease, transform 0.16s ease, background 0.16s ease;
+}
+.ops-card:hover:not(:disabled):not(.ops-card--shut) {
+  border-color: var(--gold-dim);
+  background: rgba(30, 12, 6, 0.82);
+  transform: translateY(-1px);
+}
+.ops-card:focus-visible {
+  outline: 2px solid var(--gold-neon);
+  outline-offset: 2px;
+}
+.ops-card--shut {
+  cursor: not-allowed;
+  opacity: 0.74;
+  border-color: rgba(168, 159, 145, 0.18);
+}
+.ops-card--awaiting { cursor: default; }
+
+.ops-card-glyph {
+  color: var(--gold-neon);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+.ops-card--shut .ops-card-glyph { color: var(--text-muted); }
+
+.ops-card-name {
+  color: var(--text-main);
+  font-size: 1rem;
+  font-weight: 600;
+}
+.ops-card-outcome {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.ops-card-inputs { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.ops-chip {
+  background: rgba(212, 175, 55, 0.07);
+  color: var(--text-muted);
+  border: 1px solid rgba(212, 175, 55, 0.16);
+  border-radius: 10px;
+  padding: 0.05rem 0.45rem;
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.ops-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-top: 0.1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(168, 159, 145, 0.12);
+}
+.ops-state { font-size: 0.72rem; white-space: nowrap; }
+.ops-state--open { color: #4ade80; }
+.ops-state--shut { color: var(--text-muted); }
+.ops-cost {
+  color: var(--gold-dim);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+.ops-card-why {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+/* ── the way back, and it discards nothing ──────────────────────────────── */
+.ops-rail {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0 0 1rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.ops-rail-back {
+  background: transparent;
+  color: var(--text-muted);
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+.ops-rail-back:hover { color: var(--gold-neon); }
+.ops-rail-back:focus-visible { outline: 2px solid var(--gold-neon); outline-offset: 2px; }
+.ops-rail-sep { color: rgba(168, 159, 145, 0.4); }
+.ops-rail-here { color: var(--gold-neon); font-weight: 600; }
+
+/* ── D-1 · the ceiling, stated before a hand moves ──────────────────────── */
+.brief-cap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.65rem;
+  margin: 0.45rem 0 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  line-height: 1.65;
+}
+.brief-cap-count {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.brief-cap-note { color: var(--text-muted); }
+.brief-cap-scaffold {
+  flex-basis: 100%;
+  color: var(--gold-dim);
+  font-size: 0.7rem;
+}
+.brief-cap--over .brief-cap-count,
+.brief-cap--over .brief-cap-note { color: #ff6b5b; }
+
+.edit-act-hint {
+  margin: 0.5rem 0 0.7rem;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+
+/* ── the phone: one column, no sideways page scroll ─────────────────────── */
+@media (max-width: 640px) {
+  .ops-cards { grid-template-columns: 1fr; }
+  .ops-group-head { gap: 0.15rem; }
+  .ops-card { padding: 0.75rem; }
+}

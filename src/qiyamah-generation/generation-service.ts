@@ -31,6 +31,7 @@
 import { randomUUID } from 'crypto';
 import { persistGeneratedImage, persistGeneratedVideo, detectVideoFormat, type PersistedVideo } from './asset-storage';
 import { getGenerationOrchestrator } from '../core/sovereign-ai-integration/provider-bootstrap';
+import { validateSubmittedPrompt, operationFromStyle } from './prompt-contract';
 import { isRateLimited, recordGeneration as recordRateLimitedGeneration } from './rate-limiter';
 import { getDb, recordGeneration as persistGenerationRecord, linkGenerationToVaultAsset } from '../persistent-storage';
 import { digestOf } from '../vault/sovereign-asset-mutation';
@@ -255,13 +256,26 @@ function resolveTestOnlyBinding(
   return { providerId: entry.providerId, modelId: entry.modelId, providerModelId: entry.providerModelId };
 }
 
-const MAX_PROMPT_LENGTH = 1000;
-
+/**
+ * ─── THE THIRD CEILING IS GONE ──────────────────────────────────────────────
+ *
+ *   `MAX_PROMPT_LENGTH = 1000` stood here and governed both the image and the
+ *   video path. It was never any provider's limit: it equals `dall-e-2`'s
+ *   documented maximum — a model this chamber's fleet does not contain and has
+ *   never produced with. A constant copied from another authority governed a
+ *   path it never governed, and the expand route above it accepted 2000, so
+ *   this line refused briefs the previous door had already welcomed.
+ *
+ *   The judgement now comes from `prompt-contract.ts`, which derives the bound
+ *   from the operation's designated fleet model and reserves the style
+ *   scaffold inside it. Nothing that passes the expand route can fail here.
+ */
 function validate(request: GenerationRequest): string | null {
-  const trimmed = request.prompt.trim();
-  if (trimmed.length === 0) return 'A prompt is required to generate an image.';
-  if (trimmed.length > MAX_PROMPT_LENGTH) return `Prompt exceeds the maximum length of ${MAX_PROMPT_LENGTH} characters.`;
-  return null;
+  const verdict = validateSubmittedPrompt(
+    operationFromStyle(request.style ?? null, 'image'),
+    request.prompt,
+  );
+  return verdict.ok ? null : verdict.messageAr;
 }
 
 export async function generateImage(request: GenerationRequest): Promise<GenerationResult> {
@@ -546,12 +560,10 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
     ownerId: request.creatorId ?? null,
   });
   const trimmedPrompt = request.prompt.trim();
-  if (!trimmedPrompt) {
-    return failAt(trail, 'invalid-prompt', 'validate', 'invalid-input', 'A prompt is required to generate a video.', 'empty prompt');
-  }
-  if (trimmedPrompt.length > MAX_PROMPT_LENGTH) {
+  const videoVerdict = validateSubmittedPrompt('video', request.prompt);
+  if (!videoVerdict.ok) {
     return failAt(trail, 'invalid-prompt', 'validate', 'invalid-input',
-      `Prompt exceeds the maximum length of ${MAX_PROMPT_LENGTH} characters.`, `prompt length ${trimmedPrompt.length}`);
+      videoVerdict.messageAr, videoVerdict.detailEn);
   }
 
   const style = request.style?.trim() || null;

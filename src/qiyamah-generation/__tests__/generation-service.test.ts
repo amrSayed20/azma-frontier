@@ -34,6 +34,7 @@ import { persistGeneratedImage, persistGeneratedVideo } from '../asset-storage';
 import { resetRateLimiterForTests, recordGeneration } from '../rate-limiter';
 import { recordGeneration as persistGenerationRecord, insertVaultAsset } from '../../persistent-storage';
 import { generateImage, generateVideo } from '../generation-service';
+import { briefContractFor } from '../prompt-contract';
 import { AssetFamily } from '../../vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 
@@ -91,9 +92,28 @@ describe('Qiyamah First Generation Path — Generation Service', () => {
     expect(mockOrchestrate).not.toHaveBeenCalled();
   });
 
-  it('rejects a prompt exceeding the maximum length', async () => {
-    const result = await generateImage({ prompt: 'x'.repeat(1001) });
+  // 1001 characters was refused here until 2026-10-11, because the ceiling was
+  // `dall-e-2`'s documented 1000 — a model this fleet does not contain. The
+  // rule being guarded was never that number; it is that a prompt past the
+  // DESIGNATED model's bound is refused, and one inside it is not.
+  it('refuses a prompt past the contract bound, and the bound is the contract own', async () => {
+    const bound = briefContractFor('image', null).submittedCap;
+    const result = await generateImage({ prompt: 'x'.repeat(bound + 1) });
     expect(result).toEqual(expect.objectContaining({ status: 'failed', reason: 'invalid-prompt' }));
+  });
+
+  it('no longer refuses a multi-paragraph brief that the old 1000 ceiling rejected', async () => {
+    successOrchestration();
+    const brief = Array.from(
+      { length: 12 },
+      (_, i) => `فقرة ${i + 1}: ${'وصفٌ مفصّل للمشهد. '.repeat(6)}`,
+    ).join('\n\n');
+    expect(brief.length).toBeGreaterThan(1000);
+    const result = await generateImage({ prompt: brief });
+    // The rule is about LENGTH alone. Asserting `not 'failed'` would also be
+    // asserting the storage double, and a test that fails for two reasons
+    // names neither.
+    expect(result.status === 'failed' && result.reason).not.toBe('invalid-prompt');
   });
 
   it('refuses generation once the interim rate limit is reached', async () => {
@@ -403,8 +423,9 @@ describe('Qiyamah Video Generation Path — generateVideo()', () => {
     expect(mockOrchestrate).not.toHaveBeenCalled();
   });
 
-  it('rejects a prompt exceeding the maximum length', async () => {
-    const result = await generateVideo({ prompt: 'x'.repeat(1001), durationSeconds: 6 });
+  it('refuses a prompt past the contract bound, and the bound is the contract own', async () => {
+    const bound = briefContractFor('video', null).submittedCap;
+    const result = await generateVideo({ prompt: 'x'.repeat(bound + 1), durationSeconds: 6 });
     expect(result).toEqual(expect.objectContaining({ status: 'failed', reason: 'invalid-prompt' }));
     expect(mockOrchestrate).not.toHaveBeenCalled();
   });

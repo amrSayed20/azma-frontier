@@ -24,77 +24,42 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '../../../../src/authentication';
+import {
+  STYLE_SCAFFOLD,
+  buildScaffoldedPrompt,
+  resolveStyleId,
+  validateBrief,
+  briefContractFor,
+  type QiyamahOperationId,
+} from '../../../../src/qiyamah-generation/prompt-contract';
 
 export const dynamic = 'force-dynamic';
 
 const SESSION_COOKIE = 'azma_session';
 
-// ─── Style vocabulary (all 13 styles) ─────────────────────────────────────────
+// ─── Style vocabulary ─────────────────────────────────────────────────────────
+//
+//   IT NO LONGER LIVES HERE. The table moved to
+//   `src/qiyamah-generation/prompt-contract.ts` because the cap that must
+//   RESERVE room for the scaffold could not see the scaffold from here, and
+//   two authorities for one number is how a brief that fits becomes a brief
+//   that is refused. The name is re-exported so existing importers and tests
+//   keep reading the same object they always read.
+export const STYLE_VOCABULARY = STYLE_SCAFFOLD;
 
-export const STYLE_VOCABULARY: Record<string, { prefix: string; suffix: string }> = {
-  cinematic: {
-    prefix: 'مشهد سينمائي بكاميرا 35mm، ',
-    suffix: '، إضاءة درامية سينمائية، بؤرة عميقة، إطار ملحمي، ألوان سينمائية غنية',
-  },
-  realistic: {
-    prefix: 'تصوير فوتوغرافي فائق الدقة 8K، ',
-    suffix: '، تفاصيل مذهلة، إضاءة احترافية، واقعية مطبعية، جودة إنتاج عالية',
-  },
-  advertising: {
-    prefix: 'تصوير إعلاني احترافي، ',
-    suffix: '، إضاءة استوديو سينمائية، تكوين تجاري فاخر، جودة طباعية عالية',
-  },
-  documentary: {
-    prefix: 'توثيق بصري أصيل، ',
-    suffix: '، ضوء طبيعي، رصد واقعي، تكوين كلاسيكي، أرشيفي',
-  },
-  creative: {
-    prefix: 'تعبير فني إبداعي، ',
-    suffix: '، أسلوب بصري مميز، ألوان جريئة، تكوين مبتكر، طاقة فنية عالية',
-  },
-  scifi: {
-    prefix: 'مشهد خيال علمي مستقبلي، ',
-    suffix: '، جوّ تكنولوجي متقدم، إضاءة نيون، ألوان كونية، تفاصيل مستقبلية دقيقة',
-  },
-  animation: {
-    prefix: 'أسلوب أنيميشن احترافي، ',
-    suffix: '، ألوان زاهية، خطوط واضحة، أسلوب فني متميز، جودة إنتاجية عالية',
-  },
-  fantasy: {
-    prefix: 'عالم خيالي أسطوري، ',
-    suffix: '، سحر وجمال بصري، ألوان ساحرة، تفاصيل خيالية، إضاءة درامية',
-  },
-  portrait: {
-    prefix: 'بورتريه احترافي، ',
-    suffix: '، إضاءة ناعمة، تركيز على التعبير الإنساني، جودة فوتوغرافية عالية',
-  },
-  fashion: {
-    prefix: 'تصوير أزياء احترافي، ',
-    suffix: '، إضاءة موضة راقية، تكوين بصري أنيق، جودة مجلة فاخرة',
-  },
-  architecture: {
-    prefix: 'تصوير معماري احترافي، ',
-    suffix: '، تكوين هندسي دقيق، إضاءة طبيعية، تفاصيل معمارية واضحة، جودة تقنية',
-  },
-  historical: {
-    prefix: 'توثيق تاريخي بصري، ',
-    suffix: '، نمط فني كلاسيكي، ألوان دافئة، تفاصيل حقبة زمنية، طابع أرشيفي',
-  },
-  abstract: {
-    prefix: 'تعبير تجريدي بصري، ',
-    suffix: '، أشكال هندسية ولونية حرة، إيقاع بصري، تكوين فني مبتكر، طاقة إبداعية',
-  },
-  // Text and structure, not a scene: the one style whose model is required
-  // (Nano Banana 2 — intent-builder.ts), because it must render the words.
-  infographic: {
-    prefix: 'إنفوغرافيك احترافي واضح، ',
-    suffix: '، تخطيط منظّم بأقسام مرقّمة، عناوين ونصوص عربية مقروءة ودقيقة الإملاء، أيقونات بسيطة، خلفية نظيفة، تسلسل بصري واضح من الأعلى إلى الأسفل',
-  },
-};
-
-function buildSovereignPrompt(input: string, style: string): string {
-  const vocab = STYLE_VOCABULARY[style] ?? STYLE_VOCABULARY['cinematic'];
-  return `${vocab.prefix}${input.trim()}${vocab.suffix}`;
+/**
+ * Which operation this expansion is for.
+ *
+ * The cap is operation-aware now, so the route must be told. An absent value
+ * means `image` — what every existing caller asks for, so no client breaks.
+ */
+function resolveOperation(raw: unknown, styleId: string): QiyamahOperationId {
+  if (raw === 'video' || raw === 'infographic' || raw === 'image') return raw;
+  // A Creator who chose the infographic style IS performing the infographic
+  // act, whatever the caller forgot to send. The scaffold proves it: it is the
+  // widest of the fourteen, and judging it as an image would reserve 65 fewer
+  // characters than the provider will actually receive.
+  return styleId === 'infographic' ? 'infographic' : 'image';
 }
 
 export async function POST(request: NextRequest) {
@@ -120,51 +85,62 @@ export async function POST(request: NextRequest) {
   const rawMode = (body as { mode?: unknown })?.mode;
   const mode: 'idea' | 'external' = rawMode === 'external' ? 'external' : 'idea';
   const style = (body as { style?: unknown })?.style;
-  const resolvedStyle = typeof style === 'string' && style in STYLE_VOCABULARY ? style : 'cinematic';
+  const resolvedStyle = resolveStyleId(typeof style === 'string' ? style : null);
+  const operation = resolveOperation((body as { operation?: unknown })?.operation, resolvedStyle);
 
-  // ── External prompt mode ────────────────────────────────────────────────────
+  // ── ONE GATE FOR BOTH MODES ───────────────────────────────────────────────
+  //
+  //   Until 2026-10-11 this route held TWO ceilings — 500 for an idea, 2000
+  //   for a Creator's own prompt — and the generation service held a THIRD at
+  //   1000. The widest sat in the middle, so a 1,200-character brief passed
+  //   here, was shown back as a sovereign reading, and was refused at
+  //   embodiment: the refusal arriving after the promise.
+  //
+  //   Both modes now ask the one contract, which reserves the scaffold INSIDE
+  //   the cap. What passes here cannot be refused later for its length.
+  const field = mode === 'external' ? 'externalPrompt' : 'idea';
+  const raw = (body as Record<string, unknown>)?.[field];
+  if (typeof raw !== 'string') {
+    return NextResponse.json(
+      { status: 'failed', reason: 'invalid-input', message: `A non-empty ${field} is required.` },
+      { status: 400 },
+    );
+  }
+
+  const verdict = validateBrief(operation, resolvedStyle, raw);
+  if (!verdict.ok) {
+    return NextResponse.json(
+      {
+        status: 'failed',
+        reason: 'invalid-input',
+        // The Creator's language, with the remedy and whose limit it was.
+        message: verdict.messageAr,
+        // So a browser can render the ceiling without a second round trip,
+        // and so the two can never disagree about what it is.
+        contract: verdict.contract,
+        overBy: verdict.overBy,
+      },
+      { status: 400 },
+    );
+  }
+
+  const text = raw.trim();
+  const contract = briefContractFor(operation, resolvedStyle);
+
   if (mode === 'external') {
-    const externalPrompt = (body as { externalPrompt?: unknown })?.externalPrompt;
-    if (typeof externalPrompt !== 'string' || externalPrompt.trim().length === 0) {
-      return NextResponse.json(
-        { status: 'failed', reason: 'invalid-input', message: 'A non-empty externalPrompt is required.' },
-        { status: 400 },
-      );
-    }
-    if (externalPrompt.trim().length > 2000) {
-      return NextResponse.json(
-        { status: 'failed', reason: 'invalid-input', message: 'External prompt exceeds the maximum length of 2000 characters.' },
-        { status: 400 },
-      );
-    }
-    const qiyamahReading = buildSovereignPrompt(externalPrompt.trim(), resolvedStyle);
     return NextResponse.json({
       status: 'succeeded',
-      externalPrompt: externalPrompt.trim(),
-      qiyamahReading,
+      externalPrompt: text,
+      qiyamahReading: buildScaffoldedPrompt(text, resolvedStyle),
       constructionMode: 'interpretation',
+      contract,
     });
   }
 
-  // ── Idea mode (default) ─────────────────────────────────────────────────────
-  const idea = (body as { idea?: unknown })?.idea;
-  if (typeof idea !== 'string' || idea.trim().length === 0) {
-    return NextResponse.json(
-      { status: 'failed', reason: 'invalid-input', message: 'A non-empty idea is required.' },
-      { status: 400 },
-    );
-  }
-  if (idea.trim().length > 500) {
-    return NextResponse.json(
-      { status: 'failed', reason: 'invalid-input', message: 'Idea exceeds the maximum length of 500 characters.' },
-      { status: 400 },
-    );
-  }
-
-  const prompt = buildSovereignPrompt(idea.trim(), resolvedStyle);
   return NextResponse.json({
     status: 'succeeded',
-    prompt,
+    prompt: buildScaffoldedPrompt(text, resolvedStyle),
     constructionMode: 'draft',
+    contract,
   });
 }
