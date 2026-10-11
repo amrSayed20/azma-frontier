@@ -13,6 +13,7 @@ import {
   ImageEditError,
 } from '@/src/core/sovereign-ai-integration/adapters/magic-hour-image-editing';
 import { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
+import { IMAGE_MODEL_FLEET } from '@/src/sovereign-model-selection/image-model-fleet';
 
 export const dynamic = 'force-dynamic';
 
@@ -193,6 +194,33 @@ export async function POST(
     return NextResponse.json(
       { status: 'failed', reason: 'source-unreadable', message: 'تعذّر قراءة الصورة الأصلية.' },
       { status: 500 },
+    );
+  }
+
+  // ── THE AUTHORIZATION BOUNDARY, AT THE EXECUTION POINT ───────────────────
+  //
+  //   This route passes a HARD-CODED model id to the provider and never asked
+  //   the fleet whether that model is authorised. The id happens to name an
+  //   authorised model today, so nothing was mis-dispatched — but «happens to»
+  //   is not an authorization boundary. The day the Chief Architect retires
+  //   `nano-banana-2` by setting `active: false`, as `seedance-2-0` and
+  //   `nano-banana-pro` were retired, this route would have kept dispatching
+  //   to it, because nothing here reads a flag.
+  //
+  //   Both flags are required, exactly as the selector requires them. It
+  //   cannot authorise anything: it only refuses.
+  const editBinding = IMAGE_MODEL_FLEET.find((m) => m.modelId === IMAGE_EDIT_MODEL_ID);
+  if (!editBinding || !editBinding.productionAuthorized || !editBinding.active) {
+    console.error('[ImageEdit] refused: edit model not production-authorized and active',
+      IMAGE_EDIT_MODEL_ID, editBinding
+        ? `authorized=${editBinding.productionAuthorized} active=${editBinding.active}`
+        : 'not in fleet');
+    return NextResponse.json(
+      {
+        status: 'failed', reason: 'model-unavailable',
+        message: 'لا يوجد نموذجٌ مُصرَّحٌ للتعديل الآن. وستُفتَح العمليّة فور تصريح الإمبراطوريّة بنموذجها.',
+      },
+      { status: 409 },
     );
   }
 

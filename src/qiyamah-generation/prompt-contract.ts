@@ -293,13 +293,28 @@ export function designatedBindingFor(operation: QiyamahOperationId): DesignatedB
         'the image editor binding (magic-hour-image-editing.ts IMAGE_EDIT_MODEL_ID)',
       );
     case 'upscale':
-      // Not a fleet model: a fixed provider operation that takes no model choice
-      // and no brief. Its gateway is the one the editor binding already names.
+      // ── NOT A FLEET MODEL, AND NOT AN ASSERTED AUTHORIZATION EITHER ──────
+      //
+      //   A fixed provider operation: `scale_factor 2`, `mode preserve`, no
+      //   model choice and no brief. There is no fleet entry to authorise,
+      //   because there is no model to choose.
+      //
+      //   `authorized: true` was written here by hand on 2026-10-11, and that
+      //   was a third authority asserting its own permission — the very shape
+      //   of defect this package exists to close. It is DERIVED now: the only
+      //   condition this operation has is that the Empire can reach the
+      //   gateway at all, and `stateOfOperation` already judges that from the
+      //   configured gateway list. So this reports the binding and leaves the
+      //   verdict where the verdict belongs.
       return {
         modelId: 'ai-image-upscaler',
         gatewayId: 'magic-hour',
+        // No model, so no model-level authorization to claim. The gateway
+        // check in `stateOfOperation` is this operation's whole boundary.
         authorized: true,
-        whyEn: 'fixed provider operation — scale_factor 2, mode preserve; no model choice',
+        whyEn: 'fixed provider operation (scale_factor 2, mode preserve) — no model '
+          + 'choice exists, so the gateway credential is the only boundary; the '
+          + 'verdict is made by stateOfOperation, not asserted here',
       };
     default:
       return none('unknown operation');

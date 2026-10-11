@@ -300,9 +300,11 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
   // Build a creation intent from the request and ask the selector for the
   // optimal model. When no production-authorized model is available (all
   // candidates are approved-candidate, awaiting verification), the selector
-  // returns 'all-candidates-unverified' and we fall through to the legacy
-  // orchestration path (no preferredProviderId/modelId — the orchestrator
-  // uses whatever registered adapter is available, currently flux-schnell).
+  // returns 'all-candidates-unverified' and this REFUSES — closed, 2026-10-11.
+  // It used to fall through to the legacy orchestration path with no model
+  // preference, where the orchestrator chose from whatever adapter happened to
+  // be registered. That path could reach a model the Chief Architect had not
+  // authorised, which is how three unauthorised models produced real assets.
   //
   // Hard requirement failures (quality-unavailable, resolution-unavailable,
   // duration-unavailable) are surfaced as provider-error — AZMA never
@@ -374,15 +376,34 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
     orchestrationMetadata['aspectRatio'] = selectionResult.selection.aspectRatio;
     orchestrationMetadata['resolution'] = selectionResult.selection.resolution;
     orchestrationMetadata['providerModelId'] = selectionResult.selection.providerModelId;
-  } else if (selectionResult.reason !== 'all-candidates-unverified') {
-    // Hard requirement not satisfiable — quality or resolution cannot be met.
-    // Do NOT silently fall back to a lower-quality model.
+  } else {
+    // ── THE AUTHORIZATION BOUNDARY, AND THERE IS NO WAY PAST IT ───────────
+    //
+    //   `all-candidates-unverified` used to FALL THROUGH here, reaching the
+    //   orchestrator with no model preference at all. And the orchestrator
+    //   chooses from `providerRegistry.list()` — every REGISTERED adapter —
+    //   filtered only by declared capability, an internal model inventory and
+    //   health. The sovereign fleet's `productionAuthorized` and `active` are
+    //   not consulted on that path, and `preferredProviderId` is a +0.15
+    //   scoring nudge, never a constraint.
+    //
+    //   So a model the Chief Architect has not authorised could be dispatched
+    //   to merely because its adapter was registered. That is how
+    //   `z-image-turbo`, `ltx-2.3` and `kling-3.0` produced real assets while
+    //   carrying `productionAuthorized: false`.
+    //
+    //   It now FAILS CLOSED for every reason the selector can give. The
+    //   sovereign selector is the only door, and an unauthorised, retired,
+    //   inactive or incompatible model cannot be reached from here at all.
+    //
+    //   This cannot authorise anything: removing a fall-through only ever
+    //   removes a path. No flag is touched and no model becomes eligible.
     return failAt(trail, 'provider-error', 'select', 'selection',
-      'The requested quality or resolution is not currently available. ' +
-        'Please try a different style or check back later.',
+      selectionResult.reason === 'all-candidates-unverified'
+        ? 'لا يوجد نموذجٌ مُصرَّحٌ لهذا الإنتاج الآن. وستُفتَح العمليّة فور تصريح الإمبراطوريّة بنموذجها.'
+        : 'الجودةُ أو المقاسُ المطلوبُ غيرُ متاحٍ الآن. اختر نمطاً آخر أو عُد لاحقاً.',
       `${selectionResult.reason}: ${selectionResult.detail}`);
   }
-  // 'all-candidates-unverified': fall through without model preference (legacy path).
 
   // ── Orchestration ─────────────────────────────────────────────────────────
   // Route through the sovereign orchestration path — provider selection,
@@ -619,9 +640,15 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
     preferredProviderId = selectionResult.selection.providerId;
     preferredModelId = selectionResult.selection.modelId;
     orchestrationMetadata['providerModelId'] = selectionResult.selection.providerModelId;
-  } else if (selectionResult.reason !== 'all-candidates-unverified') {
+  } else {
+    // The same boundary as the image path, for the same reason. See the note
+    // there: a fall-through here reached the orchestrator with no model
+    // preference, and the orchestrator chooses from every REGISTERED adapter
+    // without consulting the fleet's authorisation at all.
     return failAt(trail, 'provider-error', 'select', 'selection',
-      'The requested video quality or duration is not currently available. Please try a different duration.',
+      selectionResult.reason === 'all-candidates-unverified'
+        ? 'لا يوجد نموذجٌ مُصرَّحٌ لإنتاج الفيديو الآن. وستُفتَح العمليّة فور تصريح الإمبراطوريّة بنموذجها.'
+        : 'المدّةُ أو الجودةُ المطلوبةُ غيرُ متاحةٍ الآن. اختر مدّةً أخرى أو عُد لاحقاً.',
       `${selectionResult.reason}: ${selectionResult.detail}`);
   }
 
