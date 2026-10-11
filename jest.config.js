@@ -15,8 +15,13 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
-  // Limit parallel workers to reduce simultaneous real-HTTP requests across
-  // test files hitting the same external APIs (Wikipedia, Reddit, Gutenberg),
-  // which causes rate-limiting (HTTP 429) when the full suite runs at once.
+  // ── NO ORDINARY TEST REACHES THE INTERNET ────────────────────────────────
+  //   `global.fetch` refuses by default; see jest.setup.network-guard.js for
+  //   the measurement that made this necessary and the explicit opt-in for a
+  //   genuine live integration test.
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.network-guard.js'],
+  // Kept. It was the earlier workaround for the same cause — throttling made
+  // the flake rarer without removing the dependency — and it still bounds
+  // memory and CPU on this machine.
   maxWorkers: 2,
 };

@@ -45,7 +45,52 @@ export class ContentCreationCommand {
   }
 
   /**
-   * Generates video from content specification.
+   * ── TWO ROOTS THAT REPORTED SUCCESS FOR NOTHING ──────────────────────────
+   *
+   *   Until 2026-10-11 these two returned a FABRICATED success:
+   *
+   *       videoId: `video_${Date.now()}_${Math.random()…}`
+   *       url:     `https://cdn.azma.ai/videos/${videoId}`
+   *
+   *   No provider was called. No job was submitted. No asset was deposited in
+   *   the Sovereign Vault. `cdn.azma.ai` resolves to nothing — those two lines
+   *   were the only occurrences of that host in the whole repository.
+   *
+   *   An identifier is not a production, and a URL is not an asset. A caller
+   *   could have persisted either, rendered it as a completed result, or
+   *   handed it to another operation, and every one of those would have been
+   *   a lie the system told with a straight face.
+   *
+   * ─── WHY THE CLASS IS NOT DELETED ───────────────────────────────────────
+   *
+   *   MEASURED 2026-10-11: `src/core/sovereign-assistant/` is imported by
+   *   NOTHING outside its own folder — no route, no page, no server action, no
+   *   test. These methods are unreachable from every production path, so there
+   *   is no Creator being misled today. The hazard is the next engineer who
+   *   wires the council page to this module and ships a fake.
+   *
+   *   So the false success is removed and the surface is kept: the Empire's
+   *   standing rule is that prose goes and engines stay, and an unreachable
+   *   method is a connection debt to be ruled on, not deleted by an engineer.
+   *
+   *   They now refuse explicitly. Real generation lives in
+   *   `src/qiyamah-generation/generation-service.ts`, behind the sovereign
+   *   selector, the Vault's deposit and the Creator's own acceptance — and
+   *   wiring this command to it is a decision, not a refactor.
+   */
+
+  /** What an unimplemented command answers. Never a fabricated result. */
+  public static readonly UNIMPLEMENTED_REASON =
+    'not-implemented: founder content generation is not wired to a sovereign '
+    + 'production path. Use the Qiyamah generation service, which selects an '
+    + 'authorized model, deposits to the Vault and awaits explicit acceptance.';
+
+  /**
+   * Video generation from a content specification — NOT IMPLEMENTED.
+   *
+   * It returns the refusal rather than a result, because a result here would
+   * be invented. The signature keeps `contentId` and `specification` so the
+   * day it is wired, the call site does not change.
    */
   public async generateVideo(
     contentId: string,
@@ -55,16 +100,15 @@ export class ContentCreationCommand {
       readonly voiceActing?: string;
       readonly music?: string;
     }
-  ): Promise<{ readonly videoId: string; readonly url: string }> {
-    const videoId = `video_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
-    return {
-      videoId,
-      url: `https://cdn.azma.ai/videos/${videoId}`,
-    };
+  ): Promise<{ readonly status: 'unavailable'; readonly reason: string }> {
+    void contentId; void specification;
+    return { status: 'unavailable', reason: ContentCreationCommand.UNIMPLEMENTED_REASON };
   }
 
   /**
-   * Generates image from content specification.
+   * Image generation from a content specification — NOT IMPLEMENTED.
+   *
+   * See the note above `UNIMPLEMENTED_REASON`.
    */
   public async generateImage(
     contentId: string,
@@ -73,12 +117,9 @@ export class ContentCreationCommand {
       readonly dimensions: string;
       readonly prompt: string;
     }
-  ): Promise<{ readonly imageId: string; readonly url: string }> {
-    const imageId = `image_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
-    return {
-      imageId,
-      url: `https://cdn.azma.ai/images/${imageId}`,
-    };
+  ): Promise<{ readonly status: 'unavailable'; readonly reason: string }> {
+    void contentId; void specification;
+    return { status: 'unavailable', reason: ContentCreationCommand.UNIMPLEMENTED_REASON };
   }
 
   /**
