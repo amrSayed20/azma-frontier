@@ -2029,3 +2029,26 @@
   color: var(--text-muted);
   border-inline-start-color: rgba(168, 159, 145, 0.4);
 }
+
+/* ── §4 · THREE SHUT STATES, THREE SURFACES              (2026-10-11) ──────
+   One badge said «غير متاحة» for all of them and told a Creator nothing
+   about which. A ruling, a measurement and a missing credential are three
+   different facts. Each rule paints its own colour. */
+.ops-state--unverified {
+  color: var(--gold-dim);
+  background: transparent;
+}
+.ops-state--blocked {
+  color: #ff6b5b;
+  background: transparent;
+}
+.ops-card[data-availability='POLICY_BLOCKED'] {
+  background: rgba(255, 107, 91, 0.05);
+  color: var(--text-main);
+  border-color: rgba(255, 107, 91, 0.22);
+}
+.ops-card[data-availability='COST_NOT_VERIFIED'] {
+  background: rgba(139, 101, 8, 0.08);
+  color: var(--text-main);
+  border-color: rgba(212, 175, 55, 0.22);
+}

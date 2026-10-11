@@ -49,10 +49,17 @@ import {
 
 /** The six acts the chamber actually performs. One identifier, used everywhere. */
 export type QiyamahOperationId =
-  | 'image' | 'infographic' | 'video' | 'edit' | 'animate' | 'upscale';
+  | 'image' | 'infographic' | 'video' | 'edit' | 'animate' | 'upscale'
+  // ── THE FOUR AUTHORIZED 2026-10-11 ──────────────────────────────────────
+  //   They take no creative brief: each is driven by the assets handed to it.
+  //   Their provider routes are measured; none is production-proven, and the
+  //   catalog keeps every one of them unavailable until that changes.
+  | 'background-removal' | 'lip-sync' | 'face-swap' | 'talking-photo';
 
-export const QIYAMAH_OPERATION_IDS: readonly QiyamahOperationId[] =
-  ['image', 'infographic', 'video', 'edit', 'animate', 'upscale'];
+export const QIYAMAH_OPERATION_IDS: readonly QiyamahOperationId[] = [
+  'image', 'infographic', 'video', 'edit', 'animate', 'upscale',
+  'background-removal', 'lip-sync', 'face-swap', 'talking-photo',
+];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1 · THE STYLE SCAFFOLD — ONE TABLE, READ BY BOTH THE CAP AND THE BUILDER
@@ -292,6 +299,21 @@ export function designatedBindingFor(operation: QiyamahOperationId): DesignatedB
         IMAGE_MODEL_FLEET.find((m) => m.modelId === QIYAMAH_EDIT_MODEL_ID),
         'the image editor binding (magic-hour-image-editing.ts IMAGE_EDIT_MODEL_ID)',
       );
+    // ── THE FOUR AUTHORIZED 2026-10-11 ─────────────────────────────────
+    //   Fixed provider operations with no model choice, exactly like upscale.
+    //   The gateway is reported; the VERDICT on availability belongs to
+    //   `stateOfOperation`, which also weighs the cost basis and policy.
+    case 'background-removal':
+    case 'lip-sync':
+    case 'face-swap':
+    case 'talking-photo':
+      return {
+        modelId: `magic-hour:${operation}`,
+        gatewayId: 'magic-hour',
+        authorized: true,
+        whyEn: 'fixed provider operation — no model choice exists; availability is '
+          + 'decided by stateOfOperation from the gateway, the cost basis and policy',
+      };
     case 'upscale':
       // ── NOT A FLEET MODEL, AND NOT AN ASSERTED AUTHORIZATION EITHER ──────
       //
@@ -353,8 +375,20 @@ export function operationScaffolds(operation: QiyamahOperationId): boolean {
   return operation === 'image' || operation === 'infographic' || operation === 'video';
 }
 
+/**
+ * Which acts take a creative brief at all.
+ *
+ * Upscaling is told nothing, and neither is any of the four authorized on
+ * 2026-10-11: a background removal, a lip sync, a face swap and a talking
+ * photo are each driven entirely by the assets handed to them. Offering a
+ * brief field would be offering a control the provider never reads.
+ */
+const TAKES_NO_BRIEF: readonly QiyamahOperationId[] = [
+  'upscale', 'background-removal', 'lip-sync', 'face-swap', 'talking-photo',
+];
+
 export function operationTakesBrief(operation: QiyamahOperationId): boolean {
-  return operation !== 'upscale';
+  return !TAKES_NO_BRIEF.includes(operation);
 }
 
 function boundFor(operation: QiyamahOperationId): PromptBound {

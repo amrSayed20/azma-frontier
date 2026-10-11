@@ -121,9 +121,15 @@ describe('the six acts are one authority, discovered once', () => {
     expect(s.runnable).toBe(false);
   });
 
-  it('the operation that takes no brief is the only one with no brief', () => {
-    const noBrief = qiyamahOperations(null).filter((s) => !s.takesBrief).map((s) => s.id);
-    expect(noBrief).toEqual(['upscale']);
+  it('only the acts that are told nothing have no brief', () => {
+    // This asserted `['upscale']` until 2026-10-11, when four acts were
+    // authorized that are each driven entirely by the assets handed to them.
+    // The rule was never the count: it is that an act which reads no
+    // instruction is offered no field to write one in.
+    const noBrief = qiyamahOperations(null).filter((s) => !s.takesBrief).map((s) => s.id).sort();
+    expect(noBrief).toEqual([
+      'background-removal', 'face-swap', 'lip-sync', 'talking-photo', 'upscale',
+    ]);
   });
 
   it('no Creator-facing field carries a provider or model name', () => {

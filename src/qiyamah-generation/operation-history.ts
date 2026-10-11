@@ -235,6 +235,12 @@ export interface OperationHistoryView {
 const OPERATION_AR: Readonly<Record<QiyamahOperationId, string>> = {
   image: 'صورة', infographic: 'إنفوغرافيك', video: 'فيديو',
   edit: 'تعديل', animate: 'تحريك', upscale: 'رفع الدقّة',
+  // The four authorized 2026-10-11. Named here so a history entry can read
+  // them the day one of them produces an asset — not before.
+  'background-removal': 'إزالة الخلفيّة',
+  'lip-sync': 'مزامنة الشفاه',
+  'face-swap': 'تبديل الوجه',
+  'talking-photo': 'صورة ناطقة',
 };
 
 const OUTCOME_AR: Readonly<Record<HistoryOutcome, string>> = {

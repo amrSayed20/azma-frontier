@@ -34,7 +34,11 @@ export interface OperationStateView {
   readonly inputs: readonly string[];
   readonly costStep: string;
   readonly historicallyProven: boolean;
-  readonly availability: 'AVAILABLE' | 'NOT_AUTHORIZED' | 'NO_CREDENTIAL' | 'NO_DESIGNATED_MODEL';
+  readonly availability:
+    | 'AVAILABLE' | 'NOT_AUTHORIZED' | 'NO_CREDENTIAL' | 'NO_DESIGNATED_MODEL'
+    // Authorized 2026-10-11: a reachable route whose cost nobody measured,
+    // and one whose policy nobody ruled. Neither is an availability.
+    | 'COST_NOT_VERIFIED' | 'POLICY_BLOCKED';
   readonly runnable: boolean;
   readonly reasonAr: string;
   readonly detailEn: string;
@@ -63,34 +67,26 @@ const INPUT_AR: Readonly<Record<string, string>> = {
   aspect: 'امتداد',
   duration: 'مدّة',
   'motion-model': 'نوع الحركة',
+  // A second asset of a different family. One chip for both would hide half
+  // of what the operation actually requires.
+  'audio-asset': 'صوتٌ من خزانتك',
+  'video-asset': 'مقطعٌ من خزانتك',
+  'face-asset': 'وجهٌ مصدر',
 };
 
 /**
- * The capabilities the Empire has NOT authorised, shown with their own reason.
+ * ── THE HAND-WRITTEN «قريباً» LIST IS GONE ──────────────────────────────────
  *
- * FOUNDER'S RULE, made executable in مكمن الغاية and carried here: a door is
- * offered only to someone who can complete it today, and anyone excluded is
- * told a true reason rather than handed a control that cannot work. These are
- * not marked available, are not clickable, and name no provider.
+ *   Four capabilities were listed here by hand, with their names, their
+ *   outcomes and their reasons typed into this component. That made this file
+ *   a SECOND authority on what the Empire can do — and the whole point of
+ *   Layer A is that there is one.
+ *
+ *   All four are real operations in the catalog now, carrying their own
+ *   availability verdict from the server. A card that cannot run still cannot
+ *   be pressed and still states a true reason; what changed is that the reason
+ *   is no longer invented here.
  */
-const AWAITING: readonly { nameAr: string; glyph: string; outcomeAr: string; reasonAr: string }[] = [
-  {
-    nameAr: 'إزالة الخلفيّة', glyph: '◌', outcomeAr: 'أصلٌ بخلفيّةٍ شفّافة',
-    reasonAr: 'المحرّكُ يَقبلها، ولم تُبنَ لها بعد طريقٌ في الإمبراطوريّة.',
-  },
-  {
-    nameAr: 'صورةٌ ناطقة', glyph: '☻', outcomeAr: 'صورتُك تتكلّم بصوتٍ لك',
-    reasonAr: 'قدرةٌ مُقترَحةٌ — تنتظر إثباتَ إنتاجٍ واحدٍ وسعراً في الدستور.',
-  },
-  {
-    nameAr: 'مزامنة الشفاه', glyph: '♪', outcomeAr: 'مقطعٌ تنطق شفاهُه نصَّك',
-    reasonAr: 'قدرةٌ مُقترَحةٌ — تنتظر إثباتَ إنتاجٍ واحدٍ وسعراً في الدستور.',
-  },
-  {
-    nameAr: 'تبديل الوجه', glyph: '⬒', outcomeAr: 'وجهٌ في مكانِ وجه',
-    reasonAr: 'موقوفةٌ حتى يُحكَم في الشبيه والموافقة — حكمٌ قبل بناء.',
-  },
-];
 
 /** The estimator's own answer. Never a price computed here. */
 interface StepQuote {
@@ -141,7 +137,13 @@ export function OperationsCenter({
       </p>
 
       {groups.map((g) => {
-        const mine = operations.filter((o) => o.group === g.id);
+        // Within a group, what can run comes first. An operation that cannot
+        // is still shown — the Creator is owed the knowledge that it exists
+        // and the reason it is shut — but it does not sit above a working one.
+        const mine = operations
+          .filter((o) => o.group === g.id)
+          .slice()
+          .sort((a, b) => Number(b.runnable) - Number(a.runnable));
         if (mine.length === 0) return null;
         return (
           <div className="ops-group" key={g.id}>
@@ -184,7 +186,17 @@ export function OperationsCenter({
                           )}
                         </>
                       ) : (
-                        <span className="ops-state ops-state--shut">◌ غير متاحة الآن</span>
+                        /* ── §4 · AVAILABLE · BLOCKED · NOT VERIFIED ──────
+                           One badge for all three said «غير متاحة» and told a
+                           Creator nothing about which. A capability waiting on
+                           a ruling and one waiting on a measurement are not
+                           the same fact, and neither is a missing credential. */
+                        <span className={`ops-state ops-state--${
+                          o.availability === 'POLICY_BLOCKED' ? 'blocked' : 'unverified'}`}>
+                          {o.availability === 'POLICY_BLOCKED' ? '⊘ موقوفةٌ بحكم'
+                            : o.availability === 'COST_NOT_VERIFIED' ? '◌ لم تُقَس كلفتُها'
+                            : '◌ غير مهيّأةٍ بعد'}
+                        </span>
                       )}
                     </span>
                     {!o.runnable && (
@@ -198,25 +210,6 @@ export function OperationsCenter({
         );
       })}
 
-      <div className="ops-group">
-        <div className="ops-group-head">
-          <span className="ops-group-title">◈ قريباً</span>
-          <span className="ops-group-note">قدراتٌ موقوفةٌ — ولكلٍّ سببُها</span>
-        </div>
-        <div className="ops-cards">
-          {AWAITING.map((a) => (
-            <div className="ops-card ops-card--shut ops-card--awaiting" key={a.nameAr}>
-              <span className="ops-card-glyph" aria-hidden="true">{a.glyph}</span>
-              <span className="ops-card-name">{a.nameAr}</span>
-              <span className="ops-card-outcome">{a.outcomeAr}</span>
-              <span className="ops-card-foot">
-                <span className="ops-state ops-state--shut">◌ موقوفة</span>
-              </span>
-              <span className="ops-card-why">{a.reasonAr}</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </section>
   );
 }

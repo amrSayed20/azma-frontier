@@ -43,6 +43,10 @@ import {
   type BriefContract,
 } from './prompt-contract';
 import { configuredGatewayIds } from '../core/sovereign-ai-integration/provider-bootstrap';
+import {
+  CREATIVE_READINESS,
+  type CreativeOperationId,
+} from '../core/sovereign-ai-integration/adapters/magic-hour-creative-operations';
 
 /** How a Creator reaches the operation — by what they already have. */
 export type OperationGroup =
@@ -52,7 +56,11 @@ export type OperationGroup =
   | 'on-my-asset';
 
 /** What the operation needs before it can run. Drawn as chips on its card. */
-export type OperationInput = 'brief' | 'asset' | 'style' | 'aspect' | 'duration' | 'motion-model';
+export type OperationInput =
+  | 'brief' | 'asset' | 'style' | 'aspect' | 'duration' | 'motion-model'
+  // A SECOND asset, of a different family. Lip sync and talking photo each
+  // take a visual AND an audio; one `asset` chip would hide half the input.
+  | 'audio-asset' | 'video-asset' | 'face-asset';
 
 export type OperationAvailability =
   /** The fleet authorises it and this process can reach its gateway. */
@@ -62,7 +70,28 @@ export type OperationAvailability =
   /** Authorised, but this process holds no credential for its gateway. */
   | 'NO_CREDENTIAL'
   /** The fleet designates nothing for it. */
-  | 'NO_DESIGNATED_MODEL';
+  | 'NO_DESIGNATED_MODEL'
+  /**
+   * ── AUTHORIZED 2026-10-11 · THE COST GATE ────────────────────────────────
+   *
+   *   The provider route is reachable and the credential is accepted, and NO
+   *   verified cost basis exists. The construction directive is explicit:
+   *   «Show a cost estimate only when supported by a verified cost basis;
+   *   otherwise clearly mark it as not yet verified AND KEEP PAID EXECUTION
+   *   UNAVAILABLE.»
+   *
+   *   Establishing the basis needs one real paid job, which the same directive
+   *   prohibits. So the card is visible and honest, and the door stays shut.
+   */
+  | 'COST_NOT_VERIFIED'
+  /**
+   * A policy decision blocks it, independent of every technical fact.
+   *
+   * Face swap: the Empire's three published documents carry no word on
+   * likeness or on the consent of the person whose face is taken. Possession
+   * is not consent, and this is a ruling, not an engineering gap.
+   */
+  | 'POLICY_BLOCKED';
 
 export interface OperationDescriptor {
   readonly id: QiyamahOperationId;
@@ -122,6 +151,42 @@ const DESCRIPTORS: readonly OperationDescriptor[] = [
     inputs: ['asset'],
     costStep: 'UPSCALE_2X', historicallyProven: true,
   },
+
+  // ── AUTHORIZED 2026-10-11 · FOUR NEW ACTS ───────────────────────────────
+  //
+  //   All four work on assets the Creator already owns, so they belong to the
+  //   second group. `historicallyProven: false` for every one of them — none
+  //   has ever produced an asset in this Empire, and saying otherwise would be
+  //   the first lie of the package.
+  //
+  //   `costStep` names a step the existing estimator does NOT yet price. That
+  //   is deliberate and visible: the catalog's cost gate keeps them shut, and
+  //   the step name is where a verified price will attach when one exists. No
+  //   price is invented and no pricing rule is added.
+  {
+    id: 'background-removal', group: 'on-my-asset', nameAr: 'إزالة الخلفيّة', glyph: '◌',
+    outcomeAr: 'أصلُك بخلفيّةٍ شفّافة',
+    inputs: ['asset'],
+    costStep: 'BACKGROUND_REMOVAL', historicallyProven: false,
+  },
+  {
+    id: 'talking-photo', group: 'on-my-asset', nameAr: 'صورة ناطقة', glyph: '☻',
+    outcomeAr: 'صورتُك تتكلّم بصوتٍ تملكه',
+    inputs: ['asset', 'audio-asset'],
+    costStep: 'TALKING_PHOTO', historicallyProven: false,
+  },
+  {
+    id: 'lip-sync', group: 'on-my-asset', nameAr: 'مزامنة الشفاه', glyph: '♪',
+    outcomeAr: 'مقطعٌ تنطق شفاهُه صوتاً تملكه',
+    inputs: ['video-asset', 'audio-asset'],
+    costStep: 'LIP_SYNC', historicallyProven: false,
+  },
+  {
+    id: 'face-swap', group: 'on-my-asset', nameAr: 'تبديل الوجه', glyph: '⬒',
+    outcomeAr: 'وجهٌ في مكانِ وجه',
+    inputs: ['video-asset', 'face-asset'],
+    costStep: 'FACE_SWAP', historicallyProven: false,
+  },
 ];
 
 export function operationDescriptor(id: QiyamahOperationId): OperationDescriptor {
@@ -155,6 +220,12 @@ const REASON_AR: Readonly<Record<OperationAvailability, string>> = {
   NOT_AUTHORIZED: 'لم تُصرّح الإمبراطوريّةُ بنموذج هذه العمليّة بعد.',
   NO_CREDENTIAL: 'الإمبراطوريّةُ لا تملك اعتماداً يَصل إلى محرّك هذه العمليّة الآن.',
   NO_DESIGNATED_MODEL: 'لم يُخصَّص نموذجٌ لهذه العمليّة بعد.',
+  COST_NOT_VERIFIED:
+    'المحرّكُ يَقبلها، ولم تُقَس كلفتُها بعد. ولن تُعرَض عليك حتى نَعرف ما تُكلّفك '
+    + 'بالضبط — فعمليّةٌ بسعرٍ مجهولٍ ليست عمليّةً تُقدَّم.',
+  POLICY_BLOCKED:
+    'موقوفةٌ حتى يُحكَم في الشبيه وفي موافقة صاحب الوجه. وامتلاكُك صورةً ليس موافقةً '
+    + 'منه، وهذا حكمٌ قبل أن يكون بناءً.',
 };
 
 /** Judge one operation. Pure except for the gateway list handed in. */
@@ -166,9 +237,24 @@ export function stateOfOperation(
   const d = operationDescriptor(id);
   const binding = designatedBindingFor(id);
 
+  // ── THE TWO GATES THE FOUR NEW ACTS MUST ALSO PASS ──────────────────────
+  //
+  //   A reachable route and an accepted credential are NOT availability. An
+  //   operation whose cost nobody has measured must not be offered, and one
+  //   whose policy nobody has ruled must not be offered either — whatever the
+  //   provider would accept.
+  const readiness = CREATIVE_READINESS.find((r) => r.operation === (id as CreativeOperationId));
+
   let availability: OperationAvailability;
   let detailEn: string;
-  if (!binding.modelId || !binding.gatewayId) {
+  if (readiness?.policyBlocked) {
+    availability = 'POLICY_BLOCKED';
+    detailEn = `${id}: blocked by policy, not by capability — route ${readiness.endpoint} is reachable`;
+  } else if (readiness && !readiness.costBasisVerified) {
+    availability = 'COST_NOT_VERIFIED';
+    detailEn = `${id}: route ${readiness.endpoint} probed and credential accepted; `
+      + 'no verified cost basis, so paid execution stays unavailable';
+  } else if (!binding.modelId || !binding.gatewayId) {
     availability = 'NO_DESIGNATED_MODEL';
     detailEn = `no designated model — ${binding.whyEn}`;
   } else if (!binding.authorized) {

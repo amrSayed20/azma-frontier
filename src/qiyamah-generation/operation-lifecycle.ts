@@ -1,5 +1,5 @@
 /**
- * AZMA OS — حجرة القيامة · LAYER C: ONE LIFECYCLE FOR THE SIX ACTS
+ * AZMA OS — حجرة القيامة · LAYER C: ONE LIFECYCLE FOR EVERY ACT
  *
  * ─── WHAT WAS PARTIAL, AND WHY IT MATTERED ──────────────────────────────────
  *
@@ -16,6 +16,11 @@
  *   and «finished» in the third, so the same word described opposite facts on
  *   one screen. And none of the three could express the state that matters
  *   most in this Empire: bytes exist and NOBODY OWNS THEM YET.
+ *
+ *   Ten acts speak it now. The four authorized on 2026-10-11 were added, and
+ *   the regression suite caught them falling through to `default` and
+ *   reporting READY while one was PROCESSING — a reminder that a `default`
+ *   branch in a lifecycle is a lie waiting for a new case.
  *
  * ─── WHAT THIS IS, AND WHAT IT DELIBERATELY IS NOT ──────────────────────────
  *
@@ -230,6 +235,21 @@ export function lifecycleOf(input: {
         input.upscaleState ?? 'idle', input.producedAssetId ?? null, input.accepted === true);
     case 'edit':
     case 'animate':
+    // ── THE FOUR AUTHORIZED 2026-10-11 ─────────────────────────────────
+    //
+    //   FOUND by the regression suite the moment they were added: without
+    //   these cases they fell through to `default` and reported READY —
+    //   including while one was PROCESSING or had FAILED. A lifecycle that
+    //   answers «not started» about a running job is the exact class of lie
+    //   this module exists to end, and it reached the default branch by
+    //   silence rather than by decision.
+    //
+    //   They are mutations on an owned asset, like edit and animate, and they
+    //   read the same state.
+    case 'background-removal':
+    case 'lip-sync':
+    case 'face-swap':
+    case 'talking-photo':
       return lifecycleOfMutation(
         input.mutationState ?? 'ready', input.producedAssetId ?? null, input.accepted === true);
     case 'image':
