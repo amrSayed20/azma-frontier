@@ -42,6 +42,7 @@ jest.mock('../../core/sovereign-ai-integration/adapters/magic-hour-creative-oper
 }));
 
 import { runCreativeOperation, CREATIVE_INPUT_SHAPE } from '../creative-operation-runner';
+import { LIKENESS_POLICY_VERSION } from '../likeness-acknowledgment';
 
 const DB = 'fake-db' as never;
 const OWNER = 'creator-1';
@@ -353,5 +354,108 @@ describe('5 · failures are told apart, and none becomes a success', () => {
       operation: 'background-removal', creatorId: OWNER, targetAssetId: 'asset_target',
     });
     expect(Object.keys(r)).not.toContain('assetId');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6 · THE CREATOR'S OWN DECLARATION — AND THE GATE IS BELOW EVERY DOOR
+//
+//   The catalog gate is opened deliberately in this block, so what is under
+//   test is the declaration and not the cost block standing in front of it.
+//   A face swap reaching a provider here is a mock; no credit exists to spend.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('6 · face swap refuses an undeclared request, wherever it came from', () => {
+  const DECLARED = { acknowledged: true, acknowledgedVersion: LIKENESS_POLICY_VERSION };
+  const faceSwapRequest = (extra: Record<string, unknown> = {}) => ({
+    operation: 'face-swap' as const, creatorId: OWNER, targetAssetId: 'asset_target',
+    secondAssetId: 'a2', durationSeconds: 5, ...extra,
+  });
+
+  beforeEach(() => {
+    mockStateOf.mockReturnValue({ ...open, nameAr: 'تبديل الوجه' });
+    mockGetVaultAsset.mockImplementation((_db: unknown, id: string) =>
+      id === 'asset_target'
+        ? asset({ capabilityTarget: 'MOTION', secureStorageUri: '/uploads/a.mp4' })
+        : asset({ assetId: 'a2', capabilityTarget: 'VISUAL' }));
+    mockFaceSwap.mockResolvedValue({
+      bytes: Buffer.from([5, 5, 5]), mimeType: 'video/mp4', creditsCharged: 120,
+      providerId: 'magic-hour-face-swap', providerJobId: 'job-fs',
+    });
+    mockDeriveAsset.mockResolvedValue({
+      ok: true, asset: { assetId: 'asset_out', secureStorageUri: '/u/o.mp4' },
+    });
+  });
+
+  it('a request carrying no declaration is refused', async () => {
+    const r = await runCreativeOperation(DB, faceSwapRequest());
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.rejection).toBe('acknowledgment-required');
+  });
+
+  it('and it is refused before the media is read or the provider is called', async () => {
+    await runCreativeOperation(DB, faceSwapRequest());
+    expect(mockReadFile).not.toHaveBeenCalled();
+    expect(mockFaceSwap).not.toHaveBeenCalled();
+  });
+
+  it('a truthy value that is not an affirmation is not an affirmation', async () => {
+    const r = await runCreativeOperation(DB, faceSwapRequest({
+      likenessAcknowledgment: { acknowledged: 'yes', acknowledgedVersion: LIKENESS_POLICY_VERSION },
+    }));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.rejection).toBe('acknowledgment-required');
+  });
+
+  it('a declaration made against other wording is refused', async () => {
+    const r = await runCreativeOperation(DB, faceSwapRequest({
+      likenessAcknowledgment: { acknowledged: true, acknowledgedVersion: 'likeness-v0-2020' },
+    }));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.rejection).toBe('acknowledgment-required');
+  });
+
+  it('the Creator is told what is missing, and never told the Empire will supply it', async () => {
+    const r = await runCreativeOperation(DB, faceSwapRequest());
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.messageAr).toMatch(/ولن نُقِرّ نيابةً عنك/);
+  });
+
+  it('with the declaration the act proceeds, and hands it to the provider path too', async () => {
+    const r = await runCreativeOperation(DB, faceSwapRequest({ likenessAcknowledgment: DECLARED }));
+    expect(r.ok).toBe(true);
+    expect(mockFaceSwap.mock.calls[0][5]).toEqual(DECLARED);
+  });
+
+  it('and the declaration is recorded against the asset it permitted', async () => {
+    await runCreativeOperation(DB, faceSwapRequest({ likenessAcknowledgment: DECLARED }));
+    const call = mockDeriveAsset.mock.calls[0][0];
+    expect(call.likenessAcknowledgment.policyVersion).toBe(LIKENESS_POLICY_VERSION);
+    expect(typeof call.likenessAcknowledgment.acknowledgedAtMs).toBe('number');
+  });
+
+  it('what is recorded is the version and the moment — and nothing sensitive', async () => {
+    await runCreativeOperation(DB, faceSwapRequest({ likenessAcknowledgment: DECLARED }));
+    expect(Object.keys(mockDeriveAsset.mock.calls[0][0].likenessAcknowledgment).sort())
+      .toEqual(['acknowledgedAtMs', 'policyVersion']);
+  });
+
+  it('an operation that demands no declaration records none', async () => {
+    mockStateOf.mockReturnValue(open);
+    mockGetVaultAsset.mockReturnValue(asset());
+    mockRemoveBg.mockResolvedValue({
+      bytes: Buffer.from([1]), mimeType: 'image/png', creditsCharged: 5,
+      providerId: 'magic-hour-background-remover', providerJobId: 'j',
+    });
+    await runCreativeOperation(DB, {
+      operation: 'background-removal', creatorId: OWNER, targetAssetId: 'asset_target',
+    });
+    expect(mockDeriveAsset.mock.calls[0][0].likenessAcknowledgment).toBeUndefined();
+  });
+
+  it('the runner never writes an affirmation of its own', () => {
+    const src = require('fs').readFileSync(
+      require('path').join(process.cwd(), 'src/vault/creative-operation-runner.ts'), 'utf8');
+    expect(src).not.toMatch(/acknowledged:\s*true/);
   });
 });

@@ -13,6 +13,7 @@ import {
 } from '../../qiyamah-generation/operation-catalog';
 import { QIYAMAH_OPERATION_IDS, briefContractFor } from '../../qiyamah-generation/prompt-contract';
 import { CREATIVE_READINESS } from '../../core/sovereign-ai-integration/adapters/magic-hour-creative-operations';
+import { LIKENESS_POLICY_VERSION } from '../../vault/likeness-acknowledgment';
 
 const read = (f: string) => readFileSync(join(process.cwd(), f), 'utf8');
 const CENTER = read('app/qiyamah-chamber/OperationsCenter.tsx');
@@ -70,11 +71,26 @@ describe('2 · a visible card is not a functioning capability', () => {
     }
   });
 
-  it('face swap is BLOCKED by policy, and says it is a ruling', () => {
+  it('face swap demands the Creator’s declaration, and the card carries it', () => {
+    // It asserted POLICY_BLOCKED until 2026-10-11, when the Chief Architect
+    // ordered the safeguard. The policy gap he had to rule on is closed; the
+    // declaration is now a standing requirement the surface must render.
     const s = states.find((x) => x.id === 'face-swap')!;
-    expect(s.availability).toBe('POLICY_BLOCKED');
-    expect(s.reasonAr).toMatch(/حكم/);
-    expect(s.reasonAr).toMatch(/موافقة|الشبيه/);
+    expect(s.requiresAcknowledgment).toBe(true);
+    expect(s.acknowledgmentVersion).toBe(LIKENESS_POLICY_VERSION);
+    expect(s.acknowledgmentStatementsAr).toHaveLength(4);
+  });
+
+  it('and it is still shut, on the cost nobody has measured', () => {
+    expect(states.find((x) => x.id === 'face-swap')!.availability).toBe('COST_NOT_VERIFIED');
+  });
+
+  it('no other operation demands a declaration', () => {
+    for (const s of states) {
+      if (s.id === 'face-swap') continue;
+      expect(s.requiresAcknowledgment).toBe(false);
+      expect(s.acknowledgmentStatementsAr).toEqual([]);
+    }
   });
 
   it('the other three are NOT VERIFIED on cost, and say the door stays shut', () => {

@@ -151,6 +151,23 @@ const CREATION_EVENT_KEYS = [
   'outputWidth',
   'outputHeight',
   'outputFps',
+  // ── AND A DECLARATION NEVER TRAVELS ─────────────────────────────────────
+  //
+  //   A Creator's likeness declaration belongs to the ONE request that made
+  //   the asset carrying it. If it were inherited, a child derived from a
+  //   face-swapped asset would show a declaration nobody made for it, and an
+  //   auditor reading that child would believe the Creator had affirmed the
+  //   rights a second time. A declaration is an act, and acts are not
+  //   inherited — so these two are stripped exactly like a parent's charge.
+  //
+  //   THEY ARE THE ONE PAIR OF KEYS A DERIVATION WRITES ABOUT ITSELF WITHOUT
+  //   THE `mutation` PREFIX, and the exception is deliberate: that prefix is
+  //   precisely what marks a key as SURVIVING into the next asset, which is
+  //   the opposite of what a declaration must do. A test holds that no
+  //   `mutation*` key appears in this list; naming these two that way would
+  //   have been naming them after the behaviour they must not have.
+  'likenessPolicyVersion',
+  'likenessAcknowledgedAt',
 ] as const;
 
 /** The parent's metadata minus every claim about the parent's own creation. */
@@ -223,6 +240,19 @@ export interface MutationRequest {
    * differs from its parent's.
    */
   readonly outputCapabilityTarget?: CapabilityTarget;
+  /**
+   * The Creator's own likeness declaration, for the acts that demand one.
+   *
+   * The VERSION and the MOMENT, and deliberately nothing else: not the source
+   * face, not a copy of the media, not an identity document. The declaration
+   * is evidence that a Creator affirmed these exact words at this exact time
+   * — which is all it ever was — and storing more would be storing sensitive
+   * data the safeguard does not need.
+   */
+  readonly likenessAcknowledgment?: {
+    readonly policyVersion: string;
+    readonly acknowledgedAtMs: number;
+  };
 }
 
 /**
@@ -324,6 +354,12 @@ export async function deriveAsset(request: MutationRequest): Promise<MutationOut
                   mutationProviderCreditUnit: request.providerProvenance.creditUnit ?? 'magic-hour-credits',
                 }
               : {}),
+          }
+        : {}),
+      ...(request.likenessAcknowledgment
+        ? {
+            likenessPolicyVersion: request.likenessAcknowledgment.policyVersion,
+            likenessAcknowledgedAt: request.likenessAcknowledgment.acknowledgedAtMs,
           }
         : {}),
       mutationOperationId: request.operationId,

@@ -50,6 +50,10 @@ import {
 } from '../core/sovereign-ai-integration/adapters/magic-hour-creative-operations';
 import { ImageEditError } from '../core/sovereign-ai-integration/adapters/magic-hour-image-editing';
 import { stateOfOperation } from '../qiyamah-generation/operation-catalog';
+import {
+  requiresLikenessAcknowledgment, verifyLikenessAcknowledgment,
+  LIKENESS_POLICY_VERSION,
+} from './likeness-acknowledgment';
 import { configuredGatewayIds } from '../core/sovereign-ai-integration/provider-bootstrap';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -112,6 +116,7 @@ export type CreativeRunRejection =
   | 'not-derivable'
   | 'source-unreadable'
   | 'duration-required'
+  | 'acknowledgment-required'
   | 'engine-refused'
   | 'output-rejected';
 
@@ -140,6 +145,9 @@ const SPOKEN: Readonly<Record<CreativeRunRejection, string>> = {
   'not-derivable': 'لا يُسمَح بالاشتقاق من هذا الأصل.',
   'source-unreadable': 'تعذّر قراءة بايتات أصلك على الخادم.',
   'duration-required': 'هذه العمليّة تحتاج مدّةً موجبة.',
+  'acknowledgment-required':
+    'لم يُسجَّل إقرارُك بحقوق الوجه المصدر. تبديلُ الوجه لا يَبدأ قبل إقرارٍ صريحٍ '
+    + 'منك — ولن نُقِرّ نيابةً عنك.',
   'engine-refused': 'لم يُتِمّ المحرّكُ هذه العمليّة.',
   'output-rejected': 'لم يُقبَل الناتج.',
 };
@@ -163,6 +171,15 @@ export interface CreativeRunRequest {
   readonly secondAssetId?: string;
   /** Required by lip sync, talking photo and face swap. */
   readonly durationSeconds?: number;
+  /**
+   * The Creator's own declaration, for the acts that demand one.
+   *
+   * Optional in the TYPE and mandatory in the PATH: a required field would be
+   * satisfied by any caller sending any value, while an optional one that is
+   * verified below is satisfied only by a real declaration. It is never
+   * defaulted and never synthesised.
+   */
+  readonly likenessAcknowledgment?: unknown;
 }
 
 /**
@@ -203,7 +220,26 @@ export async function runCreativeOperation(
     return fail('not-derivable', `target ${parent.assetId} forbids derivation`);
   }
 
-  // ── 2 · THE SECOND INPUT, when the operation takes one ──────────────────
+  // ── 2 · THE CREATOR'S OWN DECLARATION, where the act demands one ───────
+  //
+  //   Asked here, BELOW the route, so no door can skip it: a direct API call,
+  //   a script holding a session cookie, or a future route that forgets to
+  //   check all arrive at this line. And asked before a byte of the source is
+  //   read, so an undeclared request never touches the media at all.
+  //
+  //   It consults the acknowledgment ONLY. It does not look at who owns the
+  //   asset, nor at the fact that they uploaded it, because that fact is
+  //   possession — and possession is never consent.
+  let acknowledgedAtMs: number | null = null;
+  if (requiresLikenessAcknowledgment(operation)) {
+    const verdict = verifyLikenessAcknowledgment(request.likenessAcknowledgment);
+    if (!verdict.ok) {
+      return fail('acknowledgment-required', `${operation}: ${verdict.detailEn}`, verdict.messageAr);
+    }
+    acknowledgedAtMs = verdict.record.acknowledgedAtMs;
+  }
+
+  // ── 3 · THE SECOND INPUT, when the operation takes one ──────────────────
   let second: NonNullable<ReturnType<typeof getVaultAsset>> | null = null;
   if (shape.secondFamily) {
     if (!request.secondAssetId) {
@@ -219,13 +255,13 @@ export async function runCreativeOperation(
     }
   }
 
-  // ── 3 · A DURATION, where the provider demands one ──────────────────────
+  // ── 4 · A DURATION, where the provider demands one ──────────────────────
   const needsDuration = operation !== 'background-removal';
   if (needsDuration && !(Number.isFinite(request.durationSeconds) && (request.durationSeconds ?? 0) > 0)) {
     return fail('duration-required', `${operation} requires a positive durationSeconds`);
   }
 
-  // ── 4 · THE BYTES. The originals are READ, never altered ───────────────
+  // ── 5 · THE BYTES. The originals are READ, never altered ───────────────
   let targetBytes: Buffer;
   let secondBytes: Buffer | null = null;
   try {
@@ -241,7 +277,7 @@ export async function runCreativeOperation(
     return dot >= 0 ? uri.slice(dot) : '';
   };
 
-  // ── 5 · THE PROVIDER. Submission is not completion — the adapter polls ──
+  // ── 6 · THE PROVIDER. Submission is not completion — the adapter polls ──
   let produced: CreativeOperationResult;
   try {
     produced = operation === 'background-removal'
@@ -256,7 +292,10 @@ export async function runCreativeOperation(
               secondBytes!, ext(second!.secureStorageUri), request.durationSeconds!)
           : await faceSwapViaProvider(
               targetBytes, ext(parent.secureStorageUri),
-              secondBytes!, ext(second!.secureStorageUri), request.durationSeconds!);
+              secondBytes!, ext(second!.secureStorageUri), request.durationSeconds!,
+              // Handed on, not re-made: the adapter verifies it a second time
+              // inside its own path, where no caller can be trusted to have.
+              request.likenessAcknowledgment);
   } catch (err) {
     const rejection = err instanceof ImageEditError ? err.rejection : null;
     // The engine's own words stay server-side; they name a provider.
@@ -268,7 +307,7 @@ export async function runCreativeOperation(
           : SPOKEN['engine-refused']);
   }
 
-  // ── 6 · WRITE, THEN PROVE IT EARNED ITS PLACE ──────────────────────────
+  // ── 7 · WRITE, THEN PROVE IT EARNED ITS PLACE ──────────────────────────
   const persisted = await persistUploadedAsset(produced.bytes, shape.outputExtension);
 
   const outcome = await deriveAsset({
@@ -291,6 +330,16 @@ export async function runCreativeOperation(
       creditsCharged: produced.creditsCharged,
       creditUnit: 'magic-hour-credits',
     },
+    // Written against THIS request's asset, so the declaration can be read
+    // back beside the thing it permitted — and nowhere else.
+    ...(acknowledgedAtMs === null
+      ? {}
+      : {
+          likenessAcknowledgment: {
+            policyVersion: LIKENESS_POLICY_VERSION,
+            acknowledgedAtMs,
+          },
+        }),
   });
 
   if (!outcome.ok) {

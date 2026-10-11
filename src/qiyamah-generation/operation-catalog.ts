@@ -47,6 +47,9 @@ import {
   CREATIVE_READINESS,
   type CreativeOperationId,
 } from '../core/sovereign-ai-integration/adapters/magic-hour-creative-operations';
+import {
+  LIKENESS_POLICY_VERSION, LIKENESS_STATEMENTS_AR,
+} from '../vault/likeness-acknowledgment';
 
 /** How a Creator reaches the operation — by what they already have. */
 export type OperationGroup =
@@ -213,6 +216,19 @@ export interface OperationState extends OperationDescriptor {
   readonly brief: BriefContract;
   readonly takesBrief: boolean;
   readonly scaffolds: boolean;
+  /**
+   * The Creator must make an explicit declaration before this act runs.
+   *
+   * Carried on the STATE, not left to a screen to remember. The server is the
+   * authority on which acts demand a declaration, and a surface that renders a
+   * card without reading this field would be deciding a policy question for
+   * itself — the second authority this chamber keeps removing.
+   */
+  readonly requiresAcknowledgment: boolean;
+  /** The declaration's own version, when one is required. Never invented. */
+  readonly acknowledgmentVersion: string | null;
+  /** What the Creator must read and affirm, sentence by sentence. */
+  readonly acknowledgmentStatementsAr: readonly string[];
 }
 
 const REASON_AR: Readonly<Record<OperationAvailability, string>> = {
@@ -277,6 +293,14 @@ export function stateOfOperation(
     brief: briefContractFor(id, styleId),
     takesBrief: operationTakesBrief(id),
     scaffolds: operationScaffolds(id),
+    // Read from the readiness register, never from a list kept here: one
+    // authority for which act demands a declaration, so a new face act
+    // cannot be added without one.
+    requiresAcknowledgment: Boolean(readiness?.requiresLikenessAcknowledgment),
+    acknowledgmentVersion: readiness?.requiresLikenessAcknowledgment
+      ? LIKENESS_POLICY_VERSION : null,
+    acknowledgmentStatementsAr: readiness?.requiresLikenessAcknowledgment
+      ? LIKENESS_STATEMENTS_AR : [],
   };
 }
 

@@ -54,6 +54,10 @@ import {
   ImageEditError,
   type ImageEditRejection,
 } from './magic-hour-image-editing';
+import {
+  verifyLikenessAcknowledgment,
+  requiresLikenessAcknowledgment,
+} from '../../../vault/likeness-acknowledgment';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1 · THE FOUR OPERATIONS, NAMED ONCE
@@ -337,36 +341,52 @@ export async function talkingPhotoViaProvider(
 }
 
 /**
- * D · FACE SWAP — IMPLEMENTED, AND NOT REACHABLE.
+ * D · FACE SWAP — AND THE ONE THING THAT MAY OPEN IT.
  *
- * ─── WHY THERE IS A FUNCTION AND NO DOOR ────────────────────────────────────
+ * ─── WHAT WAS MISSING, AND WHAT NOW STANDS IN ITS PLACE ─────────────────────
  *
- *   The provider route is present and our credential is accepted. What is
- *   absent is a POLICY: the Empire's three published documents — terms,
- *   privacy and refunds — contain no word on likeness or on the consent of the
- *   person whose face is taken. Measured 2026-10-11, as in Phase 0.
+ *   The provider route is present and our credential is accepted. What was
+ *   absent on 2026-10-11 was a POLICY: the Empire's three published documents
+ *   — terms, privacy and refunds — contain no word on likeness or on the
+ *   consent of the person whose face is taken. That remains measured and true.
  *
- *   The directive is explicit: implement this path «only after verifying that
- *   the required provider capability, consent requirements, and applicable
- *   likeness safeguards are satisfied», and «do not infer consent from
- *   possession of an image or video». Possession is the ONLY thing the Empire
- *   can presently observe, so the precondition is not satisfied and cannot be
- *   satisfied by code.
+ *   The Chief Architect then ordered the safeguard itself: an explicit
+ *   responsibility acknowledgment, never pre-checked, recorded against the
+ *   specific request, enforced server-side and unbypassable. That safeguard is
+ *   `src/vault/likeness-acknowledgment.ts`, and this gate is now its teeth.
  *
- *   So the provider path is written — it is the path that will be used the day
- *   a likeness policy exists — and `faceSwapIsPermitted()` refuses until one
- *   does. No route calls this function, and the operation catalog reports it
- *   BLOCKED with that reason. A capability whose policy is missing is not a
- *   capability with a missing feature; it is a decision nobody has made.
+ *   So the precondition is no longer «a document somebody must write». It is a
+ *   DECLARATION the Creator must make, in their own words, every time. The
+ *   gate verifies that declaration and nothing else. It still cannot observe
+ *   consent, and it still never infers it: it reads no asset, no owner and no
+ *   metadata — only the acknowledgment handed to it — so possession can never
+ *   become permission by accident.
+ *
+ * ─── AND THE OPERATION IS STILL SHUT TODAY ──────────────────────────────────
+ *
+ *   For a different reason, recorded separately: no real paid job has returned
+ *   its final billing, so no cost basis is verified, and the catalog keeps the
+ *   card shut on that count. Nothing here claims otherwise. The published
+ *   likeness clause in the Empire's own terms is also still unwritten — the
+ *   Creator's declaration is the Creator's, and it is not the Empire's
+ *   published policy.
  */
-export function faceSwapIsPermitted(): { readonly permitted: false; readonly reasonEn: string } {
-  return {
-    permitted: false,
-    reasonEn:
-      'No likeness or consent policy exists in the Empire\'s published documents. '
-      + 'Possession of an image is not consent, and the Chief Architect has not ruled. '
-      + 'This is a constitutional decision, not an engineering gap.',
-  };
+export type FaceSwapPermission =
+  | { readonly permitted: true }
+  | { readonly permitted: false; readonly reasonEn: string };
+
+export function faceSwapIsPermitted(acknowledgment?: unknown): FaceSwapPermission {
+  const verdict = verifyLikenessAcknowledgment(acknowledgment);
+  if (!verdict.ok) {
+    return {
+      permitted: false,
+      reasonEn:
+        `face swap requires the Creator's own likeness acknowledgment (${verdict.rejection}). `
+        + 'Possession of an image or a video is never read as consent, and the Empire '
+        + 'does not acknowledge on a Creator\'s behalf.',
+    };
+  }
+  return { permitted: true };
 }
 
 export async function faceSwapViaProvider(
@@ -375,26 +395,27 @@ export async function faceSwapViaProvider(
   sourceFaceBytes: Buffer,
   sourceFaceExtension: string,
   endSeconds: number,
+  /**
+   * The Creator's own declaration. REQUIRED — and deliberately not defaulted:
+   * a parameter with a default would be the Empire acknowledging for them.
+   */
+  acknowledgment: unknown,
   options: RunOptions = {},
 ): Promise<CreativeOperationResult> {
   // THE GATE IS INSIDE THE PATH, not only on the door. A future caller that
-  // forgets to check is refused here, where it cannot be forgotten.
-  const permission = faceSwapIsPermitted();
+  // forgets to check — a script, a new route, a job queue — is refused here,
+  // where it cannot be forgotten, and before one byte is uploaded.
+  const permission = faceSwapIsPermitted(acknowledgment);
   if (!permission.permitted) {
     throw new ImageEditError('SUBMIT_FAILED', `face-swap refused: ${permission.reasonEn}`);
   }
-  // Unreachable while the gate above holds. Written so the day a policy
-  // exists, the path is not invented under time pressure.
-  /* istanbul ignore next -- unreachable until a likeness policy exists */
-  {
-    const video = await uploadMedia(targetVideoBytes, targetVideoExtension, 'video');
-    const face = await uploadMedia(sourceFaceBytes, sourceFaceExtension, 'image');
-    return runCreativeJob('face-swap', {
-      start_seconds: 0,
-      end_seconds: endSeconds,
-      assets: { video_source: 'file', video_file_path: video, image_file_path: face },
-    }, options);
-  }
+  const video = await uploadMedia(targetVideoBytes, targetVideoExtension, 'video');
+  const face = await uploadMedia(sourceFaceBytes, sourceFaceExtension, 'image');
+  return runCreativeJob('face-swap', {
+    start_seconds: 0,
+    end_seconds: endSeconds,
+    assets: { video_source: 'file', video_file_path: video, image_file_path: face },
+  }, options);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -423,6 +444,15 @@ export interface CreativeOperationReadiness {
   readonly costBasisVerified: boolean;
   /** A policy decision blocks it, independent of any technical fact. */
   readonly policyBlocked: boolean;
+  /**
+   * The Creator must make an explicit declaration before it runs at all.
+   *
+   * Said separately from `policyBlocked` on purpose. A blocked operation is
+   * one NOBODY may run; this one is one no CREATOR may run silently. Folding
+   * the two together would mean that satisfying the declaration looked like
+   * satisfying a policy, and it does not.
+   */
+  readonly requiresLikenessAcknowledgment: boolean;
 }
 
 export const CREATIVE_READINESS: readonly CreativeOperationReadiness[] = [
@@ -430,21 +460,37 @@ export const CREATIVE_READINESS: readonly CreativeOperationReadiness[] = [
     operation: 'background-removal', endpoint: CREATIVE_ENDPOINT['background-removal'],
     routeProbed: true, credentialAccepted: true,
     productionProven: false, costBasisVerified: false, policyBlocked: false,
+    requiresLikenessAcknowledgment: requiresLikenessAcknowledgment('background-removal'),
   },
   {
     operation: 'lip-sync', endpoint: CREATIVE_ENDPOINT['lip-sync'],
     routeProbed: true, credentialAccepted: true,
     productionProven: false, costBasisVerified: false, policyBlocked: false,
+    requiresLikenessAcknowledgment: requiresLikenessAcknowledgment('lip-sync'),
   },
   {
     operation: 'talking-photo', endpoint: CREATIVE_ENDPOINT['talking-photo'],
     routeProbed: true, credentialAccepted: true,
     productionProven: false, costBasisVerified: false, policyBlocked: false,
+    requiresLikenessAcknowledgment: requiresLikenessAcknowledgment('talking-photo'),
   },
   {
     operation: 'face-swap', endpoint: CREATIVE_ENDPOINT['face-swap'],
     routeProbed: true, credentialAccepted: true,
-    productionProven: false, costBasisVerified: false, policyBlocked: true,
+    productionProven: false, costBasisVerified: false,
+    // NO LONGER BLOCKED BY AN ABSENT SAFEGUARD, and still shut.
+    //
+    //   On 2026-10-11 this read `policyBlocked: true` because no likeness
+    //   safeguard existed anywhere in the Empire. The Chief Architect then
+    //   ordered the safeguard and its exact terms, and it is now built,
+    //   enforced below the route, and tested. That particular block is
+    //   therefore closed by HIS ruling, not by an engineer's opinion.
+    //
+    //   What keeps the card shut today is the line above it: no paid job
+    //   has returned its final billing, so no cost is measured. And what
+    //   keeps every single run honest is the line below it.
+    policyBlocked: false,
+    requiresLikenessAcknowledgment: requiresLikenessAcknowledgment('face-swap'),
   },
 ];
 

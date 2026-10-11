@@ -30,13 +30,18 @@ const SESSION_COOKIE = 'azma_session';
  *   itself would be the second authority this chamber spent three packages
  *   removing.
  *
- *   Today every one of the four is refused — three because no verified cost
- *   basis exists, one because no likeness policy exists. The refusal carries
- *   the catalog's own Arabic reason, so a Creator is told which.
+ *   Today every one of the four is refused — no verified cost basis exists for
+ *   any of them. The refusal carries the catalog's own Arabic reason.
+ *
+ *   Face swap carries a second, independent requirement: the Creator's own
+ *   likeness declaration. This door does not enforce it — the runner does,
+ *   below every door — so a direct POST, a script, or a future route cannot
+ *   reach the provider by skipping this file.
  */
 
 const HTTP_FOR: Readonly<Record<CreativeRunRejection, number>> = {
   unavailable: 409,
+  'acknowledgment-required': 403,
   'not-found': 404,
   'wrong-family': 400,
   'not-derivable': 409,
@@ -73,7 +78,9 @@ export async function POST(
 
   let body: unknown = null;
   try { body = await request.json(); } catch { body = null; }
-  const b = (body ?? {}) as { secondAssetId?: unknown; durationSeconds?: unknown };
+  const b = (body ?? {}) as {
+    secondAssetId?: unknown; durationSeconds?: unknown; likenessAcknowledgment?: unknown;
+  };
 
   const outcome = await runCreativeOperation(getDb(), {
     operation,
@@ -81,6 +88,11 @@ export async function POST(
     targetAssetId: assetId,
     secondAssetId: typeof b.secondAssetId === 'string' ? b.secondAssetId : undefined,
     durationSeconds: typeof b.durationSeconds === 'number' ? b.durationSeconds : undefined,
+    // Handed on EXACTLY as it arrived — not normalised, not coerced to a
+    // boolean, not defaulted when absent. A door that tidied this value would
+    // be completing a declaration on the Creator's behalf, and an absent
+    // declaration must stay absent all the way to the gate that refuses it.
+    likenessAcknowledgment: b.likenessAcknowledgment,
   });
 
   if (!outcome.ok) {

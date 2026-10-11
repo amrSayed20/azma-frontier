@@ -1,138 +1,179 @@
 /**
  * AZMA OS — THE COST WORKSHEET IS DOCUMENTATION, 2026-10-11.
  *
- * §7 is unambiguous: the existing 100% markup is unchanged, the proposed 60%
- * uplift is a proposal and not an instruction to charge anybody, the 75%
- * unified markup is not implemented, and no provider cost is invented.
+ * §4 is unambiguous: the existing 100% markup is unchanged, the 60% and 75%
+ * uplifts are COMPARISON SCENARIOS and neither is approved or applied, and no
+ * provider cost is invented.
  *
- * These tests hold the worksheet to that, and hold the financial constitution
- * to being untouched.
+ * Three rates are now provider-DOCUMENTED. These tests hold the distinction
+ * that matters most: a documented rate is the provider's published promise,
+ * and a MEASURED charge is what a real job actually took. Only the second may
+ * ever open a paid door.
  */
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import {
-  CREATIVE_COST_WORKSHEET, costRowFor, canPrice, worksheetGaps,
-  PROPOSED_NEW_OPERATION_UPLIFT_PERCENT, EXISTING_OPERATION_MARKUP_PERCENT,
+  CREATIVE_COST_WORKSHEET, costRowFor, costIsMeasured, worksheetGaps, scenarios,
+  PROPOSED_UPLIFT_A, PROPOSED_UPLIFT_B, EXISTING_OPERATION_MARKUP,
+  UPLIFT_STATUS, RATE_TABLE_SOURCE, ACCOUNT_ENTITLEMENT, REFERENCE_JOB,
 } from '../cost-engine/creative-operations-cost-worksheet';
+import { CREATIVE_READINESS } from '../../core/sovereign-ai-integration/adapters/magic-hour-creative-operations';
 
 const read = (f: string) => readFileSync(join(process.cwd(), f), 'utf8');
 const FOUR = ['background-removal', 'lip-sync', 'face-swap', 'talking-photo'] as const;
 
-describe('1 · every row separates what is known from what is not', () => {
-  it('all four operations have a row', () => {
-    expect(CREATIVE_COST_WORKSHEET).toHaveLength(4);
+describe('1 · every figure names its source', () => {
+  it('all four operations have a row, and face swap has both variants', () => {
+    expect(CREATIVE_COST_WORKSHEET).toHaveLength(5);
     for (const op of FOUR) expect(costRowFor(op).operation).toBe(op);
+    expect(costRowFor('face-swap', 'photo').endpoint).toBe('/v1/face-swap-photo');
+    expect(costRowFor('face-swap', 'video').endpoint).toBe('/v1/face-swap');
   });
 
-  it('NOT ONE invents a provider cost', () => {
+  it('every documented rate carries one named, dated source', () => {
+    expect(RATE_TABLE_SOURCE.url).toMatch(/^https:\/\/docs\.magichour\.ai\//);
+    expect(RATE_TABLE_SOURCE.retrievedOn).toBe('2026-10-11');
     for (const r of CREATIVE_COST_WORKSHEET) {
-      expect(r.providerCreditCost).toBeNull();
-      expect(r.providerEvidence).toBe('unknown');
+      if (r.providerEvidence === 'provider-documented') {
+        expect(r.providerRate).not.toBeNull();
+        expect(r.providerRateText.length).toBeGreaterThan(0);
+      }
     }
   });
 
-  it('a lead remembered is NOT recorded as evidence', () => {
-    // Lip sync carries a remembered figure in prose and `unknown` in the field.
-    const lip = costRowFor('lip-sync');
-    expect(lip.providerNote).toMatch(/150/);
-    expect(lip.providerEvidence).toBe('unknown');
-    expect(lip.providerCreditCost).toBeNull();
-  });
-
-  it('an unknown input yields an unknown price — never a multiplied guess', () => {
+  it('a rate never travels without its billing variables', () => {
     for (const r of CREATIVE_COST_WORKSHEET) {
-      expect(r.creatorFacingBalanceUnits).toBeNull();
-      expect(r.creatorFacingStatus).toMatch(/UNKNOWN/);
-      expect(canPrice(r.operation)).toBe(false);
+      expect(r.billingVariables.length).toBeGreaterThan(0);
+      expect(r.finalChargeRetrieval).toMatch(/credits_charged/);
+      expect(r.failureBilling.length).toBeGreaterThan(0);
     }
   });
 
-  it('the operating cost is unknown by construction, as it is everywhere else', () => {
-    for (const r of CREATIVE_COST_WORKSHEET) expect(r.operatingCostKnown).toBe(false);
+  it('the operating cost is absent and SAID to be absent, never treated as zero', () => {
+    for (const r of CREATIVE_COST_WORKSHEET) {
+      expect(r.operatingCostKnown).toBe(false);
+      expect(r.operatingComponents.length).toBeGreaterThan(0);
+    }
+    for (const s of scenarios()) {
+      expect(s.operatingEgp).toBeNull();
+      expect(s.caveat).toMatch(/operating cost is unmeasured/i);
+      expect(s.caveat).toMatch(/overstated/i);
+    }
+  });
+});
+
+describe('2 · DOCUMENTED is not MEASURED, and only MEASURED may open a door', () => {
+  it('not one rate is measured from a real charge', () => {
+    for (const r of CREATIVE_COST_WORKSHEET) {
+      expect(r.providerEvidence).not.toBe('measured-from-a-real-charge');
+    }
+    for (const op of FOUR) expect(costIsMeasured(op)).toBe(false);
   });
 
-  it('every row says what is missing before it could price anything', () => {
+  it('the catalog gate still reads the readiness record, and it is still shut', () => {
+    for (const op of FOUR) {
+      const r = CREATIVE_READINESS.find((x) => x.operation === op)!;
+      expect(r.costBasisVerified).toBe(false);
+      expect(r.productionProven).toBe(false);
+    }
+  });
+
+  it('every row says what is missing, and a paid job is on each list', () => {
     for (const g of worksheetGaps()) {
       expect(g.missing.length).toBeGreaterThan(0);
-      for (const m of g.missing) expect(typeof m).toBe('string');
+      expect(g.missing.join(' ')).toMatch(/paid job|acknowledgment|ruling/i);
     }
   });
 
-  it('face swap names its policy blocker BEFORE any cost work', () => {
-    expect(costRowFor('face-swap').whatIsMissing[0]).toMatch(/likeness and consent policy/i);
+  it('the lip-sync correction is recorded, not quietly dropped', () => {
+    // A remembered «~150 credits for 5 seconds» appeared in the previous
+    // revision as a LEAD. The documented rate is 1 credit/frame — 120 at 24fps
+    // for five seconds. The remembered figure was wrong, and the record says so.
+    const src = read('src/economy/cost-engine/creative-operations-cost-worksheet.ts');
+    expect(src).toMatch(/THE REMEMBERED NUMBER WAS WRONG/);
+    expect(costRowFor('lip-sync').providerRate).toBe(1);
+    expect(costRowFor('lip-sync').unit).toBe('per-frame');
+  });
+
+  it('and the fps lever is recorded, because it IS the cost for lip sync', () => {
+    expect(costRowFor('lip-sync').billingVariables.join(' ')).toMatch(/max_fps_limit/);
   });
 });
 
-describe('2 · the uplift is a proposal, and nothing multiplies by it', () => {
-  it('it is recorded as the directive named it', () => {
-    expect(PROPOSED_NEW_OPERATION_UPLIFT_PERCENT).toBe(60);
-    expect(EXISTING_OPERATION_MARKUP_PERCENT).toBe(100);
+describe('3 · the two uplifts are scenarios, and neither is applied', () => {
+  it('both are recorded as the directive named them', () => {
+    expect(PROPOSED_UPLIFT_A).toBe(0.60);
+    expect(PROPOSED_UPLIFT_B).toBe(0.75);
+    expect(EXISTING_OPERATION_MARKUP).toBe(1.00);
+    expect(UPLIFT_STATUS).toMatch(/COMPARISON SCENARIO/);
+    expect(UPLIFT_STATUS).toMatch(/neither is applied/);
   });
 
-  it('every row labels it a proposal, not an approval', () => {
-    for (const r of CREATIVE_COST_WORKSHEET) {
-      expect(r.proposedUpliftPercent).toBe(60);
-      expect(r.proposedUpliftStatus).toMatch(/PROPOSAL/);
-      expect(r.proposedUpliftStatus).toMatch(/not applied/);
+  it('both scenarios are computed side by side on one reference job', () => {
+    expect(REFERENCE_JOB.fps).toBe(24);
+    for (const s of scenarios()) {
+      if (s.providerCredits === null) continue;
+      expect(s.creatorPriceAt60Egp).not.toBeNull();
+      expect(s.creatorPriceAt75Egp).not.toBeNull();
+      // 75% must exceed 60% — a scenario table that does not order is useless.
+      expect(s.creatorPriceAt75Egp!).toBeGreaterThan(s.creatorPriceAt60Egp!);
     }
   });
 
-  it('the 75% unified markup is not implemented anywhere', () => {
-    // The header RECORDS the prohibition by name, which is the point. So the
-    // assertion is on CODE — a grep that cannot tell a prohibition from an
-    // implementation would forbid writing the prohibition down.
-    const src = read('src/economy/cost-engine/creative-operations-cost-worksheet.ts');
-    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(code).not.toMatch(/\b75\b/);
-    // And nowhere else either.
-    const { execSync } = require('child_process');
-    const hits = execSync('git grep -n "UNIFIED_MARKUP\\|unifiedMarkup" || true',
-      { encoding: 'utf8', cwd: process.cwd() }) as string;
-    expect(hits.trim()).toBe('');
+  it('the arithmetic is exactly basis × 1.60 and basis × 1.75', () => {
+    for (const s of scenarios()) {
+      if (s.totalCostBasisEgp === null) continue;
+      expect(s.creatorPriceAt60Egp!).toBeCloseTo(s.totalCostBasisEgp * 1.60, 2);
+      expect(s.creatorPriceAt75Egp!).toBeCloseTo(s.totalCostBasisEgp * 1.75, 2);
+    }
   });
 
-  it('the worksheet performs no arithmetic on the uplift', () => {
-    const src = read('src/economy/cost-engine/creative-operations-cost-worksheet.ts');
-    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    // No multiplication, no division, no percentage applied to anything.
-    expect(code).not.toMatch(/\*\s*\(?\s*1\s*\+/);
-    expect(code).not.toMatch(/\/\s*100/);
-    expect(code).not.toMatch(/UpliftPercent\s*[*/]/);
+  it('the basis is the provider charge ALONE, and that is disclosed', () => {
+    for (const s of scenarios()) {
+      if (s.totalCostBasisEgp === null) continue;
+      expect(s.totalCostBasisEgp).toBe(s.providerEgp);
+      expect(s.caveat).toMatch(/PROVIDER CHARGE ALONE/);
+    }
   });
 });
 
-describe('3 · no pricing authority reads it', () => {
-  it('the estimator does not import it', () => {
-    expect(read('app/api/sovereign/economy/estimate/route.ts'))
-      .not.toMatch(/creative-operations-cost-worksheet/);
-  });
-
-  it('the Sovereign Value Balance does not import it', () => {
-    expect(read('src/economy/pricing/sovereign-value-balance.ts'))
-      .not.toMatch(/creative-operations-cost-worksheet/);
-  });
-
-  it('the provider cost catalog does not import it', () => {
-    expect(read('src/economy/cost-engine/provider-cost-catalog.ts'))
-      .not.toMatch(/creative-operations-cost-worksheet/);
+describe('4 · no pricing authority reads it', () => {
+  it('the estimator, the Balance and the provider catalog all ignore it', () => {
+    for (const f of [
+      'app/api/sovereign/economy/estimate/route.ts',
+      'src/economy/pricing/sovereign-value-balance.ts',
+      'src/economy/cost-engine/provider-cost-catalog.ts',
+    ]) {
+      expect(read(f)).not.toMatch(/creative-operations-cost-worksheet/);
+    }
   });
 
   it('nothing outside the economy folder and its tests imports it', () => {
     const { execSync } = require('child_process');
-    const out = execSync(
-      'git grep -l "creative-operations-cost-worksheet" || true',
-      { encoding: 'utf8', cwd: process.cwd() },
-    ) as string;
+    const out = execSync('git grep -l "creative-operations-cost-worksheet" || true',
+      { encoding: 'utf8', cwd: process.cwd() }) as string;
     const foreign = out.split('\n').map((l) => l.trim()).filter((l) =>
       l.length > 0
       && l !== 'src/economy/cost-engine/creative-operations-cost-worksheet.ts'
       && !l.startsWith('src/economy/__tests__/'));
     expect(foreign).toEqual([]);
   });
+
+  it('the 75% uplift exists ONLY as a comparison, never as a markup constant', () => {
+    const { execSync } = require('child_process');
+    // This file is excluded: it names the forbidden symbol in order to forbid
+    // it, and an instrument that counts its own words is measuring itself.
+    const hits = (execSync('git grep -n "UNIFIED_MARKUP" || true',
+      { encoding: 'utf8', cwd: process.cwd() }) as string)
+      .split('\n')
+      .filter((l) => l.trim().length > 0
+        && !l.startsWith('src/economy/__tests__/the-worksheet-prices-nothing.test.ts'));
+    expect(hits).toEqual([]);
+  });
 });
 
-describe('4 · the financial constitution is untouched', () => {
+describe('5 · the financial constitution is untouched', () => {
   const BALANCE = read('src/economy/pricing/sovereign-value-balance.ts');
 
   it('the six existing steps keep the charge they already carried', () => {
@@ -144,23 +185,35 @@ describe('4 · the financial constitution is untouched', () => {
     }
   });
 
-  it('the four new steps are NOT registered with the estimator', () => {
+  it('the new steps are in NEITHER the estimator nor the consumption table', () => {
     const ESTIMATE = read('app/api/sovereign/economy/estimate/route.ts');
     for (const step of ['BACKGROUND_REMOVAL', 'TALKING_PHOTO', 'LIP_SYNC', 'FACE_SWAP']) {
       expect(ESTIMATE).not.toContain(step);
-    }
-  });
-
-  it('and they are NOT in the consumption table either', () => {
-    for (const step of ['BACKGROUND_REMOVAL', 'TALKING_PHOTO', 'LIP_SYNC', 'FACE_SWAP']) {
       expect(BALANCE).not.toContain(step);
     }
   });
 
   it('so an unpriced step cannot be quoted at all — by construction', () => {
-    // The estimator refuses a step it does not hold, which is why a card for
-    // an uncosted operation can show no price: there is none to show.
     expect(read('app/api/sovereign/economy/estimate/route.ts'))
       .toContain("{ error: 'invalid_step', valid: Object.keys(CHAMBER_STEPS) }");
+  });
+});
+
+describe('6 · the account entitlement is recorded as read, with its limits', () => {
+  it('it names the endpoint, the date and the status it was read at', () => {
+    expect(ACCOUNT_ENTITLEMENT.endpoint).toContain('/v1/account');
+    expect(ACCOUNT_ENTITLEMENT.httpStatus).toBe(200);
+    expect(ACCOUNT_ENTITLEMENT.observedOn).toBe('2026-10-11');
+    expect(ACCOUNT_ENTITLEMENT.subscriptionActive).toBe(true);
+  });
+
+  it('and it states what it does NOT prove', () => {
+    expect(ACCOUNT_ENTITLEMENT.whatItDoesNotProve).toMatch(/per-endpoint/i);
+    expect(ACCOUNT_ENTITLEMENT.whatItDoesNotProve).toMatch(/no completed paid job/i);
+  });
+
+  it('it carries no credential and no account secret', () => {
+    const src = read('src/economy/cost-engine/creative-operations-cost-worksheet.ts');
+    expect(src).not.toMatch(/Bearer |sk-|[0-9a-f]{32}/);
   });
 });
