@@ -1955,3 +1955,77 @@
   .ops-group-head { gap: 0.15rem; }
   .ops-card { padding: 0.75rem; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LAYER C · THE ONE STATUS LINE THE SIX ACTS SPEAK THROUGH     (2026-10-11)
+
+   Four vocabularies described one idea, and three acts could not say
+   «أُنتج ولم تَعتمده» at all. Every panel renders this now. Each rule paints
+   its own background and colour — geometry alone is born browser-white here.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.op-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.6rem;
+  margin: 0.6rem 0 0.4rem;
+  padding: 0.55rem 0.7rem;
+  background: rgba(15, 5, 5, 0.6);
+  color: var(--text-muted);
+  border: 1px solid rgba(168, 159, 145, 0.16);
+  border-inline-start: 2px solid rgba(168, 159, 145, 0.3);
+  border-radius: 2px;
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+.op-status-state { color: var(--text-main); font-weight: 500; }
+.op-status-why   { color: var(--text-muted); }
+.op-status-hold  { color: var(--gold-dim); letter-spacing: 0.15em; }
+
+/* ── the acceptance boundary is the one a Creator must not misread ──────── */
+.op-status--deposited {
+  background: rgba(212, 175, 55, 0.07);
+  color: var(--text-main);
+  border-color: rgba(212, 175, 55, 0.3);
+  border-inline-start-color: var(--gold-neon);
+}
+.op-status--deposited .op-status-state { color: var(--gold-neon); }
+
+.op-status--accepted {
+  background: rgba(74, 222, 128, 0.07);
+  color: var(--text-main);
+  border-color: rgba(74, 222, 128, 0.28);
+  border-inline-start-color: #4ade80;
+}
+.op-status--accepted .op-status-state { color: #4ade80; }
+
+.op-status--failed {
+  background: rgba(255, 107, 91, 0.07);
+  color: var(--text-muted);
+  border-color: rgba(255, 107, 91, 0.3);
+  border-inline-start-color: #ff6b5b;
+}
+.op-status--failed .op-status-state { color: #ff6b5b; }
+
+.op-status--processing,
+.op-status--submitted {
+  background: rgba(15, 5, 5, 0.72);
+  color: var(--text-muted);
+  border-inline-start-color: var(--gold-dim);
+}
+
+/* UNKNOWN is not a failure, and must not be dressed as one. */
+.op-status--unknown {
+  background: rgba(139, 101, 8, 0.10);
+  color: var(--text-main);
+  border-color: rgba(212, 175, 55, 0.24);
+  border-inline-start-color: var(--gold-dim);
+}
+.op-status--unknown .op-status-state { color: var(--gold-dim); }
+
+.op-status--cancelled {
+  background: rgba(15, 5, 5, 0.5);
+  color: var(--text-muted);
+  border-inline-start-color: rgba(168, 159, 145, 0.4);
+}

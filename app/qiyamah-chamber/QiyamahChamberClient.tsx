@@ -86,6 +86,10 @@ interface UploadedItem {
 }
 
 import { OperationsCenter, type OperationStateView, type OperationGroupView } from './OperationsCenter';
+import {
+  lifecycleOf, lifecycleSentenceAr, isInFlight, hasOutput, mayRetry,
+  type OperationLifecycle,
+} from '@/src/qiyamah-generation/operation-lifecycle';
 
 interface QiyamahChamberClientProps {
   readonly dict:                Dictionary;
@@ -200,6 +204,40 @@ function StepCostLine({ quote, showBalance = false }: { readonly quote: StepQuot
       {showBalance && <span className="cost-balance">رصيدك {quote.availableUnits.toLocaleString('en-US')}</span>}
       {quote.trialAvailable && <span className="cost-trial">تجربتك سارية</span>}
       {quote.blockerAr && <span className="cost-blocker">{quote.blockerAr}</span>}
+    </p>
+  );
+}
+
+/**
+ * ── LAYER C · THE ONE STATUS LINE THE SIX ACTS SPEAK THROUGH ────────────────
+ *
+ *   Four vocabularies used to describe one idea, and three of the acts could
+ *   not say «أُنتج ولم تَعتمده» at all — the state that decides ownership in
+ *   this Empire. Every panel renders THIS now, and the words come from
+ *   `operation-lifecycle.ts`, so no screen can invent a seventh state.
+ *
+ *   The per-operation error text still comes from its own handler, because a
+ *   failure's REASON is operation-specific and must stay isolated. What is
+ *   unified is the lifecycle, not the diagnosis.
+ */
+function OperationStatusLine({
+  lifecycle, errorAr,
+}: {
+  readonly lifecycle: OperationLifecycle;
+  readonly errorAr?: string | null;
+}) {
+  if (lifecycle === 'READY') return null;
+  const flying = isInFlight(lifecycle);
+  return (
+    <p
+      className={`op-status op-status--${lifecycle.toLowerCase()}`}
+      role={lifecycle === 'FAILED' ? 'alert' : 'status'}
+      data-lifecycle={lifecycle}
+    >
+      <span className="op-status-state">{lifecycleSentenceAr(lifecycle)}</span>
+      {/* The handler's own words, kept — a reason belongs to its operation. */}
+      {lifecycle === 'FAILED' && errorAr ? <span className="op-status-why">{errorAr}</span> : null}
+      {flying ? <span className="op-status-hold" aria-hidden="true">…</span> : null}
     </p>
   );
 }
@@ -459,6 +497,37 @@ export function QiyamahChamberClient({
    * leaving a workspace neither clears them nor lets them reach another
    * operation. Only the journey position is reset.
    */
+  /** Which asset the named act produced, from the state its handler sets. */
+  const producedBy = (op: string): string | null =>
+    op === 'animate' ? (animatedResult?.assetId ?? null)
+    : op === 'edit' ? editedAssetId
+    // `handleUpscaleAsset` deposits through the shared result state, which is
+    // also where a fresh generation lands — correct, because both produce the
+    // one asset the result panel is about.
+    : generatedAssetId;
+
+  /**
+   * ── LAYER C · THE ACTIVE ACT'S LIFECYCLE, DERIVED IN ONE PLACE ─────────
+   *
+   *   Reads the operation-specific state that already exists and returns the
+   *   one vocabulary. It writes nothing and calls no handler: the proven
+   *   engines keep their own states, and what is unified is what the Creator
+   *   is told.
+   */
+  const lifecycleFor = (op: string): OperationLifecycle => lifecycleOf({
+    operation: op as never,
+    generationStage: stage,
+    mutationState: op === 'animate' ? animateState : editState,
+    upscaleState,
+    // The id each handler ACTUALLY writes on success — read from the state
+    // those proven handlers already set, never from a new one.
+    producedAssetId: producedBy(op),
+    accepted: acceptedAssetIds.includes(producedBy(op) ?? '__none__'),
+  });
+  const activeLifecycle: OperationLifecycle = chosenOperation
+    ? lifecycleFor(chosenOperation)
+    : 'READY';
+
   function returnToCenter() {
     setChosenOperation(null);
     setStage('idea');
@@ -1860,12 +1929,7 @@ export function QiyamahChamberClient({
 
                       {motionCost && <StepCostLine quote={motionCost} />}
 
-                      {animateState === 'running' && (
-                        <p className="edit-act-status" role="status">الحركة قيد البعث… لا تغلق الصفحة.</p>
-                      )}
-                      {animateState === 'failed' && animateError && (
-                        <p className="edit-act-error" role="alert">{animateError}</p>
-                      )}
+                      <OperationStatusLine lifecycle={lifecycleFor('animate')} errorAr={animateError} />
 
                       <button
                         className="edit-act-run"
@@ -2042,12 +2106,7 @@ export function QiyamahChamberClient({
                             رفعُ الدقّة لا يأخذ تعليمةً — يَرفع تفاصيلَ أصلك كما هو، ويُودِع نسخةً جديدةً في خزانتك.
                           </p>
                           {upscaleCost && <StepCostLine quote={upscaleCost} />}
-                          {upscaleState === 'running' && (
-                            <p className="edit-act-status" role="status">الدقّة تُرفَع… لا تغلق الصفحة.</p>
-                          )}
-                          {upscaleState === 'failed' && upscaleError && (
-                            <p className="edit-act-error" role="alert">{upscaleError}</p>
-                          )}
+                          <OperationStatusLine lifecycle={lifecycleFor('upscale')} errorAr={upscaleError} />
                           <button
                             className="edit-act-run"
                             disabled={upscaleState === 'running' || !editingAssetId}
@@ -2079,12 +2138,7 @@ export function QiyamahChamberClient({
                           execution, never the keyboard. */}
                       <BriefCapLine operationId="edit" text={editInstruction} operations={operations} />
 
-                      {editState === 'running' && (
-                        <p className="edit-act-status" role="status">التعديل قيد التنفيذ… لا تغلق الصفحة.</p>
-                      )}
-                      {editState === 'failed' && editError && (
-                        <p className="edit-act-error" role="alert">{editError}</p>
-                      )}
+                      <OperationStatusLine lifecycle={lifecycleFor('edit')} errorAr={editError} />
 
                       <button
                         className="edit-act-run"
@@ -2810,15 +2864,11 @@ export function QiyamahChamberClient({
                         disabled={editState === 'running'}
                       />
 
-                      {editState === 'running' && (
-                        <p className="asset-edit-status" role="status">
-                          التعديل قيد التنفيذ… لا تغلق الصفحة.
-                        </p>
-                      )}
-
-                      {editState === 'failed' && editError && (
-                        <p className="asset-edit-error" role="alert">{editError}</p>
-                      )}
+                      {/* The gallery panel is a SECOND door onto the edit act,
+                          so it speaks the same lifecycle as the first. A door
+                          with its own vocabulary is how one act came to be
+                          described four different ways. */}
+                      <OperationStatusLine lifecycle={lifecycleFor('edit')} errorAr={editError} />
 
                       {needsAdoption && (
                         <button

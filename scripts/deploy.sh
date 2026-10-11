@@ -437,7 +437,10 @@ cmd_deploy() {
     {
       echo 'commit=$release_commit'
       echo 'tree=$release_dirty'
+      echo 'release_id=$release_id'
+      echo 'deployment_id=$release_id'
       echo build_id=\$(cat '$RELEASES_DIR/$release_id/.next/BUILD_ID' 2>/dev/null || echo unknown)
+      echo 'build_id_note=BUILD_ID is NOT unique per build in this project - measured identical across five releases with three different source trees. deployment_id is the discriminator; it equals release_id and is baked into the build via NEXT_DEPLOYMENT_ID.'
       echo 'released_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)'
     } > '$RELEASES_DIR/$release_id/SOURCE_IDENTITY'
     rm -rf '$STAGING_DIR'
