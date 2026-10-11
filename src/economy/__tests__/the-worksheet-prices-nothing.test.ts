@@ -17,8 +17,11 @@ import {
   CREATIVE_COST_WORKSHEET, costRowFor, costIsMeasured, worksheetGaps, scenarios,
   PROPOSED_UPLIFT_A, PROPOSED_UPLIFT_B, EXISTING_OPERATION_MARKUP,
   UPLIFT_STATUS, RATE_TABLE_SOURCE, ACCOUNT_ENTITLEMENT, REFERENCE_JOB,
+  SELECTED_UPLIFT_DIRECTION, COMPARISON_UPLIFT, UPLIFT_PURPOSE,
 } from '../cost-engine/creative-operations-cost-worksheet';
-import { CREATIVE_READINESS } from '../../core/sovereign-ai-integration/adapters/magic-hour-creative-operations';
+import {
+  CREATIVE_READINESS, TALKING_PHOTO_GENERATION_MODE, LIP_SYNC_GENERATION_MODE,
+} from '../../core/sovereign-ai-integration/adapters/magic-hour-creative-operations';
 
 const read = (f: string) => readFileSync(join(process.cwd(), f), 'utf8');
 const FOUR = ['background-removal', 'lip-sync', 'face-swap', 'talking-photo'] as const;
@@ -215,5 +218,40 @@ describe('6 · the account entitlement is recorded as read, with its limits', ()
   it('it carries no credential and no account secret', () => {
     const src = read('src/economy/cost-engine/creative-operations-cost-worksheet.ts');
     expect(src).not.toMatch(/Bearer |sk-|[0-9a-f]{32}/);
+  });
+});
+
+describe('7 · the basis is the rate of the configuration we ACTUALLY send', () => {
+  it('talking photo is priced at the realistic rate, because realistic is what we send', () => {
+    // It was priced at 20 — the `prompted` rate — while the adapter sent no
+    // mode at all and therefore got `realistic` at 48. The worksheet and the
+    // request body are bound together here so they cannot diverge again.
+    expect(TALKING_PHOTO_GENERATION_MODE).toBe('realistic');
+    expect(costRowFor('talking-photo').providerRate).toBe(48);
+  });
+
+  it('lip sync is priced at the lite rate, because lite is what we send', () => {
+    expect(LIP_SYNC_GENERATION_MODE).toBe('lite');
+    expect(costRowFor('lip-sync').providerRate).toBe(1);
+  });
+
+  it('and the cheaper talking-photo mode is excluded for a reason, not by oversight', () => {
+    expect(costRowFor('talking-photo').providerRateText).toMatch(/requires a text prompt/);
+  });
+});
+
+describe('8 · the Architect’s direction is named, and still applied by nothing', () => {
+  it('75% is the selected direction and 60% is the comparison', () => {
+    expect(SELECTED_UPLIFT_DIRECTION).toBe(0.75);
+    expect(COMPARISON_UPLIFT).toBe(0.60);
+  });
+
+  it('the status says it multiplies a VERIFIED basis, which no operation has', () => {
+    expect(UPLIFT_STATUS).toMatch(/VERIFIED total cost basis/);
+    for (const op of FOUR) expect(costIsMeasured(op)).toBe(false);
+  });
+
+  it('the uplift is recorded as covering operating cost, never as profit', () => {
+    expect(UPLIFT_PURPOSE).toMatch(/NOT net profit/);
   });
 });

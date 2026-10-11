@@ -269,6 +269,154 @@ export const __runCreativeJobForTests = runCreativeJob;
 // 4 · THE FOUR REAL PATHS
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ────────────────────────────────────────────────────────────────────────────
+// 3B · THE CONFIGURATION WE CHOOSE — SAID OUT LOUD, NOT INHERITED
+//
+//   MEASURED 2026-10-11, reading each endpoint's own reference:
+//
+//     lip sync        style.generation_mode defaults to `lite`
+//     talking photo   style.generation_mode defaults to `realistic`
+//     face swap       style.version defaults to `default`, face_swap_mode to
+//                     `all-faces`
+//
+//   Not one of those was in our request bodies, so the provider was choosing
+//   for us — and in one case the choice COST 2.4× what the previous worksheet
+//   recorded: `realistic` bills 48 credits/second where `prompted` bills 20,
+//   and the worksheet had taken the cheaper figure for a mode we never send.
+//
+//   An unsent parameter is still a decision; it is only a decision nobody
+//   made. So each one is now stated explicitly, equal to the behaviour the
+//   Empire already had, with its documented rate beside it. A later change is
+//   then a change to a named constant — visible in a diff, priced before it
+//   ships — and never a silent drift in somebody else's default.
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Lip sync: `lite` · 1 credit/frame.
+ *
+ * `standard` also bills 1 credit/frame and the provider calls it "best for
+ * most creators"; `pro` bills 2. Neither is chosen here, because a mode that
+ * changes what a Creator is charged is the Chief Architect's to rule — and
+ * this constant exists so that ruling is one line, applied in one place.
+ */
+export const LIP_SYNC_GENERATION_MODE = 'lite' as const;
+
+/**
+ * Talking photo: `realistic` · 48 credits/second, documented to 300 seconds.
+ *
+ * It is what the Empire has always sent, by omission. The cheaper `prompted`
+ * mode (20 credits/second, 45 seconds) requires a text prompt, and these four
+ * acts take no brief by constitutional design — the assets ARE the
+ * instruction. Choosing it would mean inventing words for a Creator.
+ */
+export const TALKING_PHOTO_GENERATION_MODE = 'realistic' as const;
+
+/** Face swap: the provider's own current version, named rather than implied. */
+export const FACE_SWAP_STYLE_VERSION = 'default' as const;
+
+/**
+ * Face swap: every face in the frame.
+ *
+ * `individual-faces` maps up to five faces one by one and would require a
+ * Creator to point at a stranger's face in their own clip — a surface this
+ * Empire has not built and has not ruled on.
+ */
+export const FACE_SWAP_FACE_MODE = 'all-faces' as const;
+
+/**
+ * How long a clip these acts may be asked for — AND IT IS OUR LIMIT, NOT THEIRS.
+ *
+ * This read `talking-photo: 300 seconds, provider-documented` for the length
+ * of one afternoon, because 300 is what the reference publishes. Then the
+ * ceiling below was priced, and 300 seconds × 48 credits = 14,400 credits
+ * — MORE THAN THE EMPIRE’S ENTIRE BALANCE on the day it was written. A
+ * published maximum had been copied into an offer without anybody costing it,
+ * which is the same fault as a borrowed prompt limit, only payable.
+ *
+ * So every bound here is the Empire’s own, deliberately, and says so to the
+ * Creator. The provider’s published ceiling is recorded separately in
+ * `CREATIVE_PROVIDER_CEILING` with what it would cost, so widening a bound is
+ * always a priced decision and never an inherited one.
+ */
+export const CREATIVE_DURATION_BOUND: Readonly<Record<string, {
+  readonly seconds: number;
+  readonly source: 'provider-documented' | 'empire-guard';
+}>> = {
+  // 60 × 48 = 2,880 credits at the documented realistic rate. Still large, and
+  // within one order of the others — unlike 300, which was not survivable.
+  'talking-photo': { seconds: 60, source: 'empire-guard' },
+  'lip-sync': { seconds: 60, source: 'empire-guard' },
+  'face-swap': { seconds: 60, source: 'empire-guard' },
+};
+
+/**
+ * THE CEILING OF EACH ACT — WHAT THE PROVIDER PUBLISHES, AND WHAT IT DOESN'T.
+ *
+ * Read from each endpoint's own reference on 2026-10-11. Three rules govern
+ * every line of it:
+ *
+ *   · a field the reference does not state is recorded as UNKNOWN, never as
+ *     unlimited and never borrowed from a sibling endpoint;
+ *   · the maximum a plan allows is not the maximum we offer — offering it
+ *     would be offering a charge nobody has approved;
+ *   · the cost of the ceiling is stated beside the ceiling, because a
+ *     capability whose price nobody computed is a trap and not a feature.
+ */
+export const CREATIVE_PROVIDER_CEILING: readonly {
+  readonly operation: CreativeOperationId;
+  /** The longest the reference permits for the mode we send. */
+  readonly maxSeconds: number | null;
+  readonly maxSecondsSource: 'provider-documented' | 'not-stated';
+  /** What the reference says about output size. */
+  readonly resolutionNote: string;
+  /** Quality or mode options, with what each one bills. */
+  readonly modes: readonly string[];
+  /** What a job at the documented ceiling would cost, in provider credits. */
+  readonly ceilingCredits: number | null;
+  readonly ceilingNote: string;
+}[] = [
+  {
+    operation: 'background-removal',
+    maxSeconds: null, maxSecondsSource: 'not-stated',
+    resolutionNote: 'no maximum input resolution stated; a replacement background '
+      + 'image is accepted and "will be resized to match" the source',
+    modes: ['one mode only — 5 credits per image'],
+    ceilingCredits: 5,
+    ceilingNote: 'flat per image, so there is no expensive configuration to buy',
+  },
+  {
+    operation: 'lip-sync',
+    maxSeconds: null, maxSecondsSource: 'not-stated',
+    resolutionNote: 'free plans capped at 576px; "higher plans unlock HD and larger '
+      + 'sizes" — no number published for ours',
+    modes: ['lite — 1 credit/frame', 'standard — 1 credit/frame', 'pro — 2 credits/frame'],
+    ceilingCredits: 1440,
+    ceilingNote: 'a 60-second clip at 24 fps in lite = 1,440 credits. In pro it is '
+      + '2,880. No provider maximum on length was published, so 60s is OUR guard.',
+  },
+  {
+    operation: 'face-swap',
+    maxSeconds: null, maxSecondsSource: 'not-stated',
+    resolutionNote: 'free plans capped at 576px; higher plans unlock larger — no '
+      + 'number published for ours',
+    modes: ['style version v1 · v2 · default', 'all-faces · individual-faces (up to 5 mappings)'],
+    ceilingCredits: 1440,
+    ceilingNote: 'a 60-second clip = 1,440 credits at 24 credits/second. 60s is OUR guard.',
+  },
+  {
+    operation: 'talking-photo',
+    maxSeconds: 300, maxSecondsSource: 'provider-documented',
+    resolutionNote: '`max_resolution` caps the larger dimension and defaults to the '
+      + 'plan maximum; we send none, so the plan maximum applies',
+    modes: ['realistic — 48 credits/second, up to 300s', 'prompted — 20 credits/second, up to 45s'],
+    ceilingCredits: 14_400,
+    ceilingNote: 'THE MOST EXPENSIVE SINGLE JOB IN THE EMPIRE: 300 seconds × 48 '
+      + 'credits = 14,400 credits, which is MORE THAN THE WHOLE BALANCE read on '
+      + '2026-10-11 (13,276). One Creator pressing one button could empty the '
+      + 'Empire’s account — which is why the chamber bounds what it offers.',
+  },
+];
+
 /**
  * A · BACKGROUND REMOVAL — one image in, one image out.
  *
@@ -308,6 +456,7 @@ export async function lipSyncViaProvider(
   return runCreativeJob('lip-sync', {
     start_seconds: 0,
     end_seconds: endSeconds,
+    style: { generation_mode: LIP_SYNC_GENERATION_MODE },
     assets: { video_source: 'file', video_file_path: video, audio_file_path: audio },
   }, options);
 }
@@ -336,6 +485,7 @@ export async function talkingPhotoViaProvider(
   return runCreativeJob('talking-photo', {
     start_seconds: 0,
     end_seconds: endSeconds,
+    style: { generation_mode: TALKING_PHOTO_GENERATION_MODE },
     assets: { image_file_path: image, audio_file_path: audio },
   }, options);
 }
@@ -414,7 +564,11 @@ export async function faceSwapViaProvider(
   return runCreativeJob('face-swap', {
     start_seconds: 0,
     end_seconds: endSeconds,
-    assets: { video_source: 'file', video_file_path: video, image_file_path: face },
+    style: { version: FACE_SWAP_STYLE_VERSION },
+    assets: {
+      video_source: 'file', video_file_path: video, image_file_path: face,
+      face_swap_mode: FACE_SWAP_FACE_MODE,
+    },
   }, options);
 }
 

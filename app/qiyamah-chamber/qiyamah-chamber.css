@@ -2052,3 +2052,126 @@
   color: var(--text-main);
   border-color: rgba(212, 175, 55, 0.22);
 }
+
+
+/* ── THE FOUR CREATIVE ACTS, AND THE DECLARATION ──────────────
+   Every control here paints its own surface. The lesson is recorded above at
+   `.edit-act-input`: geometry without a background and a colour inherits the
+   browser's white, no measurement sees it, and only an eye finds it. */
+.creative-act {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  color: var(--text-main);
+}
+.creative-act-outcome { margin: 0; font-size: 0.95em; line-height: 1.7; color: var(--text-muted); }
+.creative-act-shut {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  background: rgba(0, 0, 0, 0.45);
+  color: var(--text-main);
+  font-size: 0.92em;
+  line-height: 1.75;
+}
+.creative-act-label { margin: 0; font-size: 0.92em; font-weight: 700; color: var(--gold-neon); }
+.creative-act-empty { margin: 0; font-size: 0.9em; line-height: 1.7; color: var(--text-muted); }
+.creative-act-assets { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.creative-act-asset {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  background: rgba(0, 0, 0, 0.45);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.86em;
+  cursor: pointer;
+  transition: border-color 0.16s;
+}
+.creative-act-asset:hover:not(:disabled) { border-color: rgba(212, 175, 55, 0.6); }
+.creative-act-asset--on { border-color: var(--gold-neon); color: var(--gold-neon); }
+.creative-act-asset:disabled { opacity: 0.5; cursor: not-allowed; }
+.creative-act-duration { display: flex; flex-direction: column; gap: 0.4rem; }
+.creative-act-seconds {
+  width: 7rem;
+  box-sizing: border-box;
+  font: inherit;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  color: var(--text-main);
+  outline: none;
+}
+.creative-act-seconds:focus { border-color: var(--gold-neon); }
+.creative-act-bound { margin: 0; font-size: 0.84em; line-height: 1.65; color: var(--text-muted); }
+
+/* The declaration reads as a document, because that is what it is. It is never
+   folded behind a «read more»: a declaration nobody read is not one. */
+.likeness-ack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 14px 16px;
+  border-radius: 6px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--text-main);
+}
+.likeness-ack-heading {
+  margin: 0;
+  font-size: 0.98em;
+  font-weight: 700;
+  color: var(--gold-neon);
+  letter-spacing: 0.01em;
+}
+.likeness-ack-list {
+  margin: 0;
+  padding-inline-start: 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.likeness-ack-item { font-size: 0.93em; line-height: 1.85; color: var(--text-main); }
+.likeness-ack-affirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding-top: 0.35rem;
+  cursor: pointer;
+  border-top: 1px solid rgba(212, 175, 55, 0.18);
+}
+.likeness-ack-input {
+  /* An unchecked box in a dark chamber is invisible unless it is told to
+     paint itself; `accent-color` colours the checked state, the border draws
+     the empty one. */
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0.35rem 0 0 0;
+  flex: 0 0 auto;
+  accent-color: var(--gold-neon);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--gold-dim);
+  cursor: pointer;
+}
+.likeness-ack-affirm-text { font-size: 0.95em; font-weight: 700; line-height: 1.7; color: var(--gold-neon); }
+.creative-act-missing { margin: 0; font-size: 0.9em; line-height: 1.7; color: var(--text-muted); }
+.creative-act-run {
+  align-self: flex-start;
+  padding: 9px 18px;
+  border-radius: 6px;
+  border: 1px solid var(--gold-dim);
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--gold-neon);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+}
+.creative-act-run:hover:not(:disabled) {
+  background: rgba(212, 175, 55, 0.12);
+  border-color: var(--gold-neon);
+}
+.creative-act-run:disabled { opacity: 0.45; cursor: not-allowed; }

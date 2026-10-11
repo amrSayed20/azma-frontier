@@ -45,6 +45,7 @@ import {
 import { configuredGatewayIds } from '../core/sovereign-ai-integration/provider-bootstrap';
 import {
   CREATIVE_READINESS,
+  CREATIVE_DURATION_BOUND,
   type CreativeOperationId,
 } from '../core/sovereign-ai-integration/adapters/magic-hour-creative-operations';
 import {
@@ -229,6 +230,19 @@ export interface OperationState extends OperationDescriptor {
   readonly acknowledgmentVersion: string | null;
   /** What the Creator must read and affirm, sentence by sentence. */
   readonly acknowledgmentStatementsAr: readonly string[];
+  /**
+   * How many seconds this act may be asked for, and WHO set that limit.
+   *
+   * It travels on the verdict for the same reason the declaration does: the
+   * chamber's own surface must not import an adapter to learn it. That import
+   * would carry a provider's NAME into a file a Creator's browser runs, which
+   * a standing test forbids — and the test is right. Null where the act takes
+   * no duration at all.
+   */
+  readonly durationBound: {
+    readonly seconds: number;
+    readonly source: 'provider-documented' | 'empire-guard';
+  } | null;
 }
 
 const REASON_AR: Readonly<Record<OperationAvailability, string>> = {
@@ -301,6 +315,7 @@ export function stateOfOperation(
       ? LIKENESS_POLICY_VERSION : null,
     acknowledgmentStatementsAr: readiness?.requiresLikenessAcknowledgment
       ? LIKENESS_STATEMENTS_AR : [],
+    durationBound: CREATIVE_DURATION_BOUND[id] ?? null,
   };
 }
 

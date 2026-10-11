@@ -44,6 +44,20 @@ export interface OperationStateView {
   readonly detailEn: string;
   readonly takesBrief: boolean;
   readonly scaffolds: boolean;
+  /**
+   * Whether the Creator must make an explicit declaration before this act
+   * runs. Server-declared: a screen does not get to decide that a policy
+   * question has been answered.
+   */
+  readonly requiresAcknowledgment: boolean;
+  readonly acknowledgmentVersion: string | null;
+  /** Every sentence that must be shown, complete, in the order shown. */
+  readonly acknowledgmentStatementsAr: readonly string[];
+  /** The seconds this act may be asked for, and who set that limit. */
+  readonly durationBound: {
+    readonly seconds: number;
+    readonly source: 'provider-documented' | 'empire-guard';
+  } | null;
   readonly brief: {
     readonly effectiveCap: number;
     readonly scaffoldCharacters: number;

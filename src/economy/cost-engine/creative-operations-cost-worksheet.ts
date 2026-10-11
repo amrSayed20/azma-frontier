@@ -98,13 +98,42 @@ export const ACCOUNT_ENTITLEMENT = {
 
 export const PROPOSED_UPLIFT_A = 0.60 as const;
 export const PROPOSED_UPLIFT_B = 0.75 as const;
+/**
+ * Which of the two the Chief Architect has NAMED as his direction.
+ *
+ * 2026-10-11: «the Architect's selected direction for the four new QIYAMAH
+ * operations is a 75% uplift on verified total cost basis as the preferred
+ * financial scenario». 60% is retained as a comparison and must never be
+ * quietly substituted for it.
+ *
+ * A direction is not a price. Nothing applies either figure, because the
+ * «verified total cost basis» it multiplies does not exist yet for any of the
+ * four — and 1.75 × an unverified basis is an unverified price wearing a
+ * decimal point.
+ */
+export const SELECTED_UPLIFT_DIRECTION = PROPOSED_UPLIFT_B;
+export const COMPARISON_UPLIFT = PROPOSED_UPLIFT_A;
 /** The existing markup, recorded for contrast only. Unchanged by this package. */
 export const EXISTING_OPERATION_MARKUP = 1.00 as const;
 
 export const UPLIFT_STATUS =
-  'COMPARISON SCENARIO — neither 60% nor 75% is approved, and neither is applied '
-  + 'by any code path. The existing 100% markup on the six established operations '
-  + 'is untouched.';
+  'COMPARISON SCENARIO — 75% is the Architect’s NAMED DIRECTION and 60% is kept '
+  + 'for comparison, and neither is applied by any code path. The existing 100% '
+  + 'markup on the six established operations is untouched. The uplift multiplies '
+  + 'a VERIFIED total cost basis, and no operation has one.';
+
+/**
+ * ── WHAT THE UPLIFT IS FOR, SAID ONCE SO IT IS NOT MISREAD AS PROFIT ───────
+ *
+ *   The Architect's own words: it «is intended to help cover platform
+ *   operating expenses and sustain the service; it is not equivalent to net
+ *   profit». The worksheet therefore reports the difference between a
+ *   Creator's price and the PROVIDER charge as a MARGIN, never as a profit —
+ *   because the operating costs that margin exists to cover are the very
+ *   numbers nobody has measured.
+ */
+export const UPLIFT_PURPOSE =
+  'covers platform operating expenses and sustains the service; NOT net profit';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 3 · THE ROWS
@@ -183,14 +212,26 @@ export const CREATIVE_COST_WORKSHEET: readonly CostRow[] = [
     endpoint: '/v1/ai-talking-photo',
     costStepWhenPriced: 'TALKING_PHOTO',
     unit: 'per-second',
-    // The cheaper documented mode. The expensive one is recorded in the text,
-    // because presenting only one of two published rates would be a half-truth.
-    providerRate: 20,
-    providerRateText: '20 credits/second prompted, 48 credits/second realistic',
+    // ── CORRECTED 2026-10-11, AND THE EARLIER FIGURE WAS WRONG ────────────
+    //
+    //   This row read `providerRate: 20` — the `prompted` rate — and listed
+    //   «which mode the Empire will offer» as an open question. The question
+    //   was already answered in the code and nobody had read it: the adapter
+    //   sent NO mode, so the provider's own default applied, and that default
+    //   is `realistic` at 48 credits/second. The basis was understated 2.4×.
+    //
+    //   The mode is now an explicit constant (TALKING_PHOTO_GENERATION_MODE),
+    //   and this rate is the rate of the mode we actually send. `prompted`
+    //   stays out of reach for a constitutional reason, not a priced one:
+    //   these four acts take no brief, and `prompted` needs one.
+    providerRate: 48,
+    providerRateText: '48 credits/second (realistic — the mode this Empire sends); '
+      + '20 credits/second for prompted, which requires a text prompt these acts never take',
     providerEvidence: 'provider-documented',
     billingVariables: [
-      'MODE — prompted (20/s) or realistic (48/s); a 2.4× difference',
-      'DURATION — end_seconds, chosen by the Creator',
+      'MODE — realistic (48/s) is what we send; prompted (20/s) needs a brief',
+      'DURATION — end_seconds, chosen by the Creator; documented to 300s realistic, 45s prompted',
+      'max_resolution — documented, defaults to the plan maximum; we send none',
     ],
     finalChargeRetrieval:
       'GET /v1/video-projects/{id} → credits_charged. For video the figure at '
@@ -205,8 +246,8 @@ export const CREATIVE_COST_WORKSHEET: readonly CostRow[] = [
       'FIXED — the server that runs and polls the job',
     ],
     whatIsMissing: [
-      'which mode the Empire will offer — the rate differs 2.4×',
-      'one authorized paid job at a known duration, to confirm credits per second',
+      'one authorized paid job at a known duration, to confirm 48 credits per second',
+      'whether max_resolution changes the charge — documented as a cap, not as a rate',
       'a Chief Architect ruling on the uplift',
     ],
   },
@@ -216,13 +257,14 @@ export const CREATIVE_COST_WORKSHEET: readonly CostRow[] = [
     costStepWhenPriced: 'LIP_SYNC',
     unit: 'per-frame',
     providerRate: 1,
-    providerRateText: '1 credit per frame of video, doubled on pro',
+    providerRateText: '1 credit per frame in the `lite` mode this Empire sends; '
+      + '`standard` also bills 1, and `pro` bills 2 — Creator tier and above',
     providerEvidence: 'provider-documented',
     billingVariables: [
       'FRAME COUNT — the charge is per frame, so duration × fps is the cost',
       'FPS — the request accepts `max_fps_limit`, so capping fps CAPS THE CHARGE: '
-        + 'at 12 fps a five-second clip costs half what it costs at 24',
-      'QUALITY — "pro" doubles the per-frame rate',
+        + 'at 12 fps a five-second clip costs half what it costs at 24. We send none.',
+      'MODE — lite (1/frame, what we send) · standard (1/frame) · pro (2/frame)',
     ],
     finalChargeRetrieval:
       'GET /v1/video-projects/{id} → credits_charged on completion. The provider '
@@ -238,7 +280,10 @@ export const CREATIVE_COST_WORKSHEET: readonly CostRow[] = [
     ],
     whatIsMissing: [
       'the fps the Empire will cap at — it is the single biggest cost lever here',
-      'whether "pro" is ever offered, which doubles the rate',
+      'whether `standard` is offered: the provider calls it "best for most creators" '
+        + 'and it bills the SAME 1 credit/frame as the `lite` we send — a quality '
+        + 'gain at no extra charge, which is the Architect’s to rule',
+      'whether `pro` is ever offered, which doubles the rate',
       'one authorized paid job, to confirm frames billed against frames requested',
       'a Chief Architect ruling on the uplift',
     ],
@@ -255,6 +300,9 @@ export const CREATIVE_COST_WORKSHEET: readonly CostRow[] = [
     billingVariables: [
       'DURATION — end_seconds',
       'FPS — the published rate is quoted at 24 fps',
+      'RENDERED FRAMES — the provider states credits are charged only for frames '
+        + 'that actually render, so a partial render is partially charged',
+      'STYLE VERSION — v1 · v2 · default; we send `default` explicitly',
     ],
     finalChargeRetrieval: 'GET /v1/video-projects/{id} → credits_charged on completion.',
     failureBilling:

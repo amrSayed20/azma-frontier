@@ -13,6 +13,9 @@ import {
   faceSwapViaProvider, faceSwapIsPermitted,
   uploadMedia, creativeOperationsAreConfigured,
   CREATIVE_ENDPOINT, CREATIVE_PROVIDER_ID, CREATIVE_READINESS, readinessOf,
+  LIP_SYNC_GENERATION_MODE, TALKING_PHOTO_GENERATION_MODE,
+  FACE_SWAP_STYLE_VERSION, FACE_SWAP_FACE_MODE, CREATIVE_DURATION_BOUND,
+  CREATIVE_PROVIDER_CEILING,
 } from '../magic-hour-creative-operations';
 import { ImageEditError } from '../magic-hour-image-editing';
 import {
@@ -97,6 +100,10 @@ describe('2 · lip sync carries both inputs and states its source', () => {
     const submit = calls.find((c) => c.url.endsWith(CREATIVE_ENDPOINT['lip-sync']))!;
     expect(submit.body).toEqual({
       start_seconds: 0, end_seconds: 5,
+      // The mode is STATED. It equals the provider's own default, and that is
+      // the point: an unsent parameter is a decision nobody made, and this
+      // one decides what a Creator is charged per frame.
+      style: { generation_mode: LIP_SYNC_GENERATION_MODE },
       assets: { video_source: 'file', video_file_path: 'api-assets/x', audio_file_path: 'api-assets/x' },
     });
   });
@@ -122,6 +129,7 @@ describe('3 · talking photo is a different operation, not a renamed lip sync', 
     const submit = calls.find((c) => c.url.endsWith(CREATIVE_ENDPOINT['talking-photo']))!;
     expect(submit.body).toEqual({
       start_seconds: 0, end_seconds: 5,
+      style: { generation_mode: TALKING_PHOTO_GENERATION_MODE },
       assets: { image_file_path: 'api-assets/x', audio_file_path: 'api-assets/x' },
     });
   });
@@ -168,7 +176,11 @@ describe('4 · face swap is refused inside the path, not only at the door', () =
     const submit = calls.find((c) => c.url.endsWith(CREATIVE_ENDPOINT['face-swap']))!;
     expect(submit.body).toEqual({
       start_seconds: 0, end_seconds: 5,
-      assets: { video_source: 'file', video_file_path: 'api-assets/x', image_file_path: 'api-assets/x' },
+      style: { version: FACE_SWAP_STYLE_VERSION },
+      assets: {
+        video_source: 'file', video_file_path: 'api-assets/x', image_file_path: 'api-assets/x',
+        face_swap_mode: FACE_SWAP_FACE_MODE,
+      },
     });
     expect(out.creditsCharged).toBe(120);
   });
@@ -355,4 +367,55 @@ describe('8 · readiness claims exactly what was measured, and no more', () => {
       return new Response('', { status: 500 });
     }) as typeof fetch;
   }
+});
+
+describe('7 · the configuration is ours, and its price is known', () => {
+  it('the talking photo mode is the one the provider bills at 48/second', () => {
+    // It was unsent, so `realistic` was chosen by default and the worksheet
+    // had priced `prompted` at 20 — a mode this Empire never sends.
+    expect(TALKING_PHOTO_GENERATION_MODE).toBe('realistic');
+  });
+
+  it('the lip sync mode is the one that bills 1 credit per frame, not 2', () => {
+    expect(LIP_SYNC_GENERATION_MODE).toBe('lite');
+  });
+
+  it('face swap never maps a face one by one, and never takes a third party URL', () => {
+    expect(FACE_SWAP_FACE_MODE).toBe('all-faces');
+    const src = require('fs').readFileSync(require('path').join(
+      process.cwd(), 'src/core/sovereign-ai-integration/adapters/magic-hour-creative-operations.ts'), 'utf8');
+    expect(src).not.toMatch(/youtube_url/);
+  });
+
+  it('every duration bound names who set it', () => {
+    for (const op of ['talking-photo', 'lip-sync', 'face-swap']) {
+      const b = CREATIVE_DURATION_BOUND[op];
+      expect(b.seconds).toBeGreaterThan(0);
+      expect(['provider-documented', 'empire-guard']).toContain(b.source);
+    }
+  });
+
+  it('NOT ONE offered bound is a provider maximum copied into an offer', () => {
+    // It was, for one afternoon: talking photo offered the published 300
+    // seconds, which at 48 credits/second is 14,400 — more than the whole
+    // balance. A published ceiling is a fact about the engine; what the
+    // chamber OFFERS is a priced decision, and these are ours.
+    for (const op of ['talking-photo', 'lip-sync', 'face-swap']) {
+      expect(CREATIVE_DURATION_BOUND[op].source).toBe('empire-guard');
+    }
+  });
+
+  it('and the provider ceiling is still recorded — with what it would cost', () => {
+    const tp = CREATIVE_PROVIDER_CEILING.find((c) => c.operation === 'talking-photo')!;
+    expect(tp.maxSeconds).toBe(300);
+    expect(tp.maxSecondsSource).toBe('provider-documented');
+    expect(tp.ceilingCredits).toBe(14_400);
+  });
+
+  it('every ceiling either carries a number or says the provider published none', () => {
+    for (const c of CREATIVE_PROVIDER_CEILING) {
+      if (c.maxSeconds === null) expect(c.maxSecondsSource).toBe('not-stated');
+      else expect(c.maxSecondsSource).toBe('provider-documented');
+    }
+  });
 });

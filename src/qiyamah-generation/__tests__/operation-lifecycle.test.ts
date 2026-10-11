@@ -181,6 +181,7 @@ describe('7 · the chamber speaks through it', () => {
   const read = (f: string) =>
     require('fs').readFileSync(require('path').join(process.cwd(), f), 'utf8') as string;
   const CLIENT = read('app/qiyamah-chamber/QiyamahChamberClient.tsx');
+  const STATUS_LINE = read('app/qiyamah-chamber/_lib/operation-status-line.tsx');
   const CSS = read('app/qiyamah-chamber/qiyamah-chamber.css');
 
   it('the chamber derives the lifecycle from this module', () => {
@@ -212,12 +213,15 @@ describe('7 · the chamber speaks through it', () => {
   });
 
   it('the status line never invents a seventh state', () => {
-    const i = CLIENT.indexOf('function OperationStatusLine(');
+    // It lived inside the client until 2026-10-11, when the creative acts
+    // needed the same sentence and a second copy would have been the fifth
+    // vocabulary this module exists to end. It moved to _lib; the rule did not.
+    const i = STATUS_LINE.indexOf('export function OperationStatusLine(');
     expect(i).toBeGreaterThan(-1);
     // A fixed window. Scanning for the next `\n}` stops 52 characters in, at
     // the destructuring pattern's own closing brace, and proves nothing — an
     // instrument that lies is worse than no instrument.
-    const body = CLIENT.slice(i, i + 1400);
+    const body = STATUS_LINE.slice(i, i + 1400);
     // Its only source of words is the module's own sentence function.
     expect(body).toContain('lifecycleSentenceAr(lifecycle)');
   });

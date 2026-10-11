@@ -87,9 +87,16 @@ interface UploadedItem {
 
 import { OperationsCenter, type OperationStateView, type OperationGroupView } from './OperationsCenter';
 import {
-  lifecycleOf, lifecycleSentenceAr, isInFlight, hasOutput, mayRetry,
+  lifecycleOf, hasOutput, mayRetry,
   type OperationLifecycle,
 } from '@/src/qiyamah-generation/operation-lifecycle';
+// The status sentence moved to _lib so the creative workspace speaks the same
+// one. A second copy would have been the fifth vocabulary this chamber removed.
+import { OperationStatusLine } from './_lib/operation-status-line';
+import {
+  CreativeActPanel, CREATIVE_ACT_IDS,
+  type CreativeAssetChoice, type CreativeRunPayload,
+} from './CreativeActPanel';
 
 interface QiyamahChamberClientProps {
   readonly dict:                Dictionary;
@@ -220,28 +227,6 @@ function StepCostLine({ quote, showBalance = false }: { readonly quote: StepQuot
  *   failure's REASON is operation-specific and must stay isolated. What is
  *   unified is the lifecycle, not the diagnosis.
  */
-function OperationStatusLine({
-  lifecycle, errorAr,
-}: {
-  readonly lifecycle: OperationLifecycle;
-  readonly errorAr?: string | null;
-}) {
-  if (lifecycle === 'READY') return null;
-  const flying = isInFlight(lifecycle);
-  return (
-    <p
-      className={`op-status op-status--${lifecycle.toLowerCase()}`}
-      role={lifecycle === 'FAILED' ? 'alert' : 'status'}
-      data-lifecycle={lifecycle}
-    >
-      <span className="op-status-state">{lifecycleSentenceAr(lifecycle)}</span>
-      {/* The handler's own words, kept — a reason belongs to its operation. */}
-      {lifecycle === 'FAILED' && errorAr ? <span className="op-status-why">{errorAr}</span> : null}
-      {flying ? <span className="op-status-hold" aria-hidden="true">…</span> : null}
-    </p>
-  );
-}
-
 /**
  * ── D-6 · THE FINAL SCENE, IN ONE PLACE ─────────────────────────────────────
  *
@@ -681,6 +666,16 @@ export function QiyamahChamberClient({
   const [uploadedAsset, setUploadedAsset] = useState<UploadedItem | null>(null);
   /** Every VISUAL asset the Creator owns — the picker's authority. */
   const [vaultVisuals, setVaultVisuals] = useState<readonly { assetId: string; url: string }[]>([]);
+  /**
+   * The clips and the sounds, from the SAME answer.
+   *
+   * The creative acts take a clip or a sound as an input, and this page knew
+   * only pictures — so their pickers would have been empty for a Creator who
+   * owns both. Read from the one `/api/vault/assets` reply that already
+   * arrives, never from a second request that could disagree with it.
+   */
+  const [vaultMotion, setVaultMotion] = useState<readonly { assetId: string; url: string }[]>([]);
+  const [vaultAudio,  setVaultAudio]  = useState<readonly { assetId: string; url: string }[]>([]);
   /** The storage addresses of everything the Creator has accepted — it lives in the Vault now. */
   const [acceptedUris, setAcceptedUris] = useState<readonly string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -720,6 +715,16 @@ export function QiyamahChamberClient({
         setVaultVisuals(
           all
             .filter((a) => a.capabilityTarget === 'VISUAL' && Boolean(a.secureStorageUri))
+            .map((a) => ({ assetId: a.assetId, url: a.secureStorageUri as string })),
+        );
+        setVaultMotion(
+          all
+            .filter((a) => a.capabilityTarget === 'MOTION' && Boolean(a.secureStorageUri))
+            .map((a) => ({ assetId: a.assetId, url: a.secureStorageUri as string })),
+        );
+        setVaultAudio(
+          all
+            .filter((a) => a.capabilityTarget === 'AUDIO' && Boolean(a.secureStorageUri))
             .map((a) => ({ assetId: a.assetId, url: a.secureStorageUri as string })),
         );
         // ── The Founder, 2026-09-26: «لماذا تتجمّع الأصول في القيامة؟ مكانها
@@ -1285,6 +1290,74 @@ export function QiyamahChamberClient({
    */
   const [unreachableAssetIds, setUnreachableAssetIds] = useState<readonly string[]>([]);
 
+  /**
+   * ── THE FOUR CREATIVE ACTS, THROUGH THE ONE DOOR THAT EXISTS ───────────
+   *
+   *   It builds no request shape of its own and decides no availability: the
+   *   route hands everything to `runCreativeOperation`, which asks the
+   *   operation catalog first. Today every one of the four is refused there,
+   *   and the Creator reads the catalog's own Arabic reason — which is the
+   *   behaviour under test until a measured cost opens one.
+   *
+   *   The declaration is forwarded EXACTLY as the panel made it. This handler
+   *   neither completes it nor corrects it.
+   */
+  async function runCreativeAct(
+    payload: CreativeRunPayload,
+  ): Promise<{ ok: boolean; messageAr?: string }> {
+    try {
+      const res = await fetch(
+        `/api/vault/assets/${encodeURIComponent(payload.targetAssetId)}/creative/${payload.operation}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            secondAssetId: payload.secondAssetId,
+            durationSeconds: payload.durationSeconds,
+            likenessAcknowledgment: payload.likenessAcknowledgment,
+          }),
+        },
+      );
+      const data = await res.json().catch(() => null) as
+        { status?: string; message?: string; asset?: { assetId?: string } } | null;
+      if (!res.ok || data?.status !== 'succeeded') {
+        return { ok: false, messageAr: typeof data?.message === 'string' ? data.message : undefined };
+      }
+      // A deposit happened, so the Creator's own lists must learn it. Through
+      // the one reader the chamber already uses — never a second list.
+      fetchUploadedItems();
+      return { ok: true };
+    } catch {
+      return { ok: false, messageAr: 'تعذّر الوصولُ إلى الخادم. أعِد المحاولة.' };
+    }
+  }
+
+  /** Which act is open, when it is one of the four. */
+  const creativeAct = chosenOperation !== null && CREATIVE_ACT_IDS.includes(chosenOperation)
+    ? operations.find((o) => o.id === chosenOperation) ?? null
+    : null;
+
+  /**
+   * Which of the Creator's assets each act may be given, BY FAMILY.
+   *
+   * The same families the server checks — a picker that offered a photograph
+   * to lip sync would be offering a refusal.
+   */
+  const creativeChoices = (() => {
+    const label = (word: string) => (a: { assetId: string; url: string }): CreativeAssetChoice =>
+      ({ assetId: a.assetId, url: a.url, label: word });
+    const visuals = vaultVisuals.map(label('صورةٌ في خزانتك'));
+    const motion  = vaultMotion.map(label('مقطعٌ في خزانتك'));
+    const audio   = vaultAudio.map(label('صوتٌ في خزانتك'));
+    switch (creativeAct?.id) {
+      case 'background-removal': return { targets: visuals, seconds: [] as CreativeAssetChoice[] };
+      case 'talking-photo':      return { targets: visuals, seconds: audio };
+      case 'lip-sync':           return { targets: motion,  seconds: audio };
+      case 'face-swap':          return { targets: motion,  seconds: visuals };
+      default:                   return { targets: [] as CreativeAssetChoice[], seconds: [] as CreativeAssetChoice[] };
+    }
+  })();
+
   const editableAssets = (() => {
     /**
      * ── THE VAULT SAYS WHICH ASSETS EXIST; THE GALLERY SAYS WHAT THEY ARE
@@ -1778,11 +1851,31 @@ export function QiyamahChamberClient({
             />
           )}
 
+          {/* ── LAYER B′ · THE FOUR CREATIVE ACTS HAVE THEIR OWN WORKSPACE ──
+              They ask for assets and a duration and nothing else: no idea, no
+              style, no shape, no brief. Sending them through the workspace
+              below would have offered a Creator four controls their act never
+              reads. The declaration lives inside it, for face swap only, and
+              the server is what says so. */}
+          {generationAvailable && creativeAct !== null &&
+            (stage === 'idea' || stage === 'constructing') && (
+            <div className="genesis-form">
+              <CreativeActPanel
+                operation={creativeAct}
+                targets={creativeChoices.targets}
+                seconds={creativeChoices.seconds}
+                onBack={returnToCenter}
+                onRun={runCreativeAct}
+              />
+            </div>
+          )}
+
           {/* ── LAYER B · THE OPERATION'S OWN CONFIGURATION WORKSPACE ────
               It opens only once a card has been pressed, so what is offered
               is always what the chosen act actually uses. */}
           {generationAvailable &&
             chosenOperation !== null &&
+            creativeAct === null &&
             (stage === 'idea' || stage === 'constructing') && (
             <div className="genesis-form">
               {/* The way back — and it discards nothing. The drafts live in
