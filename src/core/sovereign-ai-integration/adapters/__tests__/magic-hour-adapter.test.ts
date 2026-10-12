@@ -29,13 +29,23 @@ import {
   MAGIC_HOUR_IMAGE_PROVIDER_ID,
   MAGIC_HOUR_VIDEO_PROVIDER_ID,
   MAGIC_HOUR_TTS_PROVIDER_ID,
-  MAGIC_HOUR_IMAGE_FREE_LAUNCH_MODEL,
+  IMAGE_MODEL_IS_REQUIRED,
 } from '../magic-hour-adapter';
 import type { AIProviderDispatchInput } from '../../provider-contracts';
 
 // ─── TEST HELPERS ────────────────────────────────────────────────────────────
 
+/**
+ * The selector ALWAYS names a model in production — so the fixture does too.
+ *
+ * It did not, until 2026-10-12, because the adapter carried a fallback that
+ * made a missing model survivable. The fallback is gone; a fixture that omits
+ * the model is now testing a refusal, which exactly one test does on purpose.
+ */
 function makeDispatchInput(prompt: string, meta: Record<string, unknown> = {}): AIProviderDispatchInput {
+  const metadata = 'providerModelId' in meta || meta.__noModel
+    ? { ...meta } : { providerModelId: 'nano-banana-2', ...meta };
+  delete (metadata as Record<string, unknown>).__noModel;
   return {
     request: {
       requestId: randomUUID(),
@@ -45,7 +55,7 @@ function makeDispatchInput(prompt: string, meta: Record<string, unknown> = {}): 
       prompt,
       capability: 'image-generation',
       priority: 'normal',
-      context: { memoryRefs: [], metadata: meta },
+      context: { memoryRefs: [], metadata },
     },
     context: {
       requestId: randomUUID(),
@@ -161,13 +171,20 @@ describe('MagicHourImageAdapter — dispatch', () => {
     ]);
 
     const adapter = new MagicHourImageAdapter();
-    await adapter.dispatch(makeDispatchInput('any prompt'));
 
-    // First fetch call is the POST /v1/ai-image-generator submission
-    const [, submitOptions] = mockFetch.mock.calls[0] as [string, RequestInit];
-    const body = JSON.parse(submitOptions.body as string) as Record<string, unknown>;
-    expect(body['model']).toBe(MAGIC_HOUR_IMAGE_FREE_LAUNCH_MODEL);
-    expect(body['model']).toBe('flux-schnell');
+    // ── CHANGED 2026-10-12: THERE IS NO FALLBACK MODEL ANY MORE ────────
+    //
+    //   This asserted that a dispatch with no selected model sends
+    //   `flux-schnell` — a model that is not in `IMAGE_MODEL_FLEET` at all,
+    //   so no authorization flag governs it and no cost truth prices it.
+    //   The production path refuses before reaching here, so the fallback was
+    //   unreachable; an unreachable fallback to an ungoverned model is a trap
+    //   for the next caller, not a safety net.
+    //
+    //   A missing model is now an error, which is what it always was.
+    await expect(adapter.dispatch(makeDispatchInput('any prompt', { __noModel: true })))
+      .rejects.toThrow(IMAGE_MODEL_IS_REQUIRED);
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   // SECURITY: API key must never appear in response metadata

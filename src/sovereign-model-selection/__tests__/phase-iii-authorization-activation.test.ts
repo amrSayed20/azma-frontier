@@ -40,7 +40,7 @@ import { buildCostProposal, verifyCostApproval } from '../cost-approval-gate';
 import {
   MAGIC_HOUR_IMAGE_PROVIDER_ID,
   MAGIC_HOUR_VIDEO_PROVIDER_ID,
-  MAGIC_HOUR_IMAGE_FREE_LAUNCH_MODEL,
+  IMAGE_MODEL_IS_REQUIRED,
 } from '../../core/sovereign-ai-integration/adapters/magic-hour-adapter';
 import type { ModelSelection, SovereignMediaModelDescriptor } from '../types';
 
@@ -711,12 +711,11 @@ describe('Point 17 — Magic Hour selected model routing is explicit', () => {
   });
 
   it('MagicHourImageAdapter has a legacy fallback model for pre-strategy requests', () => {
-    // The free-launch fallback (flux-schnell) only activates when no authorized
-    // model is selected (all-candidates-unverified path). It must NOT silently
-    // override an explicit providerModelId from the selector.
-    expect(MAGIC_HOUR_IMAGE_FREE_LAUNCH_MODEL).toBe('flux-schnell');
-    // The adapter reads providerModelId FIRST; falls back only when undefined
-    // (verified by the adapter source: selectedProviderModelId ?? MAGIC_HOUR_IMAGE_FREE_LAUNCH_MODEL)
+    // REMOVED 2026-10-12: there is no fallback model. `flux-schnell` was not
+    // in the fleet at all — ungoverned by any authorization flag — and the
+    // adapter now REFUSES when the selector named no model, rather than
+    // choosing one on the Empire's behalf.
+    expect(IMAGE_MODEL_IS_REQUIRED).toMatch(/never chooses one for itself/);
   });
 
   it('all Magic Hour fleet models expose a non-empty providerModelId for API routing', () => {

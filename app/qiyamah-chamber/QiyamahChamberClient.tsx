@@ -32,9 +32,21 @@ import type { ImperialVisionDocument } from '@/src/chamber-vision';
 import { ChamberDemonstration } from '@/src/chamber-demonstration';
 
 // All 14 styles — operational, none locked. 'infographic' (2026-09-22) requires Nano Banana 2 server-side.
+//
+// ── A TAGLINE PROMISES A LOOK, NEVER A RESOLUTION ───────────────────────────
+//
+//   MEASURED 2026-10-12: «واقعي» carried the tagline «دقة فائقة 8K» while the
+//   request this Empire actually sends carries `resolution: '1k'` — the style's
+//   quality tier is `high`, and `high` maps to 1k. The chamber was promising a
+//   Creator eight times what it asked the engine for.
+//
+//   The words «فائق الدقة 8K» still appear in `STYLE_SCAFFOLD`, and that is a
+//   different thing and stays: there they are an INSTRUCTION TO THE MODEL about
+//   the look to render, inside the prompt. Here they were a PROMISE TO A
+//   CREATOR about the file they would receive. Only the promise was false.
 const ALL_STYLES: Array<{ id: string; nameAr: string; tagline: string }> = [
   { id: 'cinematic',    nameAr: 'سينمائي',      tagline: 'ملحمي 35mm' },
-  { id: 'realistic',    nameAr: 'واقعي',         tagline: 'دقة فائقة 8K' },
+  { id: 'realistic',    nameAr: 'واقعي',         tagline: 'تفاصيل فوتوغرافية' },
   { id: 'advertising',  nameAr: 'إعلاني',        tagline: 'استوديو فاخر' },
   { id: 'documentary',  nameAr: 'وثائقي',        tagline: 'أصيل وأرشيفي' },
   { id: 'creative',     nameAr: 'فني / إبداعي',  tagline: 'تعبير حر' },

@@ -234,7 +234,25 @@ export const SOVEREIGN_VIDEO_AUDIO = false as const;
 export const MAGIC_HOUR_IMAGE_PROVIDER_ID = 'magic-hour-image' as const;
 export const MAGIC_HOUR_IMAGE_MODEL_ID = 'magic-hour-ai-image-generator' as const;
 // Authorized free-launch model — Chief Architect approval 2026-08-23. Never changed without a new authorization.
-export const MAGIC_HOUR_IMAGE_FREE_LAUNCH_MODEL = 'flux-schnell' as const;
+/**
+ * ─── REMOVED 2026-10-12: A FALLBACK TO A MODEL THAT IS NOT IN THE FLEET ─────
+ *
+ *   This constant was `'flux-schnell'`, and one line below it read:
+ *
+ *       const modelToUse = selectedProviderModelId ?? MAGIC_HOUR_IMAGE_FREE_LAUNCH_MODEL;
+ *
+ *   `flux-schnell` is not an authorized model. It is not an UNauthorized one
+ *   either — it is not in `IMAGE_MODEL_FLEET` at all, so no flag governs it,
+ *   no cost truth prices it, and no ruling of the Chief Architect covers it.
+ *   Any call arriving without a selected model would have dispatched it.
+ *
+ *   The production path refuses before that today (closed in 8d9b407), so the
+ *   fallback was unreachable — and an unreachable fallback to an ungoverned
+ *   model is a trap waiting for the next caller, not a safety net. It is gone,
+ *   and the absence of a model is now what it always was: an error.
+ */
+export const IMAGE_MODEL_IS_REQUIRED =
+  'no provider model was selected — this binding never chooses one for itself' as const;
 
 const MH_IMAGE_DESCRIPTOR: AIProviderDescriptor = {
   providerId: MAGIC_HOUR_IMAGE_PROVIDER_ID,
@@ -258,12 +276,11 @@ export class MagicHourImageAdapter implements AIProviderAdapter {
     const aspectRatio = (input.request.context.metadata['aspectRatio'] as string | undefined) ?? '16:9';
     const resolution = (input.request.context.metadata['resolution'] as string | undefined) ?? '1k';
 
-    // Model selection: use providerModelId from SovereignModelSelector when available.
-    // Falls back to MAGIC_HOUR_IMAGE_FREE_LAUNCH_MODEL (flux-schnell) for legacy
-    // requests and while approved candidates await production authorization.
-    const selectedProviderModelId =
+    // The model comes from the Sovereign Model Selector and from nowhere else.
+    // A missing one is an error, never a default: see IMAGE_MODEL_IS_REQUIRED.
+    const modelToUse =
       input.request.context.metadata['providerModelId'] as string | undefined;
-    const modelToUse = selectedProviderModelId ?? MAGIC_HOUR_IMAGE_FREE_LAUNCH_MODEL;
+    if (!modelToUse) throw new Error(IMAGE_MODEL_IS_REQUIRED);
 
     // Production observability — internal only, never Creator-facing
     console.log(
