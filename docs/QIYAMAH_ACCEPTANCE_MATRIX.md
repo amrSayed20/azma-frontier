@@ -95,7 +95,7 @@
 | **الباب** | `POST …/creative/background-removal` | `…/creative/lip-sync` | `…/creative/face-swap` | `…/creative/talking-photo` |
 | **وجهة المزوّد** | `/v1/image-background-remover` | `/v1/lip-sync` | `/v1/face-swap` | `/v1/ai-talking-photo` |
 | **التهيئة المقيسة** | `assets.image_file_path` | `start/end_seconds` · `video_source:'file'` · مسارا الفيديو والصوت | `start/end_seconds` · `video_source` · مسارا الفيديو والوجه | `start/end_seconds` · مسارا الصورة والصوت |
-| **الوضعُ الذي نُرسله** | وضعٌ واحد | `lite` — ١/إطار | `default` · كلُّ الوجوه | **`realistic` — ٤٨/ث** |
+| **الوضعُ الذي نُرسله** | وضعٌ واحد | **`standard`** — ١/إطار | `default` · كلُّ الوجوه | **`realistic` — ٤٨/ث** |
 | **حدُّ المدّة المعروض** | لا ينطبق | ٦٠ث — **حدُّنا نحن** | ٦٠ث — **حدُّنا نحن** | ٦٠ث — **حدُّنا نحن** (والمحرّك يُنشر ٣٠٠) |
 | **الناتج** | PNG — بقناة شفافيّة، لا JPEG | MP4 | MP4 | MP4 |
 | **الاشتقاق** | `MODIFIED` | `MODIFIED` | `MODIFIED` | `ANIMATED` |

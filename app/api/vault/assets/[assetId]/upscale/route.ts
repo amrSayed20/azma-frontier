@@ -9,8 +9,10 @@ import { SourceChamber, DerivationKind, isDerivable, isLegacyAsset } from '@/src
 import {
   upscaleImageViaProvider,
   UPSCALE_SCALE_FACTOR,
+  UPSCALE_FACTORS,
   imageEditingIsConfigured,
   ImageEditError,
+  type UpscaleScaleFactor,
 } from '@/src/core/sovereign-ai-integration/adapters/magic-hour-image-editing';
 import { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
 
@@ -94,6 +96,40 @@ export async function POST(
     );
   }
 
+  // ── WHICH FACTOR, AND WHETHER IT MAY BE SOLD YET ─────────────────────────
+  //
+  //   4× is a real capability: the endpoint takes `scale_factor: 4`, the
+  //   provider documents it for Creator tier and above, and this account's
+  //   tier was read live. What does NOT exist is a Creator-facing price for
+  //   it — `UPSCALE_2X` prices 2× and nothing prices 4×.
+  //
+  //   So the door accepts the choice and refuses to EXECUTE an unpriced one,
+  //   with a reason in the Creator's own language. Deriving «four times the
+  //   charge, so four times the price» would be setting a price, which is the
+  //   Chief Architect's act and not this route's.
+  let body: unknown = null;
+  try { body = await request.json(); } catch { body = null; }
+  const asked = (body as { scaleFactor?: unknown } | null)?.scaleFactor;
+  const scaleFactor: UpscaleScaleFactor = asked === 4 ? 4 : UPSCALE_SCALE_FACTOR;
+  const factorRecord = UPSCALE_FACTORS.find((f) => f.factor === scaleFactor);
+  if (asked !== undefined && asked !== 2 && asked !== 4) {
+    return NextResponse.json(
+      { status: 'failed', reason: 'unknown-factor', message: 'المحرّكُ يَقبل مضاعفةً أو أربعاً فقط.' },
+      { status: 400 },
+    );
+  }
+  if (!factorRecord?.creatorPriceExists) {
+    return NextResponse.json(
+      {
+        status: 'failed',
+        reason: 'not-priced',
+        message: 'رفعُ الدقّة أربعَ مرّاتٍ مبنيٌّ ولم يُسعَّر لك بعد. ولن يُنفَّذ قبل أن '
+          + 'تَعرف ما يُكلّفك بالضبط.',
+      },
+      { status: 409 },
+    );
+  }
+
   // ── The asset, and the right to build on it ──────────────────────────────
   const db = getDb();
   const parent = getVaultAsset(db, assetId);
@@ -153,7 +189,8 @@ export async function POST(
   // ── The refinement itself, on the declared sovereign engine ──────────────
   let produced;
   try {
-    produced = await upscaleImageViaProvider(parentBytes, extensionOf(parent.secureStorageUri));
+    produced = await upscaleImageViaProvider(
+      parentBytes, extensionOf(parent.secureStorageUri), { scaleFactor });
   } catch (err) {
     // The engine's own words stay server-side; they name a provider.
     console.error('[ImageUpscale] engine failed:', err);

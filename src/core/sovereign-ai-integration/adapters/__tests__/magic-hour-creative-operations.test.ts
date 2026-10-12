@@ -13,7 +13,8 @@ import {
   faceSwapViaProvider, faceSwapIsPermitted,
   uploadMedia, creativeOperationsAreConfigured,
   CREATIVE_ENDPOINT, CREATIVE_PROVIDER_ID, CREATIVE_READINESS, readinessOf,
-  LIP_SYNC_GENERATION_MODE, TALKING_PHOTO_GENERATION_MODE,
+  LIP_SYNC_GENERATION_MODE, LIP_SYNC_MODE_ALTERNATIVE, LIP_SYNC_MODE_COST_IS_MEASURED,
+  TALKING_PHOTO_GENERATION_MODE,
   FACE_SWAP_STYLE_VERSION, FACE_SWAP_FACE_MODE, CREATIVE_DURATION_BOUND,
   CREATIVE_PROVIDER_CEILING,
 } from '../magic-hour-creative-operations';
@@ -376,8 +377,16 @@ describe('7 · the configuration is ours, and its price is known', () => {
     expect(TALKING_PHOTO_GENERATION_MODE).toBe('realistic');
   });
 
-  it('the lip sync mode is the one that bills 1 credit per frame, not 2', () => {
-    expect(LIP_SYNC_GENERATION_MODE).toBe('lite');
+  it('the lip sync mode is the Architect’s `standard`, which bills 1 credit per frame', () => {
+    // It was `lite` — the provider's fallback, inherited by omission. The
+    // Architect ruled `standard` on 2026-10-12: better quality at a
+    // DOCUMENTED-identical rate, with `lite` kept as the alternative.
+    expect(LIP_SYNC_GENERATION_MODE).toBe('standard');
+    expect(LIP_SYNC_MODE_ALTERNATIVE).toBe('lite');
+  });
+
+  it('and the equal rate is NOT claimed as measured', () => {
+    expect(LIP_SYNC_MODE_COST_IS_MEASURED).toBe(false);
   });
 
   it('face swap never maps a face one by one, and never takes a third party URL', () => {

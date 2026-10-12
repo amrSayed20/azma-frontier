@@ -20,6 +20,8 @@ const CENTER = read('app/qiyamah-chamber/OperationsCenter.tsx');
 const PAGE = read('app/qiyamah-chamber/page.tsx');
 const CSS = read('app/qiyamah-chamber/qiyamah-chamber.css');
 
+import { operationIsInspectable } from '../../../app/qiyamah-chamber/OperationsCenter';
+
 describe('1 · the centre is the chamber’s mother state', () => {
   it('no workspace can render before an act has been chosen', () => {
     expect(CLIENT).toContain('chosenOperation === null &&');
@@ -61,13 +63,31 @@ describe('2 · every act the chamber performs is discoverable in that one place'
 });
 
 describe('3 · a card that cannot run is not a door', () => {
-  it('an unrunnable card is disabled and carries its reason', () => {
-    expect(CENTER).toContain('disabled={!o.runnable}');
+  /**
+   * RESTATED 2026-10-12, by the Chief Architect's own directive: the complete
+   * likeness declaration must be readable through the real interface while
+   * face swap is still blocked. So OPENING an act and RUNNING it stop being
+   * one thing — and the rule this describe-block holds becomes sharper, not
+   * weaker: a card that cannot run is not a door TO EXECUTION. The panel it
+   * opens keeps its run button dark, which `the-declaration-is-shown-whole`
+   * proves on the rendered page.
+   */
+  it('an unrunnable card carries its reason, and is disabled unless it can be READ', () => {
+    expect(CENTER).toContain('disabled={!o.runnable && !readable}');
     expect(CENTER).toContain('{o.reasonAr}');
   });
 
-  it('the card cannot choose an operation the server did not mark runnable', () => {
-    expect(CENTER).toContain('onClick={() => o.runnable && onChoose(o.id)}');
+  it('only a cost nobody measured or a ruling nobody made may be opened', () => {
+    for (const availability of ['COST_NOT_VERIFIED', 'POLICY_BLOCKED']) {
+      expect(operationIsInspectable({ runnable: false, availability })).toBe(true);
+    }
+    for (const availability of ['NO_CREDENTIAL', 'NO_DESIGNATED_MODEL', 'NOT_AUTHORIZED']) {
+      expect(operationIsInspectable({ runnable: false, availability })).toBe(false);
+    }
+  });
+
+  it('and the card says that what opens is a reading, not a run', () => {
+    expect(CENTER).toContain('اضغط لتقرأ ما تَطلبه');
   });
 
   it('the awaiting capabilities are not buttons at all', () => {

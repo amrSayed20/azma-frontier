@@ -94,7 +94,10 @@ const takesSecond = (op: OperationStateView) =>
 const takesDuration = (op: string) => op !== 'background-removal';
 
 /** What is still missing before this act may be submitted — or nothing. */
-export type CreativeRunBlock = 'target' | 'second' | 'duration' | 'declaration' | null;
+export type CreativeRunBlock =
+  /** The act itself is not open yet. First, and above every input. */
+  | 'unavailable'
+  | 'target' | 'second' | 'duration' | 'declaration' | null;
 
 /**
  * THE ONE PREDICATE, and three consumers of it.
@@ -108,6 +111,8 @@ export type CreativeRunBlock = 'target' | 'second' | 'duration' | 'declaration' 
  * browser: the panel's own selections are internal state by design.
  */
 export function creativeRunBlock(input: {
+  /** The catalog's verdict. A panel that may be READ is not a panel that may RUN. */
+  readonly runnable: boolean;
   readonly targetChosen: boolean;
   readonly needsSecond: boolean;
   readonly secondChosen: boolean;
@@ -117,6 +122,10 @@ export function creativeRunBlock(input: {
   readonly needsDeclaration: boolean;
   readonly declared: boolean;
 }): CreativeRunBlock {
+  // ASKED FIRST. The act can be opened to be read while it is shut, so the
+  // run button must be dark for a reason that has nothing to do with inputs —
+  // and a Creator who completes every input must still not be able to press it.
+  if (!input.runnable) return 'unavailable';
   if (!input.targetChosen) return 'target';
   if (input.needsSecond && !input.secondChosen) return 'second';
   if (input.needsDuration) {
@@ -131,6 +140,9 @@ export function creativeRunBlock(input: {
 
 /** What the Creator reads about what is still missing. */
 export const CREATIVE_BLOCK_AR: Readonly<Record<Exclude<CreativeRunBlock, null>, string>> = {
+  // Overridden by the catalog's own sentence when there is one — this is the
+  // fallback, never a second authority on why an act is shut.
+  unavailable: 'هذه العمليّة لا تُنفَّذ اليوم. وما تَقرؤه هنا هو ما ستَطلبه يومَ تُفتَح.',
   target: 'اختر أصلك أوّلاً.',
   second: 'ويَبقى المَدخل الثاني.',
   duration: 'المدّةُ خارج ما يُقبَل.',
@@ -178,10 +190,15 @@ export function CreativeActPanel({
   const maxSeconds = durationBound?.seconds ?? null;
   const needsDeclaration = operation.requiresAcknowledgment;
   const block = creativeRunBlock({
+    runnable: operation.runnable,
     targetChosen: Boolean(targetId), needsSecond, secondChosen: Boolean(secondId),
     needsDuration, durationSeconds, maxSeconds, needsDeclaration, declared,
   });
-  const missingAr = block === null ? null : CREATIVE_BLOCK_AR[block];
+  const missingAr = block === null ? null
+    // The catalog's reason outranks the fallback: it is the one authority on
+    // why an act is shut, and the Creator reads it rather than a paraphrase.
+    : block === 'unavailable' && operation.reasonAr.length > 0 ? operation.reasonAr
+    : CREATIVE_BLOCK_AR[block];
 
   const lifecycle: OperationLifecycle = lifecycleOf({
     operation: operation.id as never,

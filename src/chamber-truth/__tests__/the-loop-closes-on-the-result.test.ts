@@ -59,9 +59,27 @@ describe('2 · the two measured choices inside it', () => {
     expect(ADAPTER).not.toContain("mode: 'balanced'");
   });
 
-  it('offers only the scale the account is proven to have', () => {
+  /**
+   * RESTATED 2026-10-12. The test asserted that 2× was the only factor in the
+   * adapter, because the account's tier was unverified. The tier is now READ
+   * LIVE (`GET /v1/account` → `"tier":"creator"`) and the provider documents
+   * 4× for that tier, so the capability is no longer the open question.
+   *
+   * The open question is the PRICE, and that is where the refusal now lives:
+   * 2× keeps its default and its Creator price; 4× exists, carries no price,
+   * and the route refuses to execute it. The rule the old assertion protected
+   * — never offer a factor the Empire cannot stand behind — is unchanged.
+   */
+  it('defaults to the factor that is proven AND priced', () => {
     expect(ADAPTER).toContain('export const UPSCALE_SCALE_FACTOR = 2 as const;');
-    expect(ADAPTER).toContain('scale_factor: UPSCALE_SCALE_FACTOR');
+    expect(ADAPTER).toContain('const scaleFactor = options.scaleFactor ?? UPSCALE_SCALE_FACTOR;');
+    expect(ADAPTER).toContain('scale_factor: scaleFactor');
+  });
+
+  it('and 4× cannot be executed, because no Creator price exists for it', () => {
+    const route = read('app/api/vault/assets/[assetId]/upscale/route.ts');
+    expect(route).toContain("reason: 'not-priced'");
+    expect(route).toContain('!factorRecord?.creatorPriceExists');
   });
 
   it('reuses one provider client rather than opening a second', () => {
@@ -145,5 +163,50 @@ describe('4 · the loop closes on the result', () => {
     const panel = CLIENT.slice(start, start + 2600);
     expect(panel).not.toContain('/api/qiyamah/generate');
     expect(panel).not.toContain('handleBuildScene');
+  });
+});
+
+/**
+ * ─── 2026-10-12 · TWO FACTORS, AND ONE OF THEM IS NOT FOR SALE ─────────────
+ *
+ *   The Architect asked for 4× as an explicit option with its cost disclosed
+ *   before execution. The capability is measured (endpoint + tier) and the
+ *   price is not — so the surface shows both and sells one, which is the same
+ *   honesty the shut cards carry.
+ */
+describe('6 · the Creator sees both factors, and is told which one is sold', () => {
+  const CSS = read('app/qiyamah-chamber/qiyamah-chamber.css');
+
+  it('both factors are on the screen, in the Creator’s own words', () => {
+    expect(CLIENT).toContain('ضِعفان');
+    expect(CLIENT).toContain('أربعةُ أضعاف');
+  });
+
+  it('the unpriced one cannot be pressed', () => {
+    const block = CLIENT.slice(CLIENT.indexOf('upscale-factor--unpriced'));
+    expect(block.slice(0, 260)).toContain('disabled');
+  });
+
+  it('and its reason is written beside it, not left to be guessed', () => {
+    expect(CLIENT).toContain('مبنيّةٌ ولم تُسعَّر لك بعد');
+  });
+
+  it('the chosen factor travels with the request', () => {
+    expect(CLIENT).toContain('JSON.stringify({ scaleFactor: upscaleFactor })');
+  });
+
+  it('and the screen starts on the factor that is proven AND priced', () => {
+    expect(CLIENT).toContain("useState<2 | 4>(2)");
+  });
+
+  it('every new control paints its own surface', () => {
+    // The lesson of 2026-09-26: geometry without a background and a colour
+    // inherits the browser's white, and no test but an eye ever sees it.
+    for (const sel of ['.upscale-factor {', '.upscale-factor--unpriced {', '.upscale-factor-why {']) {
+      const i = CSS.indexOf(sel);
+      expect(i).toBeGreaterThan(-1);
+      const rule = CSS.slice(i, CSS.indexOf('}', i));
+      expect(rule).toMatch(/background|color/);
+    }
   });
 });

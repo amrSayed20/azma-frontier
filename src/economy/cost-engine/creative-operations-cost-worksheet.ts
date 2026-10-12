@@ -257,8 +257,9 @@ export const CREATIVE_COST_WORKSHEET: readonly CostRow[] = [
     costStepWhenPriced: 'LIP_SYNC',
     unit: 'per-frame',
     providerRate: 1,
-    providerRateText: '1 credit per frame in the `lite` mode this Empire sends; '
-      + '`standard` also bills 1, and `pro` bills 2 — Creator tier and above',
+    providerRateText: '1 credit per frame in the `standard` mode this Empire now '
+      + 'sends (the Architect’s ruling, 2026-10-12); `lite` also bills 1 and is '
+      + 'kept as the alternative; `pro` bills 2',
     providerEvidence: 'provider-documented',
     billingVariables: [
       'FRAME COUNT — the charge is per frame, so duration × fps is the cost',
@@ -280,9 +281,10 @@ export const CREATIVE_COST_WORKSHEET: readonly CostRow[] = [
     ],
     whatIsMissing: [
       'the fps the Empire will cap at — it is the single biggest cost lever here',
-      'whether `standard` is offered: the provider calls it "best for most creators" '
-        + 'and it bills the SAME 1 credit/frame as the `lite` we send — a quality '
-        + 'gain at no extra charge, which is the Architect’s to rule',
+      'A MEASURED charge for `standard`. The Architect ruled it the default on '
+        + '2026-10-12 on the provider’s documented parity with `lite` (1 credit/'
+        + 'frame, no new billable parameter). That parity is PUBLISHED, not measured '
+        + 'in this Empire, and one paid `standard` job is what would settle it.',
       'whether `pro` is ever offered, which doubles the rate',
       'one authorized paid job, to confirm frames billed against frames requested',
       'a Chief Architect ruling on the uplift',
@@ -384,6 +386,104 @@ function referenceCredits(row: CostRow): number | null {
 }
 
 const round = (n: number, p = 4): number => Number(n.toFixed(p));
+
+// ──────────────────────────────────────────────────────────────────────────
+// AN ESTIMATE OF THE JOB THAT WILL ACTUALLY BE SUBMITTED
+//
+//   The Architect, 2026-10-12: «ensure estimates use the actual submitted mode,
+//   duration, frame rate, and other known billing variables».
+//
+//   So an estimate is not a number this module can always produce. For a
+//   FRAME-billed act the charge is duration × fps, and this Empire sends no
+//   `max_fps_limit` — the fps therefore belongs to the Creator's own clip, and
+//   the Vault does not record it. An estimate computed without it would be an
+//   estimate of a different job.
+//
+//   This function refuses instead, and names what is missing. A refusal a
+//   caller must handle is worth more than a figure nobody can defend.
+// ──────────────────────────────────────────────────────────────────────────
+
+export interface SubmittedJob {
+  readonly operation: CreativeOperationId;
+  readonly variant?: 'photo' | 'video';
+  /** The mode actually sent. Checked against the row’s own rate. */
+  readonly mode?: string;
+  readonly imageCount?: number;
+  readonly seconds?: number;
+  /** Required for a frame-billed act. The SOURCE clip’s rate, measured. */
+  readonly fps?: number;
+}
+
+export type JobEstimate =
+  | {
+      readonly ok: true;
+      readonly providerCredits: number;
+      readonly providerEgp: number;
+      /** Every variable the number was computed from. Never implicit. */
+      readonly from: Readonly<Record<string, number | string>>;
+      /** Documented, never measured — until a real job says otherwise. */
+      readonly evidence: CostEvidence;
+    }
+  | { readonly ok: false; readonly missing: string };
+
+export function estimateSubmittedJob(job: SubmittedJob): JobEstimate {
+  const row = costRowFor(job.operation, job.variant);
+  if (row.providerRate === null) return { ok: false, missing: 'a documented provider rate' };
+
+  switch (row.unit) {
+    case 'per-image': {
+      const images = job.imageCount ?? 1;
+      if (!(images > 0)) return { ok: false, missing: 'an image count greater than zero' };
+      const credits = row.providerRate * images;
+      return {
+        ok: true, providerCredits: credits, providerEgp: round(credits * CREDIT_EGP),
+        from: { rate: row.providerRate, imageCount: images, unit: row.unit },
+        evidence: row.providerEvidence,
+      };
+    }
+    case 'per-second': {
+      if (!(job.seconds && job.seconds > 0)) {
+        return { ok: false, missing: 'the duration actually submitted (end_seconds)' };
+      }
+      const credits = row.providerRate * job.seconds;
+      return {
+        ok: true, providerCredits: credits, providerEgp: round(credits * CREDIT_EGP),
+        from: {
+          rate: row.providerRate, seconds: job.seconds, unit: row.unit,
+          mode: job.mode ?? 'NOT STATED — the rate above is the mode this Empire sends',
+        },
+        evidence: row.providerEvidence,
+      };
+    }
+    case 'per-frame': {
+      if (!(job.seconds && job.seconds > 0)) {
+        return { ok: false, missing: 'the duration actually submitted (end_seconds)' };
+      }
+      if (!(job.fps && job.fps > 0)) {
+        // THE REFUSAL THAT MATTERS. No fps, no frame count, no charge.
+        return {
+          ok: false,
+          missing: 'the SOURCE clip’s frame rate. This act bills per frame and the '
+            + 'Empire sends no max_fps_limit, so the fps is the clip’s own and must '
+            + 'be measured before a charge can be stated.',
+        };
+      }
+      const frames = Math.ceil(job.seconds * job.fps);
+      const credits = row.providerRate * frames;
+      return {
+        ok: true, providerCredits: credits, providerEgp: round(credits * CREDIT_EGP),
+        from: {
+          rate: row.providerRate, seconds: job.seconds, fps: job.fps, frames,
+          unit: row.unit, mode: job.mode ?? 'NOT STATED',
+        },
+        evidence: row.providerEvidence,
+      };
+    }
+    default:
+      return { ok: false, missing: 'a billing unit this function understands' };
+  }
+}
+
 
 /**
  * Both scenarios, side by side, on the reference job.

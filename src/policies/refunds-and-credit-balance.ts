@@ -30,19 +30,34 @@
 
 import type { PolicyDocument } from './types';
 
+/**
+ * ─── ONE QUESTION THIS DOCUMENT DELIBERATELY DOES NOT ANSWER ────────────────
+ *
+ *   LEGAL REVIEW REQUIRED (reviewer-facing, and kept OUT of the published body
+ *   by `policies-a-reviewer-can-open.test.ts` — a page a Creator opens must
+ *   not carry our internal markers):
+ *
+ *   Does a third-party processing provider charge AZMA for a job that failed
+ *   after partially rendering? The provider documents that credits apply to
+ *   «frames that actually render», which implies a partial charge on a partial
+ *   failure. NOT measured against a real failure as of 2026-10-12.
+ *
+ *   So §6 promises the Creator nothing about OUR cost, and says only what it
+ *   has always said about THEIR balance.
+ */
 export const REFUNDS_AND_CREDIT_BALANCE: PolicyDocument = {
   slug: 'refunds-and-credit-balance',
   titleEn: 'Refunds & Credit Balance',
   titleAr: 'الاسترداد ورصيد الوحدات',
   language: 'en',
-  version: '1.0',
+  version: '1.1',
   /** «[To be added]» in the Founder's text. Until it is a date, it is null. */
   effectiveDate: null,
   body: `POLICY: REFUNDS & CREDIT BALANCE
 AZMA OS
 
 Effective Date: [To be added]
-Policy Version: 1.0
+Policy Version: 1.1
 
 1. PURPOSE
 
@@ -114,6 +129,12 @@ This treatment concerns the restoration of platform credits associated with a fa
 It does not constitute a cash refund for the original purchase of credits.
 
 Where a production operation has successfully completed and the resulting asset has been delivered to the user's account, the operation is considered a completed production operation.
+
+CAPABILITIES NOT YET PRICED
+
+Some creative capabilities are present in AZMA OS but are not yet offered for execution because their cost has not been established by a completed, billed production job. These capabilities consume no credit balance, because they cannot be executed. As of Policy Version 1.1 these are: background removal, talking photo, lip sync, and face swap.
+
+Where such a capability is later opened for execution, its applicable cost is disclosed before the operation is initiated.
 
 
 7. SUCCESSFUL PRODUCTION

@@ -18,7 +18,9 @@ import {
   PROPOSED_UPLIFT_A, PROPOSED_UPLIFT_B, EXISTING_OPERATION_MARKUP,
   UPLIFT_STATUS, RATE_TABLE_SOURCE, ACCOUNT_ENTITLEMENT, REFERENCE_JOB,
   SELECTED_UPLIFT_DIRECTION, COMPARISON_UPLIFT, UPLIFT_PURPOSE,
+  estimateSubmittedJob,
 } from '../cost-engine/creative-operations-cost-worksheet';
+import { UPSCALE_FACTORS } from '../../core/sovereign-ai-integration/adapters/magic-hour-image-editing';
 import {
   CREATIVE_READINESS, TALKING_PHOTO_GENERATION_MODE, LIP_SYNC_GENERATION_MODE,
 } from '../../core/sovereign-ai-integration/adapters/magic-hour-creative-operations';
@@ -230,9 +232,14 @@ describe('7 · the basis is the rate of the configuration we ACTUALLY send', () 
     expect(costRowFor('talking-photo').providerRate).toBe(48);
   });
 
-  it('lip sync is priced at the lite rate, because lite is what we send', () => {
-    expect(LIP_SYNC_GENERATION_MODE).toBe('lite');
+  it('lip sync is priced at the rate of `standard`, which is what we now send', () => {
+    expect(LIP_SYNC_GENERATION_MODE).toBe('standard');
     expect(costRowFor('lip-sync').providerRate).toBe(1);
+  });
+
+  it('and the row says the equal rate is the publisher’s claim, not our measurement', () => {
+    expect(costRowFor('lip-sync').providerEvidence).toBe('provider-documented');
+    expect(costRowFor('lip-sync').whatIsMissing.join(' ')).toMatch(/standard/);
   });
 
   it('and the cheaper talking-photo mode is excluded for a reason, not by oversight', () => {
@@ -253,5 +260,99 @@ describe('8 · the Architect’s direction is named, and still applied by nothin
 
   it('the uplift is recorded as covering operating cost, never as profit', () => {
     expect(UPLIFT_PURPOSE).toMatch(/NOT net profit/);
+  });
+});
+
+describe('9 · an estimate is of the job that will actually be submitted', () => {
+  it('a frame-billed act refuses to be estimated without the source frame rate', () => {
+    // We send no max_fps_limit, so the fps is the Creator's own clip's. An
+    // estimate without it is an estimate of a different job.
+    const e = estimateSubmittedJob({ operation: 'lip-sync', seconds: 5 });
+    expect(e.ok).toBe(false);
+    if (!e.ok) expect(e.missing).toMatch(/frame rate/);
+  });
+
+  it('and with the frame rate it computes frames, not seconds', () => {
+    const e = estimateSubmittedJob({ operation: 'lip-sync', seconds: 5, fps: 24 });
+    expect(e.ok).toBe(true);
+    if (e.ok) {
+      expect(e.providerCredits).toBe(120);
+      expect(e.from.frames).toBe(120);
+    }
+  });
+
+  it('halving the fps halves the charge — the lever is real', () => {
+    const a = estimateSubmittedJob({ operation: 'lip-sync', seconds: 5, fps: 24 });
+    const b = estimateSubmittedJob({ operation: 'lip-sync', seconds: 5, fps: 12 });
+    expect(a.ok && b.ok).toBe(true);
+    if (a.ok && b.ok) expect(b.providerCredits * 2).toBe(a.providerCredits);
+  });
+
+  it('a second-billed act refuses to be estimated without its duration', () => {
+    const e = estimateSubmittedJob({ operation: 'talking-photo' });
+    expect(e.ok).toBe(false);
+    if (!e.ok) expect(e.missing).toMatch(/duration/);
+  });
+
+  it('the talking-photo estimate uses the realistic rate we actually send', () => {
+    const e = estimateSubmittedJob({
+      operation: 'talking-photo', seconds: 5, mode: TALKING_PHOTO_GENERATION_MODE,
+    });
+    expect(e.ok).toBe(true);
+    // 5 × 48, not 5 × 20. The earlier worksheet would have said 100.
+    if (e.ok) expect(e.providerCredits).toBe(240);
+  });
+
+  it('every estimate carries the variables it was computed from', () => {
+    const e = estimateSubmittedJob({ operation: 'background-removal', imageCount: 1 });
+    expect(e.ok).toBe(true);
+    if (e.ok) {
+      expect(e.from.rate).toBe(5);
+      expect(e.from.imageCount).toBe(1);
+    }
+  });
+
+  it('and no estimate ever calls itself measured', () => {
+    for (const e of [
+      estimateSubmittedJob({ operation: 'background-removal' }),
+      estimateSubmittedJob({ operation: 'lip-sync', seconds: 1, fps: 24 }),
+      estimateSubmittedJob({ operation: 'face-swap', variant: 'video', seconds: 1 }),
+    ]) {
+      if (e.ok) expect(e.evidence).not.toBe('measured-from-a-real-charge');
+    }
+  });
+});
+
+describe('10 · the 4× upscale is a capability, and not yet an offer', () => {
+  it('the endpoint takes it and this account’s tier allows it', () => {
+    const four = UPSCALE_FACTORS.find((f) => f.factor === 4)!;
+    expect(four.tierRequired).toBe('creator');
+    expect(ACCOUNT_ENTITLEMENT.tier).toBe('creator');
+  });
+
+  it('its provider charge is documented, and four times the 2× charge', () => {
+    const two = UPSCALE_FACTORS.find((f) => f.factor === 2)!;
+    const four = UPSCALE_FACTORS.find((f) => f.factor === 4)!;
+    expect(two.providerCredits).toBe(25);
+    expect(four.providerCredits).toBe(100);
+  });
+
+  it('but no Creator price exists for it, so it is not offered', () => {
+    const four = UPSCALE_FACTORS.find((f) => f.factor === 4)!;
+    expect(four.creatorPriceExists).toBe(false);
+    expect(four.productionProven).toBe(false);
+  });
+
+  it('and 2× keeps everything it had — proven, priced, unchanged', () => {
+    const two = UPSCALE_FACTORS.find((f) => f.factor === 2)!;
+    expect(two.productionProven).toBe(true);
+    expect(two.creatorPriceExists).toBe(true);
+    expect(read('src/economy/pricing/sovereign-value-balance.ts'))
+      .toContain("capability: 'UPSCALE_2X', balancePerUnit: 50");
+  });
+
+  it('no 4× price was derived from the 2× price', () => {
+    // 200 units would be the «obvious» derivation. Deriving it is pricing.
+    expect(read('src/economy/pricing/sovereign-value-balance.ts')).not.toContain('UPSCALE_4X');
   });
 });

@@ -132,9 +132,14 @@ describe('3 · the three shut states are told apart on the card', () => {
     expect(CENTER).toContain("'COST_NOT_VERIFIED' ? '◌ لم تُقَس كلفتُها'");
   });
 
-  it('a shut card cannot be pressed, whichever reason shut it', () => {
-    expect(CENTER).toContain('disabled={!o.runnable}');
-    expect(CENTER).toContain('onClick={() => o.runnable && onChoose(o.id)}');
+  it('a shut card never becomes a door to EXECUTION', () => {
+    // It read `disabled={!o.runnable}` until 2026-10-12, when the Architect
+    // required the likeness declaration to be readable while face swap stays
+    // blocked. A shut card may now be opened to be READ — and the run button
+    // inside is dark with the catalog's own reason, which the rendered-page
+    // test asserts. What may be opened is a short, named list.
+    expect(CENTER).toContain('disabled={!o.runnable && !readable}');
+    expect(CENTER).toContain('if (o.runnable || readable) onChoose(o.id)');
   });
 
   it('each shut state paints its own surface', () => {

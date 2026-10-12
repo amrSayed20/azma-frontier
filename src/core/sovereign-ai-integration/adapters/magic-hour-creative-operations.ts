@@ -292,14 +292,43 @@ export const __runCreativeJobForTests = runCreativeJob;
 // ────────────────────────────────────────────────────────────────────────────
 
 /**
- * Lip sync: `lite` · 1 credit/frame.
+ * Lip sync: `standard` — THE ARCHITECT'S RULING OF 2026-10-12.
  *
- * `standard` also bills 1 credit/frame and the provider calls it "best for
- * most creators"; `pro` bills 2. Neither is chosen here, because a mode that
- * changes what a Creator is charged is the Chief Architect's to rule — and
- * this constant exists so that ruling is one line, applied in one place.
+ * What the provider's own reference says, read that day:
+ *
+ *   lite      "Fast lip sync - best for simple videos. Costs 1 credit per frame."
+ *   standard  "Natural, accurate lip sync - best for most creators.
+ *              Costs 1 credit per frame."
+ *   pro       "Premium fidelity with enhanced detail. Costs 2 credits per
+ *              frame." — Creator/Pro/Business tiers only.
+ *
+ * `standard` carries no tier restriction, so this account may run it, and it
+ * introduces no new billable parameter: the request body is the same shape
+ * with one different string.
+ *
+ * ─── AND THE EQUAL COST IS DOCUMENTED, NOT MEASURED ─────────────────────────
+ *
+ *   The Architect was explicit: «do not claim equal cost based only on a
+ *   published per-frame rate». So this constant changes what we SEND, and
+ *   changes nothing about what is PROVEN: `LIP_SYNC_MODE_COST_IS_MEASURED`
+ *   stays false until a paid job at `standard` returns its own
+ *   `credits_charged`, and the campaign measures exactly that.
+ *
+ *   A mode whose quality is better at a documented-identical rate is still a
+ *   better default than one chosen by nobody — which is what `lite` was: the
+ *   provider's own fallback, inherited by omission until yesterday.
  */
-export const LIP_SYNC_GENERATION_MODE = 'lite' as const;
+export const LIP_SYNC_GENERATION_MODE = 'standard' as const;
+
+/** Preserved as an explicit alternative, because the provider still supports it. */
+export const LIP_SYNC_MODE_ALTERNATIVE = 'lite' as const;
+
+/**
+ * The documented rate is 1 credit/frame for BOTH modes. Nobody has billed a
+ * `standard` job in this Empire, so the equality is a publisher's claim and
+ * not our measurement. This flag is what the worksheet and the catalog read.
+ */
+export const LIP_SYNC_MODE_COST_IS_MEASURED = false as const;
 
 /**
  * Talking photo: `realistic` · 48 credits/second, documented to 300 seconds.

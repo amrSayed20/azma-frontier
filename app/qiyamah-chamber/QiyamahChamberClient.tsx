@@ -674,6 +674,14 @@ export function QiyamahChamberClient({
    * owns both. Read from the one `/api/vault/assets` reply that already
    * arrives, never from a second request that could disagree with it.
    */
+  /**
+   * How far the Creator asked an image to be raised: 2 or 4.
+   *
+   * Starts at 2 — the factor that is proven on a real charge AND priced for a
+   * Creator. 4× is shown beside it and cannot be pressed, which is the same
+   * honesty the shut cards carry: the capability exists, the price does not.
+   */
+  const [upscaleFactor, setUpscaleFactor] = useState<2 | 4>(2);
   const [vaultMotion, setVaultMotion] = useState<readonly { assetId: string; url: string }[]>([]);
   const [vaultAudio,  setVaultAudio]  = useState<readonly { assetId: string; url: string }[]>([]);
   /** The storage addresses of everything the Creator has accepted — it lives in the Vault now. */
@@ -1663,7 +1671,14 @@ export function QiyamahChamberClient({
     setUpscaleState('running');
     setUpscaleError(null);
     try {
-      const res = await fetch(`/api/vault/assets/${assetId}/upscale`, { method: 'POST' });
+      const res = await fetch(`/api/vault/assets/${assetId}/upscale`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // The factor the Creator chose. The door checks it again, and refuses
+        // the one that carries no price — this screen does not get to decide
+        // that question for itself.
+        body: JSON.stringify({ scaleFactor: upscaleFactor }),
+      });
       const result = await res.json();
       if (result.status !== 'succeeded') {
         // The route speaks Arabic and names no engine. Shown as it is.
@@ -2197,6 +2212,38 @@ export function QiyamahChamberClient({
                         <>
                           <p className="edit-act-hint">
                             رفعُ الدقّة لا يأخذ تعليمةً — يَرفع تفاصيلَ أصلك كما هو، ويُودِع نسخةً جديدةً في خزانتك.
+                          </p>
+                          {/* ── TWO FACTORS, AND ONE OF THEM IS NOT FOR SALE ──
+                              4× is real: the engine takes it and this account's
+                              tier allows it, both measured. What does not exist
+                              is a price for a Creator — so it is SHOWN, and it
+                              cannot be pressed, and the reason is written. The
+                              alternative was hiding a capability the Empire
+                              has, which is the «قريباً» this chamber removed. */}
+                          <div className="upscale-factors" role="radiogroup" aria-label="مقدار الرفع">
+                            <button
+                              type="button"
+                              role="radio"
+                              aria-checked={upscaleFactor === 2}
+                              className={`upscale-factor${upscaleFactor === 2 ? ' upscale-factor--on' : ''}`}
+                              onClick={() => setUpscaleFactor(2)}
+                              disabled={upscaleState === 'running'}
+                            >
+                              ضِعفان
+                            </button>
+                            <button
+                              type="button"
+                              role="radio"
+                              aria-checked={false}
+                              className="upscale-factor upscale-factor--unpriced"
+                              disabled
+                              aria-describedby="upscale-four-why"
+                            >
+                              أربعةُ أضعاف
+                            </button>
+                          </div>
+                          <p className="upscale-factor-why" id="upscale-four-why">
+                            أربعةُ أضعافٍ مبنيّةٌ ولم تُسعَّر لك بعد. ولن تُنفَّذ قبل أن تَعرف ما تُكلّفك بالضبط.
                           </p>
                           {upscaleCost && <StepCostLine quote={upscaleCost} />}
                           <OperationStatusLine lifecycle={lifecycleFor('upscale')} errorAr={upscaleError} />

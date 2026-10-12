@@ -22,6 +22,8 @@ import { inheritableMetadata } from '../sovereign-asset-mutation';
 
 const read = (f: string) => readFileSync(join(process.cwd(), f), 'utf8');
 const VALID = { acknowledged: true, acknowledgedVersion: LIKENESS_POLICY_VERSION };
+/** The newline the git-grep output is split on, kept out of the regex soup. */
+const NEWLINE = String.fromCharCode(10);
 
 describe('1 · nothing is an affirmation but an affirmation', () => {
   it('an absent declaration is absent, not a default', () => {
@@ -105,16 +107,38 @@ describe('3 · the words the Creator reads say the four things, and claim nothin
 });
 
 describe('4 · the declaration is never made on a Creator’s behalf', () => {
-  it('no shipped file affirms it — only a test may construct one', () => {
+  it('every shipped affirmation sits INSIDE the Creator’s own tick', () => {
+    // RESTATED 2026-10-12, when the surface was built. Until then no shipped
+    // file could carry the literal at all, because no screen existed to send
+    // it. A screen must encode the tick — so the rule sharpens rather than
+    // relaxes: the literal may appear ONLY inside the branch the Creator's own
+    // state guards, and nowhere else.
     const hits = (execSync('git grep -n "acknowledged: true" -- app src || true',
       { encoding: 'utf8', cwd: process.cwd() }) as string)
-      .split('\n')
+      .split(NEWLINE)
       // A TYPE saying the field may only ever be `true` is the opposite of an
-      // affirmation made on a Creator's behalf; it is what forbids a loose
-      // one. Only executable affirmations are the defect being hunted.
+      // affirmation made on a Creator's behalf; it is what forbids a loose one.
       .filter((l) => l.trim().length > 0 && !/__tests__/.test(l)
-        && !/readonly acknowledged: true;/.test(l));
-    expect(hits).toEqual([]);
+        && !/readonly acknowledged: true/.test(l));
+
+    // One place, and one only: the panel the Creator ticks.
+    expect(hits.map((l) => l.split(':')[0]))
+      .toEqual(['app/qiyamah-chamber/CreativeActPanel.tsx']);
+
+    const panel = read('app/qiyamah-chamber/CreativeActPanel.tsx');
+    const guardAt = panel.indexOf('...(needsDeclaration && declared');
+    expect(guardAt).toBeGreaterThan(-1);
+    // The affirmation lives inside that guard, not beside it.
+    const guarded = panel.slice(guardAt, panel.indexOf('});', guardAt));
+    expect(guarded).toContain('acknowledged: true as const');
+  });
+
+  it('and the panel never derives the tick from anything but the tick', () => {
+    const panel = read('app/qiyamah-chamber/CreativeActPanel.tsx');
+    // No `acknowledged: declared`, which would send `false` as an answer, and
+    // no default object standing in for an absent declaration.
+    expect(panel).not.toContain('acknowledged: declared');
+    expect(panel).not.toContain('acknowledged: Boolean');
   });
 
   it('and no surface pre-selects the control', () => {

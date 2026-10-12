@@ -19,6 +19,7 @@ import {
 import {
   LIKENESS_STATEMENTS_AR, LIKENESS_POLICY_VERSION,
 } from '@/src/vault/likeness-acknowledgment';
+import { operationIsInspectable } from '../OperationsCenter';
 
 const faceSwapState = (over: Record<string, unknown> = {}) => ({
   id: 'face-swap', group: 'on-my-asset', nameAr: 'تبديل الوجه',
@@ -29,6 +30,7 @@ const faceSwapState = (over: Record<string, unknown> = {}) => ({
   requiresAcknowledgment: true,
   acknowledgmentVersion: LIKENESS_POLICY_VERSION,
   acknowledgmentStatementsAr: LIKENESS_STATEMENTS_AR,
+  durationBound: { seconds: 60, source: 'empire-guard' },
   brief: {
     effectiveCap: 0, scaffoldCharacters: 0, submittedCap: 0,
     boundSource: 'empire-guard', capNoticeAr: '',
@@ -41,7 +43,6 @@ const render = (operation: Record<string, unknown>) => renderToStaticMarkup(
     operation,
     targets: [{ assetId: 'a1', url: '/u/a.mp4', label: 'مقطعٌ في خزانتك' }],
     seconds: [{ assetId: 'a2', url: '/u/b.png', label: 'صورةٌ في خزانتك' }],
-    durationBound: { seconds: 60, source: 'empire-guard' },
     onBack: () => {},
     onRun: async () => ({ ok: true }),
   } as never),
@@ -106,6 +107,7 @@ describe('3 · an act that demands no declaration is shown none', () => {
 
 describe('4 · the one predicate that darkens the button', () => {
   const ready = {
+    runnable: true,
     targetChosen: true, needsSecond: true, secondChosen: true,
     needsDuration: true, durationSeconds: 5, maxSeconds: 60,
     needsDeclaration: true, declared: true,
@@ -131,8 +133,14 @@ describe('4 · the one predicate that darkens the button', () => {
     expect(creativeRunBlock({ ...ready, targetChosen: false, declared: false })).toBe('target');
   });
 
+  it('a shut act is blocked before any input is even considered', () => {
+    // The card may be opened to be READ while the act is shut. So a Creator
+    // who fills in everything correctly must still find the button dark.
+    expect(creativeRunBlock({ ...ready, runnable: false })).toBe('unavailable');
+  });
+
   it('every block has a sentence, so none is ever silent', () => {
-    for (const b of ['target', 'second', 'duration', 'declaration'] as const) {
+    for (const b of ['unavailable', 'target', 'second', 'duration', 'declaration'] as const) {
       expect(CREATIVE_BLOCK_AR[b].length).toBeGreaterThan(0);
     }
   });
@@ -152,5 +160,61 @@ describe('5 · the panel claims nothing on the Empire’s behalf', () => {
   it('and the four acts it serves are the four the server authorized', () => {
     expect([...CREATIVE_ACT_IDS].sort())
       .toEqual(['background-removal', 'face-swap', 'lip-sync', 'talking-photo']);
+  });
+});
+
+describe('6 · the declaration is readable WHILE the act is shut', () => {
+  // §1 of the directive, 2026-10-12: the complete acknowledgment must be
+  // reachable through the real interface even though face swap cannot run.
+  // This is that state exactly — the catalog's verdict, not a pretend one.
+  const shut = faceSwapState({
+    availability: 'COST_NOT_VERIFIED',
+    runnable: false,
+    reasonAr: 'المحرّكُ يَقبلها، ولم تُقَس كلفتُها بعد.',
+  });
+  const html = render(shut);
+
+  it('all four sentences are still shown', () => {
+    for (const line of LIKENESS_STATEMENTS_AR) expect(html).toContain(line);
+  });
+
+  it('the box is still unchecked, and still a real control', () => {
+    expect(html).toContain('type="checkbox"');
+    expect(html).not.toMatch(/type="checkbox"[^>]*checked/);
+  });
+
+  it('the run button is dark, and the reason is the CATALOG’s sentence', () => {
+    expect(html).toMatch(/class="creative-act-run"[^>]*disabled/);
+    expect(html).toContain('ولم تُقَس كلفتُها بعد');
+  });
+
+  it('no input is ever enough to light it while the act is shut', () => {
+    expect(creativeRunBlock({
+      runnable: false, targetChosen: true, needsSecond: true, secondChosen: true,
+      needsDuration: true, durationSeconds: 5, maxSeconds: 60,
+      needsDeclaration: true, declared: true,
+    })).toBe('unavailable');
+  });
+
+  it('and the duration bound on the screen says WHOSE limit it is', () => {
+    expect(html).toContain('حدُّنا نحن، لا حدُّ المحرّك');
+  });
+});
+
+describe('7 · which shut cards may be opened at all', () => {
+  it('a cost that was never measured, and a ruling nobody made — those two', () => {
+    for (const availability of ['COST_NOT_VERIFIED', 'POLICY_BLOCKED']) {
+      expect(operationIsInspectable({ runnable: false, availability })).toBe(true);
+    }
+  });
+
+  it('but never a missing credential or an undesignated model — those are OURS to fix', () => {
+    for (const availability of ['NO_CREDENTIAL', 'NO_DESIGNATED_MODEL', 'NOT_AUTHORIZED']) {
+      expect(operationIsInspectable({ runnable: false, availability })).toBe(false);
+    }
+  });
+
+  it('and a runnable act is not «inspectable» — it is simply open', () => {
+    expect(operationIsInspectable({ runnable: true, availability: 'AVAILABLE' })).toBe(false);
   });
 });

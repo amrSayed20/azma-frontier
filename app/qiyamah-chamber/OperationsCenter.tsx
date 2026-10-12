@@ -73,6 +73,36 @@ export interface OperationGroupView {
   readonly noteAr: string;
 }
 
+/**
+ * ── A SHUT CARD THAT MAY STILL BE OPENED TO BE READ ─────────────────────────
+ *
+ *   The Chief Architect, 2026-10-12: «make the complete Arabic acknowledgment
+ *   accessible through the actual creator-facing interface, even while Face
+ *   Swap execution remains blocked».
+ *
+ *   So two different things stop being one thing: being able to OPEN an act,
+ *   and being able to RUN it. A Creator may read what an act needs, and read
+ *   the declaration it will ask of them, without the Empire pretending the act
+ *   can be completed today.
+ *
+ *   It is not a crack in «never offer what the platform blocks». That rule
+ *   forbids offering a DESTINATION a Creator cannot reach; this offers a
+ *   READING, says so on the card, and the run button inside stays dark with
+ *   the catalog's own reason beside it.
+ *
+ *   And only for the two states that are about the WORLD — a cost nobody
+ *   measured, a ruling nobody made. An act shut because the Empire holds no
+ *   credential, or designates no model, has nothing for a Creator to read:
+ *   that is our fault to fix, not their page to visit.
+ */
+export function operationIsInspectable(o: {
+  readonly runnable: boolean;
+  readonly availability: string;
+}): boolean {
+  if (o.runnable) return false;
+  return o.availability === 'COST_NOT_VERIFIED' || o.availability === 'POLICY_BLOCKED';
+}
+
 /** What each required input is called on a Creator's screen. */
 const INPUT_AR: Readonly<Record<string, string>> = {
   brief: 'تعليمة',
@@ -168,16 +198,21 @@ export function OperationsCenter({
             <div className="ops-cards">
               {mine.map((o) => {
                 const quote = quotes[o.costStep];
+                const readable = operationIsInspectable(o);
                 return (
                   <button
                     key={o.id}
                     type="button"
-                    className={`ops-card${o.runnable ? '' : ' ops-card--shut'}`}
+                    className={`ops-card${o.runnable ? '' : ' ops-card--shut'}${readable ? ' ops-card--readable' : ''}`}
                     data-testid={`qiyamah-op-${o.id}`}
                     data-availability={o.availability}
-                    disabled={!o.runnable}
+                    data-readable={readable ? 'true' : undefined}
+                    // A card is pressable when it can RUN, or when it can be
+                    // READ. Nothing else opens, because nothing else has
+                    // anything a Creator could read.
+                    disabled={!o.runnable && !readable}
                     aria-describedby={o.runnable ? undefined : `ops-why-${o.id}`}
-                    onClick={() => o.runnable && onChoose(o.id)}
+                    onClick={() => { if (o.runnable || readable) onChoose(o.id); }}
                   >
                     <span className="ops-card-glyph" aria-hidden="true">{o.glyph}</span>
                     <span className="ops-card-name">{o.nameAr}</span>
@@ -214,7 +249,18 @@ export function OperationsCenter({
                       )}
                     </span>
                     {!o.runnable && (
-                      <span className="ops-card-why" id={`ops-why-${o.id}`}>{o.reasonAr}</span>
+                      <span className="ops-card-why" id={`ops-why-${o.id}`}>
+                        {o.reasonAr}
+                        {/* Said on the card, so pressing it is never a
+                            surprise: what opens is a reading, not a run. */}
+                        {readable ? (
+                          <span className="ops-card-readable">
+                            {o.requiresAcknowledgment
+                              ? ' — اضغط لتقرأ ما تَطلبه، وإقرارَها، قبل أن تُفتَح.'
+                              : ' — اضغط لتقرأ ما تَطلبه قبل أن تُفتَح.'}
+                          </span>
+                        ) : null}
+                      </span>
                     )}
                   </button>
                 );

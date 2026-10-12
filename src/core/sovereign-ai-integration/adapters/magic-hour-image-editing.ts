@@ -276,12 +276,76 @@ export const IMAGE_UPSCALE_PROVIDER_ID = 'magic-hour-image-upscaler' as const;
 export const UPSCALE_SCALE_FACTOR = 2 as const;
 export const UPSCALE_MODE = 'preserve' as const;
 
+/**
+ * ─── 4× · WHAT WAS MEASURED, AND WHAT IS STILL NOT ──────────────────────────
+ *
+ *   The comment above said «widen this when 4× is proven on a live call». Two
+ *   of the three things that sentence was waiting for are now measured:
+ *
+ *     the ENDPOINT      `scale_factor` «must be either 2 or 4», and 4 is
+ *                       documented for Creator, Pro and Business tiers
+ *                       (docs.magichour.ai, read 2026-10-11)
+ *     the ENTITLEMENT   `GET /v1/account` → 200, `"tier":"creator"`
+ *                       — the Empire's own tier, read live, no longer a guess
+ *     the CHARGE        preserve 4× = 100 credits, balanced/creative = 200
+ *
+ *   What is NOT measured is a completed 4× job. So the factor becomes an
+ *   argument — the path exists and is one call away — and the chamber still
+ *   offers only what is priced for a Creator. A capability whose provider
+ *   charge is known and whose CREATOR price is not is not yet an offer, and
+ *   `upscaleScaleFactors()` says exactly which is which.
+ *
+ *   The maximum input the provider documents is 4096×4096px, which bounds
+ *   what 4× can be asked for at all.
+ */
+export const UPSCALE_SCALE_FACTOR_4X = 4 as const;
+export type UpscaleScaleFactor = typeof UPSCALE_SCALE_FACTOR | typeof UPSCALE_SCALE_FACTOR_4X;
+
+/** The provider's own documented input ceiling for this endpoint. */
+export const UPSCALE_MAX_INPUT_PIXELS = { width: 4096, height: 4096 } as const;
+
+/**
+ * Each factor, with the two separate questions answered separately: may the
+ * ACCOUNT run it, and may a CREATOR be offered it.
+ */
+export const UPSCALE_FACTORS: readonly {
+  readonly factor: UpscaleScaleFactor;
+  /** Documented provider charge in the mode this Empire sends (`preserve`). */
+  readonly providerCredits: number;
+  /** The account tier the provider requires. Ours is `creator`, read live. */
+  readonly tierRequired: 'any' | 'creator';
+  /** A completed paid job at this factor. ALWAYS false until one exists. */
+  readonly productionProven: boolean;
+  /** A Creator-facing price exists for it in the balance rules. */
+  readonly creatorPriceExists: boolean;
+}[] = [
+  {
+    factor: UPSCALE_SCALE_FACTOR, providerCredits: 25, tierRequired: 'any',
+    // Proven in production 2026-09-27: a real upscale charged 25 credits.
+    productionProven: true, creatorPriceExists: true,
+  },
+  {
+    factor: UPSCALE_SCALE_FACTOR_4X, providerCredits: 100, tierRequired: 'creator',
+    productionProven: false,
+    // UPSCALE_2X is 50 units per operation. 4× costs the provider four times
+    // as much, and deriving «200 units» from that would be setting a price —
+    // which is the Chief Architect's act, not an adapter's.
+    creatorPriceExists: false,
+  },
+];
+
 export async function upscaleImageViaProvider(
   sourceBytes: Buffer,
   sourceExtension: string,
-  options: { readonly timeoutMs?: number; readonly pollIntervalMs?: number } = {},
+  options: {
+    readonly timeoutMs?: number;
+    readonly pollIntervalMs?: number;
+    /** 2 or 4. Defaults to 2 — the factor that is proven and priced. */
+    readonly scaleFactor?: UpscaleScaleFactor;
+  } = {},
 ): Promise<EditedImageResult> {
   const headers = authHeaders();
+  const scaleFactor = options.scaleFactor ?? UPSCALE_SCALE_FACTOR;
   const filePath = await uploadSource(sourceBytes, sourceExtension);
 
   const submitted = await fetch(`${engineBase()}/v1/ai-image-upscaler`, {
@@ -289,7 +353,7 @@ export async function upscaleImageViaProvider(
     headers,
     body: JSON.stringify({
       name: 'azma-sovereign-upscale',
-      scale_factor: UPSCALE_SCALE_FACTOR,
+      scale_factor: scaleFactor,
       style: { mode: UPSCALE_MODE },
       assets: { image_file_path: filePath },
     }),
