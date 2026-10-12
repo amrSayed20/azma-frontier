@@ -482,37 +482,6 @@ export function QiyamahChamberClient({
    * leaving a workspace neither clears them nor lets them reach another
    * operation. Only the journey position is reset.
    */
-  /** Which asset the named act produced, from the state its handler sets. */
-  const producedBy = (op: string): string | null =>
-    op === 'animate' ? (animatedResult?.assetId ?? null)
-    : op === 'edit' ? editedAssetId
-    // `handleUpscaleAsset` deposits through the shared result state, which is
-    // also where a fresh generation lands — correct, because both produce the
-    // one asset the result panel is about.
-    : generatedAssetId;
-
-  /**
-   * ── LAYER C · THE ACTIVE ACT'S LIFECYCLE, DERIVED IN ONE PLACE ─────────
-   *
-   *   Reads the operation-specific state that already exists and returns the
-   *   one vocabulary. It writes nothing and calls no handler: the proven
-   *   engines keep their own states, and what is unified is what the Creator
-   *   is told.
-   */
-  const lifecycleFor = (op: string): OperationLifecycle => lifecycleOf({
-    operation: op as never,
-    generationStage: stage,
-    mutationState: op === 'animate' ? animateState : editState,
-    upscaleState,
-    // The id each handler ACTUALLY writes on success — read from the state
-    // those proven handlers already set, never from a new one.
-    producedAssetId: producedBy(op),
-    accepted: acceptedAssetIds.includes(producedBy(op) ?? '__none__'),
-  });
-  const activeLifecycle: OperationLifecycle = chosenOperation
-    ? lifecycleFor(chosenOperation)
-    : 'READY';
-
   function returnToCenter() {
     setChosenOperation(null);
     setStage('idea');
@@ -655,6 +624,60 @@ export function QiyamahChamberClient({
   };
   const [editError, setEditError] = useState<string | null>(null);
   const [editedAssetId, setEditedAssetId] = useState<string | null>(null);
+
+  /**
+   * ── WHY THESE TWO LIVE HERE AND NOT HIGHER ──────────────────────────────
+   *
+   *   MEASURED ON THE LIVE RELEASE 2026-10-12, by the acceptance walk: a
+   *   Creator pressing ANY operation card got «This page couldn't load», and
+   *   the browser's own words were «Cannot access 'ad' before initialization».
+   *
+   *   The cause was a dead binding that stood where these two used to be:
+   *
+   *       const activeLifecycle = chosenOperation ? lifecycleFor(chosenOperation) : 'READY';
+   *
+   *   It was read by nothing — and it CALLED `lifecycleFor` during render,
+   *   forty to a hundred and fifty lines above `editState`, `upscaleState`,
+   *   `generatedAssetId`, `animateState`, `animatedResult`, `editedAssetId`
+   *   and `acceptedAssetIds`. While `chosenOperation` was null the call never
+   *   happened and nothing showed; the instant a card was pressed it ran, hit
+   *   the temporal dead zone, and took the whole chamber down.
+   *
+   *   Not one unit test could see it: the function is correct, the lifecycle
+   *   module is correct, and the panel renders correctly on a server. Only a
+   *   browser pressing a real button could — which is why that walk exists.
+   *
+   *   So the dead binding is gone, and these two now sit BELOW every piece of
+   *   state they read. `the-order-of-the-body` holds that order.
+   */
+  /** Which asset the named act produced, from the state its handler sets. */
+  const producedBy = (op: string): string | null =>
+    op === 'animate' ? (animatedResult?.assetId ?? null)
+    : op === 'edit' ? editedAssetId
+    // `handleUpscaleAsset` deposits through the shared result state, which is
+    // also where a fresh generation lands — correct, because both produce the
+    // one asset the result panel is about.
+    : generatedAssetId;
+
+  /**
+   * ── LAYER C · THE ACTIVE ACT'S LIFECYCLE, DERIVED IN ONE PLACE ─────────
+   *
+   *   Reads the operation-specific state that already exists and returns the
+   *   one vocabulary. It writes nothing and calls no handler: the proven
+   *   engines keep their own states, and what is unified is what the Creator
+   *   is told.
+   */
+  const lifecycleFor = (op: string): OperationLifecycle => lifecycleOf({
+    operation: op as never,
+    generationStage: stage,
+    mutationState: op === 'animate' ? animateState : editState,
+    upscaleState,
+    // The id each handler ACTUALLY writes on success — read from the state
+    // those proven handlers already set, never from a new one.
+    producedAssetId: producedBy(op),
+    accepted: acceptedAssetIds.includes(producedBy(op) ?? '__none__'),
+  });
+
   // Set only when the route refuses with 'requires-adoption' — Article 5.5.
   // The Creator is then offered the act that lifts it, rather than a dead end.
   const [needsAdoption, setNeedsAdoption] = useState(false);
