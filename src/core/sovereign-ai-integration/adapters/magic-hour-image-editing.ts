@@ -326,11 +326,14 @@ export const UPSCALE_FACTORS: readonly {
   },
   {
     factor: UPSCALE_SCALE_FACTOR_4X, providerCredits: 100, tierRequired: 'creator',
-    productionProven: false,
-    // UPSCALE_2X is 50 units per operation. 4× costs the provider four times
-    // as much, and deriving «200 units» from that would be setting a price —
-    // which is the Chief Architect's act, not an adapter's.
-    creatorPriceExists: false,
+    // PROVEN 2026-10-12: provider job cmv5c2l8q073zmj01xymsmdeg, complete,
+    // charged 100 credits, and the output measured 5504×3072 from a 1376×768
+    // source — a true fourfold, not a heavier file.
+    productionProven: true,
+    // PRICED 2026-10-12 by the Chief Architect's own uplift: 100 × 1.70 = 170
+    // units, in `new-capability-pricing.ts`. The derivation this comment once
+    // refused to make is now HIS, made in his own order, and recorded there.
+    creatorPriceExists: true,
   },
 ];
 

@@ -90,16 +90,40 @@ describe('the likeness clauses, where a Creator actually reads them', () => {
     expect(privacy).not.toMatch(/يُحذَف فوراً|نحذفها عند المزوّد|تُحذَف من خوادم المزوّد/);
   });
 
-  it('the refund policy prices nothing it has not measured', () => {
-    const refunds = policyBySlug('refunds-and-credit-balance')!.body;
-    expect(refunds).toContain('CAPABILITIES NOT YET PRICED');
-    expect(refunds).toContain('consume no credit balance');
+  it('the refund policy is served in the Creator’s own language', () => {
+    // It was published in English while the whole chamber speaks Arabic. The
+    // Architect ordered it translated and published, with the binding meaning
+    // preserved — so the SERVED text is now Arabic and says it is a
+    // translation of the English of record.
+    const refunds = policyBySlug('refunds-and-credit-balance')!;
+    expect(refunds.language).toBe('ar');
+    expect(refunds.body).toContain('سياسة الاسترداد ورصيد الوحدات');
+    expect(refunds.body).toContain('مترجمةً عن نصّها الإنجليزي');
+  });
+
+  it('and every binding promise of the English original survives the translation', () => {
+    const b = policyBySlug('refunds-and-credit-balance')!.body;
+    // One line per promise the English text makes. A translation that drops
+    // one of these is not a translation of this policy.
+    expect(b).toContain('غير قابلة للاسترداد نقداً');          // no cash refunds
+    expect(b).toContain('لا تنتهي صلاحيتها لمجرد مرور الوقت');  // credits do not expire
+    expect(b).toContain('أمران منفصلان');                       // subscription ≠ balance
+    expect(b).toContain('عملية إنتاج مخفقة');                   // failed production
+    expect(b).toContain('لا يجوز استثناؤه قانوناً');            // consumer rights intact
+    expect(b).toContain('كلفة نهائية مضمونة');                  // estimates are not guarantees
+  });
+
+  it('the thirteen numbered sections of the original are all present', () => {
+    const b = policyBySlug('refunds-and-credit-balance')!.body;
+    for (const n of ['١.', '٢.', '٣.', '٤.', '٥.', '٦.', '٧.', '٨.', '٩.', '١٠.', '١١.', '١٢.', '١٣.']) {
+      expect(b).toContain(n);
+    }
   });
 
   it('every published document that gained a clause also gained a version', () => {
     expect(policyBySlug('terms-of-service')!.version).toBe('1.2');
     expect(policyBySlug('privacy-policy')!.version).toBe('1.2');
-    expect(policyBySlug('refunds-and-credit-balance')!.version).toBe('1.1');
+    expect(policyBySlug('refunds-and-credit-balance')!.version).toBe('1.2');
   });
 
   it('and the served body states the same version as the record', () => {
@@ -108,6 +132,6 @@ describe('the likeness clauses, where a Creator actually reads them', () => {
     // can find.
     expect(terms).toContain('الإصدار: 1.2');
     expect(privacy).toContain('الإصدار: 1.2');
-    expect(policyBySlug('refunds-and-credit-balance')!.body).toContain('Policy Version: 1.1');
+    expect(policyBySlug('refunds-and-credit-balance')!.body).toContain('إصدار السياسة: 1.2');
   });
 });

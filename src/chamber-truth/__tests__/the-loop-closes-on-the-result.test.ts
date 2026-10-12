@@ -185,13 +185,16 @@ describe('6 · the Creator sees both factors, and is told which one is sold', ()
     expect(CLIENT).toContain('أربعةُ أضعاف');
   });
 
-  it('the unpriced one cannot be pressed', () => {
-    const block = CLIENT.slice(CLIENT.indexOf('upscale-factor--unpriced'));
-    expect(block.slice(0, 260)).toContain('disabled');
+  it('BOTH factors can now be pressed, because both are priced', () => {
+    // 4× was shown-and-dark while it had no price. A real paid job measured
+    // its cost (100 credits) and the Architect's uplift priced it (170 units),
+    // so the dark button became a priced choice rather than a locked one.
+    expect(CLIENT).toContain('onClick={() => setUpscaleFactor(4)}');
+    expect(CLIENT).not.toContain('upscale-factor--unpriced');
   });
 
-  it('and its reason is written beside it, not left to be guessed', () => {
-    expect(CLIENT).toContain('مبنيّةٌ ولم تُسعَّر لك بعد');
+  it('and the charge is stated before the press, for the chosen factor', () => {
+    expect(CLIENT).toContain('وتُخصَم ١٧٠ وحدةً من رصيدك');
   });
 
   it('the chosen factor travels with the request', () => {
@@ -205,7 +208,7 @@ describe('6 · the Creator sees both factors, and is told which one is sold', ()
   it('every new control paints its own surface', () => {
     // The lesson of 2026-09-26: geometry without a background and a colour
     // inherits the browser's white, and no test but an eye ever sees it.
-    for (const sel of ['.upscale-factor {', '.upscale-factor--unpriced {', '.upscale-factor-why {']) {
+    for (const sel of ['.upscale-factor {', '.upscale-factor--on {', '.upscale-factor-why {']) {
       const i = CSS.indexOf(sel);
       expect(i).toBeGreaterThan(-1);
       const rule = CSS.slice(i, CSS.indexOf('}', i));

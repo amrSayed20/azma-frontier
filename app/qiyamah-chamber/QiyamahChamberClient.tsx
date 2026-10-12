@@ -2308,16 +2308,23 @@ export function QiyamahChamberClient({
                             <button
                               type="button"
                               role="radio"
-                              aria-checked={false}
-                              className="upscale-factor upscale-factor--unpriced"
-                              disabled
+                              aria-checked={upscaleFactor === 4}
+                              className={`upscale-factor${upscaleFactor === 4 ? ' upscale-factor--on' : ''}`}
+                              onClick={() => setUpscaleFactor(4)}
+                              disabled={upscaleState === 'running'}
                               aria-describedby="upscale-four-why"
                             >
                               أربعةُ أضعاف
                             </button>
                           </div>
+                          {/* ── THE PRICE OF THE FACTOR THE CREATOR CHOSE ──
+                              2× keeps the charge it always had. 4× is a new
+                              act and carries its own, stated here before the
+                              press — never discovered afterwards. */}
                           <p className="upscale-factor-why" id="upscale-four-why">
-                            أربعةُ أضعافٍ مبنيّةٌ ولم تُسعَّر لك بعد. ولن تُنفَّذ قبل أن تَعرف ما تُكلّفك بالضبط.
+                            {upscaleFactor === 4
+                              ? 'أربعةُ أضعافٍ تُضاعف البعدين أربعَ مرّات، وتُخصَم ١٧٠ وحدةً من رصيدك.'
+                              : 'ضِعفان يُضاعفان البعدين مرّتين.'}
                           </p>
                           {upscaleCost && <StepCostLine quote={upscaleCost} />}
                           <OperationStatusLine lifecycle={lifecycleFor('upscale')} errorAr={upscaleError} />

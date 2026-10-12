@@ -49,170 +49,170 @@ export const REFUNDS_AND_CREDIT_BALANCE: PolicyDocument = {
   slug: 'refunds-and-credit-balance',
   titleEn: 'Refunds & Credit Balance',
   titleAr: 'الاسترداد ورصيد الوحدات',
-  language: 'en',
-  version: '1.1',
+  language: 'ar',
+  version: '1.2',
   /** «[To be added]» in the Founder's text. Until it is a date, it is null. */
   effectiveDate: null,
-  body: `POLICY: REFUNDS & CREDIT BALANCE
+  body: `سياسة الاسترداد ورصيد الوحدات
 AZMA OS
 
-Effective Date: [To be added]
-Policy Version: 1.1
+تاريخ السريان: [يُضاف]
+إصدار السياسة: 1.2
 
-1. PURPOSE
 
-This policy explains the rules governing purchases of credits within AZMA OS, the treatment of unused credit balances, production-related failures, and requests for refunds.
+١. الغرض
 
-AZMA OS is operated by:
+تشرح هذه السياسة القواعد التي تحكم شراء الوحدات داخل AZMA OS، ومعاملة الرصيد غير المستهلك، والإخفاقات المتعلقة بالإنتاج، وطلبات الاسترداد.
+
+تُشغَّل AZMA OS بواسطة:
 
 Topline Design
 
-Website:
+الموقع:
 azmaos.com
 
-Address:
-Nasr City, Cairo
+العنوان:
+مدينة نصر، القاهرة
 
-Phone:
+الهاتف:
 01069269456
 
-Email:
+البريد الإلكتروني:
 azma.os27@gmail.com
 
 
-2. CREDIT BALANCE
+٢. رصيد الوحدات
 
-Credits purchased or otherwise legitimately added to an AZMA OS account constitute a digital balance associated with that account.
+الوحدات المشتراة أو المضافة بطريقة مشروعة إلى حساب في AZMA OS تُكوِّن رصيداً رقمياً مرتبطاً بذلك الحساب.
 
-The credit balance is used to access eligible production and creative capabilities available within AZMA OS according to the applicable service rules.
+ويُستعمل رصيد الوحدات للوصول إلى قدرات الإنتاج والإبداع المؤهَّلة والمتاحة داخل AZMA OS وفق قواعد الخدمة السارية.
 
-The balance shown in the user's account represents the user's available AZMA OS credit balance.
-
-
-3. NO CASH REFUNDS
-
-All purchases of AZMA OS credits are final and are not refundable in cash.
-
-Unused credits are not exchangeable for cash and cannot be withdrawn, transferred into a bank account, or converted into another monetary payment method.
-
-This policy applies whether the user has used part of the purchased balance or has not yet used it.
-
-Nothing in this policy excludes any refund or consumer right that cannot legally be excluded under applicable law.
+والرصيد الظاهر في حساب المستخدم هو رصيد وحداته المتاح في AZMA OS.
 
 
-4. CREDIT BALANCE DOES NOT EXPIRE
+٣. لا استرداد نقدي
 
-Paid credits purchased by the user do not expire merely because time has passed.
+جميع عمليات شراء وحدات AZMA OS نهائية وغير قابلة للاسترداد نقداً.
 
-The expiration, cancellation, or non-renewal of a subscription does not by itself cancel or remove the user's previously purchased credit balance.
+والوحدات غير المستهلكة لا تُستبدل نقداً، ولا يمكن سحبها، ولا تحويلها إلى حساب بنكي، ولا تحويلها إلى أي وسيلة دفع نقدية أخرى.
 
-The user's purchased balance remains محفوظًا in the account and does not lapse merely because the user stops using the platform for a period of time.
+وتسري هذه السياسة سواء استهلك المستخدم جزءاً من الرصيد المشترى أو لم يستهلك منه شيئاً.
 
-Where an account remains subject to applicable platform, security, legal, or ownership requirements, the balance remains associated with that account.
-
-
-5. SUBSCRIPTION AND CREDIT BALANCE ARE SEPARATE
-
-An AZMA OS subscription and the user's credit balance are separate matters.
-
-Cancellation or non-renewal of a subscription does not automatically mean that the user's previously purchased credits are refunded or removed.
-
-Likewise, purchasing credits does not necessarily constitute a subscription unless the applicable purchase explicitly states otherwise.
+ولا يستثني أي نص في هذه السياسة أي حق في الاسترداد أو أي حق للمستهلك لا يجوز استثناؤه قانوناً بموجب القانون الواجب التطبيق.
 
 
-6. FAILED PRODUCTION
+٤. رصيد الوحدات لا تنتهي صلاحيته
 
-If an eligible production operation fails before AZMA OS successfully delivers the intended production result, AZMA OS may restore or return the credits consumed by that failed operation according to the platform's production and accounting rules.
+الوحدات المدفوعة التي اشتراها المستخدم لا تنتهي صلاحيتها لمجرد مرور الوقت.
 
-This treatment concerns the restoration of platform credits associated with a failed production operation.
+وانتهاء الاشتراك أو إلغاؤه أو عدم تجديده لا يُلغي بذاته رصيد الوحدات الذي سبق للمستخدم شراؤه ولا يُزيله.
 
-It does not constitute a cash refund for the original purchase of credits.
+ويبقى الرصيد المشترى محفوظاً في الحساب، ولا يسقط لمجرد توقف المستخدم عن استعمال المنصّة مدةً من الزمن.
 
-Where a production operation has successfully completed and the resulting asset has been delivered to the user's account, the operation is considered a completed production operation.
-
-CAPABILITIES NOT YET PRICED
-
-Some creative capabilities are present in AZMA OS but are not yet offered for execution because their cost has not been established by a completed, billed production job. These capabilities consume no credit balance, because they cannot be executed. As of Policy Version 1.1 these are: background removal, talking photo, lip sync, and face swap.
-
-Where such a capability is later opened for execution, its applicable cost is disclosed before the operation is initiated.
+وما دام الحساب مستوفياً لمتطلبات المنصّة والأمان والقانون والملكية السارية، يبقى الرصيد مرتبطاً بذلك الحساب.
 
 
-7. SUCCESSFUL PRODUCTION
+٥. الاشتراك ورصيد الوحدات أمران منفصلان
 
-Once a production operation has successfully completed and the resulting asset has been delivered, credits consumed by that operation are considered used.
+الاشتراك في AZMA OS ورصيد وحدات المستخدم أمران منفصلان.
 
-A user may not request a cash refund solely because the resulting creative output does not meet the user's subjective creative preference.
+وإلغاء الاشتراك أو عدم تجديده لا يعني تلقائياً أنّ الوحدات التي سبق شراؤها تُسترد أو تُزال.
 
-Users are encouraged to review available production settings, capabilities, and applicable costs before initiating a production operation.
-
-
-8. ACCOUNT CLOSURE
-
-Closing, abandoning, or ceasing to use an AZMA OS account does not create an automatic right to a cash refund for previously purchased credits.
-
-Where applicable law, a verified account issue, or a documented platform error requires a different treatment, the matter will be handled according to the applicable legal or platform requirements.
+وكذلك فإنّ شراء وحدات لا يُعدّ بالضرورة اشتراكاً ما لم تنصّ عملية الشراء المعنية على خلاف ذلك صراحةً.
 
 
-9. ACCOUNT SECURITY AND OWNERSHIP
+٦. إخفاق الإنتاج
 
-Credits are associated with the AZMA OS account through which they were legitimately purchased or acquired.
+إذا أخفقت عملية إنتاج مؤهَّلة قبل أن تُسلِّم AZMA OS نتيجة الإنتاج المقصودة بنجاح، جاز لـAZMA OS أن تُعيد أو تَرُدّ الوحدات التي استهلكتها تلك العملية المخفقة وفق قواعد الإنتاج والمحاسبة في المنصّة.
 
-Users are responsible for maintaining the security of their account and for protecting their authentication credentials.
+وتتعلق هذه المعاملة بإعادة وحدات المنصّة المرتبطة بعملية إنتاج مخفقة.
 
-AZMA OS may take reasonable measures where there is evidence of fraud, unauthorized access, abuse, or violation of the platform's terms.
+ولا تُعدّ استرداداً نقدياً لثمن شراء الوحدات الأصلي.
 
-
-10. TRANSPARENCY
-
-AZMA OS will seek to present the applicable credit cost before a production operation is initiated where the platform has sufficient information to determine that cost.
-
-The user should review the displayed production cost and available balance before confirming a paid operation.
-
-AZMA OS does not represent an estimated cost as a guaranteed final provider cost where the actual production cost cannot yet be determined.
+وحيث تكون عملية الإنتاج قد اكتملت بنجاح وسُلِّم الأصل الناتج إلى حساب المستخدم، تُعدّ العملية عملية إنتاج مكتملة.
 
 
-11. POLICY CHANGES
+٧. الإنتاج الناجح
 
-AZMA OS may update this policy when necessary to reflect changes in the platform, its services, applicable legal requirements, or operational practices.
+متى اكتملت عملية الإنتاج بنجاح وسُلِّم الأصل الناتج، عُدَّت الوحدات التي استهلكتها تلك العملية مستهلَكة.
 
-The current version of the policy will be made available through the AZMA OS Policies section.
+ولا يجوز للمستخدم طلب استرداد نقدي لمجرد أنّ الناتج الإبداعي لا يوافق ذوقه الإبداعي الشخصي.
 
-Where appropriate, the effective date and version number will be displayed with the policy.
+ويُنصح المستخدمون بمراجعة إعدادات الإنتاج المتاحة والقدرات والتكاليف السارية قبل بدء أي عملية إنتاج.
 
 
-12. CONTACT
+٨. إغلاق الحساب
 
-For questions concerning credits, account balances, production charges, or this policy, users may contact:
+إغلاق حساب AZMA OS أو هجره أو التوقف عن استعماله لا يُنشئ حقاً تلقائياً في استرداد نقدي للوحدات التي سبق شراؤها.
+
+وحيث يوجب القانون الواجب التطبيق أو مشكلة موثَّقة في الحساب أو خطأ موثَّق في المنصّة معاملةً مختلفة، يُعالَج الأمر وفق المتطلبات القانونية أو متطلبات المنصّة السارية.
+
+
+٩. أمان الحساب وملكيته
+
+ترتبط الوحدات بحساب AZMA OS الذي اشتُريت أو اكتُسبت من خلاله بطريقة مشروعة.
+
+والمستخدمون مسؤولون عن الحفاظ على أمان حساباتهم وحماية بيانات تسجيل دخولهم.
+
+ويجوز لـAZMA OS اتخاذ تدابير معقولة عند وجود دليل على احتيال أو وصول غير مصرَّح به أو إساءة استعمال أو مخالفة لشروط المنصّة.
+
+
+١٠. الشفافية
+
+تسعى AZMA OS إلى عرض كلفة الوحدات السارية قبل بدء عملية الإنتاج، حيث تتوفر لدى المنصّة معلومات كافية لتحديد تلك الكلفة.
+
+وعلى المستخدم مراجعة كلفة الإنتاج المعروضة ورصيده المتاح قبل تأكيد أي عملية مدفوعة.
+
+ولا تُقدِّم AZMA OS الكلفة التقديرية على أنّها كلفة نهائية مضمونة لدى المزوّد حيث لا يمكن بعدُ تحديد كلفة الإنتاج الفعلية.
+
+
+١١. تغيير السياسة
+
+يجوز لـAZMA OS تحديث هذه السياسة عند الحاجة لتعكس تغيّرات في المنصّة أو خدماتها أو المتطلبات القانونية السارية أو الممارسات التشغيلية.
+
+وتُتاح النسخة الحالية من السياسة في قسم السياسات في AZMA OS.
+
+ويُعرَض تاريخ السريان ورقم الإصدار مع السياسة حيثما كان ذلك مناسباً.
+
+
+١٢. التواصل
+
+للأسئلة المتعلقة بالوحدات أو أرصدة الحسابات أو رسوم الإنتاج أو هذه السياسة، يمكن للمستخدمين التواصل مع:
 
 Topline Design
 
-Website:
+الموقع:
 azmaos.com
 
-Address:
-Nasr City, Cairo
+العنوان:
+مدينة نصر، القاهرة
 
-Phone:
+الهاتف:
 01069269456
 
-Email:
+البريد الإلكتروني:
 azma.os27@gmail.com
 
 
-13. IMPORTANT DISTINCTION
+١٣. تمييز مهمّ
 
-For clarity:
+للتوضيح:
 
-• Credit restoration after an eligible failed production operation is not the same as a cash refund.
+• إعادة الوحدات بعد عملية إنتاج مخفقة مؤهَّلة ليست استرداداً نقدياً.
 
-• Purchased credits do not expire merely because time has passed.
+• الوحدات المشتراة لا تنتهي صلاحيتها لمجرد مرور الوقت.
 
-• Subscription cancellation does not automatically cancel previously purchased credits.
+• إلغاء الاشتراك لا يُلغي تلقائياً الوحدات التي سبق شراؤها.
 
-• Successfully consumed production credits are not converted back into cash merely because the user is dissatisfied with the creative result.
+• الوحدات المستهلَكة في إنتاج ناجح لا تُحوَّل إلى نقد لمجرد عدم رضا المستخدم عن النتيجة الإبداعية.
 
-• Any rights that cannot legally be excluded under applicable law remain unaffected.
+• أي حقوق لا يجوز استثناؤها قانوناً تبقى غير متأثرة.
 
 
-END OF POLICY`,
+ملاحظة على الترجمة
+
+هذه الوثيقة هي النصّ العربي لسياسة الاسترداد ورصيد الوحدات، مترجمةً عن نصّها الإنجليزي الصادر بإصدار 1.1، ومحفوظاً فيها معناه الملزِم كما هو. والنصّ الإنجليزي الأصلي محفوظ في مستودع الإمبراطوريّة.
+
+
+نهاية السياسة`,
 };

@@ -21,6 +21,7 @@ import {
   estimateSubmittedJob,
 } from '../cost-engine/creative-operations-cost-worksheet';
 import { UPSCALE_FACTORS } from '../../core/sovereign-ai-integration/adapters/magic-hour-image-editing';
+import { priceNewCapability } from '../pricing/new-capability-pricing';
 import {
   CREATIVE_READINESS, TALKING_PHOTO_GENERATION_MODE, LIP_SYNC_GENERATION_MODE,
 } from '../../core/sovereign-ai-integration/adapters/magic-hour-creative-operations';
@@ -344,7 +345,7 @@ describe('9 · an estimate is of the job that will actually be submitted', () =>
   });
 });
 
-describe('10 · the 4× upscale is a capability, and not yet an offer', () => {
+describe('10 · the 4× upscale is a capability, and now a priced offer', () => {
   it('the endpoint takes it and this account’s tier allows it', () => {
     const four = UPSCALE_FACTORS.find((f) => f.factor === 4)!;
     expect(four.tierRequired).toBe('creator');
@@ -358,10 +359,29 @@ describe('10 · the 4× upscale is a capability, and not yet an offer', () => {
     expect(four.providerCredits).toBe(100);
   });
 
-  it('but no Creator price exists for it, so it is not offered', () => {
+  it('it is proven by a real job and priced by the Architect’s own uplift', () => {
+    // It read «no price exists, so it is not offered» until 2026-10-12, when a
+    // real paid job charged exactly 100 and the Architect ruled the 70%
+    // uplift. Both halves of the old refusal are now answered, and the test
+    // asserts the EVIDENCE for each rather than the refusal.
     const four = UPSCALE_FACTORS.find((f) => f.factor === 4)!;
-    expect(four.creatorPriceExists).toBe(false);
-    expect(four.productionProven).toBe(false);
+    expect(four.productionProven).toBe(true);
+    expect(four.creatorPriceExists).toBe(true);
+    const price = priceNewCapability({ capability: 'UPSCALE_4X' });
+    expect(price.ok).toBe(true);
+    if (price.ok) {
+      expect(price.providerCredits).toBe(100);
+      expect(price.chargedUnits).toBe(170);
+    }
+  });
+
+  it('and nothing is charged for it until an asset exists', () => {
+    const route = read('app/api/vault/assets/[assetId]/upscale/route.ts');
+    // Reserved before the engine, settled only after a deposit, released on
+    // every refusal — the three exits a charge can take.
+    expect(route).toContain('creditRepo.reserve(');
+    expect(route).toContain('creditRepo.settle(upscaleReservationId, upscaleChargeUnits)');
+    expect(route).toContain("creditRepo.release(upscaleReservationId, 'upscale_engine_failed')");
   });
 
   it('and 2× keeps everything it had — proven, priced, unchanged', () => {

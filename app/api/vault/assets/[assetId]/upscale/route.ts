@@ -18,6 +18,8 @@ import { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-inte
 import {
   authorizeCostMeasurement, CAMPAIGN_METADATA_KEY,
 } from '@/src/economy/cost-engine/cost-measurement-authority';
+import { priceNewCapability } from '@/src/economy/pricing/new-capability-pricing';
+import { CreatorCreditRepository } from '@/src/economy/credit-ledger/credit-ledger-repository';
 
 export const dynamic = 'force-dynamic';
 
@@ -128,6 +130,48 @@ export async function POST(
   //   acts have: the Founder, measuring what it costs, under the ceiling he
   //   approved. `authorizeCostMeasurement` reads his role out of the database
   //   itself, so this route grants nothing — it only asks.
+  // ── 4× IS PRICED NOW, AND A PRICED ACT IS A CHARGED ACT ────────────────
+  //
+  //   2× keeps exactly the behaviour it has always had, untouched by this
+  //   order. 4× is a NEW act, and it arrives with its charge wired: 100
+  //   provider credits × 1.70 = 170 units, reserved before the engine is
+  //   called and released if it refuses.
+  const creditRepo = new CreatorCreditRepository(db);
+  let upscaleReservationId: string | null = null;
+  let upscaleChargeUnits = 0;
+  if (scaleFactor === 4 && factorRecord?.creatorPriceExists) {
+    const price = priceNewCapability({ capability: 'UPSCALE_4X' });
+    if (!price.ok) {
+      return NextResponse.json(
+        { status: 'failed', reason: 'unpriceable', message: 'تعذّر تحديدُ كلفةِ هذه العمليّة.' },
+        { status: 400 },
+      );
+    }
+    upscaleChargeUnits = price.chargedUnits;
+    const balance = creditRepo.getBalance(session.creatorId);
+    if (balance.availableUnits < upscaleChargeUnits) {
+      return NextResponse.json(
+        {
+          status: 'failed', reason: 'insufficient-balance',
+          message: 'رصيدُك لا يَكفي لرفع الدقّة أربعَ مرّات.',
+          requiredUnits: upscaleChargeUnits, availableUnits: balance.availableUnits,
+        },
+        { status: 402 },
+      );
+    }
+    try {
+      upscaleReservationId = creditRepo.reserve(
+        session.creatorId, upscaleChargeUnits, `qiyamah:upscale4x:${assetId}:${Date.now()}`,
+        { capability: 'upscale-4x', gatewayId: 'magic-hour' },
+      ).reservationId;
+    } catch {
+      return NextResponse.json(
+        { status: 'failed', reason: 'insufficient-balance', message: 'تعذّر حجزُ رصيدك.' },
+        { status: 402 },
+      );
+    }
+  }
+
   let measuringCampaign: string | null = null;
   if (!factorRecord?.creatorPriceExists) {
     const measuring = (body as { costMeasurement?: unknown } | null)?.costMeasurement === true
@@ -213,6 +257,10 @@ export async function POST(
   } catch (err) {
     // The engine's own words stay server-side; they name a provider.
     console.error('[ImageUpscale] engine failed:', err);
+    // A Creator pays for an act that did not happen exactly never.
+    if (upscaleReservationId) {
+      try { creditRepo.release(upscaleReservationId, 'upscale_engine_failed'); } catch { /* non-fatal */ }
+    }
     const rejection = err instanceof ImageEditError ? err.rejection : null;
     if (rejection === 'NO_CREDIT') {
       return NextResponse.json(
@@ -274,6 +322,9 @@ export async function POST(
     // NO ORPHAN. The bytes were written a moment ago and are now unreferenced.
     try { await unlink(join(uploadsDir(), basename(persisted.assetUrl))); } catch { /* already gone */ }
 
+    if (upscaleReservationId) {
+      try { creditRepo.release(upscaleReservationId, `upscale_${outcome.rejection}`); } catch { /* non-fatal */ }
+    }
     const conflict = outcome.rejection === 'OUTPUT_IDENTICAL_TO_PARENT';
     return NextResponse.json(
       { status: 'failed', reason: outcome.rejection, message: mutationRejectionSpokenAr(outcome.rejection) },
@@ -281,10 +332,18 @@ export async function POST(
     );
   }
 
+  // Settled only now, when an asset exists and the act is real.
+  if (upscaleReservationId) {
+    try { creditRepo.settle(upscaleReservationId, upscaleChargeUnits); } catch { /* non-fatal */ }
+  }
+
   // The sovereign asset, never a storage path. Article 6.
   return NextResponse.json({
     status: 'succeeded',
     asset: outcome.asset,
+    // What this act actually took from the Balance. Zero means «nothing was
+    // taken», which is the truth for 2× today — never a hidden charge.
+    chargedUnits: upscaleChargeUnits,
     lineage: {
       parentAssetId: outcome.asset.parentAssetId,
       rootAssetId: outcome.asset.rootAssetId,
