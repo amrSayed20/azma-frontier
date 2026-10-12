@@ -28,11 +28,29 @@ it('the ones that cannot travel are counted, not forgotten', () => {
   for (const path of POLICIES_NOT_YET_PUBLISHABLE) expect(path).toMatch(/^docs\//);
 });
 
-it('the Founder’s text is transcribed, not edited', () => {
+it('the Founder’s text is now SERVED IN ARABIC, by his own order', () => {
+  // ── WHY THIS ASSERTION CHANGED, 2026-10-12 ────────────────────────────
+  //
+  //   It asserted that the English text was transcribed verbatim — including
+  //   a flaw it deliberately preserved rather than quietly fix: «remains
+  //   محفوظًا in the account», one Arabic word stranded inside an English
+  //   sentence. Keeping it was right while the rule was «transcribe, never
+  //   edit».
+  //
+  //   The Chief Architect then ordered this policy translated and published in
+  //   Arabic with its binding meaning preserved. So the rule for THIS document
+  //   is no longer transcription — and the stranded word is resolved by the
+  //   translation rather than by an edit nobody authorised.
+  //
+  //   What does NOT change: the Empire's own identity block is never
+  //   translated, and the effective date is still his alone to set.
+  expect(policy.language).toBe('ar');
   expect(policy.body).toContain('Topline Design');
-  // Two faults are HIS to fix: an Arabic word inside an English sentence, and
-  // an effective date that is still a placeholder.
-  expect(policy.body).toContain('remains محفوظًا in the account');
+  expect(policy.body).toContain('azma.os27@gmail.com');
+  expect(policy.body).toContain('01069269456');
+  // The translation says what it is, so nobody mistakes it for a new policy.
+  expect(policy.body).toContain('مترجمةً عن نصّها الإنجليزي');
+  // Still unset, still his.
   expect(policy.effectiveDate).toBeNull();
 });
 
