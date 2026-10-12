@@ -30,6 +30,25 @@ export function resolveAssetPath(secureStorageUri: string): string {
   if (secureStorageUri.startsWith('/generated-assets/')) {
     return join(generatedBase, secureStorageUri.slice('/generated-assets/'.length));
   }
+  // ── AND THE FILMS THE EMPIRE RENDERS ITSELF ───────────────────────
+  //
+  //   MEASURED ON PRODUCTION 2026-10-12, by the acceptance campaign's own
+  //   first lip-sync job: a Creator's finished film is addressed
+  //   «/renders/op_render_….mp4», this resolver had never heard of that prefix,
+  //   and the legacy fallback below sent it to `public/renders/…` where no
+  //   file has ever been written. The runner reported «an input's bytes are
+  //   not on the server» about an asset that was sitting on the server — so
+  //   NO creative operation, edit, upscale or animation could ever be
+  //   performed on a film the Empire itself produced.
+  //
+  //   The rule is the writer's own, not a guess:
+  //   `cinematic-ffmpeg-encoder.ts` → `rendersDir()` → `$UPLOADS_DIR/renders`.
+  if (secureStorageUri.startsWith('/renders/')) {
+    const rendersBase = uploadsDir
+      ? join(uploadsDir, 'renders')
+      : join(process.cwd(), 'public', 'renders');
+    return join(rendersBase, secureStorageUri.slice('/renders/'.length));
+  }
   // Unknown URI scheme — legacy fallback, unchanged from the encoder's copy.
   return join(process.cwd(), 'public', secureStorageUri.replace(/^\//, ''));
 }
