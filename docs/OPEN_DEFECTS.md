@@ -245,3 +245,29 @@ Not caused by, and not touched by, the closure it surfaced in.
 sovereign in-process providers only (Scripture, Hadith, Tafsir, the Library),
 or attach a fixture provider — the origin stamp is decided before any
 provider is consulted.
+
+---
+
+## OD-0?? — a background organ signal answers 401 on every page
+
+**Recorded:** 2026-10-12, by the QIYAMAH acceptance walk.
+**Status:** OPEN · pre-existing · not a blocker for any operation.
+
+Every page load posts a Nervous System signal from the browser and gets refused:
+
+    POST /api/sovereign/nervous-system/circulate  ->  401
+
+`circulateFromClient()` is fire-and-forget by design and absorbs the failure, so
+nothing breaks and no Creator is told anything. What it does do is write a red
+error into every Creator's console on every page, which is where a REAL defect
+would otherwise be noticed.
+
+**Measured:** desktop and mobile passes of `qiyamah-acceptance-walk.mjs` against
+release `20261012-145654-864a104`. It was the only console error in fifty checks.
+
+**What is not known:** whether the route is meant to accept an unauthenticated
+signal (and so should answer 204), or whether the browser should not be sending
+one at all before a session exists. Both are the Chief Architect's to rule.
+
+**Why it is recorded and not fixed:** it belongs to the Nervous System, not to
+Qiyamah, and this campaign had no authorization to touch it.
