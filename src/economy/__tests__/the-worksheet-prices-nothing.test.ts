@@ -161,7 +161,12 @@ describe('4 · no pricing authority reads it', () => {
     const foreign = out.split('\n').map((l) => l.trim()).filter((l) =>
       l.length > 0
       && l !== 'src/economy/cost-engine/creative-operations-cost-worksheet.ts'
-      && !l.startsWith('src/economy/__tests__/'));
+      && !l.startsWith('src/economy/__tests__/')
+      // THE ONE READER OUTSIDE, AND IT PRICES NOTHING: the Founder's cost
+      // measurement door reads `estimateSubmittedJob` to BOUND a job against
+      // the approved ceiling before it runs. It quotes nobody and charges
+      // nobody — and a ceiling computed from no estimate is not a ceiling.
+      && l !== 'app/api/founder/cost-measurement/[operation]/route.ts');
     expect(foreign).toEqual([]);
   });
 

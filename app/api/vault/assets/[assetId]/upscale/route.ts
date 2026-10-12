@@ -15,6 +15,9 @@ import {
   type UpscaleScaleFactor,
 } from '@/src/core/sovereign-ai-integration/adapters/magic-hour-image-editing';
 import { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
+import {
+  authorizeCostMeasurement, CAMPAIGN_METADATA_KEY,
+} from '@/src/economy/cost-engine/cost-measurement-authority';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,6 +99,9 @@ export async function POST(
     );
   }
 
+  // ── The asset, and the right to build on it ──────────────────────────────
+  const db = getDb();
+
   // ── WHICH FACTOR, AND WHETHER IT MAY BE SOLD YET ─────────────────────────
   //
   //   4× is a real capability: the endpoint takes `scale_factor: 4`, the
@@ -118,20 +124,33 @@ export async function POST(
       { status: 400 },
     );
   }
+  //   And there is exactly ONE way past it, the same one the four creative
+  //   acts have: the Founder, measuring what it costs, under the ceiling he
+  //   approved. `authorizeCostMeasurement` reads his role out of the database
+  //   itself, so this route grants nothing — it only asks.
+  let measuringCampaign: string | null = null;
   if (!factorRecord?.creatorPriceExists) {
-    return NextResponse.json(
-      {
-        status: 'failed',
-        reason: 'not-priced',
-        message: 'رفعُ الدقّة أربعَ مرّاتٍ مبنيٌّ ولم يُسعَّر لك بعد. ولن يُنفَّذ قبل أن '
-          + 'تَعرف ما يُكلّفك بالضبط.',
-      },
-      { status: 409 },
-    );
+    const measuring = (body as { costMeasurement?: unknown } | null)?.costMeasurement === true
+      ? authorizeCostMeasurement(db, {
+          creatorId: session.creatorId,
+          expectedCredits: factorRecord?.providerCredits ?? null,
+        })
+      : null;
+    if (!measuring?.ok) {
+      return NextResponse.json(
+        {
+          status: 'failed',
+          reason: 'not-priced',
+          message: 'رفعُ الدقّة أربعَ مرّاتٍ مبنيٌّ ولم يُسعَّر لك بعد. ولن يُنفَّذ قبل أن '
+            + 'تَعرف ما يُكلّفك بالضبط.',
+          ...(measuring && !measuring.ok ? { measurementRefusal: measuring.refusal } : {}),
+        },
+        { status: 409 },
+      );
+    }
+    measuringCampaign = measuring.campaignId;
   }
 
-  // ── The asset, and the right to build on it ──────────────────────────────
-  const db = getDb();
   const parent = getVaultAsset(db, assetId);
   if (!parent || parent.subscriberTenantId !== session.creatorId) {
     // Absent and not-yours answer alike, so ownership cannot be probed.
@@ -234,9 +253,12 @@ export async function POST(
     derivation: DerivationKind.MODIFIED,
     // The lineage states the operation plainly, so MODIFIED never has to be
     // interpreted as «the subject changed» when it did not.
-    instructionAr: `رفع الدقّة ${UPSCALE_SCALE_FACTOR}× مع الحفاظ على الأصل دون إضافة تفاصيل`,
+    instructionAr: `رفع الدقّة ${scaleFactor}× مع الحفاظ على الأصل دون إضافة تفاصيل`,
     operationId: persisted.assetId,
     actorId: session.creatorId,
+    ...(measuringCampaign === null
+      ? {}
+      : { extraMetadata: { [CAMPAIGN_METADATA_KEY]: measuringCampaign } }),
     providerProvenance: {
       providerId: produced.providerId,
       providerModelId: produced.providerModelId,

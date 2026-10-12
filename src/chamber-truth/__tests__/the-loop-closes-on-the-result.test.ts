@@ -109,7 +109,10 @@ describe('3 · the route keeps every guard the edit route keeps', () => {
 
   it('records the operation truthfully in the lineage', () => {
     expect(ROUTE).toContain('derivation: DerivationKind.MODIFIED');
-    expect(ROUTE).toContain('instructionAr: `رفع الدقّة ${UPSCALE_SCALE_FACTOR}×');
+    // It named the CONSTANT until 2026-10-12, when the factor became a choice.
+    // A lineage that says «2×» about a 4× job is the same class of untruth the
+    // constant was there to prevent — so it names what actually ran.
+    expect(ROUTE).toContain('instructionAr: `رفع الدقّة ${scaleFactor}×');
   });
 
   it('names no provider to the Creator', () => {
