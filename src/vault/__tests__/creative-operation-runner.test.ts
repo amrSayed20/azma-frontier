@@ -459,3 +459,62 @@ describe('6 · face swap refuses an undeclared request, wherever it came from', 
     expect(src).not.toMatch(/acknowledged:\s*true/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7 · A FILM IS A FILM, WHATEVER ITS PARENT WAS
+//
+//   FOUND ON PRODUCTION 2026-10-12, by trying to USE a talking photo: the act
+//   deposits an MP4, and the Vault had recorded it as VISUAL — because
+//   `deriveAsset` inherits the parent's family when the caller states none,
+//   and a talking photo's parent is a photograph.
+//
+//   The consequence was not cosmetic. The clip appeared among the Creator's
+//   pictures, and lip sync and face swap REFUSED it as a target, because they
+//   require MOTION. The chamber could produce a film it could not then use.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('7 · the output states its own family', () => {
+  it('a talking photo is deposited as MOTION, not as its parent’s VISUAL', async () => {
+    mockStateOf.mockReturnValue({ ...open, nameAr: 'صورة ناطقة' });
+    mockGetVaultAsset.mockImplementation((_db: unknown, id: string) =>
+      id === 'asset_target' ? asset() : asset({ assetId: 'a2', capabilityTarget: 'AUDIO' }));
+    mockTalking.mockResolvedValue({
+      bytes: Buffer.from([4, 4]), mimeType: 'video/mp4', creditsCharged: 48,
+      providerId: 'magic-hour-talking-photo', providerJobId: 'j-tp',
+    });
+    mockDeriveAsset.mockResolvedValue({ ok: true, asset: { assetId: 'out', secureStorageUri: '/u/o.mp4' } });
+
+    await runCreativeOperation(DB, {
+      operation: 'talking-photo', creatorId: OWNER, targetAssetId: 'asset_target',
+      secondAssetId: 'a2', durationSeconds: 3,
+    });
+    expect(mockDeriveAsset.mock.calls[0][0].outputCapabilityTarget).toBe('MOTION');
+  });
+
+  it('background removal stays VISUAL — it returns a picture', async () => {
+    mockStateOf.mockReturnValue(open);
+    mockGetVaultAsset.mockReturnValue(asset());
+    mockRemoveBg.mockResolvedValue({
+      bytes: Buffer.from([1]), mimeType: 'image/png', creditsCharged: 5,
+      providerId: 'magic-hour-background-remover', providerJobId: 'j-bg',
+    });
+    mockDeriveAsset.mockResolvedValue({ ok: true, asset: { assetId: 'out', secureStorageUri: '/u/o.png' } });
+
+    await runCreativeOperation(DB, {
+      operation: 'background-removal', creatorId: OWNER, targetAssetId: 'asset_target',
+    });
+    expect(mockDeriveAsset.mock.calls[0][0].outputCapabilityTarget).toBe('VISUAL');
+  });
+
+  it('every act declares a family, so none can inherit one by accident', () => {
+    for (const shape of Object.values(CREATIVE_INPUT_SHAPE)) {
+      expect(['VISUAL', 'MOTION']).toContain(shape.outputCapability);
+    }
+  });
+
+  it('and an act that returns an .mp4 never calls itself VISUAL', () => {
+    for (const shape of Object.values(CREATIVE_INPUT_SHAPE)) {
+      if (shape.outputExtension === '.mp4') expect(shape.outputCapability).toBe('MOTION');
+    }
+  });
+});

@@ -72,25 +72,37 @@ export interface CreativeInputShape {
   /** What the produced asset is, and therefore how it is deposited. */
   readonly outputDerivation: DerivationKind;
   readonly outputExtension: '.png' | '.jpg' | '.mp4';
+  /**
+   * What the OUTPUT is, which is not always what its parent was.
+   *
+   * MEASURED ON PRODUCTION 2026-10-12: a talking photo deposited an MP4 and
+   * the Vault recorded it as VISUAL, because `deriveAsset` inherits the
+   * parent's family when the caller states none — and the parent is a
+   * photograph. The clip then appeared in picture pickers, and lip sync and
+   * face swap REFUSED it as a target, because they require MOTION.
+   *
+   * The output's own family is a fact about the output. It is stated here.
+   */
+  readonly outputCapability: 'VISUAL' | 'MOTION';
 }
 
 export const CREATIVE_INPUT_SHAPE: Readonly<Record<CreativeOperationId, CreativeInputShape>> = {
   'background-removal': {
     targetFamily: AssetFamily.MEDIA,
     // PNG, always: the whole point is an alpha channel, and JPEG has none.
-    outputDerivation: DerivationKind.MODIFIED, outputExtension: '.png',
+    outputDerivation: DerivationKind.MODIFIED, outputExtension: '.png', outputCapability: 'VISUAL',
   },
   'talking-photo': {
     targetFamily: AssetFamily.MEDIA, secondFamily: AssetFamily.MEDIA,
-    outputDerivation: DerivationKind.ANIMATED, outputExtension: '.mp4',
+    outputDerivation: DerivationKind.ANIMATED, outputExtension: '.mp4', outputCapability: 'MOTION',
   },
   'lip-sync': {
     targetFamily: AssetFamily.MEDIA, secondFamily: AssetFamily.MEDIA,
-    outputDerivation: DerivationKind.MODIFIED, outputExtension: '.mp4',
+    outputDerivation: DerivationKind.MODIFIED, outputExtension: '.mp4', outputCapability: 'MOTION',
   },
   'face-swap': {
     targetFamily: AssetFamily.MEDIA, secondFamily: AssetFamily.MEDIA,
-    outputDerivation: DerivationKind.MODIFIED, outputExtension: '.mp4',
+    outputDerivation: DerivationKind.MODIFIED, outputExtension: '.mp4', outputCapability: 'MOTION',
   },
 };
 
@@ -354,6 +366,9 @@ export async function runCreativeOperation(
     // Article 3.1: a change inside an asset belongs to Qiyamah.
     chamber: SourceChamber.QIYAMAH,
     derivation: shape.outputDerivation,
+    // The output's OWN family — never the parent's by default. A talking
+    // photo's parent is a photograph and its output is a film.
+    outputCapabilityTarget: shape.outputCapability as never,
     // No creative brief exists for these four; the inputs ARE the instruction.
     instructionAr: state.nameAr,
     operationId: persisted.assetId,
