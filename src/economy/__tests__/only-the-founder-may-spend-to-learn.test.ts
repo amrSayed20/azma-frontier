@@ -174,7 +174,14 @@ describe('4 · the door is the Founder’s, and holds nothing of its own', () =>
   it('it performs no ownership check and no provider call of its own', () => {
     const code = ROUTE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(code).not.toMatch(/getVaultAsset|ViaProvider|deriveAsset|fetch\(/);
-    expect(code).toContain('runCreativeOperation(db, {');
+    // It submits a DURABLE JOB rather than holding the connection — the
+    // campaign itself proved a long job outlives its request. The job service
+    // calls the one runner, with every guard in the same order.
+    expect(code).toContain('submitCreativeJob(db, {');
+  });
+
+  it('and the campaign pays, never a Creator’s balance', () => {
+    expect(ROUTE).toContain('skipBalance: true');
   });
 
   it('it never waives the likeness declaration', () => {
@@ -183,8 +190,11 @@ describe('4 · the door is the Founder’s, and holds nothing of its own', () =>
     expect(code).not.toContain('acknowledged: true');
   });
 
-  it('it reports the charge as the provider gave it, and never as zero', () => {
-    expect(ROUTE).toContain('chargedCredits: outcome.providerCreditsCharged');
+  it('it reports no charge of its own — the job row does, when the job ends', () => {
+    // The door answers 202 with a job id. Inventing a charge at submission,
+    // before the provider has billed anything, is the fabrication this whole
+    // chamber is built against.
+    expect(ROUTE).toContain("status: 'accepted'");
     expect(ROUTE).not.toMatch(/providerCreditsCharged\s*\?\?\s*0/);
   });
 });

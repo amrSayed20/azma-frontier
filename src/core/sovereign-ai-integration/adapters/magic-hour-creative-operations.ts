@@ -625,6 +625,8 @@ export interface CreativeOperationReadiness {
   readonly productionProven: boolean;
   /** A provider cost is established from evidence. */
   readonly costBasisVerified: boolean;
+  /** The paid job that established it. Null while nothing has. */
+  readonly costMeasuredBy: { readonly providerJobId: string; readonly on: string } | null;
   /** A policy decision blocks it, independent of any technical fact. */
   readonly policyBlocked: boolean;
   /**
@@ -642,25 +644,40 @@ export const CREATIVE_READINESS: readonly CreativeOperationReadiness[] = [
   {
     operation: 'background-removal', endpoint: CREATIVE_ENDPOINT['background-removal'],
     routeProbed: true, credentialAccepted: true,
-    productionProven: false, costBasisVerified: false, policyBlocked: false,
+    // PROVEN BY A REAL PAID JOB, 2026-10-12 — the provider's own
+    // credits_charged, against a balance that moved by exactly that much.
+    productionProven: true, costBasisVerified: true,
+    costMeasuredBy: { providerJobId: 'cmv59080s0582l801e5hqmspr', on: '2026-10-12' },
+    policyBlocked: false,
     requiresLikenessAcknowledgment: requiresLikenessAcknowledgment('background-removal'),
   },
   {
     operation: 'lip-sync', endpoint: CREATIVE_ENDPOINT['lip-sync'],
     routeProbed: true, credentialAccepted: true,
-    productionProven: false, costBasisVerified: false, policyBlocked: false,
+    // PROVEN BY A REAL PAID JOB, 2026-10-12 — the provider's own
+    // credits_charged, against a balance that moved by exactly that much.
+    productionProven: true, costBasisVerified: true,
+    costMeasuredBy: { providerJobId: 'cmv59ivor01zemd01s1tp7g60', on: '2026-10-12' },
+    policyBlocked: false,
     requiresLikenessAcknowledgment: requiresLikenessAcknowledgment('lip-sync'),
   },
   {
     operation: 'talking-photo', endpoint: CREATIVE_ENDPOINT['talking-photo'],
     routeProbed: true, credentialAccepted: true,
-    productionProven: false, costBasisVerified: false, policyBlocked: false,
+    // PROVEN BY A REAL PAID JOB, 2026-10-12 — the provider's own
+    // credits_charged, against a balance that moved by exactly that much.
+    productionProven: true, costBasisVerified: true,
+    costMeasuredBy: { providerJobId: 'cmv59prfj092po50107ra2f2j', on: '2026-10-12' },
+    policyBlocked: false,
     requiresLikenessAcknowledgment: requiresLikenessAcknowledgment('talking-photo'),
   },
   {
     operation: 'face-swap', endpoint: CREATIVE_ENDPOINT['face-swap'],
     routeProbed: true, credentialAccepted: true,
-    productionProven: false, costBasisVerified: false,
+    // PROVEN BY A REAL PAID JOB, 2026-10-12 — the provider's own
+    // credits_charged, against a balance that moved by exactly that much.
+    productionProven: true, costBasisVerified: true,
+    costMeasuredBy: { providerJobId: 'cmv5bvh7u0b8mmn016j1kszpv', on: '2026-10-12' },
     // NO LONGER BLOCKED BY AN ABSENT SAFEGUARD, and still shut.
     //
     //   On 2026-10-11 this read `policyBlocked: true` because no likeness

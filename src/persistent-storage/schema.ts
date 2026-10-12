@@ -679,6 +679,44 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`,
+
+  // ── A CREATIVE JOB THAT OUTLIVES THE REQUEST THAT STARTED IT ────────
+  //
+  //   MEASURED ON PRODUCTION 2026-10-12: two of nine paid jobs returned
+  //   nothing to the caller — one HTTP 524 at the edge's hundred-second
+  //   limit, one dead connection after fifty-seven minutes — WHILE THE SERVER
+  //   FINISHED AND DEPOSITED BOTH. A Creator would have read failure where a
+  //   charge and an asset both existed.
+  //
+  //   So submission and completion stop being one request. This table is the
+  //   job: it holds the provider's own job id, the state, the charge, and the
+  //   asset — so a Creator who closes the tab, loses the network, or polls
+  //   twice reads the SAME truth rather than starting a second paid job.
+  `CREATE TABLE IF NOT EXISTS creative_jobs (
+    job_id TEXT PRIMARY KEY,
+    creator_id TEXT NOT NULL,
+    operation TEXT NOT NULL,
+    target_asset_id TEXT NOT NULL,
+    second_asset_id TEXT,
+    duration_seconds REAL,
+    source_fps REAL,
+    -- One running job per identical request. A retry finds this and waits.
+    idempotency_key TEXT NOT NULL,
+    state TEXT NOT NULL,
+    -- The process that owns the work. A job left PROCESSING by a process that
+    -- is gone is UNKNOWN, not FAILED and not running: nobody can say.
+    worker_boot_id TEXT,
+    provider_job_id TEXT,
+    provider_credits_charged INTEGER,
+    charged_units INTEGER,
+    reservation_id TEXT,
+    output_asset_id TEXT,
+    error_reason TEXT,
+    error_detail TEXT,
+    created_at_ms INTEGER NOT NULL,
+    updated_at_ms INTEGER NOT NULL,
+    finished_at_ms INTEGER
+  )`,
 ];
 
 /**
@@ -1004,4 +1042,7 @@ export const INDEX_STATEMENTS: readonly string[] = [
   'CREATE INDEX IF NOT EXISTS idx_cloud_accounts_creator ON cloud_accounts(creator_id)',
   'CREATE INDEX IF NOT EXISTS idx_public_links_owner ON sovereign_public_links(owner_id)',
   'CREATE INDEX IF NOT EXISTS idx_public_links_work ON sovereign_public_links(final_work_asset_id)',
+  // A Creator reads their own jobs, and a retry looks for a live one by key.
+  'CREATE INDEX IF NOT EXISTS idx_creative_jobs_creator ON creative_jobs(creator_id, created_at_ms)',
+  'CREATE INDEX IF NOT EXISTS idx_creative_jobs_key ON creative_jobs(idempotency_key, state)',
 ];

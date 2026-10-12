@@ -69,18 +69,34 @@ describe('1 · every figure names its source', () => {
 });
 
 describe('2 · DOCUMENTED is not MEASURED, and only MEASURED may open a door', () => {
-  it('not one rate is measured from a real charge', () => {
+  it('the WORKSHEET still records documented rates — the measured ones live beside them', () => {
+    // This worksheet was written before any of them was billed. Its rates are
+    // the provider's published ones, and it still says so. What the campaign
+    // measured is in `new-capability-pricing.ts`, with the job ids, and the
+    // two are deliberately not merged: a publisher's promise and our own
+    // invoice are different kinds of fact.
     for (const r of CREATIVE_COST_WORKSHEET) {
-      expect(r.providerEvidence).not.toBe('measured-from-a-real-charge');
+      expect(r.providerEvidence).toBe('provider-documented');
     }
-    for (const op of FOUR) expect(costIsMeasured(op)).toBe(false);
   });
 
-  it('the catalog gate still reads the readiness record, and it is still shut', () => {
+  it('the gate opened only where a REAL PAID JOB proved the cost', () => {
+    // It asserted «still shut» until 2026-10-12, when nine paid jobs measured
+    // what these four actually charge. The rule never was «stay shut»; it was
+    // «open on measurement and nothing else» — so what is asserted now is the
+    // EVIDENCE, by provider job id, on every row that opened.
     for (const op of FOUR) {
       const r = CREATIVE_READINESS.find((x) => x.operation === op)!;
-      expect(r.costBasisVerified).toBe(false);
-      expect(r.productionProven).toBe(false);
+      expect(r.costBasisVerified).toBe(true);
+      expect(r.productionProven).toBe(true);
+      expect(r.costMeasuredBy?.providerJobId).toMatch(/^cm[a-z0-9]+$/);
+      expect(r.costMeasuredBy?.on).toBe('2026-10-12');
+    }
+  });
+
+  it('and a row that opens without naming the job that paid for it is impossible', () => {
+    for (const r of CREATIVE_READINESS) {
+      if (r.costBasisVerified) expect(r.costMeasuredBy).not.toBeNull();
     }
   });
 

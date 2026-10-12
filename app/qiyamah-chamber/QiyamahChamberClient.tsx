@@ -1335,7 +1335,7 @@ export function QiyamahChamberClient({
    */
   async function runCreativeAct(
     payload: CreativeRunPayload,
-  ): Promise<{ ok: boolean; messageAr?: string }> {
+  ): Promise<{ ok: true; jobId: string } | { ok: false; messageAr?: string }> {
     try {
       const res = await fetch(
         `/api/vault/assets/${encodeURIComponent(payload.targetAssetId)}/creative/${payload.operation}`,
@@ -1350,16 +1350,52 @@ export function QiyamahChamberClient({
         },
       );
       const data = await res.json().catch(() => null) as
-        { status?: string; message?: string; asset?: { assetId?: string } } | null;
-      if (!res.ok || data?.status !== 'succeeded') {
+        { status?: string; message?: string; jobId?: string } | null;
+      // 202 and a job id. Not a result — the result is what the poll says.
+      if (!res.ok || data?.status !== 'accepted' || typeof data.jobId !== 'string') {
         return { ok: false, messageAr: typeof data?.message === 'string' ? data.message : undefined };
       }
-      // A deposit happened, so the Creator's own lists must learn it. Through
-      // the one reader the chamber already uses — never a second list.
-      fetchUploadedItems();
-      return { ok: true };
+      return { ok: true, jobId: data.jobId };
     } catch {
       return { ok: false, messageAr: 'تعذّر الوصولُ إلى الخادم. أعِد المحاولة.' };
+    }
+  }
+
+  /** What the server says this exact request will take from the Balance. */
+  async function quoteCreativeAct(
+    operation: string, targetAssetId: string, durationSeconds?: number,
+  ) {
+    try {
+      const q = new URLSearchParams();
+      if (durationSeconds) q.set('durationSeconds', String(durationSeconds));
+      const res = await fetch(
+        `/api/vault/assets/${encodeURIComponent(targetAssetId)}/creative/${operation}?${q.toString()}`,
+      );
+      const data = await res.json().catch(() => null) as
+        { status?: string; chargedUnits?: number; basisAr?: string; quantity?: number } | null;
+      if (!res.ok || data?.status !== 'succeeded' || typeof data.chargedUnits !== 'number') return null;
+      return { chargedUnits: data.chargedUnits, basisAr: data.basisAr ?? '', quantity: data.quantity ?? 1 };
+    } catch {
+      return null;
+    }
+  }
+
+  /** One job's actual state. The Creator's answer to «what happened?». */
+  async function pollCreativeJob(jobId: string) {
+    try {
+      const res = await fetch(`/api/qiyamah/jobs/${encodeURIComponent(jobId)}`);
+      const data = await res.json().catch(() => null) as { status?: string; job?: unknown } | null;
+      if (!res.ok || data?.status !== 'succeeded' || !data.job) return null;
+      const job = data.job as {
+        jobId: string; state: 'PROCESSING' | 'DEPOSITED' | 'FAILED' | 'CANCELLED' | 'UNKNOWN';
+        stateAr: string; assetId: string | null; chargedUnits: number | null;
+      };
+      // A deposit means the Creator's own lists must learn it, through the one
+      // reader this chamber already uses.
+      if (job.state === 'DEPOSITED') fetchUploadedItems();
+      return job;
+    } catch {
+      return null;
     }
   }
 
@@ -1904,6 +1940,9 @@ export function QiyamahChamberClient({
                 seconds={creativeChoices.seconds}
                 onBack={returnToCenter}
                 onRun={runCreativeAct}
+                onQuote={({ targetAssetId, durationSeconds }) =>
+                  quoteCreativeAct(creativeAct.id, targetAssetId, durationSeconds)}
+                onPoll={pollCreativeJob}
               />
             </div>
           )}

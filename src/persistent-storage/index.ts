@@ -14,6 +14,12 @@
 export { createDatabase, getDb, resetDbSingletonForTests } from './db';
 
 export type { CreatorRecord, NewCreator, CreatorRole } from './creator-repository';
+export {
+  claimJob, getJob, readJobTruthfully, jobsOfCreator, liveJobByKey,
+  recordProviderJob, markDeposited, markFailed, markCancelled, markUnknown,
+  idempotencyKeyFor, WORKER_BOOT_ID, TERMINAL_STATES,
+  type CreativeJobRow, type CreativeJobState,
+} from './creative-job-repository';
 export { createCreator, getCreator, getCreatorByEmail, updateCreatorPreferredLocale, setVaultPinHash, getVaultPinHash } from './creator-repository';
 
 export type { SessionRecord } from './session-repository';

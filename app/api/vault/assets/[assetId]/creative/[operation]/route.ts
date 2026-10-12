@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/src/authentication';
 import { getDb } from '@/src/persistent-storage';
-import {
-  runCreativeOperation,
-  CREATIVE_INPUT_SHAPE,
-  type CreativeRunRejection,
-} from '@/src/vault/creative-operation-runner';
+import { CREATIVE_INPUT_SHAPE } from '@/src/vault/creative-operation-runner';
 import type { CreativeOperationId } from '@/src/core/sovereign-ai-integration/adapters/magic-hour-creative-operations';
+import {
+  submitCreativeJob, priceSubmission, resolveSourceFps,
+} from '@/src/vault/creative-job-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,41 +14,26 @@ const SESSION_COOKIE = 'azma_session';
 /**
  * POST /api/vault/assets/[assetId]/creative/[operation]
  *
- * ─── ONE DOOR FOR THE FOUR, FOR THE REASON THE RUNNER RECORDS ───────────────
+ * ─── IT STARTS A JOB. IT NO LONGER IS ONE ───────────────────────────────────
  *
- *   Four routes would be four copies of one security-critical sequence. The
- *   operation is a path segment, validated against the runner's own declared
- *   shapes — so an unknown segment is refused here and can never reach the
- *   provider.
+ *   MEASURED 2026-10-12: two of nine paid jobs returned nothing to the caller
+ *   — one cut at the edge's hundred-second limit, one dead after fifty-seven
+ *   minutes — while the server finished, was charged, and deposited both. A
+ *   Creator watching either would have been told «failed» about work they had
+ *   paid for and which had succeeded.
  *
- * ─── AND IT GRANTS NOTHING ──────────────────────────────────────────────────
+ *   So this door now answers in milliseconds with a durable job id, and
+ *   `GET /api/qiyamah/jobs/[jobId]` answers the question «what happened?».
+ *   Closing the tab costs nothing; pressing twice costs nothing, because the
+ *   second press finds the first job and is handed it back.
  *
- *   It performs the session check and hands everything else to the runner,
- *   which asks the operation catalog whether the act may run at all. The route
- *   holds no availability logic of its own: a door that could decide for
- *   itself would be the second authority this chamber spent three packages
- *   removing.
+ * ─── AND IT STILL GRANTS NOTHING ────────────────────────────────────────────
  *
- *   Today every one of the four is refused — no verified cost basis exists for
- *   any of them. The refusal carries the catalog's own Arabic reason.
- *
- *   Face swap carries a second, independent requirement: the Creator's own
- *   likeness declaration. This door does not enforce it — the runner does,
- *   below every door — so a direct POST, a script, or a future route cannot
- *   reach the provider by skipping this file.
+ *   Session, catalog verdict, ownership, family, derivability and the likeness
+ *   declaration are all checked where they always were — inside
+ *   `runCreativeOperation`, in that order. This file validates a shape, prices
+ *   the request, and hands it on.
  */
-
-const HTTP_FOR: Readonly<Record<CreativeRunRejection, number>> = {
-  unavailable: 409,
-  'acknowledgment-required': 403,
-  'not-found': 404,
-  'wrong-family': 400,
-  'not-derivable': 409,
-  'duration-required': 400,
-  'source-unreadable': 500,
-  'engine-refused': 502,
-  'output-rejected': 409,
-};
 
 function isCreativeOperation(value: string): value is CreativeOperationId {
   return Object.prototype.hasOwnProperty.call(CREATIVE_INPUT_SHAPE, value);
@@ -79,40 +63,110 @@ export async function POST(
   let body: unknown = null;
   try { body = await request.json(); } catch { body = null; }
   const b = (body ?? {}) as {
-    secondAssetId?: unknown; durationSeconds?: unknown; likenessAcknowledgment?: unknown;
+    secondAssetId?: unknown; durationSeconds?: unknown;
+    sourceFps?: unknown; likenessAcknowledgment?: unknown;
   };
 
-  const outcome = await runCreativeOperation(getDb(), {
+  const outcome = await submitCreativeJob(getDb(), {
     operation,
     creatorId: session.creatorId,
     targetAssetId: assetId,
     secondAssetId: typeof b.secondAssetId === 'string' ? b.secondAssetId : undefined,
     durationSeconds: typeof b.durationSeconds === 'number' ? b.durationSeconds : undefined,
-    // Handed on EXACTLY as it arrived — not normalised, not coerced to a
-    // boolean, not defaulted when absent. A door that tidied this value would
-    // be completing a declaration on the Creator's behalf, and an absent
-    // declaration must stay absent all the way to the gate that refuses it.
+    sourceFps: typeof b.sourceFps === 'number' ? b.sourceFps : undefined,
+    // Handed on EXACTLY as it arrived — never normalised, never defaulted.
     likenessAcknowledgment: b.likenessAcknowledgment,
   });
 
   if (!outcome.ok) {
-    console.error('[creative]', operation, outcome.rejection, outcome.detailEn);
+    const status = outcome.reason === 'insufficient-balance' ? 402
+      : outcome.reason === 'unpriceable' ? 400 : 409;
+    console.error('[creative/submit]', operation, outcome.reason, outcome.detailEn);
     return NextResponse.json(
-      { status: 'failed', reason: outcome.rejection, message: outcome.messageAr },
-      { status: HTTP_FOR[outcome.rejection] },
+      {
+        status: 'failed', reason: outcome.reason, message: outcome.messageAr,
+        ...(outcome.requiredUnits === undefined ? {} : {
+          requiredUnits: outcome.requiredUnits, availableUnits: outcome.availableUnits,
+        }),
+      },
+      { status },
     );
   }
 
-  // The asset the Vault deposited — never an id this route minted.
+  return NextResponse.json({
+    status: 'accepted',
+    jobId: outcome.jobId,
+    // False means: a job of this exact shape was already running, and this is
+    // it. The Creator is not charged twice for pressing twice.
+    startedNow: outcome.claimed,
+    chargedUnits: outcome.chargedUnits,
+    state: outcome.state,
+    pollPath: `/api/qiyamah/jobs/${outcome.jobId}`,
+  }, { status: 202 });
+}
+
+/**
+ * GET — what this act will cost, before anything is spent.
+ *
+ * The same price the submission will use, from the same function. A quote a
+ * Creator reads and a charge they pay that came from two places is how the two
+ * drift apart.
+ */
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ assetId: string; operation: string }> },
+) {
+  const { assetId, operation } = await context.params;
+  const session = verifySession(request.cookies.get(SESSION_COOKIE)?.value ?? '');
+  if (!session) {
+    return NextResponse.json({ status: 'failed', reason: 'unauthorized' }, { status: 401 });
+  }
+  if (!isCreativeOperation(operation)) {
+    return NextResponse.json({ status: 'failed', reason: 'unknown-operation' }, { status: 404 });
+  }
+
+  const url = new URL(request.url);
+  const seconds = Number(url.searchParams.get('durationSeconds'));
+  const fps = Number(url.searchParams.get('sourceFps'));
+
+  const base = {
+    operation, creatorId: session.creatorId, targetAssetId: assetId,
+    durationSeconds: Number.isFinite(seconds) && seconds > 0 ? seconds : undefined,
+    sourceFps: Number.isFinite(fps) && fps > 0 ? fps : undefined,
+  };
+  // The same measurement the charge will use, so the quote and the charge can
+  // never be two different numbers.
+  const price = priceSubmission({ ...base, sourceFps: await resolveSourceFps(getDb(), base) });
+
+  if (!price.ok) {
+    return NextResponse.json({
+      status: 'unpriceable',
+      // Said plainly: this is not a refusal of the act, it is a refusal to
+      // guess at what it would take from the Creator.
+      message: 'لا نَستطيع تحديدَ كلفةِ هذا الطلب قبل تنفيذه — ولن نُنفّذ ما لا نَعرف كلفته.',
+    }, { status: 200 });
+  }
+
+  // The Creator's view: the charge and its basis. No provider, no credits,
+  // no uplift, no margin.
   return NextResponse.json({
     status: 'succeeded',
-    asset: {
-      assetId: outcome.assetId,
-      secureStorageUri: outcome.storageUri,
-      parentAssetId: outcome.parentAssetId,
-    },
-    // Deposited, NOT accepted. The Creator's acceptance is a separate act and
-    // the only thing that makes this theirs.
-    lifecycle: 'DEPOSITED',
+    chargedUnits: price.chargedUnits,
+    basisAr: price.basisAr,
+    quantity: price.quantity,
   });
 }
+
+/** A Creator's own recent jobs for this act — so a lost tab is recoverable. */
+export async function PATCH(request: NextRequest) {
+  // Reserved: a cancel path belongs here when the provider exposes one. It is
+  // deliberately not implemented rather than faked — the provider documents no
+  // cancellation for these endpoints, and a button that pretends to stop a
+  // paid job is worse than no button.
+  void request;
+  return NextResponse.json(
+    { status: 'failed', reason: 'not-implemented', message: 'لا يُمكن إيقافُ عمليّةٍ بدأت عند المحرّك.' },
+    { status: 501 },
+  );
+}
+

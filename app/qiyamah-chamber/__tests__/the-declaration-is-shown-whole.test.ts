@@ -20,6 +20,10 @@ import {
   LIKENESS_STATEMENTS_AR, LIKENESS_POLICY_VERSION,
 } from '@/src/vault/likeness-acknowledgment';
 import { operationIsInspectable } from '../OperationsCenter';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+const read = (f: string) => readFileSync(join(process.cwd(), f), 'utf8');
 
 const faceSwapState = (over: Record<string, unknown> = {}) => ({
   id: 'face-swap', group: 'on-my-asset', nameAr: 'تبديل الوجه',
@@ -44,7 +48,9 @@ const render = (operation: Record<string, unknown>) => renderToStaticMarkup(
     targets: [{ assetId: 'a1', url: '/u/a.mp4', label: 'مقطعٌ في خزانتك' }],
     seconds: [{ assetId: 'a2', url: '/u/b.png', label: 'صورةٌ في خزانتك' }],
     onBack: () => {},
-    onRun: async () => ({ ok: true }),
+    onRun: async () => ({ ok: true, jobId: 'job_test' }),
+    onQuote: async () => ({ chargedUnits: 9, basisAr: 'لكلّ صورة', quantity: 1 }),
+    onPoll: async () => null,
   } as never),
 );
 
@@ -216,5 +222,34 @@ describe('7 · which shut cards may be opened at all', () => {
 
   it('and a runnable act is not «inspectable» — it is simply open', () => {
     expect(operationIsInspectable({ runnable: true, availability: 'AVAILABLE' })).toBe(false);
+  });
+});
+
+describe('8 · the price is the server’s, and the job is polled', () => {
+  const html = render(faceSwapState());
+
+  it('the panel computes no price of its own', () => {
+    const src = read('app/qiyamah-chamber/CreativeActPanel.tsx');
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    // No uplift, no rate, no multiplication of anything that looks like money.
+    expect(code).not.toMatch(/1\.7|UPLIFT|providerCredits|creditsPerUnit/);
+    expect(code).toContain('onQuote(');
+  });
+
+  it('it asks for a price only once an asset is chosen', () => {
+    // Nothing to price before there is something to price. The first frame
+    // carries no figure, and invents none.
+    expect(html).not.toContain('creative-act-price');
+  });
+
+  it('the submission is followed by polling, not by waiting', () => {
+    const src = read('app/qiyamah-chamber/CreativeActPanel.tsx');
+    expect(src).toContain('onPoll(job.jobId)');
+    expect(src).toContain("job.state !== 'PROCESSING'");
+  });
+
+  it('and a running job cannot be pressed again', () => {
+    const src = read('app/qiyamah-chamber/CreativeActPanel.tsx');
+    expect(src).toContain("job?.state === 'PROCESSING'");
   });
 });

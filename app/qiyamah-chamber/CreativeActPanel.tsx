@@ -35,7 +35,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   lifecycleOf, type OperationLifecycle,
 } from '@/src/qiyamah-generation/operation-lifecycle';
@@ -52,6 +52,22 @@ export interface CreativeAssetChoice {
   readonly assetId: string;
   readonly url: string;
   readonly label: string;
+}
+
+/** What the server answers when asked what this will cost. */
+export interface CreativeQuote {
+  readonly chargedUnits: number;
+  readonly basisAr: string;
+  readonly quantity: number;
+}
+
+/** The durable job a submission becomes. */
+export interface CreativeJobView {
+  readonly jobId: string;
+  readonly state: 'PROCESSING' | 'DEPOSITED' | 'FAILED' | 'CANCELLED' | 'UNKNOWN';
+  readonly stateAr: string;
+  readonly assetId: string | null;
+  readonly chargedUnits: number | null;
 }
 
 export interface CreativeRunPayload {
@@ -150,7 +166,7 @@ export const CREATIVE_BLOCK_AR: Readonly<Record<Exclude<CreativeRunBlock, null>,
 };
 
 export function CreativeActPanel({
-  operation, targets, seconds, onBack, onRun,
+  operation, targets, seconds, onBack, onRun, onQuote, onPoll,
 }: {
   readonly operation: OperationStateView;
   /** The assets whose family this act's TARGET must be. */
@@ -158,7 +174,16 @@ export function CreativeActPanel({
   /** The assets whose family its SECOND input must be, when it takes one. */
   readonly seconds: readonly CreativeAssetChoice[];
   readonly onBack: () => void;
-  readonly onRun: (payload: CreativeRunPayload) => Promise<{ ok: boolean; messageAr?: string }>;
+  /** Starts the job. Returns its id, or why it could not be started. */
+  readonly onRun: (payload: CreativeRunPayload) => Promise<
+    { ok: true; jobId: string } | { ok: false; messageAr?: string }>;
+  /** Asks the server what this exact request will take from the Balance. */
+  readonly onQuote: (payload: {
+    readonly targetAssetId: string;
+    readonly durationSeconds?: number;
+  }) => Promise<CreativeQuote | null>;
+  /** Reads one job's real state. Polled — never assumed. */
+  readonly onPoll: (jobId: string) => Promise<CreativeJobView | null>;
 }) {
   const [targetId, setTargetId] = useState<string | null>(null);
   const [secondId, setSecondId] = useState<string | null>(null);
@@ -174,6 +199,11 @@ export function CreativeActPanel({
   const [state, setState] = useState<'ready' | 'running' | 'failed'>('ready');
   const [errorAr, setErrorAr] = useState<string | null>(null);
   const [producedAssetId, setProducedAssetId] = useState<string | null>(null);
+  /** What the server says this will take. Null until it has been asked. */
+  const [quote, setQuote] = useState<CreativeQuote | null>(null);
+  const [quoteUnavailable, setQuoteUnavailable] = useState(false);
+  /** The durable job, once one exists. Polled, never assumed. */
+  const [job, setJob] = useState<CreativeJobView | null>(null);
 
   /**
    * THE BOUND COMES FROM THE SERVER'S VERDICT, with its source.
@@ -207,6 +237,51 @@ export function CreativeActPanel({
     accepted: false,
   });
 
+  // ── WHAT IT WILL COST, ASKED BEFORE IT IS PRESSED ─────────────────────
+  //
+  //   The server prices it — including reading the frame rate off the
+  //   Creator's own clip, which is why no number is computed here. A screen
+  //   that did its own arithmetic would be a second pricing authority, and the
+  //   Creator would eventually be shown one figure and charged another.
+  useEffect(() => {
+    let abandoned = false;
+    if (!targetId || (needsSecond && !secondId)) { setQuote(null); setQuoteUnavailable(false); return; }
+    void (async () => {
+      const q = await onQuote({
+        targetAssetId: targetId,
+        durationSeconds: needsDuration ? durationSeconds : undefined,
+      });
+      if (abandoned) return;
+      setQuote(q);
+      setQuoteUnavailable(q === null);
+    })();
+    return () => { abandoned = true; };
+  }, [targetId, secondId, durationSeconds, needsDuration, needsSecond, onQuote]);
+
+  // ── AND WHAT HAPPENED, ASKED UNTIL IT IS KNOWN ────────────────────────
+  //
+  //   A long job outlives its request — measured, twice, on production. So the
+  //   panel holds a job id and asks, rather than holding a connection and
+  //   believing a timeout.
+  useEffect(() => {
+    if (!job || job.state !== 'PROCESSING') return;
+    const timer = setInterval(() => {
+      void (async () => {
+        const fresh = await onPoll(job.jobId);
+        if (!fresh) return;
+        setJob(fresh);
+        if (fresh.state === 'DEPOSITED') {
+          setState('ready');
+          setProducedAssetId(fresh.assetId);
+        } else if (fresh.state === 'FAILED' || fresh.state === 'UNKNOWN' || fresh.state === 'CANCELLED') {
+          setState(fresh.state === 'FAILED' ? 'failed' : 'ready');
+          setErrorAr(fresh.stateAr);
+        }
+      })();
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [job, onPoll]);
+
   async function run() {
     // The same predicate the button is disabled by, asserted again here: a
     // click that arrives by keyboard, by script or by a stale render must not
@@ -214,6 +289,7 @@ export function CreativeActPanel({
     if (block !== null || !targetId) return;
     setState('running');
     setErrorAr(null);
+    setJob(null);
     const answer = await onRun({
       operation: operation.id,
       targetAssetId: targetId,
@@ -232,8 +308,12 @@ export function CreativeActPanel({
         : {}),
     });
     if (answer.ok) {
-      setState('ready');
-      setProducedAssetId('deposited');
+      // A job id, not a result. The result is what the poll will say.
+      setJob({
+        jobId: answer.jobId, state: 'PROCESSING',
+        stateAr: 'جارٍ الآن — أغلِق الصفحةَ إن شئت، فالعملُ لا يَتوقّف.',
+        assetId: null, chargedUnits: quote?.chargedUnits ?? null,
+      });
     } else {
       setState('failed');
       setErrorAr(answer.messageAr ?? 'لم تُتِمّ هذه العمليّةُ.');
@@ -343,6 +423,37 @@ export function CreativeActPanel({
         </section>
       ) : null}
 
+      {/* ── WHAT IT WILL TAKE, BEFORE IT IS PRESSED ──────────────────────
+          The server's own figure, never computed here. A screen that did its
+          own arithmetic would be a second pricing authority, and a Creator
+          would one day be shown one number and charged another. */}
+      {quote ? (
+        <p className="creative-act-price">
+          <span className="creative-act-price-units">
+            {quote.chargedUnits.toLocaleString('en-US')} وحدة
+          </span>
+          <span className="creative-act-price-basis">{quote.basisAr}</span>
+        </p>
+      ) : null}
+      {quoteUnavailable ? (
+        <p className="creative-act-price creative-act-price--unknown" role="status">
+          لا نَستطيع تحديدَ كلفةِ هذا الطلب قبل تنفيذه — ولن نُنفّذ ما لا نَعرف كلفته.
+        </p>
+      ) : null}
+
+      {/* ── AND WHAT IS HAPPENING NOW ────────────────────────────────────
+          A job id outlives this page. Closing the tab does not stop the work
+          and does not lose it. */}
+      {job ? (
+        <p
+          className={`creative-act-job creative-act-job--${job.state.toLowerCase()}`}
+          role={job.state === 'FAILED' ? 'alert' : 'status'}
+          data-job-state={job.state}
+        >
+          {job.stateAr}
+        </p>
+      ) : null}
+
       <OperationStatusLine lifecycle={lifecycle} errorAr={errorAr} />
 
       {/* Why the button is dark, said beside it rather than left to be
@@ -352,7 +463,10 @@ export function CreativeActPanel({
       <button
         type="button"
         className="creative-act-run"
-        disabled={state === 'running' || block !== null}
+        disabled={
+          state === 'running' || block !== null || quoteUnavailable
+          || job?.state === 'PROCESSING'
+        }
         onClick={() => { void run(); }}
       >
         {state === 'running' ? '⏳ جارٍ…' : (RUN_LABEL_AR[operation.id] ?? 'نفّذ')}

@@ -62,27 +62,33 @@ describe('1 · all ten acts reach the centre', () => {
   });
 });
 
-describe('2 · a visible card is not a functioning capability', () => {
+describe('2 · a card is open only where a real paid job proved its cost', () => {
   const states = qiyamahOperations(null);
 
-  it('not one of the four is runnable', () => {
+  /**
+   * ─── WHAT CHANGED ON 2026-10-12, AND WHAT DID NOT ───────────────────
+   *
+   *   Every `it` in this block used to assert «shut, because nobody measured
+   *   the cost». Nine paid jobs then measured all four, and the acceptance
+   *   campaign recorded each provider job id on the readiness register.
+   *
+   *   The RULE is unchanged and is what these now assert: an act opens on
+   *   measured evidence and on nothing else — not on a reachable route, not
+   *   on an accepted credential, not on a passing test.
+   */
+  it('the four carry a measured cost, named by the job that measured it', () => {
     for (const id of NEW_FOUR) {
-      expect(states.find((s) => s.id === id)!.runnable).toBe(false);
+      const r = CREATIVE_READINESS.find((x) => x.operation === id)!;
+      expect(r.costBasisVerified).toBe(true);
+      expect(r.costMeasuredBy?.providerJobId).toBeTruthy();
     }
   });
 
   it('face swap demands the Creator’s declaration, and the card carries it', () => {
-    // It asserted POLICY_BLOCKED until 2026-10-11, when the Chief Architect
-    // ordered the safeguard. The policy gap he had to rule on is closed; the
-    // declaration is now a standing requirement the surface must render.
     const s = states.find((x) => x.id === 'face-swap')!;
     expect(s.requiresAcknowledgment).toBe(true);
     expect(s.acknowledgmentVersion).toBe(LIKENESS_POLICY_VERSION);
     expect(s.acknowledgmentStatementsAr).toHaveLength(4);
-  });
-
-  it('and it is still shut, on the cost nobody has measured', () => {
-    expect(states.find((x) => x.id === 'face-swap')!.availability).toBe('COST_NOT_VERIFIED');
   });
 
   it('no other operation demands a declaration', () => {
@@ -93,35 +99,27 @@ describe('2 · a visible card is not a functioning capability', () => {
     }
   });
 
-  it('the other three are NOT VERIFIED on cost, and say the door stays shut', () => {
-    for (const id of ['background-removal', 'lip-sync', 'talking-photo'] as const) {
-      const s = states.find((x) => x.id === id)!;
-      expect(s.availability).toBe('COST_NOT_VERIFIED');
-      expect(s.reasonAr).toMatch(/كلفت/);
-    }
-  });
-
-  it('none of the four claims historical production', () => {
+  it('none of the four claims HISTORICAL production — today is not history', () => {
     for (const id of NEW_FOUR) {
       expect(operationDescriptor(id).historicallyProven).toBe(false);
     }
   });
 
-  it('the cost gate cannot be passed by a credential alone', () => {
-    // Even with every gateway configured, a cost that was never measured
-    // keeps the operation shut.
-    for (const id of NEW_FOUR) {
-      expect(stateOfOperation(id, ['magic-hour'], null).runnable).toBe(false);
+  it('a credential alone still opens nothing', () => {
+    // The gate that mattered is still there: an act whose cost is NOT
+    // measured stays shut whatever credential exists. Proven on the one
+    // availability that still answers that way.
+    const unmeasured = CREATIVE_READINESS.filter((r) => !r.costBasisVerified);
+    for (const r of unmeasured) {
+      expect(stateOfOperation(r.operation as never, ['magic-hour'], null).runnable).toBe(false);
     }
   });
 
-  it('and the gate is the readiness record, not a hard-coded list', () => {
-    // Each of the four is shut by at least ONE gate: an unmeasured cost, or a
-    // policy nobody ruled. If both ever open, the operation opens with them —
-    // which is the point: the verdict follows the record, not a list.
+  it('and the verdict follows the record, not a hard-coded list', () => {
     for (const id of NEW_FOUR) {
       const r = CREATIVE_READINESS.find((x) => x.operation === id)!;
-      expect(!r.costBasisVerified || r.policyBlocked).toBe(true);
+      const open = stateOfOperation(id, ['magic-hour'], null).availability === 'AVAILABLE';
+      expect(open).toBe(r.costBasisVerified && !r.policyBlocked);
     }
   });
 });

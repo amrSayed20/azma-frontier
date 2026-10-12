@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/src/authentication';
 import { getDb, getCreator } from '@/src/persistent-storage';
-import {
-  runCreativeOperation,
-  CREATIVE_INPUT_SHAPE,
-  type CreativeRunRejection,
-} from '@/src/vault/creative-operation-runner';
+import { CREATIVE_INPUT_SHAPE } from '@/src/vault/creative-operation-runner';
+import { submitCreativeJob } from '@/src/vault/creative-job-service';
 import type { CreativeOperationId } from '@/src/core/sovereign-ai-integration/adapters/magic-hour-creative-operations';
 import {
   estimateSubmittedJob,
@@ -50,18 +47,6 @@ const SESSION_COOKIE = 'azma_session';
  *   deposited, each carrying the provider's own figure. A restart forgets
  *   nothing, and a second process cannot double-spend.
  */
-
-const HTTP_FOR: Readonly<Record<CreativeRunRejection, number>> = {
-  unavailable: 409,
-  'acknowledgment-required': 403,
-  'not-found': 404,
-  'wrong-family': 400,
-  'not-derivable': 409,
-  'duration-required': 400,
-  'source-unreadable': 500,
-  'engine-refused': 502,
-  'output-rejected': 409,
-};
 
 function isCreativeOperation(value: string): value is CreativeOperationId {
   return Object.prototype.hasOwnProperty.call(CREATIVE_INPUT_SHAPE, value);
@@ -122,66 +107,63 @@ export async function POST(
   }
 
   const spentBefore = campaignSpentCredits(db);
-  const outcome = await runCreativeOperation(db, {
+
+  // ── THE MEASUREMENT USES THE SAME DURABLE JOB A CREATOR USES ───────────
+  //
+  //   It submits and returns a job id rather than holding the connection: the
+  //   campaign itself proved that a long job outlives the request. The
+  //   campaign pays from its own ceiling, so no Creator balance is touched —
+  //   `skipBalance` says that out loud rather than leaving it implied.
+  const submitted = await submitCreativeJob(db, {
     operation,
     creatorId: session.creatorId,
     targetAssetId: b.targetAssetId,
     secondAssetId: typeof b.secondAssetId === 'string' ? b.secondAssetId : undefined,
     durationSeconds: typeof b.durationSeconds === 'number' ? b.durationSeconds : undefined,
+    sourceFps: typeof b.sourceFps === 'number' ? b.sourceFps : undefined,
     likenessAcknowledgment: b.likenessAcknowledgment,
+    skipBalance: true,
     costMeasurement: {
       campaignId: QIYAMAH_ACCEPTANCE_CAMPAIGN,
       expectedCredits: estimate.providerCredits,
     },
   });
 
-  const spentAfter = campaignSpentCredits(db);
-
-  if (!outcome.ok) {
-    console.error('[cost-measurement]', operation, outcome.rejection, outcome.detailEn);
+  if (!submitted.ok) {
+    console.error('[cost-measurement]', operation, submitted.reason, submitted.detailEn);
     return NextResponse.json(
       {
         status: 'failed',
-        reason: outcome.rejection,
-        detail: outcome.detailEn,
+        reason: submitted.reason,
+        detail: submitted.detailEn,
         expectedCredits: estimate.providerCredits,
         campaign: {
           id: QIYAMAH_ACCEPTANCE_CAMPAIGN,
           ceilingCredits: COST_MEASUREMENT_CEILING_CREDITS,
-          spentCredits: spentAfter,
-          remainingCredits: COST_MEASUREMENT_CEILING_CREDITS - spentAfter,
+          spentCredits: spentBefore,
+          remainingCredits: COST_MEASUREMENT_CEILING_CREDITS - spentBefore,
         },
       },
-      { status: HTTP_FOR[outcome.rejection] },
+      { status: 409 },
     );
   }
 
-  // Everything the acceptance report needs, in the provider's own figures.
   return NextResponse.json({
-    status: 'succeeded',
+    status: 'accepted',
     operation,
+    jobId: submitted.jobId,
+    startedNow: submitted.claimed,
     expectedCredits: estimate.providerCredits,
     estimatedFrom: estimate.from,
-    // What the provider actually charged for THIS job. Null when it reported
-    // none — never a zero, which would read as «free».
-    chargedCredits: outcome.providerCreditsCharged,
-    chargeDelta: outcome.providerCreditsCharged === null
-      ? null : outcome.providerCreditsCharged - estimate.providerCredits,
-    asset: {
-      assetId: outcome.assetId,
-      parentAssetId: outcome.parentAssetId,
-      secureStorageUri: outcome.storageUri,
-    },
+    pollPath: `/api/qiyamah/jobs/${submitted.jobId}`,
     campaign: {
       id: QIYAMAH_ACCEPTANCE_CAMPAIGN,
       ceilingCredits: COST_MEASUREMENT_CEILING_CREDITS,
       spentBeforeCredits: spentBefore,
-      spentCredits: spentAfter,
-      remainingCredits: COST_MEASUREMENT_CEILING_CREDITS - spentAfter,
+      remainingCredits: COST_MEASUREMENT_CEILING_CREDITS - spentBefore,
       jobsWithNoReportedCharge: campaignUnreportedJobs(db),
     },
-    lifecycle: 'DEPOSITED',
-  });
+  }, { status: 202 });
 }
 
 /** What has been spent so far, so the campaign can be read without spending. */

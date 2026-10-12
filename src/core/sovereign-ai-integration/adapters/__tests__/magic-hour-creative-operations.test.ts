@@ -314,10 +314,17 @@ describe('8 · readiness claims exactly what was measured, and no more', () => {
     }
   });
 
-  it('NOT ONE claims production proof or a verified cost', () => {
+  it('a claim of production proof always names the job that proved it', () => {
+    // It read «NOT ONE claims production proof» until 2026-10-12, when nine
+    // real paid jobs proved all four. The rule it protected is intact and is
+    // what is asserted now: a claim without its evidence is impossible.
     for (const r of CREATIVE_READINESS) {
-      expect(r.productionProven).toBe(false);
-      expect(r.costBasisVerified).toBe(false);
+      if (r.productionProven || r.costBasisVerified) {
+        expect(r.costMeasuredBy?.providerJobId).toBeTruthy();
+        expect(r.costMeasuredBy?.on).toBeTruthy();
+      } else {
+        expect(r.costMeasuredBy).toBeNull();
+      }
     }
   });
 
