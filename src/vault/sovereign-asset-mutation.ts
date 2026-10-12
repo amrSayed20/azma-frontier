@@ -168,6 +168,10 @@ const CREATION_EVENT_KEYS = [
   //   have been naming them after the behaviour they must not have.
   'likenessPolicyVersion',
   'likenessAcknowledgedAt',
+  // The campaign that paid for an asset paid for THAT asset. A child derived
+  // from it was not bought by it, and a child carrying the tag would be
+  // counted against a ceiling it never spent from.
+  'costMeasurementCampaign',
 ] as const;
 
 /** The parent's metadata minus every claim about the parent's own creation. */
@@ -253,6 +257,16 @@ export interface MutationRequest {
     readonly policyVersion: string;
     readonly acknowledgedAtMs: number;
   };
+  /**
+   * Keys the caller needs written on the produced asset and nowhere else.
+   *
+   * Deliberately narrow: it exists because a Founder cost measurement must
+   * leave its campaign id ON the asset it paid for, so the record of what was
+   * spent is the Vault itself rather than a second ledger that could disagree
+   * with it. It is NOT a general escape hatch — every key it writes is visible
+   * in the asset's metadata and in `inheritableMetadata`'s strip list below.
+   */
+  readonly extraMetadata?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -356,6 +370,7 @@ export async function deriveAsset(request: MutationRequest): Promise<MutationOut
               : {}),
           }
         : {}),
+      ...(request.extraMetadata ?? {}),
       ...(request.likenessAcknowledgment
         ? {
             likenessPolicyVersion: request.likenessAcknowledgment.policyVersion,

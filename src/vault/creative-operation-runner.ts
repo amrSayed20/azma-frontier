@@ -51,6 +51,9 @@ import {
 import { ImageEditError } from '../core/sovereign-ai-integration/adapters/magic-hour-image-editing';
 import { stateOfOperation } from '../qiyamah-generation/operation-catalog';
 import {
+  authorizeCostMeasurement, CAMPAIGN_METADATA_KEY,
+} from '../economy/cost-engine/cost-measurement-authority';
+import {
   requiresLikenessAcknowledgment, verifyLikenessAcknowledgment,
   LIKENESS_POLICY_VERSION,
 } from './likeness-acknowledgment';
@@ -172,6 +175,21 @@ export interface CreativeRunRequest {
   /** Required by lip sync, talking photo and face swap. */
   readonly durationSeconds?: number;
   /**
+   * A FOUNDER'S COST MEASUREMENT — the one thing that may cross a shut cost gate.
+   *
+   * Carries no permission: an id and an estimate. The authority reads the role
+   * out of the database itself and counts what the campaign has already been
+   * charged, so a caller cannot assert its way past either check.
+   *
+   * It crosses `COST_NOT_VERIFIED` and NOTHING ELSE. An act blocked by policy,
+   * by a missing credential or by an undesignated model stays blocked — those
+   * are not questions a payment can answer.
+   */
+  readonly costMeasurement?: {
+    readonly campaignId?: string;
+    readonly expectedCredits: number | null;
+  };
+  /**
    * The Creator's own declaration, for the acts that demand one.
    *
    * Optional in the TYPE and mandatory in the PATH: a required field would be
@@ -199,8 +217,25 @@ export async function runCreativeOperation(
   //   Asked FIRST, before an asset is read or a byte is uploaded. A Creator
   //   whose operation is shut must not have their work read for nothing.
   const state = stateOfOperation(operation, configuredGatewayIds(), null);
+  let measuringCampaignId: string | null = null;
   if (!state.runnable) {
-    return fail('unavailable', `${operation}: ${state.detailEn}`, state.reasonAr);
+    // ── THE ONE CROSSING, AND ITS TWO CONDITIONS ────────────────────────
+    //
+    //   The act must be shut ONLY because its cost was never measured, and
+    //   the caller must be the Founder spending under his own ceiling. Both
+    //   are checked here, by code the caller does not supply.
+    const measuring = request.costMeasurement && state.availability === 'COST_NOT_VERIFIED'
+      ? authorizeCostMeasurement(db, {
+          creatorId,
+          expectedCredits: request.costMeasurement.expectedCredits,
+          campaignId: request.costMeasurement.campaignId,
+        })
+      : null;
+    if (!measuring?.ok) {
+      const why = measuring && !measuring.ok ? ` · measurement refused: ${measuring.refusal}` : '';
+      return fail('unavailable', `${operation}: ${state.detailEn}${why}`, state.reasonAr);
+    }
+    measuringCampaignId = measuring.campaignId;
   }
 
   const shape = CREATIVE_INPUT_SHAPE[operation];
@@ -330,6 +365,11 @@ export async function runCreativeOperation(
       creditsCharged: produced.creditsCharged,
       creditUnit: 'magic-hour-credits',
     },
+    // The campaign that paid for this asset, written on the asset itself —
+    // so the ledger of what was spent IS the Vault, and cannot drift from it.
+    ...(measuringCampaignId === null
+      ? {}
+      : { extraMetadata: { [CAMPAIGN_METADATA_KEY]: measuringCampaignId } }),
     // Written against THIS request's asset, so the declaration can be read
     // back beside the thing it permitted — and nowhere else.
     ...(acknowledgedAtMs === null
