@@ -269,3 +269,42 @@ describe('15 · requested and produced are never confused', () => {
     expect(adapter).not.toMatch(/endSeconds[^\n]*\?\?\s*4/);
   });
 });
+
+describe('16 · the rounding rests on a ruling, not on a note asking for one', () => {
+  // RATIFIED 2026-10-13 by the Chief Architect's FINAL ACCEPTANCE DECISION.
+  // Before that date the code itself carried `ratificationRequired: true`
+  // because the Constitution had no rounding article at all — a rounding rule
+  // nobody had approved is a price nobody had approved. These bind the code to
+  // the article, so neither can drift from the other in silence.
+
+  it('the Constitution now carries the article the code points at', () => {
+    const constitution = read('docs/SOVEREIGN_COST_AND_PRICING_CONSTITUTION.md');
+    expect(constitution).toContain('CEIL_AT_JOB_LEVEL');
+    expect(constitution).toContain('التقريب');
+  });
+
+  it('and the code no longer claims to be awaiting one', () => {
+    const pricing = read('src/economy/pricing/new-capability-pricing.ts');
+    expect(pricing).toContain('ratificationRequired: false');
+    expect(pricing).toContain("ratifiedOn: '2026-10-13'");
+  });
+
+  it('the rounding is UP, and applied once — not per unit, per frame or per second', () => {
+    // Rounding that repeats inside one job accumulates a difference the
+    // Creator never sees. Once, on the whole job, bounds it under one unit.
+    const pricing = read('src/economy/pricing/new-capability-pricing.ts');
+    expect(pricing).toContain('const chargedUnits = Math.ceil(exactUnits);');
+    expect(pricing).not.toMatch(/Math\.ceil\([^)]*providerCreditsPerUnit/);
+  });
+
+  it('and the six approved operations keep the charge they already carried', () => {
+    // The article explicitly re-prices nothing that was approved before it.
+    const balance = read('src/economy/pricing/sovereign-value-balance.ts');
+    for (const [capability, units] of [
+      ['IMAGE_GENERATION', 200], ['INFOGRAPHIC', 200], ['IMAGE_EDIT', 200],
+      ['UPSCALE_2X', 50], ['VIDEO_GENERATION', 200], ['MOTION', 200],
+    ] as const) {
+      expect(balance).toContain(`capability: '${capability}', balancePerUnit: ${units}`);
+    }
+  });
+});

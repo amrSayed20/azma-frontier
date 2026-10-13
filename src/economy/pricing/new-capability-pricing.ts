@@ -55,11 +55,20 @@ export const UPLIFT_PURPOSE_AR =
   'لتغطية مصاريف تشغيل المنصّة، وليست ادّعاءَ ربحٍ صافٍ مضمون.';
 
 /**
- * The rounding the integer ledger forces, named so it can be ruled on.
+ * The rounding the integer ledger forces — RULED ON, and no longer pending.
  *
- * `RATIFICATION_REQUIRED` is true and stays true until the Cost & Pricing
- * Constitution carries a rounding article. It is read by the report, never by
- * a code path that could quietly drop it.
+ * It was declared here with `ratificationRequired: true` because the Cost &
+ * Pricing Constitution carried no rounding article at all, and a rounding rule
+ * nobody had approved is a price nobody had approved.
+ *
+ * RATIFIED 2026-10-13 by the Chief Architect's FINAL ACCEPTANCE DECISION:
+ * «Apply ceiling-to-integer rounding per operation for the five new
+ * capabilities, after the approved 70% uplift, using verified provider costs.»
+ *
+ * Nothing about the arithmetic changed — it was already ceiling, already once
+ * per operation. What changed is that it now rests on a ruling instead of on a
+ * note asking for one. The article is written into the Constitution itself, so
+ * the authority lives where the other pricing law lives and not only here.
  */
 export const JOB_LEVEL_ROUNDING = {
   id: 'CEIL_AT_JOB_LEVEL',
@@ -67,8 +76,10 @@ export const JOB_LEVEL_ROUNDING = {
   appliedAt: 'the whole job, once',
   whyAr: 'الميزانُ عددٌ صحيح، والرفعُ يُنتج كسوراً. والتقريبُ لأعلى لا يَبيع تحت '
     + 'الحكم أبداً، وفرقُه لا يَتجاوز وحدةً واحدةً للعمليّة، ويُعرَض قبل التنفيذ.',
-  ratificationRequired: true,
-  missingFrom: 'docs/SOVEREIGN_COST_AND_PRICING_CONSTITUTION.md — no rounding article exists',
+  ratificationRequired: false,
+  ratifiedOn: '2026-10-13',
+  ratifiedBy: 'Chief Architect — FINAL ACCEPTANCE DECISION, item 1',
+  article: 'docs/SOVEREIGN_COST_AND_PRICING_CONSTITUTION.md — رابعاً: التقريب',
 } as const;
 
 export type NewCapability =
