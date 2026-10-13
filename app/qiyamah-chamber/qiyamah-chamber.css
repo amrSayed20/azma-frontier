@@ -1884,6 +1884,15 @@
   font-size: 0.7rem;
   font-variant-numeric: tabular-nums;
 }
+/* A price that is a START, not a total. It must not read like a total: the
+   assumption sits under it in the muted colour, on its own line. */
+.ops-cost--from { display: flex; flex-direction: column; gap: 1px; }
+.ops-cost-assumption {
+  color: var(--text-muted);
+  font-size: 0.92em;
+  line-height: 1.45;
+  white-space: normal;
+}
 /* A basis instead of a figure. It must read as a statement about price, not
    as a dimmed price — so it keeps the same place and size, and only loses the
    certainty of the gold. It also wraps: the sentence is longer than a number,
@@ -2087,21 +2096,151 @@
 }
 .creative-act-label { margin: 0; font-size: 0.92em; font-weight: 700; color: var(--gold-neon); }
 .creative-act-empty { margin: 0; font-size: 0.9em; line-height: 1.7; color: var(--text-muted); }
-.creative-act-assets { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+/* ── THE PICKER ───────────────────────────────────────────────────────────
+   MEASURED 2026-10-13: forty-five clips drawn as full-width buttons put the
+   acknowledgment card at y=1572 in an 844px viewport — 728px below the fold.
+   Nothing clipped it; the list above it simply never ended. So the grid is
+   BOUNDED and scrolls inside itself: the card, the price and the run button
+   stay within reach however many assets the Creator owns. */
+.creative-act-pick { display: flex; flex-direction: column; gap: 0.6rem; }
+.creative-act-assets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 0.5rem;
+  max-height: 268px;
+  overflow-y: auto;
+  padding: 2px;
+  overscroll-behavior: contain;
+}
 .creative-act-asset {
-  padding: 8px 12px;
-  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 6px;
+  border-radius: 5px;
   border: 1px solid rgba(212, 175, 55, 0.28);
   background: rgba(0, 0, 0, 0.45);
   color: var(--text-main);
   font-family: inherit;
-  font-size: 0.86em;
+  font-size: 0.78em;
+  text-align: start;
   cursor: pointer;
   transition: border-color 0.16s;
 }
 .creative-act-asset:hover:not(:disabled) { border-color: rgba(212, 175, 55, 0.6); }
 .creative-act-asset--on { border-color: var(--gold-neon); color: var(--gold-neon); }
 .creative-act-asset:disabled { opacity: 0.5; cursor: not-allowed; }
+.creative-act-asset-label {
+  /* Two lines, then an ellipsis. A name that pushes the grid out of shape
+     costs the Creator the card below it. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.5;
+}
+.creative-act-asset-meta { color: var(--text-muted); font-size: 0.86em; }
+
+/* ── THE ASSET'S OWN PICTURE ─────────────────────────────────────────────── */
+.creative-act-thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+.creative-act-thumb-media { width: 100%; height: 100%; object-fit: cover; display: block; }
+.creative-act-thumb--audio,
+.creative-act-thumb--broken {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  color: var(--text-muted);
+  font-size: 1.1em;
+}
+/* An unreadable preview SAYS so. It never falls back to a generic label. */
+.creative-act-thumb--broken { border: 1px dashed rgba(212, 175, 55, 0.35); }
+.creative-act-thumb-broken-text { font-size: 0.5em; line-height: 1.3; text-align: center; }
+.creative-act-thumb-time {
+  position: absolute;
+  inset-block-end: 3px;
+  inset-inline-end: 3px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.72);
+  color: var(--text-main);
+  font-size: 0.82em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── WHAT IS CHOSEN, AND HOW TO UNCHOOSE IT ──────────────────────────────── */
+.creative-act-chosen {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 6px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--gold-neon);
+  background: rgba(212, 175, 55, 0.07);
+}
+.creative-act-chosen-what { display: flex; align-items: center; gap: 0.5rem; min-width: 0; flex: 1 1 auto; }
+.creative-act-chosen-what .creative-act-thumb { width: 56px; flex: 0 0 auto; }
+.creative-act-chosen-name {
+  font-size: 0.86em;
+  color: var(--gold-neon);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.creative-act-clear {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border-radius: 4px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.78em;
+  cursor: pointer;
+}
+.creative-act-clear:hover:not(:disabled) { border-color: var(--gold-neon); }
+
+/* ── THE DROP AREA ───────────────────────────────────────────────────────── */
+.creative-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-height: 52px;
+  padding: 8px 12px;
+  border-radius: 5px;
+  border: 1px dashed rgba(212, 175, 55, 0.3);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text-muted);
+  font-size: 0.82em;
+  text-align: center;
+  transition: border-color 0.14s, background 0.14s, color 0.14s;
+}
+/* It must VISIBLY answer a valid drag — and visibly refuse an invalid one. */
+.creative-drop--yes {
+  border-color: var(--gold-neon);
+  border-style: solid;
+  background: rgba(212, 175, 55, 0.1);
+  color: var(--gold-neon);
+}
+.creative-drop--wrong {
+  border-color: rgba(255, 120, 120, 0.75);
+  border-style: solid;
+  background: rgba(255, 80, 80, 0.08);
+  color: rgb(255, 150, 150);
+}
+.creative-drop--filled { opacity: 0.65; }
+.creative-drop-refused { color: rgb(255, 150, 150); font-size: 0.92em; line-height: 1.5; }
 .creative-act-duration { display: flex; flex-direction: column; gap: 0.4rem; }
 .creative-act-seconds {
   width: 7rem;

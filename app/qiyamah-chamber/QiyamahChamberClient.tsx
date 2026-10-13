@@ -104,6 +104,7 @@ import {
 } from '@/src/qiyamah-generation/operation-lifecycle';
 // The status sentence moved to _lib so the creative workspace speaks the same
 // one. A second copy would have been the fifth vocabulary this chamber removed.
+import { assetNameAr, type VaultPick } from './_lib/asset-identity';
 import { OperationStatusLine } from './_lib/operation-status-line';
 import {
   CreativeActPanel, CREATIVE_ACT_IDS,
@@ -703,11 +704,37 @@ export function QiyamahChamberClient({
 
   // ── Upload ──────────────────────────────────────────────────────────────────
   const [isDragging,    setIsDragging]    = useState(false);
+  // ── WHAT THE PICKER NEEDS TO SHOW AN ASSET AS ITSELF ────────────────────
+  //
+  //   MEASURED 2026-10-13 on the deployed release: the Creator owns 49 images
+  //   and 45 clips, and the picker drew every clip as the SAME sentence —
+  //   «مقطعٌ في خزانتك», forty-five times. Nothing on that screen told one
+  //   asset from another, so choosing was guessing.
+  //
+  //   Everything below already arrives in the `/api/vault/assets` answer this
+  //   page ALREADY makes. Nothing new is fetched, nothing is copied into a
+  //   second store, and no asset is created to fill a list.
+  const pickOf = (a: {
+    assetId: string; secureStorageUri?: string; capabilityTarget?: string;
+    createdAt?: number; pixelWidth?: number | null; pixelHeight?: number | null;
+    derivation?: string; metadata?: Record<string, unknown> | null;
+  }): VaultPick => ({
+    assetId: a.assetId,
+    url: a.secureStorageUri as string,
+    kind: (a.capabilityTarget === 'MOTION' ? 'MOTION' : a.capabilityTarget === 'AUDIO' ? 'AUDIO' : 'VISUAL'),
+    createdAtMs: typeof a.createdAt === 'number' ? a.createdAt : null,
+    pixelWidth: typeof a.pixelWidth === 'number' ? a.pixelWidth : null,
+    pixelHeight: typeof a.pixelHeight === 'number' ? a.pixelHeight : null,
+    // The asset's own account of where it came from, when it has one. A
+    // mutation records the act that made it; an upload records the hand.
+    nameAr: assetNameAr(a),
+  });
+
   const [isUploading,   setIsUploading]   = useState(false);
   const [uploadError,   setUploadError]   = useState<string | null>(null);
   const [uploadedAsset, setUploadedAsset] = useState<UploadedItem | null>(null);
   /** Every VISUAL asset the Creator owns — the picker's authority. */
-  const [vaultVisuals, setVaultVisuals] = useState<readonly { assetId: string; url: string }[]>([]);
+  const [vaultVisuals, setVaultVisuals] = useState<readonly VaultPick[]>([]);
   /**
    * The clips and the sounds, from the SAME answer.
    *
@@ -724,8 +751,8 @@ export function QiyamahChamberClient({
    * honesty the shut cards carry: the capability exists, the price does not.
    */
   const [upscaleFactor, setUpscaleFactor] = useState<2 | 4>(2);
-  const [vaultMotion, setVaultMotion] = useState<readonly { assetId: string; url: string }[]>([]);
-  const [vaultAudio,  setVaultAudio]  = useState<readonly { assetId: string; url: string }[]>([]);
+  const [vaultMotion, setVaultMotion] = useState<readonly VaultPick[]>([]);
+  const [vaultAudio,  setVaultAudio]  = useState<readonly VaultPick[]>([]);
   /** The storage addresses of everything the Creator has accepted — it lives in the Vault now. */
   const [acceptedUris, setAcceptedUris] = useState<readonly string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -761,22 +788,15 @@ export function QiyamahChamberClient({
         if (result.status !== 'succeeded' || !Array.isArray(result.assets)) return;
         const all = result.assets as {
           assetId: string; secureStorageUri?: string; capabilityTarget?: string; lifecycleState?: string;
+          createdAt?: number; pixelWidth?: number | null; pixelHeight?: number | null;
+          derivation?: string; metadata?: Record<string, unknown> | null;
         }[];
-        setVaultVisuals(
-          all
-            .filter((a) => a.capabilityTarget === 'VISUAL' && Boolean(a.secureStorageUri))
-            .map((a) => ({ assetId: a.assetId, url: a.secureStorageUri as string })),
-        );
-        setVaultMotion(
-          all
-            .filter((a) => a.capabilityTarget === 'MOTION' && Boolean(a.secureStorageUri))
-            .map((a) => ({ assetId: a.assetId, url: a.secureStorageUri as string })),
-        );
-        setVaultAudio(
-          all
-            .filter((a) => a.capabilityTarget === 'AUDIO' && Boolean(a.secureStorageUri))
-            .map((a) => ({ assetId: a.assetId, url: a.secureStorageUri as string })),
-        );
+        const family = (k: string) => all
+          .filter((a) => a.capabilityTarget === k && Boolean(a.secureStorageUri))
+          .map(pickOf);
+        setVaultVisuals(family('VISUAL'));
+        setVaultMotion(family('MOTION'));
+        setVaultAudio(family('AUDIO'));
         // ── The Founder, 2026-09-26: «لماذا تتجمّع الأصول في القيامة؟ مكانها
         //    الطبيعي بعد الاعتماد هو الخزانة».
         //
@@ -944,9 +964,21 @@ export function QiyamahChamberClient({
           return [newItem, ...without];
         });
         if (newItem.capabilityTarget === 'VISUAL' && newItem.assetId && newItem.url) {
+          // It enters the picker as the same shape every other asset has, so a
+          // just-uploaded image is as recognisable as one from last week —
+          // named by the hand that put it there and the day it arrived.
+          const justArrived: VaultPick = {
+            assetId: newItem.assetId,
+            url: newItem.url,
+            kind: 'VISUAL',
+            nameAr: assetNameAr({ derivation: 'UPLOADED', createdAt: newItem.uploadedAt }),
+            createdAtMs: newItem.uploadedAt ?? null,
+            pixelWidth: null,
+            pixelHeight: null,
+          };
           setVaultVisuals((prev) => prev.some((a) => a.assetId === newItem.assetId)
             ? prev
-            : [{ assetId: newItem.assetId, url: newItem.url }, ...prev]);
+            : [justArrived, ...prev]);
         }
         return newItem.assetId || null;
       }
@@ -1430,11 +1462,12 @@ export function QiyamahChamberClient({
    * to lip sync would be offering a refusal.
    */
   const creativeChoices = (() => {
-    const label = (word: string) => (a: { assetId: string; url: string }): CreativeAssetChoice =>
-      ({ assetId: a.assetId, url: a.url, label: word });
-    const visuals = vaultVisuals.map(label('صورةٌ في خزانتك'));
-    const motion  = vaultMotion.map(label('مقطعٌ في خزانتك'));
-    const audio   = vaultAudio.map(label('صوتٌ في خزانتك'));
+    // Each asset carries its own name, picture and measurements. The family
+    // word that used to stand in for all of them is gone: it was the same
+    // sentence forty-five times, and it identified nothing.
+    const visuals = vaultVisuals as readonly CreativeAssetChoice[];
+    const motion  = vaultMotion as readonly CreativeAssetChoice[];
+    const audio   = vaultAudio as readonly CreativeAssetChoice[];
     switch (creativeAct?.id) {
       case 'background-removal': return { targets: visuals, seconds: [] as CreativeAssetChoice[] };
       case 'talking-photo':      return { targets: visuals, seconds: audio };

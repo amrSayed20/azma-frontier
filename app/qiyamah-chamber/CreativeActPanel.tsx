@@ -35,12 +35,15 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type DragEvent } from 'react';
 import {
   lifecycleOf, type OperationLifecycle,
 } from '@/src/qiyamah-generation/operation-lifecycle';
 import { OperationStatusLine } from './_lib/operation-status-line';
 import type { OperationStateView } from './OperationsCenter';
+import {
+  familyOfInput, dropVerdict, assetMetaAr, type VaultPick,
+} from './_lib/asset-identity';
 
 /** The acts this panel serves. Read by the client to route a chosen card. */
 export const CREATIVE_ACT_IDS: readonly string[] = [
@@ -48,10 +51,164 @@ export const CREATIVE_ACT_IDS: readonly string[] = [
 ];
 
 /** One of the Creator's own assets, as the chamber already lists them. */
-export interface CreativeAssetChoice {
-  readonly assetId: string;
-  readonly url: string;
-  readonly label: string;
+/**
+ * ─── ONE ASSET, AS ITSELF ───────────────────────────────────────────────────
+ *
+ *   This carried `label: string` and nothing else, and the page handed every
+ *   member of a family the SAME label. MEASURED on the deployed release: the
+ *   Creator owns 45 clips, and the picker drew «مقطعٌ في خزانتك» forty-five
+ *   times. A list where every row says the same thing is not a list of
+ *   choices — it is a list of guesses.
+ *
+ *   `url` was already here and already unused by the picker. It is the asset's
+ *   own picture, and showing it is the whole repair.
+ */
+export type CreativeAssetChoice = VaultPick;
+
+/** The drag payload. Named so nothing else on the page can be mistaken for it. */
+export const ASSET_DRAG_TYPE = 'application/x-azma-vault-asset';
+
+
+
+/**
+ * ─── WHERE A DRAGGED ASSET LANDS ────────────────────────────────────────────
+ *
+ *   The chamber already had a drop area, and it accepted ONE thing: a file
+ *   from the device (`dataTransfer.files`). An asset the Creator could see on
+ *   the very same screen could not be dragged anywhere, because nothing made
+ *   it draggable and nothing listened for it. That path is untouched and still
+ *   works; this adds the half that was missing.
+ *
+ *   It refuses by FAMILY, and says so. Dropping a photograph on lip sync would
+ *   be buying a refusal, so the drop is rejected before anything is selected —
+ *   and a rejected drop never disturbs a selection already made.
+ */
+function DropHere({
+  slot, accepts, disabled, onReceive, chosen,
+}: {
+  readonly slot: 'target' | 'second';
+  readonly accepts: 'VISUAL' | 'MOTION' | 'AUDIO';
+  readonly disabled: boolean;
+  readonly onReceive: (assetId: string) => void;
+  readonly chosen: boolean;
+}) {
+  const [over, setOver] = useState<'no' | 'yes' | 'wrong'>('no');
+  const [refusedAr, setRefusedAr] = useState<string | null>(null);
+
+  const kindOf = (e: DragEvent<HTMLDivElement>): string | null => {
+    // Chrome hides the payload during dragover, so the kind travels in a
+    // second, readable type as well. What is ENFORCED is the drop itself.
+    const types = Array.from(e.dataTransfer.types || []);
+    const marker = types.find((t) => t.startsWith('x-azma-kind/'));
+    return marker ? marker.slice('x-azma-kind/'.length).toUpperCase() : null;
+  };
+
+  return (
+    <div
+      className={`creative-drop creative-drop--${over}${chosen ? ' creative-drop--filled' : ''}`}
+      data-testid={`creative-drop-${slot}`}
+      data-accepts={accepts}
+      aria-label={DROP_LABEL_AR[accepts]}
+      onDragOver={(e) => {
+        if (disabled) return;
+        if (!Array.from(e.dataTransfer.types || []).includes(ASSET_DRAG_TYPE)) return;
+        e.preventDefault();
+        const k = kindOf(e);
+        const ok = k === null || k === accepts;
+        e.dataTransfer.dropEffect = ok ? 'copy' : 'none';
+        setOver(ok ? 'yes' : 'wrong');
+      }}
+      onDragLeave={() => setOver('no')}
+      onDrop={(e) => {
+        e.preventDefault();
+        setOver('no');
+        if (disabled) return;
+        const verdict = dropVerdict(e.dataTransfer.getData(ASSET_DRAG_TYPE), accepts);
+        if (!verdict.ok) {
+          // Refused, and the existing selection is left exactly as it was.
+          setRefusedAr(verdict.reasonAr);
+          return;
+        }
+        setRefusedAr(null);
+        onReceive(verdict.assetId);
+      }}
+    >
+      <span className="creative-drop-hint">
+        {over === 'wrong' ? 'لا يَصلُح هنا' : DROP_LABEL_AR[accepts]}
+      </span>
+      {refusedAr ? <span className="creative-drop-refused" role="status">{refusedAr}</span> : null}
+    </div>
+  );
+}
+
+const DROP_LABEL_AR: Readonly<Record<'VISUAL' | 'MOTION' | 'AUDIO', string>> = {
+  VISUAL: 'اسحب صورةً إلى هنا — أو انقر واحدةً أسفله',
+  MOTION: 'اسحب مقطعاً إلى هنا — أو انقر واحداً أسفله',
+  AUDIO:  'اسحب صوتاً إلى هنا — أو انقر واحداً أسفله',
+};
+
+/**
+ * The asset's own picture.
+ *
+ * A clip draws its first frame; `preload="metadata"` is enough for that and
+ * does not pull the whole file. A sound has no frame to draw, so it is given a
+ * mark that says «sound» rather than an empty rectangle pretending to be one.
+ *
+ * WHEN IT FAILS: an explicit state. The one thing it must never do is fall
+ * back to a generic label — that is the defect this picker was rebuilt to end.
+ */
+function AssetThumb({ asset }: { readonly asset: CreativeAssetChoice }) {
+  const [broken, setBroken] = useState(false);
+  const [seconds, setSeconds] = useState<number | null>(null);
+
+  if (broken) {
+    return (
+      <span className="creative-act-thumb creative-act-thumb--broken" role="img" aria-label="تعذّرت المعاينة">
+        <span aria-hidden="true">⃠</span>
+        <span className="creative-act-thumb-broken-text">تعذّرت المعاينة</span>
+      </span>
+    );
+  }
+
+  if (asset.kind === 'AUDIO') {
+    return (
+      <span className="creative-act-thumb creative-act-thumb--audio" role="img" aria-label="ملفُّ صوت">
+        <span aria-hidden="true">♪</span>
+      </span>
+    );
+  }
+
+  if (asset.kind === 'MOTION') {
+    return (
+      <span className="creative-act-thumb">
+        <video
+          className="creative-act-thumb-media"
+          src={asset.url}
+          preload="metadata"
+          muted
+          playsInline
+          onError={() => setBroken(true)}
+          onLoadedMetadata={(e) => {
+            const d = (e.target as HTMLVideoElement).duration;
+            if (Number.isFinite(d) && d > 0) setSeconds(Math.round(d));
+          }}
+        />
+        {seconds !== null ? <span className="creative-act-thumb-time">{seconds}ث</span> : null}
+      </span>
+    );
+  }
+
+  return (
+    <span className="creative-act-thumb">
+      <img
+        className="creative-act-thumb-media"
+        src={asset.url}
+        alt={asset.nameAr}
+        loading="lazy"
+        onError={() => setBroken(true)}
+      />
+    </span>
+  );
 }
 
 /** What the server answers when asked what this will cost. */
@@ -103,6 +260,7 @@ const RUN_LABEL_AR: Readonly<Record<string, string>> = {
   'face-swap': '◉ بدّل الوجه',
   'talking-photo': '◍ أنطِقها',
 };
+
 
 /** Which acts read a second asset, and which read a duration. Server-declared. */
 const takesSecond = (op: OperationStateView) =>
@@ -216,6 +374,11 @@ export function CreativeActPanel({
    */
   const durationBound = operation.durationBound;
   const needsSecond = takesSecond(operation);
+  // WHICH FAMILY EACH SLOT TAKES — read from the act's declared inputs, not
+  // written out per act here. A second list would be a second authority, and
+  // the drop area would start refusing what the server accepts.
+  const targetKind = familyOfInput(operation.inputs[0]);
+  const secondKind = familyOfInput(operation.inputs[1]);
   const needsDuration = takesDuration(operation.id);
   const maxSeconds = durationBound?.seconds ?? null;
   const needsDeclaration = operation.requiresAcknowledgment;
@@ -320,32 +483,91 @@ export function CreativeActPanel({
     }
   }
 
+  /**
+   * ─── THE PICKER ───────────────────────────────────────────────────────────
+   *
+   *   Four things it must do that the old one did not:
+   *
+   *   1. SHOW THE ASSET. A thumbnail the Creator recognises, drawn from the
+   *      asset's own bytes. Not a sentence repeated down the column.
+   *   2. STAY SMALL. MEASURED: 45 clips plus 49 images as full-width buttons
+   *      pushed the acknowledgment card to y=1572 in an 844px viewport — 728px
+   *      below the fold. The Architect read that as «the card is cut off». It
+   *      was never cut; it was buried. A bounded grid that scrolls inside
+   *      itself is what brings the card, the price and the run button back.
+   *   3. TELL THE TRUTH WHEN IT CANNOT SHOW. A preview that fails to load says
+   *      so. It never falls back to the generic sentence that caused this.
+   *   4. BE A DRAG SOURCE. Each card can be picked up and dropped on the act's
+   *      drop area, and a tap does the same thing for a thumb.
+   */
   const picker = (
     items: readonly CreativeAssetChoice[],
     chosen: string | null,
-    choose: (id: string) => void,
+    choose: (id: string | null) => void,
     emptyAr: string,
-  ) => (
-    items.length === 0
-      ? <p className="creative-act-empty">{emptyAr}</p>
-      : (
-        <div className="creative-act-assets">
+    slot: 'target' | 'second',
+  ) => {
+    if (items.length === 0) return <p className="creative-act-empty">{emptyAr}</p>;
+    const chosenOne = items.find((a) => a.assetId === chosen) ?? null;
+    return (
+      <div className="creative-act-pick">
+        {chosenOne ? (
+          <div className="creative-act-chosen" data-testid={`creative-chosen-${slot}`}>
+            <span className="creative-act-chosen-what">
+              <AssetThumb asset={chosenOne} />
+              <span className="creative-act-chosen-name">{chosenOne.nameAr}</span>
+            </span>
+            {/* A selection the Creator cannot undo is a trap, not a choice. */}
+            <button
+              type="button"
+              className="creative-act-clear"
+              onClick={() => choose(null)}
+              disabled={state === 'running'}
+            >
+              ✕ غيِّر الاختيار
+            </button>
+          </div>
+        ) : null}
+        <div
+          className="creative-act-assets"
+          role="listbox"
+          aria-label="أصولُك"
+          data-testid={`creative-picker-${slot}`}
+        >
           {items.map((a) => (
             <button
               key={a.assetId}
               type="button"
+              role="option"
               className={`creative-act-asset${chosen === a.assetId ? ' creative-act-asset--on' : ''}`}
+              // A tap selects. On a thumb this is the whole interaction, and it
+              // never depends on a drag gesture a phone may not deliver.
               onClick={() => choose(a.assetId)}
+              // …and a mouse may instead carry it to the drop area.
+              draggable={state !== 'running'}
+              onDragStart={(e) => {
+                e.dataTransfer.setData(ASSET_DRAG_TYPE, JSON.stringify({ assetId: a.assetId, kind: a.kind }));
+                // The payload itself is unreadable during `dragover` by design,
+                // so the family travels as a TYPE too — which is readable — and
+                // that is what lets the drop area refuse before the drop.
+                e.dataTransfer.setData(`x-azma-kind/${a.kind.toLowerCase()}`, a.kind);
+                e.dataTransfer.effectAllowed = 'copy';
+              }}
               disabled={state === 'running'}
-              title={a.label}
-              aria-pressed={chosen === a.assetId}
+              title={a.nameAr}
+              aria-selected={chosen === a.assetId}
+              data-asset-id={a.assetId}
+              data-asset-kind={a.kind}
             >
-              <span className="creative-act-asset-label">{a.label}</span>
+              <AssetThumb asset={a} />
+              <span className="creative-act-asset-label">{a.nameAr}</span>
+              <span className="creative-act-asset-meta">{assetMetaAr(a)}</span>
             </button>
           ))}
         </div>
-      )
-  );
+      </div>
+    );
+  };
 
   return (
     <div className="creative-act" role="group" aria-label={operation.nameAr}>
@@ -363,13 +585,34 @@ export function CreativeActPanel({
         <p className="creative-act-shut" role="status">{operation.reasonAr}</p>
       ) : null}
 
-      <p className="creative-act-label">{TARGET_QUESTION_AR[operation.id] ?? 'أيّ أصل؟'}</p>
-      {picker(targets, targetId, setTargetId, 'لا أصولَ من هذا النوع في خزانتك بعد.')}
+      {/* ── INPUT ONE ─────────────────────────────────────────────────────
+          Each input states which of the act's two roles it fills, so a
+          Creator never has to work out which asset lands where. */}
+      <p className="creative-act-label" id="creative-slot-target">
+        {TARGET_QUESTION_AR[operation.id] ?? 'أيّ أصل؟'}
+      </p>
+      <DropHere
+        slot="target"
+        accepts={targetKind}
+        disabled={state === 'running'}
+        onReceive={setTargetId}
+        chosen={Boolean(targetId)}
+      />
+      {picker(targets, targetId, setTargetId, 'لا أصولَ من هذا النوع في خزانتك بعد.', 'target')}
 
       {needsSecond ? (
         <>
-          <p className="creative-act-label">{SECOND_QUESTION_AR[operation.id] ?? 'والمَدخل الثاني؟'}</p>
-          {picker(seconds, secondId, setSecondId, 'لا أصولَ من هذا النوع في خزانتك بعد.')}
+          <p className="creative-act-label" id="creative-slot-second">
+            {SECOND_QUESTION_AR[operation.id] ?? 'والمَدخل الثاني؟'}
+          </p>
+          <DropHere
+            slot="second"
+            accepts={secondKind}
+            disabled={state === 'running'}
+            onReceive={setSecondId}
+            chosen={Boolean(secondId)}
+          />
+          {picker(seconds, secondId, setSecondId, 'لا أصولَ من هذا النوع في خزانتك بعد.', 'second')}
         </>
       ) : null}
 

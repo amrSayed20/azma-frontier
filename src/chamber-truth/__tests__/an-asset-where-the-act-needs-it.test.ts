@@ -45,7 +45,12 @@ describe('1 · the Vault says which assets exist', () => {
     // assets brought from a device. Thirty-four of the Creator's pictures were
     // made by the Chamber. The picker's authority is every VISUAL asset owned.
     expect(CLIENT).toContain('return vaultVisuals');
-    expect(CLIENT).toContain("a.capabilityTarget === 'VISUAL' && Boolean(a.secureStorageUri)");
+    // The families are drawn from the Vault's own answer, by capability and by
+    // having real bytes behind them. Written three times over until 2026-10-13
+    // — once per family — it is one filter now, and the rule is unchanged:
+    // every asset the Creator OWNS of that family, never the upload list.
+    expect(CLIENT).toContain("a.capabilityTarget === k && Boolean(a.secureStorageUri)");
+    expect(CLIENT).toContain("family('VISUAL')");
     expect(CLIENT).not.toContain('return uploadedItems');
     expect(CLIENT).not.toContain('assetId: g.assetId as string');
   });

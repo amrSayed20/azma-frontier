@@ -147,6 +147,18 @@ interface StepQuote {
    * the exact figure appears in the workspace where the asset is chosen.
    */
   readonly priceDependsAr?: string;
+  /**
+   * Whether this step is billed by the second — and therefore whether the
+   * figure beside it is a TOTAL or merely a starting point.
+   *
+   * The card asks the estimator without a duration, because no duration has
+   * been chosen yet; the estimator then prices ONE second. Printing that as
+   * «200 وحدة» beside «فيديو» tells a Creator that a ten-second clip costs the
+   * same as a one-second clip. It does not. So a per-second step is labelled
+   * as a start, and the assumption it rests on is named on the card itself.
+   */
+  readonly perSecond?: boolean;
+  readonly quantity?: number;
 }
 
 export function OperationsCenter({
@@ -238,9 +250,20 @@ export function OperationsCenter({
                           {/* The estimator's own words. This component computes
                               no price and knows no rate. */}
                           {quote?.priced && quote.estimatedAzmaUnits !== null && (
-                            <span className="ops-cost">
-                              {quote.estimatedAzmaUnits.toLocaleString('en-US')} وحدة · {quote.workAr}
-                            </span>
+                            quote.perSecond ? (
+                              // A START, said as a start — with the assumption
+                              // it rests on written out, not left to be guessed.
+                              <span className="ops-cost ops-cost--from">
+                                من {quote.estimatedAzmaUnits.toLocaleString('en-US')} وحدة
+                                <span className="ops-cost-assumption">
+                                  لثانيةٍ واحدة · ويُحسَب على المدّة التي تَطلبها
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="ops-cost">
+                                {quote.estimatedAzmaUnits.toLocaleString('en-US')} وحدة · {quote.workAr}
+                              </span>
+                            )
                           )}
                           {!quote?.priced && quote?.priceDependsAr && (
                             <span className="ops-cost ops-cost--depends">
