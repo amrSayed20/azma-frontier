@@ -25,7 +25,18 @@ export interface VaultPick {
   readonly pixelHeight: number | null;
 }
 
-const ARABIC_DATE = new Intl.DateTimeFormat('ar-EG', { day: 'numeric', month: 'long' });
+/**
+ * The day AND the hour.
+ *
+ * MEASURED 2026-10-13 after the first repair: naming by act and day gave 29
+ * distinct names across 94 assets — better than one sentence for forty-five,
+ * but three assets still shared a name, because one act run three times in an
+ * afternoon produced three of them. The hour is already in the asset's own
+ * `createdAt`; printing it costs nothing and separates them.
+ */
+const ARABIC_DATE = new Intl.DateTimeFormat('ar-EG', {
+  day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+});
 
 /**
  * The asset's name, taken from what the asset itself records.

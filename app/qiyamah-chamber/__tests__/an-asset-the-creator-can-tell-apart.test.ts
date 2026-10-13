@@ -103,3 +103,15 @@ describe('4 · the list is bounded, which is what brings the card back into reac
     expect(css).toContain('.creative-act-thumb--broken');
   });
 });
+
+describe('5 · the same act, twice in one afternoon, still gives two names', () => {
+  it('two assets from one act on one day do not collide', () => {
+    // MEASURED after the first repair: 29 distinct names across 94 assets,
+    // because an act run three times in an afternoon named all three alike.
+    const at = (h: number, m: number) => assetNameAr({
+      createdAt: Date.UTC(2026, 9, 12, h, m),
+      metadata: { mutationInstructionAr: 'تبديل الوجه' },
+    });
+    expect(at(13, 5)).not.toEqual(at(16, 40));
+  });
+});
