@@ -1884,6 +1884,16 @@
   font-size: 0.7rem;
   font-variant-numeric: tabular-nums;
 }
+/* A basis instead of a figure. It must read as a statement about price, not
+   as a dimmed price — so it keeps the same place and size, and only loses the
+   certainty of the gold. It also wraps: the sentence is longer than a number,
+   and a truncated reason is worse than no reason at all. */
+.ops-cost--depends {
+  color: var(--text-muted);
+  line-height: 1.5;
+  white-space: normal;
+  text-align: start;
+}
 .ops-card-why {
   color: var(--text-muted);
   font-size: 0.75rem;

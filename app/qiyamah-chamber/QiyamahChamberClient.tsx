@@ -156,6 +156,13 @@ interface StepQuote {
   readonly quantity?: number;
   readonly perSecond?: boolean;
   readonly blockerAr?: string;
+  /**
+   * The basis, when no single figure can exist yet — an act billed by the
+   * frames of the Creator's own clip. Declared here because the estimator
+   * really sends it, and a type that omits a field the door returns teaches
+   * the next reader that it is not there.
+   */
+  readonly priceDependsAr?: string;
 }
 
 /**

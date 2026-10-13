@@ -19,6 +19,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { CHAMBER_TRUTH } from '../truth-registry';
 import { consumptionFor } from '@/src/economy/pricing/sovereign-value-balance';
+import { measuredCostFor, type NewCapability } from '@/src/economy/pricing/new-capability-pricing';
 import { IMAGE_MODEL_FLEET } from '@/src/sovereign-model-selection/image-model-fleet';
 import { VIDEO_MODEL_FLEET } from '@/src/sovereign-model-selection/video-model-fleet';
 
@@ -142,12 +143,26 @@ describe('5 · it is asked for the act the Creator has chosen', () => {
     }
   });
 
-  it('every step the approved table names is a step the table really carries', () => {
+  it('every step the route names is a step SOME authority really prices', () => {
     // A step the route offers but the pricing layer does not price would be
     // quoted as «unknown» forever, and nobody would know why.
-    const declared = [...ROUTE.matchAll(/^ {2}([A-Z_0-9]+):\s*\{ capability:/gm)].map((m) => m[1]!);
-    expect(declared.length).toBeGreaterThanOrEqual(6);
-    for (const step of declared) expect(consumptionFor(step)).toBeDefined();
+    //
+    // There are two pricing authorities now, and a step must belong to exactly
+    // one of them: the approved consumption table for the six original acts,
+    // and `new-capability-pricing` for the five the paid campaign measured on
+    // 2026-10-12. The rule is unchanged — every offered step is priced — and
+    // it is the SOURCE of the price that widened, not the requirement.
+    const declared = [...ROUTE.matchAll(/^ {2}([A-Z_0-9]+):\s*\{$|^ {2}([A-Z_0-9]+):\s*\{ capability:/gm)]
+      .map((m) => m[1] ?? m[2]!)
+      .filter((s): s is string => typeof s === 'string');
+    expect(declared.length).toBeGreaterThanOrEqual(11);
+    for (const step of declared) {
+      const byTable = consumptionFor(step) !== undefined;
+      let byMeasurement = false;
+      try { byMeasurement = measuredCostFor(step as NewCapability) !== undefined; } catch { byMeasurement = false; }
+      // Named in the failure so the next reader sees WHICH step lost its price.
+      expect({ step, priced: byTable || byMeasurement }).toEqual({ step, priced: true });
+    }
   });
 
   it('a clip is quoted on the seconds the Creator chose, and re-quoted when they change', () => {

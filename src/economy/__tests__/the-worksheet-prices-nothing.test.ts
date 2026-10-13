@@ -212,17 +212,43 @@ describe('5 · the financial constitution is untouched', () => {
     }
   });
 
-  it('the new steps are in NEITHER the estimator nor the consumption table', () => {
-    const ESTIMATE = read('app/api/sovereign/economy/estimate/route.ts');
-    for (const step of ['BACKGROUND_REMOVAL', 'TALKING_PHOTO', 'LIP_SYNC', 'FACE_SWAP']) {
-      expect(ESTIMATE).not.toContain(step);
+  // ── WHAT THE CAMPAIGN CHANGED, AND WHAT IT DID NOT ──────────────────────
+  //
+  //   These two assertions once read «the new steps are in NEITHER the
+  //   estimator nor the consumption table», and that was right while NO
+  //   verified price existed: a step the estimator knew would have been a
+  //   price somebody invented.
+  //
+  //   On 2026-10-12 nine paid provider jobs measured all five, and the Founder
+  //   ordered a 70% uplift over the measured cost. So a verified price now
+  //   exists — in `new-capability-pricing`, with a provider job id against
+  //   every rule. The estimator reading THAT is the rule being honoured, not
+  //   broken.
+  //
+  //   What has NOT changed, and is asserted below unaltered: the approved
+  //   consumption table carries none of them, and the estimator invents no
+  //   figure of its own. The forbidden thing was never the step's name — it
+  //   was a number with no measurement behind it.
+
+  it('the approved consumption table still carries none of the five', () => {
+    for (const step of ['BACKGROUND_REMOVAL', 'TALKING_PHOTO', 'LIP_SYNC', 'FACE_SWAP', 'UPSCALE_4X']) {
       expect(BALANCE).not.toContain(step);
     }
   });
 
-  it('so an unpriced step cannot be quoted at all — by construction', () => {
+  it('and the estimator states no price of its own — it reads the measured one', () => {
+    const ESTIMATE = read('app/api/sovereign/economy/estimate/route.ts');
+    expect(ESTIMATE).toContain('creatorEstimate');
+    // Not one of the five may carry a literal unit figure in the route. A
+    // number written here would be a second authority on the same price.
+    for (const units of [9, 170, 82]) {
+      expect(ESTIMATE).not.toMatch(new RegExp(`balancePerUnit:\\s*${units}|chargedUnits:\\s*${units}`));
+    }
+  });
+
+  it('so a step NOBODY prices cannot be quoted at all — by construction', () => {
     expect(read('app/api/sovereign/economy/estimate/route.ts'))
-      .toContain("{ error: 'invalid_step', valid: Object.keys(CHAMBER_STEPS) }");
+      .toContain("{ error: 'invalid_step'");
   });
 });
 

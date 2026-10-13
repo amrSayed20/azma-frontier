@@ -138,6 +138,15 @@ interface StepQuote {
   readonly workAr: string;
   readonly estimatedAzmaUnits: number | null;
   readonly unitNameAr?: string;
+  /**
+   * Why there is no single figure, when the estimator says there is none.
+   *
+   * Two acts are billed by the frames of the Creator's OWN clip, so one number
+   * cannot exist before they choose it. A card that then shows nothing lets a
+   * Creator believe the act is free — so the basis is shown in its place, and
+   * the exact figure appears in the workspace where the asset is chosen.
+   */
+  readonly priceDependsAr?: string;
 }
 
 export function OperationsCenter({
@@ -231,6 +240,11 @@ export function OperationsCenter({
                           {quote?.priced && quote.estimatedAzmaUnits !== null && (
                             <span className="ops-cost">
                               {quote.estimatedAzmaUnits.toLocaleString('en-US')} وحدة · {quote.workAr}
+                            </span>
+                          )}
+                          {!quote?.priced && quote?.priceDependsAr && (
+                            <span className="ops-cost ops-cost--depends">
+                              تُحاسَب {quote.priceDependsAr}
                             </span>
                           )}
                         </>
