@@ -153,3 +153,29 @@ describe('6 · the gateway hands over to the authentication that already exists'
     expect(CSS).toContain('transform-origin');
   });
 });
+
+describe('7 · the photograph is inside the artifact, not beside it', () => {
+  /**
+   * MEASURED on the first production deploy: the gate's own door answered 404.
+   *
+   * The release artifact is `tar … .next package.json package-lock.json`.
+   * `public/` is not in it — Next serves that directory from the filesystem at
+   * runtime, so a file placed there exists on a laptop and nowhere else.
+   * `src/policies/index.ts` records the Empire paying for exactly this once
+   * already, with `docs/`.
+   */
+  it('the gate does not fetch its door from a directory that never ships', () => {
+    expect(CLIENT).not.toContain('/gateway/sovereign-gate.jpg');
+    expect(CLIENT).not.toMatch(/src="\/[^"]+\.(jpg|jpeg|png|webp|avif)"/);
+  });
+
+  it('it is imported, so the build carries it', () => {
+    expect(CLIENT).toContain("from './sovereign-gate.jpg'");
+    expect(CLIENT).toContain('src={gatePhotograph.src}');
+  });
+
+  it('and the file is where the import says it is', () => {
+    const img = join(process.cwd(), 'src/imperial-experience-engine/experiences/gateway/sovereign-gate.jpg');
+    expect(readFileSync(img).byteLength).toBeGreaterThan(50_000);
+  });
+});

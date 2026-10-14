@@ -47,6 +47,24 @@ import { t } from '@/src/creator-language';
 import type { Dictionary, Locale } from '@/src/creator-language';
 import { LocaleSwitcher } from '@/src/creator-language';
 import { GATEWAY_CHAMBERS } from './chambers';
+/**
+ * ─── THE PHOTOGRAPH TRAVELS WITH THE BUILD ──────────────────────────────────
+ *
+ *   It sat in `public/` and 404'd on production. The release artifact is
+ *
+ *       tar … .next package.json package-lock.json
+ *
+ *   and `public/` is not in it — Next serves that folder from the filesystem
+ *   at runtime, so a file placed there exists on a laptop and nowhere else.
+ *   `src/policies/index.ts` records the Empire paying for exactly this with
+ *   `docs/`: «a policy nobody can read is not a policy». A gate with no door
+ *   is the same sentence.
+ *
+ *   Imported instead, the image is emitted into `.next/static/media/` with a
+ *   content hash — so it is inside the artifact by construction, and cannot
+ *   be left behind by anyone who forgets this again.
+ */
+import gatePhotograph from './sovereign-gate.jpg';
 import type { GatewayPackage, GatewayPolicy } from './types';
 import './gateway.css';
 
@@ -173,7 +191,7 @@ export function SovereignGateway({
           */}
           <img
             className="gate-photo"
-            src="/gateway/sovereign-gate.jpg"
+            src={gatePhotograph.src}
             alt=""
             fetchPriority="high"
             decoding="async"
