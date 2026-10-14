@@ -83,6 +83,22 @@ export function SovereignGateway({
   /** Read from `SOVEREIGN_PACKAGES` on the server. Never restated here. */
   readonly packages: readonly GatewayPackage[];
 }) {
+  /**
+   * ─── THE CONTROLS ARE NEVER GATED BEHIND THE ANIMATION ──────────────────
+   *
+   *   MEASURED on the live release at 1280×800 and 1600×1000: «دخول» could
+   *   not be pressed. The controls were invisible and inert until the phase
+   *   left `approaching`, and the phase only left it through a React timer or
+   *   a React listener — neither of which exists before hydration. So the
+   *   server-rendered gate showed a door, no buttons, and no way through; and
+   *   since the introduction lives BELOW the scene, a visitor stuck there
+   *   could reach none of it. «I cannot get to the end of the page» was exact.
+   *
+   *   The repair is in the stylesheet, not here: the controls are painted and
+   *   live from the first frame, and the approach plays behind them. They do
+   *   not «appear» under a moving cursor — they were never absent — so the
+   *   accidental press that gating was meant to prevent has nothing to catch.
+   */
   const [phase, setPhase] = useState<Phase>('approaching');
   const [openPolicy, setOpenPolicy] = useState<GatewayPolicy | null>(null);
   const introRef = useRef<HTMLElement | null>(null);

@@ -179,3 +179,42 @@ describe('7 · the photograph is inside the artifact, not beside it', () => {
     expect(readFileSync(img).byteLength).toBeGreaterThan(50_000);
   });
 });
+
+describe('8 · the gate opens, at any size and any zoom', () => {
+  /**
+   * MEASURED on the live release: «دخول» could not be pressed at 1280×800 or
+   * 1600×1000, and the control cluster sat below the fold at every zoom level
+   * from 100% to 200%. Two separate causes, both of which made the whole
+   * introduction unreachable — because the introduction lives BELOW the scene,
+   * and a visitor who cannot cross never gets to any of it.
+   */
+
+  it('the controls are never made inert or invisible by a phase', () => {
+    // They were gated until the approach finished. The phase is React's, so
+    // before hydration there was no way to end it and no way through the gate.
+    const block = CSS.split('.gate-controls {')[1]!.split('}')[0]!;
+    expect(block).toContain('pointer-events: auto');
+    expect(block).not.toMatch(/opacity:\s*0\s*;/);
+    expect(block).not.toContain('translateY');
+    expect(CSS).not.toMatch(/\[data-phase="arrived"\]\s*\.gate-controls/);
+  });
+
+  it('the photograph cannot take a press meant for a control', () => {
+    const frame = CSS.split('.gate-frame {')[1]!.split('}')[0]!;
+    expect(frame).toContain('pointer-events: none');
+  });
+
+  it('and the page does not inherit the browser margin that hid the handle', () => {
+    // 8px of default body margin pushed the scene to y=8..1088 in a 1080px
+    // viewport, putting the bottom of «دخول» below the fold at every zoom.
+    expect(CSS).toContain('body:has(.gateway)');
+    expect(CSS).toMatch(/body:has\(\.gateway\)\s*\{\s*margin:\s*0/);
+  });
+
+  it('the scene is sized to the viewport, not to a fixed number of pixels', () => {
+    const scene = CSS.split('.gate-scene {')[1]!.split('}')[0]!;
+    expect(scene).toContain('100svh');
+    // And nothing clips the page itself — the introduction is below the scene.
+    expect(scene).not.toMatch(/position:\s*fixed/);
+  });
+});

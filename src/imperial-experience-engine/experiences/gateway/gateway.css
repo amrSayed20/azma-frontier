@@ -15,6 +15,15 @@
  *   turns to mush, so the walk stops rather than the door dissolving.
  */
 
+/* ── THE EIGHT PIXELS THAT PUT THE HANDLE BELOW THE FOLD ──────────────────
+   MEASURED: the scene began at y=8 and ended at y=1088 in a 1080px viewport,
+   so the bottom edge of the control cluster — «دخول» and the language
+   switch — sat below the fold at EVERY zoom level. The eight pixels are the
+   browser's own default `body { margin: 8px }`, which this page never reset;
+   other chambers reset it inside their own stylesheets and so never saw it.
+   Scoped with :has so it is this page's margin that goes, and no other's. */
+body:has(.gateway) { margin: 0; }
+
 .gateway {
   --black: #000000;
   --dark: #0A0A0A;
@@ -48,7 +57,10 @@
   place-items: end center;
   background: var(--black);
 }
-.gate-frame { position: absolute; inset: 0; overflow: hidden; contain: paint; }
+/* The picture is scenery, never a target. MEASURED on the live release: it
+   sat over the controls and swallowed the press meant for «دخول». Nothing
+   inside this frame is interactive, so nothing inside it should be hit. */
+.gate-frame { position: absolute; inset: 0; overflow: hidden; contain: paint; pointer-events: none; }
 
 .gate-photo {
   width: 100%;
@@ -129,8 +141,11 @@
 }
 
 /* ── THE TWO CONTROLS ───────────────────────────────────────────────────
-   They arrive only once the scene has settled. A button that appears under a
-   moving picture gets pressed by accident. */
+   Painted and live from the first frame, through every phase. They were once
+   held at opacity 0 with pointer-events none until the approach finished —
+   and MEASURED on the live release, that left the gate unopenable before
+   hydration and pushed the cluster below the fold with its own translate. A
+   gate whose handle appears six seconds late is a gate that does not open. */
 .gate-controls {
   position: relative;
   z-index: 2;
@@ -141,15 +156,9 @@
   padding-block-end: clamp(2.2rem, 9vh, 5rem);
   padding-inline: 20px;
   text-align: center;
-  opacity: 0;
-  transform: translateY(14px);
-  pointer-events: none;
-  transition: opacity 700ms ease-out, transform 700ms cubic-bezier(0.2, 0.8, 0.3, 1);
-}
-.gateway[data-phase="arrived"] .gate-controls {
   opacity: 1;
-  transform: none;
   pointer-events: auto;
+  transition: opacity 400ms ease-out;
 }
 .gateway[data-phase="crossing"] .gate-controls { opacity: 0; transition: opacity 400ms ease-in; }
 
