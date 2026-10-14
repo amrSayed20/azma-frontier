@@ -52,6 +52,10 @@ export type { ExperiencePhase, ExperienceId, ExperienceDefinition } from './engi
 export { EXPERIENCE_REGISTRY } from './engine';
 
 export { ArrivalExperience } from './experiences/arrival';
+// The entry a stranger meets at azmaos.com. ArrivalExperience is kept —
+// it is the ceremony this gateway supersedes, not a thing to delete.
+export { SovereignGateway } from './experiences/gateway/SovereignGateway';
+export type { GatewayPolicy, GatewayPackage } from './experiences/gateway/types';
 export { SignupExperience } from './experiences/signup';
 export { LoginExperience } from './experiences/login';
 export { QiyamahChamberExperience } from './experiences/qiyamah-chamber';
