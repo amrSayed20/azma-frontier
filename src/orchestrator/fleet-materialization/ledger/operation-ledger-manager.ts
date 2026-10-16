@@ -106,6 +106,47 @@ export class OperationLedgerManager implements ILedgerManager {
     };
   }
 
+  /**
+   * RAS AL AMR EXECUTION DIRECTIVE — PHASE 4: a Creator's most recent
+   * operations whose id starts with `operationIdPrefix`, newest first. Lets a
+   * chamber find its own render jobs again after the Creator leaves and returns.
+   * Tenant-scoped by construction: only rows owned by `tenantId` are read.
+   */
+  public listRecentForTenant(tenantId: string, operationIdPrefix: string, limit: number): OperationLedgerEntry[] {
+    const rows = this.db
+      .prepare(
+        `SELECT operation_id FROM operation_ledger
+          WHERE subscriber_tenant_id = ? AND operation_id LIKE ? ESCAPE '\\'
+          ORDER BY created_at DESC LIMIT ?`,
+      )
+      .all(
+        tenantId,
+        `${operationIdPrefix.replace(/[\\%_]/g, (c) => `\\${c}`)}%`,
+        Math.max(1, Math.min(50, limit)),
+      ) as Record<string, unknown>[];
+    return rows.map((row) => this.getEntrySync(row.operation_id as string));
+  }
+
+  private getEntrySync(operationId: string): OperationLedgerEntry {
+    const row = this.db
+      .prepare('SELECT * FROM operation_ledger WHERE operation_id = ?')
+      .get(operationId) as Record<string, unknown>;
+    return {
+      operationId: row.operation_id as string,
+      subscriberTenantId: row.subscriber_tenant_id as string,
+      capabilityTarget: row.capability_target as CapabilityTarget,
+      sourceIntent: JSON.parse(row.source_intent_json as string) as AZMAPolymorphicIntent,
+      currentState: row.current_state as OperationState,
+      estimatedResourceCost: row.estimated_resource_cost as number,
+      actualResourceCost: row.actual_resource_cost != null ? (row.actual_resource_cost as number) : undefined,
+      allocatedProviderId: row.allocated_provider_id != null ? (row.allocated_provider_id as string) : undefined,
+      externalJobId: row.external_job_id != null ? (row.external_job_id as string) : undefined,
+      resolvedAt: row.resolved_at != null ? (row.resolved_at as number) : undefined,
+      createdAt: row.created_at as number,
+      updatedAt: row.updated_at as number,
+    };
+  }
+
   private isTerminalState(state: OperationState): boolean {
     return (
       state === OperationState.DEPOSITED ||

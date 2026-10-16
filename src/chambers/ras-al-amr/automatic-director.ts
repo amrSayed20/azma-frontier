@@ -321,10 +321,21 @@ export interface MultiNodeCinematicDirectionResult {
 export function decideMultiNodeCinematicDirection(
   nodes: readonly { readonly nodeId: string; readonly asset: VaultAsset; readonly formalGoal?: FormalGoalContractView }[],
 ): MultiNodeCinematicDirectionResult {
+  // RAS AL AMR EXECUTION DIRECTIVE — PHASE 1: only visual scenes form the
+  // sequence. An AUDIO node (music, narration, a microphone recording) is a
+  // sound layer, never a scene: it is placed under the scenes from 0s and never
+  // pushes the next scene later. Before this, a 30s music track placed between
+  // two images delayed the second image to 35s.
   let cumulativeStartTimeSeconds = 0;
   const nodeDecisions: readonly NodeCinematicDirection[] = nodes.map((node, index) => {
-    const decision = decideCinematicDirection(node.asset, node.formalGoal, index, cumulativeStartTimeSeconds);
-    if (decision.temporal) {
+    const isSoundLayer = node.asset.capabilityTarget === CapabilityTarget.AUDIO;
+    const decision = decideCinematicDirection(
+      node.asset,
+      node.formalGoal,
+      index,
+      isSoundLayer ? 0 : cumulativeStartTimeSeconds,
+    );
+    if (decision.temporal && !isSoundLayer) {
       cumulativeStartTimeSeconds += decision.temporal.playDurationSeconds;
     }
     return {

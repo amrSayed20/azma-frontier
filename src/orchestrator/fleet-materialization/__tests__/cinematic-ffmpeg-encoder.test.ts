@@ -257,18 +257,21 @@ function getImageLoopDuration(args: string[]): string | undefined {
 }
 
 describe('VI-B — Temporal & Audio Fidelity', () => {
-  it('A — trimStartSeconds=2 on a 5s slot → image loop duration is 3s (effectiveDuration)', () => {
+  // RAS AL AMR EXECUTION DIRECTIVE — PHASE 1: a still image has no source time,
+  // so trims never shorten its slot. The preview has always shown a trimmed image
+  // for its full playDuration; the MP4 now does the same (cinematic-timing.ts).
+  it('A — trimStartSeconds=2 on a 5s slot → still image stays on screen for its full 5s slot', () => {
     const graph = makeImageGraph({ nodeId: 'img-a', durationSec: 5, trimStartSeconds: 2, trimEndSeconds: 5 });
     spawnEncoding('op-vib-a', graph);
     const args = mockSpawn.mock.calls[0][1] as string[];
-    expect(getImageLoopDuration(args)).toBe('3');
+    expect(getImageLoopDuration(args)).toBe('5');
   });
 
-  it('B — trimEndSeconds=3 on a 5s slot → image loop duration is 3s (effectiveDuration)', () => {
+  it('B — trimEndSeconds=3 on a 5s slot → still image stays on screen for its full 5s slot', () => {
     const graph = makeImageGraph({ nodeId: 'img-b', durationSec: 5, trimStartSeconds: 0, trimEndSeconds: 3 });
     spawnEncoding('op-vib-b', graph);
     const args = mockSpawn.mock.calls[0][1] as string[];
-    expect(getImageLoopDuration(args)).toBe('3');
+    expect(getImageLoopDuration(args)).toBe('5');
   });
 
   it('C — panCenter=0.5 produces pan filter with correct left/right gains in filter_complex', () => {
@@ -491,19 +494,21 @@ function makeMultiNodeGraph(
 }
 
 describe('VI-C — Full Cinematic Overlay Composition', () => {
-  it('A — positionX/positionY propagate to overlay=x=<posX>:y=<posY> in filter_complex', () => {
-    const graph = makeMultiNodeGraph([{ nodeId: 'n-a', positionX: 100, positionY: 200 }]);
+  // Package XXXII contract (the preview's own): positionX/Y are percentage
+  // offsets of the layer CENTRE from the frame centre, not top-left pixels.
+  it('A — positionX=10, positionY=-20 → layer centre at (1152, 324) of the 1920×1080 frame', () => {
+    const graph = makeMultiNodeGraph([{ nodeId: 'n-a', positionX: 10, positionY: -20 }]);
     spawnEncoding('op-vic-a', graph);
     const fc = getFilterComplex(mockSpawn.mock.calls[0][1] as string[]);
-    expect(fc).toContain('overlay=x=100:y=200');
+    expect(fc).toContain("overlay=x='1152-w/2':y='324-h/2'");
   });
 
-  it('B — scaleX=0.5, scaleY=0.5 → scale=960:540 (half of 1920×1080) in filter_complex', () => {
+  it('B — scaleX=0.5, scaleY=0.5 → source contained in the frame (aspect kept), then halved', () => {
     const graph = makeMultiNodeGraph([{ nodeId: 'n-b', scaleX: 0.5, scaleY: 0.5 }]);
     spawnEncoding('op-vic-b', graph);
     const fc = getFilterComplex(mockSpawn.mock.calls[0][1] as string[]);
-    // targetW = round(1920 * 0.5) = 960, targetH = round(1080 * 0.5) = 540
-    expect(fc).toContain('scale=960:540');
+    expect(fc).toContain("scale=w='max(1,trunc(min(1920/iw,1080/ih)*iw*0.5))'");
+    expect(fc).toContain(":h='max(1,trunc(min(1920/iw,1080/ih)*ih*0.5))'");
   });
 
   it('C — rotationDegrees=90 → rotate=1.570796 (π/2 radians) in filter_complex', () => {
@@ -685,7 +690,7 @@ describe('Storage Root Resolution — UPLOADS_DIR aware', () => {
 // ============================================================
 
 describe('Repair C — spawnEncoding throws synchronously on invalid graph', () => {
-  it('throws when graph has no active image nodes — FFmpeg is never spawned', () => {
+  it('throws when graph has no active visual (image or video) nodes — FFmpeg is never spawned', () => {
     const emptyGraph: CompiledAssemblyGraph = {
       compilationId: 'comp-empty',
       sourceCanvasId: 'canvas-empty',
@@ -706,7 +711,7 @@ describe('Repair C — spawnEncoding throws synchronously on invalid graph', () 
       compiledAt: 0,
     };
 
-    expect(() => spawnEncoding('op-empty-nodes', emptyGraph)).toThrow('no active image nodes');
+    expect(() => spawnEncoding('op-empty-nodes', emptyGraph)).toThrow('no active visual nodes');
     expect(mockSpawn).not.toHaveBeenCalled();
   });
 
