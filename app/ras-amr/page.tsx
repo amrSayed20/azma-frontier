@@ -435,6 +435,10 @@ import type { FormalGoalContractView } from '@/src/chambers/ras-al-amr/automatic
 import { toDirectionDecision } from '@/src/chambers/ras-al-amr/direction-workspace-constitution';
 import type { DirectionDecision, DirectionOperator } from '@/src/chambers/ras-al-amr/direction-workspace-constitution';
 import { AssemblyRuntime } from '@/src/chambers/ras-al-amr/assembly-runtime';
+import { isStoryboardCanvasId } from '@/src/chambers/ras-al-amr/storyboard';
+import { computeTemplateSlotTemporal, visualScenesEnd } from '@/src/chambers/ras-al-amr/template-slots';
+import type { SoundNodeTest } from '@/src/chambers/ras-al-amr/template-slots';
+import StoryboardWorld from './storyboard/StoryboardWorld';
 import type { CanvasMutationPayload } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
 import { useVoiceMode } from '@/src/components/living-companion/useVoiceMode';
 import './ras-amr.css';
@@ -481,7 +485,21 @@ const BLEND_MODES: VisualFilterDirective['blendMode'][] = ['NORMAL', 'MULTIPLY',
 
 // 'template-preview': intermediate screen after selecting a template from the intent
 // gate — creator reviews the production body before committing to the workspace.
-type CreationPhase = 'intent' | 'template-preview' | 'workspace';
+type CreationPhase = 'intent' | 'template-preview' | 'workspace' | 'storyboard';
+
+/** Wall clock for handlers handed to child components (never called during render). */
+function wallClock(): number {
+  return Date.now();
+}
+
+// The path the Creator last worked in, so returning to the chamber lands there.
+const LAST_PATH_KEY = 'azma.rasAmr.lastPath';
+function readLastPath(): 'montage' | 'storyboard' | null {
+  try {
+    const value = localStorage.getItem(LAST_PATH_KEY);
+    return value === 'montage' || value === 'storyboard' ? value : null;
+  } catch { return null; }
+}
 
 interface SovereignTemplate {
   id: string;
@@ -636,7 +654,6 @@ function buildDemoFrames(template: SovereignTemplate): DemoFrame[] {
 // RAS AL AMR EXECUTION DIRECTIVE — PHASE 1: only visual scenes count. A sound
 // node (music, narration, recording) is never a scene: it never takes a template
 // slot and never pushes the next scene later.
-type SoundNodeTest = (node: AssemblyNode) => boolean;
 
 // Node ids of the sound layers on a canvas (Vault capability first, then the
 // capability recorded on the node). Pure, so preview code can call it anywhere.
@@ -656,12 +673,6 @@ function nextVisualSiblingsOf(tracks: SovereignCanvas['tracks'], soundNodeIds: R
   return mapNextVisualSiblings(tracks, (n) => !soundNodeIds.has(n.nodeId));
 }
 
-function visualScenesEnd(canvas: SovereignCanvas, isSoundNode: SoundNodeTest): number {
-  return canvas.tracks
-    .flatMap((t) => t.nodes)
-    .filter((n) => !isSoundNode(n))
-    .reduce((acc, n) => Math.max(acc, (n.temporal?.globalStartTimeSeconds ?? 0) + (n.temporal?.playDurationSeconds ?? 5)), 0);
-}
 
 // A new visual scene with no template follows the last scene instead of
 // stacking on top of it at 0s.
@@ -703,36 +714,6 @@ function probeMediaDurationSeconds(uri: string): Promise<number | undefined> {
     el.onerror = () => { window.clearTimeout(timer); done(undefined); };
     el.src = uri;
   });
-}
-
-// Computes initial temporal for a template slot based on current canvas state.
-// Creator edits always override these values — templates are starting points only.
-// Slots are filled by visual scenes only (sound layers never take a slot), and a
-// scene beyond the template's last slot gets the default length: a template is a
-// starting structure, never a cap on how many scenes a production may hold.
-function computeTemplateSlotTemporal(
-  template: SovereignTemplate,
-  canvas: SovereignCanvas,
-  isSoundNode: SoundNodeTest,
-): TemporalDirective {
-  const visualNodes = canvas.tracks.flatMap((t) => t.nodes).filter((n) => !isSoundNode(n));
-  const nodeIndex = visualNodes.length;
-  const lastEnd = visualScenesEnd(canvas, isSoundNode);
-  const slotDuration =
-    nodeIndex < template.slotDurations.length
-      ? template.slotDurations[nodeIndex]
-      : DEFAULT_TEMPORAL.playDurationSeconds;
-  const useCrossfade = template.transitionPreference === 'crossfade' && nodeIndex > 0;
-  const fadeDur = template.transitionDurationSeconds ?? 0.5;
-  const startTime = useCrossfade && lastEnd > 0 ? Math.max(0, lastEnd - fadeDur) : lastEnd;
-  return {
-    globalStartTimeSeconds: startTime,
-    playDurationSeconds: slotDuration,
-    trimStartSeconds: undefined,
-    trimEndSeconds: undefined,
-    transitionInType: useCrossfade ? 'crossfade' : 'cut',
-    transitionInDurationSeconds: useCrossfade ? fadeDur : undefined,
-  };
 }
 
 
@@ -1560,15 +1541,16 @@ export default function RasAmrChamber() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
 
-  const handleUploadAsset = async (file: File) => {
+  const handleUploadAsset = async (file: File, options?: { asVoice?: boolean; voiceName?: string }) => {
     setIsUploadingAsset(true);
     setUploadError(null);
     try {
       const body = new FormData();
       body.append('file', file);
-      if (isVoiceUpload) {
+      const voiceName = options?.voiceName ?? voiceDisplayNameInput.trim();
+      if (options?.asVoice ?? isVoiceUpload) {
         body.append('isVoice', 'true');
-        if (voiceDisplayNameInput.trim()) body.append('voiceDisplayName', voiceDisplayNameInput.trim());
+        if (voiceName) body.append('voiceDisplayName', voiceName);
       }
       const response = await fetch('/api/vault/assets/upload', { method: 'POST', body });
       const result = await response.json();
@@ -1605,7 +1587,9 @@ export default function RasAmrChamber() {
         const blob = new Blob(recordingChunksRef.current, { type: mimeType });
         const ext = mimeType.includes('ogg') ? 'ogg' : 'webm';
         const file = new File([blob], `recording-${Date.now()}.${ext}`, { type: mimeType });
-        void handleUploadAsset(file);
+        // A microphone recording is the Creator's own voice: it joins the voice
+        // library and the narration lane, never the music lane.
+        void handleUploadAsset(file, { asVoice: true, voiceName: 'تسجيل الميكروفون' });
         setIsRecording(false);
       };
       mediaRecorderRef.current = recorder;
@@ -2205,7 +2189,7 @@ export default function RasAmrChamber() {
     let cancelled = false;
     (async () => {
       try {
-        const list = await (await fetch('/api/ras-amr/render')).json();
+        const list = await (await fetch('/api/ras-amr/render?projectId=canvas_narrative_session')).json();
         const latest = list?.renders?.[0];
         if (cancelled || !latest?.operationId) return;
         const status = await (await fetch(`/api/ras-amr/render/${encodeURIComponent(latest.operationId)}`)).json();
@@ -2395,7 +2379,7 @@ export default function RasAmrChamber() {
         const listRes = await fetch('/api/ras-amr/canvas');
         if (listRes.ok) {
           const ld = await listRes.json() as { status: string; canvases: { canvasId: string; title: string }[] };
-          if (ld.status === 'succeeded') setSavedCanvases(ld.canvases);
+          if (ld.status === 'succeeded') setSavedCanvases(ld.canvases.filter((c) => !isStoryboardCanvasId(c.canvasId)));
         }
       } else {
         const d = await r.json() as { error?: string };
@@ -2415,7 +2399,7 @@ export default function RasAmrChamber() {
       const r = await fetch('/api/ras-amr/canvas');
       if (r.ok) {
         const d = await r.json() as { status: string; canvases: { canvasId: string; title: string }[] };
-        if (d.status === 'succeeded') setSavedCanvases(d.canvases);
+        if (d.status === 'succeeded') setSavedCanvases(d.canvases.filter((c) => !isStoryboardCanvasId(c.canvasId)));
       }
     } catch { /* silent */ }
     finally { setIsLoadingCanvases(false); }
@@ -2455,9 +2439,16 @@ export default function RasAmrChamber() {
   const handleAutoRestore = useCallback(async () => {
     try {
       const listRes = await fetch('/api/ras-amr/canvas');
+      // Returning to the chamber: a Creator who was last in the storyboard
+      // path goes back there; montage below is still restored behind it.
+      const resumeStoryboard = readLastPath() === 'storyboard';
+      if (resumeStoryboard) setCreationPhase('storyboard');
       if (!listRes.ok) return;
       const listData = await listRes.json() as { status: string; canvases: { canvasId: string; title: string }[] };
-      if (listData.status !== 'succeeded' || listData.canvases.length === 0) return;
+      if (listData.status !== 'succeeded') return;
+      // Storyboard projects are the chamber's other path — never restored as montage.
+      listData.canvases = listData.canvases.filter((c) => !isStoryboardCanvasId(c.canvasId));
+      if (listData.canvases.length === 0) return;
       // Prefer the working draft (canvas_narrative_session) over snapshots,
       // since the draft has the creator's latest unsaved work.
       const draftEntry = listData.canvases.find(c => c.canvasId === 'canvas_narrative_session');
@@ -2475,7 +2466,7 @@ export default function RasAmrChamber() {
       setSessionCanvas(restoredCanvas);
       setSaveState('restored');
       setSavedCanvases(listData.canvases);
-      setCreationPhase('workspace'); // PACKAGE XXXVI: skip intent gate on restore
+      setCreationPhase(resumeStoryboard ? 'storyboard' : 'workspace'); // PACKAGE XXXVI: skip intent gate on restore
       const firstNode = restoredCanvas.tracks.flatMap(t => t.nodes)[0];
       if (firstNode) setSelectedNodeId(firstNode.nodeId);
     } catch { /* silent — if restore fails, Creator starts fresh */ }
@@ -2982,6 +2973,59 @@ export default function RasAmrChamber() {
     setCreationPhase('intent');
   };
 
+  // Remember which path the Creator is working in (montage or storyboard).
+  useEffect(() => {
+    const path = creationPhase === 'storyboard' ? 'storyboard' : creationPhase === 'workspace' ? 'montage' : null;
+    if (!path) return;
+    try { localStorage.setItem(LAST_PATH_KEY, path); } catch { /* a convenience only */ }
+  }, [creationPhase]);
+
+  // The montage path's entry: the current project if there is one, else a blank canvas.
+  const handleEnterMontage = () => {
+    if (sessionCanvas && sessionCanvas.tracks.some((t) => t.nodes.length > 0)) setCreationPhase('workspace');
+    else handleSelectIntent('blank');
+  };
+
+  // STORYBOARD → MONTAGE: the storyboard's laid-out timeline becomes the
+  // montage project for fine editing. The montage project it replaces is
+  // first kept as a restorable snapshot; nothing leaves the Vault.
+  const handleOpenStoryboardInMontage = async (production: SovereignCanvas) => {
+    const ts = wallClock();
+    handleStopPreview();
+    if (sessionCanvas && sessionCanvas.tracks.some((t) => t.nodes.length > 0)) {
+      try {
+        await fetch('/api/ras-amr/canvas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            canvas: {
+              ...sessionCanvas,
+              canvasId: `snap-${ts}-scene`,
+              title: `قبل الاستوري بورد — ${sessionCanvas.title || new Date(ts).toLocaleTimeString('ar')}`,
+              updatedAt: ts,
+            },
+          }),
+        });
+      } catch { /* silent — the montage draft itself is still saved */ }
+    }
+    try {
+      const data = await (await fetch('/api/vault/assets')).json();
+      if (data.status === 'succeeded') setVaultAssets(data.assets);
+    } catch { /* the montage keeps its current Vault list */ }
+    setSessionCanvas({ ...production, canvasId: 'canvas_narrative_session', updatedAt: ts });
+    setQueue([]);
+    setActiveAsset(null);
+    setSelectedNodeId(production.tracks[0]?.nodes[0]?.nodeId ?? null);
+    setCompiledGraph(null);
+    setCompiledSignature(null);
+    setRenderJob(null);
+    setRenderStartError(null);
+    setShowExportPanel(false);
+    setSelectedTemplate(null);
+    setActiveWorkspaceTab('canvas');
+    setCreationPhase('workspace');
+  };
+
   // PACKAGE XXXVIII BLOCKER — NEW SCENE: full production-session isolation.
   // Saves the previous scene as a restorable snapshot, then resets ALL
   // current-production state — canvas, queue, active selection, template,
@@ -3095,6 +3139,14 @@ export default function RasAmrChamber() {
         <div className="neon-pulse-glow np-right" />
       </div>
 
+      {creationPhase === 'storyboard' && (
+        <StoryboardWorld
+          onBack={() => setCreationPhase('intent')}
+          onOpenInMontage={(production) => { void handleOpenStoryboardInMontage(production); }}
+          montageNodeCount={sessionCanvas?.tracks.reduce((n, t) => n + t.nodes.length, 0) ?? 0}
+        />
+      )}
+
       {/* PACKAGE XXXVI — INTENT GATE: shown before workspace when no prior session */}
       {creationPhase === 'intent' && (
         <div className="ras-intent-gate">
@@ -3116,22 +3168,20 @@ export default function RasAmrChamber() {
               <p className="ras-intent-sub">كل مشهد يبدأ باختيار.</p>
             </div>
 
-            {/* RAS AL AMR EXECUTION DIRECTIVE — the two separate paths of the
-                chamber. Montage is the working path below. The storyboard world
-                stays its own path and is shown honestly as not yet available:
-                its approved runner is not in this repository, and no substitute
-                is invented (see the handoff report). */}
+            {/* RAS AL AMR — the chamber's two separate paths. Montage arranges
+                media on a timeline; the storyboard world builds the story scene
+                by scene (StoryboardWorld). Both render their MP4 here. */}
             <div className="ras-path-row" role="group" aria-label="مسار العمل">
-              <div className="ras-path-card ras-path-active" aria-current="true">
+              <button className="ras-path-card ras-path-active" onClick={handleEnterMontage}>
                 <span className="ras-path-kicker">المسار الأول</span>
                 <b className="ras-path-name">المونتاج والإنتاج</b>
                 <span className="ras-path-desc">رتّب صورك ومقاطعك وصوتك على خط زمني، عاين، ثم أخرج MP4 هنا.</span>
-              </div>
-              <div className="ras-path-card ras-path-unavailable" aria-disabled="true">
+              </button>
+              <button className="ras-path-card ras-path-active" onClick={() => setCreationPhase('storyboard')}>
                 <span className="ras-path-kicker">المسار الثاني</span>
                 <b className="ras-path-name">عالم الاستوري بورد</b>
-                <span className="ras-path-desc">مسار مستقل لبناء القصة مشهداً بعد مشهد. غير متاح بعد: بانتظار ربط مشغّل الاستوري بورد المعتمد.</span>
-              </div>
+                <span className="ras-path-desc">ابنِ القصة مشهدًا بعد مشهد: وصف وأصول ومدة لكل مشهد، عاين التسلسل، ثم أخرجه MP4.</span>
+              </button>
             </div>
 
             {sessionCanvas && sessionCanvas.tracks.some((t) => t.nodes.length > 0) && (
@@ -3237,7 +3287,7 @@ export default function RasAmrChamber() {
       )}
 
       {/* STICKY HEADER — Phase B */}
-      <header className="ras-header" style={{ display: (creationPhase === 'intent' || creationPhase === 'template-preview') ? 'none' : undefined }}>
+      <header className="ras-header" style={{ display: (creationPhase === 'intent' || creationPhase === 'template-preview' || creationPhase === 'storyboard') ? 'none' : undefined }}>
         <button className="ras-exit-btn" onClick={() => {
           try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'ras-amr', constitutionalAct: 'direction' })); } catch { /* ignore */ }
           goTo('/imperial-foyer');
@@ -3510,7 +3560,7 @@ export default function RasAmrChamber() {
       )}
 
       {/* BODY GRID — Phase C: Desktop 280px 1fr 300px */}
-      <div className="ras-body-grid" style={{ display: (creationPhase === 'intent' || creationPhase === 'template-preview') ? 'none' : undefined }}>
+      <div className="ras-body-grid" style={{ display: (creationPhase === 'intent' || creationPhase === 'template-preview' || creationPhase === 'storyboard') ? 'none' : undefined }}>
 
         {/* LEFT: Asset Queue */}
         <aside className="ras-panel-left neon-border">

@@ -275,6 +275,9 @@ export default function MakmanAlGhayah() {
             publisherTenantId: compiledGraph.subscriberTenantId,
             compiledAssemblyGraph: compiledGraph,
             accessPolicy: { distributionTier: DistributionTier.PRIVATE, requiresAgeVerification: false },
+            // The MP4 already rendered in Ras Al-Amr — distribution serves it
+            // instead of rendering the film again (verified server-side).
+            ...(rasAmrRender ? { completedRenderOperationId: rasAmrRender.operationId } : {}),
             ...(scheduledPublishAtRef.current?.value
               ? { scheduledPublishAt: new Date(scheduledPublishAtRef.current.value).getTime() }
               : {}),
@@ -627,7 +630,10 @@ export default function MakmanAlGhayah() {
                 {renderOperationId && (
                   // eslint-disable-next-line jsx-a11y/media-has-caption
                   <video
-                    src={`/renders/${renderOperationId}.mp4`}
+                    src={renderOperationId.startsWith('op_rasamr_')
+                      // The film rendered in Ras Al-Amr streams from its authenticated route.
+                      ? `/api/ras-amr/render/${renderOperationId}/file`
+                      : `/renders/${renderOperationId}.mp4`}
                     controls
                     playsInline
                     className="cinematic-final-video"

@@ -183,11 +183,45 @@ export async function getRasAlAmrRenderStatus(operationId: string, tenantId: str
   return { status: 'processing', operationId, startedAt };
 }
 
-/** The Creator's recent renders from this chamber, newest first (ledger state only, no resolution). */
-export function listRasAlAmrRenders(tenantId: string, limit = 5): { operationId: string; state: OperationState; startedAt: number; finishedAt?: number }[] {
+/**
+ * The Creator's recent renders from this chamber, newest first (ledger state
+ * only, no resolution). `projectId` keeps each project's results apart — the
+ * montage session and every storyboard file their renders under their own
+ * canvasId (the intent's projectContainerId).
+ */
+export function listRasAlAmrRenders(
+  tenantId: string,
+  limit = 5,
+  projectId?: string,
+): { operationId: string; projectId?: string; state: OperationState; startedAt: number; finishedAt?: number }[] {
   return ledger()
-    .listRecentForTenant(tenantId, RAS_AL_AMR_RENDER_PREFIX, limit)
-    .map((entry) => ({ operationId: entry.operationId, state: entry.currentState, startedAt: entry.createdAt, finishedAt: entry.resolvedAt }));
+    .listRecentForTenant(tenantId, RAS_AL_AMR_RENDER_PREFIX, projectId ? 50 : limit)
+    .filter((entry) => !projectId || entry.sourceIntent.projectContainerId === projectId)
+    .slice(0, limit)
+    .map((entry) => ({
+      operationId: entry.operationId,
+      projectId: entry.sourceIntent.projectContainerId,
+      state: entry.currentState,
+      startedAt: entry.createdAt,
+      finishedAt: entry.resolvedAt,
+    }));
+}
+
+/**
+ * Whether a chamber render can stand in for distribution's own render: it is
+ * this Creator's, it was rendered from exactly this compilation, and its MP4
+ * is finished. Anything else and distribution renders as it always did.
+ */
+export async function isAdoptableRasAlAmrRender(operationId: string, tenantId: string, compilationId: string): Promise<boolean> {
+  if (!operationId.startsWith(RAS_AL_AMR_RENDER_PREFIX)) return false;
+  try {
+    const entry = await ownedEntry(operationId, tenantId);
+    const payload = (entry.sourceIntent as { structuralGraphPayload?: { compilationId?: string } }).structuralGraphPayload;
+    if (!compilationId || payload?.compilationId !== compilationId) return false;
+    return entry.currentState === OperationState.DEPOSITED || isEncodingComplete(operationId);
+  } catch {
+    return false;
+  }
 }
 
 /** Absolute path of a finished render's MP4, after verifying ownership. */

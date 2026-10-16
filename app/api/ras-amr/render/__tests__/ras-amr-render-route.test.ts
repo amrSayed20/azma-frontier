@@ -205,6 +205,69 @@ describeReal('Ras Al-Amr in-chamber render — real routes, real FFmpeg', () => 
     expect((await routes.file.GET(request(`/api/ras-amr/render/${started.operationId}/file`), params(started.operationId))).status).toBe(403);
   });
 
+  it('renders a storyboard project as its own MP4, filed under that project, adoptable by distribution', async () => {
+    const storyboard = await import('../../../../../src/chambers/ras-al-amr/storyboard');
+    const { isAdoptableRasAlAmrRender } = await import('../../../../../src/sovereign-entry/ras-al-amr-render');
+    const { FlattenedRenderingBridge, RenderStatus } = await import('../../../../../src/chambers/makman-al-ghayah/rendering-bridge');
+
+    let project = storyboard.createStoryboardProject('قصة الاختبار', 1, 'route');
+    const opening = storyboard.addScene(project, { title: 'الافتتاح', description: 'لون أحمر', durationSeconds: 3 }, 2, 's1');
+    const closing = storyboard.addScene(opening.canvas, { title: 'الختام', description: 'المقطع', durationSeconds: 2 }, 3, 's2');
+    project = closing.canvas;
+    project = storyboard.attachAsset(project, opening.sceneId, { assetId: 'a-scene', assetFamily: 'MEDIA' as never, capabilityTarget: 'VISUAL' as never }, 4, 'v1').canvas;
+    project = storyboard.attachAsset(project, opening.sceneId, { assetId: 'a-voice', assetFamily: 'MEDIA' as never, capabilityTarget: 'AUDIO' as never }, 4, 'v2').canvas;
+    project = storyboard.attachAsset(project, closing.sceneId, { assetId: 'a-clip', assetFamily: 'MEDIA' as never, capabilityTarget: 'MOTION' as never }, 4, 'v3').canvas;
+
+    const res = await routes.start.POST(request('/api/ras-amr/render', {
+      method: 'POST',
+      body: { canvas: storyboard.storyboardToProductionCanvas(project) },
+    }));
+    expect(res.status).toBe(202);
+    const started = await res.json();
+    expect(started.estimatedDurationSeconds).toBe(5);
+    expect((await pollUntilDone(started.operationId)).status).toBe('succeeded');
+
+    // The real MP4: 5 s, scene 1 red, scene 2 the lime clip, dissolving between them.
+    const { join: joinPath } = await import('node:path');
+    const mp4 = joinPath(process.env.RENDERS_DIR!, `${started.operationId}.mp4`);
+    const probe = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', mp4]);
+    expect(Number(probe.stdout.toString())).toBeCloseTo(5, 0);
+    const pixel = (t: number) => {
+      const out = spawnSync('ffmpeg', ['-v', 'error', '-ss', String(t), '-i', mp4, '-frames:v', '1', '-vf', 'crop=64:64:928:508,scale=1:1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']);
+      return [...out.stdout.subarray(0, 3)];
+    };
+    const [r1, g1] = pixel(1.5);
+    expect(r1).toBeGreaterThan(200);
+    expect(g1).toBeLessThan(60);
+    const [r2, g2] = pixel(4.2);
+    expect(r2).toBeLessThan(60);
+    expect(g2).toBeGreaterThan(200);
+    const [r3, g3] = pixel(2.75);
+    expect(r3).toBeGreaterThan(70);
+    expect(g3).toBeGreaterThan(70);
+
+    // Filed under the storyboard, never under the montage session.
+    const own = await (await routes.start.GET(request(`/api/ras-amr/render?projectId=${project.canvasId}`))).json();
+    expect(own.renders.map((r: { operationId: string }) => r.operationId)).toEqual([started.operationId]);
+    const montage = await (await routes.start.GET(request('/api/ras-amr/render?projectId=canvas_narrative_session'))).json();
+    expect(montage.renders.map((r: { operationId: string }) => r.operationId)).not.toContain(started.operationId);
+
+    // Distribution may serve this MP4 only for this Creator and this exact compilation.
+    const compilationId = started.compiledGraph.compilationId as string;
+    expect(await isAdoptableRasAlAmrRender(started.operationId, CREATOR, compilationId)).toBe(true);
+    expect(await isAdoptableRasAlAmrRender(started.operationId, CREATOR, 'another-compilation')).toBe(false);
+    expect(await isAdoptableRasAlAmrRender(started.operationId, OTHER_CREATOR, compilationId)).toBe(false);
+    expect(await isAdoptableRasAlAmrRender('op_render_elsewhere', CREATOR, compilationId)).toBe(false);
+
+    const dispatcher = { executeMaterialization: jest.fn() };
+    const bridge = new FlattenedRenderingBridge(dispatcher as never);
+    const publication = { publicationId: 'pub-1', sourceCompilationId: compilationId, publisherTenantId: CREATOR } as never;
+    const state = await bridge.evaluateAndDispatchRender(publication, started.compiledGraph, started.operationId);
+    expect(state.status).toBe(RenderStatus.COMPLETED);
+    expect(state.activeOperationId).toBe(started.operationId);
+    expect(dispatcher.executeMaterialization).not.toHaveBeenCalled();
+  });
+
   it('explains a missing asset file to the Creator instead of failing silently', async () => {
     unlinkSync(join(process.env.UPLOADS_DIR!, 'doomed.png'));
     const res = await routes.start.POST(request('/api/ras-amr/render', {

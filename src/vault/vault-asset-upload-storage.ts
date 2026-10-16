@@ -31,6 +31,8 @@ const SAFE_EXTENSION_PATTERN = /^\.[a-zA-Z0-9]{1,10}$/;
 export interface PersistedUpload {
   readonly assetId: string;
   readonly assetUrl: string;
+  /** Where the bytes were written on this server. */
+  readonly filePath: string;
 }
 
 export async function persistUploadedAsset(bytes: Buffer, fileExtension: string): Promise<PersistedUpload> {
@@ -39,10 +41,12 @@ export async function persistUploadedAsset(bytes: Buffer, fileExtension: string)
   const fileName = `${assetId}${safeExtension}`;
 
   await mkdir(UPLOADED_ASSETS_DIR, { recursive: true });
-  await writeFile(join(UPLOADED_ASSETS_DIR, fileName), bytes);
+  const filePath = join(UPLOADED_ASSETS_DIR, fileName);
+  await writeFile(filePath, bytes);
 
   return {
     assetId,
     assetUrl: `/uploads/${fileName}`,
+    filePath,
   };
 }

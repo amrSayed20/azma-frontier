@@ -200,6 +200,20 @@ describeReal('Ras Al-Amr real render — the MP4 matches the preview contract', 
     expect(meanVolume(out, 8.3, 9.7)).toBeGreaterThan(-40);
   });
 
+  it('mixes an audio-only .webm the Vault filed as video as sound, instead of failing the render', async () => {
+    // Browsers report an audio .webm chosen from disk as video/webm.
+    const out = await encode('op-real-webm-as-motion', graph([
+      { trackId: 'main', nodes: [
+        node('scene', 'blue.png', 'VISUAL', 0, 3),
+        node('narration', 'recording.webm', 'MOTION', 0, 3),
+      ] },
+    ], 3));
+    const [r, , b] = pixel(out, 1.5, 960, 540);
+    expect(b).toBeGreaterThan(200);
+    expect(r).toBeLessThan(60);
+    expect(meanVolume(out, 0.3, 2.7)).toBeGreaterThan(-40);
+  });
+
   it('renders a canvas that holds only a video clip', async () => {
     const out = await encode('op-real-video-only', graph([
       { trackId: 'main', nodes: [node('only-clip', 'clip.mp4', 'MOTION', 0, 2)] },

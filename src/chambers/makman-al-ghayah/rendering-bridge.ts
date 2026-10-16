@@ -76,7 +76,8 @@ export class FlattenedRenderingBridge {
    */
   public async evaluateAndDispatchRender(
     publication: SovereignPublication, 
-    masterGraph: CompiledAssemblyGraph
+    masterGraph: CompiledAssemblyGraph,
+    completedRenderOperationId?: string
   ): Promise<PublicationRenderState> {
     
     // 1. Ensure the graph matches the publication
@@ -97,6 +98,12 @@ export class FlattenedRenderingBridge {
       const existingState = this.renderStates.get(publication.publicationId);
       if (existingState && (existingState.status === RenderStatus.PROCESSING || existingState.status === RenderStatus.COMPLETED)) {
         return existingState;
+      }
+
+      // RAS AL AMR: the film was already rendered in the Creator's chamber
+      // (verified upstream) — distribution serves that MP4, no second render.
+      if (completedRenderOperationId) {
+        return this.updateRenderState(publication.publicationId, RenderStatus.COMPLETED, completedRenderOperationId);
       }
 
       this.updateRenderState(publication.publicationId, RenderStatus.PENDING);

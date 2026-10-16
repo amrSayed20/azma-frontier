@@ -77,5 +77,6 @@ export async function GET(request: NextRequest) {
   if (!session) {
     return NextResponse.json({ status: 'failed', reason: 'unauthorized', message: 'Sign in to see your renders.' }, { status: 401 });
   }
-  return NextResponse.json({ status: 'succeeded', renders: listRasAlAmrRenders(session.creatorId, 5) });
+  const projectId = request.nextUrl.searchParams.get('projectId') ?? undefined;
+  return NextResponse.json({ status: 'succeeded', renders: listRasAlAmrRenders(session.creatorId, 5, projectId) });
 }

@@ -3,6 +3,7 @@ import { soel } from '@/src/sovereign-entry';
 import type { MakmanFirstCustomerJourneyRequest } from '@/src/chambers/makman-al-ghayah/MAKMAN_FIRST_CUSTOMER_JOURNEY_PIPELINE';
 import { createPerceptionEndpointForOrgan } from '@/src/sovereign-nervous-system';
 import { verifySession } from '@/src/authentication';
+import { isAdoptableRasAlAmrRender } from '@/src/sovereign-entry/ras-al-amr-render';
 import { SovereignVaultManager } from '@/src/vault/sovereign-vault-manager';
 import { GoalRepository } from '@/src/persistent-storage/goal-repository';
 import { getDb } from '@/src/persistent-storage';
@@ -124,9 +125,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // RAS AL AMR: distribution reuses the MP4 already rendered in the chamber
+    // only when it is verifiably this Creator's render of this exact graph.
+    const requestedRender = commercialIntent.completedRenderOperationId;
+    const completedRenderOperationId =
+      typeof requestedRender === 'string' &&
+      (await isAdoptableRasAlAmrRender(requestedRender, session.creatorId, compiledGraph.compilationId))
+        ? requestedRender
+        : undefined;
+
     const authoritativeRequest: MakmanFirstCustomerJourneyRequest = {
       ...(body as MakmanFirstCustomerJourneyRequest),
-      commercialIntent: { ...commercialIntent, publisherTenantId: session.creatorId },
+      commercialIntent: { ...commercialIntent, publisherTenantId: session.creatorId, completedRenderOperationId },
     };
 
     const result = await soel.submitCreatorGoal(authoritativeRequest);

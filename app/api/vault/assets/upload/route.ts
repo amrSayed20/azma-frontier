@@ -4,6 +4,7 @@ import { SovereignVaultManager } from '../../../../../src/vault/sovereign-vault-
 import { AssetFamily } from '../../../../../src/vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../../../../src/core/sovereign-orchestrator/qiyamah-intent-types';
 import { persistUploadedAsset } from '../../../../../src/vault/vault-asset-upload-storage';
+import { probeStreamKinds } from '../../../../../src/vault/media-stream-probe';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const capability = resolveCapability(file.type);
+  let capability = resolveCapability(file.type);
   if (!capability) {
     return NextResponse.json(
       { status: 'failed', reason: 'unsupported-file-type', message: `Unsupported file type: ${file.type || 'unknown'}.` },
@@ -88,6 +89,16 @@ export async function POST(request: NextRequest) {
 
   const bytes = Buffer.from(await file.arrayBuffer());
   const persisted = await persistUploadedAsset(bytes, fileExtensionOf(file.name));
+
+  // A browser names an audio-only .webm/.mp4 "video/*" from its extension
+  // alone; what the file actually carries decides. Without ffprobe the MIME
+  // mapping stands.
+  if (capability.capabilityTarget === CapabilityTarget.MOTION && persisted.filePath) {
+    const streams = probeStreamKinds(persisted.filePath);
+    if (streams && !streams.video && streams.audio) {
+      capability = resolveCapability('audio/') ?? capability;
+    }
+  }
 
   // MINISTRY I — VOICE ECOSYSTEM: a real, Creator-declared "this is a
   // voice" flag, only ever meaningful for real audio uploads — never

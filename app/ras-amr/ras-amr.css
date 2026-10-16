@@ -5432,10 +5432,10 @@
   min-width: 0;
 }
 .ras-path-active { border-color: rgba(212, 175, 55, 0.6); background: rgba(212, 175, 55, 0.07); }
-.ras-path-unavailable { border-style: dashed; opacity: 0.75; }
+button.ras-path-card { font: inherit; color: inherit; text-align: start; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+button.ras-path-card:hover { border-color: var(--neon-gold-bright); background: rgba(212, 175, 55, 0.12); }
 .ras-path-kicker { font-size: 10.5px; letter-spacing: 0.06em; color: var(--neon-gold-dim); }
 .ras-path-name { font-size: 15px; color: #d4af37; }
-.ras-path-unavailable .ras-path-name { color: var(--text-main); }
 .ras-path-desc { font-size: 12px; color: rgba(255, 255, 255, 0.55); line-height: 1.6; }
 .ras-resume-card {
   display: flex;

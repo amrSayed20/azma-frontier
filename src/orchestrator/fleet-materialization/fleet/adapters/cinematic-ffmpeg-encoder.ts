@@ -116,6 +116,25 @@ function classifyMedia(uri: string, capability: string | undefined): MediaKind {
   return 'none';
 }
 
+/**
+ * False only when ffprobe positively finds no picture stream — an audio-only
+ * file the Vault filed as video before uploads were classified by their
+ * streams. Any probe failure keeps the file a video.
+ */
+function probeHasVideo(path: string): boolean {
+  if (typeof spawnSync !== 'function') return true;
+  try {
+    const result = spawnSync(
+      'ffprobe',
+      ['-v', 'error', '-select_streams', 'v', '-show_entries', 'stream=index', '-of', 'csv=p=0', path],
+      { encoding: 'utf-8', timeout: 15000 },
+    );
+    return result.status !== 0 || String(result.stdout ?? '').trim().length > 0;
+  } catch {
+    return true;
+  }
+}
+
 /** True when the file carries an audio stream. Any probe failure counts as "no audio". */
 function probeHasAudio(path: string): boolean {
   if (typeof spawnSync !== 'function') return false;
@@ -304,7 +323,9 @@ function buildFfmpegArgs(
       }
 
       const capability = (node.runtimeAsset?.capabilityTarget ?? node.capabilityOrigin) as string | undefined;
-      const kind = classifyMedia(uri, capability);
+      let kind = classifyMedia(uri, capability);
+      // A "video" with no picture is a sound (see probeHasVideo).
+      if (kind === 'video' && !probeHasVideo(assetPath)) kind = 'audio';
       // Text/structural nodes (TXT etc.) carry no media — silently skipped
       if (kind === 'none') continue;
       collected.set(node.nodeId, { node, trackId: track.trackId, path: assetPath, kind });
