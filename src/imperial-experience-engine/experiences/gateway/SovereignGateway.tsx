@@ -45,7 +45,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { t } from '@/src/creator-language';
 import type { Dictionary, Locale } from '@/src/creator-language';
-import { LocaleSwitcher } from '@/src/creator-language';
+import { LocaleSwitcher, getLocaleDefinition } from '@/src/creator-language';
 import { GATEWAY_CHAMBERS } from './chambers';
 /**
  * ─── THE PHOTOGRAPH TRAVELS WITH THE BUILD ──────────────────────────────────
@@ -328,9 +328,17 @@ export function SovereignGateway({
               {t(dict, 'gateway.enter')}
             </button>
             <div className="gate-language">
+              {/*
+                The trigger says WHICH language is on, in that language's own
+                script — «العربية» or «English» — instead of the word «اللغة»,
+                which named the category and not the state. A reader who does
+                not read the interface's current tongue can still recognise
+                their own on the button. The globe beside it is drawn in CSS,
+                so the switcher's own logic is untouched.
+              */}
               <LocaleSwitcher
                 currentLocale={locale}
-                triggerLabel={t(dict, 'gate.languageLabel')}
+                triggerLabel={getLocaleDefinition(locale)?.nativeName ?? t(dict, 'gate.languageLabel')}
                 menuLabel={t(dict, 'gate.chooseLanguage')}
               />
             </div>

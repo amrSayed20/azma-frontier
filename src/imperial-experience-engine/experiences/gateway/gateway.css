@@ -41,6 +41,10 @@ body:has(.gateway) { margin: 0; }
      Both zoom values are overwritten at runtime from the real viewport — see
      SovereignGateway's own note on total magnification. These are only what
      the first frame uses before JavaScript has measured anything. */
+  /* The globe the language control wears: a circle, an equator, and two
+     meridians. Declared here so the token lives with the rest of them. */
+  --globe: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M3 12h18'/%3E%3Cpath d='M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18'/%3E%3C/svg%3E");
+
   --gate-focus-x: 50%;
   --gate-focus-y: 48%;
   --gate-zoom-from: 1.03;
@@ -215,24 +219,90 @@ body:has(.gateway) { margin: 0; }
 
 .gate-actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; justify-content: center; margin-top: 0.9rem; }
 
+/* ── THE ENTRY CONTROL ────────────────────────────────────────────────────
+   MEASURED on the live gateway: 106×48 at every size — 27% of the width of a
+   390px phone, inside a bright gold frame. Against the Architect's own
+   picture it read as the loudest thing on the screen, which a door handle
+   should not be. Taken in to 1.45rem of padding and a quieter border; the
+   touch target is held at 44px on any device that is touched, because
+   elegance that cannot be pressed with a thumb is not elegance. */
 .gate-enter {
-  /* 48px tall: a thumb target, not a mouse target. */
-  min-height: 48px;
-  padding: 0 2.4rem;
-  border: 1px solid var(--gold);
-  background: rgba(0, 0, 0, 0.55);
+  min-height: 40px;
+  padding: 0 1.45rem;
+  border: 1px solid rgba(212, 175, 55, 0.72);
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.5);
   color: var(--glow);
   font: inherit;
-  font-size: 0.95rem;
+  font-size: 0.86rem;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   cursor: pointer;
-  transition: background 200ms, box-shadow 200ms, color 200ms;
+  transition: background 200ms, box-shadow 200ms, border-color 200ms;
 }
-.gate-enter:hover { background: rgba(212, 175, 55, 0.14); box-shadow: 0 0 30px -4px rgba(212, 175, 55, 0.5); }
+.gate-enter:hover {
+  background: rgba(212, 175, 55, 0.12);
+  border-color: var(--gold);
+  box-shadow: 0 0 22px -6px rgba(212, 175, 55, 0.45);
+}
+@media (pointer: coarse) {
+  /* A thumb needs 44px. A mouse does not. */
+  .gate-enter { min-height: 44px; padding: 0 1.7rem; }
+}
 .gate-enter:focus-visible { outline: 2px solid var(--glow); outline-offset: 3px; }
 
-.gate-language { display: flex; align-items: center; min-height: 48px; }
+/* ── THE LANGUAGE CONTROL ─────────────────────────────────────────────────
+   MEASURED on the live gateway: 51×27, 12px, dim gold on nothing — it read
+   as a caption, not a control, and it said «اللغة», which names the category
+   rather than the state. It now carries the current language in its own
+   script and a globe drawn in CSS, on a surface solid enough to be seen
+   against a lit picture. The switcher's own markup and logic are untouched. */
+.gate-language { display: flex; align-items: center; }
+.gate-language .language-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 40px;
+  padding: 0 0.95rem;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.62);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.84rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 180ms, color 180ms, background 180ms;
+}
+.gate-language .language-trigger::before {
+  /* A globe DRAWN, not a character escaped. MEASURED: `content: "\1F310"`
+     rendered literally as «□F310» in the button — a CSS escape is a
+     fragile way to put a picture on a page, and it failed silently in the one
+     place a reader would see it. An inline SVG renders identically in every
+     engine and takes the control's own colour. */
+  content: "";
+  flex: 0 0 auto;
+  width: 1.05em;
+  height: 1.05em;
+  background-color: currentColor;
+  -webkit-mask-image: var(--globe);
+  mask-image: var(--globe);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  opacity: 0.92;
+}
+.gate-language .language-trigger:hover,
+.gate-language .language-trigger[aria-expanded="true"] {
+  border-color: var(--gold);
+  color: var(--glow);
+  background: rgba(0, 0, 0, 0.78);
+}
+.gate-language .language-trigger:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+@media (pointer: coarse) {
+  .gate-language .language-trigger { min-height: 44px; }
+}
 
 .gate-skip {
   position: absolute; z-index: 3;
