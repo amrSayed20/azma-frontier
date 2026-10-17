@@ -15,16 +15,23 @@ const vaultManager = new SovereignVaultManager();
 // browser actually reports as a file's MIME type to the platform's own
 // already-real CapabilityTarget/AssetFamily vocabulary — never a guess.
 // A type outside this list is rejected (400), not silently miscategorized.
+//
+// Uploads are served from this site's own origin, and a static server picks
+// the Content-Type from the file extension. So each family also lists the
+// only extensions it may be stored with: an .html, .svg or .js file would
+// otherwise run as a page of this site (stored XSS) whatever MIME type the
+// browser claimed.
 const MIME_CAPABILITY_MAP: ReadonlyArray<{
   readonly prefix: string;
   readonly capabilityTarget: CapabilityTarget;
   readonly assetFamily: AssetFamily;
+  readonly extensions: ReadonlySet<string>;
 }> = [
-  { prefix: 'image/', capabilityTarget: CapabilityTarget.VISUAL, assetFamily: AssetFamily.MEDIA },
-  { prefix: 'video/', capabilityTarget: CapabilityTarget.MOTION, assetFamily: AssetFamily.MEDIA },
-  { prefix: 'audio/', capabilityTarget: CapabilityTarget.AUDIO, assetFamily: AssetFamily.MEDIA },
-  { prefix: 'text/', capabilityTarget: CapabilityTarget.WRITING, assetFamily: AssetFamily.STRUCTURAL },
-  { prefix: 'application/json', capabilityTarget: CapabilityTarget.WRITING, assetFamily: AssetFamily.STRUCTURAL },
+  { prefix: 'image/', capabilityTarget: CapabilityTarget.VISUAL, assetFamily: AssetFamily.MEDIA, extensions: new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.avif']) },
+  { prefix: 'video/', capabilityTarget: CapabilityTarget.MOTION, assetFamily: AssetFamily.MEDIA, extensions: new Set(['.mp4', '.webm', '.mov', '.m4v']) },
+  { prefix: 'audio/', capabilityTarget: CapabilityTarget.AUDIO, assetFamily: AssetFamily.MEDIA, extensions: new Set(['.mp3', '.wav', '.ogg', '.oga', '.opus', '.m4a', '.aac', '.flac', '.webm', '.mp4']) },
+  { prefix: 'text/', capabilityTarget: CapabilityTarget.WRITING, assetFamily: AssetFamily.STRUCTURAL, extensions: new Set(['.txt', '.md', '.srt', '.vtt', '.csv']) },
+  { prefix: 'application/json', capabilityTarget: CapabilityTarget.WRITING, assetFamily: AssetFamily.STRUCTURAL, extensions: new Set(['.json']) },
 ];
 
 function resolveCapability(mimeType: string) {
@@ -37,7 +44,7 @@ const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 
 function fileExtensionOf(fileName: string): string {
   const lastDot = fileName.lastIndexOf('.');
-  return lastDot === -1 ? '' : fileName.slice(lastDot);
+  return lastDot === -1 ? '' : fileName.slice(lastDot).toLowerCase();
 }
 
 /**
@@ -80,15 +87,16 @@ export async function POST(request: NextRequest) {
   }
 
   let capability = resolveCapability(file.type);
-  if (!capability) {
+  const extension = fileExtensionOf(file.name);
+  if (!capability || !capability.extensions.has(extension)) {
     return NextResponse.json(
-      { status: 'failed', reason: 'unsupported-file-type', message: `Unsupported file type: ${file.type || 'unknown'}.` },
+      { status: 'failed', reason: 'unsupported-file-type', message: `Unsupported file type: ${file.type || 'unknown'} (${extension || 'no extension'}).` },
       { status: 400 },
     );
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  const persisted = await persistUploadedAsset(bytes, fileExtensionOf(file.name));
+  const persisted = await persistUploadedAsset(bytes, extension);
 
   // A browser names an audio-only .webm/.mp4 "video/*" from its extension
   // alone; what the file actually carries decides. Without ffprobe the MIME

@@ -4766,3 +4766,12 @@
   }
 }
 
+
+/* Keyboard shortcuts mean nothing on a touch screen (no Ctrl, Shift or a
+   hardware Enter); the visible buttons are the way there. */
+@media (hover: none) and (pointer: coarse) {
+  .dialogue-key-hint,
+  .writing-key-hint {
+    display: none;
+  }
+}

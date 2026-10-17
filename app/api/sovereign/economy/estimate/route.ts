@@ -15,6 +15,17 @@ const VALID_CAPABILITIES: readonly CapabilityTarget[] = [
   'video-generation', 'text-to-speech', 'voice-cloning',
 ];
 
+// The gateway each route actually charges against, so an estimate made
+// without an explicit gatewayId matches what generation will do.
+const DEFAULT_GATEWAY: Readonly<Record<CapabilityTarget, string>> = {
+  'image-generation': 'magic-hour',
+  'image-editing': 'magic-hour',
+  'image-upscaling': 'magic-hour',
+  'video-generation': 'magic-hour',
+  'text-to-speech': 'elevenlabs',
+  'voice-cloning': 'elevenlabs',
+};
+
 // POST /api/sovereign/economy/estimate
 // Pre-flight cost transparency — Creator must know cost BEFORE creation starts.
 // Body: { capability: CapabilityTarget, gatewayId?: string }
@@ -35,14 +46,14 @@ export async function POST(request: NextRequest) {
   }
 
   const capability = (body as { capability?: unknown })?.capability;
-  const gatewayId = (body as { gatewayId?: unknown })?.gatewayId ?? 'openai';
-
   if (typeof capability !== 'string' || !VALID_CAPABILITIES.includes(capability as CapabilityTarget)) {
     return NextResponse.json(
       { error: 'invalid_capability', valid: VALID_CAPABILITIES },
       { status: 400 },
     );
   }
+
+  const gatewayId = (body as { gatewayId?: unknown })?.gatewayId ?? DEFAULT_GATEWAY[capability as CapabilityTarget];
 
   if (typeof gatewayId !== 'string') {
     return NextResponse.json({ error: 'invalid_gateway_id' }, { status: 400 });

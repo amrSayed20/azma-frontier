@@ -37,6 +37,14 @@ import type { ConstitutionalSignal, ConstitutionalSignalType, SignalListener } f
 
 const signalLog: ConstitutionalSignal[] = [];
 
+/**
+ * The in-memory log keeps the most recent signals only. Browsers post
+ * signals to a public endpoint (/api/sovereign/nervous-system/circulate),
+ * so an unbounded log grows with traffic until the process runs out of
+ * memory. Listeners still receive every signal as it is emitted.
+ */
+export const SIGNAL_LOG_CAPACITY = 10_000;
+
 const organListeners = new Map<string, Set<SignalListener>>();
 const signalTypeListeners = new Map<ConstitutionalSignalType, Set<SignalListener>>();
 const universalListeners = new Set<SignalListener>();
@@ -68,6 +76,7 @@ export function emitSignal(
   };
 
   signalLog.push(signal);
+  if (signalLog.length > SIGNAL_LOG_CAPACITY) signalLog.splice(0, signalLog.length - SIGNAL_LOG_CAPACITY);
   recordOrganState(signal);
 
   for (const listener of organListeners.get(signal.origin) ?? []) listener(signal);
@@ -99,7 +108,7 @@ export function observeAll(listener: SignalListener): () => void {
   return () => universalListeners.delete(listener);
 }
 
-/** The complete, append-only Signal Log — the Bus's own traceability record. Read-only from the caller's perspective (a copy is returned). */
+/** The Signal Log (the most recent SIGNAL_LOG_CAPACITY signals, in order) — the Bus's own traceability record. Read-only from the caller's perspective (a copy is returned). */
 export function getSignalLog(): readonly ConstitutionalSignal[] {
   return [...signalLog];
 }

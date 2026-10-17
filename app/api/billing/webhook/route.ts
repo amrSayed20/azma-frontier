@@ -4,8 +4,9 @@
 //
 // POST /api/billing/webhook
 // Paymob sends a JSON payload with type='TRANSACTION' and an obj containing
-// the transaction details. The HMAC value for signature verification lives
-// inside the payload as obj.hmac — not in a request header.
+// the transaction details. Paymob's documentation puts the HMAC of the
+// processed callback in the callback URL's `hmac` query parameter, not in a
+// header; obj.hmac in the body is accepted as a fallback.
 //
 // Security invariants:
 // - HMAC-SHA512 verified before any data is trusted
@@ -24,8 +25,6 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
 
-  // Extract obj.hmac from payload for signature verification.
-  // Paymob embeds the HMAC inside the JSON body, not in a request header.
   let parsedForHmac: { obj?: { hmac?: unknown } };
   try {
     parsedForHmac = JSON.parse(rawBody) as { obj?: { hmac?: unknown } };
@@ -36,10 +35,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const hmac = parsedForHmac.obj?.hmac;
+  const hmac = request.nextUrl.searchParams.get('hmac') || parsedForHmac.obj?.hmac;
   if (typeof hmac !== 'string' || !hmac) {
     return NextResponse.json(
-      { status: 'failed', message: 'Missing HMAC in webhook payload.' },
+      { status: 'failed', message: 'Missing HMAC in webhook query or payload.' },
       { status: 400 },
     );
   }

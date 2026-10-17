@@ -437,6 +437,18 @@
   max-width:      460px;
 }
 
+.foyer-account-links {
+  display:         flex;
+  flex-wrap:       wrap;
+  justify-content: center;
+  gap:             0.5rem;
+  margin-top:      0.4rem;
+}
+.foyer-account-links .foyer-logout-btn {
+  margin-top:      0;
+  text-decoration: none;
+  touch-action:    manipulation;
+}
 .foyer-logout-btn {
   margin-top:      0.4rem;
   padding:         0.2rem 0.8rem;

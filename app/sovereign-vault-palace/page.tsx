@@ -338,8 +338,8 @@ export default function SovereignVaultPalace() {
   useEffect(() => {
     fetch('/api/auth/me')
       .then((r) => r.json())
-      .then((data: { authenticated?: boolean }) => { if (!data.authenticated) goTo('/creator-access'); })
-      .catch(() => goTo('/creator-access'));
+      .then((data: { authenticated?: boolean }) => { if (!data.authenticated) goTo('/login'); })
+      .catch(() => goTo('/login'));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

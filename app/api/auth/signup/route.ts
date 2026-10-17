@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { signUp } from '../../../../src/authentication';
+import { signUp, signupsByClient, clientKey } from '../../../../src/authentication';
 import { getDb, updateCreatorPreferredLocale } from '../../../../src/persistent-storage';
 import { isSupportedLocale, LOCALE_COOKIE } from '../../../../src/creator-language';
 
@@ -20,12 +20,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'failed', reason: 'invalid-input', message: 'A string email and password are required.' }, { status: 400 });
   }
 
+  // Each account gets free trial images, so mass account creation from one
+  // client address is capped.
+  const client = clientKey(request.headers);
+  if (signupsByClient.isBlocked(client)) {
+    const retryAfter = signupsByClient.retryAfterSeconds(client);
+    return NextResponse.json(
+      { status: 'failed', reason: 'too-many-attempts', message: 'Too many accounts created from this connection. Try again later.', retryAfterSeconds: retryAfter },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+    );
+  }
+
   const outcome = await signUp(email, password, typeof displayName === 'string' ? displayName : undefined);
 
   if (outcome.status === 'failed') {
     const httpStatus = outcome.reason === 'email-taken' ? 409 : 400;
     return NextResponse.json(outcome, { status: httpStatus });
   }
+  signupsByClient.record(client);
 
   // CREATOR LANGUAGE EXPERIENCE: "selected once, from the Gate, from that
   // moment onward the language of the entire Empire" — a language chosen

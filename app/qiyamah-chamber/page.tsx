@@ -3,6 +3,7 @@ import { getDictionary } from '@/src/creator-language';
 import { QiyamahChamberExperience } from '@/src/imperial-experience-engine';
 import { QiyamahChamberClient } from './QiyamahChamberClient';
 import { getVisionDocument } from '@/src/chamber-vision';
+import { getCatalogEntry } from '@/src/economy/cost-engine/provider-cost-catalog';
 
 /**
  * QIYAMAH CHAMBER, PACKAGE I: wrapped in its own IXE Experience Pipeline
@@ -22,12 +23,15 @@ export default async function QiyamahChamberPage() {
   const dict = getDictionary(locale);
   const chamberVision = getVisionDocument('qiyamah-chamber');
   const generationAvailable = !!process.env.MAGIC_HOUR_API_KEY;
+  // Same catalog lookup the generate route makes; video stays founder-only until priced.
+  const videoPriced = getCatalogEntry('magic-hour', 'video-generation')?.availability === 'available';
   return (
     <QiyamahChamberExperience dict={dict} locale={locale}>
       <QiyamahChamberClient
         dict={dict}
         chamberVision={chamberVision}
         generationAvailable={generationAvailable}
+        videoPriced={videoPriced}
       />
     </QiyamahChamberExperience>
   );

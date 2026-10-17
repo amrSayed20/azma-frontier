@@ -20,9 +20,16 @@ export const dynamic = 'force-dynamic';
  */
 const REQUIRED_FIELDS = ['origin', 'signalType', 'reportingAuthority', 'purpose'] as const;
 
+/** This endpoint is public; a signal is a small structured note, never a payload. */
+const MAX_BODY_BYTES = 16 * 1024;
+
 export async function POST(request: Request) {
   try {
-    const body: unknown = await request.json();
+    const raw = await request.text();
+    if (Buffer.byteLength(raw, 'utf-8') > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: 'Signal too large' }, { status: 413 });
+    }
+    const body: unknown = JSON.parse(raw);
 
     if (typeof body !== 'object' || body === null) {
       return NextResponse.json({ error: 'Request body must be a JSON object' }, { status: 400 });

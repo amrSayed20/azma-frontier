@@ -150,20 +150,22 @@ export async function GET(request: NextRequest) {
     'NORMAL';
 
   // ── Provider configuration (presence only — never expose key values) ───
+  // The launch path is Paymob (credit packs), Magic Hour (Qiyamah
+  // generation) and the voice provider; Stripe is the retired subscription
+  // path and no longer decides readiness.
+  const paymobVars = ['PAYMOB_API_KEY', 'PAYMOB_INTEGRATION_ID', 'PAYMOB_IFRAME_ID', 'PAYMOB_HMAC_SECRET'];
   const providers = {
-    openai:         !!process.env.OPENAI_API_KEY        ? 'CONFIGURED' : 'MISSING',
-    stripeSecret:   !!process.env.STRIPE_SECRET_KEY     ? 'CONFIGURED' : 'MISSING',
-    stripeWebhook:  !!process.env.STRIPE_WEBHOOK_SECRET ? 'CONFIGURED' : 'MISSING',
-    stripePrice:    !!process.env.STRIPE_PRICE_ID_CREATOR_MONTHLY ? 'CONFIGURED' : 'MISSING',
+    paymob:         paymobVars.every((name) => !!process.env[name]) ? 'CONFIGURED' : 'MISSING',
+    magicHour:      !!process.env.MAGIC_HOUR_API_KEY    ? 'CONFIGURED' : 'MISSING',
     voiceCloning:   !!process.env.VOICE_CLONING_API_KEY ? 'CONFIGURED' : 'NOT_CONFIGURED',
+    openai:         !!process.env.OPENAI_API_KEY        ? 'CONFIGURED' : 'MISSING',
     founderAccount: !!process.env.FOUNDER_EMAIL         ? 'CONFIGURED' : 'MISSING',
+    stripeLegacy:   !!process.env.STRIPE_SECRET_KEY     ? 'CONFIGURED' : 'NOT_CONFIGURED',
   };
 
   const allProvidersReady =
-    providers.openai        === 'CONFIGURED' &&
-    providers.stripeSecret  === 'CONFIGURED' &&
-    providers.stripeWebhook === 'CONFIGURED' &&
-    providers.stripePrice   === 'CONFIGURED' &&
+    providers.paymob         === 'CONFIGURED' &&
+    providers.magicHour      === 'CONFIGURED' &&
     providers.founderAccount === 'CONFIGURED';
 
   // ── Overall status ─────────────────────────────────────────────────────

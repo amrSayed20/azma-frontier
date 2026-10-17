@@ -192,4 +192,18 @@ describe('Ministry VI — Sovereign Project Resume: canvas repository', () => {
     expect(narrative?.title).toBe('Script');
     expect(cinematic?.title).toBe('Film');
   });
+  it("two creators' working drafts share the id canvas_narrative_session and never overwrite each other", () => {
+    saveCanvas(db, makeCanvas({ canvasId: 'canvas_narrative_session', subscriberTenantId: 'creator-a', title: 'A film' }), 1_000);
+    saveCanvas(db, makeCanvas({ canvasId: 'canvas_narrative_session', subscriberTenantId: 'creator-b', title: 'B film' }), 2_000);
+
+    expect(loadCanvas(db, 'canvas_narrative_session', 'creator-a')?.title).toBe('A film');
+    expect(loadCanvas(db, 'canvas_narrative_session', 'creator-b')?.title).toBe('B film');
+    expect(listCanvasesForTenant(db, 'creator-a').map((c) => c.title)).toEqual(['A film']);
+
+    // Re-saving replaces only that creator's draft.
+    saveCanvas(db, makeCanvas({ canvasId: 'canvas_narrative_session', subscriberTenantId: 'creator-a', title: 'A film, cut 2' }), 3_000);
+    expect(loadCanvas(db, 'canvas_narrative_session', 'creator-a')?.title).toBe('A film, cut 2');
+    expect(loadCanvas(db, 'canvas_narrative_session', 'creator-b')?.title).toBe('B film');
+    expect(listCanvasesForTenant(db, 'creator-a')).toHaveLength(1);
+  });
 });

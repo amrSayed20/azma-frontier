@@ -11,6 +11,9 @@ export interface PaymentSessionRequest {
   readonly successUrl: string;
   readonly cancelUrl: string;
   readonly metadata?: Record<string, string>;
+  /** The creator's own email and display name, for the gateway's billing record. */
+  readonly customerEmail?: string;
+  readonly customerName?: string;
 }
 
 export interface PaymentSessionResponse {

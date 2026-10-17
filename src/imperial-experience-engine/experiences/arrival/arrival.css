@@ -445,6 +445,16 @@
   .arrival-language { opacity: 1; }
 }
 
+/* On a phone the companion pill (fixed, bottom-left) spans the centre of
+   the screen and sat on top of the language control, so a tap never
+   reached it. Lift the control above the pill there. */
+@media (max-width: 640px) {
+  .arrival-language {
+    z-index: 4;
+    bottom: calc(30px + 72px);
+  }
+}
+
 .language-control {
   position: relative;
 }

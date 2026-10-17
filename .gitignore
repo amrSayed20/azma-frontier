@@ -25,6 +25,8 @@
 
 # Persistent Storage Foundation — the local SQLite database file
 /data/
+# Output of scripts/backup.mjs
+/backups/
 
 # misc
 .DS_Store

@@ -132,7 +132,7 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
     return { status: 'failed', reason: 'invalid-prompt', message: validationError };
   }
 
-  if (isRateLimited()) {
+  if (isRateLimited(Date.now(), request.creatorId)) {
     return {
       status: 'failed',
       reason: 'rate-limited',
@@ -276,7 +276,7 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
 
   try {
     const persisted = await persistGeneratedImage(providerResult.bytes, providerResult.mimeType);
-    recordRateLimitedGeneration();
+    recordRateLimitedGeneration(Date.now(), request.creatorId);
     persistGenerationRecord(getDb(), {
       creatorId: request.creatorId ?? null,
       prompt: request.prompt.trim(),

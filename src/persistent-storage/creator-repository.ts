@@ -78,6 +78,11 @@ export function updateCreatorPreferredLocale(db: DatabaseSync, creatorId: string
   db.prepare('UPDATE creators SET preferred_locale = ? WHERE creator_id = ?').run(locale, creatorId);
 }
 
+/** Replaces a Creator's password hash. Callers hash the new password first via hashPassword(). */
+export function updateCreatorPasswordHash(db: DatabaseSync, creatorId: string, passwordHash: string): void {
+  db.prepare('UPDATE creators SET password_hash = ? WHERE creator_id = ?').run(passwordHash, creatorId);
+}
+
 /**
  * Stores a scrypt-derived PIN hash for a Creator's Vault gate.
  * The raw PIN must NEVER be passed here — callers hash it first via hashPassword().

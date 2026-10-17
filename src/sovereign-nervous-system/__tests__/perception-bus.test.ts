@@ -94,4 +94,21 @@ describe('Constitutional Perception Bus', () => {
       /not a recognized constitutional organ/,
     );
   });
+  it('keeps only the most recent SIGNAL_LOG_CAPACITY signals in memory', () => {
+    const { SIGNAL_LOG_CAPACITY } = jest.requireActual('../perception-bus');
+    let last = '';
+    for (let i = 0; i < SIGNAL_LOG_CAPACITY + 50; i++) {
+      last = emitSignal({
+        origin: 'hujjah-al-damighah',
+        signalType: 'Readiness',
+        relatedEvent: null,
+        reportingAuthority: 'hujjah-al-damighah',
+        purpose: `cap-${i}`,
+        content: null,
+      }).signalId;
+    }
+    const log = getSignalLog();
+    expect(log).toHaveLength(SIGNAL_LOG_CAPACITY);
+    expect(log[log.length - 1].signalId).toBe(last);
+  });
 });

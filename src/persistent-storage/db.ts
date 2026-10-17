@@ -83,11 +83,49 @@ function migrateGenerationRecordsTable(db: DatabaseSync): void {
   }
 }
 
+/**
+ * Rebuilds a `sovereign_canvases` table created with the old key
+ * (canvas_id alone) onto the key (subscriber_tenant_id, canvas_id),
+ * copying every row. Under the old key two creators could never hold
+ * the same canvas id, so the copy cannot collide. Runs once: a table
+ * already on the composite key is left alone.
+ */
+function migrateSovereignCanvasesKey(db: DatabaseSync): void {
+  const keyColumns = (db.prepare('PRAGMA table_info(sovereign_canvases)').all() as { name: string; pk: number }[])
+    .filter((column) => column.pk > 0)
+    .map((column) => column.name);
+  if (keyColumns.length !== 1 || keyColumns[0] !== 'canvas_id') return;
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    db.exec(`CREATE TABLE sovereign_canvases_rekeyed (
+      canvas_id TEXT NOT NULL,
+      subscriber_tenant_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      canvas_type TEXT NOT NULL,
+      canvas_json TEXT NOT NULL,
+      saved_at INTEGER NOT NULL,
+      PRIMARY KEY (subscriber_tenant_id, canvas_id)
+    )`);
+    db.exec(`INSERT INTO sovereign_canvases_rekeyed
+      (canvas_id, subscriber_tenant_id, title, canvas_type, canvas_json, saved_at)
+      SELECT canvas_id, subscriber_tenant_id, title, canvas_type, canvas_json, saved_at FROM sovereign_canvases`);
+    db.exec('DROP TABLE sovereign_canvases');
+    db.exec('ALTER TABLE sovereign_canvases_rekeyed RENAME TO sovereign_canvases');
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+}
+
 export function createDatabase(path: string = DEFAULT_DB_PATH): DatabaseSync {
   if (path !== ':memory:') {
     mkdirSync(dirname(path), { recursive: true });
   }
   const db = new DatabaseSync(path);
+  // Wait for a concurrent writer (another worker of `next build`, or a
+  // second request) instead of failing at once with "database is locked".
+  db.exec('PRAGMA busy_timeout=5000;');
   if (path !== ':memory:') {
     db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;');
   }
@@ -98,6 +136,7 @@ export function createDatabase(path: string = DEFAULT_DB_PATH): DatabaseSync {
   migrateCreatorsTable(db);
   migrateGoalsTable(db);
   migrateGenerationRecordsTable(db);
+  migrateSovereignCanvasesKey(db);
   for (const statement of INDEX_STATEMENTS) {
     db.exec(statement);
   }

@@ -439,6 +439,7 @@ import { isStoryboardCanvasId } from '@/src/chambers/ras-al-amr/storyboard';
 import { computeTemplateSlotTemporal, visualScenesEnd } from '@/src/chambers/ras-al-amr/template-slots';
 import type { SoundNodeTest } from '@/src/chambers/ras-al-amr/template-slots';
 import StoryboardWorld from './storyboard/StoryboardWorld';
+import { uploadFailureMessage } from '@/src/vault/upload-failure-message';
 import type { CanvasMutationPayload } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
 import { useVoiceMode } from '@/src/components/living-companion/useVoiceMode';
 import './ras-amr.css';
@@ -1555,7 +1556,7 @@ export default function RasAmrChamber() {
       const response = await fetch('/api/vault/assets/upload', { method: 'POST', body });
       const result = await response.json();
       if (!response.ok || result.status !== 'succeeded') {
-        setUploadError(result.message ?? 'الملف لم يصل إلى الخزانة.');
+        setUploadError(uploadFailureMessage(result, 'الملف لم يصل إلى الخزانة.'));
         return;
       }
       setVaultAssets((prev) => [...prev, result.asset]);
@@ -1704,7 +1705,11 @@ export default function RasAmrChamber() {
       });
       const result = await response.json();
       if (!response.ok || result.status !== 'succeeded') {
-        setVoiceCloneError(result.message ?? 'الاستنساخ لم يكتمل.');
+        setVoiceCloneError(
+          result.reason === 'cost-unavailable' ? 'استنساخ الصوت بالوحدات لم يُفتح بعد على هذه النسخة. لم يُخصم من رصيدك شيء.'
+          : result.reason === 'payment-required' ? `وحدات عزمة غير كافية لاستنساخ الصوت. الرصيد المتاح: ${result.availableUnits ?? '—'} وحدة.`
+          : result.message ?? 'الاستنساخ لم يكتمل.',
+        );
         return;
       }
       setVaultAssets((prev) => [...prev, result.asset]);
@@ -1733,7 +1738,11 @@ export default function RasAmrChamber() {
       });
       const result = await response.json();
       if (!response.ok || result.status !== 'succeeded') {
-        setClonedSpeechError(result.message ?? 'فشل توليد الكلام بالصوت المستنسَخ.');
+        setClonedSpeechError(
+          result.reason === 'cost-unavailable' ? 'الكلام بالصوت المستنسَخ لم يُسعَّر بعد على هذه النسخة. لم يُخصم من رصيدك شيء.'
+          : result.reason === 'payment-required' ? `وحدات عزمة غير كافية. الرصيد المتاح: ${result.availableUnits ?? '—'} وحدة.`
+          : result.message ?? 'فشل توليد الكلام بالصوت المستنسَخ.',
+        );
         return;
       }
       setVaultAssets((prev) => [...prev, result.asset]);

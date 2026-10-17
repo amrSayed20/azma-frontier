@@ -93,7 +93,7 @@ afterEach(() => {
 });
 
 // Helper: insert a payment_transactions record (simulates a completed checkout session)
-function seedTransaction(opts: { idempotencyKey?: string; creatorId?: string; packId?: string; azmaUnits?: number } = {}): void {
+function seedTransaction(opts: { idempotencyKey?: string; creatorId?: string; packId?: string; azmaUnits?: number; amountEgp?: number } = {}): void {
   const { randomUUID } = require('crypto');
   const now = Date.now();
   db.prepare(
@@ -106,7 +106,7 @@ function seedTransaction(opts: { idempotencyKey?: string; creatorId?: string; pa
     opts.creatorId ?? CREATOR_ID,
     opts.packId ?? PACK_ID,
     opts.azmaUnits ?? AZMA_UNITS,
-    PRICE_EGP,
+    opts.amountEgp ?? PRICE_EGP,
     opts.idempotencyKey ?? IDEMPOTENCY_KEY,
     opts.idempotencyKey ?? IDEMPOTENCY_KEY,
     now, now,
@@ -189,6 +189,27 @@ describe('PaymobPaymentGateway.createPaymentSession [MOCKED]', () => {
 
     const orderBody = JSON.parse(calls[1]!) as { merchant_order_id: string };
     expect(orderBody.merchant_order_id).toBe(IDEMPOTENCY_KEY);
+  });
+
+  it("sends the creator's own email and name as billing data, not a shared placeholder", async () => {
+    const calls: string[] = [];
+    jest.spyOn(global, 'fetch').mockImplementation(async (_url, opts) => {
+      calls.push((opts?.body as string) ?? '');
+      if (calls.length === 1) return { ok: true, status: 200, json: async () => ({ token: 'auth-tok' }) } as Response;
+      if (calls.length === 2) return { ok: true, status: 200, json: async () => ({ id: 77777 }) } as Response;
+      return { ok: true, status: 200, json: async () => ({ token: 'pay-tok' }) } as Response;
+    });
+
+    await gateway.createPaymentSession({
+      creatorId: CREATOR_ID, packId: PACK_ID, amountEgp: PRICE_EGP, azmaUnits: AZMA_UNITS,
+      idempotencyKey: IDEMPOTENCY_KEY, successUrl: '', cancelUrl: '',
+      customerEmail: 'mona@example.test', customerName: 'منى عادل سالم',
+    });
+
+    const billing = (JSON.parse(calls[2]!) as { billing_data: Record<string, string> }).billing_data;
+    expect(billing.email).toBe('mona@example.test');
+    expect(billing.first_name).toBe('منى');
+    expect(billing.last_name).toBe('عادل سالم');
   });
 
   it('stores a payment_transactions record after successful session creation', async () => {
@@ -468,6 +489,71 @@ describe('Full pipeline: Paymob webhook → credit grant [MOCKED]', () => {
     expect(repo.getBalance(CREATOR_ID).availableUnits).toBe(0);
   });
 
+  it('SCENARIO: paid amount differs from the order — no credits granted, record marked amount_mismatch', async () => {
+    seedTransaction(); // start pack, 99 EGP
+    const obj = makePaymobObj({ amount_cents: 100 }); // 1 EGP, valid signature
+    const result = await handlePaymentWebhook(db, gateway, makeWebhookPayload(obj), obj.hmac as string);
+
+    expect(result.processed).toBe(false);
+    expect(result.reason).toBe('ignored_event_type:transaction.amount_mismatch');
+    expect(new CreatorCreditRepository(db).getBalance(CREATOR_ID).availableUnits).toBe(0);
+    const row = db.prepare('SELECT status FROM payment_transactions WHERE idempotency_key = ?').get(IDEMPOTENCY_KEY) as { status: string };
+    expect(row.status).toBe('amount_mismatch');
+  });
+
+  it('SCENARIO: success in a currency other than EGP — no credits granted', async () => {
+    seedTransaction();
+    const obj = makePaymobObj({ currency: 'USD' });
+    const result = await handlePaymentWebhook(db, gateway, makeWebhookPayload(obj), obj.hmac as string);
+    expect(result.processed).toBe(false);
+    expect(new CreatorCreditRepository(db).getBalance(CREATOR_ID).availableUnits).toBe(0);
+  });
+
+  it('SCENARIO: refund or void callback — never grants units, record marked for review', async () => {
+    seedTransaction();
+    const refund = makePaymobObj({ is_refunded: true, success: true });
+    const refundResult = await handlePaymentWebhook(db, gateway, makeWebhookPayload(refund), refund.hmac as string);
+    expect(refundResult.reason).toBe('ignored_event_type:transaction.refunded');
+
+    seedTransaction({ idempotencyKey: 'idem-void' });
+    const voided = makePaymobObj({ is_voided: true, success: true, order: { id: 77778, merchant_order_id: 'idem-void' } });
+    const voidResult = await handlePaymentWebhook(db, gateway, makeWebhookPayload(voided), voided.hmac as string);
+    expect(voidResult.reason).toBe('ignored_event_type:transaction.voided');
+
+    expect(new CreatorCreditRepository(db).getBalance(CREATOR_ID).availableUnits).toBe(0);
+    const statuses = db.prepare('SELECT idempotency_key, status FROM payment_transactions ORDER BY idempotency_key').all();
+    expect(statuses).toEqual([
+      { idempotency_key: IDEMPOTENCY_KEY, status: 'refunded' },
+      { idempotency_key: 'idem-void', status: 'voided' },
+    ]);
+  });
+
+  it('SCENARIO: a late failed callback never downgrades a successful payment', async () => {
+    seedTransaction();
+    const paid = makePaymobObj();
+    await handlePaymentWebhook(db, gateway, makeWebhookPayload(paid), paid.hmac as string);
+    const late = makePaymobObj({ id: 55556, success: false });
+    await handlePaymentWebhook(db, gateway, makeWebhookPayload(late), late.hmac as string);
+
+    const row = db.prepare('SELECT status, provider_transaction_id FROM payment_transactions WHERE idempotency_key = ?').get(IDEMPOTENCY_KEY) as { status: string; provider_transaction_id: string };
+    expect(row).toEqual({ status: 'successful', provider_transaction_id: '55555' });
+    expect(new CreatorCreditRepository(db).getBalance(CREATOR_ID).availableUnits).toBe(AZMA_UNITS);
+  });
+
+  it('SCENARIO: signature of a different length or a near miss is rejected without throwing', async () => {
+    seedTransaction();
+    const obj = makePaymobObj();
+    const sig = obj.hmac as string;
+    const nearMiss = sig.slice(0, -1) + (sig.endsWith('0') ? '1' : '0');
+    for (const bad of ['', 'ab', nearMiss, sig + '00']) {
+      const result = await handlePaymentWebhook(db, gateway, makeWebhookPayload(obj), bad);
+      expect(result.reason).toBe('signature_invalid');
+    }
+    // Paymob's hex digest is accepted whatever its letter case.
+    const upper = await handlePaymentWebhook(db, gateway, makeWebhookPayload(obj), sig.toUpperCase());
+    expect(upper.processed).toBe(true);
+  });
+
   it('SCENARIO: malformed provider event — no credits granted, no crash', async () => {
     const result = await handlePaymentWebhook(db, gateway, 'not-json', 'any-sig');
     expect(result.processed).toBe(false);
@@ -500,7 +586,7 @@ describe('Credit pack validation in full pipeline [MOCKED]', () => {
   });
 
   it('processes create pack (2400 units)', async () => {
-    seedTransaction({ packId: 'create', azmaUnits: 2400, idempotencyKey: 'idem-create-001' });
+    seedTransaction({ packId: 'create', azmaUnits: 2400, amountEgp: 249, idempotencyKey: 'idem-create-001' });
     const obj = makePaymobObj({
       amount_cents: 24900,
       order: { id: 77777, merchant_order_id: 'idem-create-001' },
@@ -511,7 +597,7 @@ describe('Credit pack validation in full pipeline [MOCKED]', () => {
   });
 
   it('processes achieve pack (6000 units)', async () => {
-    seedTransaction({ packId: 'achieve', azmaUnits: 6000, idempotencyKey: 'idem-achieve-001' });
+    seedTransaction({ packId: 'achieve', azmaUnits: 6000, amountEgp: 499, idempotencyKey: 'idem-achieve-001' });
     const obj = makePaymobObj({
       amount_cents: 49900,
       order: { id: 77777, merchant_order_id: 'idem-achieve-001' },

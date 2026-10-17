@@ -9,7 +9,8 @@
 //   → Redirect Creator to iframe URL with payment_token
 //
 // Webhook verification: HMAC-SHA512 over a specific concatenated field list.
-// The hmac value lives inside the webhook JSON body (obj.hmac), not in a header.
+// Paymob's processed callback sends the hmac as the `hmac` query parameter of
+// the callback URL; the route falls back to obj.hmac in the body.
 //
 // Required environment variables:
 //   PAYMOB_API_KEY         — API key from the Paymob merchant dashboard
@@ -19,7 +20,7 @@
 //
 // REAL PAYMENT TEST: NOT TESTED — credentials not yet available.
 
-import { createHmac, randomUUID } from 'crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import type {
   IPaymentGateway,
@@ -167,8 +168,7 @@ export class PaymobPaymentGateway implements IPaymentGateway {
     const obj = parsed.obj;
 
     // Verify HMAC — Paymob computes SHA512 over a fixed field list
-    const computedHmac = this.computeHmac(obj);
-    if (computedHmac !== signature) {
+    if (!this.hmacMatches(this.computeHmac(obj), signature)) {
       throw new WebhookSignatureError(this.gatewayId);
     }
 
@@ -186,10 +186,22 @@ export class PaymobPaymentGateway implements IPaymentGateway {
       return this.unknownTransactionResult(obj, 'transaction_not_found');
     }
 
-    // Classify event
+    // Classify event. A refund or void never grants units; units already
+    // granted are not taken back automatically (the ledger has no debit
+    // outside generation), so the record is marked for manual review.
+    // A success whose amount or currency differs from the order we created
+    // is not a payment for that pack.
+    const amountMatches = obj.amount_cents === Math.round(txRow.amount_egp * EGP_TO_PIASTRES)
+      && String(obj.currency ?? '').toLowerCase() === 'egp';
     let eventType: string;
     let newStatus: string;
-    if (obj.success && !obj.pending) {
+    if (obj.is_refunded || obj.is_voided) {
+      eventType = obj.is_refunded ? 'transaction.refunded' : 'transaction.voided';
+      newStatus = obj.is_refunded ? 'refunded' : 'voided';
+    } else if (obj.success && !obj.pending && !amountMatches) {
+      eventType = 'transaction.amount_mismatch';
+      newStatus = 'amount_mismatch';
+    } else if (obj.success && !obj.pending) {
       eventType = 'transaction.success';
       newStatus = 'successful';
     } else if (obj.pending) {
@@ -200,12 +212,16 @@ export class PaymobPaymentGateway implements IPaymentGateway {
       newStatus = 'failed';
     }
 
-    // Update status in payment_transactions
-    this.db
-      .prepare(
-        'UPDATE payment_transactions SET status = ?, provider_transaction_id = ?, updated_at = ? WHERE idempotency_key = ?',
-      )
-      .run(newStatus, String(obj.id), Date.now(), merchantOrderId);
+    // Update status in payment_transactions. A late pending/failed callback
+    // never overwrites a successful payment; a refund or void always lands.
+    const downgrade = txRow.status === 'successful' && (newStatus === 'pending' || newStatus === 'failed');
+    if (!downgrade) {
+      this.db
+        .prepare(
+          'UPDATE payment_transactions SET status = ?, provider_transaction_id = ?, updated_at = ? WHERE idempotency_key = ?',
+        )
+        .run(newStatus, String(obj.id), Date.now(), merchantOrderId);
+    }
 
     return {
       verified: true,
@@ -280,6 +296,7 @@ export class PaymobPaymentGateway implements IPaymentGateway {
     orderId: number,
     request: PaymentSessionRequest,
   ): Promise<string> {
+    const [firstName, ...otherNames] = (request.customerName ?? '').trim().split(/\s+/).filter(Boolean);
     const res = await fetch(`${PAYMOB_BASE_URL}/acceptance/payment_keys`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -288,11 +305,14 @@ export class PaymobPaymentGateway implements IPaymentGateway {
         amount_cents: amountInPiastres,
         expiration: 3600,
         order_id: orderId,
+        // Paymob requires every billing field. The creator's own email and
+        // name go through; AZMA does not collect a phone or address, so
+        // those stay placeholders.
         billing_data: {
           apartment: 'NA',
-          email: 'creator@azma-os.com',
+          email: request.customerEmail || 'creator@azma-os.com',
           floor: 'NA',
-          first_name: 'AZMA',
+          first_name: firstName || 'AZMA',
           street: 'NA',
           building: 'NA',
           phone_number: '+20123456789',
@@ -300,7 +320,7 @@ export class PaymobPaymentGateway implements IPaymentGateway {
           postal_code: 'NA',
           city: 'Cairo',
           country: 'EG',
-          last_name: 'Creator',
+          last_name: otherNames.join(' ') || (firstName ? 'NA' : 'Creator'),
           state: 'Cairo',
         },
         currency: 'EGP',
@@ -369,6 +389,13 @@ export class PaymobPaymentGateway implements IPaymentGateway {
       String(obj.success),
     ].join('');
     return createHmac('sha512', this.hmacSecret).update(concat).digest('hex');
+  }
+
+  /** Constant-time comparison of two hex digests. */
+  private hmacMatches(computed: string, received: string): boolean {
+    const a = Buffer.from(computed, 'utf-8');
+    const b = Buffer.from(received.toLowerCase(), 'utf-8');
+    return a.length === b.length && timingSafeEqual(a, b);
   }
 
   private unknownTransactionResult(

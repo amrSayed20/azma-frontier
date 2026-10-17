@@ -11,15 +11,38 @@ interface SessionInfo {
   readonly role?: 'founder' | 'creator';
 }
 
-export function SubscribeForm({ dict }: { readonly dict: Dictionary }) {
+export interface PackOption {
+  readonly packId: 'start' | 'create' | 'achieve';
+  readonly displayName: string;
+  readonly azmaUnits: number;
+  readonly priceEgp: number;
+}
+
+interface BalanceInfo {
+  readonly availableUnits: number;
+  readonly trial?: { readonly remainingImages: number };
+}
+
+const CHECKOUT_FAILURE_REASONS = new Set(['unauthorized', 'invalid-pack', 'gateway-unavailable', 'gateway-error']);
+
+export function SubscribeForm({ dict, packs }: { readonly dict: Dictionary; readonly packs: readonly PackOption[] }) {
   const [session, setSession] = useState<SessionInfo | null>(null);
+  const [balance, setBalance] = useState<BalanceInfo | null>(null);
+  const [packId, setPackId] = useState<PackOption['packId']>(packs[0]?.packId ?? 'start');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetch('/api/auth/me')
       .then((response) => response.json())
-      .then(setSession)
+      .then((info: SessionInfo) => {
+        setSession(info);
+        if (!info.authenticated || info.role === 'founder') return;
+        fetch('/api/sovereign/economy/balance')
+          .then((response) => (response.ok ? response.json() : null))
+          .then((data: BalanceInfo | null) => { if (data) setBalance(data); })
+          .catch(() => { /* the balance line simply stays hidden */ });
+      })
       .catch(() => setSession({ authenticated: false }));
   }, []);
 
@@ -31,6 +54,7 @@ export function SubscribeForm({ dict }: { readonly dict: Dictionary }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          packId,
           successUrl: `${window.location.origin}/subscribe/success`,
           cancelUrl: `${window.location.origin}/subscribe`,
         }),
@@ -38,7 +62,9 @@ export function SubscribeForm({ dict }: { readonly dict: Dictionary }) {
       const result = await response.json();
 
       if (result.status !== 'succeeded') {
-        setError(result.message ?? t(dict, 'subscribe.errorFallback'));
+        setError(CHECKOUT_FAILURE_REASONS.has(result.reason)
+          ? t(dict, `subscribe.error.${result.reason}`)
+          : t(dict, 'subscribe.errorFallback'));
         return;
       }
 
@@ -65,10 +91,38 @@ export function SubscribeForm({ dict }: { readonly dict: Dictionary }) {
         <h1 className="creator-access-title">{t(dict, 'subscribe.title')}</h1>
         <p className="creator-access-subtitle">{t(dict, 'subscribe.subtitle')}</p>
 
-        <div className="creator-access-plan">
-          <p className="creator-access-plan-name">{t(dict, 'subscribe.planName')}</p>
-          <p className="creator-access-plan-desc">{t(dict, 'subscribe.planDesc')}</p>
+        {balance && (
+          <p className="creator-access-balance" role="status">
+            {t(dict, 'subscribe.balance', { units: String(balance.availableUnits) })}
+            {balance.trial && balance.trial.remainingImages > 0 && (
+              <> · {t(dict, 'subscribe.trialRemaining', { count: String(balance.trial.remainingImages) })}</>
+            )}
+          </p>
+        )}
+
+        <div className="creator-access-packs" role="radiogroup" aria-label={t(dict, 'subscribe.packsLabel')}>
+          {packs.map((pack) => (
+            <button
+              key={pack.packId}
+              type="button"
+              role="radio"
+              aria-checked={packId === pack.packId}
+              className={`creator-access-plan creator-access-pack${packId === pack.packId ? ' creator-access-pack--selected' : ''}`}
+              onClick={() => setPackId(pack.packId)}
+            >
+              <span className="creator-access-plan-name">
+                <bdi>{pack.displayName}</bdi> · {t(dict, 'subscribe.packUnits', { units: String(pack.azmaUnits) })}
+              </span>
+              <span className="creator-access-pack-price">{t(dict, 'subscribe.packPrice', { price: String(pack.priceEgp) })}</span>
+              <span className="creator-access-plan-desc">{t(dict, `subscribe.pack.${pack.packId}`)}</span>
+            </button>
+          ))}
         </div>
+        <p className="creator-access-status">{t(dict, 'subscribe.oneTimeNote')}</p>
+        <p className="creator-access-links">
+          <a href="/terms">{t(dict, 'legal.terms.link')}</a>
+          <a href="/refund">{t(dict, 'legal.refund.link')}</a>
+        </p>
 
         {error && <div className="creator-access-error">{error}</div>}
 

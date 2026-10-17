@@ -14,10 +14,10 @@
 export { createDatabase, getDb, resetDbSingletonForTests } from './db';
 
 export type { CreatorRecord, NewCreator, CreatorRole } from './creator-repository';
-export { createCreator, getCreator, getCreatorByEmail, updateCreatorPreferredLocale, setVaultPinHash, getVaultPinHash } from './creator-repository';
+export { createCreator, getCreator, getCreatorByEmail, updateCreatorPreferredLocale, updateCreatorPasswordHash, setVaultPinHash, getVaultPinHash } from './creator-repository';
 
 export type { SessionRecord } from './session-repository';
-export { createSession, getActiveSession, deleteSession } from './session-repository';
+export { createSession, getActiveSession, deleteSession, deleteOtherSessions } from './session-repository';
 
 export type { GenerationRecord, NewGenerationRecord } from './generation-record-repository';
 export { recordGeneration, getGenerationRecord, deleteGenerationRecord, listGenerationsForCreator } from './generation-record-repository';

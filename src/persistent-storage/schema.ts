@@ -121,15 +121,19 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   // SovereignCanvas state. Full canvas is JSON-serialized in canvas_json;
   // title/canvas_type are extracted as redundant columns so listing can
   // return summaries without deserializing every canvas's full JSON.
-  // INSERT OR REPLACE (upsert on canvas_id) makes every save idempotent —
-  // re-saving a canvas replaces the prior snapshot, no version history.
+  // The key is (subscriber_tenant_id, canvas_id): every creator's working
+  // draft shares the id `canvas_narrative_session`, so a key on canvas_id
+  // alone let one creator's save replace another's. Re-saving a canvas
+  // replaces the prior snapshot of that creator only, no version history.
+  // Databases created with the old key are rebuilt in db.ts.
   `CREATE TABLE IF NOT EXISTS sovereign_canvases (
-    canvas_id TEXT PRIMARY KEY,
+    canvas_id TEXT NOT NULL,
     subscriber_tenant_id TEXT NOT NULL,
     title TEXT NOT NULL,
     canvas_type TEXT NOT NULL,
     canvas_json TEXT NOT NULL,
-    saved_at INTEGER NOT NULL
+    saved_at INTEGER NOT NULL,
+    PRIMARY KEY (subscriber_tenant_id, canvas_id)
   )`,
   // FULFILLMENT ASSESSMENT FOUNDATION (Constitutional Foundation Package V):
   // persists every Fulfillment Assessment as a historical conclusion.

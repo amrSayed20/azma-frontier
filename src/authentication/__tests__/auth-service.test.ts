@@ -9,7 +9,7 @@ jest.mock('../../persistent-storage', () => {
 });
 
 import { getCreatorByEmail } from '../../persistent-storage';
-import { signUp, logIn, logOut, verifySession } from '../auth-service';
+import { signUp, logIn, logOut, verifySession, changePassword } from '../auth-service';
 
 describe('Authentication Foundation — Auth Service', () => {
   beforeEach(() => {
@@ -82,5 +82,22 @@ describe('Authentication Foundation — Auth Service', () => {
 
   it('returns null for a session that never existed', () => {
     expect(verifySession('not-a-real-session-id')).toBeNull();
+  });
+  it('changes the password only with the current one, and signs out every other session', async () => {
+    const signed = await signUp('changer@example.com', 'first-password');
+    if (signed.status !== 'succeeded') throw new Error('sign-up failed');
+    const other = await logIn('changer@example.com', 'first-password');
+    if (other.status !== 'succeeded') throw new Error('log-in failed');
+
+    expect(await changePassword(signed.result.sessionId, 'wrong-password', 'second-password'))
+      .toEqual(expect.objectContaining({ status: 'failed', reason: 'invalid-credentials' }));
+    expect(await changePassword(signed.result.sessionId, 'first-password', 'short'))
+      .toEqual(expect.objectContaining({ status: 'failed', reason: 'invalid-input' }));
+
+    expect(await changePassword(signed.result.sessionId, 'first-password', 'second-password')).toEqual({ status: 'succeeded' });
+    expect(verifySession(signed.result.sessionId)).not.toBeNull();
+    expect(verifySession(other.result.sessionId)).toBeNull();
+    expect((await logIn('changer@example.com', 'first-password')).status).toBe('failed');
+    expect((await logIn('changer@example.com', 'second-password')).status).toBe('succeeded');
   });
 });

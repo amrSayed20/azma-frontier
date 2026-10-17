@@ -7,6 +7,9 @@ import { t } from '@/src/creator-language';
 import type { Dictionary } from '@/src/creator-language';
 import { ConstitutionalLink } from '@/src/constitutional-navigation';
 
+/** API failure reasons that have their own sentence in the dictionary. */
+const KNOWN_FAILURES = new Set(['invalid-credentials', 'invalid-input', 'too-many-attempts']);
+
 interface Props {
   readonly dict: Dictionary;
   /**
@@ -48,7 +51,7 @@ export function LoginForm({ dict, onSuccess }: Props) {
       const result = await response.json();
 
       if (result.status !== 'succeeded') {
-        setError(result.message ?? t(dict, 'login.errorFallback'));
+        setError(KNOWN_FAILURES.has(result.reason) ? t(dict, `login.error.${result.reason}`) : t(dict, 'login.errorFallback'));
         return;
       }
 

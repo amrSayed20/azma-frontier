@@ -7,6 +7,9 @@ import { t } from '@/src/creator-language';
 import type { Dictionary } from '@/src/creator-language';
 import { ConstitutionalLink } from '@/src/constitutional-navigation';
 
+/** API failure reasons that have their own sentence in the dictionary. */
+const KNOWN_FAILURES = new Set(['invalid-input', 'email-taken', 'too-many-attempts']);
+
 interface Props {
   readonly dict: Dictionary;
   /**
@@ -50,7 +53,7 @@ export function SignupForm({ dict, onSuccess }: Props) {
       const result = await response.json();
 
       if (result.status !== 'succeeded') {
-        setError(result.message ?? t(dict, 'signup.errorFallback'));
+        setError(KNOWN_FAILURES.has(result.reason) ? t(dict, `signup.error.${result.reason}`) : t(dict, 'signup.errorFallback'));
         return;
       }
 
@@ -92,6 +95,10 @@ export function SignupForm({ dict, onSuccess }: Props) {
             <label htmlFor="confirmPassword">{t(dict, 'signup.confirmPasswordLabel')}</label>
             <input id="confirmPassword" type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
           </div>
+          <p className="creator-access-consent">
+            {t(dict, 'signup.consentPrefix')} <a href="/terms">{t(dict, 'legal.terms.link')}</a> {t(dict, 'signup.consentAnd')}{' '}
+            <a href="/privacy">{t(dict, 'legal.privacy.link')}</a>.
+          </p>
           <button type="submit" className="creator-access-submit" disabled={submitting}>
             {submitting ? t(dict, 'signup.submitBusy') : t(dict, 'signup.submitIdle')}
           </button>

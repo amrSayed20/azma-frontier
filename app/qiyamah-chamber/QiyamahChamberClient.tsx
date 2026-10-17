@@ -21,6 +21,7 @@ import { resolveAvailableActions } from '@/src/button-engine';
 import type { ChamberState } from '@/src/button-engine';
 import { useInstallInvitation } from '@/src/install-experience';
 import type { ImperialVisionDocument } from '@/src/chamber-vision';
+import { uploadFailureMessage } from '@/src/vault/upload-failure-message';
 
 // All 13 styles — operational, none locked
 const ALL_STYLES: Array<{ id: string; nameAr: string; tagline: string }> = [
@@ -70,18 +71,56 @@ interface QiyamahChamberClientProps {
   readonly dict:                Dictionary;
   readonly chamberVision?:      ImperialVisionDocument;
   readonly generationAvailable?: boolean;
+  /** Whether video has an approved AZMA Unit price; until then only founders can generate video. */
+  readonly videoPriced?:        boolean;
+}
+
+interface GenerationFailure {
+  readonly reason?:         string;
+  readonly message?:        string;
+  readonly estimatedCost?:  number;
+  readonly availableUnits?: number;
+}
+
+/** The creator-facing Arabic sentence for a failed generation; the API's English message is for logs. */
+function generationFailureMessage(failure: GenerationFailure, mediaType: 'image' | 'video'): string {
+  switch (failure.reason) {
+    case 'payment-required':
+      return typeof failure.estimatedCost === 'number'
+        ? `رصيدك لا يكفي: هذا التوليد يحتاج ${failure.estimatedCost} وحدة والمتاح لك ${failure.availableUnits ?? 0}. اشترِ باقة وحدات ثم عُد.`
+        : 'انتهت صور التجربة المجانية ورصيدك من الوحدات لا يكفي. اشترِ باقة وحدات للمتابعة.';
+    case 'cost-unavailable':
+      return mediaType === 'video'
+        ? 'توليد الفيديو بالوحدات لم يُفتح بعد على هذه النسخة. لم يُخصم من رصيدك شيء.'
+        : 'انتهت صور التجربة المجانية، والتوليد بالوحدات لم يُفتح بعد على هذه النسخة. لم يُخصم من رصيدك شيء.';
+    case 'unauthorized':
+      return 'انتهت جلستك. سجّل الدخول من جديد.';
+    case 'rate-limited':
+      return 'بلغتَ حدّ التوليد لهذه الساعة. أعد المحاولة لاحقًا.';
+    case 'invalid-prompt':
+      return 'الوصف فارغ أو أطول من المسموح. عدّله ثم أعد المحاولة.';
+    case 'provider-error':
+      return 'مزوّد التوليد لم يُكمل الطلب. أعد المحاولة بعد قليل أو جرّب نمطًا آخر.';
+    case 'storage-error':
+      return 'تعذّر حفظ الناتج. أعد المحاولة.';
+    default:
+      return 'التوليد لم ينجح. أعد المحاولة.';
+  }
 }
 
 export function QiyamahChamberClient({
   dict,
   chamberVision,
   generationAvailable = true,
+  videoPriced = false,
 }: QiyamahChamberClientProps) {
   const { goTo } = useConstitutionalNavigation();
   const { triggerInvitation } = useInstallInvitation();
 
   // ── Identity ────────────────────────────────────────────────────────────────
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [isFounder,   setIsFounder]   = useState(false);
+  const [balance,     setBalance]     = useState<{ availableUnits: number; trialImages: number } | null>(null);
 
   // ── Gallery data ────────────────────────────────────────────────────────────
   const [generations,   setGenerations]   = useState<readonly GenerationRecord[]>([]);
@@ -143,16 +182,29 @@ export function QiyamahChamberClient({
       .catch(() => { /* silent */ });
   };
 
+  const fetchBalance = () => {
+    fetch('/api/sovereign/economy/balance')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { availableUnits?: number; trial?: { remainingImages?: number } } | null) => {
+        if (data && typeof data.availableUnits === 'number') {
+          setBalance({ availableUnits: data.availableUnits, trialImages: data.trial?.remainingImages ?? 0 });
+        }
+      })
+      .catch(() => { /* the balance line simply stays hidden */ });
+  };
+
   useEffect(() => {
     fetch('/api/auth/me')
       .then((r) => r.json())
-      .then((data: { authenticated?: boolean; displayName?: string | null }) => {
-        if (!data.authenticated) { goTo('/creator-access'); return; }
+      .then((data: { authenticated?: boolean; displayName?: string | null; role?: string }) => {
+        if (!data.authenticated) { goTo('/login'); return; }
         setDisplayName(data.displayName ?? null);
+        setIsFounder(data.role === 'founder');
+        if (data.role !== 'founder') fetchBalance();
         fetchGenerations();
         fetchUploadedItems();
       })
-      .catch(() => goTo('/creator-access'));
+      .catch(() => goTo('/login'));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -178,7 +230,7 @@ export function QiyamahChamberClient({
           return [newItem, ...without];
         });
       } else {
-        setUploadError(data.message ?? 'فشل الرفع — حاوِل مرة أخرى.');
+        setUploadError(uploadFailureMessage(data, 'فشل الرفع — حاوِل مرة أخرى.'));
       }
     } catch {
       setUploadError('البوابة لا تستجيب — حاوِل مرة أخرى.');
@@ -268,9 +320,10 @@ export function QiyamahChamberClient({
         setGeneratedAssetType(mediaType);
         setStage('result');
         fetchGenerations();
+        if (!isFounder) fetchBalance();
         triggerInvitation();
       } else {
-        setGenerationError(result.message ?? 'التوليد لم ينجح.');
+        setGenerationError(generationFailureMessage(result, mediaType));
         setGenerationErrorReason(result.reason ?? null);
         setStage('error');
       }
@@ -405,6 +458,12 @@ export function QiyamahChamberClient({
           <span className="creator-name">
             {displayName ? `أهلاً، ${displayName}` : 'أهلاً بك'}
           </span>
+          {balance && (
+            <a className="creator-balance" href="/subscribe">
+              {balance.trialImages > 0 ? `صور تجربة: ${balance.trialImages} · ` : ''}
+              رصيدك: {balance.availableUnits} وحدة · اشترِ وحدات
+            </a>
+          )}
         </div>
 
         <div className={`generation-status${isActivelyGenerating ? ' status-active' : ''}`}>
@@ -444,7 +503,7 @@ export function QiyamahChamberClient({
               <span className="unavailable-icon" aria-hidden="true">◎</span>
               <p className="unavailable-title">بؤرة التوليد في انتظار مزود</p>
               <p className="unavailable-sub">
-                Image generation requires a provider credential to be configured on this server.
+                التوليد يحتاج مفتاح مزوّد لم يُضبط على هذا الخادم بعد.
               </p>
             </div>
           )}
@@ -533,15 +592,17 @@ export function QiyamahChamberClient({
                 >
                   صورة
                 </button>
-                <button
-                  role="radio"
-                  aria-checked={mediaType === 'video'}
-                  className={`media-type-btn${mediaType === 'video' ? ' media-type-btn--active' : ''}`}
-                  onClick={() => setMediaType('video')}
-                  disabled={stage === 'constructing'}
-                >
-                  فيديو
-                </button>
+                {(isFounder || videoPriced) && (
+                  <button
+                    role="radio"
+                    aria-checked={mediaType === 'video'}
+                    className={`media-type-btn${mediaType === 'video' ? ' media-type-btn--active' : ''}`}
+                    onClick={() => setMediaType('video')}
+                    disabled={stage === 'constructing'}
+                  >
+                    فيديو
+                  </button>
+                )}
               </div>
 
               {mediaType === 'video' && (

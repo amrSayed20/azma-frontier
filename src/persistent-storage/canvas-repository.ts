@@ -28,15 +28,21 @@ export interface CanvasSummary {
 }
 
 /**
- * Saves (or re-saves) a Sovereign Canvas. INSERT OR REPLACE makes every
- * call idempotent on `canvas_id` — re-saving replaces the prior
- * snapshot, preserving the full current constitutional state.
+ * Saves (or re-saves) a Sovereign Canvas. The upsert is keyed on
+ * (subscriber_tenant_id, canvas_id): re-saving replaces that creator's
+ * prior snapshot and never touches another creator's canvas that happens
+ * to share the id (every working draft is `canvas_narrative_session`).
  */
 export function saveCanvas(db: DatabaseSync, canvas: SovereignCanvas, savedAt: number = Date.now()): void {
   db.prepare(
-    `INSERT OR REPLACE INTO sovereign_canvases
+    `INSERT INTO sovereign_canvases
       (canvas_id, subscriber_tenant_id, title, canvas_type, canvas_json, saved_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT (subscriber_tenant_id, canvas_id) DO UPDATE SET
+       title = excluded.title,
+       canvas_type = excluded.canvas_type,
+       canvas_json = excluded.canvas_json,
+       saved_at = excluded.saved_at`,
   ).run(
     canvas.canvasId,
     canvas.subscriberTenantId,

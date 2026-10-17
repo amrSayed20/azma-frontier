@@ -98,4 +98,40 @@ describe('Persistent Storage Foundation — database connection', () => {
     migrated.close();
     unlinkSync(path);
   });
+  it('rebuilds a sovereign_canvases table keyed on canvas_id alone onto (subscriber_tenant_id, canvas_id), keeping every row', () => {
+    const path = join(tmpdir(), `azma-test-legacy-canvases-${Date.now()}.db`);
+
+    const legacy = new DatabaseSync(path);
+    legacy.exec(`CREATE TABLE sovereign_canvases (
+      canvas_id TEXT PRIMARY KEY,
+      subscriber_tenant_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      canvas_type TEXT NOT NULL,
+      canvas_json TEXT NOT NULL,
+      saved_at INTEGER NOT NULL
+    )`);
+    const insert = legacy.prepare('INSERT INTO sovereign_canvases VALUES (?, ?, ?, ?, ?, ?)');
+    insert.run('canvas_narrative_session', 'creator-a', 'A film', 'CINEMATIC', '{"title":"A film"}', 100);
+    insert.run('snapshot-1', 'creator-b', 'B film', 'NARRATIVE', '{"title":"B film"}', 200);
+    legacy.close();
+
+    const migrated = createDatabase(path);
+    const key = (migrated.prepare('PRAGMA table_info(sovereign_canvases)').all() as { name: string; pk: number }[])
+      .filter((c) => c.pk > 0).sort((a, b) => a.pk - b.pk).map((c) => c.name);
+    expect(key).toEqual(['subscriber_tenant_id', 'canvas_id']);
+    expect(migrated.prepare('SELECT canvas_id, subscriber_tenant_id, title, canvas_json, saved_at FROM sovereign_canvases ORDER BY saved_at').all()).toEqual([
+      { canvas_id: 'canvas_narrative_session', subscriber_tenant_id: 'creator-a', title: 'A film', canvas_json: '{"title":"A film"}', saved_at: 100 },
+      { canvas_id: 'snapshot-1', subscriber_tenant_id: 'creator-b', title: 'B film', canvas_json: '{"title":"B film"}', saved_at: 200 },
+    ]);
+
+    // Another creator may now hold the same draft id.
+    migrated.prepare('INSERT INTO sovereign_canvases VALUES (?, ?, ?, ?, ?, ?)').run('canvas_narrative_session', 'creator-b', 'B draft', 'CINEMATIC', '{}', 300);
+    migrated.close();
+
+    // Opening again is a no-op: rows stay, the key stays.
+    const reopened = createDatabase(path);
+    expect((reopened.prepare('SELECT COUNT(*) AS n FROM sovereign_canvases').get() as { n: number }).n).toBe(3);
+    reopened.close();
+    unlinkSync(path);
+  });
 });

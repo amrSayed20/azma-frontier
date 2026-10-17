@@ -11,7 +11,7 @@
  */
 
 import { randomUUID } from 'crypto';
-import { getDb, createCreator, getCreatorByEmail, getCreator, createSession, getActiveSession, deleteSession } from '../persistent-storage';
+import { getDb, createCreator, getCreatorByEmail, getCreator, createSession, getActiveSession, deleteSession, deleteOtherSessions, updateCreatorPasswordHash } from '../persistent-storage';
 import { hashPassword, verifyPassword } from './password-hashing';
 import { generateSessionId } from './session-token';
 import type { AuthOutcome, VerifiedSession } from './types';
@@ -65,6 +65,34 @@ export async function logIn(email: string, password: string): Promise<AuthOutcom
   const sessionId = generateSessionId();
   const session = createSession(db, sessionId, creator.creatorId, SESSION_TTL_MS);
   return { status: 'succeeded', result: { creatorId: creator.creatorId, role: creator.role, sessionId, expiresAt: session.expiresAt } };
+}
+
+export type PasswordChangeOutcome =
+  | { readonly status: 'succeeded' }
+  | { readonly status: 'failed'; readonly reason: 'invalid-input' | 'invalid-credentials'; readonly message: string };
+
+/**
+ * Changes a signed-in Creator's password after checking the current one.
+ * Every other session of that Creator ends; the session that made the
+ * change stays signed in.
+ */
+export async function changePassword(
+  sessionId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<PasswordChangeOutcome> {
+  if (newPassword.length < MIN_PASSWORD_LENGTH) {
+    return { status: 'failed', reason: 'invalid-input', message: `The new password must be at least ${MIN_PASSWORD_LENGTH} characters.` };
+  }
+  const db = getDb();
+  const session = getActiveSession(db, sessionId);
+  const creator = session ? getCreator(db, session.creatorId) : null;
+  if (!session || !creator || !creator.passwordHash || !(await verifyPassword(currentPassword, creator.passwordHash))) {
+    return { status: 'failed', reason: 'invalid-credentials', message: 'The current password is incorrect.' };
+  }
+  updateCreatorPasswordHash(db, creator.creatorId, await hashPassword(newPassword));
+  deleteOtherSessions(db, creator.creatorId, sessionId);
+  return { status: 'succeeded' };
 }
 
 export function logOut(sessionId: string): void {

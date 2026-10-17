@@ -40,6 +40,7 @@ import {
   MIN_SCENE_SECONDS,
   type SceneTransition,
 } from '@/src/chambers/ras-al-amr/storyboard';
+import { uploadFailureMessage } from '@/src/vault/upload-failure-message';
 import './storyboard.css';
 
 const LAST_PROJECT_KEY = 'azma.rasAmr.storyboard.last';
@@ -470,7 +471,7 @@ export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCo
       const response = await fetch('/api/vault/assets/upload', { method: 'POST', body });
       const data = await response.json();
       if (data.status !== 'succeeded' || !data.asset) {
-        setUploadError(data.message ?? 'لم يُرفع الملف.');
+        setUploadError(uploadFailureMessage(data, 'لم يُرفع الملف.'));
         return;
       }
       const asset = data.asset as VaultAsset;

@@ -295,6 +295,22 @@ describe('Qiyamah Three-Stage Experience Contract', () => {
     expect(data.message).not.toContain('pending-discovery');
   });
 
+  it('f. a request refused by the interim limit never uses up a free trial image', async () => {
+    const { recordGeneration, resetRateLimiterForTests } = jest.requireActual('../../../src/qiyamah-generation/rate-limiter');
+    resetRateLimiterForTests();
+    for (let i = 0; i < 10; i++) recordGeneration(Date.now(), CREATOR_SESSION.creatorId);
+
+    const res  = await generatePOST(makeGenerateRequest({ prompt: 'test', style: 'cinematic' }));
+    const data = await res.json();
+    resetRateLimiterForTests();
+
+    expect(res.status).toBe(429);
+    expect(data.reason).toBe('rate-limited');
+    expect(mockClaimTrial).not.toHaveBeenCalled();
+    expect(mockReserve).not.toHaveBeenCalled();
+    expect(mockGenerateImage).not.toHaveBeenCalled();
+  });
+
   // ── g. CONFIRMED EMBODIMENT REACHES GENERATION PATH ──────────────────────
 
   it('g. sending the engineered prompt to generate route invokes the generation service', async () => {

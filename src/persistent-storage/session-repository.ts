@@ -42,3 +42,8 @@ export function getActiveSession(db: DatabaseSync, sessionId: string, now: numbe
 export function deleteSession(db: DatabaseSync, sessionId: string): void {
   db.prepare('DELETE FROM sessions WHERE session_id = ?').run(sessionId);
 }
+
+/** Ends every session of a Creator except `keepSessionId` — used after a password change. */
+export function deleteOtherSessions(db: DatabaseSync, creatorId: string, keepSessionId: string): void {
+  db.prepare('DELETE FROM sessions WHERE creator_id = ? AND session_id != ?').run(creatorId, keepSessionId);
+}

@@ -560,14 +560,18 @@ export default function ImperialFoyer() {
           {sovereignPurpose && (
             <span className="creator-purpose">&quot;{sovereignPurpose}&quot;</span>
           )}
-          <button
-            className="foyer-logout-btn"
-            onClick={handleLogout}
-            disabled={loggingOut || isPreparing}
-            aria-label="تسجيل الخروج من الإمبراطورية"
-          >
-            {loggingOut ? '…' : 'خروج'}
-          </button>
+          <div className="foyer-account-links">
+            <a className="foyer-logout-btn" href="/subscribe">الرصيد والوحدات</a>
+            <a className="foyer-logout-btn" href="/account">حسابي</a>
+            <button
+              className="foyer-logout-btn"
+              onClick={handleLogout}
+              disabled={loggingOut || isPreparing}
+              aria-label="تسجيل الخروج من الإمبراطورية"
+            >
+              {loggingOut ? '…' : 'خروج'}
+            </button>
+          </div>
         </div>
       )}
 

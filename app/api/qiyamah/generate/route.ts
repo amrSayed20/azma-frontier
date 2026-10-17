@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { generateImage, generateVideo } from '../../../../src/qiyamah-generation';
+import { isRateLimited } from '../../../../src/qiyamah-generation/rate-limiter';
 import { verifySession } from '../../../../src/authentication';
 import { getDb } from '../../../../src/persistent-storage';
 import { ConsumptionRepository } from '../../../../src/persistent-storage/consumption-repository';
@@ -141,6 +142,15 @@ export async function POST(request: NextRequest) {
   }
 
   // ─── IMAGE PATH ─────────────────────────────────────────────────────────────
+  // The interim limit is checked before any entitlement is touched, so a
+  // refused request never uses up a free trial image or reserves units.
+  if (isRateLimited(Date.now(), session.creatorId)) {
+    return NextResponse.json(
+      { status: 'failed', reason: 'rate-limited', message: 'The interim generation limit has been reached. Please try again later.' },
+      { status: 429 },
+    );
+  }
+
   // CREDIT-FIRST GATE — ordered by entitlement type:
   //
   //   1. Founders bypass all economic checks entirely.
