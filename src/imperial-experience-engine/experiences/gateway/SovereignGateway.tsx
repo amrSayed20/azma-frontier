@@ -71,6 +71,48 @@ import './gateway.css';
 /** How long the approach takes when nobody interrupts it. */
 const APPROACH_MS = 6000;
 
+/**
+ * ─── THE PHOTOGRAPH'S OWN PIXELS, AND THE CAP DERIVED FROM THEM ─────────────
+ *
+ *   MEASURED 2026-10-17 on the previous image: `--gate-zoom-max: 1.62` was
+ *   described as protecting the carving. It did not. It caps the TRANSFORM,
+ *   while `object-fit: cover` has already enlarged the picture to fill the
+ *   viewport before the transform is applied — so on a 1920px screen the
+ *   total was 1.88 × 1.62 = ×3.05, and the detail went with it.
+ *
+ *   What matters is one number: how many DEVICE pixels each source pixel is
+ *   smeared across. That is `fit × transform × devicePixelRatio`, and it is
+ *   the thing capped below. The transform limit is then whatever is left over
+ *   — which is why a small screen is given a longer walk than a large one.
+ */
+const GATE_IMAGE = { width: 1672, height: 941 } as const;
+
+/** No source pixel is ever painted across more than this many device pixels. */
+const TOTAL_MAGNIFICATION_MAX = 1.35;
+
+/**
+ * How much of a portrait screen the gateway itself occupies.
+ *
+ * MEASURED on the supplied 16:9 picture: covering a 390×844 phone shows only
+ * 26% of its width — the arch is cut off at both jambs. Fitted to this band
+ * instead, 47% of the width survives, which carries the whole doorway and the
+ * columns framing it. The controls take the space underneath.
+ */
+const PORTRAIT_BAND = 0.58;
+
+/**
+ * Below this width-to-height ratio the band composition is used instead of a
+ * cover crop. MEASURED on the supplied picture, how much of its width
+ * survives a cover crop: 1920×1080 → 100%, 1440×900 → 90%, 834×1112 → 42%,
+ * 390×844 → 26%. The arch spans roughly the middle third, so 42% is already
+ * tight and 26% severs it.
+ */
+const PORTRAIT_BELOW = 1.2;
+
+/** The camera always travels at least this far, so there is always a walk. */
+const ZOOM_FLOOR = 1.05;
+const ZOOM_CEILING = 1.75;
+
 type Phase = 'approaching' | 'arrived' | 'crossing' | 'inside';
 
 export function SovereignGateway({
@@ -106,6 +148,54 @@ export function SovereignGateway({
   const scrollMark = useRef(0);
   /** The card they opened it from — focus belongs back on it when they close. */
   const openedFrom = useRef<HTMLButtonElement | null>(null);
+
+  /**
+   * ─── HOW FAR THE CAMERA MAY TRAVEL, ON THIS SCREEN, RIGHT NOW ───────────
+   *
+   *   Computed rather than written down, because the answer depends on the
+   *   viewport and on the device pixel ratio, and it must change when the
+   *   window is resized. The CSS cannot do it: dividing a length by `100vw`
+   *   is not something `calc()` permits.
+   *
+   *   PORTRAIT is a different composition, not a tighter crop. A 16:9 picture
+   *   covering a 390×844 phone shows 26% of its own width — which cuts the
+   *   arch itself off at both sides. So on a portrait screen the gateway is
+   *   fitted to a band across the top and the controls take the space below,
+   *   and the whole doorway survives.
+   */
+  const sceneRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const el = sceneRef.current;
+    if (!el) return undefined;
+    const recompute = () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const dpr = window.devicePixelRatio || 1;
+      // MEASURED: testing against the picture's own 1.777 put a 1440×900
+      // desktop (1.6) into the portrait composition, where it belongs least —
+      // covering that screen crops only 10% of the width and loses nothing.
+      // The band is for screens that are genuinely tall, where covering would
+      // show a quarter of the picture and cut the arch at both jambs.
+      const portrait = vw / vh < PORTRAIT_BELOW;
+      // The band the picture is fitted into: the whole scene in landscape,
+      // the upper part of it in portrait.
+      const bandH = portrait ? vh * PORTRAIT_BAND : vh;
+      const fit = Math.max(vw / GATE_IMAGE.width, bandH / GATE_IMAGE.height);
+      const cap = TOTAL_MAGNIFICATION_MAX / (fit * dpr);
+      const zoom = Math.min(ZOOM_CEILING, Math.max(ZOOM_FLOOR, cap));
+      el.style.setProperty('--gate-zoom-max', zoom.toFixed(3));
+      el.style.setProperty('--gate-zoom-from', (1 + (zoom - 1) * 0.12).toFixed(3));
+      el.dataset.fit = portrait ? 'band' : 'cover';
+    };
+    recompute();
+    window.addEventListener('resize', recompute);
+    window.addEventListener('orientationchange', recompute);
+    return () => {
+      window.removeEventListener('resize', recompute);
+      window.removeEventListener('orientationchange', recompute);
+    };
+  }, []);
 
   // ── THE APPROACH ────────────────────────────────────────────────────────
   //   One timer, and anything the visitor does ends it immediately. Nobody is
@@ -198,7 +288,7 @@ export function SovereignGateway({
     <div className="gateway" data-phase={phase}>
 
       {/* ══ THE SCENE ══════════════════════════════════════════════════ */}
-      <section className="gate-scene" aria-label={t(dict, 'gate.wordmark')}>
+      <section className="gate-scene" aria-label={t(dict, 'gate.wordmark')} ref={sceneRef}>
         <div className="gate-frame">
           {/*
             The Architect's own photograph, unaltered. `object-fit: cover` with
@@ -222,9 +312,17 @@ export function SovereignGateway({
           <div className="gate-vignette" aria-hidden="true" />
         </div>
 
+        {/*
+          ─── THE PICTURE CARRIES THE IDENTITY NOW ──────────────────────────
+            The supplied gateway has «AZMA OS · SOVEREIGN CREATIVE OPERATING
+            SYSTEM» across its arch and «GREATNESS IS NOT MANAGED .. IT IS
+            LIVED» along its floor, each in both tongues. An overlaid wordmark
+            and tagline would say the same things twice, and the overlay sat
+            exactly where the picture's own floor line runs.
+            The heading is kept for anyone reading by ear, not by eye.
+        */}
         <div className="gate-controls">
-          <h1 className="gate-wordmark">{t(dict, 'gate.wordmark')}</h1>
-          <p className="gate-tagline">{t(dict, 'gate.tagline')}</p>
+          <h1 className="gate-wordmark-sr">{t(dict, 'gate.wordmark')}</h1>
           <div className="gate-actions">
             <button type="button" className="gate-enter" onClick={cross}>
               {t(dict, 'gateway.enter')}

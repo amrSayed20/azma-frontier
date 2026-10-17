@@ -192,7 +192,11 @@ describe('8 · the gate opens, at any size and any zoom', () => {
   it('the controls are never made inert or invisible by a phase', () => {
     // They were gated until the approach finished. The phase is React's, so
     // before hydration there was no way to end it and no way through the gate.
-    const block = CSS.split('.gate-controls {')[1]!.split('}')[0]!;
+    // The BASE rule, matched at the start of a line so a descendant rule
+    // like `.gate-scene[data-fit="band"] .gate-controls` cannot stand in for
+    // it — that substitution is what made this check fail once while the rule
+    // it guards was perfectly intact.
+    const block = CSS.split(/^\.gate-controls \{/m)[1]!.split('}')[0]!;
     expect(block).toContain('pointer-events: auto');
     expect(block).not.toMatch(/opacity:\s*0\s*;/);
     expect(block).not.toContain('translateY');

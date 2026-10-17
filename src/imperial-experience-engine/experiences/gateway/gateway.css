@@ -35,12 +35,16 @@ body:has(.gateway) { margin: 0; }
   --faint: #6B6458;
   --rule: rgba(212, 175, 55, 0.18);
 
-  /* The doors sit here inside the photograph — measured off the crop, not
-     guessed, so the approach moves toward them and not toward its centre. */
-  --gate-focus-x: 48%;
-  --gate-focus-y: 60%;
-  --gate-zoom-from: 1.06;
-  --gate-zoom-max: 1.62;
+  /* The lit passage, found by scanning the picture for its brightest band
+     rather than by eye: x=50.2%, y=48.5%. The camera moves toward THAT, which
+     on this composition is the open doorway and the city beyond it.
+     Both zoom values are overwritten at runtime from the real viewport — see
+     SovereignGateway's own note on total magnification. These are only what
+     the first frame uses before JavaScript has measured anything. */
+  --gate-focus-x: 50%;
+  --gate-focus-y: 48%;
+  --gate-zoom-from: 1.03;
+  --gate-zoom-max: 1.20;
 
   background: var(--black);
   color: var(--ink);
@@ -60,7 +64,39 @@ body:has(.gateway) { margin: 0; }
 /* The picture is scenery, never a target. MEASURED on the live release: it
    sat over the controls and swallowed the press meant for «دخول». Nothing
    inside this frame is interactive, so nothing inside it should be hit. */
+/* The picture is scenery, never a target. MEASURED on the live release: it
+   sat over the controls and swallowed the press meant for «دخول». Nothing
+   inside this frame is interactive, so nothing inside it should be hit. */
 .gate-frame { position: absolute; inset: 0; overflow: hidden; contain: paint; pointer-events: none; }
+
+/* ── PORTRAIT IS A COMPOSITION, NOT A TIGHTER CROP ────────────────────────
+   A 16:9 gateway covering a 390×844 phone shows 26% of its own width, which
+   severs the arch at both jambs. So on a portrait screen the picture is given
+   a band across the top — 47% of its width survives, carrying the whole
+   doorway and the columns that frame it — and the controls take the space
+   below it. Nothing important is cropped away to make a rectangle fit. */
+.gate-scene[data-fit="band"] .gate-frame { inset: 0 0 auto 0; height: 58svh; }
+/* The scene ends just below the controls rather than running to the full
+   height of the screen. MEASURED: at 100svh the band left a third of a phone
+   as empty black between the gateway and the buttons — a void the visitor
+   had to scroll past before anything was said to them. */
+.gate-scene[data-fit="band"] {
+  height: auto;
+  min-height: 0;
+  place-items: start center;
+  padding-block-end: clamp(1.6rem, 5vh, 2.6rem);
+}
+.gate-scene[data-fit="band"] .gate-controls {
+  padding-block-start: calc(58svh + 1.4rem);
+  padding-block-end: 0;
+}
+.gate-scene[data-fit="band"]::after {
+  content: "";
+  position: absolute;
+  inset: 54svh 0 0 0;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--black) 14%);
+}
 
 .gate-photo {
   width: 100%;
@@ -135,9 +171,14 @@ body:has(.gateway) { margin: 0; }
      moving picture every frame is the other half of the bill. */
   will-change: opacity;
   transform: translateZ(0);
+  /* MEASURED and reported: this reached 82% black at the edges and 92% at the
+     foot, and took the lanterns, the colonnade and the floor with it. The
+     picture is already 47% near-black of its own accord; it does not need
+     help being dark. Halved, and pulled outward, so the ornament reads while
+     the cinematic fall-off remains. */
   background:
-    radial-gradient(ellipse 78% 68% at var(--gate-focus-x) var(--gate-focus-y), transparent 34%, rgba(0,0,0,0.82) 100%),
-    linear-gradient(to top, rgba(0,0,0,0.92) 0%, transparent 42%);
+    radial-gradient(ellipse 96% 86% at var(--gate-focus-x) var(--gate-focus-y), transparent 52%, rgba(0,0,0,0.42) 100%),
+    linear-gradient(to top, rgba(0,0,0,0.58) 0%, transparent 34%);
 }
 
 /* ── THE TWO CONTROLS ───────────────────────────────────────────────────
@@ -153,7 +194,8 @@ body:has(.gateway) { margin: 0; }
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  padding-block-end: clamp(2.2rem, 9vh, 5rem);
+  /* Clear of the floor line the picture carries at ~93% of its height. */
+  padding-block-end: clamp(1.4rem, 5vh, 3rem);
   padding-inline: 20px;
   text-align: center;
   opacity: 1;
@@ -162,15 +204,14 @@ body:has(.gateway) { margin: 0; }
 }
 .gateway[data-phase="crossing"] .gate-controls { opacity: 0; transition: opacity 400ms ease-in; }
 
-.gate-wordmark {
-  margin: 0;
-  font-size: clamp(1.6rem, 5vw, 2.4rem);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--glow);
-  text-shadow: 0 0 28px rgba(212, 175, 55, 0.4);
+/* The page still has a heading; it is simply not painted over a picture that
+   already carries it. A screen reader announces the Empire by name. */
+.gate-wordmark-sr {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }
-.gate-tagline { margin: 0; font-size: clamp(0.82rem, 2.4vw, 0.95rem); color: var(--muted); max-width: 34ch; line-height: 1.8; }
 
 .gate-actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; justify-content: center; margin-top: 0.9rem; }
 
