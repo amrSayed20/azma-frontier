@@ -133,3 +133,14 @@
   .policy-title { font-size: 1.5rem; }
   .policy-body { padding: 1.25rem 1.1rem; font-size: 0.94rem; }
 }
+
+/* The document's tongue, told to a reader who chose another one. A policy
+   index that lists an Arabic instrument in English chrome would suggest an
+   English version exists; this says plainly that it does not. */
+.policy-list-governing {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.82rem;
+  line-height: 1.7;
+  color: var(--azma-text-muted);
+}

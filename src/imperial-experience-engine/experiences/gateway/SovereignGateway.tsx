@@ -356,7 +356,26 @@ export function SovereignGateway({
             summarised, shortened or re-worded in transit — a policy a visitor
             reads must be the policy that governs them.
           */}
-          <article className="gi-reader-body">{openPolicy.body}</article>
+          {/*
+            MEASURED on the live release: a Creator who chose English opened a
+            policy and met a wall of Arabic with nothing to explain it. The
+            three ratified instruments exist in Arabic only — there is no
+            English legal text in this Empire to show, and inventing one would
+            be worse than the silence. So the reader is told, in their own
+            tongue, what they are looking at and why.
+          */}
+          {locale !== openPolicy.language && (
+            <p className="gi-reader-governing" role="note">
+              {t(dict, 'policies.arabicIsGoverning')}
+            </p>
+          )}
+          <article
+            className="gi-reader-body"
+            lang={openPolicy.language}
+            dir={openPolicy.language === 'ar' ? 'rtl' : 'ltr'}
+          >
+            {openPolicy.body}
+          </article>
         </div>
       )}
     </div>

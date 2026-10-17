@@ -63,6 +63,17 @@ export const en: Dictionary = {
   'gateway.stateReady': 'Working',
   'gateway.statePartial': 'Partial',
   'gateway.stateClosed': 'Closed today',
+
+  // ── THE POLICY SURFACES ──────────────────────────────────────────────
+  //   MEASURED on the live release: a reader who chose English met the
+  //   policy index in Arabic, because its labels were written into the
+  //   page instead of read from here.
+  'policies.indexTitle': 'Policies',
+  'policies.backToGate': '← Back to the gate',
+  'policies.version': 'Version',
+  'policies.effectiveFrom': 'Effective',
+  'policies.noEffectiveDate': 'Effective date not yet set',
+  'policies.arabicIsGoverning': 'This text is in Arabic, and the Arabic is what governs. No ratified English version exists yet — and we will not show you a translation nobody has ratified.',
   'signup.kicker': 'The Sovereign Passage',
   'signup.companionMessage': 'You have not left the Empire',
   'signup.companionMessageBorn': 'You are born a Creator — come',

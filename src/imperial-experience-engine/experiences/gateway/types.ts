@@ -12,6 +12,8 @@ export interface GatewayPolicy {
   readonly titleAr: string;
   readonly titleEn: string;
   readonly version: string;
+  /** The tongue the BODY is written in — not the reader's chosen one. */
+  readonly language: 'ar' | 'en';
   /** The ratified text, exactly as held. Never edited in transit. */
   readonly body: string;
 }

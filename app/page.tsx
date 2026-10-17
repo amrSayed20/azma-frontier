@@ -55,6 +55,7 @@ export default async function SovereignGate() {
     titleAr: p.titleAr,
     titleEn: p.titleEn,
     version: p.version,
+    language: p.language,
     body: p.body,
   }));
 

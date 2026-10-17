@@ -218,3 +218,56 @@ describe('8 · the gate opens, at any size and any zoom', () => {
     expect(scene).not.toMatch(/position:\s*fixed/);
   });
 });
+
+describe('9 · the chosen tongue reaches everything the journey shows', () => {
+  /**
+   * MEASURED on the live release: choosing English turned the gateway, the
+   * login, the signup and the subscribe surfaces into English — and left the
+   * policy index in Arabic, because its labels were written into the page
+   * instead of read from the dictionary.
+   *
+   * The policy BODIES are a different matter entirely, and not a bug: all
+   * three ratified instruments are Arabic-only. There is no English legal
+   * text in this Empire, and one must never be invented to fill a layout.
+   */
+  const POLICY_INDEX = read('app/policies/page.tsx');
+
+  it('the policy index reads its labels rather than carrying them', () => {
+    expect(POLICY_INDEX).toContain('resolveRequestLocale');
+    expect(POLICY_INDEX).toContain("t(dict, 'policies.indexTitle')");
+    expect(POLICY_INDEX).toContain("t(dict, 'policies.backToGate')");
+    // Not one Arabic string left standing in the page's own furniture.
+    const jsx = POLICY_INDEX.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(jsx).not.toMatch(/>[^<>{]*[؀-ۿ][^<>{]*</);
+  });
+
+  it('a reader is told when the text they opened is not in their tongue', () => {
+    expect(CLIENT).toContain('locale !== openPolicy.language');
+    expect(CLIENT).toContain("t(dict, 'policies.arabicIsGoverning')");
+    expect(POLICY_INDEX).toContain("p.language === 'ar'");
+  });
+
+  it('and the notice exists in both tongues, saying no translation is ratified', () => {
+    const say = (src: string) =>
+      (src.match(/'policies\.arabicIsGoverning': '([^']*)'/) ?? [])[1] ?? '';
+    expect(say(AR)).toContain('الحاكم');
+    expect(say(EN).toLowerCase()).toContain('governs');
+    // It must NOT promise a translation is coming — nobody has ratified one.
+    expect(say(EN).toLowerCase()).toContain('no ratified english version');
+  });
+
+  it('every policy label exists in both dictionaries', () => {
+    const keys = (src: string) =>
+      [...src.matchAll(/'(policies\.[a-zA-Z]+)':/g)].map((m) => m[1]!).sort();
+    expect(keys(AR)).toEqual(keys(EN));
+    expect(keys(AR).length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('the document page follows the DOCUMENT’s tongue, which is correct', () => {
+    // Not a bug: Arabic chrome around an Arabic instrument is honest. English
+    // chrome around it would imply an English version exists.
+    const doc = read('app/policies/[slug]/page.tsx');
+    expect(doc).toContain("policy.language === 'ar'");
+    expect(doc).toContain('lang={policy.language}');
+  });
+});

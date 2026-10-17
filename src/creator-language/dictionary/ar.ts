@@ -60,6 +60,17 @@ export const ar: Dictionary = {
   'gateway.stateReady': 'تَعمل',
   'gateway.statePartial': 'جزئيّة',
   'gateway.stateClosed': 'مُغلَقة اليوم',
+
+  // ── THE POLICY SURFACES ──────────────────────────────────────────────
+  //   MEASURED on the live release: a reader who chose English met the
+  //   policy index in Arabic, because its labels were written into the
+  //   page instead of read from here.
+  'policies.indexTitle': 'السياسات',
+  'policies.backToGate': '← عُد إلى البوابة',
+  'policies.version': 'الإصدار',
+  'policies.effectiveFrom': 'سارية من',
+  'policies.noEffectiveDate': 'لم يُحدَّد تاريخ سريانها بعد',
+  'policies.arabicIsGoverning': 'هذا النصُّ عربيٌّ، وهو النصُّ الحاكم. ولا تُوجد نسخةٌ إنجليزيّةٌ مُقَرّةٌ منه بعد — ولن نَعرض عليك ترجمةً لم تُقَرّ.',
   'signup.kicker': 'بوابة العبور السيادي',
   'signup.companionMessage': 'لم تغادر الإمبراطورية',
   'signup.companionMessageBorn': 'وُلِدْتَ صانعًا.. تعال',
