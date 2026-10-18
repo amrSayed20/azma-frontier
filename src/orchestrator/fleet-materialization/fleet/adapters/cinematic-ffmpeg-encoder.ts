@@ -16,7 +16,7 @@
  *   $UPLOADS_DIR/renders/<operationId>.srt   — temporary SRT (when subtitles present)
  */
 
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type {
@@ -130,6 +130,78 @@ const AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac']);
 //   Vault — which owns assets — and this module now reads the one definition.
 import { resolveAssetPath } from '../../../../vault/asset-bytes';
 export { resolveAssetPath };
+
+/**
+ * What a file ACTUALLY carries — asked of the file, not of its name.
+ *
+ * ─── WHY AN EXTENSION IS NOT AN ANSWER ──────────────────────────────────────
+ *
+ *   MEASURED, on this encoder, against a real render:
+ *
+ *     · A browser microphone recording is `opus` inside a `.webm` container.
+ *       `.webm` is in VIDEO_EXTS, so the Creator's voice was classified as a
+ *       video clip and the filtergraph asked for `[1:v]`. There is no video
+ *       stream in it. FFmpeg answered «Stream specifier ':v' ... matches no
+ *       streams» and aborted — the whole film lost, not just the voice.
+ *
+ *     · A silent `.mp4` — a screen capture, an exported animation — is in
+ *       VIDEO_EXTS, so the encoder added an audio entry for it and asked for
+ *       `[1:a]`. Same abort, same whole film lost.
+ *
+ *   Both are the same mistake: a NAME was trusted about CONTENT. So the file
+ *   is asked. `ffprobe` ships in the very package that provides `ffmpeg`
+ *   (apt-get install -y ffmpeg), so if one is present the other is.
+ *
+ * ─── AND WHEN THE ASKING FAILS ──────────────────────────────────────────────
+ *
+ *   It falls back to exactly the extension guess that stood here before, so a
+ *   missing ffprobe can only ever return this encoder to its prior behaviour —
+ *   never to something worse. It says so on the way past, because a guess that
+ *   silently replaces a measurement is how both defects above survived weeks.
+ */
+interface StreamTruth {
+  readonly hasVideo: boolean;
+  readonly hasAudio: boolean;
+}
+
+/** Keyed by resolved path. One ffprobe per distinct asset per process. */
+const streamTruthCache = new Map<string, StreamTruth>();
+
+function probeStreams(assetPath: string, uri: string): StreamTruth {
+  const cached = streamTruthCache.get(assetPath);
+  if (cached) return cached;
+
+  const assumed: StreamTruth = {
+    hasVideo: isImageUri(uri) || isVideoUri(uri),
+    hasAudio: isAudioUri(uri) || isVideoUri(uri),
+  };
+
+  let truth: StreamTruth | null = null;
+  try {
+    const r = spawnSync(
+      'ffprobe',
+      ['-v', 'error', '-show_entries', 'stream=codec_type', '-of', 'csv=p=0', assetPath],
+      { encoding: 'utf-8' },
+    );
+    if (r.status === 0 && typeof r.stdout === 'string') {
+      const kinds = r.stdout.split(/[\r\n]+/).map((l) => l.trim()).filter(Boolean);
+      truth = { hasVideo: kinds.includes('video'), hasAudio: kinds.includes('audio') };
+    }
+  } catch {
+    // Falls through to the extension guess below.
+  }
+
+  if (!truth) {
+    console.warn(
+      `[CinematicEncoder] ffprobe could not read [${assetPath}] — falling back to its `
+        + 'extension. Install ffprobe (it ships with ffmpeg) for the stream truth.',
+    );
+    truth = assumed;
+  }
+
+  streamTruthCache.set(assetPath, truth);
+  return truth;
+}
 
 function getExt(uri: string): string {
   const dot = uri.lastIndexOf('.');
@@ -245,6 +317,12 @@ interface NodeEntry {
   opacity: number;             // VI-C: 0.0–1.0 alpha (VisualFilterDirective)
   blendMode: BlendMode;        // VI-C: composition blend mode
   framingMode: 'contain' | 'cover' | 'fill'; // XLII: how the asset fills its slot
+  /** Whether the file itself carries an audio stream. Asked of it, not of its name. */
+  hasOwnAudio: boolean;
+  /** PACKAGE XXXV: seconds of 0→1 opacity ramp at this node's IN point. 0 = cut. */
+  transitionInSeconds: number;
+  /** PACKAGE XXXV: seconds this layer is held past its own end, under a successor's ramp. */
+  holdSeconds: number;
 }
 
 function buildFfmpegArgs(
@@ -290,6 +368,24 @@ function buildFfmpegArgs(
       // VI-B: compute safe trim bounds from TemporalDirective
       const { trimStart, trimEnd, effectiveDuration } = computeTrimBounds(node.temporal, duration);
 
+      // PACKAGE XXXV — the transition at this node's IN point.
+      //
+      // These two fields have been on `TemporalDirective` since Package XXXV and
+      // this encoder never read either of them. MEASURED on a real render: a node
+      // declaring `crossfade` arrived as a hard cut — at the midpoint of a
+      // one-second declared ramp the outgoing layer was already at zero. The
+      // chamber showed the Creator a dissolve the film did not contain.
+      //
+      // 0.5s is the contract's own stated default for an absent duration.
+      const transitionIn = (node.temporal as { transitionInType?: string } | undefined)
+        ?.transitionInType ?? 'cut';
+      const rawTransitionSeconds = (node.temporal as { transitionInDurationSeconds?: number } | undefined)
+        ?.transitionInDurationSeconds ?? 0.5;
+      const transitionInSeconds =
+        transitionIn === 'crossfade'
+          ? Math.max(0, Math.min(rawTransitionSeconds, effectiveDuration))
+          : 0;
+
       // VI-C: read spatial and visual directives (visual nodes only; audio uses identity defaults)
       const positionX = node.spatial?.positionX ?? 0;
       const positionY = node.spatial?.positionY ?? 0;
@@ -313,21 +409,30 @@ function buildFfmpegArgs(
         trimStart, trimEnd, effectiveDuration,
         positionX, positionY, scaleX, scaleY, rotationDegrees, zIndex, opacity, blendMode, framingMode,
         inputIdx: -1,
+        transitionInSeconds,
+        holdSeconds: 0,
       };
 
+      // ── WHAT THE FILE CARRIES DECIDES WHICH LIST IT JOINS ───────────────
+      //   Not its extension. See probeStreams() for the two renders this cost.
+      const streams = probeStreams(assetPath, uri);
+
       if (isImageUri(uri)) {
-        stillInputs.push({ ...base, kind: 'image' });
-      } else if (isVideoUri(uri)) {
-        videoInputs.push({ ...base, kind: 'video' });
-      } else if (isAudioUri(uri)) {
+        stillInputs.push({ ...base, kind: 'image', hasOwnAudio: false });
+      } else if (streams.hasVideo) {
+        videoInputs.push({ ...base, kind: 'video', hasOwnAudio: streams.hasAudio });
+      } else if (streams.hasAudio) {
         audioFileInputs.push({
           ...base,
           kind: 'audio',
+          hasOwnAudio: true,
           positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: 0,
           opacity: 1, blendMode: 'NORMAL', framingMode: 'contain',
         });
       }
-      // Text/structural nodes carry no media — silently skipped
+      // Text/structural nodes carry no media — silently skipped.
+      // So is a media file carrying NEITHER stream: it cannot be composited and
+      // naming it in the filtergraph would abort the entire film for one asset.
     }
   }
 
@@ -365,6 +470,11 @@ function buildFfmpegArgs(
       effectiveDuration: visEntry.effectiveDuration,
       positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: 0,
       opacity: 1, blendMode: 'NORMAL', framingMode: 'contain',
+      hasOwnAudio: true,
+      // A voice track is not a visual layer; it ramps through the mix plan's
+      // fades, never through a visual transition.
+      transitionInSeconds: 0,
+      holdSeconds: 0,
     });
   }
 
@@ -373,6 +483,10 @@ function buildFfmpegArgs(
   // the existing video input already carries the audio stream at [inputIdx:a].
   const videoAudioEntries: NodeEntry[] = [];
   for (const vidEntry of videoInputs) {
+    // A clip with no audio stream has no `[idx:a]` to map. Naming one aborted
+    // the entire render — MEASURED: «Stream specifier ':a' ... matches no
+    // streams», exit −22, no file written, for a silent screen capture.
+    if (!vidEntry.hasOwnAudio) continue;
     const nodeMix = graph.mixPlan.nodeMixes.find((m) => m.nodeId === vidEntry.nodeId);
     if (nodeMix?.isMuted) continue;
     videoAudioEntries.push({
@@ -390,9 +504,58 @@ function buildFfmpegArgs(
         `A CINEMATIC canvas must contain at least one active image or video node.`,
     );
   }
-  allVisualInputs.sort((a, b) =>
-    a.zIndex !== b.zIndex ? a.zIndex - b.zIndex : a.nodeId.localeCompare(b.nodeId),
-  );
+  // ── WHEN TWO LAYERS SHARE A zIndex, THE LATER ONE IS ON TOP ───────────────
+  //
+  //   The tie used to be broken by nodeId, alphabetically. That is not a
+  //   property of the timeline — it is a property of how the ids happened to be
+  //   spelled, and it silently decided which of two overlapping layers the
+  //   Creator would see. MEASURED: a node starting at 3s named `n-blue` was
+  //   placed UNDER one starting at 0s named `n-red`, so its arrival could never
+  //   be seen at all, with or without a transition.
+  //
+  //   Start time is the meaningful order: what enters later sits on top of what
+  //   was already there, which is also the only arrangement in which a
+  //   transition-in can be visible. nodeId remains the last resort, so the
+  //   ordering stays total and the command line stays reproducible.
+  allVisualInputs.sort((a, b) => {
+    if (a.zIndex !== b.zIndex) return a.zIndex - b.zIndex;
+    if (a.startSec !== b.startSec) return a.startSec - b.startSec;
+    return a.nodeId.localeCompare(b.nodeId);
+  });
+
+  // ── PACKAGE XXXV — THE OUTGOING LAYER IS HELD, NOT RAMPED DOWN ───────────
+  //
+  //   The contract describes a crossfade as the incoming node ramping 0→1
+  //   «while the preceding adjacent node ramps 1→0 simultaneously — no blank
+  //   frame». Ramping BOTH is what produces a blank frame: at the midpoint the
+  //   outgoing layer is at ½ over black and the incoming at ½ over that, so the
+  //   frame carries ¼·A + ½·B and the picture dips dark through the middle.
+  //
+  //   Holding A at full opacity under a ramping B gives exactly (1−α)·A + α·B —
+  //   a true dissolve, no dip, no blank frame. So the contract's requirement is
+  //   met by holding the outgoing layer, and this is the one place that says so.
+  //
+  //   A layer only needs holding when it ENDS where its successor begins. When
+  //   it already runs past that instant, as an establishing shot does, it is
+  //   live throughout the ramp and nothing is added.
+  const CROSSFADE_ADJACENCY_TOLERANCE_SECONDS = 0.05;
+  for (const incoming of allVisualInputs) {
+    if (incoming.transitionInSeconds <= 0) continue;
+    let outgoing: NodeEntry | undefined;
+    let outgoingEnd = -1;
+    for (const candidate of allVisualInputs) {
+      if (candidate === incoming || candidate.trackId !== incoming.trackId) continue;
+      const candidateEnd = candidate.startSec + candidate.effectiveDuration;
+      // Past the IN point already: live under the whole ramp, needs no hold.
+      if (candidateEnd > incoming.startSec + CROSSFADE_ADJACENCY_TOLERANCE_SECONDS) continue;
+      // Ends well before it: a gap the Creator placed, not a transition.
+      if (candidateEnd < incoming.startSec - CROSSFADE_ADJACENCY_TOLERANCE_SECONDS) continue;
+      if (candidateEnd > outgoingEnd) { outgoing = candidate; outgoingEnd = candidateEnd; }
+    }
+    if (outgoing) {
+      outgoing.holdSeconds = Math.max(outgoing.holdSeconds, incoming.transitionInSeconds);
+    }
+  }
 
   // All audio entries: video-extracted audio first, then standalone audio files
   const allAudioEntries = [...videoAudioEntries, ...audioFileInputs];
@@ -418,8 +581,11 @@ function buildFfmpegArgs(
   // --- INPUTS ---
 
   // Still-image inputs: loop each frame for exactly its effectiveDuration
-  stillInputs.forEach(({ path, effectiveDuration }) => {
-    args.push('-loop', '1', '-t', String(effectiveDuration), '-i', path);
+  // `holdSeconds` is added to `-t`: a still cannot be shown past the end of
+  // its own looped input, so a layer held under a successor's crossfade must be
+  // decoded for that long too. It is 0 for every node not holding anything.
+  stillInputs.forEach(({ path, effectiveDuration, holdSeconds }) => {
+    args.push('-loop', '1', '-t', String(effectiveDuration + holdSeconds), '-i', path);
   });
 
   // Video inputs: direct file read (no loop, no -t duration limit)
@@ -570,7 +736,10 @@ function buildVideoCompositionFilters(
     const ffmpegY = Math.round(outH * (50 + node.positionY) / 100 - targetH / 2);
     const rotRad = (node.rotationDegrees * Math.PI) / 180;
     const startSec = node.startSec;
-    const endSec = node.startSec + node.effectiveDuration;
+    // The hold keeps an outgoing layer on screen under its successor's ramp.
+    // Zero for every node that nothing fades in over.
+    const endSec = node.startSec + node.effectiveDuration + node.holdSeconds;
+    const fadeIn = node.transitionInSeconds;
     const canvasIn = `[canvas${idx}]`;
     // Last node writes directly to [vraw] so the subtitle/copy step can pick it up
     const canvasOut = idx < visualInputs.length - 1 ? `[canvas${idx + 1}]` : '[vraw]';
@@ -590,11 +759,21 @@ function buildVideoCompositionFilters(
       const videoParts: string[] = [
         `trim=${node.trimStart.toFixed(6)}:${node.trimEnd.toFixed(6)}`,
         `setpts=PTS-STARTPTS+(${startSec.toFixed(6)}/TB)`,
-        scaleFilter,
-        'format=rgba',
       ];
+      // A clip cannot be held past its own last frame, so the last frame is
+      // cloned for the hold. Freezing a frame under a dissolve is what an
+      // editor does; the alternative is black, which the contract forbids.
+      if (node.holdSeconds > 0) {
+        videoParts.push(`tpad=stop_mode=clone:stop_duration=${node.holdSeconds.toFixed(6)}`);
+      }
+      videoParts.push(scaleFilter, 'format=rgba');
       if (hasRotation) {
-        videoParts.splice(3, 0, `rotate=${rotRad.toFixed(6)}:fillcolor=0x00000000`);
+        videoParts.splice(videoParts.length - 1, 0, `rotate=${rotRad.toFixed(6)}:fillcolor=0x00000000`);
+      }
+      // PACKAGE XXXV — the ramp. The clip's PTS was already shifted onto the
+      // canvas clock above, so `st` is the node's own IN point.
+      if (fadeIn > 0) {
+        videoParts.push(`fade=t=in:st=${startSec.toFixed(6)}:d=${fadeIn.toFixed(6)}:alpha=1`);
       }
       if (node.opacity < 0.9999) {
         videoParts.push(`colorchannelmixer=aa=${node.opacity.toFixed(6)}`);
@@ -611,13 +790,24 @@ function buildVideoCompositionFilters(
         parts.push(`rotate=${rotRad.toFixed(6)}:fillcolor=0x00000000`);
       }
       parts.push('format=rgba');
+      if (fadeIn > 0) {
+        // PACKAGE XXXV — a still's input is `-loop 1 -t d`, so its own clock
+        // starts at 0 no matter where on the timeline it sits. An alpha ramp
+        // written against that clock would run during canvas seconds 0..d,
+        // finishing long before the layer is ever shown — which is precisely
+        // why a declared crossfade arrived as a cut. The layer is moved onto
+        // the canvas clock first; then `st` is the node's real IN point.
+        parts.push(`setpts=PTS-STARTPTS+(${startSec.toFixed(6)}/TB)`);
+        parts.push(`fade=t=in:st=${startSec.toFixed(6)}:d=${fadeIn.toFixed(6)}:alpha=1`);
+      }
       if (node.opacity < 0.9999) {
         parts.push(`colorchannelmixer=aa=${node.opacity.toFixed(6)}`);
       }
       filters.push(`${ffStreamRef}${parts.join(',')}[vn${idx}]`);
       filters.push(
         `${canvasIn}[vn${idx}]overlay=x=${ffmpegX}:y=${ffmpegY}` +
-          `:format=auto:enable='between(t,${startSec},${endSec})'${canvasOut}`,
+          `:format=auto${fadeIn > 0 ? ':eof_action=pass' : ''}` +
+          `:enable='between(t,${startSec},${endSec})'${canvasOut}`,
       );
     } else {
       // STILL IMAGE — Non-NORMAL blend via identity-canvas trick.
@@ -635,23 +825,62 @@ function buildVideoCompositionFilters(
             ? '0x000000'
             : '0x808080';
 
+      // ── BOTH SIDES OF A BLEND MUST BE IN THE SAME COLOUR SPACE ────────────
+      //
+      //   `blend` mixes whatever planes it is handed. The canvas arrived here as
+      //   RGBA (the overlay chain above emits `format=auto` from an rgba layer)
+      //   while the identity composite arrived as FFmpeg's default YUV, so the
+      //   blend was computed across two different colour spaces.
+      //
+      //   MEASURED, on a real file, blue over red:
+      //     MULTIPLY  → (53,107,0), a green the Creator never placed
+      //     SCREEN    → the layer bleeding at (255,0,179) from the FIRST frame,
+      //                 three seconds before its own window opened
+      //   With both sides pinned to planar RGB:
+      //     MULTIPLY  → (0,0,0)       — red × blue, correct
+      //     SCREEN    → (255,0,254)   — red + blue, correct
+      //     and pure red before the window, as the timeline says
+      //
+      //   The chamber previews these same modes with CSS `mix-blend-mode`,
+      //   which is defined in sRGB. Pinning the film to RGB is therefore not a
+      //   preference — it is what makes the film agree with the preview.
       filters.push(
-        `color=c=${identityColor}:size=${outW}x${outH}:rate=25:d=${totalDuration}[id${idx}]`,
+        `color=c=${identityColor}:size=${outW}x${outH}:rate=25:d=${totalDuration},`
+          + `format=gbrp[id${idx}]`,
       );
 
       const layerParts: string[] = [scaleFilter];
       if (hasRotation) {
         layerParts.push(`rotate=${rotRad.toFixed(6)}:fillcolor=${rotFillcolor}`);
       }
+      layerParts.push('format=gbrp');
+      if (fadeIn > 0) {
+        // PACKAGE XXXV — here the ramp is in COLOUR, not in alpha: it runs from
+        // the blend's identity colour to the layer, which is the same thing as
+        // running from "blend has no effect" to "blend at full force". Alpha
+        // would be wrong twice over — this branch carries no alpha channel, and
+        // `fade`'s alpha output is premultiplied, which MEASURED at (253,0,236)
+        // where (255,0,255) was owed.
+        //
+        // Same clock correction as the other two branches, and for the same
+        // reason: a still's own clock starts at 0 wherever it sits.
+        layerParts.push(`setpts=PTS-STARTPTS+(${startSec.toFixed(6)}/TB)`);
+        layerParts.push(
+          `fade=t=in:st=${startSec.toFixed(6)}:d=${fadeIn.toFixed(6)}:c=${identityColor}`,
+        );
+      }
       filters.push(`${ffStreamRef}${layerParts.join(',')}[vl${idx}]`);
 
       filters.push(
-        `[id${idx}][vl${idx}]overlay=x=${ffmpegX}:y=${ffmpegY}` +
+        `[id${idx}][vl${idx}]overlay=x=${ffmpegX}:y=${ffmpegY}:format=auto` +
+          `${fadeIn > 0 ? ':eof_action=pass' : ''}` +
           `:enable='between(t,${startSec},${endSec})'[nm${idx}]`,
       );
 
+      filters.push(`${canvasIn}format=gbrp[cf${idx}]`);
+      filters.push(`[nm${idx}]format=gbrp[nf${idx}]`);
       filters.push(
-        `${canvasIn}[nm${idx}]blend=all_mode=${ffBlend}:all_opacity=${node.opacity.toFixed(6)}${canvasOut}`,
+        `[cf${idx}][nf${idx}]blend=all_mode=${ffBlend}:all_opacity=${node.opacity.toFixed(6)}${canvasOut}`,
       );
     }
   });
