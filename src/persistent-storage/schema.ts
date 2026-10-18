@@ -285,6 +285,9 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   // the webhook carries it back as obj.order.merchant_order_id so we can look up
   // creator_id / pack_id / azma_units without trusting client-supplied data.
   // provider_transaction_id is the Paymob transaction obj.id, set on webhook receipt.
+  // XPay (the approved gateway) rows: provider_id 'xpay', provider_order_id =
+  // XPay's transaction_uuid returned by the pay endpoint — the key its
+  // callback and redirect carry back.
   // status lifecycle: initiated → pending → successful | failed | cancelled
   `CREATE TABLE IF NOT EXISTS payment_transactions (
     transaction_id TEXT PRIMARY KEY,
@@ -297,6 +300,7 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     provider_order_id TEXT,
     provider_reference TEXT,
     provider_transaction_id TEXT,
+    charged_amount_piasters INTEGER,
     status TEXT NOT NULL DEFAULT 'initiated',
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
@@ -315,6 +319,16 @@ export const GENERATION_RECORDS_MIGRATION_COLUMNS: readonly { readonly name: str
   // can render <video> elements correctly. DEFAULT 'image' keeps all pre-existing
   // rows valid without data migration.
   { name: 'media_type', ddl: "media_type TEXT NOT NULL DEFAULT 'image'" },
+];
+
+/**
+ * Columns added to `payment_transactions` after its original creation.
+ * charged_amount_piasters is what the gateway was asked to charge — the
+ * pack price, or the price plus fees when XPay adds its fees to the bill —
+ * and is what a confirmed payment must match.
+ */
+export const PAYMENT_TRANSACTIONS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
+  { name: 'charged_amount_piasters', ddl: 'charged_amount_piasters INTEGER' },
 ];
 
 /** Columns added to `cinematic_ledger` after its original creation — applied via ALTER TABLE for pre-existing databases. */

@@ -24,7 +24,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
-import { SCHEMA_STATEMENTS, GENERATION_RECORDS_MIGRATION_COLUMNS, CINEMATIC_LEDGER_MIGRATION_COLUMNS, CREATORS_MIGRATION_COLUMNS, GOALS_MIGRATION_COLUMNS, INDEX_STATEMENTS } from './schema';
+import { SCHEMA_STATEMENTS, GENERATION_RECORDS_MIGRATION_COLUMNS, CINEMATIC_LEDGER_MIGRATION_COLUMNS, CREATORS_MIGRATION_COLUMNS, GOALS_MIGRATION_COLUMNS, PAYMENT_TRANSACTIONS_MIGRATION_COLUMNS, INDEX_STATEMENTS } from './schema';
 // Economy Foundation: no migration columns needed for new tables — they are
 // created fresh via CREATE TABLE IF NOT EXISTS in SCHEMA_STATEMENTS.
 
@@ -83,6 +83,17 @@ function migrateGenerationRecordsTable(db: DatabaseSync): void {
   }
 }
 
+function migratePaymentTransactionsTable(db: DatabaseSync): void {
+  const existingColumns = new Set(
+    (db.prepare('PRAGMA table_info(payment_transactions)').all() as { name: string }[]).map((row) => row.name),
+  );
+  for (const column of PAYMENT_TRANSACTIONS_MIGRATION_COLUMNS) {
+    if (!existingColumns.has(column.name)) {
+      db.exec(`ALTER TABLE payment_transactions ADD COLUMN ${column.ddl}`);
+    }
+  }
+}
+
 /**
  * Rebuilds a `sovereign_canvases` table created with the old key
  * (canvas_id alone) onto the key (subscriber_tenant_id, canvas_id),
@@ -137,6 +148,7 @@ export function createDatabase(path: string = DEFAULT_DB_PATH): DatabaseSync {
   migrateGoalsTable(db);
   migrateGenerationRecordsTable(db);
   migrateSovereignCanvasesKey(db);
+  migratePaymentTransactionsTable(db);
   for (const statement of INDEX_STATEMENTS) {
     db.exec(statement);
   }

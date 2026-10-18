@@ -1,4 +1,7 @@
 // AZMA OS — Paymob Payment Gateway adapter.
+// NOT THE APPROVED GATEWAY: the approved launch gateway is XPay
+// (xpay-payment-gateway.ts). This adapter is kept, unwired from every
+// route, until the Chief Architect decides whether to remove it.
 // Implements IPaymentGateway for the Egyptian Paymob payment provider.
 // EGP is Paymob's native currency — no conversion needed.
 //

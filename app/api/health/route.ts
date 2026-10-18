@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '../../../src/authentication';
 import { getDb } from '../../../src/persistent-storage';
+import { resolveXpayConfig } from '../../../src/economy/payment/xpay-payment-gateway';
 import { statSync, readdirSync, statfsSync } from 'fs';
 import { join } from 'path';
 
@@ -150,12 +151,12 @@ export async function GET(request: NextRequest) {
     'NORMAL';
 
   // ── Provider configuration (presence only — never expose key values) ───
-  // The launch path is Paymob (credit packs), Magic Hour (Qiyamah
-  // generation) and the voice provider; Stripe is the retired subscription
-  // path and no longer decides readiness.
-  const paymobVars = ['PAYMOB_API_KEY', 'PAYMOB_INTEGRATION_ID', 'PAYMOB_IFRAME_ID', 'PAYMOB_HMAC_SECRET'];
+  // The launch path is XPay (credit packs, the approved gateway), Magic
+  // Hour (Qiyamah generation) and the voice provider; Stripe is the retired
+  // subscription path and no longer decides readiness.
+  const xpay = resolveXpayConfig();
   const providers = {
-    paymob:         paymobVars.every((name) => !!process.env[name]) ? 'CONFIGURED' : 'MISSING',
+    xpay:           xpay ? `CONFIGURED (${xpay.environment})` : 'MISSING',
     magicHour:      !!process.env.MAGIC_HOUR_API_KEY    ? 'CONFIGURED' : 'MISSING',
     voiceCloning:   !!process.env.VOICE_CLONING_API_KEY ? 'CONFIGURED' : 'NOT_CONFIGURED',
     openai:         !!process.env.OPENAI_API_KEY        ? 'CONFIGURED' : 'MISSING',
@@ -164,7 +165,7 @@ export async function GET(request: NextRequest) {
   };
 
   const allProvidersReady =
-    providers.paymob         === 'CONFIGURED' &&
+    xpay !== null &&
     providers.magicHour      === 'CONFIGURED' &&
     providers.founderAccount === 'CONFIGURED';
 

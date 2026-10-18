@@ -9,6 +9,7 @@ import { resolveAvailableActions } from '@/src/button-engine';
 interface SessionInfo {
   readonly authenticated: boolean;
   readonly role?: 'founder' | 'creator';
+  readonly displayName?: string | null;
 }
 
 export interface PackOption {
@@ -23,12 +24,14 @@ interface BalanceInfo {
   readonly trial?: { readonly remainingImages: number };
 }
 
-const CHECKOUT_FAILURE_REASONS = new Set(['unauthorized', 'invalid-pack', 'gateway-unavailable', 'gateway-error']);
+const CHECKOUT_FAILURE_REASONS = new Set(['unauthorized', 'invalid-pack', 'invalid-name', 'invalid-phone', 'gateway-unavailable', 'gateway-error']);
 
 export function SubscribeForm({ dict, packs }: { readonly dict: Dictionary; readonly packs: readonly PackOption[] }) {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [balance, setBalance] = useState<BalanceInfo | null>(null);
   const [packId, setPackId] = useState<PackOption['packId']>(packs[0]?.packId ?? 'start');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -37,6 +40,7 @@ export function SubscribeForm({ dict, packs }: { readonly dict: Dictionary; read
       .then((response) => response.json())
       .then((info: SessionInfo) => {
         setSession(info);
+        if (info.displayName) setFullName((current) => current || info.displayName || '');
         if (!info.authenticated || info.role === 'founder') return;
         fetch('/api/sovereign/economy/balance')
           .then((response) => (response.ok ? response.json() : null))
@@ -55,6 +59,8 @@ export function SubscribeForm({ dict, packs }: { readonly dict: Dictionary; read
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           packId,
+          fullName,
+          phone,
           successUrl: `${window.location.origin}/subscribe/success`,
           cancelUrl: `${window.location.origin}/subscribe`,
         }),
@@ -136,6 +142,20 @@ export function SubscribeForm({ dict, packs }: { readonly dict: Dictionary; read
 
         {action?.id === 'founder-no-subscription-needed' && (
           <p className="creator-access-status">{t(dict, action.labelKey)}</p>
+        )}
+
+        {action?.id === 'subscribe' && (
+          <>
+            <div className="creator-access-field">
+              <label htmlFor="payerName">{t(dict, 'subscribe.fullNameLabel')}</label>
+              <input id="payerName" type="text" autoComplete="name" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            </div>
+            <div className="creator-access-field">
+              <label htmlFor="payerPhone">{t(dict, 'subscribe.phoneLabel')}</label>
+              <input id="payerPhone" type="tel" inputMode="tel" autoComplete="tel" dir="ltr" placeholder="01012345678" required value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+            <p className="creator-access-status">{t(dict, 'subscribe.payerNote')}</p>
+          </>
         )}
 
         {action?.id === 'subscribe' && (

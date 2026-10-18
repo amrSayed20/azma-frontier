@@ -31,7 +31,8 @@ export async function handlePaymentWebhook(
 
   // Only process successful payment events.
   // 'checkout.session.completed' / 'payment_intent.succeeded' = Stripe (legacy).
-  // 'transaction.success' = Paymob (launch payment path).
+  // 'transaction.success' = XPay (launch payment path, verified by re-reading
+  // the transaction from XPay) and the retired Paymob adapter.
   const relevantTypes = new Set([
     'checkout.session.completed',
     'payment_intent.succeeded',

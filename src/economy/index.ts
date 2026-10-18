@@ -7,6 +7,7 @@ export * from './payment/credit-packs';
 export * from './payment/payment-gateway-contracts';
 export * from './payment/payment-webhook-handler';
 export * from './payment/paymob-payment-gateway';
+export * from './payment/xpay-payment-gateway';
 export * from './trial/trial-entitlement-types';
 export * from './trial/trial-entitlement-repository';
 export * from './trial/trial-entitlement-service';

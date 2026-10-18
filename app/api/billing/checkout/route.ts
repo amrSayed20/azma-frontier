@@ -1,17 +1,20 @@
 // AZMA OS — Credit-Pack Checkout
 // Replaces the old Stripe subscription checkout (src/billing/checkout-service.ts).
-// The launch payment path is Paymob (EGP, credit-first economy).
+// The launch payment path is XPay, the approved gateway (EGP, credit-first economy).
 //
 // POST /api/billing/checkout
-// Body: { packId: 'start' | 'create' | 'achieve', successUrl?: string, cancelUrl?: string }
+// Body: { packId: 'start' | 'create' | 'achieve', fullName: string, phone: string,
+//         successUrl?: string, cancelUrl?: string }
+// XPay requires the payer's full name (two words or more) and phone with
+// country code; both are passed through to XPay and not stored by AZMA.
 // Response: { status: 'succeeded', checkoutUrl: string, pack: { packId, displayName, azmaUnits, priceEgp } }
-//         | { status: 'failed', reason: 'unauthorized' | 'invalid-pack' | 'gateway-unavailable' | 'gateway-error', message: string }
+//         | { status: 'failed', reason: 'unauthorized' | 'invalid-pack' | 'invalid-name' | 'invalid-phone' | 'gateway-unavailable' | 'gateway-error', message: string }
 // `reason` is what the page translates; `message` stays for logs and API callers.
 //
 // Security:
 // - Creator authenticated via session cookie before any processing
 // - Pack amount and azmaUnits derived server-side from authoritative CREDIT_PACKS — never trusted from client
-// - Checkout URL is Paymob's iframe URL — no sensitive data exposed to client beyond the redirect
+// - Checkout URL is XPay's iframe URL — no sensitive data exposed to client beyond the redirect
 
 import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
@@ -19,7 +22,7 @@ import { verifySession } from '../../../../src/authentication';
 import { getDb } from '../../../../src/persistent-storage/db';
 import { getCreator } from '../../../../src/persistent-storage/creator-repository';
 import { getCreditPack } from '../../../../src/economy/payment/credit-packs';
-import { getPaymobPaymentGateway } from '../../../../src/economy/payment/paymob-payment-gateway';
+import { getXpayPaymentGateway, isValidXpayBillingName, normalizeXpayPhone } from '../../../../src/economy/payment/xpay-payment-gateway';
 import type { CreditPackId } from '../../../../src/economy/payment/credit-packs';
 
 export const dynamic = 'force-dynamic';
@@ -69,6 +72,23 @@ export async function POST(request: NextRequest) {
   const packId = rawPackId as CreditPackId;
   const pack = getCreditPack(packId);
 
+  const rawFullName = (body as { fullName?: unknown })?.fullName;
+  const fullName = typeof rawFullName === 'string' ? rawFullName.trim() : '';
+  if (!isValidXpayBillingName(fullName)) {
+    return NextResponse.json(
+      { status: 'failed', reason: 'invalid-name', message: 'Enter your full name (first and last).' },
+      { status: 400 },
+    );
+  }
+  const rawPhone = (body as { phone?: unknown })?.phone;
+  const phone = typeof rawPhone === 'string' ? normalizeXpayPhone(rawPhone) : null;
+  if (!phone) {
+    return NextResponse.json(
+      { status: 'failed', reason: 'invalid-phone', message: 'Enter a mobile number with its country code, or an Egyptian 01 number.' },
+      { status: 400 },
+    );
+  }
+
   // Resolve URLs — default to sovereign-vault-palace (natural post-purchase destination)
   const origin = request.nextUrl.origin;
   const rawSuccessUrl = (body as { successUrl?: unknown })?.successUrl;
@@ -76,9 +96,9 @@ export async function POST(request: NextRequest) {
   const successUrl = sameOriginUrl(rawSuccessUrl, origin, `${origin}/sovereign-vault-palace`);
   const cancelUrl = sameOriginUrl(rawCancelUrl, origin, `${origin}/sovereign-vault-palace`);
 
-  // Resolve Paymob gateway — null if credentials not yet configured
+  // Resolve the XPay gateway — null until its credentials are configured
   const db = getDb();
-  const gateway = getPaymobPaymentGateway(db);
+  const gateway = getXpayPaymentGateway(db);
   if (!gateway) {
     return NextResponse.json(
       {
@@ -103,7 +123,8 @@ export async function POST(request: NextRequest) {
       successUrl,
       cancelUrl,
       customerEmail: creator?.email ?? undefined,
-      customerName: creator?.displayName ?? undefined,
+      customerName: fullName,
+      customerPhone: phone,
     });
 
     return NextResponse.json({

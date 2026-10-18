@@ -14,6 +14,8 @@ export interface PaymentSessionRequest {
   /** The creator's own email and display name, for the gateway's billing record. */
   readonly customerEmail?: string;
   readonly customerName?: string;
+  /** The payer's phone with country code; XPay requires it and AZMA does not store it. */
+  readonly customerPhone?: string;
 }
 
 export interface PaymentSessionResponse {
