@@ -22,6 +22,9 @@
 
 # Qiyamah First Generation Path — runtime-generated assets, never committed
 /public/generated-assets/
+# Creator uploads and rendered films — runtime data, never committed
+/public/uploads/
+/public/renders/
 
 # Persistent Storage Foundation — the local SQLite database file
 /data/
