@@ -45,12 +45,17 @@ function ffmpeg(args: string[]): void {
 function pixel(file: string, t: number, x: number, y: number): [number, number, number] {
   const r = spawnSync(FFMPEG, [
     '-v', 'error', '-ss', String(t), '-i', file,
-    // `-an` is not optional: without it ffmpeg also selects the best AUDIO
-    // stream, and the rawvideo muxer refuses it — the read fails with EINVAL
-    // and reports "no pixel", which looks exactly like a black frame. That
-    // false reading is what first made position-and-scale look broken.
-    // crop to 2x2 then scale to 1x1: ffmpeg 9 refuses a 1x1 crop outright
-    // ("non positive size for width"), which reads as a black frame too.
+    // ISOLATED, after two wrong diagnoses of my own: the option that breaks
+    // this read is `-pix_fmt rgb24` as an OUTPUT option. It makes ffmpeg insert
+    // an auto-scaler, the scaler cannot handle a 1x1 frame ("non positive size
+    // for width '0'"), stdout comes back empty, and the helper then reports
+    // "no pixel" — indistinguishable from a black frame. That false reading is
+    // what first made position-and-scale look broken.
+    //
+    // NOT the cause, though both were claimed first: the missing `-an`, and
+    // `crop=1:1` itself. MEASURED on ffmpeg 8 and 9, with and without an audio
+    // stream: `crop=1:1:x:y,format=rgb24` and no `-pix_fmt` reads correctly.
+    // Cropping to 2x2 and scaling down keeps `-pix_fmt` usable, and is exact.
     '-an', '-vf', `crop=2:2:${x}:${y},scale=1:1`, '-frames:v', '1',
     '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-',
   ], { maxBuffer: 1 << 22 });
