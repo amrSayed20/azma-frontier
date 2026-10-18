@@ -17,11 +17,56 @@
  * Pure: no I/O, no DOM, no FFmpeg.
  */
 
-import type { AssemblyNode, SpatialDirective, TemporalDirective } from './assembly-contracts';
+import type { AssemblyNode, OutputProfile, SpatialDirective, TemporalDirective } from './assembly-contracts';
 
-export const OUTPUT_FRAME_WIDTH = 1920;
-export const OUTPUT_FRAME_HEIGHT = 1080;
-export const OUTPUT_FRAME_ASPECT = OUTPUT_FRAME_WIDTH / OUTPUT_FRAME_HEIGHT;
+/**
+ * ─── THE FRAME THE CREATOR CHOSE ────────────────────────────────────────────
+ *
+ *   The Creator picks an output profile in the chamber, and both the preview
+ *   and the encoder must obey the SAME one. This used to be two module
+ *   constants, 1920 and 1080, which meant a Creator could select «عمودي»,
+ *   watch a 9:16 preview, and receive a 1920×1080 file. The selector was real,
+ *   the preview was real, and the renderer ignored both.
+ *
+ *   So the frame is resolved from the profile, by one function, in the one
+ *   module the preview and the encoder already share.
+ *
+ *   The list is open on purpose: a new profile is one row here, and every
+ *   consumer picks it up without being told.
+ */
+export type { OutputProfile } from './assembly-contracts';
+
+export interface OutputFrame {
+  readonly width: number;
+  readonly height: number;
+  /** width / height — what a layer's own aspect is measured against. */
+  readonly aspect: number;
+  /** For a CSS `aspect-ratio`, so the preview frame cannot drift from the file. */
+  readonly cssAspect: string;
+}
+
+function frame(width: number, height: number, cssAspect: string): OutputFrame {
+  return { width, height, aspect: width / height, cssAspect };
+}
+
+export const OUTPUT_PROFILES: Readonly<Record<OutputProfile, OutputFrame>> = {
+  landscape: frame(1920, 1080, '16/9'),
+  portrait: frame(1080, 1920, '9/16'),
+  square: frame(1080, 1080, '1/1'),
+  'portrait-feed': frame(1080, 1350, '4/5'),
+};
+
+export const DEFAULT_OUTPUT_PROFILE: OutputProfile = 'landscape';
+
+/** The frame for a profile. An absent or unknown profile is landscape. */
+export function resolveOutputFrame(profile?: string | null): OutputFrame {
+  return OUTPUT_PROFILES[(profile ?? '') as OutputProfile] ?? OUTPUT_PROFILES[DEFAULT_OUTPUT_PROFILE];
+}
+
+/** Landscape, kept for callers that genuinely mean the default frame. */
+export const OUTPUT_FRAME_WIDTH = OUTPUT_PROFILES.landscape.width;
+export const OUTPUT_FRAME_HEIGHT = OUTPUT_PROFILES.landscape.height;
+export const OUTPUT_FRAME_ASPECT = OUTPUT_PROFILES.landscape.aspect;
 export const DEFAULT_PLAY_DURATION_SECONDS = 5;
 export const DEFAULT_CROSSFADE_SECONDS = 0.5;
 
@@ -173,19 +218,26 @@ export interface LayerGeometry {
 /**
  * Package XXXII: positionX/positionY are percentage-point offsets of the
  * layer's CENTRE from the frame centre. At scale 1 a layer is contained in the
- * 1920×1080 frame with its own aspect ratio preserved (never stretched); scaleX
- * and scaleY then multiply that contained box. `assetAspect` = width / height;
- * unknown aspect falls back to the full frame.
+ * CHOSEN output frame with its own aspect ratio preserved (never stretched);
+ * scaleX and scaleY then multiply that contained box. `assetAspect` =
+ * width / height; unknown aspect falls back to the full frame.
+ *
+ * `frameAspect` is the aspect of the profile the Creator selected. It is the
+ * third argument rather than a constant because the same landscape photograph
+ * fills a 16:9 frame and letterboxes a 9:16 one — the containment is a
+ * relation between the asset and the FRAME, not a property of either alone.
+ * Omitted, it is landscape, which is what every existing caller meant.
  */
 export function computeLayerGeometry(
   spatial: Partial<SpatialDirective> | undefined,
   assetAspect?: number,
+  frameAspect: number = OUTPUT_FRAME_ASPECT,
 ): LayerGeometry {
   const contained =
     assetAspect && Number.isFinite(assetAspect) && assetAspect > 0
-      ? assetAspect >= OUTPUT_FRAME_ASPECT
-        ? { w: 1, h: OUTPUT_FRAME_ASPECT / assetAspect }
-        : { w: assetAspect / OUTPUT_FRAME_ASPECT, h: 1 }
+      ? assetAspect >= frameAspect
+        ? { w: 1, h: frameAspect / assetAspect }
+        : { w: assetAspect / frameAspect, h: 1 }
       : { w: 1, h: 1 };
   return {
     widthFraction: contained.w * Math.max(0.001, spatial?.scaleX ?? 1),

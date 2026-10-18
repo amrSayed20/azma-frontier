@@ -238,6 +238,16 @@ export interface AssemblyTrack {
  * The definitive immutable record of a user's assembly session.
  * This is the object loaded by the Ras Al-Amr UI to render the workspace.
  */
+/**
+ * XLII — the named output frames a Creator may choose, and the quality tiers.
+ *
+ * The NAMES live here, with the rest of the canvas vocabulary; the DIMENSIONS
+ * live in cinematic-timing.ts, which the preview and the encoder both read. A
+ * new profile is one name here and one row there — never a third place.
+ */
+export type OutputProfile = 'landscape' | 'portrait' | 'square' | 'portrait-feed';
+export type ExportQuality = 'standard' | 'high' | 'maximum';
+
 export interface SovereignCanvas {
   canvasId: string;
   subscriberTenantId: string;     // Absolute commercial multi-tenant isolation
@@ -258,13 +268,13 @@ export interface SovereignCanvas {
    * Used by handleAutoRestore to detect and migrate stale (50,50) positions. */
   schemaVersion?: number;
 
-  /** XLII — output profile for final render dimensions.
-   * landscape = 1920×1080 (16:9)  portrait = 1080×1920 (9:16)  square = 1080×1080 (1:1)
-   * Absent defaults to 'landscape'. */
-  outputProfile?: 'landscape' | 'portrait' | 'square';
+  /** XLII — which frame the final MP4 is rendered in. The dimensions for each
+   * profile live in ONE table (cinematic-timing.ts → OUTPUT_PROFILES), which the
+   * preview and the encoder both read. Absent defaults to 'landscape'. */
+  outputProfile?: OutputProfile;
 
   /** XLII — export quality tier (affects CRF and FFmpeg preset).
    * standard = CRF 28 / medium   high = CRF 23 / fast   maximum = CRF 18 / slow
    * Absent defaults to 'high'. */
-  exportQuality?: 'standard' | 'high' | 'maximum';
+  exportQuality?: ExportQuality;
 }

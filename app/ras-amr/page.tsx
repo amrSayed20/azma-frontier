@@ -400,6 +400,8 @@ import { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-inte
 import { CanvasType, DirectionNodeRole } from '@/src/chambers/ras-al-amr/assembly-contracts';
 import type { AssemblyNode, SovereignCanvas, SpatialDirective, TemporalDirective } from '@/src/chambers/ras-al-amr/assembly-contracts';
 import {
+  DEFAULT_OUTPUT_PROFILE,
+  OUTPUT_PROFILES,
   computeLayerGeometry,
   computeVisualWindow,
   mapNextVisualSiblings,
@@ -439,6 +441,7 @@ import { toDirectionDecision } from '@/src/chambers/ras-al-amr/direction-workspa
 import type { DirectionDecision, DirectionOperator } from '@/src/chambers/ras-al-amr/direction-workspace-constitution';
 import { AssemblyRuntime } from '@/src/chambers/ras-al-amr/assembly-runtime';
 import { isStoryboardCanvasId } from '@/src/chambers/ras-al-amr/storyboard';
+import type { ExportQuality, OutputProfile } from '@/src/chambers/ras-al-amr/assembly-contracts';
 import { computeTemplateSlotTemporal, visualScenesEnd } from '@/src/chambers/ras-al-amr/template-slots';
 import type { SoundNodeTest } from '@/src/chambers/ras-al-amr/template-slots';
 import StoryboardWorld from './storyboard/StoryboardWorld';
@@ -497,6 +500,20 @@ const DEFAULT_TEMPORAL: TemporalDirective = {
   trimEndSeconds: undefined,
   transitionInType: 'cut',
 };
+
+/**
+ * What each output frame is FOR, in the Creator's words.
+ *
+ * The sizes are not here — they come from OUTPUT_PROFILES, the same table the
+ * encoder renders with. This list only names the use, so a Creator picks by
+ * where the film is going rather than by arithmetic.
+ */
+const OUTPUT_PROFILE_CHOICES: ReadonlyArray<{ value: OutputProfile; label: string; use: string }> = [
+  { value: 'landscape',     label: 'أفقي',        use: 'فيديو عادي · يوتيوب' },
+  { value: 'portrait',      label: 'عمودي',      use: 'ريلز · شورتس · تيك توك' },
+  { value: 'square',        label: 'مربع',        use: 'منشور اجتماعي مربع' },
+  { value: 'portrait-feed', label: 'عمودي متوسط', use: 'منشور عمودي في الموجز' },
+];
 
 const BLEND_MODES: VisualFilterDirective['blendMode'][] = ['NORMAL', 'MULTIPLY', 'SCREEN', 'OVERLAY'];
 
@@ -1158,7 +1175,7 @@ export default function RasAmrChamber() {
   const [sessionCanvas, setSessionCanvas] = useState<SovereignCanvas | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   // XLII — output profile and quality tier; written into the canvas on change.
-  const [outputProfile, setOutputProfile] = useState<'landscape' | 'portrait' | 'square'>('landscape');
+  const [outputProfile, setOutputProfile] = useState<OutputProfile>(DEFAULT_OUTPUT_PROFILE);
   const [exportQuality, setExportQuality] = useState<'standard' | 'high' | 'maximum'>('high');
   const [spatialForm, setSpatialForm] = useState<SpatialDirective>(DEFAULT_SPATIAL);
   // REAL VISUAL + TEMPORAL ADJUSTMENT: same non-destructive pattern as
@@ -1452,11 +1469,11 @@ export default function RasAmrChamber() {
 
   // XLII — update canvas metadata when profile/quality changes so the stored
   // canvas always carries the currently-selected settings at compile time.
-  const handleOutputProfileChange = (p: 'landscape' | 'portrait' | 'square') => {
+  const handleOutputProfileChange = (p: OutputProfile) => {
     setOutputProfile(p);
     if (sessionCanvas) setSessionCanvas({ ...sessionCanvas, outputProfile: p });
   };
-  const handleExportQualityChange = (q: 'standard' | 'high' | 'maximum') => {
+  const handleExportQualityChange = (q: ExportQuality) => {
     setExportQuality(q);
     if (sessionCanvas) setSessionCanvas({ ...sessionCanvas, exportQuality: q });
   };
@@ -2931,7 +2948,16 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
   // What the MP4 will contain, computed from the canvas the same way the
   // compiler and encoder read it: muted/hidden groups and inactive nodes are
   // left out, sound layers are never scenes.
-  const canvasSignature = useMemo(() => (sessionCanvas ? JSON.stringify(sessionCanvas.tracks) : ''), [sessionCanvas]);
+  /* §3.8 — the signature covers the FORMAT as well as the timeline. With only
+     the tracks in it, switching landscape → portrait left a finished landscape
+     MP4 counting as the current render, so Makman could adopt a file in the
+     wrong frame and the chamber would still say ‹مُجمَّع›. */
+  const canvasSignature = useMemo(
+    () => (sessionCanvas
+      ? JSON.stringify({ tracks: sessionCanvas.tracks, outputProfile, exportQuality })
+      : ''),
+    [sessionCanvas, outputProfile, exportQuality],
+  );
   // For each scene, the next VISUAL scene in its group — shared crossfade
   // contract with the encoder (sound layers never break a crossfade).
   const nextVisualSiblingMap = useMemo(
@@ -2955,7 +2981,12 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
       subtitledCount: visual.filter((n) => Boolean((n.customDirectives as Record<string, unknown> | undefined)?.subtitles)).length,
       crossfadeCount: visual.filter((n) => n.temporal?.transitionInType === 'crossfade').length,
       excludedCount: allNodes.length - liveNodes.length,
-      durationSeconds: Math.max(0, ...liveNodes.map((n) => (n.temporal?.globalStartTimeSeconds ?? 0) + (n.temporal?.playDurationSeconds ?? 5))),
+      // Two different ends, and the difference is the point: the FILM ends with
+      // the last picture, because the encoder now stops there rather than
+      // carrying a longer music track over black. Stating the longer of the two
+      // would promise a duration the file will not have.
+      durationSeconds: Math.max(0, ...visual.map((n) => (n.temporal?.globalStartTimeSeconds ?? 0) + (n.temporal?.playDurationSeconds ?? 5))),
+      soundEndSeconds: Math.max(0, ...sound.map((n) => (n.temporal?.globalStartTimeSeconds ?? 0) + (n.temporal?.playDurationSeconds ?? 5))),
       hasScenes: visual.length > 0,
     };
   }, [sessionCanvas, vaultAssets]);
@@ -5171,7 +5202,8 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                     className={`composition-surface${isDragOverSurface ? ' composition-drop-active' : ''}`}
                     ref={compositionRef}
                     style={{
-                      aspectRatio: outputProfile === 'portrait' ? '9/16' : outputProfile === 'square' ? '1/1' : '16/9',
+                      // The preview frame IS the chosen output frame, from the same table.
+                      aspectRatio: OUTPUT_PROFILES[outputProfile].cssAspect,
                     }}
                     onPointerMove={handleSurfacePointerMove}
                     onPointerUp={handleSurfacePointerUp}
@@ -5207,6 +5239,9 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                       const box = computeLayerGeometry(
                         { positionX: spatial.positionX, positionY: spatial.positionY },
                         mediaAspect[node.assetId],
+                        // Containment is a relation between the asset and the FRAME:
+                        // the same landscape photograph fills 16:9 and letterboxes 9:16.
+                        OUTPUT_PROFILES[outputProfile].aspect,
                       );
                       // KEPT from the authoring side: while the Creator is editing
                       // rather than playing, a layer outside the playhead's window is
@@ -5478,7 +5513,22 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
           {showExportPanel && exportReadiness && (() => {
             const r = exportReadiness;
             const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
-            const isStale = Boolean(renderJob?.canvasSignature && renderJob.canvasSignature !== canvasSignature);
+            /* -- A RENDER WHOSE PROVENANCE IS UNKNOWN IS NOT CURRENT ----------
+               The signature a render was made for is remembered in
+               localStorage, so it is remembered PER BROWSER. MEASURED by hand:
+               signing in from a fresh browser restored a finished landscape
+               film, presented it as the current result, and offered to publish
+               it — while the Creator had just selected «عمودي». `isStale` was
+               false because the signature was simply ABSENT, and absent was
+               read as "matches".
+
+               Absent is not "matches". A film that cannot be tied to this
+               canvas and this frame is treated as stale, which is the only
+               reading that cannot mislead. */
+            const renderProvenanceKnown = typeof renderJob?.canvasSignature === 'string';
+            const isStale = renderJob
+              ? (!renderProvenanceKnown || renderJob.canvasSignature !== canvasSignature)
+              : false;
             const elapsed = renderJob ? Math.max(0, Math.round(((renderClock || renderJob.startedAt) - renderJob.startedAt) / 1000)) : 0;
             const readiness = (
               <>
@@ -5492,7 +5542,19 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                   {r.subtitledCount > 0 && <li className="ok">{`✓ ترجمة مدمجة في ${r.subtitledCount} مشهد`}</li>}
                   {r.crossfadeCount > 0 && <li className="ok">{`✓ ${r.crossfadeCount} انتقال تلاشٍ يظهر في الملف كما في المعاينة`}</li>}
                   {r.excludedCount > 0 && <li className="warn">{`⚠ ${r.excludedCount} عنصر معطّل أو في مجموعة مكتومة لن يظهر في الملف`}</li>}
-                  <li className="meta">{`المدة ${mmss(r.durationSeconds)} · 1920×1080 · H.264/AAC`}</li>
+                  {/* The frame came from a hand-typed 1920×1080 here, so a
+                      Creator who chose «عمودي» was told their file would be
+                      landscape. It is read from the same table the encoder
+                      renders with, and named, so the two cannot disagree. */}
+                  <li className="meta">
+                    {`المدة ${mmss(r.durationSeconds)} · ${OUTPUT_PROFILES[outputProfile].width}×${OUTPUT_PROFILES[outputProfile].height}`
+                      + ` (${OUTPUT_PROFILE_CHOICES.find((c) => c.value === outputProfile)?.label ?? outputProfile}) · H.264/AAC`}
+                  </li>
+                  {r.soundEndSeconds > r.durationSeconds + 0.05 && (
+                    <li className="warn">
+                      {`⚠ الصوت يمتد إلى ${mmss(r.soundEndSeconds)} — والفيلم ينتهي مع آخر صورة، فلن يُسمع ما بعدها`}
+                    </li>
+                  )}
                   <li className="meta">الإخراج لا يستهلك وحدات AZMA</li>
                 </ul>
                 {renderStartError && <p className="ras-export-error" role="alert">{renderStartError}</p>}
@@ -5524,13 +5586,23 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                     {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                     <video className="ras-export-video" src={renderJob.fileUrl} controls playsInline preload="metadata" aria-label="ملف MP4 النهائي" />
                     {isStale && (
-                      <p className="ras-export-warn">عدّلت المشهد بعد هذا الإخراج. أعد الإخراج ليشمل التعديلات.</p>
+                      <p className="ras-export-warn">
+                        {renderProvenanceKnown
+                          ? 'عدّلت المشهد بعد هذا الإخراج. أعد الإخراج ليشمل التعديلات.'
+                          : 'هذا فيلمٌ سابقٌ من جلسةٍ أخرى، ولا نعرف أيَّ مشهدٍ ولا أيَّ مقاسٍ خرج منه. أعد الإخراج لتضمَن ما تراه الآن.'}
+                      </p>
                     )}
                     <div className="ras-export-actions">
                       <a className="creator-action-btn creator-action-primary" href={renderJob.downloadUrl} download>تحميل MP4 ↓</a>
                       <button className="creator-action-btn" onClick={() => setShowExportPanel(false)}>متابعة التحرير</button>
                       <button className="creator-action-btn" onClick={() => goTo('/sovereign-vault-palace')}>📥 عرض في القصر السيادي</button>
-                      <button className="creator-action-btn creator-action-corridor" onClick={handleForwardToMakman}>✦ أرسل إلى مكمن الغاية للنشر</button>
+                      {/* Publishing is offered only for a film that can be tied
+                          to what is on the timeline now. Offered on a stale one,
+                          a Creator would hand Makman a film in the wrong frame,
+                          and the Empire does not offer what it then refuses. */}
+                      {!isStale && (
+                        <button className="creator-action-btn creator-action-corridor" onClick={handleForwardToMakman}>✦ أرسل إلى مكمن الغاية للنشر</button>
+                      )}
                     </div>
                     {isStale && readiness}
                   </div>
@@ -6734,22 +6806,34 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                 <div className="project-setting-group">
                   <label className="project-setting-label">أبعاد المخرج</label>
                   <div className="project-profile-row">
-                    {([
-                      { value: 'landscape', label: 'أفقي', hint: '1920×1080' },
-                      { value: 'portrait',  label: 'عمودي', hint: '1080×1920' },
-                      { value: 'square',    label: 'مربع',  hint: '1080×1080' },
-                    ] as const).map(({ value, label, hint }) => (
+                    {/* The four profiles, and their sizes, come from the ONE table
+                        the encoder renders with — never retyped here, so a hint
+                        cannot promise a size the file does not have. */}
+                    {OUTPUT_PROFILE_CHOICES.map(({ value, label, use }) => {
+                      const f = OUTPUT_PROFILES[value];
+                      const hint = `${f.width}×${f.height} · ${f.cssAspect.replace('/', ':')}`;
+                      return (
                       <button
                         key={value}
                         className={`project-profile-btn${outputProfile === value ? ' active' : ''}`}
                         onClick={() => handleOutputProfileChange(value)}
-                        title={hint}
+                        title={`${use} — ${hint}`}
+                        aria-pressed={outputProfile === value}
                       >
                         {label}
                         <span className="project-profile-hint">{hint}</span>
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
+                  {/* Said before rendering, not discovered after downloading. */}
+                  <p className="project-setting-note">
+                    {(() => {
+                      const f = OUTPUT_PROFILES[outputProfile];
+                      const choice = OUTPUT_PROFILE_CHOICES.find((c) => c.value === outputProfile);
+                      return `سيُخرَج ملفُك بمقاس ${f.width}×${f.height} (${f.cssAspect.replace('/', ':')}) — ${choice?.use ?? ''}`;
+                    })()}
+                  </p>
                 </div>
 
                 {/* XLII — Export quality selector */}

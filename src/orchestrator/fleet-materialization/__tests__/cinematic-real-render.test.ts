@@ -53,6 +53,15 @@ function meanVolume(file: string, from: number, to: number): number {
   return m ? Number(m[1]) : -999;
 }
 
+/** The frame size the file actually has — not the one the UI asked for. */
+function dimensions(file: string): string {
+  const r = spawnSync('ffprobe', [
+    '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height',
+    '-of', 'csv=p=0:s=x', file,
+  ]);
+  return r.stdout.toString().trim();
+}
+
 function duration(file: string): number {
   const r = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]);
   return Number(r.stdout.toString().trim());
@@ -320,5 +329,40 @@ describeReal('Ras Al-Amr real render — the MP4 matches the preview contract', 
     // And the last frame is still the picture, not a black one.
     const last = pixel(out, 1.8, 960, 540);
     expect(last[0]).toBeGreaterThan(200);
+  });
+
+  // ── §3 · THE FRAME THE CREATOR CHOSE IS THE FRAME IN THE FILE ────────────
+  //
+  //   MEASURED on the merged encoder before this: every profile produced
+  //   1920×1080. The chamber's selector was real and its preview obeyed it; the
+  //   renderer read two module constants and ignored both.
+  //
+  //   One image, one second, four frames — the smallest real render that can
+  //   tell a selector that works from a selector that only looks like it does.
+  it.each([
+    ['landscape', '1920x1080'],
+    ['portrait', '1080x1920'],
+    ['square', '1080x1080'],
+    ['portrait-feed', '1080x1350'],
+  ])('renders the %s profile at %s', async (profile, expected) => {
+    const g = graph([{ trackId: 'main', nodes: [node('scene', 'red.png', 'VISUAL', 0, 1)] }], 1);
+    (g.metadata as { outputProfile?: string }).outputProfile = profile;
+    const out = await encode(`op-real-frame-${profile}`, g);
+    expect(dimensions(out)).toBe(expected);
+  });
+
+  it('a portrait frame letterboxes a landscape photograph instead of stretching it', async () => {
+    // red.png is 1920×1080. In a 1080×1920 frame it is contained, so the top
+    // and bottom of the frame stay black and the middle carries the picture.
+    // Stretched to fill, the corners would be red too.
+    const g = graph([{ trackId: 'main', nodes: [node('scene', 'red.png', 'VISUAL', 0, 1)] }], 1);
+    (g.metadata as { outputProfile?: string }).outputProfile = 'portrait';
+    const out = await encode('op-real-frame-contain', g);
+
+    expect(dimensions(out)).toBe('1080x1920');
+    const centre = pixel(out, 0.5, 540, 960);
+    const nearTop = pixel(out, 0.5, 540, 120);
+    expect(centre[0]).toBeGreaterThan(200);   // the picture is there
+    expect(nearTop[0]).toBeLessThan(40);      // and it was not stretched to the edge
   });
 });

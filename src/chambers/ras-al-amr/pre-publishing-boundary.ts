@@ -17,6 +17,7 @@
  * ever reads the canvas it is given.
  */
 
+import type { ExportQuality, OutputProfile } from './assembly-contracts';
 import { SovereignCanvas, CanvasType } from './assembly-contracts';
 import { VaultRehydrationBridge, HydratedSovereignCanvas } from './vault-rehydration-bridge';
 import type { AudioMixingDirective } from './assembly-directive-payloads';
@@ -32,9 +33,9 @@ export interface CompilationMetadata {
   estimatedDurationSeconds?: number; // Crucial for CINEMATIC timelines
   aggregatedAssetFamilies: string[]; // Defines the multi-modal footprint of the project
   /** XLII — output profile carried from SovereignCanvas for encoder use. */
-  outputProfile?: 'landscape' | 'portrait' | 'square';
+  outputProfile?: OutputProfile;
   /** XLII — export quality tier carried from SovereignCanvas for encoder use. */
-  exportQuality?: 'standard' | 'high' | 'maximum';
+  exportQuality?: ExportQuality;
 }
 
 /**

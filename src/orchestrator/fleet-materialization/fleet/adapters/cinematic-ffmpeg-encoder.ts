@@ -41,14 +41,13 @@ import type {
 } from '../../../../chambers/ras-al-amr/pre-publishing-boundary';
 import type { HydratedAssemblyNode, HydratedAssemblyTrack } from '../../../../chambers/ras-al-amr/vault-rehydration-bridge';
 import {
-  OUTPUT_FRAME_HEIGHT,
-  OUTPUT_FRAME_WIDTH,
   computeVisualWindow,
   mapNextVisualSiblings,
   orderVisualLayers,
+  resolveOutputFrame,
   resolveSourceWindow,
 } from '../../../../chambers/ras-al-amr/cinematic-timing';
-import type { SourceWindow, VisualWindow } from '../../../../chambers/ras-al-amr/cinematic-timing';
+import type { OutputFrame, SourceWindow, VisualWindow } from '../../../../chambers/ras-al-amr/cinematic-timing';
 
 // ==========================================
 // 1. JOB STATE TRACKING
@@ -61,9 +60,29 @@ const jobs = new Map<string, JobState>();
 // 2. PATH & MEDIA-TYPE HELPERS
 // ==========================================
 
-const OUTPUT_WIDTH = OUTPUT_FRAME_WIDTH;
-const OUTPUT_HEIGHT = OUTPUT_FRAME_HEIGHT;
 const OUTPUT_FPS = 25;
+
+/**
+ * XLII — RESTORED. FFmpeg settings per quality tier.
+ *
+ *   These, and the output profile below them, were lost when this encoder was
+ *   rebuilt on the shared timing contract: the frame became two module
+ *   constants and the tier became a hardcoded `-crf 23 -preset fast`. The
+ *   chamber kept offering both selectors, so a Creator chose «عمودي» and
+ *   «قصوى» and received landscape at the standard tier.
+ *
+ *   A frame or a tier read from a module constant cannot answer a question the
+ *   Creator asked, so neither is available in that form any more.
+ */
+const QUALITY_SETTINGS: Readonly<Record<string, { crf: number; preset: string }>> = {
+  standard: { crf: 28, preset: 'medium' },
+  high: { crf: 23, preset: 'fast' },
+  maximum: { crf: 18, preset: 'slow' },
+};
+
+function resolveQuality(tier?: string | null): { crf: number; preset: string } {
+  return QUALITY_SETTINGS[tier ?? 'high'] ?? QUALITY_SETTINGS['high'];
+}
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp']);
 const VIDEO_EXTS = new Set(['.mp4', '.mov', '.m4v', '.webm', '.mkv', '.avi']);
 const AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.oga', '.opus', '.weba', '.m4a', '.aac', '.flac']);
@@ -349,6 +368,11 @@ function buildFfmpegArgs(
   resolvedVoicePaths: ReadonlyMap<string, string> = new Map(),
 ): string[] {
   const outputPath = getPartialOutputPath(operationId);
+  // The profile the Creator selected in the chamber, carried here on the
+  // compiled graph. The preview reads the same table, so the frame it drew and
+  // the frame encoded here cannot disagree.
+  const frame = resolveOutputFrame(graph.metadata.outputProfile);
+  const quality = resolveQuality(graph.metadata.exportQuality);
 
   // Walk every non-muted, non-hidden track and collect active nodes with media.
   const collected = new Map<string, CollectedNode>();
@@ -541,7 +565,7 @@ function buildFfmpegArgs(
   // VI-C: Full overlay composition pipeline. Visual nodes are layered onto a
   // 1920×1080 black canvas in stacking order; each is drawn only inside its
   // visible window, with crossfade alpha ramps where the preview has them.
-  buildVideoCompositionFilters(visualEntries, totalDuration).forEach((f) => filterParts.push(f));
+  buildVideoCompositionFilters(visualEntries, totalDuration, frame).forEach((f) => filterParts.push(f));
 
   // Subtitle burning
   const hasSubs = graph.subtitlePlan.absoluteCues.length > 0;
@@ -597,8 +621,8 @@ function buildFfmpegArgs(
   args.push(
     '-c:v', 'libx264',
     '-pix_fmt', 'yuv420p',
-    '-preset', 'fast',
-    '-crf', '23',
+    '-preset', quality.preset,
+    '-crf', String(quality.crf),
     '-c:a', 'aac',
     '-b:a', '128k',
     '-movflags', '+faststart',
@@ -633,12 +657,16 @@ function buildFfmpegArgs(
  *
  * Emits [vraw] as the final named output label consumed by the subtitle/copy step.
  */
-function buildVideoCompositionFilters(visualEntries: VisualEntry[], totalDuration: number): string[] {
+function buildVideoCompositionFilters(
+  visualEntries: VisualEntry[],
+  totalDuration: number,
+  frame: OutputFrame,
+): string[] {
   const filters: string[] = [];
 
   // Base black canvas — all visual nodes are layered on top of this
   filters.push(
-    `color=c=black:size=${OUTPUT_WIDTH}x${OUTPUT_HEIGHT}:rate=${OUTPUT_FPS}:d=${totalDuration}[canvas0]`,
+    `color=c=black:size=${frame.width}x${frame.height}:rate=${OUTPUT_FPS}:d=${totalDuration}[canvas0]`,
   );
 
   visualEntries.forEach((entry, idx) => {
@@ -664,8 +692,8 @@ function buildVideoCompositionFilters(visualEntries: VisualEntry[], totalDuratio
     }
     // Contain-fit into the frame, then apply the Creator's own scale.
     layer.push(
-      `scale=w='max(1,trunc(min(${OUTPUT_WIDTH}/iw,${OUTPUT_HEIGHT}/ih)*iw*${fmt(entry.scaleX)}))'` +
-        `:h='max(1,trunc(min(${OUTPUT_WIDTH}/iw,${OUTPUT_HEIGHT}/ih)*ih*${fmt(entry.scaleY)}))'`,
+      `scale=w='max(1,trunc(min(${frame.width}/iw,${frame.height}/ih)*iw*${fmt(entry.scaleX)}))'` +
+        `:h='max(1,trunc(min(${frame.width}/iw,${frame.height}/ih)*ih*${fmt(entry.scaleY)}))'`,
     );
     layer.push('format=rgba');
     if (hasRotation) {
@@ -686,8 +714,8 @@ function buildVideoCompositionFilters(visualEntries: VisualEntry[], totalDuratio
     }
 
     // Package XXXII: the layer's CENTRE sits at (50% + X%, 50% + Y%) of the frame.
-    const centerX = OUTPUT_WIDTH * (0.5 + entry.positionX / 100);
-    const centerY = OUTPUT_HEIGHT * (0.5 + entry.positionY / 100);
+    const centerX = frame.width * (0.5 + entry.positionX / 100);
+    const centerY = frame.height * (0.5 + entry.positionY / 100);
     const position = `x='${fmt(centerX)}-w/2':y='${fmt(centerY)}-h/2'`;
     const enable = `enable='between(t,${fmt(visibleStart)},${fmt(visibleEnd)})'`;
 
@@ -720,7 +748,7 @@ function buildVideoCompositionFilters(visualEntries: VisualEntry[], totalDuratio
       //   defined in sRGB. Pinning the film to RGB is therefore not a
       //   preference — it is what makes the film agree with the preview.
       filters.push(
-        `color=c=${identityColor}:size=${OUTPUT_WIDTH}x${OUTPUT_HEIGHT}:rate=${OUTPUT_FPS}`
+        `color=c=${identityColor}:size=${frame.width}x${frame.height}:rate=${OUTPUT_FPS}`
           + `:d=${totalDuration},format=gbrp[id${idx}]`,
       );
       filters.push(`[${entry.inputIndex}:v]${layer.join(',')},format=gbrp[vl${idx}]`);
