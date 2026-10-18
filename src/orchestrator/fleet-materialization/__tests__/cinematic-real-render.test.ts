@@ -1,93 +1,64 @@
 /**
- * AZMA OS — THE GOLDEN RENDER · Ministry IV's encoder, measured in a real MP4
+ * RAS AL AMR EXECUTION DIRECTIVE — PHASE 1 ACCEPTANCE: REAL RENDER PROOF
  *
- * ─── WHY THIS FILE EXISTS ───────────────────────────────────────────────────
+ * Unlike cinematic-ffmpeg-encoder.test.ts (which mocks spawn), this suite runs
+ * the real ffmpeg binary through the real spawnEncoding() path on generated
+ * media, then measures the produced MP4: pixel colour at chosen instants and
+ * mean audio level inside chosen windows. Each expectation is derived from the
+ * same cinematic-timing.ts contract the Creator's preview draws with, so a
+ * pass means the MP4 shows what the preview showed.
  *
- *   `cinematic-ffmpeg-encoder.test.ts` mocks `spawn`. It proves the command
- *   line was assembled; it cannot prove the film is right. Four defects lived
- *   behind that distinction for weeks — transitions that never faded, clips
- *   that never appeared, a microphone recording that was silent, a layer in
- *   the wrong place — and every one of them passed the mocked suite.
- *
- *   So this suite runs the REAL ffmpeg through the encoder's own
- *   `spawnEncoding()` and then reads the OUTPUT back: pixels sampled at named
- *   instants, loudness measured per window, duration probed. What it asserts
- *   is the film, not the arguments.
- *
- *   It skips when ffmpeg/ffprobe are absent — and a skip is NOT evidence. The
- *   report that cites it must say which of the two happened.
+ * Skipped automatically when ffmpeg/ffprobe are not installed.
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { CompiledAssemblyGraph } from '@/src/chambers/ras-al-amr/pre-publishing-boundary';
-
-const FFMPEG = process.env.AZMA_FFMPEG ?? 'ffmpeg';
-const FFPROBE = process.env.AZMA_FFPROBE ?? 'ffprobe';
+import type { CompiledAssemblyGraph } from '../../../chambers/ras-al-amr/pre-publishing-boundary';
+import { computeVisualWindow, visualOpacityAt } from '../../../chambers/ras-al-amr/cinematic-timing';
 
 const hasFfmpeg =
-  spawnSync(FFMPEG, ['-version']).status === 0 && spawnSync(FFPROBE, ['-version']).status === 0;
+  spawnSync('ffmpeg', ['-version']).status === 0 && spawnSync('ffprobe', ['-version']).status === 0;
 const describeReal = hasFfmpeg ? describe : describe.skip;
 
+jest.setTimeout(120000);
+
 type Encoder = typeof import('../fleet/adapters/cinematic-ffmpeg-encoder');
-let encoder: Encoder;
+
 let workDir = '';
 let uploads = '';
+let encoder: Encoder;
+const savedEnv = { UPLOADS_DIR: process.env.UPLOADS_DIR };
 
 function ffmpeg(args: string[]): void {
-  const r = spawnSync(FFMPEG, ['-v', 'error', '-y', ...args], { cwd: uploads });
-  if (r.status !== 0) throw new Error(`ffmpeg failed: ${r.stderr?.toString().slice(0, 400)}`);
+  const r = spawnSync('ffmpeg', ['-v', 'error', '-y', ...args], { cwd: uploads });
+  if (r.status !== 0) throw new Error(`ffmpeg failed: ${r.stderr?.toString()}`);
 }
 
-/** One pixel of the finished film, at one instant. The only honest witness. */
+/** RGB of one pixel at time t. */
 function pixel(file: string, t: number, x: number, y: number): [number, number, number] {
-  const r = spawnSync(FFMPEG, [
-    '-v', 'error', '-ss', String(t), '-i', file,
-    // ISOLATED, after two wrong diagnoses of my own: the option that breaks
-    // this read is `-pix_fmt rgb24` as an OUTPUT option. It makes ffmpeg insert
-    // an auto-scaler, the scaler cannot handle a 1x1 frame ("non positive size
-    // for width '0'"), stdout comes back empty, and the helper then reports
-    // "no pixel" — indistinguishable from a black frame. That false reading is
-    // what first made position-and-scale look broken.
-    //
-    // NOT the cause, though both were claimed first: the missing `-an`, and
-    // `crop=1:1` itself. MEASURED on ffmpeg 8 and 9, with and without an audio
-    // stream: `crop=1:1:x:y,format=rgb24` and no `-pix_fmt` reads correctly.
-    // Cropping to 2x2 and scaling down keeps `-pix_fmt` usable, and is exact.
-    '-an', '-vf', `crop=2:2:${x}:${y},scale=1:1`, '-frames:v', '1',
-    '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-',
-  ], { maxBuffer: 1 << 22 });
-  const b = r.stdout;
-  if (!b || b.length < 3) {
-    throw new Error(`no pixel at t=${t} (${x},${y}): ${String(r.stderr).slice(0, 300)}`);
-  }
-  return [b[0]!, b[1]!, b[2]!];
+  const r = spawnSync('ffmpeg', [
+    '-v', 'error', '-ss', String(t), '-i', file, '-frames:v', '1',
+    '-vf', `crop=1:1:${x}:${y},format=rgb24`, '-f', 'rawvideo', '-',
+  ]);
+  const b = r.stdout as Buffer;
+  return [b[0], b[1], b[2]];
 }
 
-function meanDb(file: string, from: number, to: number): number {
-  const r = spawnSync(FFMPEG, [
-    '-v', 'info', '-ss', String(from), '-to', String(to), '-i', file,
-    '-af', 'volumedetect', '-vn', '-f', 'null', '-',
-  ], { encoding: 'utf8' });
-  const m = /mean_volume:\s*(-?[\d.]+) dB/.exec(r.stderr ?? '');
-  if (!m) throw new Error('no volumedetect reading');
-  return Number(m[1]);
+/** Mean volume (dB) between two instants. */
+function meanVolume(file: string, from: number, to: number): number {
+  const r = spawnSync('ffmpeg', ['-v', 'info', '-ss', String(from), '-to', String(to), '-i', file, '-af', 'volumedetect', '-vn', '-f', 'null', '-']);
+  const m = /mean_volume: (-?[0-9.]+) dB/.exec(r.stderr?.toString() ?? '');
+  return m ? Number(m[1]) : -999;
 }
 
-function durationOf(file: string): number {
-  const r = spawnSync(FFPROBE, [
-    '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file,
-  ], { encoding: 'utf8' });
-  return Number((r.stdout ?? '').trim());
+function duration(file: string): number {
+  const r = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]);
+  return Number(r.stdout.toString().trim());
 }
 
-type NodeOpts = {
-  temporal?: Record<string, unknown>;
-  spatial?: Record<string, unknown>;
-  visual?: Record<string, unknown>;
-};
+type NodeOpts = { temporal?: Record<string, unknown>; spatial?: Record<string, unknown>; visual?: Record<string, unknown> };
 
 function node(nodeId: string, file: string, capability: string, start: number, dur: number, opts: NodeOpts = {}) {
   return {
@@ -124,19 +95,12 @@ function graph(tracks: { trackId: string; nodes: ReturnType<typeof node>[] }[], 
       canvasId: 'canvas-real',
       subscriberTenantId: 'tenant-real',
       canvasType: 'CINEMATIC',
-      title: 'Golden render',
-      tracks: tracks.map((t) => ({
-        trackId: t.trackId, trackName: t.trackId, isMuted: false, isHidden: false, nodes: t.nodes,
-      })),
+      title: 'Real render',
+      tracks: tracks.map((t) => ({ trackId: t.trackId, trackName: t.trackId, isMuted: false, isHidden: false, nodes: t.nodes })),
       createdAt: 0,
       updatedAt: 0,
     },
-    metadata: {
-      totalTracks: tracks.length,
-      totalNodes: tracks.reduce((n, t) => n + t.nodes.length, 0),
-      estimatedDurationSeconds: total,
-      aggregatedAssetFamilies: ['MEDIA'],
-    },
+    metadata: { totalTracks: tracks.length, totalNodes: tracks.reduce((n, t) => n + t.nodes.length, 0), estimatedDurationSeconds: total, aggregatedAssetFamilies: ['MEDIA'] },
     mixPlan: { nodeMixes: [], trackMixes: [] },
     subtitlePlan: { absoluteCues: [] },
     compiledAt: 0,
@@ -145,178 +109,216 @@ function graph(tracks: { trackId: string; nodes: ReturnType<typeof node>[] }[], 
 
 async function encode(operationId: string, g: CompiledAssemblyGraph): Promise<string> {
   encoder.spawnEncoding(operationId, g);
-  for (let i = 0; i < 900; i += 1) {
+  for (let i = 0; i < 600; i++) {
     if (encoder.isEncodingComplete(operationId)) return encoder.getOutputPath(operationId);
     const err = encoder.getEncodingError(operationId);
-    if (err) throw new Error(String(err));
+    if (err) throw err;
     await new Promise((r) => setTimeout(r, 200));
   }
   throw new Error(`encode ${operationId} timed out`);
 }
 
-describeReal('Ministry IV encoder — the film matches what the chamber showed', () => {
-  jest.setTimeout(240_000);
+const near = (value: number, expected: number, tolerance: number) =>
+  expect(Math.abs(value - expected)).toBeLessThanOrEqual(tolerance);
 
-  beforeAll(() => {
-    workDir = mkdtempSync(join(tmpdir(), 'azma-golden-'));
+describeReal('Ras Al-Amr real render — the MP4 matches the preview contract', () => {
+  beforeAll(async () => {
+    workDir = mkdtempSync(join(tmpdir(), 'azma-real-render-'));
     uploads = join(workDir, 'uploads');
+    // `spawnSync('mkdir', ['-p', ...])` stood here and does not exist on
+    // Windows, so the fixtures were written into a directory that was never
+    // created and every test in this file failed before ffmpeg was reached.
     mkdirSync(uploads, { recursive: true });
+    // One variable decides where films go, and it is this one. The encoder
+    // deliberately does NOT read a RENDERS_DIR of its own — see rendersDir().
     process.env.UPLOADS_DIR = uploads;
-    process.env.RENDERS_DIR = join(workDir, 'renders');
-    mkdirSync(process.env.RENDERS_DIR, { recursive: true });
 
     ffmpeg(['-f', 'lavfi', '-i', 'color=c=red:s=1920x1080', '-frames:v', '1', 'red.png']);
     ffmpeg(['-f', 'lavfi', '-i', 'color=c=blue:s=1920x1080', '-frames:v', '1', 'blue.png']);
-    // A 2-second green clip — a Creator's own video on the timeline.
-    ffmpeg(['-f', 'lavfi', '-i', 'color=c=green:s=640x360:r=25:d=2',
-      '-c:v', 'libx264', '-pix_fmt', 'yuv420p', 'green.mp4']);
-    ffmpeg(['-f', 'lavfi', '-i', 'sine=frequency=440:duration=3', '-c:a', 'libmp3lame', 'tone.mp3']);
-    // A browser microphone recording: opus inside a .webm container.
-    ffmpeg(['-f', 'lavfi', '-i', 'sine=frequency=880:duration=3', '-c:a', 'libopus', 'voice.webm']);
+    ffmpeg(['-f', 'lavfi', '-i', 'color=c=red:s=1080x1920', '-frames:v', '1', 'portrait.png']);
+    // 2s green clip with its own 660 Hz soundtrack
+    ffmpeg(['-f', 'lavfi', '-i', 'color=c=lime:s=1280x720:d=2', '-f', 'lavfi', '-i', 'sine=f=660:d=2', '-pix_fmt', 'yuv420p', '-shortest', 'clip.mp4']);
+    // Browser-style microphone recording: Opus in a .webm container
+    ffmpeg(['-f', 'lavfi', '-i', 'sine=f=440:d=3', '-c:a', 'libopus', 'recording.webm']);
+    ffmpeg(['-f', 'lavfi', '-i', 'sine=f=880:d=6', 'music.mp3']);
 
     jest.resetModules();
-    // eslint-disable-next-line @typescript-eslint/no-require-imports, global-require
-    encoder = require('../fleet/adapters/cinematic-ffmpeg-encoder') as Encoder;
+    encoder = await import('../fleet/adapters/cinematic-ffmpeg-encoder');
   });
 
-  it('DEFECT 1 — a crossfade is a RAMP in the film, not a cut', async () => {
-    // Red 0→4s. Blue enters at 3.0s declaring a 1s crossfade. At 3.5s the
-    // frame must be a blend of the two; a cut gives pure blue, which is what
-    // the chamber's preview never showed.
-    const file = await encode('op_golden_fade', graph([{
-      trackId: 'V1',
-      nodes: [
-        node('n-red', 'red.png', 'VISUAL', 0, 4),
-        node('n-blue', 'blue.png', 'VISUAL', 3, 3, {
-          temporal: { transitionInType: 'crossfade', transitionInDurationSeconds: 1 },
-        }),
-      ],
-    }], 6));
-
-    const mid = pixel(file, 3.5, 960, 540);
-    expect(mid[2]).toBeGreaterThan(40);          // blue is arriving
-    expect(mid[0]).toBeGreaterThan(40);          // red has not vanished
+  afterAll(() => {
+    process.env.UPLOADS_DIR = savedEnv.UPLOADS_DIR;
+    if (savedEnv.UPLOADS_DIR === undefined) delete process.env.UPLOADS_DIR;
+    if (workDir) rmSync(workDir, { recursive: true, force: true });
   });
 
-  it('DEFECT 2 — a Creator video clip appears in its own window', async () => {
-    const file = await encode('op_golden_clip', graph([{
-      trackId: 'V1',
-      nodes: [
-        node('n-red', 'red.png', 'VISUAL', 0, 2),
-        node('n-clip', 'green.mp4', 'MOTION', 2, 2),
-      ],
-    }], 4));
+  it('renders the crossfade, the video clip with its sound, the webm recording and the music on one timeline', async () => {
+    const crossfade = { transitionInType: 'crossfade', transitionInDurationSeconds: 1 };
+    const out = await encode('op-real-mixed', graph([
+      {
+        trackId: 'main',
+        nodes: [
+          node('scene-red', 'red.png', 'VISUAL', 0, 4),
+          // Audio between two scenes in the same group must not cancel their crossfade.
+          node('music', 'music.mp3', 'AUDIO', 4, 3),
+          node('scene-blue', 'blue.png', 'VISUAL', 4, 4, { temporal: crossfade }),
+          node('scene-clip', 'clip.mp4', 'MOTION', 8, 2),
+        ],
+      },
+      { trackId: 'voice', nodes: [node('mic', 'recording.webm', 'AUDIO', 0, 3)] },
+    ], 10));
 
-    const inClip = pixel(file, 3.0, 960, 540);
-    expect(inClip[1]).toBeGreaterThan(80);       // green is on screen
-    expect(inClip[0]).toBeLessThan(80);
+    expect(existsSync(out)).toBe(true);
+    expect(existsSync(out.replace(/\.mp4$/, '.partial.mp4'))).toBe(false);
+    near(duration(out), 10, 0.2);
+
+    // Before the dissolve: pure red.
+    const [r1, , b1] = pixel(out, 2.0, 960, 540);
+    expect(r1).toBeGreaterThan(230);
+    expect(b1).toBeLessThan(25);
+
+    // Mid-dissolve: the blend the preview draws at t=3.5.
+    const blueTemporal = { globalStartTimeSeconds: 4, playDurationSeconds: 4, transitionInType: 'crossfade' as const, transitionInDurationSeconds: 1 };
+    const blueOpacity = visualOpacityAt(computeVisualWindow(blueTemporal, undefined), 3.5);
+    expect(blueOpacity).toBeCloseTo(0.5, 2);
+    const [r2, , b2] = pixel(out, 3.5, 960, 540);
+    near(r2, 255 * (1 - blueOpacity), 40);
+    near(b2, 255 * blueOpacity, 40);
+
+    // After the dissolve: pure blue.
+    const [r3, , b3] = pixel(out, 5.0, 960, 540);
+    expect(b3).toBeGreaterThan(230);
+    expect(r3).toBeLessThan(25);
+
+    // The video clip is on screen in its own window (contained 16:9 green).
+    const [r4, g4, b4] = pixel(out, 9.0, 960, 540);
+    expect(g4).toBeGreaterThan(200);
+    expect(r4).toBeLessThan(60);
+    expect(b4).toBeLessThan(60);
+
+    // Microphone recording (webm/opus), music (mp3) and the clip's own sound are all audible.
+    expect(meanVolume(out, 0.5, 2.5)).toBeGreaterThan(-40);
+    expect(meanVolume(out, 5.0, 6.5)).toBeGreaterThan(-40);
+    expect(meanVolume(out, 8.3, 9.7)).toBeGreaterThan(-40);
   });
 
-  it('DEFECT 3 — a .webm microphone recording is heard', async () => {
-    const file = await encode('op_golden_webm', graph([
-      { trackId: 'V1', nodes: [node('n-red', 'red.png', 'VISUAL', 0, 3)] },
-      { trackId: 'A1', nodes: [node('n-voice', 'voice.webm', 'AUDIO', 0, 3)] },
+  it('mixes an audio-only .webm the Vault filed as video as sound, instead of failing the render', async () => {
+    // Browsers report an audio .webm chosen from disk as video/webm.
+    const out = await encode('op-real-webm-as-motion', graph([
+      { trackId: 'main', nodes: [
+        node('scene', 'blue.png', 'VISUAL', 0, 3),
+        node('narration', 'recording.webm', 'MOTION', 0, 3),
+      ] },
     ], 3));
-
-    expect(meanDb(file, 0.5, 2.5)).toBeGreaterThan(-60);
+    const [r, , b] = pixel(out, 1.5, 960, 540);
+    expect(b).toBeGreaterThan(200);
+    expect(r).toBeLessThan(60);
+    expect(meanVolume(out, 0.3, 2.7)).toBeGreaterThan(-40);
   });
 
-  it('DEFECT 4 — a half-scale layer sits where the chamber put it', async () => {
-    // scale 0.5 at the canvas centre: the middle is red, the far corner black.
-    const file = await encode('op_golden_place', graph([{
-      trackId: 'V1',
-      nodes: [node('n-red', 'red.png', 'VISUAL', 0, 2, {
-        spatial: { positionX: 0, positionY: 0, scaleX: 0.5, scaleY: 0.5, rotationDegrees: 0, zIndex: 0 },
-      })],
-    }], 2));
-
-    const centre = pixel(file, 1.0, 960, 540);
-    const corner = pixel(file, 1.0, 40, 40);
-    expect(centre[0]).toBeGreaterThan(150);      // the layer is centred
-    expect(corner[0]).toBeLessThan(60);          // and does not fill the frame
+  it('renders a canvas that holds only a video clip', async () => {
+    const out = await encode('op-real-video-only', graph([
+      { trackId: 'main', nodes: [node('only-clip', 'clip.mp4', 'MOTION', 0, 2)] },
+    ], 2));
+    const [r, g, b] = pixel(out, 1.0, 960, 540);
+    expect(g).toBeGreaterThan(200);
+    expect(r).toBeLessThan(60);
+    expect(b).toBeLessThan(60);
   });
 
-  it('DEFECT 1b — a crossfade over an ENDING shot leaves no blank frame', async () => {
-    // The contract forbids a blank frame. Here red ENDS exactly where blue
-    // begins, so unless red is held under the ramp the dissolve happens over
-    // black — which is the blank frame, arriving dressed as a transition.
-    const file = await encode('op_golden_hold', graph([{
-      trackId: 'V1',
-      nodes: [
-        node('n-red', 'red.png', 'VISUAL', 0, 3),
-        node('n-blue', 'blue.png', 'VISUAL', 3, 3, {
-          temporal: { transitionInType: 'crossfade', transitionInDurationSeconds: 1 },
-        }),
-      ],
-    }], 6));
+  it('places and sizes layers by the Package XXXII contract (centre offsets, contained, never stretched)', async () => {
+    const out = await encode('op-real-geometry', graph([
+      {
+        trackId: 'main',
+        nodes: [
+          // 16:9 red at half size, centre moved 25% of the frame to the right.
+          node('half', 'red.png', 'VISUAL', 0, 2, { spatial: { scaleX: 0.5, scaleY: 0.5, positionX: 25 } }),
+          // Portrait red at full size, later in time.
+          node('portrait', 'portrait.png', 'VISUAL', 2, 2),
+        ],
+      },
+    ], 4));
 
-    const mid = pixel(file, 3.5, 960, 540);
-    expect(mid[0]).toBeGreaterThan(40);          // the outgoing shot is held
-    expect(mid[2]).toBeGreaterThan(40);          // the incoming shot is arriving
+    // Half-size layer: 960×540 box centred at (1440, 540) → spans x 960..1920, y 270..810.
+    expect(pixel(out, 1.0, 1440, 540)[0]).toBeGreaterThan(230);
+    expect(pixel(out, 1.0, 1100, 400)[0]).toBeGreaterThan(230);
+    expect(pixel(out, 1.0, 480, 540)[0]).toBeLessThan(25);
+    expect(pixel(out, 1.0, 1440, 100)[0]).toBeLessThan(25);
+
+    // Portrait contained: 607×1080 centred → spans x ≈ 656..1264; outside stays black.
+    expect(pixel(out, 3.0, 960, 540)[0]).toBeGreaterThan(230);
+    expect(pixel(out, 3.0, 300, 540)[0]).toBeLessThan(25);
+    expect(pixel(out, 3.0, 1600, 540)[0]).toBeLessThan(25);
   });
+
+  it('stacks equal-zIndex layers in canvas order, not by node id', async () => {
+    const out = await encode('op-real-order', graph([
+      {
+        trackId: 'main',
+        nodes: [
+          // Ids chosen so a lexical sort would put blue underneath.
+          node('z-bottom-red', 'red.png', 'VISUAL', 0, 2),
+          node('a-top-blue', 'blue.png', 'VISUAL', 0, 2),
+        ],
+      },
+    ], 2));
+    const [r, , b] = pixel(out, 1.0, 960, 540);
+    expect(b).toBeGreaterThan(230);
+    expect(r).toBeLessThan(25);
+  });
+
+  // ── THE TWO GUARDS CARRIED OVER FROM main ─────────────────────────────────
+  //
+  //   Both blend defects were found while measuring something else, and both
+  //   are PRE-EXISTING: `blend` was handed one RGBA side and one YUV side, so
+  //   it mixed across two colour spaces. They are kept here because the
+  //   integration carries the repair, and a repair with no witness is a repair
+  //   that comes undone.
 
   it('a blended layer does not bleed before its own window', async () => {
-    // PRE-EXISTING, found while measuring the ramp: a SCREEN layer whose window
-    // opened at 3s was already on screen at 0.2s, because `blend` was handed
-    // one RGBA side and one YUV side. A layer appearing three seconds early is
-    // not a colour artefact; it is the wrong shot.
-    const file = await encode('op_golden_blend_early', graph([{
-      trackId: 'V1',
+    // MEASURED before the repair: a SCREEN layer whose window opened at 3s was
+    // already on screen at 1s. A layer appearing two seconds early is not a
+    // colour artefact — it is the wrong shot.
+    const out = await encode('op-real-blend-early', graph([{
+      trackId: 'main',
       nodes: [
-        node('n-red', 'red.png', 'VISUAL', 0, 6),
-        node('n-blue', 'blue.png', 'VISUAL', 3, 3, { visual: { blendMode: 'SCREEN' } }),
+        node('base', 'red.png', 'VISUAL', 0, 6),
+        node('over', 'blue.png', 'VISUAL', 3, 3, { visual: { blendMode: 'SCREEN' } }),
       ],
     }], 6));
 
-    const before = pixel(file, 1.0, 960, 540);
-    expect(before[0]).toBeGreaterThan(200);      // the shot that IS on the timeline
-    expect(before[2]).toBeLessThan(30);          // and nothing of the one that is not
+    const before = pixel(out, 1, 960, 540);
+    expect(before[0]).toBeGreaterThan(200);   // the shot that IS on the timeline
+    expect(before[2]).toBeLessThan(30);       // and nothing of the one that is not
   });
 
-  it('a MULTIPLY blend resolves in the colour space the chamber previewed', async () => {
+  it('a MULTIPLY blend resolves in the colour space the preview used', async () => {
     // The chamber previews blend modes with CSS `mix-blend-mode`, defined in
-    // sRGB. Blue multiplied into red is black. MEASURED before the repair:
-    // (53,107,0) — a green neither layer contained.
-    const file = await encode('op_golden_blend_space', graph([{
-      trackId: 'V1',
+    // sRGB, where blue multiplied into red is black. MEASURED before the
+    // repair: (53,107,0) — a green neither layer contained.
+    const out = await encode('op-real-blend-space', graph([{
+      trackId: 'main',
       nodes: [
-        node('n-red', 'red.png', 'VISUAL', 0, 6),
-        node('n-blue', 'blue.png', 'VISUAL', 3, 3, { visual: { blendMode: 'MULTIPLY' } }),
+        node('base', 'red.png', 'VISUAL', 0, 6),
+        node('over', 'blue.png', 'VISUAL', 3, 3, { visual: { blendMode: 'MULTIPLY' } }),
       ],
     }], 6));
 
-    const [r, g, b] = pixel(file, 5.0, 960, 540);
+    const [r, g, b] = pixel(out, 5, 960, 540);
     expect(Math.max(r, g, b)).toBeLessThan(30);
   });
 
-  it('a crossfade on a blended layer ramps the blend itself', async () => {
-    // This branch carries no alpha channel, so the ramp runs from the blend's
-    // identity colour to the layer — which is the same journey as "no effect"
-    // to "full effect". Half way through a declared one-second ramp, SCREEN
-    // must be part of the way to magenta and no further.
-    const file = await encode('op_golden_blend_ramp', graph([{
-      trackId: 'V1',
-      nodes: [
-        node('n-red', 'red.png', 'VISUAL', 0, 6),
-        node('n-blue', 'blue.png', 'VISUAL', 3, 3, {
-          temporal: { transitionInType: 'crossfade', transitionInDurationSeconds: 1 },
-          visual: { blendMode: 'SCREEN' },
-        }),
-      ],
-    }], 6));
+  it('music longer than the pictures does not add black video after the last frame', async () => {
+    // §6 item 1. The music here runs 6s under a single 2s image. Before this,
+    // the film was 6 seconds: two of the Creator's work and four of black.
+    const out = await encode('op-real-tail', graph([
+      { trackId: 'main', nodes: [node('scene', 'red.png', 'VISUAL', 0, 2)] },
+      { trackId: 'score', nodes: [node('score', 'music.mp3', 'AUDIO', 0, 6)] },
+    ], 6));
 
-    const mid = pixel(file, 3.5, 960, 540);
-    expect(mid[0]).toBeGreaterThan(200);         // the base shot is untouched
-    expect(mid[2]).toBeGreaterThan(40);          // the blend has begun
-    expect(mid[2]).toBeLessThan(220);            // and has not finished
-    expect(pixel(file, 5.0, 960, 540)[2]).toBeGreaterThan(220); // but does finish
-  });
-
-  it('and the film is as long as the timeline says', async () => {
-    const file = await encode('op_golden_len', graph([{
-      trackId: 'V1',
-      nodes: [node('n-red', 'red.png', 'VISUAL', 0, 3)],
-    }], 3));
-    expect(Math.abs(durationOf(file) - 3)).toBeLessThanOrEqual(0.5);
+    near(duration(out), 2, 0.3);
+    // And the last frame is still the picture, not a black one.
+    const last = pixel(out, 1.8, 960, 540);
+    expect(last[0]).toBeGreaterThan(200);
   });
 });

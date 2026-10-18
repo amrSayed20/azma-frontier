@@ -398,7 +398,14 @@ import type { VaultAsset, AssetFamily } from '@/src/vault/sovereign-vault-types'
 import { filterVoiceLibrary } from '@/src/vault/sovereign-vault-types';
 import { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
 import { CanvasType, DirectionNodeRole } from '@/src/chambers/ras-al-amr/assembly-contracts';
-import type { SovereignCanvas, SpatialDirective, TemporalDirective } from '@/src/chambers/ras-al-amr/assembly-contracts';
+import type { AssemblyNode, SovereignCanvas, SpatialDirective, TemporalDirective } from '@/src/chambers/ras-al-amr/assembly-contracts';
+import {
+  computeLayerGeometry,
+  computeVisualWindow,
+  mapNextVisualSiblings,
+  resolveSourceWindow,
+  visualOpacityAt,
+} from '@/src/chambers/ras-al-amr/cinematic-timing';
 import type { CompiledAssemblyGraph } from '@/src/chambers/ras-al-amr/pre-publishing-boundary';
 import { RasAlAmrStateManager } from '@/src/chambers/ras-al-amr/ras-al-amr-state-manager';
 import { CanvasActionType } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
@@ -431,6 +438,10 @@ import type { FormalGoalContractView } from '@/src/chambers/ras-al-amr/automatic
 import { toDirectionDecision } from '@/src/chambers/ras-al-amr/direction-workspace-constitution';
 import type { DirectionDecision, DirectionOperator } from '@/src/chambers/ras-al-amr/direction-workspace-constitution';
 import { AssemblyRuntime } from '@/src/chambers/ras-al-amr/assembly-runtime';
+import { isStoryboardCanvasId } from '@/src/chambers/ras-al-amr/storyboard';
+import { computeTemplateSlotTemporal, visualScenesEnd } from '@/src/chambers/ras-al-amr/template-slots';
+import type { SoundNodeTest } from '@/src/chambers/ras-al-amr/template-slots';
+import StoryboardWorld from './storyboard/StoryboardWorld';
 import type { CanvasMutationPayload } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
 import { useVoiceMode } from '@/src/components/living-companion/useVoiceMode';
 import type { DirectorPlan, ProductionAssetContext } from '@/src/chambers/ras-al-amr/director-plan-types';
@@ -499,7 +510,21 @@ const BLEND_MODES: VisualFilterDirective['blendMode'][] = ['NORMAL', 'MULTIPLY',
 
 // 'template-preview': intermediate screen after selecting a template from the intent
 // gate — creator reviews the production body before committing to the workspace.
-type CreationPhase = 'intent' | 'template-preview' | 'workspace';
+type CreationPhase = 'intent' | 'template-preview' | 'workspace' | 'storyboard';
+
+/** Wall clock for handlers handed to child components (never called during render). */
+function wallClock(): number {
+  return Date.now();
+}
+
+// The path the Creator last worked in, so returning to the chamber lands there.
+const LAST_PATH_KEY = 'azma.rasAmr.lastPath';
+function readLastPath(): 'montage' | 'storyboard' | null {
+  try {
+    const value = localStorage.getItem(LAST_PATH_KEY);
+    return value === 'montage' || value === 'storyboard' ? value : null;
+  } catch { return null; }
+}
 
 /** PACKAGE XL-D — four creator-facing family names, independent of internal template IDs. */
 type TemplateFamilyId = 'ilan-muntaj' | 'qissa-sinamaiyya' | 'reels' | 'sawt-wa-hikaya';
@@ -848,33 +873,69 @@ function buildDemoFrames(template: SovereignTemplate): DemoFrame[] {
   });
 }
 
-// Computes initial temporal for a template slot based on current canvas state.
-// Creator edits always override these values — templates are starting points only.
-function computeTemplateSlotTemporal(
-  template: SovereignTemplate,
-  nodeIndex: number,
-  canvas: SovereignCanvas,
-): TemporalDirective {
-  const allNodes = canvas.tracks.flatMap((t) => t.nodes);
-  const lastEnd = allNodes.reduce((acc, n) => {
-    const end = (n.temporal?.globalStartTimeSeconds ?? 0) + (n.temporal?.playDurationSeconds ?? 5);
-    return Math.max(acc, end);
-  }, 0);
-  const slotDuration =
-    nodeIndex < template.slotDurations.length
-      ? template.slotDurations[nodeIndex]
-      : DEFAULT_TEMPORAL.playDurationSeconds;
-  const useCrossfade = template.transitionPreference === 'crossfade' && nodeIndex > 0;
-  const fadeDur = template.transitionDurationSeconds ?? 0.5;
-  const startTime = useCrossfade && lastEnd > 0 ? Math.max(0, lastEnd - fadeDur) : lastEnd;
+// RAS AL AMR EXECUTION DIRECTIVE — PHASE 1: only visual scenes count. A sound
+// node (music, narration, recording) is never a scene: it never takes a template
+// slot and never pushes the next scene later.
+
+// Node ids of the sound layers on a canvas (Vault capability first, then the
+// capability recorded on the node). Pure, so preview code can call it anywhere.
+function soundNodeIdsOf(canvas: SovereignCanvas, assets: readonly VaultAsset[]): Set<string> {
+  const ids = new Set<string>();
+  for (const track of canvas.tracks) {
+    for (const node of track.nodes) {
+      const capability = assets.find((a) => a.assetId === node.assetId)?.capabilityTarget ?? node.capabilityOrigin;
+      if (capability === CapabilityTarget.AUDIO) ids.add(node.nodeId);
+    }
+  }
+  return ids;
+}
+
+// The shared crossfade contract (cinematic-timing.ts): each scene's next VISUAL scene in its group.
+function nextVisualSiblingsOf(tracks: SovereignCanvas['tracks'], soundNodeIds: ReadonlySet<string>): Map<string, AssemblyNode | undefined> {
+  return mapNextVisualSiblings(tracks, (n) => !soundNodeIds.has(n.nodeId));
+}
+
+
+// A new visual scene with no template follows the last scene instead of
+// stacking on top of it at 0s.
+function computeAppendTemporal(canvas: SovereignCanvas, isSoundNode: SoundNodeTest, durationSeconds?: number): TemporalDirective {
   return {
-    globalStartTimeSeconds: startTime,
-    playDurationSeconds: slotDuration,
+    ...DEFAULT_TEMPORAL,
+    globalStartTimeSeconds: visualScenesEnd(canvas, isSoundNode),
+    playDurationSeconds: durationSeconds && durationSeconds > 0 ? durationSeconds : DEFAULT_TEMPORAL.playDurationSeconds,
+  };
+}
+
+// A sound layer starts under the first scene and spans the production; its real
+// length replaces this as soon as the browser has read the file's metadata.
+function computeSoundLayerTemporal(canvas: SovereignCanvas, isSoundNode: SoundNodeTest, durationSeconds?: number): TemporalDirective {
+  return {
+    globalStartTimeSeconds: 0,
+    playDurationSeconds:
+      durationSeconds && durationSeconds > 0
+        ? durationSeconds
+        : Math.max(DEFAULT_TEMPORAL.playDurationSeconds, visualScenesEnd(canvas, isSoundNode)),
     trimStartSeconds: undefined,
     trimEndSeconds: undefined,
-    transitionInType: useCrossfade ? 'crossfade' : 'cut',
-    transitionInDurationSeconds: useCrossfade ? fadeDur : undefined,
+    transitionInType: 'cut',
   };
+}
+
+// Reads a media file's real duration in the browser (no upload, no server call).
+function probeMediaDurationSeconds(uri: string): Promise<number | undefined> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') { resolve(undefined); return; }
+    const el = document.createElement('audio');
+    const done = (value: number | undefined) => { el.removeAttribute('src'); resolve(value); };
+    const timer = window.setTimeout(() => done(undefined), 6000);
+    el.preload = 'metadata';
+    el.onloadedmetadata = () => {
+      window.clearTimeout(timer);
+      done(Number.isFinite(el.duration) && el.duration > 0 ? el.duration : undefined);
+    };
+    el.onerror = () => { window.clearTimeout(timer); done(undefined); };
+    el.src = uri;
+  });
 }
 
 
@@ -1050,15 +1111,42 @@ export default function RasAmrChamber() {
   const demoAudioCtxRef = useRef<AudioContext | null>(null);
   const demoOscRef = useRef<OscillatorNode | null>(null);
 
-  const [isRendering, setIsRendering] = useState<boolean>(false);
-  const [renderStatus, setRenderStatus] = useState<string>('في وضع الاستعداد الإخراجي');
   // THE CORRIDOR PACKAGE: the real compiled graph from the most recent
   // successful Master Render — the only thing "forward to Makman" is
-  // allowed to carry as a real, submittable assembly. compiledForAssetId
-  // pins it to the exact active asset it was compiled from, so switching
-  // the active asset after rendering can never forward a stale graph.
+  // allowed to carry as a real, submittable assembly. EXECUTION DIRECTIVE
+  // PHASE 4: it is pinned to the exact canvas CONTENT it was compiled from
+  // (compiledSignature), not to whichever asset happened to be active — so
+  // any edit after compiling marks it stale and it can never be forwarded.
   const [compiledGraph, setCompiledGraph] = useState<CompiledAssemblyGraph | null>(null);
+  const [compiledSignature, setCompiledSignature] = useState<string | null>(null);
+  /* RESTORED. The integrated side replaced these three with `renderJob` and
+     deleted them; this page still reads all three, so the auto-merge took the
+     deletion and left the readers behind. Both sets are kept because they
+     answer different questions: `renderJob` is the in-chamber MP4 job, while
+     these three are the standalone compile — a plan, not a file. */
+  const [isRendering, setIsRendering] = useState<boolean>(false);
+  const [renderStatus, setRenderStatus] = useState<string>('في وضع الاستعداد الإخراجي');
   const [compiledForAssetId, setCompiledForAssetId] = useState<string | null>(null);
+
+  // RAS AL AMR EXECUTION DIRECTIVE — PHASE 4: the real MP4 render, owned by
+  // this chamber from start to result. The job lives in the server's
+  // operation ledger, so leaving and returning finds it again.
+  type RenderJob = {
+    operationId: string;
+    status: 'processing' | 'succeeded' | 'failed';
+    startedAt: number;
+    fileUrl?: string;
+    downloadUrl?: string;
+    reason?: string;
+    message?: string;
+    canvasSignature?: string;
+  };
+  const [renderJob, setRenderJob] = useState<RenderJob | null>(null);
+  const [isStartingRender, setIsStartingRender] = useState(false);
+  const [renderStartError, setRenderStartError] = useState<string | null>(null);
+  const [showExportPanel, setShowExportPanel] = useState(false);
+  const [renderClock, setRenderClock] = useState(0);
+  const exportPanelRef = useRef<HTMLDivElement>(null);
 
   // REAL SPATIAL ADJUSTMENT PACKAGE: a real, single-node SovereignCanvas,
   // seeded whenever a real asset becomes active and mutated only through
@@ -1107,6 +1195,44 @@ export default function RasAmrChamber() {
     return assemblyRuntime.execute(canvas, decision);
   };
 
+  // RAS AL AMR EXECUTION DIRECTIVE — PHASE 1: a node is a sound layer when its
+  // Vault asset is AUDIO (falling back to the capability recorded on the node).
+  // Sound layers never take a template slot and never push a scene later.
+  const isSoundNode = (node: AssemblyNode): boolean =>
+    (vaultAssetById.get(node.assetId)?.capabilityTarget ?? node.capabilityOrigin) === CapabilityTarget.AUDIO;
+
+  const initialTemporalFor = (
+    capability: CapabilityTarget | undefined,
+    assetId: string,
+    canvas: SovereignCanvas,
+  ): TemporalDirective => {
+    if (capability === CapabilityTarget.AUDIO) return computeSoundLayerTemporal(canvas, isSoundNode);
+    if (selectedTemplate) return computeTemplateSlotTemporal(selectedTemplate, canvas, isSoundNode);
+    const knownDuration = vaultAssetById.get(assetId)?.metadata?.durationSeconds;
+    return computeAppendTemporal(canvas, isSoundNode, capability === CapabilityTarget.MOTION ? knownDuration : undefined);
+  };
+
+  // Once the browser knows a sound file's real length, the sound layer adopts it
+  // (unless the Creator locked the node in the meantime).
+  const adoptRealSoundLength = (nodeId: string, uri: string) => {
+    void probeMediaDurationSeconds(uri).then((seconds) => {
+      if (!seconds) return;
+      const canvas = sessionCanvasRef.current;
+      const track = canvas?.tracks.find((t) => t.nodes.some((n) => n.nodeId === nodeId));
+      const node = track?.nodes.find((n) => n.nodeId === nodeId);
+      if (!canvas || !track || !node || node.isLocked) return;
+      const mutation: UpdateNodeTemporalPayload = {
+        actionType: CanvasActionType.UPDATE_TEMPORAL,
+        canvasId: canvas.canvasId,
+        subscriberTenantId: canvas.subscriberTenantId,
+        targetTrackId: track.trackId,
+        targetNodeId: nodeId,
+        temporalUpdates: { ...(node.temporal ?? DEFAULT_TEMPORAL), playDurationSeconds: Math.round(seconds * 100) / 100 },
+      };
+      setSessionCanvas(executeDirectionDecision(canvas, mutation));
+    });
+  };
+
   // PACKAGE XXXII — SOVEREIGN CREATIVE CANVAS
   // Composition surface ref — needed for pointer coordinate math.
   const compositionRef = useRef<HTMLDivElement>(null);
@@ -1139,6 +1265,15 @@ export default function RasAmrChamber() {
 
   // Drop-zone active flag for drag-over visual feedback.
   const [isDragOverSurface, setIsDragOverSurface] = useState(false);
+
+  // Real width/height ratio of each visual asset, read from the loaded media, so
+  // the preview contains a layer in the 16:9 frame exactly as the encoder does.
+  const [mediaAspect, setMediaAspect] = useState<Record<string, number>>({});
+  const rememberMediaAspect = (assetId: string, width: number, height: number) => {
+    if (!width || !height) return;
+    const aspect = width / height;
+    setMediaAspect((prev) => (Math.abs((prev[assetId] ?? 0) - aspect) < 0.001 ? prev : { ...prev, [assetId]: aspect }));
+  };
 
   const handleLayerPointerDown = (
     e: React.PointerEvent<HTMLDivElement>,
@@ -1212,7 +1347,6 @@ export default function RasAmrChamber() {
         // PACKAGE XXXIX: audio assets add to canvas as nodes (for preview temporal
         // tracking) but are routed to the audio tab, not shown as visual layers.
         setActiveAsset(asset);
-        const dropNodeIndex = sessionCanvas.tracks.flatMap((t) => t.nodes).length;
         const mutation: AddNodePayload = {
           actionType: CanvasActionType.ADD_NODE,
           canvasId: sessionCanvas.canvasId,
@@ -1221,9 +1355,7 @@ export default function RasAmrChamber() {
           vaultAssetId: asset.id,
           assetFamily: asset.assetFamily,
           capabilityOrigin: asset.capabilityOrigin,
-          initialTemporal: selectedTemplate
-            ? computeTemplateSlotTemporal(selectedTemplate, dropNodeIndex, sessionCanvas)
-            : DEFAULT_TEMPORAL,
+          initialTemporal: initialTemporalFor(asset.capabilityOrigin, asset.id, sessionCanvas),
           initialSpatial: DEFAULT_SPATIAL,
         };
         const updatedCanvas = executeDirectionDecision(sessionCanvas, mutation);
@@ -1231,6 +1363,9 @@ export default function RasAmrChamber() {
 
         if (asset.capabilityOrigin === CapabilityTarget.AUDIO) {
           // Audio belongs to the audio track — not a visual layer.
+          const tgt = updatedCanvas.tracks.find((t) => t.trackId === activeTrackId);
+          const newNode = tgt?.nodes[tgt.nodes.length - 1];
+          if (newNode && asset.secureStorageUri) adoptRealSoundLength(newNode.nodeId, asset.secureStorageUri);
           setActiveWorkspaceTab('audio');
         } else {
           const tgt = updatedCanvas.tracks.find((t) => t.trackId === activeTrackId);
@@ -1419,10 +1554,7 @@ export default function RasAmrChamber() {
     // PACKAGE XXXV: duplicate guard removed — same asset may appear in multiple
     // temporal windows (ghost reappears, product cycles, repeated motif).
     // PACKAGE XXXVI: template-aware initial temporal. Creator edits override freely.
-    const nodeIndex = sessionCanvas.tracks.flatMap((t) => t.nodes).length;
-    const initialTemporal = selectedTemplate
-      ? computeTemplateSlotTemporal(selectedTemplate, nodeIndex, sessionCanvas)
-      : DEFAULT_TEMPORAL;
+    const initialTemporal = initialTemporalFor(activeAsset.capabilityOrigin, activeAsset.id, sessionCanvas);
 
     const mutation: AddNodePayload = {
       actionType: CanvasActionType.ADD_NODE,
@@ -1450,6 +1582,7 @@ export default function RasAmrChamber() {
       // Route the creator to the audio tab so they can see and control the asset.
       // The node exists in canvas for preview temporal tracking — it is NOT
       // rendered as a visual layer.
+      if (newNode && activeAsset.secureStorageUri) adoptRealSoundLength(newNode.nodeId, activeAsset.secureStorageUri);
       setActiveWorkspaceTab('audio');
     } else {
       // Visual/motion asset: select the new node for immediate spatial editing.
@@ -1757,6 +1890,7 @@ export default function RasAmrChamber() {
 
   // --- Real Sovereign Vault assets — the Summoning Bridge's real source ---
   const [vaultAssets, setVaultAssets] = useState<VaultAsset[]>([]);
+  const vaultAssetById = useMemo(() => new Map(vaultAssets.map((a) => [a.assetId, a] as const)), [vaultAssets]);
   const [vaultAssetsLoaded, setVaultAssetsLoaded] = useState<boolean>(false);
 
   // ── The door, for a visitor the Empire does not yet know ──────────────────
@@ -1826,15 +1960,16 @@ export default function RasAmrChamber() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
 
-  const handleUploadAsset = async (file: File) => {
+  const handleUploadAsset = async (file: File, options?: { asVoice?: boolean; voiceName?: string }) => {
     setIsUploadingAsset(true);
     setUploadError(null);
     try {
       const body = new FormData();
       body.append('file', file);
-      if (isVoiceUpload) {
+      const voiceName = options?.voiceName ?? voiceDisplayNameInput.trim();
+      if (options?.asVoice ?? isVoiceUpload) {
         body.append('isVoice', 'true');
-        if (voiceDisplayNameInput.trim()) body.append('voiceDisplayName', voiceDisplayNameInput.trim());
+        if (voiceName) body.append('voiceDisplayName', voiceName);
       }
       const response = await fetch('/api/vault/assets/upload', { method: 'POST', body });
       const result = await response.json();
@@ -1871,7 +2006,9 @@ export default function RasAmrChamber() {
         const blob = new Blob(recordingChunksRef.current, { type: mimeType });
         const ext = mimeType.includes('ogg') ? 'ogg' : 'webm';
         const file = new File([blob], `recording-${Date.now()}.${ext}`, { type: mimeType });
-        void handleUploadAsset(file);
+        // A microphone recording is the Creator's own voice: it joins the voice
+        // library and the narration lane, never the music lane.
+        void handleUploadAsset(file, { asVoice: true, voiceName: 'تسجيل الميكروفون' });
         setIsRecording(false);
       };
       mediaRecorderRef.current = recorder;
@@ -1892,6 +2029,7 @@ export default function RasAmrChamber() {
   // the Creator explicitly marked as a voice, reusing the already-fetched
   // vaultAssets list (no new fetch, no new storage).
   const voiceLibrary = useMemo(() => filterVoiceLibrary(vaultAssets), [vaultAssets]);
+  const voiceAssetIds = useMemo(() => new Set(voiceLibrary.map((v) => v.assetId)), [voiceLibrary]);
   // Cloned voice identities (STRUCTURAL — provider-backed, not playable audio).
   const clonedVoiceIdentities = useMemo(
     () => voiceLibrary.filter((v) => v.metadata.isClonedVoice === true),
@@ -2494,6 +2632,18 @@ export default function RasAmrChamber() {
   // its three real mutations now becomes its own real DirectionDecision,
   // tagged 'automatic-director', submitted to the same Assembly Runtime
   // Manual Director already executes through — no second execution path.
+  // The Director places a sound layer at 0s but never shortens it to the 5s
+  // fallback: its own real length (already adopted on add) is kept.
+  const directorTemporalFor = (
+    canvas: SovereignCanvas,
+    nodeId: string,
+    decided: TemporalDirective,
+  ): TemporalDirective => {
+    const node = canvas.tracks.flatMap((t) => t.nodes).find((n) => n.nodeId === nodeId);
+    if (!node || !isSoundNode(node)) return decided;
+    return { ...(node.temporal ?? DEFAULT_TEMPORAL), globalStartTimeSeconds: decided.globalStartTimeSeconds };
+  };
+
   const handleApplyDirectorDecision = () => {
     if (!sessionCanvas || !selectedNodeId) {
       setDirectorApplyStatus('اختر عقدة من المشهد أولاً ثم طبّق القرار');
@@ -2520,7 +2670,7 @@ export default function RasAmrChamber() {
         subscriberTenantId: sessionCanvas.subscriberTenantId,
         targetTrackId: 'track-1',
         targetNodeId: selectedNodeId,
-        temporalUpdates: directorDecision.temporal,
+        temporalUpdates: directorTemporalFor(sessionCanvas, selectedNodeId, directorDecision.temporal),
       },
       'automatic-director',
     );
@@ -2583,7 +2733,14 @@ export default function RasAmrChamber() {
   // SovereignCanvas (sessionCanvas) — including any real spatial edits
   // the Creator applied — via the real, already-certified compile
   // endpoint. Never simulated.
-  const canCompile = Boolean(activeAsset?.isRealAsset && activeAsset.secureStorageUri && sessionCanvas);
+  /* ── BOTH SIDES KEPT ──────────────────────────────────────────
+     This page's own side holds the «إنشاء من فكرة» production path and the
+     direction surfaces; the integrated side adds what the export panel needs.
+     Only ONE line is dropped: the old `canCompile`, which asked whether an
+     ASSET was selected. It is redefined at the end of this block from whether
+     the CANVAS holds a visual scene — the same question the compiler and the
+     encoder ask, so the button can no longer be live when the film would be
+     empty, nor dead when it would not. */
 
   /**
    * ── A FILM FROM THE CREATOR'S OWN ASSETS ─────────────────────────
@@ -2696,7 +2853,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
         className={`ras-render-btn ${isRendering ? 'rendering' : ''}`}
         onClick={triggerMasterRender}
         disabled={isRendering || !canCompile}
-        title={!canCompile ? 'استدعِ أصلاً حقيقياً من الخزانة السيادية أولاً' : 'يُجمّع مخطّط المشهد — خطّةٌ لا ملف'}
+        title={!canCompile ? 'أضف صورة أو مقطع فيديو إلى المشهد أولاً' : 'يُجمّع مخطّط المشهد — خطّةٌ لا ملف'}
       >
         {isRendering ? '⏳ تجميع…' : '🎬 تجميع المشهد'}
       </button>
@@ -2710,6 +2867,28 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
           : `إنتاج فيلم mp4 من ${placedLayerCount} طبقة في مشهدك`}
       >
         {isFilming ? '⏳ الفيلم يُنتَج…' : '✦ أنتِج الفيلم'}
+      </button>
+      {/* ── THE THIRD ACT: THE CHAMBER'S OWN MP4 ────────────────────────
+          The export panel arrived with no opener: the integrated side opened it
+          from a second button in the header, and this header deliberately holds
+          no production button (see its tombstone). A panel nothing can open is
+          a capability with no door, so the act lives here beside the two it
+          belongs with — and the three are named apart on purpose:
+            · تجميع المشهد — a sealed PLAN, not a file;
+            · أنتِج الفيلم — a film built from an idea by the workshop;
+            · إخراج MP4 — exactly the timeline you arranged, rendered here. */}
+      <button
+        className={`ras-render-btn ${renderJob?.status === 'processing' ? 'rendering' : ''}`}
+        data-testid={`rasamr-export-mp4-${where}`}
+        onClick={openExportPanel}
+        disabled={!canCompile && !renderJob}
+        title={!canCompile
+          ? 'أضف صورة أو مقطع فيديو إلى المشهد أوّلاً'
+          : 'جاهزية الإخراج، ثمّ ملف MP4 بنفس ما تُريه المعاينة'}
+      >
+        {renderJob?.status === 'processing' ? '⏳ يُخرَج…'
+          : renderJob?.status === 'succeeded' ? '🎬 MP4 النهائي'
+          : '🎬 إخراج MP4'}
       </button>
     </div>
   );
@@ -2744,6 +2923,49 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
     </>
   );
 
+  /* These five belong to the COMPONENT, not to a handler. The conflict
+     boundary fell inside triggerMasterRender, and splicing the two sides in
+     order put four useMemo calls inside an async function body — React hooks
+     in an event handler, which no type error would have caught. They are
+     declared here, before the handler that reads them. */
+  // What the MP4 will contain, computed from the canvas the same way the
+  // compiler and encoder read it: muted/hidden groups and inactive nodes are
+  // left out, sound layers are never scenes.
+  const canvasSignature = useMemo(() => (sessionCanvas ? JSON.stringify(sessionCanvas.tracks) : ''), [sessionCanvas]);
+  // For each scene, the next VISUAL scene in its group — shared crossfade
+  // contract with the encoder (sound layers never break a crossfade).
+  const nextVisualSiblingMap = useMemo(
+    () => (sessionCanvas ? nextVisualSiblingsOf(sessionCanvas.tracks, soundNodeIdsOf(sessionCanvas, vaultAssets)) : new Map<string, AssemblyNode | undefined>()),
+    [sessionCanvas, vaultAssets],
+  );
+  const isCompiledCurrent = Boolean(compiledGraph && compiledSignature === canvasSignature);
+  const exportReadiness = useMemo(() => {
+    if (!sessionCanvas) return null;
+    const capabilityOf = (n: AssemblyNode) => vaultAssets.find((a) => a.assetId === n.assetId)?.capabilityTarget ?? n.capabilityOrigin;
+    const liveTracks = sessionCanvas.tracks.filter((t) => !t.isMuted && !t.isHidden);
+    const allNodes = sessionCanvas.tracks.flatMap((t) => t.nodes);
+    const liveNodes = liveTracks.flatMap((t) => t.nodes).filter((n) => n.isActive !== false);
+    const visual = liveNodes.filter((n) => capabilityOf(n) !== CapabilityTarget.AUDIO);
+    const sound = liveNodes.filter((n) => capabilityOf(n) === CapabilityTarget.AUDIO);
+    return {
+      visualCount: visual.filter((n) => capabilityOf(n) !== CapabilityTarget.MOTION).length,
+      videoCount: visual.filter((n) => capabilityOf(n) === CapabilityTarget.MOTION).length,
+      soundCount: sound.length,
+      voiceAssignedCount: visual.filter((n) => Boolean((n.customDirectives as Record<string, unknown> | undefined)?.voice)).length,
+      subtitledCount: visual.filter((n) => Boolean((n.customDirectives as Record<string, unknown> | undefined)?.subtitles)).length,
+      crossfadeCount: visual.filter((n) => n.temporal?.transitionInType === 'crossfade').length,
+      excludedCount: allNodes.length - liveNodes.length,
+      durationSeconds: Math.max(0, ...liveNodes.map((n) => (n.temporal?.globalStartTimeSeconds ?? 0) + (n.temporal?.playDurationSeconds ?? 5))),
+      hasScenes: visual.length > 0,
+    };
+  }, [sessionCanvas, vaultAssets]);
+  const canCompile = Boolean(sessionCanvas && exportReadiness?.hasScenes);
+
+  /* RESTORED IN FULL. The conflict boundary cut this function open after its
+     fourth statement, and git then auto-merged the integrated side’s render
+     helpers into the hole — including a useCallback — so three component-level
+     declarations ended up nested inside an async handler. Nothing in the type
+     checker objects to that; only a bracket count found it. */
   const triggerMasterRender = async () => {
     if (!activeAsset?.isRealAsset || !sessionCanvas) return;
 
@@ -2767,6 +2989,11 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
 
       const compiled = result as CompiledAssemblyGraph;
       setCompiledGraph(compiled);
+      // The compiled graph belongs to THIS canvas. Without recording its
+      // signature, isCompiledCurrent stays false after a successful compile,
+      // so the chamber reports no compilation while holding one — and the
+      // export gate and the Makman hand-off both read that flag.
+      setCompiledSignature(canvasSignature);
       setCompiledForAssetId(activeAsset.id);
       setRenderStatus(
         `تم التجميع بنجاح — ${compiled.compilationId} — ${compiled.metadata.totalNodes} عنصر مضمَّن`,
@@ -2776,6 +3003,105 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
     } finally {
       setIsRendering(false);
     }
+  };
+
+  const rememberRenderSignature = (operationId: string, signature: string) => {
+    try {
+      const raw = localStorage.getItem('azma.rasAmr.renderSignatures');
+      const map = raw ? (JSON.parse(raw) as Record<string, string>) : {};
+      const entries = Object.entries({ ...map, [operationId]: signature }).slice(-10);
+      localStorage.setItem('azma.rasAmr.renderSignatures', JSON.stringify(Object.fromEntries(entries)));
+    } catch { /* a convenience only */ }
+  };
+  const recallRenderSignature = (operationId: string): string | undefined => {
+    try {
+      const raw = localStorage.getItem('azma.rasAmr.renderSignatures');
+      return raw ? (JSON.parse(raw) as Record<string, string>)[operationId] : undefined;
+    } catch { return undefined; }
+  };
+
+  const applyRenderStatus = useCallback((data: Record<string, unknown>, fallbackSignature?: string) => {
+    const operationId = String(data.operationId ?? '');
+    if (!operationId) return;
+    setRenderJob((prev) => ({
+      operationId,
+      status: data.status === 'succeeded' ? 'succeeded' : data.status === 'failed' ? 'failed' : 'processing',
+      startedAt: typeof data.startedAt === 'number' ? data.startedAt : prev?.startedAt ?? Date.now(),
+      fileUrl: typeof data.fileUrl === 'string' ? data.fileUrl : undefined,
+      downloadUrl: typeof data.downloadUrl === 'string' ? data.downloadUrl : undefined,
+      reason: typeof data.reason === 'string' ? data.reason : undefined,
+      message: typeof data.message === 'string' ? data.message : undefined,
+      canvasSignature: prev?.operationId === operationId ? prev.canvasSignature : fallbackSignature,
+    }));
+  }, []);
+
+  const handleStartRender = async () => {
+    if (!sessionCanvas || !canCompile) return;
+    setIsStartingRender(true);
+    setRenderStartError(null);
+    const signature = canvasSignature;
+    try {
+      const response = await fetch('/api/ras-amr/render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ canvas: { ...sessionCanvas, updatedAt: Date.now() } }),
+      });
+      const data = await response.json();
+      if (response.status !== 202 || data.status !== 'accepted') {
+        setRenderStartError(data.message ?? 'تعذّر بدء الإخراج. مشهدك محفوظ؛ حاول مرة أخرى.');
+        return;
+      }
+      if (data.compiledGraph) {
+        setCompiledGraph(data.compiledGraph as CompiledAssemblyGraph);
+        setCompiledSignature(signature);
+      }
+      rememberRenderSignature(data.operationId, signature);
+      setRenderJob({ operationId: data.operationId, status: 'processing', startedAt: Date.now(), canvasSignature: signature });
+    } catch {
+      setRenderStartError('بوابة الإخراج لا تستجيب. مشهدك محفوظ؛ حاول مرة أخرى.');
+    } finally {
+      setIsStartingRender(false);
+    }
+  };
+
+  // Poll the running render; the encode itself runs on the server.
+  const pollingOperationId = renderJob?.status === 'processing' ? renderJob.operationId : null;
+  useEffect(() => {
+    if (!pollingOperationId) return;
+    let cancelled = false;
+    const operationId = pollingOperationId;
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/ras-amr/render/${encodeURIComponent(operationId)}`);
+        const data = await response.json();
+        if (!cancelled && data.status !== 'processing') applyRenderStatus(data);
+      } catch { /* network glitch — next tick retries */ }
+    };
+    void poll();
+    const pollTimer = setInterval(() => { void poll(); }, 2500);
+    const clockTimer = setInterval(() => setRenderClock(Date.now()), 1000);
+    return () => { cancelled = true; clearInterval(pollTimer); clearInterval(clockTimer); };
+  }, [pollingOperationId, applyRenderStatus]);
+
+  // Returning to the chamber: find the latest render again from the server.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await (await fetch('/api/ras-amr/render?projectId=canvas_narrative_session')).json();
+        const latest = list?.renders?.[0];
+        if (cancelled || !latest?.operationId) return;
+        const status = await (await fetch(`/api/ras-amr/render/${encodeURIComponent(latest.operationId)}`)).json();
+        if (!cancelled && status?.operationId) applyRenderStatus(status, recallRenderSignature(latest.operationId));
+      } catch { /* no previous render — nothing to restore */ }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const openExportPanel = () => {
+    setShowExportPanel(true);
+    window.setTimeout(() => exportPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
   };
 
   // --- Summoning Pull Action: injects a REAL Vault asset into the console ---
@@ -2809,20 +3135,45 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
   // also carries the real compiled graph, but ONLY when it was compiled
   // from the asset currently being forwarded — a stale compile from a
   // since-replaced active asset must never ride along as if it matched.
+  // EXECUTION DIRECTIVE PHASE 4: Makman receives the production for
+  // distribution and publishing only. When the current canvas has a finished
+  // MP4, the handoff also carries that final file, so Makman never has to be
+  // the place the Creator gets it.
   const handleForwardToMakman = () => {
-    if (activeAsset?.isRealAsset && activeAsset.secureStorageUri) {
+    const firstSceneAsset = sessionCanvas?.tracks
+      .flatMap((t) => t.nodes)
+      .map((n) => vaultAssets.find((a) => a.assetId === n.assetId))
+      .find((a) => a && a.capabilityTarget !== CapabilityTarget.AUDIO);
+    const production = activeAsset?.isRealAsset && activeAsset.secureStorageUri
+      ? { id: activeAsset.id, title: activeAsset.title, secureStorageUri: activeAsset.secureStorageUri }
+      : firstSceneAsset
+        ? {
+            id: firstSceneAsset.assetId,
+            title: typeof firstSceneAsset.metadata.generationPrompt === 'string'
+              ? firstSceneAsset.metadata.generationPrompt.slice(0, 60)
+              : sessionCanvas?.title || 'مشهد من رأس الأمر',
+            secureStorageUri: firstSceneAsset.secureStorageUri,
+          }
+        : null;
+    if (production) {
       try {
-        sessionStorage.setItem('azma.transfer.rasAmrProduction', JSON.stringify({
-          id: activeAsset.id,
-          title: activeAsset.title,
-          secureStorageUri: activeAsset.secureStorageUri,
-        }));
+        sessionStorage.setItem('azma.transfer.rasAmrProduction', JSON.stringify(production));
         sessionStorage.setItem('azma.transfer.origin', 'ras-amr');
 
-        if (compiledGraph && compiledForAssetId === activeAsset.id) {
+        if (compiledGraph && isCompiledCurrent) {
           sessionStorage.setItem('azma.transfer.rasAmrCompiledGraph', JSON.stringify(compiledGraph));
         } else {
           sessionStorage.removeItem('azma.transfer.rasAmrCompiledGraph');
+        }
+        const renderIsCurrent = renderJob?.status === 'succeeded' && renderJob.fileUrl
+          && (!renderJob.canvasSignature || renderJob.canvasSignature === canvasSignature);
+        if (renderIsCurrent) {
+          sessionStorage.setItem('azma.transfer.rasAmrRender', JSON.stringify({
+            operationId: renderJob!.operationId,
+            fileUrl: renderJob!.fileUrl,
+          }));
+        } else {
+          sessionStorage.removeItem('azma.transfer.rasAmrRender');
         }
       } catch { /* ignore — navigation still proceeds */ }
     }
@@ -2858,6 +3209,8 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
   const totalDurationRef = useRef<number>(0);
   const layerVideoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
   const layerAudioElements = useRef<Map<string, HTMLAudioElement>>(new Map());
+  // Master-timeline second at which each playing sound layer must stop.
+  const layerAudioStopAtRef = useRef<Map<string, number>>(new Map());
   // P0 — AUDIO ORPHAN FIX: every setTimeout ID for delayed audio is stored here
   // so handleStopPreview can cancel all of them before a new session starts.
   // Previously these IDs were discarded, allowing old-session callbacks to fire
@@ -2931,7 +3284,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
         const listRes = await fetch('/api/ras-amr/canvas');
         if (listRes.ok) {
           const ld = await listRes.json() as { status: string; canvases: { canvasId: string; title: string }[] };
-          if (ld.status === 'succeeded') setSavedCanvases(ld.canvases);
+          if (ld.status === 'succeeded') setSavedCanvases(ld.canvases.filter((c) => !isStoryboardCanvasId(c.canvasId)));
         }
       } else {
         const d = await r.json() as { error?: string };
@@ -2951,7 +3304,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
       const r = await fetch('/api/ras-amr/canvas');
       if (r.ok) {
         const d = await r.json() as { status: string; canvases: { canvasId: string; title: string }[] };
-        if (d.status === 'succeeded') setSavedCanvases(d.canvases);
+        if (d.status === 'succeeded') setSavedCanvases(d.canvases.filter((c) => !isStoryboardCanvasId(c.canvasId)));
       }
     } catch { /* silent */ }
     finally { setIsLoadingCanvases(false); }
@@ -2992,9 +3345,16 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
   const handleAutoRestore = useCallback(async () => {
     try {
       const listRes = await fetch('/api/ras-amr/canvas');
+      // Returning to the chamber: a Creator who was last in the storyboard
+      // path goes back there; montage below is still restored behind it.
+      const resumeStoryboard = readLastPath() === 'storyboard';
+      if (resumeStoryboard) setCreationPhase('storyboard');
       if (!listRes.ok) return;
       const listData = await listRes.json() as { status: string; canvases: { canvasId: string; title: string }[] };
-      if (listData.status !== 'succeeded' || listData.canvases.length === 0) return;
+      if (listData.status !== 'succeeded') return;
+      // Storyboard projects are the chamber's other path — never restored as montage.
+      listData.canvases = listData.canvases.filter((c) => !isStoryboardCanvasId(c.canvasId));
+      if (listData.canvases.length === 0) return;
       // Prefer the working draft (canvas_narrative_session) over snapshots,
       // since the draft has the creator's latest unsaved work.
       const draftEntry = listData.canvases.find(c => c.canvasId === 'canvas_narrative_session');
@@ -3013,7 +3373,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
       setSessionCanvas(restoredCanvas);
       setSaveState('restored');
       setSavedCanvases(listData.canvases);
-      setCreationPhase('workspace'); // PACKAGE XXXVI: skip intent gate on restore
+      setCreationPhase(resumeStoryboard ? 'storyboard' : 'workspace'); // PACKAGE XXXVI: skip intent gate on restore
       const firstNode = restoredCanvas.tracks.flatMap(t => t.nodes)[0];
       if (firstNode) setSelectedNodeId(firstNode.nodeId);
     } catch { /* silent — if restore fails, Creator starts fresh */ }
@@ -3245,22 +3605,26 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
 
     // Schedule audio nodes: create real HTMLAudioElement from Vault URI,
     // respect volume/mute directives, start at the node's temporal position.
-    allNodes.forEach((node) => {
+    // RAS AL AMR EXECUTION DIRECTIVE — PHASE 1: same source window and mix as the
+    // encoder (cinematic-timing.ts): IN point = trimStart, plays for at most its
+    // slot, node + group volume summed, either mute silences it.
+    layerAudioStopAtRef.current.clear();
+    sessionCanvas.tracks.forEach((track) => track.nodes.forEach((node) => {
       if (node.isActive === false) return;
       const vaultAsset = vaultAssets.find((a) => a.assetId === node.assetId);
       if (!vaultAsset?.secureStorageUri || vaultAsset.capabilityTarget !== CapabilityTarget.AUDIO) return;
       const startSec = node.temporal?.globalStartTimeSeconds ?? 0;
+      const source = resolveSourceWindow(node.temporal);
       const audioDir = node.customDirectives?.audio as AudioMixingDirective | undefined;
-      const volLinear = audioDir?.isMuted
-        ? 0
-        : Math.max(0, Math.min(1, audioDir?.volumeDb !== undefined
-            ? Math.pow(10, audioDir.volumeDb / 20)
-            : 1));
+      const muted = audioDir?.isMuted || track.isMuted;
+      const volumeDb = (audioDir?.volumeDb ?? 0) + (track.trackVolumeDb ?? 0);
+      const volLinear = muted ? 0 : Math.max(0, Math.min(1, Math.pow(10, volumeDb / 20)));
       const audioEl = new Audio(vaultAsset.secureStorageUri);
       audioEl.volume = volLinear;
       // trimStartSeconds = absolute IN point in the source file.
-      if (node.temporal?.trimStartSeconds !== undefined) audioEl.currentTime = node.temporal.trimStartSeconds;
+      audioEl.currentTime = source.sourceInSeconds;
       layerAudioElements.current.set(node.nodeId, audioEl);
+      layerAudioStopAtRef.current.set(node.nodeId, startSec + source.activeDurationSeconds);
       if (startSec <= 0) {
         audioEl.play().catch(() => { /* autoplay policy — silent */ });
       } else {
@@ -3273,8 +3637,9 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
         }, startSec * 1000);
         pendingAudioTimersRef.current.push(timerId);
       }
-    });
+    }));
 
+    // eslint-disable-next-line react-hooks/purity -- handleStartPreview runs only from the Preview button's click, never during render
     playbackWallStartRef.current = Date.now();
     setIsPlaying(true);
     setPlayheadSec(0);
@@ -3286,48 +3651,40 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
 
       const canvas = sessionCanvasRef.current;
       if (canvas) {
-        // PACKAGE XXXV: track-aware iteration so we can read next-sibling
-        // for crossfade outFade window extension.
+        // PACKAGE XXXV + EXECUTION DIRECTIVE PHASE 1: each video clip plays
+        // inside the same visible window the encoder renders (crossfade
+        // pre-roll included), reading its source from the IN point and holding
+        // its last frame after the OUT point. Sound layers never break a
+        // crossfade between two scenes (next VISUAL sibling, not next node).
+        const nextVisual = nextVisualSiblingsOf(canvas.tracks, soundNodeIdsOf(canvas, vaultAssetsRef.current));
         canvas.tracks.forEach((track) => {
-          track.nodes.forEach((node, nodeIndex) => {
+          track.nodes.forEach((node) => {
             if (node.isActive === false) return;
             const asset = vaultAssetsRef.current.find((a) => a.assetId === node.assetId);
             if (asset?.capabilityTarget !== CapabilityTarget.MOTION) return;
-            const start = node.temporal?.globalStartTimeSeconds ?? 0;
-            const dur = node.temporal?.playDurationSeconds ?? 5;
-            const fadeDurIn = node.temporal?.transitionInType === 'crossfade'
-              ? (node.temporal?.transitionInDurationSeconds ?? 0.5) : 0;
-            const nextNode = nodeIndex + 1 < track.nodes.length ? track.nodes[nodeIndex + 1] : undefined;
-            const fadeDurOut = nextNode?.temporal?.transitionInType === 'crossfade'
-              ? (nextNode.temporal?.transitionInDurationSeconds ?? 0.5) : 0;
-            const playWindowStart = start - fadeDurIn;
-            const playWindowEnd = start + dur + fadeDurOut;
-            const inWindow = currentSec >= playWindowStart && currentSec < playWindowEnd;
-            const trimStart = node.temporal?.trimStartSeconds ?? 0;
+            const window = computeVisualWindow(node.temporal, nextVisual.get(node.nodeId)?.temporal);
+            const source = resolveSourceWindow(node.temporal);
+            const inWindow = currentSec >= window.visibleStartSeconds && currentSec < window.visibleEndSeconds;
             const videoEl = layerVideoRefs.current.get(node.nodeId);
             if (videoEl) {
-              if (inWindow && videoEl.paused) {
-                // Source position = trimStart + elapsed time since play window opened.
-                const elapsed = currentSec - playWindowStart;
-                videoEl.currentTime = Math.max(trimStart, trimStart + elapsed);
+              if (inWindow && videoEl.paused && videoEl.currentTime < source.sourceOutSeconds - 0.05) {
+                // Source position = IN point + elapsed time since the window opened.
+                const elapsed = currentSec - window.visibleStartSeconds;
+                videoEl.currentTime = Math.min(source.sourceOutSeconds, source.sourceInSeconds + Math.max(0, elapsed));
                 videoEl.play().catch(() => { /* autoplay policy */ });
-              } else if (!inWindow && !videoEl.paused) {
+              } else if ((!inWindow || videoEl.currentTime >= source.sourceOutSeconds) && !videoEl.paused) {
                 videoEl.pause();
               }
             }
           });
         });
 
-        // P0 FIX: enforce trimEndSeconds for audio.
-        // trimEndSeconds is the absolute OUT point in the source file.
-        // The source position at scene time t is:
-        //   audioEl.currentTime ≈ trimStartSeconds + (t - globalStartTimeSeconds)
-        // We check audioEl.currentTime directly — more accurate than wall-clock math.
+        // Each sound layer stops at the end of its own audible window — the same
+        // window the encoder trims it to (IN point + at most its slot length).
         const nodesToStop: string[] = [];
         layerAudioElements.current.forEach((audioEl, nodeId) => {
-          const audioNode = canvas.tracks.flatMap((t) => t.nodes).find((n) => n.nodeId === nodeId);
-          const trimEnd = audioNode?.temporal?.trimEndSeconds;
-          if (trimEnd !== undefined && audioEl.currentTime >= trimEnd) {
+          const stopAt = layerAudioStopAtRef.current.get(nodeId);
+          if (stopAt !== undefined && currentSec >= stopAt) {
             try { audioEl.pause(); } catch { /* ignore */ }
             nodesToStop.push(nodeId);
           }
@@ -3448,21 +3805,27 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
   const handleApplyAllDirectorDecisions = () => {
     if (!sessionCanvas || !multiNodeDirection) return;
     let canvas = sessionCanvas;
-    multiNodeDirection.nodeDecisions.forEach(({ nodeId, decision }, idx) => {
+    // Scene index counts visual scenes only — a sound layer is never "the first scene".
+    let sceneIndex = 0;
+    multiNodeDirection.nodeDecisions.forEach(({ nodeId, decision }) => {
       if (!decision.included || !decision.temporal || !decision.structural) return;
       const track = canvas.tracks.find((t) => t.nodes.some((n) => n.nodeId === nodeId));
       if (!track) return;
+      const soundLayer = isSoundNode(track.nodes.find((n) => n.nodeId === nodeId)!);
+      const idx = soundLayer ? -1 : sceneIndex++;
       // PACKAGE XXXV: inject crossfade for non-first nodes when director
       // recommends SOFT or GRADUAL transitions. First node always cuts in.
       const wantsCrossfade = idx > 0 && (
         decision.transitionStrategy === 'SOFT' ||
         decision.transitionStrategy === 'GRADUAL'
       );
-      const temporalWithTransition: TemporalDirective = {
-        ...decision.temporal,
-        transitionInType: wantsCrossfade ? 'crossfade' : 'cut',
-        transitionInDurationSeconds: wantsCrossfade ? 0.5 : undefined,
-      };
+      const temporalWithTransition: TemporalDirective = soundLayer
+        ? directorTemporalFor(canvas, nodeId, decision.temporal)
+        : {
+            ...decision.temporal,
+            transitionInType: wantsCrossfade ? 'crossfade' : 'cut',
+            transitionInDurationSeconds: wantsCrossfade ? 0.5 : undefined,
+          };
       canvas = executeDirectionDecision(
         canvas,
         {
@@ -3507,6 +3870,10 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
     setSessionCanvas(canvas);
     const sequenceParts = multiNodeDirection.nodeDecisions
       .filter((nd) => nd.decision.included && nd.decision.temporal)
+      .filter((nd) => {
+        const node = sessionCanvas.tracks.flatMap((t) => t.nodes).find((n) => n.nodeId === nd.nodeId);
+        return !node || !isSoundNode(node);
+      })
       .map((nd, i) => {
         const t = nd.decision.temporal!;
         const isCrossfade = i > 0 && (nd.decision.transitionStrategy === 'SOFT' || nd.decision.transitionStrategy === 'GRADUAL');
@@ -3831,8 +4198,10 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
         let canvas = sessionCanvas;
         let firstVisualNodeId: string | null = null;
         realAssets.forEach((asset, idx) => {
-          const nodeIndex = canvas.tracks.flatMap((t) => t.nodes).length;
-          const initialTemporal = computeTemplateSlotTemporal(template, nodeIndex, canvas);
+          // The slot index is counted inside the contract now, from the canvas
+          // and WITHOUT its sound layers — a music track used to consume a
+          // template slot and push every later scene one slot along.
+          const initialTemporal = computeTemplateSlotTemporal(template, canvas, isSoundNode);
           const mutation: AddNodePayload = {
             actionType: CanvasActionType.ADD_NODE,
             canvasId: canvas.canvasId,
@@ -3865,6 +4234,59 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
   // the existing canvas content and queue are preserved.
   const handleChangeIntent = () => {
     setCreationPhase('intent');
+  };
+
+  // Remember which path the Creator is working in (montage or storyboard).
+  useEffect(() => {
+    const path = creationPhase === 'storyboard' ? 'storyboard' : creationPhase === 'workspace' ? 'montage' : null;
+    if (!path) return;
+    try { localStorage.setItem(LAST_PATH_KEY, path); } catch { /* a convenience only */ }
+  }, [creationPhase]);
+
+  // The montage path's entry: the current project if there is one, else a blank canvas.
+  const handleEnterMontage = () => {
+    if (sessionCanvas && sessionCanvas.tracks.some((t) => t.nodes.length > 0)) setCreationPhase('workspace');
+    else handleSelectIntent('blank');
+  };
+
+  // STORYBOARD → MONTAGE: the storyboard's laid-out timeline becomes the
+  // montage project for fine editing. The montage project it replaces is
+  // first kept as a restorable snapshot; nothing leaves the Vault.
+  const handleOpenStoryboardInMontage = async (production: SovereignCanvas) => {
+    const ts = wallClock();
+    handleStopPreview();
+    if (sessionCanvas && sessionCanvas.tracks.some((t) => t.nodes.length > 0)) {
+      try {
+        await fetch('/api/ras-amr/canvas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            canvas: {
+              ...sessionCanvas,
+              canvasId: `snap-${ts}-scene`,
+              title: `قبل الاستوري بورد — ${sessionCanvas.title || new Date(ts).toLocaleTimeString('ar')}`,
+              updatedAt: ts,
+            },
+          }),
+        });
+      } catch { /* silent — the montage draft itself is still saved */ }
+    }
+    try {
+      const data = await (await fetch('/api/vault/assets')).json();
+      if (data.status === 'succeeded') setVaultAssets(data.assets);
+    } catch { /* the montage keeps its current Vault list */ }
+    setSessionCanvas({ ...production, canvasId: 'canvas_narrative_session', updatedAt: ts });
+    setQueue([]);
+    setActiveAsset(null);
+    setSelectedNodeId(production.tracks[0]?.nodes[0]?.nodeId ?? null);
+    setCompiledGraph(null);
+    setCompiledSignature(null);
+    setRenderJob(null);
+    setRenderStartError(null);
+    setShowExportPanel(false);
+    setSelectedTemplate(null);
+    setActiveWorkspaceTab('canvas');
+    setCreationPhase('workspace');
   };
 
   // PACKAGE XXXVIII BLOCKER — NEW SCENE: full production-session isolation.
@@ -3950,9 +4372,12 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
 
     // 6. Reset compile/render state belonging to the old production.
     setCompiledGraph(null);
-    setCompiledForAssetId(null);
-    setIsRendering(false);
-    setRenderStatus('في وضع الاستعداد الإخراجي');
+    setCompiledSignature(null);
+    // The previous scene's MP4 stays in the Sovereign Vault; the new scene
+    // simply starts without a result on screen.
+    setRenderJob(null);
+    setRenderStartError(null);
+    setShowExportPanel(false);
 
     // 7. Reset template, direction intent, and decision log.
     setSelectedTemplate(null);
@@ -3969,6 +4394,21 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
 
   return (
     <RasAmrExperience>
+      {/* ── THE STORYBOARD PATH, MOUNTED OUTSIDE THE VIEWPORT ───────────────
+          Deliberately here, and not just after <main className="ras-amr-viewport">
+          where the branch put it. That element opens a stacking context (see its
+          own note further down), which is why the intent gate was moved out of
+          it. This page opens its own <main> below, so mounting the branch's
+          block verbatim would have produced TWO <main> elements. The world keeps
+          its place relative to the gate; the gate's stacking fix stays intact. */}
+      {creationPhase === 'storyboard' && (
+        <StoryboardWorld
+          onBack={() => setCreationPhase('intent')}
+          onOpenInMontage={(production) => { void handleOpenStoryboardInMontage(production); }}
+          montageNodeCount={sessionCanvas?.tracks.reduce((n, t) => n + t.nodes.length, 0) ?? 0}
+        />
+      )}
+
       {/* PACKAGE XXXVI — INTENT GATE: outside viewport so z-index:200 is in reveal SC */}
       {creationPhase === 'intent' && (
         <div className="ras-intent-gate">
@@ -3995,6 +4435,32 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
               <h1 className="ras-intent-question">ماذا تريد أن تصنع؟</h1>
               <p className="ras-intent-sub">كل مشهد يبدأ باختيار.</p>
             </div>
+
+            {/* RAS AL AMR — the chamber's two separate paths. Montage arranges
+                media on a timeline; the storyboard world builds the story scene
+                by scene (StoryboardWorld). Both render their MP4 here. */}
+            <div className="ras-path-row" role="group" aria-label="مسار العمل">
+              <button className="ras-path-card ras-path-active" onClick={handleEnterMontage}>
+                <span className="ras-path-kicker">المسار الأول</span>
+                <b className="ras-path-name">المونتاج والإنتاج</b>
+                <span className="ras-path-desc">رتّب صورك ومقاطعك وصوتك على خط زمني، عاين، ثم أخرج MP4 هنا.</span>
+              </button>
+              <button className="ras-path-card ras-path-active" onClick={() => setCreationPhase('storyboard')}>
+                <span className="ras-path-kicker">المسار الثاني</span>
+                <b className="ras-path-name">عالم الاستوري بورد</b>
+                <span className="ras-path-desc">ابنِ القصة مشهدًا بعد مشهد: وصف وأصول ومدة لكل مشهد، عاين التسلسل، ثم أخرجه MP4.</span>
+              </button>
+            </div>
+
+            {sessionCanvas && sessionCanvas.tracks.some((t) => t.nodes.length > 0) && (
+              <button className="ras-resume-card" onClick={() => setCreationPhase('workspace')}>
+                <span className="ras-resume-text">
+                  <b>تابع مشروعك الحالي</b>
+                  <span>{`${sessionCanvas.tracks.flatMap((t) => t.nodes).length} عنصر في المشهد — محفوظ`}</span>
+                </span>
+                <span className="ras-resume-go">تابع ←</span>
+              </button>
+            )}
 
             {/* Card grid — templates first, then direct paths */}
             <div className="ras-intent-grid">
@@ -4350,7 +4816,10 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
 
 
       {/* STICKY HEADER — Phase B */}
-      <header className="ras-header" style={{ display: (creationPhase === 'intent' || creationPhase === 'template-preview') ? 'none' : undefined }}>
+      {/* `storyboard` belongs in this list: the body grid below already hides in
+          that phase, and without it here the montage header sat on top of the
+          storyboard world — two chambers' chrome in one screen. */}
+      <header className="ras-header" style={{ display: (creationPhase === 'intent' || creationPhase === 'template-preview' || creationPhase === 'storyboard') ? 'none' : undefined }}>
         <button className="ras-exit-btn" onClick={() => {
           try { sessionStorage.setItem('azma.return.session', JSON.stringify({ origin: 'ras-amr', constitutionalAct: 'direction' })); } catch { /* ignore */ }
           goTo('/imperial-foyer');
@@ -4393,10 +4862,44 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
             : typeLabelForCapability(_badgeNode?.capabilityOrigin ?? '');
           return <span className="ras-selected-node-badge" title={_badgeFull || 'الطبقة المحددة حالياً'}>✦ {_badgeLabel}</span>;
         })()}
+        {/* EXECUTION DIRECTIVE — where the Creator is in the journey, after
+            القيامة's own «الفكرة ← المشهد ← التجسيد». The chamber had no
+            such indicator while every other chamber did. */}
+        {(() => {
+          const hasNodes = Boolean(sessionCanvas && sessionCanvas.tracks.some((t) => t.nodes.length > 0));
+          const current =
+            renderJob || showExportPanel ? 3
+            : isPlaying ? 2
+            : hasNodes ? 1
+            : 0;
+          const labels = ['الأصول', 'التوجيه', 'المعاينة', 'الإخراج'];
+          return (
+            <nav className="ras-stage-indicator" aria-label="مراحل رأس الأمر">
+              {labels.map((label, i) => (
+                <React.Fragment key={label}>
+                  {i > 0 && <span className="ras-stage-arrow" aria-hidden="true">←</span>}
+                  <span className={`ras-stage-step${i === current ? ' is-active' : i < current ? ' is-done' : ''}`}>{label}</span>
+                </React.Fragment>
+              ))}
+            </nav>
+          );
+        })()}
+        {/* One status line, now speaking for the in-chamber MP4 job too. The
+            branch added a SECOND status element and a second export button in
+            this header; the button is not re-added — see the tombstone below,
+            which moved it into الإنتاج on purpose. */}
         <div className="ras-header-status">
-          <span className={`strip-pulse${isRendering ? ' strip-pulse-active' : ''}`} aria-hidden="true" />
-          <span className="ras-header-render-status">
-            {isRendering ? renderStatus : (compiledGraph && compiledForAssetId === activeAsset?.id ? '✓ مُجمَّع' : '◉ جاهز')}
+          <span
+            className={`strip-pulse${isRendering || renderJob?.status === 'processing' ? ' strip-pulse-active' : ''}`}
+            aria-hidden="true"
+          />
+          <span className="ras-header-render-status" aria-live="polite">
+            {renderJob?.status === 'processing' ? '⏳ الإخراج جارٍ'
+              : renderJob?.status === 'succeeded' ? '✓ MP4 جاهز'
+              : renderJob?.status === 'failed' ? '⚠ تعذّر الإخراج'
+              : isRendering ? renderStatus
+              : isCompiledCurrent ? '✓ مُجمَّع'
+              : '◉ جاهز'}
           </span>
         </div>
         {/* TOMBSTONE — تجميع المشهد and أنتِج الفيلم stood here, above
@@ -4432,7 +4935,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
           .ras-template-structure below, which took over its two duties. */}
 
       {/* BODY GRID — Phase C: Desktop 280px 1fr 300px */}
-      <div className="ras-body-grid" style={{ display: (creationPhase === 'intent' || creationPhase === 'template-preview') ? 'none' : undefined }}>
+      <div className="ras-body-grid" style={{ display: (creationPhase === 'intent' || creationPhase === 'template-preview' || creationPhase === 'storyboard') ? 'none' : undefined }}>
 
         {/* LEFT: Asset Queue */}
         <aside className="ras-panel-left neon-border">
@@ -4658,9 +5161,12 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                 return node.capabilityOrigin !== CapabilityTarget.AUDIO;
               });
               const hasCanvasNodes = visualCanvasNodes.length > 0;
+              const nextVisualSibling = nextVisualSiblingMap;
 
               if (hasCanvasNodes) {
                 return (
+                  <div className="composition-stage">
+                  <span className="composition-frame-tag" aria-hidden="true">1920×1080 · ما تراه هو ما يُصدَّر</span>
                   <div
                     className={`composition-surface${isDragOverSurface ? ' composition-drop-active' : ''}`}
                     ref={compositionRef}
@@ -4686,51 +5192,56 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                         : visual.blendMode === 'MULTIPLY' ? 'multiply'
                         : visual.blendMode === 'SCREEN' ? 'screen'
                         : 'overlay';
-                      // PACKAGE XXXV — crossfade: extend visibility windows and
-                      // compute per-frame opacity ramp for smooth dissolves.
-                      const nodeStart = node.temporal?.globalStartTimeSeconds ?? 0;
-                      const nodeDur = node.temporal?.playDurationSeconds ?? 5;
-                      const fadeDurIn = node.temporal?.transitionInType === 'crossfade'
-                        ? (node.temporal?.transitionInDurationSeconds ?? 0.5) : 0;
-                      // Find next sibling to determine outFade duration.
-                      const nodeTrack = sessionCanvas?.tracks.find((t) => t.nodes.some((n) => n.nodeId === node.nodeId));
-                      const nodeIdx = nodeTrack?.nodes.findIndex((n) => n.nodeId === node.nodeId) ?? -1;
-                      const nextSibling = nodeTrack && nodeIdx >= 0 ? nodeTrack.nodes[nodeIdx + 1] : undefined;
-                      const fadeDurOut = nextSibling?.temporal?.transitionInType === 'crossfade'
-                        ? (nextSibling.temporal?.transitionInDurationSeconds ?? 0.5) : 0;
-                      const effectiveStart = nodeStart - fadeDurIn;
-                      const effectiveEnd = nodeStart + nodeDur + fadeDurOut;
-                      // REPAIR #7 — sequential canvas: the temporal window governs
-                      // visibility in BOTH playing and static (scrubbing) states.
-                      // Removes the !isPlaying override that stacked all layers.
-                      const inTemporalWindow = playheadSec >= effectiveStart && playheadSec < effectiveEnd;
-                      let computedOpacity = visual.opacity;
-                      if (inTemporalWindow) {
-                        if (fadeDurIn > 0 && playheadSec >= effectiveStart && playheadSec < nodeStart) {
-                          // Fade in: ramp 0→1 over fadeDurIn seconds
-                          computedOpacity = visual.opacity * Math.max(0, (playheadSec - effectiveStart) / fadeDurIn);
-                        } else if (fadeDurOut > 0 && playheadSec >= nodeStart + nodeDur && playheadSec < effectiveEnd) {
-                          // Fade out: ramp 1→0 over fadeDurOut seconds
-                          computedOpacity = visual.opacity * Math.max(0, 1 - (playheadSec - (nodeStart + nodeDur)) / fadeDurOut);
-                        }
-                      }
+                      // PACKAGE XXXV crossfade + EXECUTION DIRECTIVE PHASE 1: the
+                      // visible window, the dissolve ramp and the frame geometry come
+                      // from cinematic-timing.ts — the exact contract the encoder
+                      // renders the MP4 with, so the preview cannot drift from the film.
+                      //
+                      // A hand-written copy of this arithmetic stood here and agreed
+                      // with the contract on the ramp, but took "the next sibling" as
+                      // the next NODE in the track. An audio node between two images
+                      // therefore cancelled their crossfade. mapNextVisualSiblings
+                      // skips sound, which is why the copy goes and the contract stays.
+                      const window = computeVisualWindow(node.temporal, nextVisualSibling.get(node.nodeId)?.temporal);
+                      const timeOpacity = !isPlaying ? 1 : node.isActive === false ? 0 : visualOpacityAt(window, playheadSec);
+                      const box = computeLayerGeometry(
+                        { positionX: spatial.positionX, positionY: spatial.positionY },
+                        mediaAspect[node.assetId],
+                      );
+                      // KEPT from the authoring side: while the Creator is editing
+                      // rather than playing, a layer outside the playhead's window is
+                      // GHOSTED, not erased — otherwise it cannot be seen or selected
+                      // at all. Derived from the same window, so there is still one
+                      // timing authority.
+                      const inTemporalWindow =
+                        playheadSec >= window.visibleStartSeconds && playheadSec < window.visibleEndSeconds;
                       return (
                         <div
                           key={node.nodeId}
-                          className={`canvas-layer${isSelected ? ' canvas-layer-selected' : ''}${node.isActive === false ? ' canvas-layer-inactive' : ''}`}
+                          className={`canvas-layer${isSelected ? ' canvas-layer-selected' : ''}${node.isActive === false && !isPlaying ? ' canvas-layer-inactive' : ''}`}
                           style={{
                             position: 'absolute',
-                            top: `calc(50% + ${spatial.positionY}%)`,
-                            left: `calc(50% + ${spatial.positionX}%)`,
-                            transform: `translate(-50%, -50%) scale(${spatial.scaleX}, ${spatial.scaleY}) rotate(${spatial.rotationDegrees}deg)`,
+                            // Geometry from the shared contract: centre as a
+                            // fraction of the frame, and a box that preserves the
+                            // asset's own aspect ratio (Package XXXII) instead of
+                            // stretching it. Scale AFTER rotate — the encoder's order.
+                            left: `${box.centerXFraction * 100}%`,
+                            top: `${box.centerYFraction * 100}%`,
+                            width: `${box.widthFraction * 100}%`,
+                            height: `${box.heightFraction * 100}%`,
+                            transform: `translate(-50%, -50%) rotate(${spatial.rotationDegrees}deg) scale(${spatial.scaleX}, ${spatial.scaleY})`,
                             opacity: (() => {
-                              // Preview/playing: strict temporal window governs.
-                              if (isPlaying) return inTemporalWindow ? computedOpacity : 0;
-                              // Authoring: selected node always full opacity.
+                              // Playing: the shared contract governs, exactly as the MP4 does.
+                              if (isPlaying) return visual.opacity * timeOpacity;
+                              // Authoring: the selected layer is always fully visible,
+                              // an in-window layer is slightly dimmed, and one outside
+                              // the window is ghosted rather than hidden — a layer the
+                              // Creator cannot see is a layer they cannot edit.
                               if (isSelected) return visual.opacity;
-                              // Authoring: in-window nodes at authored opacity; out-of-window ghosted.
                               return inTemporalWindow ? visual.opacity * 0.85 : visual.opacity * 0.25;
                             })(),
+                            // Authoring lifts the selected layer above the rest so it
+                            // can be grabbed; playback keeps the Creator's own order.
                             zIndex: (isSelected && !isPlaying) ? (spatial.zIndex + 999) : (spatial.zIndex + 1),
                             mixBlendMode: blendMode as React.CSSProperties['mixBlendMode'],
                             cursor: node.isLocked ? 'not-allowed' : 'grab',
@@ -4754,7 +5265,13 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                             </div>
                           ) : vaultAsset?.capabilityTarget === CapabilityTarget.VISUAL && uri ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={uri} className="layer-asset-img" alt="" draggable={false} />
+                            <img
+                              src={uri}
+                              className="layer-asset-img"
+                              alt=""
+                              draggable={false}
+                              onLoad={(e) => rememberMediaAspect(node.assetId, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
+                            />
                           ) : vaultAsset?.capabilityTarget === CapabilityTarget.MOTION && uri ? (
                             // eslint-disable-next-line jsx-a11y/media-has-caption
                             <video
@@ -4772,8 +5289,17 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                               playsInline
                               preload="auto"
                               onLoadedMetadata={(e) => {
-                                // Seek to just past zero so the browser paints a real frame in authoring mode.
+                                // Both halves are needed here, which is why `preload`
+                                // stays "auto" rather than the lighter "metadata":
+                                // the seek below only paints a frame when the data is
+                                // already there, and an unpainted layer is one the
+                                // Creator cannot see to position.
                                 const v = e.currentTarget as HTMLVideoElement;
+                                // The asset's own aspect ratio feeds computeLayerGeometry,
+                                // so the preview boxes this layer exactly as the encoder does.
+                                rememberMediaAspect(node.assetId, v.videoWidth, v.videoHeight);
+                                // Seek just past zero so the browser paints a real frame
+                                // in authoring mode instead of a black poster.
                                 if (!isPlaying && v.currentTime === 0) v.currentTime = 0.001;
                               }}
                             />
@@ -4798,6 +5324,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                     {isDragOverSurface && (
                       <div className="composition-drop-hint" aria-hidden="true">أسقط الأصل هنا ← أضفه للمشهد</div>
                     )}
+                  </div>
                   </div>
                 );
               }
@@ -4929,6 +5456,96 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
               <span className="viewport-id-tag">المخرج الإمبراطوري</span>
             </div>
           </div>
+
+          {/* ── ONLY THE EXPORT PANEL IS TAKEN FROM THIS BLOCK ───────────────
+              The branch placed four things here. Three were already present
+              elsewhere on this page and would have been duplicated:
+                · the preview playback controls — this page moved them down
+                  beside the timeline, where they now live;
+                · the quick-actions row — already in the assets rail;
+                · a director status strip — merged into the one header status
+                  line above, rather than kept as a second one.
+              The export panel itself has no counterpart, and it is the step the
+              chamber was missing: readiness, then a real render, then the file
+              or an actionable reason. */}
+          {/* RAS AL AMR EXECUTION DIRECTIVE — PHASE 4: THE EXPORT PANEL.
+              Ras Al-Amr owns the whole production: readiness → real render →
+              result, all in this chamber, in Qiyamah's own state language
+              (one clear state, one primary action). Makman Al-Ghayah keeps
+              distribution and publishing only. No percentage is shown while
+              encoding: the encoder does not report one, so any number would
+              be invented. */}
+          {showExportPanel && exportReadiness && (() => {
+            const r = exportReadiness;
+            const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
+            const isStale = Boolean(renderJob?.canvasSignature && renderJob.canvasSignature !== canvasSignature);
+            const elapsed = renderJob ? Math.max(0, Math.round(((renderClock || renderJob.startedAt) - renderJob.startedAt) / 1000)) : 0;
+            const readiness = (
+              <>
+                <ul className="ras-export-checklist">
+                  <li className={r.hasScenes ? 'ok' : 'warn'}>
+                    {r.hasScenes
+                      ? `✓ ${r.visualCount} صورة${r.videoCount > 0 ? ` · ${r.videoCount} مقطع فيديو` : ''}`
+                      : '⚠ لا يوجد مشهد مرئي بعد — أضف صورة أو مقطع فيديو'}
+                  </li>
+                  <li className="ok">{`✓ ${r.soundCount} طبقة صوت${r.voiceAssignedCount > 0 ? ` · ${r.voiceAssignedCount} تعليق مُسند لمشهد` : ''}`}</li>
+                  {r.subtitledCount > 0 && <li className="ok">{`✓ ترجمة مدمجة في ${r.subtitledCount} مشهد`}</li>}
+                  {r.crossfadeCount > 0 && <li className="ok">{`✓ ${r.crossfadeCount} انتقال تلاشٍ يظهر في الملف كما في المعاينة`}</li>}
+                  {r.excludedCount > 0 && <li className="warn">{`⚠ ${r.excludedCount} عنصر معطّل أو في مجموعة مكتومة لن يظهر في الملف`}</li>}
+                  <li className="meta">{`المدة ${mmss(r.durationSeconds)} · 1920×1080 · H.264/AAC`}</li>
+                  <li className="meta">الإخراج لا يستهلك وحدات AZMA</li>
+                </ul>
+                {renderStartError && <p className="ras-export-error" role="alert">{renderStartError}</p>}
+                <button
+                  className="creator-action-btn creator-action-primary"
+                  onClick={() => void handleStartRender()}
+                  disabled={!r.hasScenes || isStartingRender}
+                >
+                  {isStartingRender ? '⏳ يبدأ الإخراج…' : renderJob ? 'أعد إخراج MP4' : 'ابدأ إخراج MP4'}
+                </button>
+              </>
+            );
+            return (
+              <div className="ras-export-panel" ref={exportPanelRef}>
+                <div className="ras-export-head">
+                  <span className="ras-export-title">الإخراج النهائي · MP4</span>
+                  <button className="ras-export-close" onClick={() => setShowExportPanel(false)} aria-label="إغلاق لوحة الإخراج">✕</button>
+                </div>
+                {renderJob?.status === 'processing' ? (
+                  <div className="ras-export-state" role="status">
+                    <span className="ras-export-spinner" aria-hidden="true" />
+                    <b>الترميز جارٍ — يُبنى ملف MP4 الحقيقي على الخادم</b>
+                    <span className="ras-export-elapsed">{`مضى ${mmss(elapsed)}`}</span>
+                    <p className="ras-export-note">يمكنك مواصلة التحرير أو مغادرة الحجرة؛ ستجد النتيجة هنا عند عودتك. التعديلات من الآن تحتاج إخراجاً جديداً.</p>
+                  </div>
+                ) : renderJob?.status === 'succeeded' && renderJob.fileUrl ? (
+                  <div className="ras-export-state">
+                    <div className="ras-export-badge">✨ الفيديو السيادي المكتمل ✨</div>
+                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                    <video className="ras-export-video" src={renderJob.fileUrl} controls playsInline preload="metadata" aria-label="ملف MP4 النهائي" />
+                    {isStale && (
+                      <p className="ras-export-warn">عدّلت المشهد بعد هذا الإخراج. أعد الإخراج ليشمل التعديلات.</p>
+                    )}
+                    <div className="ras-export-actions">
+                      <a className="creator-action-btn creator-action-primary" href={renderJob.downloadUrl} download>تحميل MP4 ↓</a>
+                      <button className="creator-action-btn" onClick={() => setShowExportPanel(false)}>متابعة التحرير</button>
+                      <button className="creator-action-btn" onClick={() => goTo('/sovereign-vault-palace')}>📥 عرض في القصر السيادي</button>
+                      <button className="creator-action-btn creator-action-corridor" onClick={handleForwardToMakman}>✦ أرسل إلى مكمن الغاية للنشر</button>
+                    </div>
+                    {isStale && readiness}
+                  </div>
+                ) : renderJob?.status === 'failed' ? (
+                  <div className="ras-export-state">
+                    <div className="ras-export-fail" role="alert">⚠ {renderJob.message ?? 'تعذّر الإخراج. مشهدك محفوظ.'}</div>
+                    {readiness}
+                    <button className="creator-action-btn" onClick={() => setShowExportPanel(false)}>متابعة التحرير</button>
+                  </div>
+                ) : (
+                  readiness
+                )}
+              </div>
+            );
+          })()}
 
         </section>
 
@@ -6157,7 +6774,12 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                   </div>
                 </div>
 
-                <button className="action-trigger-btn forward-btn" onClick={handleForwardToMakman} title={compiledGraph && compiledForAssetId === activeAsset?.id ? 'سيصل تجميع حقيقي مختوم إلى مكمن الغاية' : 'لا يوجد تجميع مُصهَر بعد — سيصل عرض أولي فقط'}>
+                {/* `isCompiledCurrent` and not `compiledForAssetId === activeAsset?.id`:
+                    the compiled state belongs to the CANVAS, not to whichever asset
+                    happens to be selected. Bound to the asset, an edit elsewhere on
+                    the timeline left the chamber claiming a sealed compilation it no
+                    longer had. It is the same expression the export gate already uses. */}
+                <button className="action-trigger-btn forward-btn" onClick={handleForwardToMakman} title={isCompiledCurrent ? 'سيصل تجميع حقيقي مختوم إلى مكمن الغاية' : 'لا يوجد تجميع مُصهَر بعد — سيصل عرض أولي فقط'}>
                   👑 ترحيل العمل المكتمل لـ &quot;مكمن الغاية&quot;
                 </button>
                 {sessionCanvas && (
@@ -6385,12 +7007,17 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                         </div>
                       </div>
                     ))}
-                    {/* Dedicated audio lane — shown only when audio nodes exist */}
-                    {audioTimelineNodes.length > 0 && (
-                      <div className="timeline-track-row timeline-audio-lane">
-                        <span className="timeline-track-label timeline-audio-label" title="الصوت">🎵 صوت</span>
+                    {/* Dedicated audio lanes — shown only when audio nodes exist.
+                        EXECUTION DIRECTIVE: voice-over (Voice Library assets) and
+                        music/effects get their own lanes; neither is ever a scene. */}
+                    {[
+                      { key: 'voice', label: '🎙 تعليق', title: 'تعليق صوتي', nodes: audioTimelineNodes.filter((n) => voiceAssetIds.has(n.assetId)) },
+                      { key: 'music', label: '🎵 موسيقى', title: 'موسيقى ومؤثرات', nodes: audioTimelineNodes.filter((n) => !voiceAssetIds.has(n.assetId)) },
+                    ].filter((lane) => lane.nodes.length > 0).map((lane) => (
+                      <div key={lane.key} className="timeline-track-row timeline-audio-lane">
+                        <span className="timeline-track-label timeline-audio-label" title={lane.title}>{lane.label}</span>
                         <div className="timeline-nodes-bar">
-                          {audioTimelineNodes.map((node, idx) => {
+                          {lane.nodes.map((node, idx) => {
                             const start = node.temporal?.globalStartTimeSeconds ?? 0;
                             const dur = node.temporal?.playDurationSeconds ?? 5;
                             const trimStart = node.temporal?.trimStartSeconds;
@@ -6444,7 +7071,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                           })}
                         </div>
                       </div>
-                    )}
+                    ))}
                   </>
                 );
               })()}

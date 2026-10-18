@@ -4,6 +4,7 @@ import { SovereignVaultManager } from '../../../../../src/vault/sovereign-vault-
 import { AssetFamily, SourceChamber, DerivationKind } from '../../../../../src/vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../../../../src/core/sovereign-orchestrator/qiyamah-intent-types';
 import { persistUploadedAsset } from '../../../../../src/vault/vault-asset-upload-storage';
+import { probeStreamKinds } from '../../../../../src/vault/media-stream-probe';
 import { validateUploadContent, rejectionSpokenAr, MAX_UPLOAD_BYTES } from '../../../../../src/vault/upload-content-validation';
 import { digestOf } from '../../../../../src/vault/sovereign-asset-mutation';
 import { SovereignDepositError } from '../../../../../src/vault/sovereign-vault-types';
@@ -105,8 +106,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const capability = resolveCapability(validation.identity.mimeType);
-  if (!capability) {
+  const signatureCapability = resolveCapability(validation.identity.mimeType);
+  if (!signatureCapability) {
     return NextResponse.json(
       { status: 'failed', reason: 'unsupported-file-type', message: rejectionSpokenAr('unsupported-format') },
       { status: 400 },
@@ -114,6 +115,26 @@ export async function POST(request: NextRequest) {
   }
 
   const persisted = await persistUploadedAsset(bytes, validation.identity.extension);
+
+  // ── AND THE SIGNATURE NAMES THE CONTAINER, NOT THE STREAMS INSIDE IT ──────
+  //
+  //   The validation above closed a real hole by deciding the type from the
+  //   BYTES instead of from `file.type`. But a signature identifies a
+  //   container, and a `.webm` holding only Opus has the same signature as a
+  //   `.webm` holding a film. So a Creator's microphone recording was still
+  //   filed as MOTION — and every chamber that trusts the capability then
+  //   treated a sound as a picture.
+  //
+  //   Only the stream list separates them, so the file is asked. ffprobe ships
+  //   with ffmpeg; when it cannot answer, the signature's verdict stands
+  //   unchanged, so this can only ever narrow a wrong MOTION, never widen one.
+  let capability = signatureCapability;
+  if (capability.capabilityTarget === CapabilityTarget.MOTION && persisted.filePath) {
+    const streams = probeStreamKinds(persisted.filePath);
+    if (streams && !streams.video && streams.audio) {
+      capability = resolveCapability('audio/') ?? capability;
+    }
+  }
 
   // MINISTRY I — VOICE ECOSYSTEM: a real, Creator-declared "this is a
   // voice" flag, only ever meaningful for real audio uploads — never

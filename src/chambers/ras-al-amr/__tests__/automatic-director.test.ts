@@ -298,6 +298,32 @@ describe('The Automatic Director — decideCinematicDirection', () => {
   });
 });
 
+describe('decideMultiNodeCinematicDirection — audio is a sound layer, never a scene', () => {
+  it('places a 30s music track under the scenes and never delays the next scene', () => {
+    const result = decideMultiNodeCinematicDirection([
+      { nodeId: 'img-1', asset: makeAsset({ assetId: 'img-1' }) },
+      { nodeId: 'music', asset: makeAsset({ assetId: 'music', capabilityTarget: CapabilityTarget.AUDIO, metadata: { durationSeconds: 30 } }) },
+      { nodeId: 'img-2', asset: makeAsset({ assetId: 'img-2' }) },
+    ]);
+    const byId = Object.fromEntries(result.nodeDecisions.map((d) => [d.nodeId, d.decision]));
+    expect(byId['img-1'].temporal?.globalStartTimeSeconds).toBe(0);
+    expect(byId['music'].temporal?.globalStartTimeSeconds).toBe(0);
+    expect(byId['music'].temporal?.playDurationSeconds).toBe(30);
+    // The second scene follows the first scene directly (5s fallback), not the music.
+    expect(byId['img-2'].temporal?.globalStartTimeSeconds).toBe(byId['img-1'].temporal?.playDurationSeconds);
+  });
+
+  it('places a recording that comes first under the first scene without shifting any scene', () => {
+    const result = decideMultiNodeCinematicDirection([
+      { nodeId: 'mic', asset: makeAsset({ assetId: 'mic', capabilityTarget: CapabilityTarget.AUDIO, metadata: { durationSeconds: 12 } }) },
+      { nodeId: 'img-1', asset: makeAsset({ assetId: 'img-1', metadata: { durationSeconds: 4 } }) },
+      { nodeId: 'img-2', asset: makeAsset({ assetId: 'img-2' }) },
+    ]);
+    const starts = result.nodeDecisions.map((d) => d.decision.temporal?.globalStartTimeSeconds);
+    expect(starts).toEqual([0, 0, 4]);
+  });
+});
+
 describe('decideMultiNodeCinematicDirection', () => {
   it('decides each node in its own real array order, reporting that order as executionOrderIndex', () => {
     const result = decideMultiNodeCinematicDirection([

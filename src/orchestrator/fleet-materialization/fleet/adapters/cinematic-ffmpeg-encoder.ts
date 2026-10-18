@@ -10,21 +10,45 @@
  * Encoding is asynchronous — spawnEncoding() returns immediately.
  * Completion is polled via isEncodingComplete() / getEncodingError().
  *
- * Output paths (see rendersDir() — NOT under public/, which would let Next.js's
- * static handler serve finished films past the authorisation gate):
- *   $UPLOADS_DIR/renders/<operationId>.mp4   — final MP4
- *   $UPLOADS_DIR/renders/<operationId>.srt   — temporary SRT (when subtitles present)
+ * Output paths (see rendersDir() — $UPLOADS_DIR/renders, NOT public/, which
+ * would let Next.js's static handler serve finished films past the
+ * authorisation gate):
+ *   $UPLOADS_DIR/renders/<operationId>.partial.mp4 — written while FFmpeg runs
+ *   $UPLOADS_DIR/renders/<operationId>.mp4         — final MP4, renamed into place only on success
+ *   $UPLOADS_DIR/renders/<operationId>.srt         — temporary SRT (when subtitles present)
+ *
+ * RAS AL AMR EXECUTION DIRECTIVE — PHASE 1 (OUTPUT TRUTH): a real render
+ * proved the MP4 diverged from the Creator's preview. This encoder now reads
+ * timing, crossfades, stacking and frame geometry from the same pure contract
+ * the preview uses (chambers/ras-al-amr/cinematic-timing.ts):
+ *   - crossfades are rendered as alpha fades on the exact preview windows;
+ *   - video clips (MOTION) are composed like images, with their own audio;
+ *   - media kind comes from the Vault capability, so a browser recording
+ *     saved as .webm is decoded as audio instead of silently dropped;
+ *   - layers are contained (aspect preserved) and centred per Package XXXII,
+ *     instead of stretched to 1920×1080 and pinned to the top-left in pixels;
+ *   - stacking is zIndex, then canvas order (the preview's DOM order).
  */
 
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { resolveAssetPath } from '../../../../vault/asset-bytes';
 import type {
   CompiledAssemblyGraph,
   CompiledNodeMix,
   CompiledTrackMix,
 } from '../../../../chambers/ras-al-amr/pre-publishing-boundary';
-import type { HydratedAssemblyTrack } from '../../../../chambers/ras-al-amr/vault-rehydration-bridge';
+import type { HydratedAssemblyNode, HydratedAssemblyTrack } from '../../../../chambers/ras-al-amr/vault-rehydration-bridge';
+import {
+  OUTPUT_FRAME_HEIGHT,
+  OUTPUT_FRAME_WIDTH,
+  computeVisualWindow,
+  mapNextVisualSiblings,
+  orderVisualLayers,
+  resolveSourceWindow,
+} from '../../../../chambers/ras-al-amr/cinematic-timing';
+import type { SourceWindow, VisualWindow } from '../../../../chambers/ras-al-amr/cinematic-timing';
 
 // ==========================================
 // 1. JOB STATE TRACKING
@@ -37,43 +61,21 @@ const jobs = new Map<string, JobState>();
 // 2. PATH & MEDIA-TYPE HELPERS
 // ==========================================
 
-/**
- * Where finished films are written.
- *
- * ─── WHY THIS IS NO LONGER `public/renders` ─────────────────────────────────
- *
- *   Anything under `public/` is served by Next.js's own static handler, which
- *   runs BEFORE any route. Phase E built an authorisation gate at
- *   `app/renders/[...path]/route.ts`, and with the films still in `public/` the
- *   gate was unreachable code. MEASURED, against a planted file:
- *
- *       GET /renders/op_shadowtest_probe.mp4  →  200 · 33 bytes · raw file
- *
- *   The route never ran. Closing this at nginx alone would have proxied the
- *   request to Node, and Node would have handed the film over exactly as
- *   before — a vulnerability reported as closed while fully open. The one
- *   thing that caught it was planting a file and asking for it.
- *
- *   So films now live beside every other protected byte in the Empire, in
- *   UPLOADS_DIR, which `public/` cannot shadow because Next.js does not serve
- *   it. This also means a film outlives a deployment instead of sitting inside
- *   the release tree.
- *
- * ─── AND WHY IT IS A FUNCTION ───────────────────────────────────────────────
- *
- *   Read at CALL time, never frozen at import. A module-level `const` reading
- *   an environment variable has now caused three separate production defects in
- *   this repository — db.ts, the image-edit route, and clone-voice. The lesson
- *   is not "remember"; it is that the const form is a latent bug by
- *   construction, so the value is never available in that form.
- */
-function rendersDir(): string {
-  const base = process.env.UPLOADS_DIR;
-  return base ? join(base, 'renders') : join(process.cwd(), 'public', 'renders');
-}
+const OUTPUT_WIDTH = OUTPUT_FRAME_WIDTH;
+const OUTPUT_HEIGHT = OUTPUT_FRAME_HEIGHT;
+const OUTPUT_FPS = 25;
+const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp']);
+const VIDEO_EXTS = new Set(['.mp4', '.mov', '.m4v', '.webm', '.mkv', '.avi']);
+const AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.oga', '.opus', '.weba', '.m4a', '.aac', '.flac']);
 
 /**
  * How an asset fills a target rectangle — the one definition in the Empire.
+ *
+ * KEPT through this integration although the composition pipeline below no
+ * longer calls it: `src/platform-reframe/reframe-execution.ts` does, to
+ * reframe ONE asset for ONE platform with no assembly graph around it.
+ * Dropping it because the renderer stopped using it would have broken a live
+ * capability that has nothing to do with the timeline.
  *
  *   contain: preserve aspect ratio, pad to W×H with black.
  *   cover:   preserve aspect ratio, scale up and CROP to W×H.
@@ -101,140 +103,138 @@ export function framingFilter(
     + `pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2:color=black`;
 }
 
-/** XLII — output dimensions per profile.  Default = landscape when profile is absent. */
-const PROFILE_DIMENSIONS: Record<string, { w: number; h: number }> = {
-  landscape: { w: 1920, h: 1080 },
-  portrait:  { w: 1080, h: 1920 },
-  square:    { w: 1080, h: 1080 },
-};
-
-function getOutputDimensions(profile?: string): { w: number; h: number } {
-  return PROFILE_DIMENSIONS[profile ?? 'landscape'] ?? PROFILE_DIMENSIONS['landscape'];
+/**
+ * Where finished films are written.
+ *
+ * ─── WHY THIS IS NOT `public/renders` ───────────────────────────────────────
+ *
+ *   Anything under `public/` is served by Next.js's own static handler, which
+ *   runs BEFORE any route. Phase E built an authorisation gate at
+ *   `app/renders/[...path]/route.ts`, and with the films still in `public/`
+ *   the gate was unreachable code. MEASURED, against a planted file:
+ *
+ *       GET /renders/op_shadowtest_probe.mp4  ->  200 · 33 bytes · raw file
+ *
+ *   The route never ran. So films live beside every other protected byte, in
+ *   UPLOADS_DIR, which `public/` cannot shadow. RE-MEASURED on the live server
+ *   2026-10-18, against a real film of the 28 already there:
+ *
+ *       GET /renders/op_render_1787944987450_9xwap8f8.mp4 (no session) -> 404
+ *
+ *   This is deliberately keyed on UPLOADS_DIR and NOT on a RENDERS_DIR of its
+ *   own. A separate variable that production does not set would default back to
+ *   `public/renders` and silently reopen the hole — and would also hide the 28
+ *   films already written, so a render Makman had adopted would stop resolving.
+ *
+ * ─── AND WHY IT IS A FUNCTION ───────────────────────────────────────────────
+ *
+ *   Read at CALL time, never frozen at import. A module-level `const` reading
+ *   an environment variable has caused three separate production defects in
+ *   this repository. The lesson is not "remember"; the const form is a latent
+ *   bug by construction, so the value is never available in that form.
+ */
+function rendersDir(): string {
+  const base = process.env.UPLOADS_DIR;
+  return base ? join(base, 'renders') : join(process.cwd(), 'public', 'renders');
 }
-
-/** XLII — FFmpeg codec settings per quality tier. */
-const QUALITY_SETTINGS: Record<string, { crf: number; preset: string }> = {
-  standard: { crf: 28, preset: 'medium' },
-  high:     { crf: 23, preset: 'fast' },
-  maximum:  { crf: 18, preset: 'slow' },
-};
-
-const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
-const VIDEO_EXTS = new Set(['.mp4', '.mov', '.webm', '.avi', '.mkv']);
-const AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac']);
 
 // ── THE RULE THAT WROTE THE FILE IS THE RULE THAT FINDS IT ────────────────
-//   This function used to live here as a private copy, and its own comment
-//   said it was "mirroring" the two modules that write assets. A rule kept in
-//   three places is a rule that will be corrected in one, so it moved to the
-//   Vault — which owns assets — and this module now reads the one definition.
-import { resolveAssetPath } from '../../../../vault/asset-bytes';
-export { resolveAssetPath };
-
-/**
- * What a file ACTUALLY carries — asked of the file, not of its name.
- *
- * ─── WHY AN EXTENSION IS NOT AN ANSWER ──────────────────────────────────────
- *
- *   MEASURED, on this encoder, against a real render:
- *
- *     · A browser microphone recording is `opus` inside a `.webm` container.
- *       `.webm` is in VIDEO_EXTS, so the Creator's voice was classified as a
- *       video clip and the filtergraph asked for `[1:v]`. There is no video
- *       stream in it. FFmpeg answered «Stream specifier ':v' ... matches no
- *       streams» and aborted — the whole film lost, not just the voice.
- *
- *     · A silent `.mp4` — a screen capture, an exported animation — is in
- *       VIDEO_EXTS, so the encoder added an audio entry for it and asked for
- *       `[1:a]`. Same abort, same whole film lost.
- *
- *   Both are the same mistake: a NAME was trusted about CONTENT. So the file
- *   is asked. `ffprobe` ships in the very package that provides `ffmpeg`
- *   (apt-get install -y ffmpeg), so if one is present the other is.
- *
- * ─── AND WHEN THE ASKING FAILS ──────────────────────────────────────────────
- *
- *   It falls back to exactly the extension guess that stood here before, so a
- *   missing ffprobe can only ever return this encoder to its prior behaviour —
- *   never to something worse. It says so on the way past, because a guess that
- *   silently replaces a measurement is how both defects above survived weeks.
- */
-interface StreamTruth {
-  readonly hasVideo: boolean;
-  readonly hasAudio: boolean;
-}
-
-/** Keyed by resolved path. One ffprobe per distinct asset per process. */
-const streamTruthCache = new Map<string, StreamTruth>();
-
-function probeStreams(assetPath: string, uri: string): StreamTruth {
-  const cached = streamTruthCache.get(assetPath);
-  if (cached) return cached;
-
-  const assumed: StreamTruth = {
-    hasVideo: isImageUri(uri) || isVideoUri(uri),
-    hasAudio: isAudioUri(uri) || isVideoUri(uri),
-  };
-
-  let truth: StreamTruth | null = null;
-  try {
-    const r = spawnSync(
-      'ffprobe',
-      ['-v', 'error', '-show_entries', 'stream=codec_type', '-of', 'csv=p=0', assetPath],
-      { encoding: 'utf-8' },
-    );
-    if (r.status === 0 && typeof r.stdout === 'string') {
-      const kinds = r.stdout.split(/[\r\n]+/).map((l) => l.trim()).filter(Boolean);
-      truth = { hasVideo: kinds.includes('video'), hasAudio: kinds.includes('audio') };
-    }
-  } catch {
-    // Falls through to the extension guess below.
-  }
-
-  if (!truth) {
-    console.warn(
-      `[CinematicEncoder] ffprobe could not read [${assetPath}] — falling back to its `
-        + 'extension. Install ffprobe (it ships with ffmpeg) for the stream truth.',
-    );
-    truth = assumed;
-  }
-
-  streamTruthCache.set(assetPath, truth);
-  return truth;
-}
+//   A private copy stood here, and its own comment said it was "mirroring"
+//   the two modules that write assets. A rule kept in three places is a rule
+//   that will be corrected in one. It lives in the Vault, which owns assets,
+//   and this module reads that one definition. The copy also did not know the
+//   `/renders/` prefix, and failed operations on production name assets with
+//   exactly that prefix.
 
 function getExt(uri: string): string {
   const dot = uri.lastIndexOf('.');
   return dot >= 0 ? uri.slice(dot).toLowerCase() : '';
 }
 
-function isImageUri(uri: string): boolean {
-  return IMAGE_EXTS.has(getExt(uri));
+type MediaKind = 'image' | 'video' | 'audio' | 'none';
+
+/**
+ * The Vault capability is the authority: an AUDIO asset is audio whatever its
+ * container (a Chrome microphone recording is audio/webm), a MOTION asset is
+ * video. The file extension only decides when no capability is known.
+ */
+function classifyMedia(uri: string, capability: string | undefined): MediaKind {
+  const ext = getExt(uri);
+  if (capability === 'AUDIO') return 'audio';
+  if (capability === 'MOTION') return 'video';
+  if (capability === 'VISUAL') return VIDEO_EXTS.has(ext) ? 'video' : 'image';
+  if (capability) return 'none';
+  if (IMAGE_EXTS.has(ext)) return 'image';
+  if (AUDIO_EXTS.has(ext)) return 'audio';
+  if (VIDEO_EXTS.has(ext)) return 'video';
+  return 'none';
 }
 
-function isVideoUri(uri: string): boolean {
-  return VIDEO_EXTS.has(getExt(uri));
+/**
+ * False only when ffprobe positively finds no picture stream — an audio-only
+ * file the Vault filed as video before uploads were classified by their
+ * streams. Any probe failure keeps the file a video.
+ */
+function probeHasVideo(path: string): boolean {
+  if (typeof spawnSync !== 'function') return true;
+  try {
+    const result = spawnSync(
+      'ffprobe',
+      ['-v', 'error', '-select_streams', 'v', '-show_entries', 'stream=index', '-of', 'csv=p=0', path],
+      { encoding: 'utf-8', timeout: 15000 },
+    );
+    return result.status !== 0 || String(result.stdout ?? '').trim().length > 0;
+  } catch {
+    return true;
+  }
 }
 
-function isAudioUri(uri: string): boolean {
-  return AUDIO_EXTS.has(getExt(uri));
+/** True when the file carries an audio stream. Any probe failure counts as "no audio". */
+function probeHasAudio(path: string): boolean {
+  if (typeof spawnSync !== 'function') return false;
+  try {
+    const result = spawnSync(
+      'ffprobe',
+      ['-v', 'error', '-select_streams', 'a', '-show_entries', 'stream=index', '-of', 'csv=p=0', path],
+      { encoding: 'utf-8', timeout: 15000 },
+    );
+    return result.status === 0 && String(result.stdout ?? '').trim().length > 0;
+  } catch {
+    return false;
+  }
 }
 
 export function getOutputPath(operationId: string): string {
   return join(rendersDir(), `${operationId}.mp4`);
 }
 
+function getPartialOutputPath(operationId: string): string {
+  return join(rendersDir(), `${operationId}.partial.mp4`);
+}
+
 // ==========================================
 // 3. PUBLIC STATE QUERY API
 // ==========================================
 
+/**
+ * The final file only ever appears through an atomic rename after FFmpeg
+ * exits 0, so its existence alone proves a complete encode — which is what
+ * lets a status check survive a server restart that cleared the jobs Map.
+ */
 export function isEncodingComplete(operationId: string): boolean {
-  return jobs.get(operationId) === 'done' && existsSync(getOutputPath(operationId));
+  const state = jobs.get(operationId);
+  if (state === 'running' || state instanceof Error) return false;
+  return existsSync(getOutputPath(operationId));
 }
 
 export function getEncodingError(operationId: string): Error | null {
   const state = jobs.get(operationId);
   return state instanceof Error ? state : null;
+}
+
+/** Whether this server process is (or was) running the encode. False after a restart. */
+export function isEncodingTracked(operationId: string): boolean {
+  return jobs.has(operationId);
 }
 
 // ==========================================
@@ -249,7 +249,7 @@ export function spawnEncoding(
   mkdirSync(rendersDir(), { recursive: true });
 
   // MAG-LF-001C fix: buildFfmpegArgs() throws synchronously on graph validation
-  // failure (missing secureStorageUri, asset not on disk, no active image nodes,
+  // failure (missing secureStorageUri, asset not on disk, no active visual nodes,
   // zero duration). The throw propagates to the adapter caller so the dispatcher
   // marks FAILED immediately — no phantom ACCEPTED, no false DISPATCHED state.
   const args = buildFfmpegArgs(graph, operationId, resolvedVoicePaths);
@@ -266,8 +266,17 @@ export function spawnEncoding(
   });
 
   proc.on('close', (code: number | null) => {
-    if (code === 0 && existsSync(getOutputPath(operationId))) {
-      jobs.set(operationId, 'done');
+    const partialPath = getPartialOutputPath(operationId);
+    if (code === 0 && existsSync(partialPath)) {
+      try {
+        renameSync(partialPath, getOutputPath(operationId));
+        jobs.set(operationId, 'done');
+      } catch (err) {
+        jobs.set(
+          operationId,
+          new Error(`FFmpeg finished but the MP4 could not be moved into place: ${(err as Error).message}`),
+        );
+      }
     } else {
       jobs.set(
         operationId,
@@ -295,34 +304,43 @@ export function spawnEncoding(
 
 type BlendMode = 'NORMAL' | 'MULTIPLY' | 'SCREEN' | 'OVERLAY';
 
-interface NodeEntry {
+interface VisualEntry {
+  kind: 'image' | 'video';
   path: string;
-  kind: 'image' | 'video' | 'audio';
-  /** Explicit FFmpeg input index (-i order). Assigned after all inputs are collected. */
-  inputIdx: number;
-  duration: number;            // playDurationSeconds (declared slot on timeline)
-  startSec: number;            // globalStartTimeSeconds
+  inputIndex: number;
   nodeId: string;
   trackId: string;
-  trimStart: number;           // VI-B: effective trim start in source media (seconds)
-  trimEnd: number;             // VI-B: effective trim end in source media (seconds)
-  effectiveDuration: number;   // VI-B: trimEnd - trimStart (always ≥ 0.001)
-  // VI-C: spatial composition (image/video nodes only; audio nodes use identity defaults)
+  window: VisualWindow;
+  source: SourceWindow;
   positionX: number;
   positionY: number;
   scaleX: number;
   scaleY: number;
   rotationDegrees: number;
-  zIndex: number;
-  opacity: number;             // VI-C: 0.0–1.0 alpha (VisualFilterDirective)
-  blendMode: BlendMode;        // VI-C: composition blend mode
-  framingMode: 'contain' | 'cover' | 'fill'; // XLII: how the asset fills its slot
-  /** Whether the file itself carries an audio stream. Asked of it, not of its name. */
-  hasOwnAudio: boolean;
-  /** PACKAGE XXXV: seconds of 0→1 opacity ramp at this node's IN point. 0 = cut. */
-  transitionInSeconds: number;
-  /** PACKAGE XXXV: seconds this layer is held past its own end, under a successor's ramp. */
-  holdSeconds: number;
+  opacity: number;             // VisualFilterDirective 0.0–1.0
+  blendMode: BlendMode;
+}
+
+interface AudioEntry {
+  path: string;
+  inputIndex: number;
+  nodeId: string;
+  trackId: string;
+  startSec: number;            // where the sound begins on the master timeline
+  trimStart: number;           // IN point inside the source (seconds)
+  trimEnd: number;             // OUT point inside the source (seconds)
+  effectiveDuration: number;   // trimEnd - trimStart (always ≥ 0.001)
+}
+
+interface CollectedNode {
+  node: HydratedAssemblyNode;
+  trackId: string;
+  path: string;
+  kind: MediaKind;
+}
+
+function fmt(value: number): string {
+  return Number(value.toFixed(6)).toString();
 }
 
 function buildFfmpegArgs(
@@ -330,18 +348,14 @@ function buildFfmpegArgs(
   operationId: string,
   resolvedVoicePaths: ReadonlyMap<string, string> = new Map(),
 ): string[] {
-  const outputPath = getOutputPath(operationId);
-  const { w: outW, h: outH } = getOutputDimensions(graph.metadata.outputProfile);
-  const quality = QUALITY_SETTINGS[graph.metadata.exportQuality ?? 'high'] ?? QUALITY_SETTINGS['high'];
+  const outputPath = getPartialOutputPath(operationId);
 
-  const stillInputs: NodeEntry[] = [];   // still images: -loop 1 -t dur -i path
-  const videoInputs: NodeEntry[] = [];   // video clips:  -i path (no loop)
-  const audioFileInputs: NodeEntry[] = []; // standalone audio files
-
-  // Walk every non-muted, non-hidden track and collect active nodes
+  // Walk every non-muted, non-hidden track and collect active nodes with media.
+  const collected = new Map<string, CollectedNode>();
+  const liveTracks: HydratedAssemblyTrack[] = [];
   for (const track of graph.hydratedCanvas.tracks as HydratedAssemblyTrack[]) {
     if (track.isMuted || track.isHidden) continue;
-
+    const liveNodes: HydratedAssemblyNode[] = [];
     for (const node of track.nodes) {
       // isActive absent or true = active (per AssemblyNode constitutional comment)
       if (node.isActive === false) continue;
@@ -362,212 +376,140 @@ function buildFfmpegArgs(
         );
       }
 
-      const duration = node.temporal?.playDurationSeconds ?? 5;
-      const startSec = node.temporal?.globalStartTimeSeconds ?? 0;
-
-      // VI-B: compute safe trim bounds from TemporalDirective
-      const { trimStart, trimEnd, effectiveDuration } = computeTrimBounds(node.temporal, duration);
-
-      // PACKAGE XXXV — the transition at this node's IN point.
-      //
-      // These two fields have been on `TemporalDirective` since Package XXXV and
-      // this encoder never read either of them. MEASURED on a real render: a node
-      // declaring `crossfade` arrived as a hard cut — at the midpoint of a
-      // one-second declared ramp the outgoing layer was already at zero. The
-      // chamber showed the Creator a dissolve the film did not contain.
-      //
-      // 0.5s is the contract's own stated default for an absent duration.
-      const transitionIn = (node.temporal as { transitionInType?: string } | undefined)
-        ?.transitionInType ?? 'cut';
-      const rawTransitionSeconds = (node.temporal as { transitionInDurationSeconds?: number } | undefined)
-        ?.transitionInDurationSeconds ?? 0.5;
-      const transitionInSeconds =
-        transitionIn === 'crossfade'
-          ? Math.max(0, Math.min(rawTransitionSeconds, effectiveDuration))
-          : 0;
-
-      // VI-C: read spatial and visual directives (visual nodes only; audio uses identity defaults)
-      const positionX = node.spatial?.positionX ?? 0;
-      const positionY = node.spatial?.positionY ?? 0;
-      const scaleX = Math.max(0.001, node.spatial?.scaleX ?? 1);
-      const scaleY = Math.max(0.001, node.spatial?.scaleY ?? 1);
-      const rotationDegrees = node.spatial?.rotationDegrees ?? 0;
-      const zIndex = node.spatial?.zIndex ?? 0;
-      const visualDir = (node.customDirectives as Record<string, unknown> | undefined)
-        ?.['visual'] as { opacity?: number; blendMode?: string; framingMode?: string } | undefined;
-      const opacity = Math.max(0, Math.min(1, visualDir?.opacity ?? 1));
-      const rawBlend = visualDir?.blendMode ?? 'NORMAL';
-      const blendMode: BlendMode = (['NORMAL', 'MULTIPLY', 'SCREEN', 'OVERLAY'] as const).includes(rawBlend as BlendMode)
-        ? (rawBlend as BlendMode) : 'NORMAL';
-      const rawFraming = visualDir?.framingMode ?? 'contain';
-      const framingMode: 'contain' | 'cover' | 'fill' =
-        rawFraming === 'cover' ? 'cover' : rawFraming === 'fill' ? 'fill' : 'contain';
-
-      // inputIdx will be assigned below after all inputs are collected
-      const base = {
-        path: assetPath, duration, startSec, nodeId: node.nodeId, trackId: track.trackId,
-        trimStart, trimEnd, effectiveDuration,
-        positionX, positionY, scaleX, scaleY, rotationDegrees, zIndex, opacity, blendMode, framingMode,
-        inputIdx: -1,
-        transitionInSeconds,
-        holdSeconds: 0,
-      };
-
-      // ── WHAT THE FILE CARRIES DECIDES WHICH LIST IT JOINS ───────────────
-      //   Not its extension. See probeStreams() for the two renders this cost.
-      const streams = probeStreams(assetPath, uri);
-
-      if (isImageUri(uri)) {
-        stillInputs.push({ ...base, kind: 'image', hasOwnAudio: false });
-      } else if (streams.hasVideo) {
-        videoInputs.push({ ...base, kind: 'video', hasOwnAudio: streams.hasAudio });
-      } else if (streams.hasAudio) {
-        audioFileInputs.push({
-          ...base,
-          kind: 'audio',
-          hasOwnAudio: true,
-          positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: 0,
-          opacity: 1, blendMode: 'NORMAL', framingMode: 'contain',
-        });
-      }
-      // Text/structural nodes carry no media — silently skipped.
-      // So is a media file carrying NEITHER stream: it cannot be composited and
-      // naming it in the filtergraph would abort the entire film for one asset.
+      const capability = (node.runtimeAsset?.capabilityTarget ?? node.capabilityOrigin) as string | undefined;
+      let kind = classifyMedia(uri, capability);
+      // A "video" with no picture is a sound (see probeHasVideo).
+      if (kind === 'video' && !probeHasVideo(assetPath)) kind = 'audio';
+      // Text/structural nodes (TXT etc.) carry no media — silently skipped
+      if (kind === 'none') continue;
+      collected.set(node.nodeId, { node, trackId: track.trackId, path: assetPath, kind });
+      liveNodes.push(node);
     }
+    liveTracks.push({ ...track, nodes: liveNodes });
   }
 
-  // Assign explicit FFmpeg input indices.
-  // Order: stills (with -loop), then videos, then standalone audio.
-  let nextIdx = 0;
-  stillInputs.forEach((e) => { e.inputIdx = nextIdx++; });
-  videoInputs.forEach((e) => { e.inputIdx = nextIdx++; });
-  const audioFileStart = nextIdx;
-  audioFileInputs.forEach((e) => { e.inputIdx = nextIdx++; });
+  const isVisual = (node: HydratedAssemblyNode) => {
+    const kind = collected.get(node.nodeId)?.kind;
+    return kind === 'image' || kind === 'video';
+  };
+  const nextVisualSibling = mapNextVisualSiblings(liveTracks, isVisual);
 
-  // VI-A: Add voice-assigned audio entries from resolvedVoicePaths.
-  // For each image/video node that has a resolved voice secureStorageUri, add a
-  // standalone audio input that starts at the same globalStartTimeSeconds.
-  for (const visEntry of [...stillInputs, ...videoInputs]) {
-    const voiceUri = resolvedVoicePaths.get(visEntry.nodeId);
+  // Inputs: visual layers first, in stacking order (lower zIndex, then earlier
+  // in the canvas = drawn first = underneath), then standalone audio files.
+  const visualEntries: VisualEntry[] = orderVisualLayers(liveTracks, isVisual).map((node, index) => {
+    const info = collected.get(node.nodeId)!;
+    const visualDir = (node.customDirectives as Record<string, unknown> | undefined)
+      ?.['visual'] as { opacity?: number; blendMode?: string } | undefined;
+    const rawBlend = visualDir?.blendMode ?? 'NORMAL';
+    return {
+      kind: info.kind as 'image' | 'video',
+      path: info.path,
+      inputIndex: index,
+      nodeId: node.nodeId,
+      trackId: info.trackId,
+      window: computeVisualWindow(node.temporal, nextVisualSibling.get(node.nodeId)?.temporal),
+      source: resolveSourceWindow(node.temporal),
+      positionX: node.spatial?.positionX ?? 0,
+      positionY: node.spatial?.positionY ?? 0,
+      scaleX: Math.max(0.001, node.spatial?.scaleX ?? 1),
+      scaleY: Math.max(0.001, node.spatial?.scaleY ?? 1),
+      rotationDegrees: node.spatial?.rotationDegrees ?? 0,
+      opacity: Math.max(0, Math.min(1, visualDir?.opacity ?? 1)),
+      blendMode: (['NORMAL', 'MULTIPLY', 'SCREEN', 'OVERLAY'] as const).includes(rawBlend as BlendMode)
+        ? (rawBlend as BlendMode)
+        : 'NORMAL',
+    };
+  });
+
+  if (visualEntries.length === 0) {
+    throw new Error(
+      `CINEMATIC encoder: no active visual nodes found for operation [${operationId}]. ` +
+        `A CINEMATIC canvas must contain at least one active image or video node to produce a video.`,
+    );
+  }
+
+  const audioEntries: AudioEntry[] = [];
+  let nextInputIndex = visualEntries.length;
+
+  // Standalone audio nodes (music, uploads, microphone recordings, TTS).
+  for (const info of collected.values()) {
+    if (info.kind !== 'audio') continue;
+    const source = resolveSourceWindow(info.node.temporal);
+    audioEntries.push({
+      path: info.path,
+      inputIndex: nextInputIndex++,
+      nodeId: info.node.nodeId,
+      trackId: info.trackId,
+      startSec: Math.max(0, info.node.temporal?.globalStartTimeSeconds ?? 0),
+      trimStart: source.sourceInSeconds,
+      trimEnd: source.sourceInSeconds + source.activeDurationSeconds,
+      effectiveDuration: source.activeDurationSeconds,
+    });
+  }
+
+  // A video clip's own soundtrack plays for as long as the clip is on screen,
+  // exactly as the preview's <video> element does.
+  for (const entry of visualEntries) {
+    if (entry.kind !== 'video' || !probeHasAudio(entry.path)) continue;
+    const visibleDuration = entry.window.visibleEndSeconds - entry.window.visibleStartSeconds;
+    const audible = Math.max(0.001, Math.min(visibleDuration, entry.source.sourceOutSeconds - entry.source.sourceInSeconds));
+    audioEntries.push({
+      path: entry.path,
+      inputIndex: entry.inputIndex,
+      nodeId: entry.nodeId,
+      trackId: entry.trackId,
+      startSec: entry.window.visibleStartSeconds,
+      trimStart: entry.source.sourceInSeconds,
+      trimEnd: entry.source.sourceInSeconds + audible,
+      effectiveDuration: audible,
+    });
+  }
+
+  // VI-A: voice-assigned audio. For each visual node with a resolved voice
+  // secureStorageUri, the voice starts with the scene and reads the scene's own
+  // source window (VI-B trims), at most for the scene's slot.
+  // The voice inherits the scene's nodeId/trackId so it picks up the same
+  // volumeDb/isMuted mix settings from mixPlan. Missing files are skipped
+  // gracefully — they never throw or abort the encode.
+  const voiceEntries: AudioEntry[] = [];
+  for (const entry of visualEntries) {
+    const voiceUri = resolvedVoicePaths.get(entry.nodeId);
     if (!voiceUri) continue;
     const voicePath = resolveAssetPath(voiceUri);
     if (!existsSync(voicePath)) {
       console.warn(
-        `[CinematicEncoder] voice file missing at [${voicePath}] for node [${visEntry.nodeId}] — skipping`,
+        `[CinematicEncoder] voice file missing at [${voicePath}] for node [${entry.nodeId}] — skipping`,
       );
       continue;
     }
-    audioFileInputs.push({
+    voiceEntries.push({
       path: voicePath,
-      kind: 'audio',
-      inputIdx: nextIdx++,
-      duration: visEntry.duration,
-      startSec: visEntry.startSec,
-      nodeId: visEntry.nodeId,
-      trackId: visEntry.trackId,
-      trimStart: visEntry.trimStart,
-      trimEnd: visEntry.trimEnd,
-      effectiveDuration: visEntry.effectiveDuration,
-      positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: 0,
-      opacity: 1, blendMode: 'NORMAL', framingMode: 'contain',
-      hasOwnAudio: true,
-      // A voice track is not a visual layer; it ramps through the mix plan's
-      // fades, never through a visual transition.
-      transitionInSeconds: 0,
-      holdSeconds: 0,
+      inputIndex: nextInputIndex++,
+      nodeId: entry.nodeId,
+      trackId: entry.trackId,
+      startSec: entry.window.startSeconds,
+      trimStart: entry.source.sourceInSeconds,
+      trimEnd: entry.source.sourceInSeconds + entry.source.activeDurationSeconds,
+      effectiveDuration: entry.source.activeDurationSeconds,
     });
   }
+  audioEntries.push(...voiceEntries);
 
-  // XLII: For video nodes whose audio is NOT muted, extract audio from the video
-  // stream itself as an additional audio entry.  No new -i argument is added —
-  // the existing video input already carries the audio stream at [inputIdx:a].
-  const videoAudioEntries: NodeEntry[] = [];
-  for (const vidEntry of videoInputs) {
-    // A clip with no audio stream has no `[idx:a]` to map. Naming one aborted
-    // the entire render — MEASURED: «Stream specifier ':a' ... matches no
-    // streams», exit −22, no file written, for a silent screen capture.
-    if (!vidEntry.hasOwnAudio) continue;
-    const nodeMix = graph.mixPlan.nodeMixes.find((m) => m.nodeId === vidEntry.nodeId);
-    if (nodeMix?.isMuted) continue;
-    videoAudioEntries.push({
-      ...vidEntry,
-      kind: 'audio',
-      // inputIdx stays the same as the video — references [inputIdx:a] in the filter
-    });
-  }
-
-  // All visual inputs for composition (stills + videos), sorted by zIndex
-  const allVisualInputs = [...stillInputs, ...videoInputs];
-  if (allVisualInputs.length === 0) {
-    throw new Error(
-      `CINEMATIC encoder: no active visual nodes found for operation [${operationId}]. ` +
-        `A CINEMATIC canvas must contain at least one active image or video node.`,
-    );
-  }
-  // ── WHEN TWO LAYERS SHARE A zIndex, THE LATER ONE IS ON TOP ───────────────
+  // ── THE FILM IS AS LONG AS THERE IS PICTURE ───────────────────────────────
   //
-  //   The tie used to be broken by nodeId, alphabetically. That is not a
-  //   property of the timeline — it is a property of how the ids happened to be
-  //   spelled, and it silently decided which of two overlapping layers the
-  //   Creator would see. MEASURED: a node starting at 3s named `n-blue` was
-  //   placed UNDER one starting at 0s named `n-red`, so its arrival could never
-  //   be seen at all, with or without a transition.
+  //   A Creator who lays 30 seconds of music under 10 seconds of images used to
+  //   get a 30-second film: ten seconds of their work, then twenty seconds of
+  //   BLACK carrying the rest of the track. The duration was taken from the
+  //   furthest visible OR audible point, so sound decided the length of a
+  //   picture. Both the previous renderer and the integrated one did this.
   //
-  //   Start time is the meaningful order: what enters later sits on top of what
-  //   was already there, which is also the only arrangement in which a
-  //   transition-in can be visible. nodeId remains the last resort, so the
-  //   ordering stays total and the command line stays reproducible.
-  allVisualInputs.sort((a, b) => {
-    if (a.zIndex !== b.zIndex) return a.zIndex - b.zIndex;
-    if (a.startSec !== b.startSec) return a.startSec - b.startSec;
-    return a.nodeId.localeCompare(b.nodeId);
-  });
-
-  // ── PACKAGE XXXV — THE OUTGOING LAYER IS HELD, NOT RAMPED DOWN ───────────
-  //
-  //   The contract describes a crossfade as the incoming node ramping 0→1
-  //   «while the preceding adjacent node ramps 1→0 simultaneously — no blank
-  //   frame». Ramping BOTH is what produces a blank frame: at the midpoint the
-  //   outgoing layer is at ½ over black and the incoming at ½ over that, so the
-  //   frame carries ¼·A + ½·B and the picture dips dark through the middle.
-  //
-  //   Holding A at full opacity under a ramping B gives exactly (1−α)·A + α·B —
-  //   a true dissolve, no dip, no blank frame. So the contract's requirement is
-  //   met by holding the outgoing layer, and this is the one place that says so.
-  //
-  //   A layer only needs holding when it ENDS where its successor begins. When
-  //   it already runs past that instant, as an establishing shot does, it is
-  //   live throughout the ramp and nothing is added.
-  const CROSSFADE_ADJACENCY_TOLERANCE_SECONDS = 0.05;
-  for (const incoming of allVisualInputs) {
-    if (incoming.transitionInSeconds <= 0) continue;
-    let outgoing: NodeEntry | undefined;
-    let outgoingEnd = -1;
-    for (const candidate of allVisualInputs) {
-      if (candidate === incoming || candidate.trackId !== incoming.trackId) continue;
-      const candidateEnd = candidate.startSec + candidate.effectiveDuration;
-      // Past the IN point already: live under the whole ramp, needs no hold.
-      if (candidateEnd > incoming.startSec + CROSSFADE_ADJACENCY_TOLERANCE_SECONDS) continue;
-      // Ends well before it: a gap the Creator placed, not a transition.
-      if (candidateEnd < incoming.startSec - CROSSFADE_ADJACENCY_TOLERANCE_SECONDS) continue;
-      if (candidateEnd > outgoingEnd) { outgoing = candidate; outgoingEnd = candidateEnd; }
-    }
-    if (outgoing) {
-      outgoing.holdSeconds = Math.max(outgoing.holdSeconds, incoming.transitionInSeconds);
-    }
-  }
-
-  // All audio entries: video-extracted audio first, then standalone audio files
-  const allAudioEntries = [...videoAudioEntries, ...audioFileInputs];
-
-  // Total duration: prefer compiled metadata; fall back to max effective node end time
-  const totalDuration =
-    graph.metadata.estimatedDurationSeconds ??
-    Math.max(
-      ...allVisualInputs.map((n) => n.startSec + n.effectiveDuration),
-      ...allAudioEntries.map((n) => n.startSec + n.effectiveDuration),
-      1,
-    );
+  //   The last frame now ends the film, and the audio chain's own safety trim
+  //   (`atrim=0:totalDuration`) cuts the tail with it. A declared duration that
+  //   is SHORTER still wins — that is the Creator shortening their own
+  //   timeline, which is theirs to do.
+  const lastFrameSeconds = Math.max(...visualEntries.map((n) => n.window.visibleEndSeconds), 1);
+  const declaredSeconds = graph.metadata.estimatedDurationSeconds;
+  const totalDuration = Math.min(declaredSeconds ?? lastFrameSeconds, lastFrameSeconds);
 
   if (totalDuration <= 0) {
     throw new Error(
@@ -579,36 +521,33 @@ function buildFfmpegArgs(
   const args: string[] = ['-y'];
 
   // --- INPUTS ---
-
-  // Still-image inputs: loop each frame for exactly its effectiveDuration
-  // `holdSeconds` is added to `-t`: a still cannot be shown past the end of
-  // its own looped input, so a layer held under a successor's crossfade must be
-  // decoded for that long too. It is 0 for every node not holding anything.
-  stillInputs.forEach(({ path, effectiveDuration, holdSeconds }) => {
-    args.push('-loop', '1', '-t', String(effectiveDuration + holdSeconds), '-i', path);
+  // Still images loop for exactly their visible window; video clips are read as-is
+  // and trimmed inside the filter graph so their audio stream stays addressable.
+  visualEntries.forEach((entry) => {
+    if (entry.kind === 'image') {
+      const visibleDuration = entry.window.visibleEndSeconds - entry.window.visibleStartSeconds;
+      args.push('-loop', '1', '-t', fmt(visibleDuration), '-i', entry.path);
+    } else {
+      args.push('-i', entry.path);
+    }
   });
-
-  // Video inputs: direct file read (no loop, no -t duration limit)
-  videoInputs.forEach(({ path }) => {
-    args.push('-i', path);
+  audioEntries.forEach((entry) => {
+    if (entry.inputIndex >= visualEntries.length) args.push('-i', entry.path);
   });
-
-  // Standalone audio inputs (voice-assigned entries also added to audioFileInputs above)
-  audioFileInputs.forEach(({ path }) => {
-    args.push('-i', path);
-  });
-  void audioFileStart; // used for index assignment only
 
   // --- FILTER_COMPLEX ---
   const filterParts: string[] = [];
 
-  // Overlay composition pipeline — handles both stills and video clips
-  buildVideoCompositionFilters(allVisualInputs, totalDuration, outW, outH).forEach((f) => filterParts.push(f));
+  // VI-C: Full overlay composition pipeline. Visual nodes are layered onto a
+  // 1920×1080 black canvas in stacking order; each is drawn only inside its
+  // visible window, with crossfade alpha ramps where the preview has them.
+  buildVideoCompositionFilters(visualEntries, totalDuration).forEach((f) => filterParts.push(f));
 
   // Subtitle burning
   const hasSubs = graph.subtitlePlan.absoluteCues.length > 0;
   if (hasSubs) {
     const srtPath = writeSrtFile(operationId, graph);
+    // FFmpeg subtitle filter requires forward slashes and escaped colons on Linux
     const escapedPath = srtPath.replace(/\\/g, '/');
     filterParts.push(
       `[vraw]subtitles='${escapedPath}':force_style='FontSize=24,PrimaryColour=&HFFFFFF,Outline=1'[vout]`,
@@ -617,30 +556,32 @@ function buildFfmpegArgs(
     filterParts.push('[vraw]copy[vout]');
   }
 
-  // Audio chain
+  // Audio chain — VI-B: trim, fade, pan consumed via buildAudioNodeFilter()
   let finalAudioLabel: string;
-  if (allAudioEntries.length === 0) {
+  if (audioEntries.length === 0) {
+    // No audio nodes — generate silent stereo audio for the full duration
     filterParts.push(`aevalsrc=0:c=stereo:s=44100:d=${totalDuration}[aout]`);
     finalAudioLabel = '[aout]';
-  } else if (allAudioEntries.length === 1) {
-    const inp = allAudioEntries[0];
+  } else if (audioEntries.length === 1) {
+    const inp = audioEntries[0];
     const nodeMix = graph.mixPlan.nodeMixes.find((m) => m.nodeId === inp.nodeId);
     const trackMix = graph.mixPlan.trackMixes.find((m) => m.trackId === inp.trackId);
     filterParts.push(
-      buildAudioNodeFilter(inp, inp.inputIdx, totalDuration, nodeMix, trackMix) + '[aout]',
+      buildAudioNodeFilter(inp, inp.inputIndex, totalDuration, nodeMix, trackMix) + '[aout]',
     );
     finalAudioLabel = '[aout]';
   } else {
-    allAudioEntries.forEach((inp, i) => {
+    // Multiple audio inputs — each gets full VI-B fidelity treatment, then amix
+    audioEntries.forEach((inp, i) => {
       const nodeMix = graph.mixPlan.nodeMixes.find((m) => m.nodeId === inp.nodeId);
       const trackMix = graph.mixPlan.trackMixes.find((m) => m.trackId === inp.trackId);
       filterParts.push(
-        buildAudioNodeFilter(inp, inp.inputIdx, totalDuration, nodeMix, trackMix) + `[a${i}]`,
+        buildAudioNodeFilter(inp, inp.inputIndex, totalDuration, nodeMix, trackMix) + `[a${i}]`,
       );
     });
-    const amixRefs = allAudioEntries.map((_, i) => `[a${i}]`).join('');
+    const amixRefs = audioEntries.map((_, i) => `[a${i}]`).join('');
     filterParts.push(
-      `${amixRefs}amix=inputs=${allAudioEntries.length}:normalize=0,` +
+      `${amixRefs}amix=inputs=${audioEntries.length}:normalize=0,` +
         `atrim=0:${totalDuration},asetpts=PTS-STARTPTS[aout]`,
     );
     finalAudioLabel = '[aout]';
@@ -656,8 +597,8 @@ function buildFfmpegArgs(
   args.push(
     '-c:v', 'libx264',
     '-pix_fmt', 'yuv420p',
-    '-preset', quality.preset,
-    '-crf', String(quality.crf),
+    '-preset', 'fast',
+    '-crf', '23',
     '-c:a', 'aac',
     '-b:a', '128k',
     '-movflags', '+faststart',
@@ -674,213 +615,122 @@ function buildFfmpegArgs(
 
 /**
  * Builds all filter_complex filter strings for the visual overlay composition pipeline.
- * imageInputs must be sorted by zIndex ascending (lower zIndex = below in z-order).
+ * visualEntries must be in stacking order (first = bottom). Each layer:
  *
- * NORMAL: scale → [rotate] → format=rgba → [colorchannelmixer=aa] → overlay with enable
- * Non-NORMAL (MULTIPLY/SCREEN/OVERLAY): scale → [rotate] onto an identity-color canvas →
- *   blend with main canvas. Identity color ensures the blend is a no-op outside the active
- *   temporal window so no split+crop complexity is needed.
+ *   [video only] trim to its source window → reset timestamps → 25 fps
+ *   scale       contain the source in 1920×1080 (aspect preserved), then × scaleX/scaleY
+ *   format=rgba → [rotate, expanding the box with transparent corners]
+ *   [opacity]   colorchannelmixer=aa (NORMAL only; blend modes use all_opacity)
+ *   setpts      shift the layer to its visibleStart on the master timeline
+ *   [fades]     alpha fade-in / fade-out on the crossfade windows
+ *   overlay     centred at (50% + positionX%, 50% + positionY%) of the frame,
+ *               enabled only inside the visible window
  *
- * Identity colors (value that makes the blend formula equal to the base):
- *   MULTIPLY → white (A×1=A)
- *   SCREEN   → black (A+0−A×0=A)
- *   OVERLAY  → gray 0x808080 (maps to A for both halves of the piecewise formula)
+ * Non-NORMAL (MULTIPLY/SCREEN/OVERLAY) layers are first overlaid onto an
+ * identity-colour canvas, then blended with the main canvas. Identity colours
+ * make the blend a mathematical no-op wherever the layer is absent or transparent:
+ *   MULTIPLY → white (A×1=A) · SCREEN → black (A+0−A×0=A) · OVERLAY → gray 0x808080
  *
  * Emits [vraw] as the final named output label consumed by the subtitle/copy step.
  */
-/**
- * Builds all filter_complex filter strings for the visual overlay composition pipeline.
- * visualInputs must be sorted by zIndex ascending (lower zIndex = below in z-order).
- * Each entry carries an explicit inputIdx (FFmpeg -i order) and a kind ('image'|'video').
- *
- * Still images: the FFmpeg input is looped for effectiveDuration, PTS starts at 0.
- *   Overlay enable='between(t,S,E)' shows the still only during its slot. ✓
- *
- * Video clips: the FFmpeg input starts playing from PTS=0 at the same instant the
- *   output canvas starts.  To make the clip appear at output position S playing from
- *   its own frame 0, we apply:
- *     trim=trimStart:trimEnd  → extract the desired clip segment
- *     setpts=PTS-STARTPTS+(S/TB)  → normalise to 0 then shift PTS to S
- *   Then overlay with enable='between(t,S,E)':eof_action=pass so the base canvas
- *   shows through before and after the clip's window. ✓
- */
-function buildVideoCompositionFilters(
-  visualInputs: NodeEntry[],
-  totalDuration: number,
-  outW: number,
-  outH: number,
-): string[] {
+function buildVideoCompositionFilters(visualEntries: VisualEntry[], totalDuration: number): string[] {
   const filters: string[] = [];
-
-  if (visualInputs.length === 0) {
-    filters.push(
-      `color=c=black:size=${outW}x${outH}:rate=25:d=${totalDuration}[vraw]`,
-    );
-    return filters;
-  }
 
   // Base black canvas — all visual nodes are layered on top of this
   filters.push(
-    `color=c=black:size=${outW}x${outH}:rate=25:d=${totalDuration}[canvas0]`,
+    `color=c=black:size=${OUTPUT_WIDTH}x${OUTPUT_HEIGHT}:rate=${OUTPUT_FPS}:d=${totalDuration}[canvas0]`,
   );
 
-  visualInputs.forEach((node, idx) => {
-    const targetW = Math.max(1, Math.round(outW * node.scaleX));
-    const targetH = Math.max(1, Math.round(outH * node.scaleY));
-    // XLII — COORDINATE CONVERSION: positionX/positionY are percentage-point offsets
-    // from the output canvas center (canvas contract: 0,0 = center).
-    // FFmpeg overlay x/y is the TOP-LEFT pixel of the layer.
-    // centerPx = outW * (50 + positionX) / 100
-    // ffmpegX = centerPx - targetW / 2
-    const ffmpegX = Math.round(outW * (50 + node.positionX) / 100 - targetW / 2);
-    const ffmpegY = Math.round(outH * (50 + node.positionY) / 100 - targetH / 2);
-    const rotRad = (node.rotationDegrees * Math.PI) / 180;
-    const startSec = node.startSec;
-    // The hold keeps an outgoing layer on screen under its successor's ramp.
-    // Zero for every node that nothing fades in over.
-    const endSec = node.startSec + node.effectiveDuration + node.holdSeconds;
-    const fadeIn = node.transitionInSeconds;
+  visualEntries.forEach((entry, idx) => {
+    const { window } = entry;
+    const visibleStart = window.visibleStartSeconds;
+    const visibleEnd = window.visibleEndSeconds;
     const canvasIn = `[canvas${idx}]`;
     // Last node writes directly to [vraw] so the subtitle/copy step can pick it up
-    const canvasOut = idx < visualInputs.length - 1 ? `[canvas${idx + 1}]` : '[vraw]';
-    const hasRotation = Math.abs(node.rotationDegrees) > 0.001;
-    // Use explicit inputIdx (not array idx) to reference the correct FFmpeg -i stream
-    const ffStreamRef = `[${node.inputIdx}:v]`;
+    const canvasOut = idx < visualEntries.length - 1 ? `[canvas${idx + 1}]` : '[vraw]';
+    const rotRad = (entry.rotationDegrees * Math.PI) / 180;
+    const hasRotation = Math.abs(entry.rotationDegrees) > 0.001;
+    const isNormal = entry.blendMode === 'NORMAL';
 
-    // XLII — scale filter respects framingMode:
-    // contain: preserve aspect ratio, pad to targetW×targetH with black
-    // cover:   preserve aspect ratio, scale up and crop to targetW×targetH
-    // fill:    stretch to exact targetW×targetH (may distort)
-    const scaleFilter = framingFilter(targetW, targetH, node.framingMode);
+    const layer: string[] = [];
+    if (entry.kind === 'video') {
+      const visibleDuration = visibleEnd - visibleStart;
+      const clipEnd = Math.min(entry.source.sourceOutSeconds, entry.source.sourceInSeconds + visibleDuration);
+      layer.push(
+        `trim=start=${fmt(entry.source.sourceInSeconds)}:end=${fmt(Math.max(clipEnd, entry.source.sourceInSeconds + 0.04))}`,
+        'setpts=PTS-STARTPTS',
+        `fps=${OUTPUT_FPS}`,
+      );
+    }
+    // Contain-fit into the frame, then apply the Creator's own scale.
+    layer.push(
+      `scale=w='max(1,trunc(min(${OUTPUT_WIDTH}/iw,${OUTPUT_HEIGHT}/ih)*iw*${fmt(entry.scaleX)}))'` +
+        `:h='max(1,trunc(min(${OUTPUT_WIDTH}/iw,${OUTPUT_HEIGHT}/ih)*ih*${fmt(entry.scaleY)}))'`,
+    );
+    layer.push('format=rgba');
+    if (hasRotation) {
+      // Expand the output box so corners are not cropped; corners stay transparent.
+      const a = rotRad.toFixed(6);
+      layer.push(`rotate=${a}:ow='rotw(${a})':oh='roth(${a})':fillcolor=0x00000000`);
+    }
+    if (isNormal && entry.opacity < 0.9999) {
+      layer.push(`colorchannelmixer=aa=${entry.opacity.toFixed(6)}`);
+    }
+    layer.push(`setpts=PTS-STARTPTS+${fmt(visibleStart)}/TB`);
+    if (window.fadeInSeconds > 0.0001) {
+      layer.push(`fade=t=in:st=${fmt(visibleStart)}:d=${fmt(window.fadeInSeconds)}:alpha=1`);
+    }
+    if (window.fadeOutSeconds > 0.0001) {
+      const fadeOutStart = window.startSeconds + window.playDurationSeconds;
+      layer.push(`fade=t=out:st=${fmt(fadeOutStart)}:d=${fmt(window.fadeOutSeconds)}:alpha=1`);
+    }
 
-    if (node.kind === 'video') {
-      // VIDEO: trim source to [trimStart, trimEnd], normalise PTS, then shift to output position S.
-      // This makes the clip play from its own frame 0 starting at output time S.
-      const videoParts: string[] = [
-        `trim=${node.trimStart.toFixed(6)}:${node.trimEnd.toFixed(6)}`,
-        `setpts=PTS-STARTPTS+(${startSec.toFixed(6)}/TB)`,
-      ];
-      // A clip cannot be held past its own last frame, so the last frame is
-      // cloned for the hold. Freezing a frame under a dissolve is what an
-      // editor does; the alternative is black, which the contract forbids.
-      if (node.holdSeconds > 0) {
-        videoParts.push(`tpad=stop_mode=clone:stop_duration=${node.holdSeconds.toFixed(6)}`);
-      }
-      videoParts.push(scaleFilter, 'format=rgba');
-      if (hasRotation) {
-        videoParts.splice(videoParts.length - 1, 0, `rotate=${rotRad.toFixed(6)}:fillcolor=0x00000000`);
-      }
-      // PACKAGE XXXV — the ramp. The clip's PTS was already shifted onto the
-      // canvas clock above, so `st` is the node's own IN point.
-      if (fadeIn > 0) {
-        videoParts.push(`fade=t=in:st=${startSec.toFixed(6)}:d=${fadeIn.toFixed(6)}:alpha=1`);
-      }
-      if (node.opacity < 0.9999) {
-        videoParts.push(`colorchannelmixer=aa=${node.opacity.toFixed(6)}`);
-      }
-      filters.push(`${ffStreamRef}${videoParts.join(',')}[vn${idx}]`);
-      filters.push(
-        `${canvasIn}[vn${idx}]overlay=x=${ffmpegX}:y=${ffmpegY}` +
-          `:format=auto:eof_action=pass:enable='between(t,${startSec},${endSec})'${canvasOut}`,
-      );
-    } else if (node.blendMode === 'NORMAL') {
-      // STILL IMAGE — NORMAL blend: scale → [rotate] → rgba → [opacity] → overlay
-      const parts: string[] = [scaleFilter];
-      if (hasRotation) {
-        parts.push(`rotate=${rotRad.toFixed(6)}:fillcolor=0x00000000`);
-      }
-      parts.push('format=rgba');
-      if (fadeIn > 0) {
-        // PACKAGE XXXV — a still's input is `-loop 1 -t d`, so its own clock
-        // starts at 0 no matter where on the timeline it sits. An alpha ramp
-        // written against that clock would run during canvas seconds 0..d,
-        // finishing long before the layer is ever shown — which is precisely
-        // why a declared crossfade arrived as a cut. The layer is moved onto
-        // the canvas clock first; then `st` is the node's real IN point.
-        parts.push(`setpts=PTS-STARTPTS+(${startSec.toFixed(6)}/TB)`);
-        parts.push(`fade=t=in:st=${startSec.toFixed(6)}:d=${fadeIn.toFixed(6)}:alpha=1`);
-      }
-      if (node.opacity < 0.9999) {
-        parts.push(`colorchannelmixer=aa=${node.opacity.toFixed(6)}`);
-      }
-      filters.push(`${ffStreamRef}${parts.join(',')}[vn${idx}]`);
-      filters.push(
-        `${canvasIn}[vn${idx}]overlay=x=${ffmpegX}:y=${ffmpegY}` +
-          `:format=auto${fadeIn > 0 ? ':eof_action=pass' : ''}` +
-          `:enable='between(t,${startSec},${endSec})'${canvasOut}`,
-      );
+    // Package XXXII: the layer's CENTRE sits at (50% + X%, 50% + Y%) of the frame.
+    const centerX = OUTPUT_WIDTH * (0.5 + entry.positionX / 100);
+    const centerY = OUTPUT_HEIGHT * (0.5 + entry.positionY / 100);
+    const position = `x='${fmt(centerX)}-w/2':y='${fmt(centerY)}-h/2'`;
+    const enable = `enable='between(t,${fmt(visibleStart)},${fmt(visibleEnd)})'`;
+
+    if (isNormal) {
+      filters.push(`[${entry.inputIndex}:v]${layer.join(',')}[vn${idx}]`);
+      filters.push(`${canvasIn}[vn${idx}]overlay=${position}:format=auto:${enable}${canvasOut}`);
     } else {
-      // STILL IMAGE — Non-NORMAL blend via identity-canvas trick.
-      const ffBlend = node.blendMode.toLowerCase();
+      const ffBlend = entry.blendMode.toLowerCase(); // 'multiply' | 'screen' | 'overlay'
       const identityColor =
-        node.blendMode === 'MULTIPLY'
-          ? 'white'
-          : node.blendMode === 'SCREEN'
-            ? 'black'
-            : '0x808080';
-      const rotFillcolor =
-        node.blendMode === 'MULTIPLY'
-          ? '0xffffff'
-          : node.blendMode === 'SCREEN'
-            ? '0x000000'
-            : '0x808080';
+        entry.blendMode === 'MULTIPLY' ? 'white' : entry.blendMode === 'SCREEN' ? 'black' : '0x808080';
 
       // ── BOTH SIDES OF A BLEND MUST BE IN THE SAME COLOUR SPACE ────────────
       //
-      //   `blend` mixes whatever planes it is handed. The canvas arrived here as
-      //   RGBA (the overlay chain above emits `format=auto` from an rgba layer)
-      //   while the identity composite arrived as FFmpeg's default YUV, so the
-      //   blend was computed across two different colour spaces.
+      //   `blend` mixes whatever planes it is handed. The canvas arrives here
+      //   as RGBA (the overlay chain above emits `format=auto` from an rgba
+      //   layer) while the identity composite arrived as FFmpeg's default YUV,
+      //   so the blend was computed across two different colour spaces.
       //
-      //   MEASURED, on a real file, blue over red:
-      //     MULTIPLY  → (53,107,0), a green the Creator never placed
-      //     SCREEN    → the layer bleeding at (255,0,179) from the FIRST frame,
-      //                 three seconds before its own window opened
+      //   MEASURED on a real file, blue over red, on ffmpeg 9.0.2 locally AND
+      //   8.0.1 on the live server, byte-identical on both:
+      //     MULTIPLY  -> (53,107,0), a green the Creator never placed
+      //     SCREEN    -> the layer bleeding at (255,0,179) from the FIRST
+      //                  frame, three seconds before its window opened
       //   With both sides pinned to planar RGB:
-      //     MULTIPLY  → (0,0,0)       — red × blue, correct
-      //     SCREEN    → (255,0,254)   — red + blue, correct
+      //     MULTIPLY  -> (0,0,0)     — red x blue, correct
+      //     SCREEN    -> (255,0,254) — red + blue, correct
       //     and pure red before the window, as the timeline says
       //
-      //   The chamber previews these same modes with CSS `mix-blend-mode`,
-      //   which is defined in sRGB. Pinning the film to RGB is therefore not a
+      //   The chamber previews these modes with CSS `mix-blend-mode`, which is
+      //   defined in sRGB. Pinning the film to RGB is therefore not a
       //   preference — it is what makes the film agree with the preview.
       filters.push(
-        `color=c=${identityColor}:size=${outW}x${outH}:rate=25:d=${totalDuration},`
-          + `format=gbrp[id${idx}]`,
+        `color=c=${identityColor}:size=${OUTPUT_WIDTH}x${OUTPUT_HEIGHT}:rate=${OUTPUT_FPS}`
+          + `:d=${totalDuration},format=gbrp[id${idx}]`,
       );
-
-      const layerParts: string[] = [scaleFilter];
-      if (hasRotation) {
-        layerParts.push(`rotate=${rotRad.toFixed(6)}:fillcolor=${rotFillcolor}`);
-      }
-      layerParts.push('format=gbrp');
-      if (fadeIn > 0) {
-        // PACKAGE XXXV — here the ramp is in COLOUR, not in alpha: it runs from
-        // the blend's identity colour to the layer, which is the same thing as
-        // running from "blend has no effect" to "blend at full force". Alpha
-        // would be wrong twice over — this branch carries no alpha channel, and
-        // `fade`'s alpha output is premultiplied, which MEASURED at (253,0,236)
-        // where (255,0,255) was owed.
-        //
-        // Same clock correction as the other two branches, and for the same
-        // reason: a still's own clock starts at 0 wherever it sits.
-        layerParts.push(`setpts=PTS-STARTPTS+(${startSec.toFixed(6)}/TB)`);
-        layerParts.push(
-          `fade=t=in:st=${startSec.toFixed(6)}:d=${fadeIn.toFixed(6)}:c=${identityColor}`,
-        );
-      }
-      filters.push(`${ffStreamRef}${layerParts.join(',')}[vl${idx}]`);
-
-      filters.push(
-        `[id${idx}][vl${idx}]overlay=x=${ffmpegX}:y=${ffmpegY}:format=auto` +
-          `${fadeIn > 0 ? ':eof_action=pass' : ''}` +
-          `:enable='between(t,${startSec},${endSec})'[nm${idx}]`,
-      );
-
+      filters.push(`[${entry.inputIndex}:v]${layer.join(',')},format=gbrp[vl${idx}]`);
+      // Overlay actual content onto identity canvas only during its visible window
+      filters.push(`[id${idx}][vl${idx}]overlay=${position}:format=auto:${enable}[nm${idx}]`);
+      // Blend identity+content composite with main canvas, both sides in RGB
       filters.push(`${canvasIn}format=gbrp[cf${idx}]`);
       filters.push(`[nm${idx}]format=gbrp[nf${idx}]`);
       filters.push(
-        `[cf${idx}][nf${idx}]blend=all_mode=${ffBlend}:all_opacity=${node.opacity.toFixed(6)}${canvasOut}`,
+        `[cf${idx}][nf${idx}]blend=all_mode=${ffBlend}:all_opacity=${entry.opacity.toFixed(6)}${canvasOut}`,
       );
     }
   });
@@ -889,23 +739,8 @@ function buildVideoCompositionFilters(
 }
 
 // ==========================================
-// 7. VI-B TEMPORAL & AUDIO FIDELITY HELPERS
+// 7. VI-B AUDIO FIDELITY HELPER
 // ==========================================
-
-/**
- * Computes safe trim bounds from a TemporalDirective.
- * Clamps to [0, playDurationSeconds] and guarantees effectiveDuration ≥ 0.001.
- * When trimStartSeconds/trimEndSeconds are absent, returns the full slot duration.
- */
-function computeTrimBounds(
-  temporal: { trimStartSeconds?: number; trimEndSeconds?: number } | undefined,
-  playDurationSeconds: number,
-): { trimStart: number; trimEnd: number; effectiveDuration: number } {
-  const trimStart = Math.max(0, temporal?.trimStartSeconds ?? 0);
-  const rawTrimEnd = temporal?.trimEndSeconds ?? playDurationSeconds;
-  const trimEnd = Math.max(trimStart + 0.001, Math.min(rawTrimEnd, playDurationSeconds));
-  return { trimStart, trimEnd, effectiveDuration: trimEnd - trimStart };
-}
 
 /**
  * Builds the FFmpeg filter-complex expression for one audio input.
@@ -920,7 +755,7 @@ function computeTrimBounds(
  *   volume: 0 dB → 1.000000 (unity)
  */
 function buildAudioNodeFilter(
-  inp: NodeEntry,
+  inp: AudioEntry,
   inputIdx: number,
   totalDuration: number,
   nodeMix: CompiledNodeMix | undefined,
@@ -985,7 +820,7 @@ function buildAudioNodeFilter(
 }
 
 // ==========================================
-// 7. SRT FILE WRITER
+// 8. SRT FILE WRITER
 // ==========================================
 
 function writeSrtFile(operationId: string, graph: CompiledAssemblyGraph): string {

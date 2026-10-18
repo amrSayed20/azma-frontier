@@ -32,6 +32,13 @@ export interface MakmanCommercialIntent {
   readonly coverArtUri?: string;
   /** Unix ms timestamp. When present and in the future, publication is created in scheduled (not yet published) state. */
   readonly scheduledPublishAt?: number;
+  /**
+   * RAS AL AMR — the MP4 the Creator already rendered from this exact
+   * compiled graph inside Ras Al-Amr. Set only after the creator-goal route
+   * has verified it (same tenant, same compilation, finished); distribution
+   * then serves that file instead of rendering the film a second time.
+   */
+  readonly completedRenderOperationId?: string;
 }
 
 export interface GoalDistributionBridgeResult {

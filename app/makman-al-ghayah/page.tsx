@@ -111,6 +111,33 @@ function getCompiledGraphServerSnapshot(): CompiledAssemblyGraph | null {
   return null;
 }
 
+// RAS AL AMR EXECUTION DIRECTIVE — PHASE 4: the finished MP4 Ras Al-Amr
+// rendered for this exact assembly (same one-shot sessionStorage convention).
+interface RasAmrRenderHandoff {
+  operationId: string;
+  fileUrl: string;
+}
+let cachedRasAmrRender: RasAmrRenderHandoff | null | undefined = undefined;
+function getRasAmrRenderSnapshot(): RasAmrRenderHandoff | null {
+  if (cachedRasAmrRender === undefined) {
+    cachedRasAmrRender = null;
+    try {
+      const raw = sessionStorage.getItem('azma.transfer.rasAmrRender');
+      if (raw) {
+        sessionStorage.removeItem('azma.transfer.rasAmrRender');
+        const parsed = JSON.parse(raw) as Partial<RasAmrRenderHandoff>;
+        if (typeof parsed.operationId === 'string' && typeof parsed.fileUrl === 'string' && parsed.fileUrl.startsWith('/api/ras-amr/render/')) {
+          cachedRasAmrRender = { operationId: parsed.operationId, fileUrl: parsed.fileUrl };
+        }
+      }
+    } catch { /* no finished file was handed over */ }
+  }
+  return cachedRasAmrRender;
+}
+function getRasAmrRenderServerSnapshot(): RasAmrRenderHandoff | null {
+  return null;
+}
+
 const GOAL_STATUS_AR: Record<string, string> = {
   CREATED:     'مُنشأ',
   PLANNED:     'مُخطَّط',
@@ -286,6 +313,7 @@ export default function MakmanAlGhayah() {
   const { goTo } = useConstitutionalNavigation();
   const realProduction = useSyncExternalStore(subscribeToNothing, getRealProductionSnapshot, getRealProductionServerSnapshot);
   const compiledGraph  = useSyncExternalStore(subscribeToNothing, getCompiledGraphSnapshot, getCompiledGraphServerSnapshot);
+  const rasAmrRender   = useSyncExternalStore(subscribeToNothing, getRasAmrRenderSnapshot, getRasAmrRenderServerSnapshot);
 
   const descriptionRef          = useRef<HTMLTextAreaElement>(null);
   const pacingPreferenceRef     = useRef<HTMLSelectElement>(null);
@@ -623,6 +651,9 @@ export default function MakmanAlGhayah() {
             publisherTenantId: compiledGraph.subscriberTenantId,
             compiledAssemblyGraph: compiledGraph,
             accessPolicy: { distributionTier: DistributionTier.PRIVATE, requiresAgeVerification: false },
+            // The MP4 already rendered in Ras Al-Amr — distribution serves it
+            // instead of rendering the film again (verified server-side).
+            ...(rasAmrRender ? { completedRenderOperationId: rasAmrRender.operationId } : {}),
             ...(scheduledPublishAtRef.current?.value
               ? { scheduledPublishAt: new Date(scheduledPublishAtRef.current.value).getTime() }
               : {}),
@@ -1794,7 +1825,17 @@ export default function MakmanAlGhayah() {
               <h2>تسجيل الهدف الاستراتيجي وإطلاق الإنتاج</h2>
             </div>
 
-            {realProduction ? (
+            {rasAmrRender ? (
+              // RAS AL AMR EXECUTION DIRECTIVE — PHASE 4: the final MP4 was
+              // already produced in Ras Al-Amr; Makman receives it for
+              // distribution and publishing only.
+              <div className="master-display neon-border-gold">
+                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                <video src={rasAmrRender.fileUrl} controls playsInline preload="metadata" className="cinematic-final-video" aria-label="ملف MP4 النهائي من رأس الأمر" />
+                <p className="project-title">{realProduction?.title ?? 'إنتاج من رأس الأمر'}</p>
+                <p className="project-status">وصل ملف MP4 النهائي من رأس الأمر — جاهز للتسجيل والتوزيع</p>
+              </div>
+            ) : realProduction ? (
               <div className="master-display neon-border-gold">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={realProduction.secureStorageUri} alt={realProduction.title} className="real-production-image" />
@@ -1907,7 +1948,10 @@ export default function MakmanAlGhayah() {
                 {renderOperationId && (
                   // eslint-disable-next-line jsx-a11y/media-has-caption
                   <video
-                    src={`/renders/${renderOperationId}.mp4`}
+                    src={renderOperationId.startsWith('op_rasamr_')
+                      // The film rendered in Ras Al-Amr streams from its authenticated route.
+                      ? `/api/ras-amr/render/${renderOperationId}/file`
+                      : `/renders/${renderOperationId}.mp4`}
                     controls
                     playsInline
                     className="cinematic-final-video"

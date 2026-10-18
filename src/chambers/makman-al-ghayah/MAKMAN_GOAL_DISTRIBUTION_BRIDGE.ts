@@ -208,7 +208,11 @@ export class MakmanGoalDistributionBridge {
 
     this.registry.register(publication);
 
-    const renderState = await this.renderingBridge.evaluateAndDispatchRender(publication, intent.compiledAssemblyGraph);
+    const renderState = await this.renderingBridge.evaluateAndDispatchRender(
+      publication,
+      intent.compiledAssemblyGraph,
+      intent.completedRenderOperationId,
+    );
 
     // Cinematic Ledger — permanent constitutional record of this production event.
     // Written after render dispatch so the initial status is the genuine one.

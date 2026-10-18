@@ -42,6 +42,15 @@ const SAFE_EXTENSION_PATTERN = /^\.[a-zA-Z0-9]{1,10}$/;
 export interface PersistedUpload {
   readonly assetId: string;
   readonly assetUrl: string;
+  /**
+   * Where the bytes were written on this server.
+   *
+   * Returned so the caller can ask the FILE what it carries before filing it.
+   * A browser reports a type from the extension, and an audio-only `.webm` —
+   * a microphone recording — arrives as `video/webm`. Without this path the
+   * Vault had nothing to probe, so it filed a sound as a picture.
+   */
+  readonly filePath: string;
 }
 
 export async function persistUploadedAsset(bytes: Buffer, fileExtension: string): Promise<PersistedUpload> {
@@ -49,12 +58,17 @@ export async function persistUploadedAsset(bytes: Buffer, fileExtension: string)
   const safeExtension = SAFE_EXTENSION_PATTERN.test(fileExtension) ? fileExtension : '';
   const fileName = `${assetId}${safeExtension}`;
 
+  // The directory is resolved at CALL time — see uploadedAssetsDir() above for
+  // why a module constant here is a latent bug. The branch that added
+  // `filePath` still had the frozen constant; this keeps both corrections.
   const dir = uploadedAssetsDir();
   await mkdir(dir, { recursive: true });
-  await writeFile(join(dir, fileName), bytes);
+  const filePath = join(dir, fileName);
+  await writeFile(filePath, bytes);
 
   return {
     assetId,
     assetUrl: `/uploads/${fileName}`,
+    filePath,
   };
 }
