@@ -209,6 +209,20 @@ export interface ScenePlanView {
     | 'NOT_NEEDED' | 'CREATOR_ASSET' | 'REQUIRED' | 'CREATING' | 'COMPLETED' | 'FAILED';
   /** Why it failed, when the last production recorded a reason for THIS scene. */
   readonly failure: SceneFrameFailure | null;
+  /**
+   * ── THE VISUAL LINEAGE, SHOWN RATHER THAN INFERRED ─────────────────────
+   *
+   *   `isReference`  — this scene's picture is the approved frame the others
+   *                    are made out of. Derived the same way the production
+   *                    derives it: the scene the Creator named, or else the
+   *                    earliest scene that HOLDS a picture.
+   *   `usedReference`— this scene's picture was made BY EDITING that frame,
+   *                    not from words alone. Recorded by the production that
+   *                    made it; absent for frames made before this road
+   *                    existed, and absent is «we hold no record», never «no».
+   */
+  readonly isReference: boolean;
+  readonly usedReference: boolean;
 }
 
 export type ScenePlansOutcome =
@@ -232,6 +246,13 @@ export async function readScenePlans(storyboardId: string): Promise<ScenePlansOu
   const recorded = new Map(
     (observed?.sceneOutcomes ?? []).map((o) => [o.sceneId, o]),
   );
+
+  // The same rule the production uses, so the screen and the work agree: the
+  // earliest scene that holds a picture is the reference unless the Creator
+  // names another, and naming travels with the production request.
+  const referenceSceneId = scenes
+    .filter((sc) => sc.visualAssetId)
+    .sort((a, b) => a.order - b.order)[0]?.sceneId ?? null;
 
   return {
     ok: true,
@@ -259,6 +280,8 @@ export async function readScenePlans(storyboardId: string): Promise<ScenePlansOu
         // A reason is shown only for the state it explains. A scene that has
         // since been completed does not keep wearing an old failure.
         failure: frameState === 'FAILED' ? (outcome?.failure ?? null) : null,
+        isReference: sc.sceneId === referenceSceneId,
+        usedReference: outcome?.usedReference === true,
       };
     }),
   };

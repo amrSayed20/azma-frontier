@@ -217,6 +217,27 @@ describe('B3 — storyboard and scenes, Article 2.2', () => {
       expect(listScenes(db, sb.storyboardId, OWNER)[0].visualAssetId).toBe('asset-made');
     });
 
+    it('whitespace is not a change: the picture survives a cosmetic re-save', () => {
+      // The Founder's condition, 2026-10-19: «ولا تُسقط الروابط السابقة عند
+      // تحديث المطالبة دون تغيير جوهري.» A space typed and deleted is not a
+      // new demand, and must not cost a Creator a picture they paid for.
+      const sb = createStoryboard(db, { ownerId: OWNER, title: 'x' });
+      const s = addScene(db, {
+        storyboardId: sb.storyboardId, ownerId: OWNER, description: 'أ',
+        sourcing: 'generate', creationDemandAr: 'برطمانُ عسلٍ على خشبٍ داكن',
+      });
+      if (!s.ok) throw new Error('fixture');
+      assignSceneAsset(db, s.scene.sceneId, OWNER, { visualAssetId: 'asset-made' });
+
+      expect(setScenePicturePlan(db, s.scene.sceneId, OWNER, {
+        sourcing: 'generate',
+        // The same words, typed carelessly: leading spaces, a doubled space
+        // inside, and a trailing newline.
+        creationDemandAr: `  برطمانُ عسلٍ   على خشبٍ داكن${String.fromCharCode(10)}`,
+      })).toBe(true);
+      expect(listScenes(db, sb.storyboardId, OWNER)[0].visualAssetId).toBe('asset-made');
+    });
+
     it('a changed demand forgets the picture that answered the old one', () => {
       // The other half of the same rule: a generated picture answers a demand.
       // Change the demand and it no longer answers it, so the scene stops

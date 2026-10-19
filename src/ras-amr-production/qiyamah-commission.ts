@@ -43,6 +43,8 @@ import { getDb } from '../persistent-storage';
 import { hasActiveEntitlement } from '../billing/entitlement-service';
 import type { CreatorRole } from '../authentication';
 import { generateImage } from '../qiyamah-generation/generation-service';
+import { editSovereignImage } from '../qiyamah-generation/image-edit-service';
+import type { ImageEditRefusal } from '../qiyamah-generation/image-edit-service';
 
 /**
  * Where the production workshop can read a picture the Empire made.
@@ -121,13 +123,54 @@ export async function handOverAssetToWorkshop(
   }
 }
 
-/** Why a commission did not come back. Never the provider's own words. */
+/**
+ * Why a commission did not come back. Never the provider's own words.
+ *
+ * The last five arrived with the visual-reference road, and each is here
+ * because its CURE is different. «أعد المحاولة» is wrong advice for a Creator
+ * whose reference picture is the thing that cannot be read, and it is wrong
+ * again for an Empire that has run out of credit.
+ */
 export type CommissionFailure =
   | 'NOT_ENTITLED'        // this Creator may not spend the Empire's capacity
   | 'DEMAND_REFUSED'      // the demand itself could not be accepted
   | 'BUSY'                // the Empire's generation is at its limit
   | 'GENERATION_FAILED'   // it was attempted and did not produce
-  | 'STORAGE_FAILED';     // it produced and could not be kept
+  | 'STORAGE_FAILED'      // it produced and could not be kept
+  | 'NO_CAPACITY'         // the Empire's own credit with the engine is spent
+  | 'TIMED_OUT'           // it was attempted and took longer than the wait
+  | 'REFERENCE_UNUSABLE'  // the approved frame itself cannot be read or built on
+  | 'UNCHANGED_BY_EDITOR' // the engine returned the reference untouched
+  | 'EDITOR_UNAVAILABLE'; // the editing capability is not configured here
+
+/**
+ * ─── HOW A SCENE'S WORDS BECOME ONE INSTRUCTION ──────────────────────────────
+ *
+ *   One function, used for BOTH roads — the first frame which is generated
+ *   from text, and every later frame which is edited out of the approved one —
+ *   so the shared visual world cannot reach one road and miss the other.
+ *
+ *   The world comes first and the scene's own demand after it, because the
+ *   demand is what changes between scenes and the world is what must not.
+ *   Nothing is invented: if the Creator wrote no world, the demand is the
+ *   whole instruction, exactly as it was before this existed.
+ *
+ *   ANGLE AND COMPOSITION LIVE INSIDE THESE WORDS, and that is a limit, not a
+ *   design: MEASURED by reading the engine's own payload, an edit is submitted
+ *   as `{ model, style: { prompt }, assets: { image_file_paths } }` — there is
+ *   no angle parameter, no composition parameter and no aspect ratio to set.
+ *   So a Creator who wants a low angle writes it, and the Empire claims no
+ *   structured control it does not have.
+ */
+export function composeSceneInstruction(parts: {
+  readonly visualWorldAr?: string;
+  readonly demandAr: string;
+}): string {
+  const world = (parts.visualWorldAr ?? '').trim();
+  const demand = parts.demandAr.trim();
+  if (world.length === 0) return demand;
+  return `${world}\n\nفي هذا المشهد: ${demand}`;
+}
 
 export interface CommissionedScene {
   /** The scene this picture belongs to, so order can never be guessed at. */
@@ -145,6 +188,12 @@ export interface CommissionedScene {
   readonly assetUrl?: string;
   /** The same picture where the production workshop can open it. */
   readonly workshopPath?: string;
+  /**
+   * True when this frame was made OUT OF the approved reference rather than
+   * from words alone. Recorded so the Chamber can say which frames share a
+   * visual lineage — and so nobody has to infer it from a provider's output.
+   */
+  readonly usedReference?: boolean;
   readonly failure?: CommissionFailure;
 }
 
@@ -176,6 +225,36 @@ export function commissionFailureSpokenAr(failure: CommissionFailure): string {
     case 'BUSY':              return 'التوليد بلغ حدّه الآن. أعد المحاولة بعد قليل.';
     case 'STORAGE_FAILED':    return 'أُنشئت الصورة ولم تُحفظ في خزانتك.';
     case 'GENERATION_FAILED': return 'تعذّر إنشاء صورة هذا المشهد.';
+    case 'NO_CAPACITY':       return 'رصيد الإمبراطوريّة للإنشاء نفد. لا شأن لمشهدك بذلك.';
+    case 'TIMED_OUT':         return 'استغرق إنشاء هذا المشهد أطول من المتاح. أعد المحاولة.';
+    case 'REFERENCE_UNUSABLE': return 'المرجع البصريُّ المعتمد لا يمكن البناء عليه. اختر مرجعاً آخر.';
+    case 'UNCHANGED_BY_EDITOR': return 'عاد المحرّر بالصورة المرجعيّة نفسها دون تغيير. أعد صياغة المطلوب في هذا المشهد.';
+    case 'EDITOR_UNAVAILABLE': return 'البناء على مرجعٍ بصريٍّ غير مهيّأ في الإمبراطوريّة بعد.';
+  }
+}
+
+/**
+ * The editor's refusals, carried into this courier's own vocabulary.
+ *
+ * Nothing is flattened into «it failed»: the three the Founder asked to keep
+ * apart — the engine, the keeping, and the link — stay apart here, and the
+ * reference being unusable is its own answer because its cure is to choose a
+ * different reference.
+ */
+function classifyEditRefusal(refusal: ImageEditRefusal): CommissionFailure {
+  switch (refusal) {
+    case 'no-credit':             return 'NO_CAPACITY';
+    case 'timed-out':             return 'TIMED_OUT';
+    case 'capability-unavailable':
+    case 'model-unavailable':     return 'EDITOR_UNAVAILABLE';
+    case 'rejected-by-lineage':   return 'UNCHANGED_BY_EDITOR';
+    case 'not-found':
+    case 'not-an-image':
+    case 'not-derivable':
+    case 'requires-adoption':
+    case 'source-unresolvable':
+    case 'source-unreadable':     return 'REFERENCE_UNUSABLE';
+    default:                      return 'GENERATION_FAILED';
   }
 }
 
@@ -206,6 +285,30 @@ export async function commissionScenePictures(params: {
    *   documented 16:9.
    */
   readonly platformTarget?: string;
+  /**
+   * ── THE WORLD EVERY SCENE SHARES ──────────────────────────────────────
+   *
+   *   Place, style, light — the Creator's own words, in their own tongue,
+   *   prepended to every scene's instruction so the scenes belong to one film
+   *   rather than to one subject. Absent means every scene is instructed
+   *   exactly as it was before this existed.
+   */
+  readonly visualWorldAr?: string;
+  /**
+   * ── THE APPROVED FRAME THE OTHERS ARE MADE OUT OF ─────────────────────
+   *
+   *   A sovereign asset the Creator has approved, owned by them. When it is
+   *   given, every scene below is produced by EDITING it with that scene's
+   *   instruction instead of generating from words alone — which is the only
+   *   mechanism this Empire actually holds for keeping a product or a person
+   *   the same across frames.
+   *
+   *   NO CLAIM IS MADE THAT IT GUARANTEES IDENTITY. The engine is given the
+   *   approved picture and told what to change; how much of the subject
+   *   survives is a question only a real generation can answer, and it has not
+   *   been asked yet.
+   */
+  readonly referenceAssetId?: string;
 }): Promise<readonly CommissionedScene[]> {
   // ── EVERY PATH THAT SPENDS IS GUARDED, NOT ONE THAT REMEMBERS ────────
   //
@@ -232,8 +335,52 @@ export async function commissionScenePictures(params: {
   const commissioned: CommissionedScene[] = [];
 
   for (const demand of [...params.demands].sort((a, b) => a.order - b.order)) {
+    // The instruction both roads use — composed once, so the shared world
+    // cannot reach one road and miss the other.
+    const instruction = composeSceneInstruction({
+      visualWorldAr: params.visualWorldAr,
+      demandAr: demand.demandAr,
+    });
+
+    // ── ROAD ONE: OUT OF THE APPROVED FRAME ──────────────────────────────
+    if (params.referenceAssetId) {
+      const edited = await editSovereignImage({
+        db: getDb(),
+        assetId: params.referenceAssetId,
+        creatorId: params.creatorId,
+        instructionAr: instruction,
+      });
+
+      if (edited.status === 'succeeded') {
+        // An INDEPENDENT sovereign asset with a recorded lineage — that is
+        // `deriveAsset`'s work, not this courier's, and it refuses an output
+        // identical to its parent before the asset exists at all.
+        const workshopPath = await handOverToWorkshop(edited.asset.secureStorageUri);
+        commissioned.push({
+          order: demand.order,
+          sceneId: demand.sceneId,
+          assetId: edited.asset.assetId,
+          assetUrl: edited.asset.secureStorageUri,
+          usedReference: true,
+          ...(workshopPath ? { workshopPath } : {}),
+        });
+      } else {
+        console.error('[RasAmr] scene edit from reference failed:', JSON.stringify({
+          order: demand.order, refusal: edited.refusal,
+        }));
+        commissioned.push({
+          order: demand.order,
+          sceneId: demand.sceneId,
+          usedReference: true,
+          failure: classifyEditRefusal(edited.refusal),
+        });
+      }
+      continue;
+    }
+
+    // ── ROAD TWO: FROM WORDS ALONE ───────────────────────────────────────
     const outcome = await generateImage({
-      prompt: demand.demandAr,
+      prompt: instruction,
       creatorId: params.creatorId,
       // The scene's own words, kept so the Vault record says what this picture
       // was for rather than only what was asked of the provider.

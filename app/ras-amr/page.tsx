@@ -1504,6 +1504,11 @@ export default function RasAmrChamber() {
       case 'STORAGE_FAILED':    return 'أُنشئت الصورة ولم تُحفظ في خزانتك. أعد المحاولة.';
       case 'LINK_FAILED':       return 'أُنشئت الصورة وحُفظت في خزانتك، ولم تُربَط بهذا المشهد — اخترها من أصولك حتى لا تُنشأ مرّةً أخرى.';
       case 'HANDOFF_FAILED':    return 'الصورة موجودةٌ في خزانتك ولم تصل ورشة الإنتاج. أعد المحاولة.';
+      case 'NO_CAPACITY':       return 'رصيد الإمبراطوريّة للإنشاء نفد. لا شأن لمشهدك بذلك.';
+      case 'TIMED_OUT':         return 'استغرق إنشاء هذا المشهد أطول من المتاح. أعد المحاولة.';
+      case 'REFERENCE_UNUSABLE': return 'المرجع البصريُّ المعتمد لا يمكن البناء عليه. اختر مرجعاً آخر من أصولك.';
+      case 'UNCHANGED_BY_EDITOR': return 'عاد المحرّر بالصورة المرجعيّة نفسها دون تغيير. أعد صياغة المطلوب في هذا المشهد.';
+      case 'EDITOR_UNAVAILABLE': return 'البناء على مرجعٍ بصريٍّ غير مهيّأ في الإمبراطوريّة بعد.';
       default:                  return null;
     }
   };
@@ -2410,6 +2415,16 @@ export default function RasAmrChamber() {
    * button says the number out loud before it is pressed.
    */
   const [regenerateIds, setRegenerateIds] = useState<string[]>([]);
+  /**
+   * ── THE WORLD EVERY SCENE SHARES ──────────────────────────────────────
+   *
+   *   Place, style, light — written once, sent with the production, and
+   *   prepended to every scene's instruction. NOT stored: a refreshed chamber
+   *   asks for it again, which is a limit stated on screen rather than hidden.
+   */
+  const [visualWorldAr, setVisualWorldAr] = useState('');
+  /** The scene whose picture the others are made out of, when the Creator names one. */
+  const [referenceSceneId, setReferenceSceneId] = useState<string | null>(null);
   /** Bumped when a production ends, so the scene states are re-read, not guessed. */
   const [plansRefreshToken, setPlansRefreshToken] = useState(0);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -2487,6 +2502,16 @@ export default function RasAmrChamber() {
     });
     return () => { cancelled = true; };
   }, [storyboardId, plansRefreshToken]);
+
+  /**
+   * The frame the others will be built on: the one the Creator named, or else
+   * the earliest scene that holds a picture — the same rule the production
+   * itself applies, so the screen never promises a different reference than
+   * the one that will be used.
+   */
+  const effectiveReferenceId = (scenePlans ?? []).some((p) => p.sceneId === referenceSceneId)
+    ? referenceSceneId
+    : ((scenePlans ?? []).filter((p) => p.visualAssetId).sort((a, b) => a.order - b.order)[0]?.sceneId ?? null);
 
   /** How many pictures the next production will buy, counted before it starts. */
   const framesToBuy = (scenePlans ?? []).filter(
@@ -5893,6 +5918,33 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                     {scenePlans && scenePlans.length > 0 && (
                       <div className="scene-plans" data-testid="rasamr-scene-plans">
                         <span className="scene-plans-head">من أين صورة كلّ مشهد؟</span>
+
+                        {/* ── العالَم الذي تشترك فيه المشاهد ──────────────────
+                            يُكتَب مرّةً، ويُضاف إلى تعليمات كلِّ مشهد. ولأنّ
+                            المحرّر يبني على صورةٍ معتمدةٍ ولا يَقبَل مقاساً
+                            جديداً، فإطارُ المرجع هو إطارُ ما يُبنى عليه. */}
+                        <div className="visual-world">
+                          <label className="scene-plan-label" htmlFor="ras-visual-world">
+                            العالَم البصريُّ المشترك — المكان والأسلوب والإضاءة
+                          </label>
+                          <textarea
+                            id="ras-visual-world"
+                            className="scene-plan-demand"
+                            data-testid="rasamr-visual-world"
+                            rows={2}
+                            value={visualWorldAr}
+                            onChange={(e) => setVisualWorldAr(e.target.value)}
+                            placeholder="مثال: مطبخٌ خشبيٌّ داكن، ضوءٌ ذهبيٌّ جانبيّ، خلفيّةٌ معتمة، أسلوبٌ واقعيٌّ هادئ."
+                          />
+                          <span className="scene-frame-note">
+                            {effectiveReferenceId
+                              ? 'يُضاف إلى تعليمات كلِّ مشهد، وتُبنى المشاهد على المرجع البصريِّ أدناه.'
+                              : 'يُضاف إلى تعليمات كلِّ مشهد. ولا مرجعَ بصريٌّ بعد — أوّلُ مشهدٍ تصير له صورةٌ يصبح المرجع.'}
+                          </span>
+                          <span className="scene-frame-note">
+                            هذا الوصفُ يُرسَل مع هذا الإنتاج ولا يُحفَظ بعده.
+                          </span>
+                        </div>
                         {scenePlans.map((plan) => {
                           const save = async (next: Partial<ScenePlanView>) => {
                             const merged = { ...plan, ...next };
@@ -5914,6 +5966,16 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                               <div className="scene-plan-head">
                                 <span className="scene-plan-n">{plan.order}</span>
                                 <span className="scene-plan-seen">{plan.seenAr}</span>
+                                {plan.sceneId === effectiveReferenceId && (
+                                  <span className="scene-frame-ref" data-testid={`scene-reference-${plan.order}`}>
+                                    المرجع البصريّ
+                                  </span>
+                                )}
+                                {plan.usedReference && plan.sceneId !== effectiveReferenceId && (
+                                  <span className="scene-frame-lineage" data-testid={`scene-used-ref-${plan.order}`}>
+                                    بُنيت على المرجع
+                                  </span>
+                                )}
                                 {frameStateLabel(plan.frameState) && (
                                   <span
                                     className={`scene-frame-state scene-frame-${plan.frameState.toLowerCase()}`}
@@ -5925,6 +5987,21 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                               </div>
                               {plan.frameState === 'FAILED' && sceneFailureSpokenAr(plan.failure) && (
                                 <p className="scene-frame-cause">{sceneFailureSpokenAr(plan.failure)}</p>
+                              )}
+                              {plan.visualAssetId && plan.sceneId !== effectiveReferenceId && (
+                                <div className="scene-frame-remake">
+                                  <button
+                                    type="button"
+                                    className="scene-plan-choice"
+                                    data-testid={`scene-make-reference-${plan.order}`}
+                                    onClick={() => setReferenceSceneId(plan.sceneId)}
+                                  >
+                                    اجعلها المرجع البصريّ
+                                  </button>
+                                  <span className="scene-frame-note">
+                                    تُبنى المشاهدُ الأخرى على هذه الصورة.
+                                  </span>
+                                </div>
                               )}
                               {plan.frameState === 'COMPLETED' && plan.sourcing === 'generate' && (
                                 <div className="scene-frame-remake">
@@ -5941,10 +6018,18 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                                   >
                                     {regenerateIds.includes(plan.sceneId) ? 'ستُنشأ من جديد ✓' : 'أعد إنشاءها'}
                                   </button>
+                                  {/* An approved reference is not replaced quietly: the
+                                      Founder's condition is that the replacement be asked
+                                      for, and this is where it is asked and what it costs
+                                      is said in the same breath. */}
                                   <span className="scene-frame-note">
                                     {regenerateIds.includes(plan.sceneId)
-                                      ? 'صورةٌ إضافيّةٌ ستُشترى لهذا المشهد.'
-                                      : 'صورتها محفوظةٌ — لن تُشترى مرّةً أخرى.'}
+                                      ? (plan.sceneId === effectiveReferenceId
+                                          ? 'ستُستبدَل الصورةُ المرجعيّةُ المعتمدة — وتُبنى المشاهدُ التالية على الجديدة.'
+                                          : 'صورةٌ إضافيّةٌ ستُشترى لهذا المشهد.')
+                                      : (plan.sceneId === effectiveReferenceId
+                                          ? 'هذه هي الصورةُ المرجعيّةُ المعتمدة — لن تُستبدَل إلّا إن طلبتَ ذلك.'
+                                          : 'صورتها محفوظةٌ — لن تُشترى مرّةً أخرى.')}
                                   </span>
                                 </div>
                               )}
@@ -6045,7 +6130,14 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                             // The frame the Creator chose, and the ONLY scenes
                             // they asked to have made again. An empty list is
                             // the normal case and means «buy nothing twice».
-                            body: JSON.stringify({ outputProfile, regenerateSceneIds: regenerateIds }),
+                            body: JSON.stringify({
+                              outputProfile,
+                              regenerateSceneIds: regenerateIds,
+                              // Written once, applied to every scene.
+                              ...(visualWorldAr.trim() ? { visualWorldAr: visualWorldAr.trim() } : {}),
+                              // The Creator's own choice of reference, when they made one.
+                              ...(referenceSceneId ? { referenceSceneId } : {}),
+                            }),
                           });
                           const body = await res.json() as { status?: string; message?: string };
                           if (!res.ok || body.status !== 'accepted') {

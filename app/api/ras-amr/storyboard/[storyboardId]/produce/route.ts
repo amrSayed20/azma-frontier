@@ -96,6 +96,8 @@ export async function POST(
   const body = await request.json().catch(() => null) as {
     outputProfile?: unknown;
     regenerateSceneIds?: unknown;
+    visualWorldAr?: unknown;
+    referenceSceneId?: unknown;
   } | null;
   const chosenProfile = typeof body?.outputProfile === 'string' ? body.outputProfile : undefined;
   const frame = resolveOutputFrame(chosenProfile);
@@ -113,6 +115,21 @@ export async function POST(
     (Array.isArray(body?.regenerateSceneIds) ? body.regenerateSceneIds : [])
       .filter((id): id is string => typeof id === 'string' && id.length > 0),
   );
+
+  // ── THE WORLD EVERY SCENE SHARES ──────────────────────────────────────
+  //
+  //   Place, style, light, in the Creator's own words. It travels with the
+  //   request and is NOT stored, which is a limit worth saying out loud: a
+  //   refreshed chamber asks for it again. Storing it needs either a column on
+  //   `storyboards` — a migration nobody has authorised — or an existing text
+  //   field repurposed into a second meaning, which is worse. So it travels,
+  //   and the Architect is told rather than a schema being changed quietly.
+  const visualWorldAr = typeof body?.visualWorldAr === 'string'
+    ? body.visualWorldAr.trim().slice(0, 600)
+    : undefined;
+  const requestedReferenceSceneId = typeof body?.referenceSceneId === 'string'
+    ? body.referenceSceneId
+    : undefined;
 
   //   ONE declaration feeds both halves. The frame table says which platform
   //   name means this shape; the generation side is handed that NAME, and the
@@ -188,13 +205,38 @@ export async function POST(
   //   it — never from a browser's memory of what it saw. So a refresh, a new
   //   device and a second Creator session all agree about what is finished.
   const wantsCreation = (sc: { sourcing?: string | null }) => sc.sourcing === 'generate';
+
+  // ── THE APPROVED FRAME THE OTHERS ARE MADE OUT OF ─────────────────────
+  //
+  //   The Founder, 2026-10-19: «صمّم مسارًا يستخدم إطارًا مرجعيًا معتمدًا، ثم
+  //   يمرر المرجع مع تعليمات المشهد التالي إلى محرر الصور القائم، بدل توليد كل
+  //   إطار مستقلًا دون رابط بصري.»
+  //
+  //   «Approved» is a scene that HOLDS a picture: either one the Creator chose
+  //   from their own Vault, or one an earlier production made and pinned. No
+  //   new field records approval, because holding the picture already does.
+  //
+  //   The Creator may name which one, and when they do not, the earliest scene
+  //   that holds a picture is it — the first frame of the film, which is what a
+  //   director would have chosen anyway.
+  const referenceScene =
+    scenes.find((sc) => sc.sceneId === requestedReferenceSceneId && sc.visualAssetId)
+    ?? scenes.filter((sc) => sc.visualAssetId).sort((a, b) => a.order - b.order)[0]
+    ?? null;
+  const referenceAssetId = referenceScene?.visualAssetId ?? null;
   const alreadyMade = scenes.filter(
     (sc) => wantsCreation(sc) && sc.visualAssetId && !requestedAgain.has(sc.sceneId),
   );
+  //   AND THE APPROVED REFERENCE IS NEVER REPLACED BY ACCIDENT. It is left out
+  //   of the commission entirely unless the Creator named it for remaking,
+  //   which is the explicit approval the Founder required before an approved
+  //   frame is replaced.
+  const isReference = (sceneId: string) => referenceScene?.sceneId === sceneId;
   const toGenerate = scenes
     .filter((sc) => wantsCreation(sc)
       && (sc.creationDemandAr ?? '').trim().length > 0
-      && (!sc.visualAssetId || requestedAgain.has(sc.sceneId)))
+      && (!sc.visualAssetId || requestedAgain.has(sc.sceneId))
+      && (!isReference(sc.sceneId) || requestedAgain.has(sc.sceneId)))
     .map((sc) => ({
       order: sc.order,
       sceneId: sc.sceneId,
@@ -289,6 +331,15 @@ export async function POST(
             sceneId: chosen.sceneId, order: chosen.order, state: 'FAILED',
             assetId: chosen.assetId, failure: 'HANDOFF_FAILED',
           });
+          continue;
+        }
+        if (isReference(chosen.sceneId)) {
+          // The Creator's own product photo, standing as the visual reference
+          // for every scene the Empire makes. Recorded so the Chamber can say so.
+          outcomes.push({
+            sceneId: chosen.sceneId, order: chosen.order, state: 'COMPLETED',
+            assetId: chosen.assetId, isReference: true,
+          });
         }
       }
 
@@ -298,7 +349,10 @@ export async function POST(
         const workshopPath = await handOverAssetToWorkshop(assetId, session.creatorId);
         if (workshopPath) {
           suppliedMaterials.push({ url: workshopPath, order: made.order });
-          outcomes.push({ sceneId: made.sceneId, order: made.order, state: 'COMPLETED', assetId });
+          outcomes.push({
+            sceneId: made.sceneId, order: made.order, state: 'COMPLETED', assetId,
+            ...(isReference(made.sceneId) ? { isReference: true } : {}),
+          });
         } else {
           outcomes.push({
             sceneId: made.sceneId, order: made.order, state: 'FAILED',
@@ -322,6 +376,13 @@ export async function POST(
           // A NAME, not a ratio: the generation side owns that map and the
           // courier carries the word without understanding it.
           platformTarget: frame.platformTarget,
+          ...(visualWorldAr ? { visualWorldAr } : {}),
+          // When a frame is approved, every other scene is made OUT OF it.
+          // A frame that is itself being remade is generated from words, since
+          // a picture cannot be its own reference.
+          ...(referenceAssetId && !requestedAgain.has(referenceScene!.sceneId)
+            ? { referenceAssetId }
+            : {}),
         });
 
         for (const made of commissioned) {
@@ -329,6 +390,7 @@ export async function POST(
             outcomes.push({
               sceneId: made.sceneId, order: made.order, state: 'FAILED',
               failure: made.failure ?? 'GENERATION_FAILED',
+              ...(made.usedReference ? { usedReference: true } : {}),
             });
             continue;
           }
@@ -354,7 +416,11 @@ export async function POST(
 
           outcomes.push(
             linked
-              ? { sceneId: made.sceneId, order: made.order, state: 'COMPLETED', assetId: made.assetId }
+              ? {
+                  sceneId: made.sceneId, order: made.order, state: 'COMPLETED',
+                  assetId: made.assetId,
+                  ...(made.usedReference ? { usedReference: true } : {}),
+                }
               : {
                   sceneId: made.sceneId, order: made.order, state: 'FAILED',
                   assetId: made.assetId,
@@ -416,6 +482,11 @@ export async function POST(
       // how many pictures this production will buy, and how many it reuses.
       framesToCreate: toGenerate.length,
       framesReused: alreadyMade.length,
+      // Said before the work starts: whether these frames will be built on an
+      // approved picture, and which one. Never the storage path — the id.
+      referenceSceneId: referenceScene?.sceneId ?? null,
+      usesReference: Boolean(referenceAssetId)
+        && !(referenceScene && requestedAgain.has(referenceScene.sceneId)),
       // True when this board already had a production running: the Creator is
       // handed the one that exists, never a second run of the same scenes.
       reused: accepted.reused,

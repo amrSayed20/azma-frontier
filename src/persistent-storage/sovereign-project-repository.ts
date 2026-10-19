@@ -396,8 +396,14 @@ export function setScenePicturePlan(
   //   stands and is forgotten when the demand changes. Re-saving the same
   //   words is not a new demand. An explicit «أعد إنشاءه» is a separate road
   //   and does not come through here.
+  //   «دون تغيير جوهري» — the Founder's own words, 2026-10-19. A space typed
+  //   and deleted, a trailing newline, two spaces where there was one: none of
+  //   those is a different demand, and none of them should cost a Creator a
+  //   picture. So the comparison is on the words, not on the keystrokes.
+  const sameWords = (a: string | null, b: string | null) =>
+    (a ?? '').trim().replace(/\s+/g, ' ') === (b ?? '').trim().replace(/\s+/g, ' ');
   const demandUnchanged =
-    (row.creation_demand_ar ?? null) === demand && row.sourcing === 'generate';
+    sameWords(row.creation_demand_ar ?? null, demand) && row.sourcing === 'generate';
   const asset = plan.sourcing === 'creator-asset'
     ? (plan.visualAssetId ?? null)
     : plan.sourcing === 'generate' && demandUnchanged

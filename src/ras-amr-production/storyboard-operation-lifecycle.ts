@@ -59,13 +59,26 @@ export type StoryboardFailure =
   | 'SCENES_NOT_CREATED'
   | 'INTERNAL';
 
-/** Why one scene has no picture. Three different cures, so three names. */
+/**
+ * Why one scene has no picture. A different cure for each, which is the whole
+ * reason they are separate names and not one «failed».
+ *
+ * The courier's own `CommissionFailure` is the source of most of them: the
+ * five that arrived with the visual-reference road are repeated here because
+ * this is the vocabulary the Creator's screen reads, and a cause that cannot
+ * cross this boundary is a cause the Creator never learns.
+ */
 export type SceneFrameFailure =
   | 'NOT_ENTITLED'
   | 'DEMAND_REFUSED'
   | 'BUSY'
   | 'GENERATION_FAILED'
   | 'STORAGE_FAILED'
+  | 'NO_CAPACITY'
+  | 'TIMED_OUT'
+  | 'REFERENCE_UNUSABLE'
+  | 'UNCHANGED_BY_EDITOR'
+  | 'EDITOR_UNAVAILABLE'
   /** It was made and kept, and the scene could not be told that it owns it. */
   | 'LINK_FAILED'
   /**
@@ -83,6 +96,14 @@ export interface SceneFrameOutcome {
   readonly state: 'COMPLETED' | 'FAILED';
   readonly assetId?: string;
   readonly failure?: SceneFrameFailure;
+  /**
+   * True when this frame was made out of the approved reference rather than
+   * from words alone — the Founder asked that a Creator be able to see which
+   * frames share a visual lineage, and this is where that is recorded.
+   */
+  readonly usedReference?: boolean;
+  /** True for the frame the others were made out of. */
+  readonly isReference?: boolean;
 }
 
 export interface AcceptedStoryboard {

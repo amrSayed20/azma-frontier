@@ -323,6 +323,101 @@ describe('a frame is bought once, and a missing one is never substituted', () =>
     expect(plans.scenes[1]).toMatchObject({ frameState: 'FAILED', failure: 'GENERATION_FAILED' });
   });
 
+  // ══ THE APPROVED REFERENCE ════════════════════════════════════════════════
+  //
+  //   Phase 4. A frame the Creator has approved becomes the picture the others
+  //   are made OUT OF, and every rule around it is about not spending twice
+  //   and not replacing it by accident.
+
+  it('the approved frame is not commissioned, and the others are built on it', async () => {
+    const { storyboardId, sceneIds } = board(['أوّل', 'ثانٍ', 'ثالث']);
+    // An earlier production pinned the first scene's picture; it is approved by
+    // the fact that the scene holds it.
+    expect(assignSceneAsset(getDb(), sceneIds[0], OWNER, { visualAssetId: 'asset-approved' })).toBe(true);
+    mockCommission.mockResolvedValue([made(sceneIds[1], 2, 'asset-b'), made(sceneIds[2], 3, 'asset-c')]);
+
+    const accepted = await produce(storyboardId, { visualWorldAr: 'مطبخٌ داكنٌ وضوءٌ جانبيّ' });
+
+    expect(accepted.body.referenceSceneId).toBe(sceneIds[0]);
+    expect(accepted.body.usesReference).toBe(true);
+    expect(accepted.body.framesToCreate).toBe(2);   // never three
+    const observed = await settled(accepted.body.operationId as string);
+
+    const asked = mockCommission.mock.calls[0][0];
+    expect(asked.demands.map((d: { sceneId: string }) => d.sceneId)).toEqual([sceneIds[1], sceneIds[2]]);
+    expect(asked.referenceAssetId).toBe('asset-approved');
+    expect(asked.visualWorldAr).toBe('مطبخٌ داكنٌ وضوءٌ جانبيّ');
+    // And the record says which frame was the reference.
+    expect(observed.sceneOutcomes?.find((o) => o.sceneId === sceneIds[0])).toMatchObject({
+      state: 'COMPLETED', isReference: true,
+    });
+  });
+
+  it('the Creator can name which frame is the reference', async () => {
+    const { storyboardId, sceneIds } = board(['أوّل', 'ثانٍ', 'ثالث']);
+    const db = getDb();
+    assignSceneAsset(db, sceneIds[0], OWNER, { visualAssetId: 'asset-first' });
+    assignSceneAsset(db, sceneIds[2], OWNER, { visualAssetId: 'asset-third' });
+    mockCommission.mockResolvedValue([made(sceneIds[1], 2, 'asset-b')]);
+
+    const accepted = await produce(storyboardId, { referenceSceneId: sceneIds[2] });
+    await settled(accepted.body.operationId as string);
+
+    expect(accepted.body.referenceSceneId).toBe(sceneIds[2]);
+    expect(mockCommission.mock.calls[0][0].referenceAssetId).toBe('asset-third');
+  });
+
+  it('an approved reference is replaced only when the Creator names it for remaking', async () => {
+    const { storyboardId, sceneIds } = board(['أوّل', 'ثانٍ']);
+    const db = getDb();
+    assignSceneAsset(db, sceneIds[0], OWNER, { visualAssetId: 'asset-approved' });
+    assignSceneAsset(db, sceneIds[1], OWNER, { visualAssetId: 'asset-second' });
+
+    // Nothing named: the reference is left alone and nothing is bought at all.
+    const quiet = await produce(storyboardId);
+    expect(quiet.body.framesToCreate).toBe(0);
+    await settled(quiet.body.operationId as string);
+    expect(framesOf(storyboardId)).toEqual(['asset-approved', 'asset-second']);
+    // Not «asked for nothing» — asked NOTHING. The courier that spends was
+    // never called, which is the only way a Creator pays nothing.
+    expect(mockCommission).not.toHaveBeenCalled();
+
+    // Named: it IS remade — and a picture cannot be its own reference, so this
+    // one is made from words while every other frame is left untouched.
+    getDb().prepare('UPDATE operation_ledger SET current_state = ? WHERE operation_id = ?')
+      .run('FAILED', findOperationForStoryboard(OWNER, storyboardId));
+    mockCommission.mockResolvedValue([made(sceneIds[0], 1, 'asset-approved-v2')]);
+    const asked = await produce(storyboardId, { regenerateSceneIds: [sceneIds[0]] });
+    expect(asked.body.usesReference).toBe(false);
+    await settled(asked.body.operationId as string);
+
+    // The FIRST call this courier ever received in this test: the quiet run
+    // above spent nothing, so there is no earlier call to count past.
+    expect(mockCommission).toHaveBeenCalledTimes(1);
+    expect(mockCommission.mock.calls[0][0].referenceAssetId).toBeUndefined();
+    expect(framesOf(storyboardId)).toEqual(['asset-approved-v2', 'asset-second']);
+  });
+
+  it('a frame built on the reference is recorded as such, so the lineage is visible', async () => {
+    const { storyboardId, sceneIds } = board(['أوّل', 'ثانٍ']);
+    assignSceneAsset(getDb(), sceneIds[0], OWNER, { visualAssetId: 'asset-approved' });
+    // The courier reports the road it took; the route records it.
+    mockCommission.mockResolvedValue([
+      { ...made(sceneIds[1], 2, 'asset-built'), usedReference: true },
+    ]);
+
+    const accepted = await produce(storyboardId);
+    const observed = await settled(accepted.body.operationId as string);
+
+    expect(observed.sceneOutcomes?.find((o) => o.sceneId === sceneIds[1])).toMatchObject({
+      state: 'COMPLETED', usedReference: true,
+    });
+    const plans = await readScenePlans(storyboardId);
+    if (!plans.ok) throw new Error(plans.messageAr);
+    expect(plans.scenes[0]).toMatchObject({ isReference: true, usedReference: false });
+    expect(plans.scenes[1]).toMatchObject({ isReference: false, usedReference: true });
+  });
+
   it('deleting a scene does not delete the sovereign asset it pointed at', async () => {
     const { storyboardId, sceneIds } = board(['أوّل']);
     const db = getDb();

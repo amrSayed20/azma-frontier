@@ -244,12 +244,25 @@ describe('8 · failing closed does not duplicate, bypass recovery, or misreport'
 });
 
 describe('9 · every execution entry point is protected', () => {
-  it('the edit route checks both flags before dispatching its hard-coded model', () => {
-    const r = read('app/api/vault/assets/[assetId]/edit/route.ts');
+  it('the edit act checks both flags before dispatching its hard-coded model', () => {
+    // The act moved out of the route on 2026-10-19, so that رأس الأمر could
+    // make one scene out of another scene's approved frame without a second
+    // authority on how an edited image becomes a sovereign asset. The RULE is
+    // unchanged and is asserted in the same words — at the one place that now
+    // dispatches, which is what «entry point» means.
+    const r = read('src/qiyamah-generation/image-edit-service.ts');
     expect(r).toContain('IMAGE_MODEL_FLEET.find((m) => m.modelId === IMAGE_EDIT_MODEL_ID)');
     expect(r).toContain('!editBinding.productionAuthorized || !editBinding.active');
     // And the check precedes the dispatch.
     expect(r.indexOf('editBinding')).toBeLessThan(r.indexOf('await editImageViaProvider('));
+  });
+
+  it('and the route no longer dispatches at all, so it cannot bypass that check', () => {
+    // A thin door is only thin while it stays thin: if a future edit calls the
+    // provider from the route again, the flags above would not be consulted.
+    const r = read('app/api/vault/assets/[assetId]/edit/route.ts');
+    expect(r).not.toContain('editImageViaProvider(');
+    expect(r).toContain('editSovereignImage(');
   });
 
   it('the animate route refuses when the selector does not select', () => {
