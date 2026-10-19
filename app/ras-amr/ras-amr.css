@@ -7064,3 +7064,25 @@ button.ras-path-card:hover { border-color: var(--neon-gold-bright); background: 
     min-width: 0;
   }
 }
+
+/* ── A FINGER IS NOT A MOUSE POINTER ──────────────────────────────────
+   MEASURED 2026-10-20 on the seven viewports the Chief Architect named:
+   on every touch screen two controls fell under the 44 CSS px floor that
+   Apple and Google both publish — «✂/✦» mode switch at 32×44, and the
+   layer's z-order arrows at 24×44. Both are hit with a thumb on a phone
+   and with a cursor on a desktop, so the floor is raised ONLY where the
+   pointer is coarse: the desktop keeps its compact rail untouched, and
+   nothing moves for a mouse. */
+@media (pointer: coarse) {
+  .ras-mode-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding-inline: 12px;
+  }
+  .layer-z-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
