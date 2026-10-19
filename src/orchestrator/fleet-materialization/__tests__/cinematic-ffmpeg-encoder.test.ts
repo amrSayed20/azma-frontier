@@ -128,13 +128,28 @@ function makeImageGraph(overrides: {
   };
 }
 
+/**
+ * BLOCKER C — a protected output root is now a PRECONDITION for rendering.
+ *
+ *   `renderOutputDir()` fails closed when UPLOADS_DIR is absent, because the
+ *   old fallback wrote private films into `public/`, where Next.js's static
+ *   handler serves them before the authorisation gate. These tests exercise the
+ *   command builder, not the storage boundary, so they declare a root — and in
+ *   declaring it they state the precondition rather than depending on a
+ *   fallback that no longer exists.
+ */
+const savedGlobalUploadsDir = process.env.UPLOADS_DIR;
+
 beforeEach(() => {
+  process.env.UPLOADS_DIR = '/var/www/azma-uploads';
   mockSpawn.mockReturnValue(makeProcess());
   // By default all files "exist" so the encoder never throws on existsSync checks.
   mockExistsSync.mockReturnValue(true);
 });
 
 afterEach(() => {
+  if (savedGlobalUploadsDir === undefined) delete process.env.UPLOADS_DIR;
+  else process.env.UPLOADS_DIR = savedGlobalUploadsDir;
   jest.clearAllMocks();
 });
 
@@ -151,7 +166,7 @@ describe('VI-A — voice paths reach FFmpeg -i arguments', () => {
     spawnEncoding('op-v-1', graph, voicePaths);
 
     const ffmpegArgs = mockSpawn.mock.calls[0][1] as string[];
-    const expectedPath = join(process.cwd(), 'public', 'uploads/test-voice.mp3');
+    const expectedPath = join('/var/www/azma-uploads', 'test-voice.mp3');
     expect(ffmpegArgs).toContain(expectedPath);
   });
 
@@ -373,7 +388,7 @@ describe('VI-B — Temporal & Audio Fidelity', () => {
     const fc = getFilterComplex(args);
 
     // VI-A: voice file appears as an FFmpeg input
-    expect(args).toContain(join(process.cwd(), 'public', 'uploads/voice-h.mp3'));
+    expect(args).toContain(join('/var/www/azma-uploads', 'voice-h.mp3'));
 
     // VI-B: fade-in applied to the voice audio
     expect(fc).toContain('afade=t=in:st=0:d=0.500000');
@@ -571,7 +586,7 @@ describe('VI-C — Full Cinematic Overlay Composition', () => {
     const voicePaths = new Map([[nodeId, voiceUri]]);
     spawnEncoding('op-vic-h', graph, voicePaths);
     const args = mockSpawn.mock.calls[0][1] as string[];
-    expect(args).toContain(join(process.cwd(), 'public', 'uploads/voice-vic-h.mp3'));
+    expect(args).toContain(join('/var/www/azma-uploads', 'voice-vic-h.mp3'));
   });
 
   it('I — VI-B regression: trim and fade-in still applied to audio chain under VI-C encoder', () => {
@@ -669,19 +684,36 @@ describe('Storage Root Resolution — UPLOADS_DIR aware', () => {
     expect(ffmpegArgs).toContain(join('/var/www/azma-uploads', 'generated-assets', 'fresh-qiyamah.png'));
   });
 
-  it('legacy path preserved — /uploads/ and /generated-assets/ fall back to public/ when UPLOADS_DIR is absent', () => {
+  it('with no protected root, a render REFUSES rather than writing into public/', () => {
+    // RESTATED, not weakened. This test used to assert that an absent
+    // UPLOADS_DIR made the encoder fall back to `public/` — the exact fallback
+    // that put 25 Creators' films where Next.js serves them before the
+    // authorisation gate. The fallback is gone, so what it asserted no longer
+    // exists to assert.
+    //
+    // The surviving rule is the one worth pinning: with nowhere private to
+    // write, nothing is written and nothing is spawned. The READ-side legacy
+    // compatibility that this test also cared about is unchanged and is proven
+    // in src/vault/__tests__/a-film-has-nowhere-public-to-fall.test.ts.
     delete process.env.UPLOADS_DIR;
 
-    const graphUpload = makeImageGraph({ imageUri: '/uploads/legacy.jpg' });
-    expect(() => spawnEncoding('op-legacy-upload', graphUpload)).not.toThrow();
-    expect(mockSpawn.mock.calls[0][1]).toContain(join(process.cwd(), 'public', 'uploads', 'legacy.jpg'));
+    const graph = makeImageGraph({ imageUri: '/uploads/legacy.jpg' });
+    expect(() => spawnEncoding('op-no-root', graph)).toThrow(/UPLOADS_DIR is not configured/);
+    expect(mockSpawn).not.toHaveBeenCalled();
+  });
 
-    jest.clearAllMocks();
-    mockSpawn.mockReturnValue(makeProcess());
-
-    const graphGen = makeImageGraph({ imageUri: '/generated-assets/legacy-gen.png' });
-    expect(() => spawnEncoding('op-legacy-gen', graphGen)).not.toThrow();
-    expect(mockSpawn.mock.calls[0][1]).toContain(join(process.cwd(), 'public', 'generated-assets', 'legacy-gen.png'));
+  it('with the public mode explicitly accepted, it writes there and says nothing is hidden', () => {
+    // The one authorised way to get the old behaviour: a variable whose name is
+    // the warning. For local work only — and it still resolves assets the same.
+    delete process.env.UPLOADS_DIR;
+    process.env.AZMA_ALLOW_PUBLIC_RENDER_OUTPUT = '1';
+    try {
+      const graph = makeImageGraph({ imageUri: '/uploads/legacy.jpg' });
+      expect(() => spawnEncoding('op-public-optin', graph)).not.toThrow();
+      expect(mockSpawn.mock.calls[0][1]).toContain(join(process.cwd(), 'public', 'uploads', 'legacy.jpg'));
+    } finally {
+      delete process.env.AZMA_ALLOW_PUBLIC_RENDER_OUTPUT;
+    }
   });
 });
 

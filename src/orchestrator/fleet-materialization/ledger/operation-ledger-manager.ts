@@ -98,6 +98,76 @@ export class OperationLedgerManager implements ILedgerManager {
       );
   }
 
+  /**
+   * ─── WHY A FAILURE REASON IS WRITTEN, AND WHERE ───────────────────────────
+   *
+   *   MEASURED on production 2026-10-18: of 71 recorded operations, 43 had
+   *   failed, and 33 of those carried no reason at all. The reason was being
+   *   read from a Map in the memory of whichever module instance spawned the
+   *   job — so a status poll served by a different instance found nothing, and
+   *   the Creator was shown a generic «error processing one of the files» for a
+   *   render that had actually failed because the engine was missing.
+   *
+   *   This writes the reason where the same table already keeps it for the
+   *   DIRECTORIAL path: inside `source_intent_json`, under its own key. That is
+   *   a change to a STATEMENT, not to the schema — no column is added, no
+   *   migration runs, and every existing row stays exactly as it is.
+   *
+   *   It deliberately does NOT go through updateState(): recording WHY a sealed
+   *   operation failed is not a state transition, and updateState refuses to
+   *   touch a terminal row. A reason that could only be written before the
+   *   failure was sealed would be a reason that is never written.
+   *
+   *   `detail` is for engineers. It is never shown to a Creator — the chamber
+   *   derives its own wording from `code` — so it must still carry no
+   *   credential, token, or private path.
+   */
+  public async recordFailureDiagnostic(
+    operationId: string,
+    diagnostic: { readonly code: string; readonly detail?: string },
+  ): Promise<void> {
+    const row = this.db
+      .prepare('SELECT source_intent_json FROM operation_ledger WHERE operation_id = ?')
+      .get(operationId) as { source_intent_json?: string } | undefined;
+    if (!row?.source_intent_json) return;
+
+    let intent: Record<string, unknown>;
+    try {
+      intent = JSON.parse(row.source_intent_json) as Record<string, unknown>;
+    } catch {
+      return;
+    }
+    // First writer wins: the reason closest to the failure is the true one, and
+    // a later generic classification must not overwrite a specific one.
+    if (intent['renderFailure']) return;
+
+    intent['renderFailure'] = {
+      code: diagnostic.code,
+      detail: diagnostic.detail ? diagnostic.detail.slice(0, 2000) : undefined,
+      at: Date.now(),
+    };
+    this.db
+      .prepare('UPDATE operation_ledger SET source_intent_json = ?, updated_at = ? WHERE operation_id = ?')
+      .run(JSON.stringify(intent), Date.now(), operationId);
+  }
+
+  /** The persisted reason for a failed operation, or null when none was ever recorded. */
+  public readFailureDiagnostic(
+    operationId: string,
+  ): { readonly code: string; readonly detail?: string; readonly at?: number } | null {
+    const row = this.db
+      .prepare('SELECT source_intent_json FROM operation_ledger WHERE operation_id = ?')
+      .get(operationId) as { source_intent_json?: string } | undefined;
+    if (!row?.source_intent_json) return null;
+    try {
+      const intent = JSON.parse(row.source_intent_json) as Record<string, unknown>;
+      const d = intent['renderFailure'] as { code?: string; detail?: string; at?: number } | undefined;
+      return d?.code ? { code: d.code, detail: d.detail, at: d.at } : null;
+    } catch {
+      return null;
+    }
+  }
+
   public async getEntry(operationId: string): Promise<OperationLedgerEntry> {
     const row = this.db
       .prepare('SELECT * FROM operation_ledger WHERE operation_id = ?')

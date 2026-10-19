@@ -15,7 +15,74 @@
  */
 
 import { open, stat } from 'fs/promises';
+import { existsSync } from 'fs';
 import { join } from 'path';
+
+/**
+ * ─── WHERE A PRIVATE FILM MAY BE WRITTEN, AND WHY IT IS NOT A FALLBACK ──────
+ *
+ *   Anything under `public/` is served by Next.js's own static handler, which
+ *   runs BEFORE any route. The authorisation gate at `app/renders/[...path]`
+ *   is therefore unreachable for a file sitting there. MEASURED on production
+ *   before the gate existed: 25 finished films belonging to 7 Creators, each
+ *   downloadable with no session and no cookie, and a proxy told to cache them.
+ *
+ *   `UPLOADS_DIR` is what moves the films out of that directory. The previous
+ *   code treated its ABSENCE as a reason to fall back INTO `public/renders` —
+ *   so a deployment that forgot one environment variable silently reopened the
+ *   hole, and nothing would have said so. A security boundary that depends on
+ *   remembering a variable is not a boundary.
+ *
+ *   So writing now FAILS CLOSED. A private render refuses to start rather than
+ *   land where the gate cannot reach it. The only way to write into a publicly
+ *   served directory is to say so explicitly, in a variable whose own name is
+ *   the warning — and that mode exists for local work, never for a Creator's
+ *   film on a public host.
+ *
+ *   READING is deliberately NOT symmetric. See resolveAssetPath below: the 28
+ *   films already on production, and anything a legacy deployment left in
+ *   `public/`, must keep resolving. Refusing to READ them would destroy access
+ *   to real Creators' work in the name of protecting it.
+ */
+export const PUBLIC_RENDER_OUTPUT_OPT_IN = 'AZMA_ALLOW_PUBLIC_RENDER_OUTPUT';
+
+export class RenderStorageNotConfiguredError extends Error {
+  public readonly code = 'render-storage-not-configured';
+  constructor() {
+    super(
+      'UPLOADS_DIR is not configured, so a finished film has nowhere private to be written. '
+        + `Set UPLOADS_DIR to a directory outside public/, or set ${PUBLIC_RENDER_OUTPUT_OPT_IN}=1 `
+        + 'to accept that renders will be served publicly without the authorisation gate.',
+    );
+    this.name = 'RenderStorageNotConfiguredError';
+  }
+}
+
+/** True when this host has explicitly accepted publicly served render output. */
+export function publicRenderOutputAllowed(): boolean {
+  const raw = process.env[PUBLIC_RENDER_OUTPUT_OPT_IN];
+  return raw === '1' || raw === 'true';
+}
+
+/**
+ * The one directory a finished film may be written to.
+ *
+ * Throws `RenderStorageNotConfiguredError` when no private root is configured
+ * and the public mode has not been explicitly accepted. Read at CALL time: an
+ * environment variable frozen into a module constant has caused three separate
+ * production defects in this repository.
+ */
+export function renderOutputDir(): string {
+  const base = process.env.UPLOADS_DIR;
+  if (base) return join(base, 'renders');
+  if (publicRenderOutputAllowed()) return join(process.cwd(), 'public', 'renders');
+  throw new RenderStorageNotConfiguredError();
+}
+
+/** The legacy location the same film may ALREADY occupy. Reading only. */
+function legacyRenderDir(): string {
+  return join(process.cwd(), 'public', 'renders');
+}
 
 /** The host path that serves `secureStorageUri`, by the writers' own rule. */
 export function resolveAssetPath(secureStorageUri: string): string {
@@ -44,10 +111,18 @@ export function resolveAssetPath(secureStorageUri: string): string {
   //   The rule is the writer's own, not a guess:
   //   `cinematic-ffmpeg-encoder.ts` → `rendersDir()` → `$UPLOADS_DIR/renders`.
   if (secureStorageUri.startsWith('/renders/')) {
-    const rendersBase = uploadsDir
-      ? join(uploadsDir, 'renders')
-      : join(process.cwd(), 'public', 'renders');
-    return join(rendersBase, secureStorageUri.slice('/renders/'.length));
+    const name = secureStorageUri.slice('/renders/'.length);
+    // The protected root first, because that is where every film written since
+    // the gate exists. Then the legacy public location, because films predating
+    // it are real Creators' work and must not become unreachable. Asked in that
+    // order, a host that has both answers with the protected copy.
+    const protectedPath = uploadsDir ? join(uploadsDir, 'renders', name) : null;
+    if (protectedPath && existsSync(protectedPath)) return protectedPath;
+    const legacyPath = join(legacyRenderDir(), name);
+    if (existsSync(legacyPath)) return legacyPath;
+    // Neither exists yet: name the protected one, so a caller that is about to
+    // create it does not get pointed at `public/`.
+    return protectedPath ?? legacyPath;
   }
   // Unknown URI scheme — legacy fallback, unchanged from the encoder's copy.
   return join(process.cwd(), 'public', secureStorageUri.replace(/^\//, ''));

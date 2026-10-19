@@ -6958,3 +6958,43 @@ button.ras-path-card:hover { border-color: var(--neon-gold-bright); background: 
 @media (max-width: 680px) {
   .ras-center { order: -1; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   BLOCKER B — THE RAIL'S ACTIONS ARE NOT HEADER CONTENT
+
+   `.panel-header` is capped at 55% of the rail and scrolls on its own
+   so the asset list keeps a floor it cannot be pushed below. The two
+   summon buttons used to live inside it, and therefore scrolled with
+   the brief's compose fields.
+
+   MEASURED at 1440×900: the Vault button sat 292px below the bottom of
+   that scrolling box. `elementsFromPoint` at the button's own centre
+   returned the queue container, so a click never reached it — and no
+   affordance said an inner region needed scrolling.
+
+   They are their own row now: flex-shrink 0, so the rail's budget
+   trims the compose fields rather than the actions. An action that has
+   to be hunted for is not offered.
+   ═══════════════════════════════════════════════════════════════ */
+
+.rail-actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 10px 0;
+  background: var(--panel-bg);
+}
+
+/* The rail is 220px wide, so the two actions stack. On a phone the rail
+   becomes a row, and so do they. */
+@media (max-width: 680px) {
+  .rail-actions {
+    flex-direction: row;
+    padding: 8px 10px 0;
+  }
+  .rail-actions > .summon-bridge-trigger-btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}

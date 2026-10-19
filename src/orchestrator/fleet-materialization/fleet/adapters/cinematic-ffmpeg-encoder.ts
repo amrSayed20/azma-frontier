@@ -33,7 +33,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { resolveAssetPath } from '../../../../vault/asset-bytes';
+import { renderOutputDir, resolveAssetPath } from '../../../../vault/asset-bytes';
 import type {
   CompiledAssemblyGraph,
   CompiledNodeMix,
@@ -55,6 +55,66 @@ import type { OutputFrame, SourceWindow, VisualWindow } from '../../../../chambe
 
 type JobState = 'running' | 'done' | Error;
 const jobs = new Map<string, JobState>();
+
+/**
+ * ─── THE ONE PROCESS THAT KNOWS WHY, SAYING SO WHILE IT STILL KNOWS ─────────
+ *
+ *   `jobs` is a module Map. The child process that fails belongs to the
+ *   instance that spawned it, and a status poll served by a different instance
+ *   finds that Map empty. MEASURED by hand 2026-10-19 on a host with no ffmpeg:
+ *   the render failed for a missing engine, and the chamber reported «we hold
+ *   no recorded reason» — because by the time anyone asked, nobody did.
+ *
+ *   So the owning process is given somewhere durable to put it. The encoder
+ *   does not know what a ledger is and must not: it calls a sink, and whoever
+ *   composed the runtime decides what the sink writes to.
+ */
+export type EncodingFailureSink = (operationId: string, message: string) => void;
+let failureSink: EncodingFailureSink | null = null;
+
+/** Registered once by the composition layer. Null removes it. */
+export function setEncodingFailureSink(sink: EncodingFailureSink | null): void {
+  failureSink = sink;
+}
+
+function reportFailure(operationId: string, message: string): void {
+  if (!failureSink) return;
+  try {
+    failureSink(operationId, message);
+  } catch {
+    // A sink that throws must never turn one failure into two.
+  }
+}
+
+/**
+ * The frame each operation was encoded in, remembered so the deposited asset
+ * records the size it actually has. `rawMetadata` used to carry a hand-written
+ * 1920x1080 for every render, so a portrait film was filed as landscape.
+ */
+const encodedFrames = new Map<string, { readonly width: number; readonly height: number }>();
+
+/**
+ * The frame of a finished render. The remembered value first; otherwise the
+ * FILE is asked, which is authoritative and works from any process.
+ */
+export function getEncodedFrame(operationId: string): { width: number; height: number } | null {
+  const remembered = encodedFrames.get(operationId);
+  if (remembered) return remembered;
+  const path = getOutputPath(operationId);
+  if (!existsSync(path)) return null;
+  try {
+    const r = spawnSync(
+      'ffprobe',
+      ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height',
+        '-of', 'csv=p=0:s=x', path],
+      { encoding: 'utf-8' },
+    );
+    const m = /^(\d+)x(\d+)$/.exec(String(r.stdout ?? '').trim());
+    return m ? { width: Number(m[1]), height: Number(m[2]) } : null;
+  } catch {
+    return null;
+  }
+}
 
 // ==========================================
 // 2. PATH & MEDIA-TYPE HELPERS
@@ -123,38 +183,30 @@ export function framingFilter(
 }
 
 /**
- * Where finished films are written.
+ * Where finished films are written — asked of the Vault, which owns the rule.
  *
- * ─── WHY THIS IS NOT `public/renders` ───────────────────────────────────────
+ * ─── WHY THIS IS NOT COMPUTED HERE ANY MORE ─────────────────────────────────
  *
- *   Anything under `public/` is served by Next.js's own static handler, which
- *   runs BEFORE any route. Phase E built an authorisation gate at
- *   `app/renders/[...path]/route.ts`, and with the films still in `public/`
- *   the gate was unreachable code. MEASURED, against a planted file:
+ *   It used to read UPLOADS_DIR and, when absent, fall back to
+ *   `public/renders`. Anything under `public/` is served by Next.js's own
+ *   static handler, which runs BEFORE any route, so the authorisation gate at
+ *   `app/renders/[...path]` could not reach it. MEASURED, against a planted
+ *   file: `GET /renders/op_shadowtest_probe.mp4` -> 200 · raw bytes.
  *
- *       GET /renders/op_shadowtest_probe.mp4  ->  200 · 33 bytes · raw file
+ *   That fallback meant one forgotten environment variable silently reopened
+ *   the hole, with nothing to say so. `renderOutputDir()` in the Vault now
+ *   FAILS CLOSED instead, and a host that genuinely wants public output must
+ *   say so in a variable whose name is the warning.
  *
- *   The route never ran. So films live beside every other protected byte, in
- *   UPLOADS_DIR, which `public/` cannot shadow. RE-MEASURED on the live server
- *   2026-10-18, against a real film of the 28 already there:
+ *   RE-MEASURED on the live server 2026-10-18, against a real film of the 28
+ *   already there: `GET /renders/op_render_1787944987450_9xwap8f8.mp4` with no
+ *   session -> 404.
  *
- *       GET /renders/op_render_1787944987450_9xwap8f8.mp4 (no session) -> 404
- *
- *   This is deliberately keyed on UPLOADS_DIR and NOT on a RENDERS_DIR of its
- *   own. A separate variable that production does not set would default back to
- *   `public/renders` and silently reopen the hole — and would also hide the 28
- *   films already written, so a render Makman had adopted would stop resolving.
- *
- * ─── AND WHY IT IS A FUNCTION ───────────────────────────────────────────────
- *
- *   Read at CALL time, never frozen at import. A module-level `const` reading
- *   an environment variable has caused three separate production defects in
- *   this repository. The lesson is not "remember"; the const form is a latent
- *   bug by construction, so the value is never available in that form.
+ *   It stays a FUNCTION, read at call time: an environment variable frozen into
+ *   a module constant has caused three separate production defects here.
  */
 function rendersDir(): string {
-  const base = process.env.UPLOADS_DIR;
-  return base ? join(base, 'renders') : join(process.cwd(), 'public', 'renders');
+  return renderOutputDir();
 }
 
 // ── THE RULE THAT WROTE THE FILE IS THE RULE THAT FINDS IT ────────────────
@@ -291,29 +343,23 @@ export function spawnEncoding(
         renameSync(partialPath, getOutputPath(operationId));
         jobs.set(operationId, 'done');
       } catch (err) {
-        jobs.set(
-          operationId,
-          new Error(`FFmpeg finished but the MP4 could not be moved into place: ${(err as Error).message}`),
-        );
+        const message = `FFmpeg finished but the MP4 could not be moved into place: ${(err as Error).message}`;
+        jobs.set(operationId, new Error(message));
+        reportFailure(operationId, message);
       }
     } else {
-      jobs.set(
-        operationId,
-        new Error(
-          `FFmpeg exited with code ${code ?? 'null'} for operation [${operationId}]. ` +
-            `Last stderr: ${stderr.slice(-3000)}`,
-        ),
-      );
+      const message = `FFmpeg exited with code ${code ?? 'null'} for operation [${operationId}]. `
+        + `Last stderr: ${stderr.slice(-3000)}`;
+      jobs.set(operationId, new Error(message));
+      // Said now, by the process that owns the child. Nobody else will know.
+      reportFailure(operationId, message);
     }
   });
 
   proc.on('error', (err: Error) => {
-    jobs.set(
-      operationId,
-      new Error(
-        `FFmpeg spawn failed — ensure ffmpeg is installed (apt-get install -y ffmpeg). Error: ${err.message}`,
-      ),
-    );
+    const message = `FFmpeg spawn failed — ensure ffmpeg is installed (apt-get install -y ffmpeg). Error: ${err.message}`;
+    jobs.set(operationId, new Error(message));
+    reportFailure(operationId, message);
   });
 }
 
@@ -373,6 +419,8 @@ function buildFfmpegArgs(
   // the frame encoded here cannot disagree.
   const frame = resolveOutputFrame(graph.metadata.outputProfile);
   const quality = resolveQuality(graph.metadata.exportQuality);
+  // Remembered so the deposited asset records the size it actually has.
+  encodedFrames.set(operationId, { width: frame.width, height: frame.height });
 
   // Walk every non-muted, non-hidden track and collect active nodes with media.
   const collected = new Map<string, CollectedNode>();

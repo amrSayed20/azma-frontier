@@ -46,6 +46,11 @@ jest.mock('../fleet/adapters/cinematic-ffmpeg-encoder', () => ({
   isEncodingComplete: jest.fn(() => false),
   getEncodingError: jest.fn(() => null),
   getOutputPath: jest.fn((id: string) => `/renders/${id}.mp4`),
+  // The adapter asks the encoder what frame it actually produced, so the
+  // deposited asset records its own size rather than a hand-written
+  // 1920x1080. A portrait frame here proves the adapter reports what it is
+  // told instead of a constant.
+  getEncodedFrame: jest.fn(() => ({ width: 1080, height: 1920 })),
 }));
 
 import {

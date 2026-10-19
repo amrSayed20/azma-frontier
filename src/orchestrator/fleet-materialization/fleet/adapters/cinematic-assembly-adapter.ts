@@ -42,6 +42,7 @@ import type { HydratedAssemblyNode } from '../../../../chambers/ras-al-amr/vault
 import {
   spawnEncoding,
   isEncodingComplete,
+  getEncodedFrame,
   getEncodingError,
 } from './cinematic-ffmpeg-encoder';
 
@@ -125,8 +126,19 @@ export class CinematicAssemblyAdapter extends BaseProviderAdapter {
         rawMetadata: {
           encoderProviderId: this.providerId,
           outputFormat: 'H.264/AAC MP4',
-          outputWidth: 1920,
-          outputHeight: 1080,
+          // ── THE SIZE THE FILE HAS, NOT THE SIZE IT USED TO HAVE ──────────
+          //   These two were a hand-written 1920 and 1080, so every deposited
+          //   asset claimed landscape however the Creator had chosen. A
+          //   portrait film was filed as landscape, and anything later reading
+          //   the asset's metadata — a platform reframe, a publish decision —
+          //   would have been reading a number nobody measured.
+          //
+          //   getEncodedFrame prefers what the encoder used and otherwise asks
+          //   the finished file, so it is right from any process.
+          ...(() => {
+            const f = getEncodedFrame(externalJobId);
+            return f ? { outputWidth: f.width, outputHeight: f.height } : {};
+          })(),
         },
       };
     }

@@ -63,3 +63,9 @@ next-env.d.ts
 /scripts/proof-harness/*.json
 /scripts/proof-harness/tiktok-demo/
 /scripts/proof-harness/tiktok-recording/
+
+# BLOCKER C — the local protected storage root. `UPLOADS_DIR` points here for
+# local work so that finished films are NEVER written under public/, where
+# Next.js's static handler serves them before the authorisation gate. Creators'
+# bytes, never committed.
+/.local-uploads/

@@ -1996,6 +1996,17 @@ export default function RasAmrChamber() {
       }
       setVaultAssets((prev) => [...prev, result.asset]);
       setIsVoiceUpload(false);
+      // ── THE FILE ARRIVED SOMEWHERE THE CREATOR CAN SEE ──────────────────
+      //   The upload joined the Vault list and the Creator was left on the
+      //   upload form, with no confirmation and no path to what they had just
+      //   sent. MEASURED by hand: the walk had to switch the drawer's tab
+      //   itself to find the asset it had uploaded a moment earlier.
+      //
+      //   Moving to the Vault tab is the confirmation: the new asset is the
+      //   one at the end of that list, and «⚡ حقن» is beside it. A voice
+      //   upload is left where it is — it belongs to the audio surfaces, not
+      //   to the visual rail.
+      if (!(options?.asVoice ?? isVoiceUpload)) setHudActiveTab('vault');
       setVoiceDisplayNameInput('');
     } catch {
       setUploadError('بوابة الرفع لا تستجيب.');
@@ -5080,6 +5091,26 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
               </div>
             )}
 
+          </header>
+
+          {/* ── THE RAIL'S TWO ACTIONS, OUTSIDE THE SCROLLING HEADER ─────────
+              They used to be the LAST children of .panel-header, which is
+              deliberately capped at 55% of the rail and scrolls on its own so
+              the asset list keeps its floor (see .ras-panel-left > .panel-header
+              in ras-amr.css). The consequence was never intended:
+
+              MEASURED by hand at 1440×900 — the Vault button's own centre
+              returned `div.queue-container` from elementsFromPoint, because the
+              button sat 292px BELOW the bottom of its scrolling container. A
+              plain click could not land on it, and nothing on screen said that
+              an inner region had to be scrolled first.
+
+              Bringing a Creator's two ways of getting an asset OUT of the
+              scrolling region is the correction. The brief's compose fields
+              still scroll, which is what the 55% budget was for; the actions
+              never do, because an action that must be hunted for is not
+              offered. */}
+          <div className="rail-actions">
             <button
               className="summon-bridge-trigger-btn"
               data-testid="rasamr-open-vault"
@@ -5094,7 +5125,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
             >
               ⬆ ارفع من جهازك
             </button>
-          </header>
+          </div>
           <div className="queue-container custom-scroll">
             {queue.length === 0 && (
               <p className="queue-empty-hint">
