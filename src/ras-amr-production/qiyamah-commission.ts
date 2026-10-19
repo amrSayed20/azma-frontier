@@ -168,9 +168,65 @@ export function composeSceneInstruction(parts: {
 }): string {
   const world = (parts.visualWorldAr ?? '').trim();
   const demand = parts.demandAr.trim();
-  if (world.length === 0) return demand;
-  return `${world}\n\nفي هذا المشهد: ${demand}`;
+  const rule = asksForMultipleSubjects(demand) ? '' : `\n\n${SUBJECT_INTEGRITY_RULE_AR}`;
+  if (world.length === 0) return `${demand}${rule}`;
+  return `${world}\n\nفي هذا المشهد: ${demand}${rule}`;
 }
+
+/**
+ * ─── ONE SUBJECT, ONCE — AND NOTHING SAYS IT BUT THE WORDS ───────────────────
+ *
+ *   MEASURED on the live proof, 2026-10-19, job cmvfrm3lp01bbjs01p57gpzij: the
+ *   editor was given an approved frame holding one honey jar and asked to add a
+ *   spoon lifting honey in front of it. It returned the SAME product with the
+ *   same label — identity held — and TWO jars, their bodies merged and the lid
+ *   gone. One further edit, cmvfrrgoo00m4j501rkrowexp, differed from it by one
+ *   sentence forbidding a second copy, and the duplication was gone.
+ *
+ *   So the fault was in the words, and the words are the only place a fix can
+ *   live: the engine's payload is `{ model, style: { prompt }, assets }` and
+ *   holds no parameter for «one of this». This is a GUIDING rule written into
+ *   every scene's instruction. It is not a guarantee, and the Empire must never
+ *   speak of it as one — a model may still disobey, and only looking at the
+ *   picture will say whether it did.
+ *
+ *   It names no product. It bans four things and frees everything else:
+ *   duplication, merging, altering what makes the subject recognisable, and
+ *   swapping the subject for another. The action, the surroundings and the
+ *   detail of the scene stay the Creator's to change.
+ */
+export const SUBJECT_INTEGRITY_RULE_AR = [
+  'والتزِم بما يلي ما لم تُطلَب غيرُه صراحةً في هذه الجملة:',
+  'يَظهَر الموضوعُ المرجعيُّ نسخةً واحدةً فقط في الإطار،',
+  'ولا تُكرَّر أجزاؤه ولا تُدمَج أجسامُه ولا يُضاعَف أيُّ جزءٍ منه؛',
+  'وتَبقى سِماتُه المميِّزةُ ونصُّ مُلصَقِه وألوانُه كما هي دون تغيير؛',
+  'ولا يُستبدَل بموضوعٍ آخر.',
+  'وما عدا ذلك — الفعلُ والعناصرُ المحيطةُ وتفاصيلُ المشهد — يتغيّر كما تَطلُبُه هذه الجملة.',
+].join(' ');
+
+/**
+ * Whether the Creator ASKED for more than one of the subject.
+ *
+ * Their own words outrank a default, always — a rule imposed on a Creator who
+ * wanted three bottles in a row is a worse failure than a duplicate nobody
+ * asked for, because the first silently refuses what they said and the second
+ * is visible the moment they look.
+ *
+ * So this errs toward respecting them: any of these phrases in the scene's own
+ * demand withdraws the rule entirely. It reads the DEMAND only, never the
+ * shared world — the world describes a place and a style, and a label reading
+ * «طبيعي ١٠٠٪» must never be mistaken for a request for a hundred products.
+ */
+export function asksForMultipleSubjects(demandAr: string): boolean {
+  const text = demandAr.trim();
+  return MULTIPLICITY_PHRASES_AR.some((phrase) => text.includes(phrase));
+}
+
+/** Phrases that can only mean «more than one of it», kept deliberately few. */
+const MULTIPLICITY_PHRASES_AR: readonly string[] = [
+  'أكثر من', 'عدة', 'عدّة', 'متعدد', 'نسخ', 'مجموعة من', 'صفٌّ من', 'صف من',
+  'اثنان', 'اثنين', 'ثلاثة', 'ثلاث', 'أربعة', 'أربع', 'خمسة',
+];
 
 export interface CommissionedScene {
   /** The scene this picture belongs to, so order can never be guessed at. */

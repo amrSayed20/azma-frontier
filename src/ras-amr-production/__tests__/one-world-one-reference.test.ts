@@ -33,6 +33,8 @@ import {
   commissionScenePictures,
   composeSceneInstruction,
   commissionFailureSpokenAr,
+  asksForMultipleSubjects,
+  SUBJECT_INTEGRITY_RULE_AR,
 } from '../qiyamah-commission';
 import type { CommissionFailure } from '../qiyamah-commission';
 
@@ -135,9 +137,12 @@ describe('one shared world, one approved reference', () => {
     }
   });
 
-  it('no world written means the instruction is the demand alone, exactly as before', async () => {
-    // The guarantee for every caller that existed before this road: an absent
-    // world is indistinguishable from the parameter never having existed.
+  it('no world written leaves the scene its own words, with nothing invented around them', async () => {
+    // RESTATED 2026-10-20, not weakened. It asserted that an absent world made
+    // the instruction the demand ALONE — true until the subject-integrity rule
+    // was added, which belongs to every scene whether or not a world was
+    // written. What the test was protecting is still protected: no world
+    // preamble appears, and the Creator's own sentence is untouched.
     mockGenerate.mockResolvedValue({
       status: 'succeeded',
       asset: { assetId: 'a', assetUrl: '/generated-assets/a.png' },
@@ -145,8 +150,79 @@ describe('one shared world, one approved reference', () => {
 
     await commission();
 
-    expect(mockGenerate.mock.calls[0][0].prompt).toBe(DEMANDS[0].demandAr);
-    expect(composeSceneInstruction({ demandAr: 'نصٌّ وحدَه' })).toBe('نصٌّ وحدَه');
+    const prompt = mockGenerate.mock.calls[0][0].prompt as string;
+    expect(prompt.startsWith(DEMANDS[0].demandAr)).toBe(true);
+    expect(prompt).not.toContain('في هذا المشهد:');
+    expect(composeSceneInstruction({ demandAr: 'نصٌّ وحدَه' }))
+      .toBe(`نصٌّ وحدَه
+
+${SUBJECT_INTEGRITY_RULE_AR}`);
+  });
+
+  // ══ ONE SUBJECT, ONCE ═════════════════════════════════════════════════════
+  //
+  //   The live proof returned a duplicated product from one instruction and a
+  //   single one from the next, which differed by a sentence. These prove the
+  //   sentence is now built in — and nothing here claims the engine will obey
+  //   it. That is a question for pictures, and it is not re-asked at a cost.
+
+  it('an ordinary scene for one product carries the rule, the world and its own demand', () => {
+    const instruction = composeSceneInstruction({ visualWorldAr: WORLD, demandAr: DEMANDS[0].demandAr });
+
+    expect(instruction).toContain(WORLD);
+    expect(instruction).toContain(DEMANDS[0].demandAr);
+    expect(instruction).toContain(SUBJECT_INTEGRITY_RULE_AR);
+    // The four bans the Founder named, each present in the Creator's tongue.
+    expect(instruction).toContain('نسخةً واحدةً فقط');
+    expect(instruction).toContain('ولا تُدمَج أجسامُه');
+    expect(instruction).toContain('ونصُّ مُلصَقِه');
+    expect(instruction).toContain('ولا يُستبدَل بموضوعٍ آخر');
+    // And the freedom that must survive it.
+    expect(instruction).toContain('يتغيّر كما تَطلُبُه هذه الجملة');
+  });
+
+  it('a new scene keeps the same world and the same rule, and changes only its own sentence', () => {
+    const a = composeSceneInstruction({ visualWorldAr: WORLD, demandAr: DEMANDS[1].demandAr });
+    const b = composeSceneInstruction({ visualWorldAr: WORLD, demandAr: DEMANDS[2].demandAr });
+
+    expect(a).not.toBe(b);
+    for (const instruction of [a, b]) {
+      expect(instruction).toContain(WORLD);
+      expect(instruction).toContain(SUBJECT_INTEGRITY_RULE_AR);
+    }
+    expect(a).toContain(DEMANDS[1].demandAr);
+    expect(b).toContain(DEMANDS[2].demandAr);
+    expect(a).not.toContain(DEMANDS[2].demandAr);
+  });
+
+  it('a Creator who ASKS for several keeps what they asked for — the rule withdraws', () => {
+    // Their words outrank a default. Imposing «one only» on someone who wrote
+    // «three bottles in a row» silently refuses what they said, which is worse
+    // than a duplicate they can see the moment they look.
+    const asked = [
+      'ثلاثةُ برطماناتٍ من المنتجِ نفسِه في صفٍّ على الطاولة.',
+      'عدّةُ عبواتٍ متجاورةٍ بزواياَ مختلفة.',
+      'أكثر من نسخةٍ من المنتجِ في الخلفيّة.',
+      'نسختان من العبوةِ جنباً إلى جنب.',
+    ];
+    for (const demand of asked) {
+      const instruction = composeSceneInstruction({ visualWorldAr: WORLD, demandAr: demand });
+      expect(asksForMultipleSubjects(demand)).toBe(true);
+      expect(instruction).not.toContain(SUBJECT_INTEGRITY_RULE_AR);
+      expect(instruction).toContain(demand);
+      expect(instruction).toContain(WORLD);
+    }
+  });
+
+  it('a label that says «100%» is not a request for a hundred products', () => {
+    // The rule reads the scene's own demand and never the shared world, where
+    // a product's label lives. MEASURED on the live proof: the world carried
+    // «صافٍ، طبيعي ١٠٠٪» in every instruction.
+    const worldWithLabel = `${WORLD} وعلى المُلصَقِ: صافٍ، طبيعي ١٠٠٪.`;
+    const instruction = composeSceneInstruction({
+      visualWorldAr: worldWithLabel, demandAr: DEMANDS[0].demandAr,
+    });
+    expect(instruction).toContain(SUBJECT_INTEGRITY_RULE_AR);
   });
 
   it('each refusal of the editor keeps its own cure, and none becomes «it failed»', async () => {
