@@ -131,7 +131,7 @@ describe('Qiyamah First Generation Path — Generation Service', () => {
 
     const result = await generateImage({ prompt: 'a sovereign vista', style: 'cinematic' });
 
-    expect(result.status).toBe('succeeded');
+    expect(result).toEqual(expect.objectContaining({ status: 'succeeded' }));
     if (result.status === 'succeeded') {
       expect(result.asset.assetUrl).toBe('/generated-assets/abc-123.png');
       expect(result.asset.prompt).toBe('a sovereign vista');
@@ -359,6 +359,128 @@ describe('Qiyamah First Generation Path — Generation Service', () => {
       expect(result.asset.originalIdea).toBeNull();
     }
   });
+
+  // ── THE FRAME THE CREATOR CHOSE, ALL THE WAY TO THE PROVIDER ──────────────
+  //
+  //   The chain, each link read at 369f785:
+  //
+  //     GenerationRequest.platformTarget
+  //       -> buildImageCreationIntent(prompt, style, platformTarget)
+  //       -> getDefaultAspectRatio(platformTarget)   [platform-adapter.ts]
+  //       -> intent.aspectRatio
+  //       -> selector.select(intent).selection.aspectRatio
+  //       -> orchestrationMetadata['aspectRatio']
+  //       -> orchestrate({ metadata })
+  //       -> magic-hour-adapter: metadata['aspectRatio']
+  //       -> POST /v1/ai-image-generator { aspect_ratio }
+  //
+  //   The third link was broken: this service called the builder with TWO
+  //   arguments, so the parameter that existed to carry the Creator's choice
+  //   was never filled and every picture came out 16:9.
+  //
+  //   `mockOrchestrate` is the boundary these tests stop at \u2014 the real adapter
+  //   is never constructed, so no provider is called and nothing is charged.
+  //   The metadata asserted here is byte-for-byte what the adapter reads at
+  //   magic-hour-adapter.ts:276 and sends as `aspect_ratio`.
+
+  it.each([
+    ['tiktok', '9:16'],
+    ['instagram-reel', '9:16'],
+    ['snapchat', '9:16'],
+    ['instagram', '1:1'],
+    ['youtube', '16:9'],
+  ])('carries the %s frame (%s) into the provider request unchanged', async (target, expected) => {
+    successOrchestration();
+
+    await generateImage({ prompt: 'a sovereign scene', creatorId: 'creator-ar1', platformTarget: target });
+
+    const call = mockOrchestrate.mock.calls[0][0];
+    expect(call.metadata).toMatchObject({ aspectRatio: expected });
+  });
+
+  it('leaves a caller that names no frame exactly where it was', async () => {
+    // The whole guarantee for every existing caller: omitting the field is the
+    // same as the field not existing. 16:9 is platform-adapter.ts\u2019s documented
+    // default, asserted here rather than restated as a rule of this module.
+    successOrchestration();
+
+    await generateImage({ prompt: 'a sovereign scene', creatorId: 'creator-ar2' });
+
+    const call = mockOrchestrate.mock.calls[0][0];
+    expect(call.metadata).toMatchObject({ aspectRatio: '16:9' });
+  });
+
+  it('falls back to the documented default for a frame nobody recognises', async () => {
+    // An unknown name is not an error and must not become one: the platform map
+    // returns its default, and the generation proceeds to completion.
+    successOrchestration();
+    // Primed as every other success test here primes it — the act must COMPLETE,
+    // not merely reach the provider boundary.
+    mockPersistGeneratedImage.mockResolvedValue({
+      assetId: 'abc-ar3',
+      assetUrl: '/generated-assets/abc-ar3.png',
+    });
+
+    const result = await generateImage({
+      prompt: 'a sovereign scene',
+      creatorId: 'creator-ar3',
+      platformTarget: 'a-platform-that-does-not-exist',
+    });
+
+    expect(result).toEqual(expect.objectContaining({ status: 'succeeded' }));
+    const call = mockOrchestrate.mock.calls[0][0];
+    expect(call.metadata).toMatchObject({ aspectRatio: '16:9' });
+  });
+
+  it('is case-insensitive about the name, because a Creator is not a schema', async () => {
+    successOrchestration();
+
+    await generateImage({ prompt: 'a sovereign scene', creatorId: 'creator-ar4', platformTarget: 'TikTok' });
+
+    const call = mockOrchestrate.mock.calls[0][0];
+    expect(call.metadata).toMatchObject({ aspectRatio: '9:16' });
+  });
+
+  it('changes the frame and NOTHING else about the request', async () => {
+    // A frame choice must not disturb the prompt, the style, or the resolution
+    // tier \u2014 the three other things this metadata carries.
+    successOrchestration();
+    await generateImage({ prompt: 'a sovereign scene', creatorId: 'creator-ar5', style: 'cinematic' });
+    const withoutTarget = mockOrchestrate.mock.calls[0][0];
+
+    mockOrchestrate.mockReset();
+    successOrchestration();
+    await generateImage({
+      prompt: 'a sovereign scene', creatorId: 'creator-ar6', style: 'cinematic', platformTarget: 'tiktok',
+    });
+    const withTarget = mockOrchestrate.mock.calls[0][0];
+
+    expect(withTarget.prompt).toBe(withoutTarget.prompt);
+    expect(withTarget.metadata.style).toBe(withoutTarget.metadata.style);
+    expect(withTarget.metadata.resolution).toBe(withoutTarget.metadata.resolution);
+    expect(withTarget.metadata.providerModelId).toBe(withoutTarget.metadata.providerModelId);
+    // Only the frame moved.
+    expect(withoutTarget.metadata.aspectRatio).toBe('16:9');
+    expect(withTarget.metadata.aspectRatio).toBe('9:16');
+  });
+
+  it('reaches no provider: the orchestrator is the only boundary crossed', async () => {
+    // \u00a76 \u2014 nothing in this file constructs a provider adapter or opens a
+    // socket. Asserted, not assumed: `fetch` is replaced for the duration and
+    // must come back untouched.
+    const realFetch = global.fetch;
+    const spy = jest.fn();
+    (global as unknown as { fetch: unknown }).fetch = spy;
+    try {
+      successOrchestration();
+      await generateImage({ prompt: 'a sovereign scene', creatorId: 'creator-ar7', platformTarget: 'tiktok' });
+      expect(spy).not.toHaveBeenCalled();
+      expect(mockOrchestrate).toHaveBeenCalledTimes(1);
+    } finally {
+      (global as unknown as { fetch: unknown }).fetch = realFetch;
+    }
+  });
+
 });
 
 // ─── VIDEO GENERATION SUITE ───────────────────────────────────────────────────

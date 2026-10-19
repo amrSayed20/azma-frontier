@@ -309,7 +309,17 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
   // Hard requirement failures (quality-unavailable, resolution-unavailable,
   // duration-unavailable) are surfaced as provider-error — AZMA never
   // silently downgrades a Creator requirement.
-  const creationIntent = buildImageCreationIntent(request.prompt.trim(), style);
+  // The third argument is the whole repair. `buildImageCreationIntent` has
+  // always accepted a platform target and resolved it through
+  // `getDefaultAspectRatio`; this call passed two arguments, so the aspect
+  // ratio was that function's own default on every path. With no target the
+  // behaviour is identical to before, because `undefined` is precisely what
+  // the parameter received when it was not written at all.
+  const creationIntent = buildImageCreationIntent(
+    request.prompt.trim(),
+    style,
+    request.platformTarget,
+  );
   // A Founder-gated controlled test may name the binding. With no override
   // this expression IS the selector call, unchanged, so normal production
   // resolves exactly as it did before this field existed.

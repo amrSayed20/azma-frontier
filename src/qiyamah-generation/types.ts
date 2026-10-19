@@ -19,6 +19,26 @@ export interface GenerationRequest {
   /** One id per attempt, minted by the route; threaded to the provider and back. */
   readonly operationId?: string;
   /**
+   * ── WHICH FRAME THE PICTURE IS FOR ──────────────────────────
+   *
+   *   A platform NAME (`tiktok`, `youtube`, `instagram`, …) that
+   *   `platform-adapter.ts` already maps to an aspect ratio. It is passed
+   *   through to `buildImageCreationIntent`, whose third parameter has
+   *   accepted exactly this since it was written.
+   *
+   *   MEASURED at 369f785: that call read
+   *   `buildImageCreationIntent(request.prompt.trim(), style)` — two
+   *   arguments. The parameter existed and nothing ever filled it, so every
+   *   generated picture came out 16:9 whatever frame the Creator had chosen.
+   *
+   *   A NAME, never a ratio: the map from a platform to its shape belongs to
+   *   `platform-adapter.ts` and is not restated here. An unknown name, or
+   *   none, resolves to that module’s documented 16:9 — so a caller that does
+   *   not set this behaves exactly as every caller did before the field
+   *   existed.
+   */
+  readonly platformTarget?: string;
+  /**
    * ── TEST-ONLY MODEL BINDING ─ NOT A CREATOR OPTION ─────────────────
    *
    *   An AZMA fleet model id — never a provider string — that a Founder-gated
