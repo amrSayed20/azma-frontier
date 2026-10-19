@@ -5,6 +5,11 @@ import { verifySession } from '@/src/authentication';
 import { getDb } from '@/src/persistent-storage/db';
 import { createStoryboard, addScene, listScenes, setScenePicturePlan } from '@/src/persistent-storage/sovereign-project-repository';
 import { composeSceneStructure } from '@/src/chambers/hujjah-al-damighah/sovereign-language-bridge';
+import {
+  findOperationForStoryboard,
+  observeStoryboardOperation,
+} from '@/src/ras-amr-production/storyboard-operation-lifecycle';
+import type { SceneFrameFailure } from '@/src/ras-amr-production/storyboard-operation-lifecycle';
 
 /**
  * AZMA OS — رأس الأمر: the Creator writes what they want, and gets scenes.
@@ -181,6 +186,29 @@ export interface ScenePlanView {
   readonly creationDemandAr: string | null;
   /** Their own asset, when they chose one. */
   readonly visualAssetId: string | null;
+  /**
+   * ── WHERE THIS SCENE'S PICTURE STANDS ──────────────────────────────────
+   *
+   *   The Founder, 2026-10-19: «أظهر في واجهة القصة المصوّرة حالة واضحة لكل
+   *   مشهد… لكن لا تعرض حالة لا تعكس حالة المهمة الفعلية.»
+   *
+   *   So none of these is stored as a label. Each is DERIVED, every time, from
+   *   two things that are already true: the scene's own row, and the state of
+   *   the operation that last produced this storyboard. A label in a column
+   *   would be a third truth about the same thing and would go stale the first
+   *   time a production failed on another device.
+   *
+   *     NOT_NEEDED    — the picture is to be searched for, not made.
+   *     CREATOR_ASSET — the Creator chose one of their own.
+   *     REQUIRED      — to be made, and not made yet.
+   *     CREATING      — a production is running now and this scene has no frame.
+   *     COMPLETED     — a frame is pinned to this scene.
+   *     FAILED        — the last production ended and this scene has no frame.
+   */
+  readonly frameState:
+    | 'NOT_NEEDED' | 'CREATOR_ASSET' | 'REQUIRED' | 'CREATING' | 'COMPLETED' | 'FAILED';
+  /** Why it failed, when the last production recorded a reason for THIS scene. */
+  readonly failure: SceneFrameFailure | null;
 }
 
 export type ScenePlansOutcome =
@@ -194,17 +222,45 @@ export async function readScenePlans(storyboardId: string): Promise<ScenePlansOu
   const scenes = listScenes(getDb(), storyboardId, session.creatorId);
   if (scenes.length === 0) return { ok: false, messageAr: 'لا مشاهدَ في هذه المطالبة.' };
 
+  // The last production of THIS storyboard, read scoped to this Creator — the
+  // only other place a scene's picture has a state. A board that was never
+  // produced simply has none, and every scene is then «مطلوب» or less.
+  const operationId = findOperationForStoryboard(session.creatorId, storyboardId);
+  const observed = operationId
+    ? await observeStoryboardOperation(operationId, session.creatorId)
+    : null;
+  const recorded = new Map(
+    (observed?.sceneOutcomes ?? []).map((o) => [o.sceneId, o]),
+  );
+
   return {
     ok: true,
-    scenes: scenes.map((sc) => ({
-      sceneId: sc.sceneId,
-      order: sc.order,
-      seenAr: sc.description,
-      saidAr: sc.directionNotes ?? '',
-      sourcing: sc.sourcing ?? 'stock',
-      creationDemandAr: sc.creationDemandAr,
-      visualAssetId: sc.visualAssetId,
-    })),
+    scenes: scenes.map((sc) => {
+      const sourcing = sc.sourcing ?? 'stock';
+      const outcome = recorded.get(sc.sceneId);
+      const frameState: ScenePlanView['frameState'] =
+        sourcing === 'stock' ? 'NOT_NEEDED'
+        : sourcing === 'creator-asset' ? (sc.visualAssetId ? 'CREATOR_ASSET' : 'REQUIRED')
+        // A pinned frame is the strongest evidence there is, and it outranks
+        // any record of a run: the picture is on the scene.
+        : sc.visualAssetId ? 'COMPLETED'
+        : observed?.producing ? 'CREATING'
+        : outcome?.state === 'FAILED' ? 'FAILED'
+        : 'REQUIRED';
+      return {
+        sceneId: sc.sceneId,
+        order: sc.order,
+        seenAr: sc.description,
+        saidAr: sc.directionNotes ?? '',
+        sourcing,
+        creationDemandAr: sc.creationDemandAr,
+        visualAssetId: sc.visualAssetId,
+        frameState,
+        // A reason is shown only for the state it explains. A scene that has
+        // since been completed does not keep wearing an old failure.
+        failure: frameState === 'FAILED' ? (outcome?.failure ?? null) : null,
+      };
+    }),
   };
 }
 

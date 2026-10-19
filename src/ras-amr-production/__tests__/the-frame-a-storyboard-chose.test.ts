@@ -83,7 +83,7 @@ async function commissionInProfile(profile?: keyof typeof OUTPUT_PROFILES) {
     // being replaced by a double. Entitlement is not what is under test here,
     // and it is guarded by its own tests.
     creatorRole: 'founder',
-    demands: [{ order: 1, demandAr: 'لقطةٌ لمنتجٍ على منصّةٍ ذهبيّة', seenAr: 'المشهد الأوّل' }],
+    demands: [{ order: 1, sceneId: 'scene-frame-test', demandAr: 'لقطةٌ لمنتجٍ على منصّةٍ ذهبيّة', seenAr: 'المشهد الأوّل' }],
     ...(profile ? { platformTarget: OUTPUT_PROFILES[profile].platformTarget } : {}),
   });
 

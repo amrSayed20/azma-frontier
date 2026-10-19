@@ -368,14 +368,41 @@ export function setScenePicturePlan(
   nowMs: number = Date.now(),
 ): boolean {
   const row = db
-    .prepare('SELECT scene_id FROM storyboard_scenes WHERE scene_id = ? AND owner_id = ?')
-    .get(sceneId, ownerId);
+    .prepare(
+      `SELECT scene_id, sourcing, creation_demand_ar, visual_asset_id
+         FROM storyboard_scenes WHERE scene_id = ? AND owner_id = ?`,
+    )
+    .get(sceneId, ownerId) as
+      | { sourcing?: string | null; creation_demand_ar?: string | null; visual_asset_id?: string | null }
+      | undefined;
   if (!row) return false;
 
   // Each answer clears what the others would have meant. A scene holding both
   // a demand and a chosen asset is a scene that has not decided.
   const demand = plan.sourcing === 'generate' ? (plan.creationDemandAr ?? null) : null;
-  const asset = plan.sourcing === 'creator-asset' ? (plan.visualAssetId ?? null) : null;
+
+  // ── A PICTURE ALREADY MADE IS NOT DISCARDED BY A GLANCE ──────────────────
+  //
+  //   FOUND 2026-10-19 while connecting commissioned frames to their scenes:
+  //   this function nulled `visual_asset_id` for every `generate` answer, and
+  //   the chamber calls it on BLUR of the demand field. So a Creator who
+  //   clicked into the demand of a finished scene and clicked away again would
+  //   lose the link to a picture the Empire had already paid 100 credits for,
+  //   and the next production would buy it a second time. Nothing on screen
+  //   would have said so.
+  //
+  //   The rule that replaces it is the one a Creator would state themselves: a
+  //   generated picture answers a demand, so it survives while that demand
+  //   stands and is forgotten when the demand changes. Re-saving the same
+  //   words is not a new demand. An explicit «أعد إنشاءه» is a separate road
+  //   and does not come through here.
+  const demandUnchanged =
+    (row.creation_demand_ar ?? null) === demand && row.sourcing === 'generate';
+  const asset = plan.sourcing === 'creator-asset'
+    ? (plan.visualAssetId ?? null)
+    : plan.sourcing === 'generate' && demandUnchanged
+      ? (row.visual_asset_id ?? null)
+      : null;
 
   const result = db
     .prepare(

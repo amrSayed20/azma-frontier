@@ -1467,6 +1467,47 @@ export default function RasAmrChamber() {
     setSessionCanvas(executeDirectionDecision(sessionCanvas, mutation));
   };
 
+  /**
+   * ── A SCENE'S OWN STATE, IN THE CREATOR'S WORDS ────────────────────────
+   *
+   *   The state itself is derived on the server from the scene's row and the
+   *   last production's record (see `readScenePlans`). This only names it.
+   *   `NOT_NEEDED` is deliberately silent: the three sourcing buttons above it
+   *   already say the scene is to be searched for, and a second label saying
+   *   the same thing is noise, not information.
+   */
+  const frameStateLabel = (state: ScenePlanView['frameState']): string | null => {
+    switch (state) {
+      case 'REQUIRED':      return 'مطلوب';
+      case 'CREATING':      return 'جارٍ الإنشاء…';
+      case 'COMPLETED':     return 'مكتمل ✓';
+      case 'FAILED':        return 'فاشل';
+      case 'CREATOR_ASSET': return 'من أصولك';
+      default:              return null;
+    }
+  };
+
+  /**
+   * Why one scene has no picture — a sentence that names the cure.
+   *
+   * Three causes the Founder asked to be kept apart: the provider could not
+   * make it, the Empire could not keep it, and the scene could not be told it
+   * owns it. A fourth, the copy that reaches the production workshop, is its
+   * own cause too. No provider, no model, no host is ever named.
+   */
+  const sceneFailureSpokenAr = (failure: ScenePlanView['failure']): string | null => {
+    switch (failure) {
+      case 'NOT_ENTITLED':      return 'إنشاء الصور متاحٌ لأصحاب الاشتراك. اشترك لتفتحه.';
+      case 'DEMAND_REFUSED':    return 'اكتب ما تريد إنشاءه في هذا المشهد — ثمّ أعد المحاولة.';
+      case 'BUSY':              return 'التوليد بلغ حدّه الآن. أعد المحاولة بعد قليل.';
+      case 'GENERATION_FAILED': return 'تعذّر إنشاء صورة هذا المشهد. أعد المحاولة أو أعد صياغة المطلوب.';
+      case 'STORAGE_FAILED':    return 'أُنشئت الصورة ولم تُحفظ في خزانتك. أعد المحاولة.';
+      case 'LINK_FAILED':       return 'أُنشئت الصورة وحُفظت في خزانتك، ولم تُربَط بهذا المشهد — اخترها من أصولك حتى لا تُنشأ مرّةً أخرى.';
+      case 'HANDOFF_FAILED':    return 'الصورة موجودةٌ في خزانتك ولم تصل ورشة الإنتاج. أعد المحاولة.';
+      default:                  return null;
+    }
+  };
+
   // XLII — update canvas metadata when profile/quality changes so the stored
   // canvas always carries the currently-selected settings at compile time.
   const handleOutputProfileChange = (p: OutputProfile) => {
@@ -2360,6 +2401,17 @@ export default function RasAmrChamber() {
   const [planNotice, setPlanNotice] = useState<string | null>(null);
   const [savingSceneId, setSavingSceneId] = useState<string | null>(null);
   const [plansTrackedForId, setPlansTrackedForId] = useState<string | null>(null);
+  /**
+   * Scenes the Creator has explicitly asked to have made AGAIN.
+   *
+   * Empty by default and emptied after every production: a finished frame is
+   * reused unless this holds its id, and nothing but a press puts it here.
+   * Each id in this set is one more picture bought, which is why the produce
+   * button says the number out loud before it is pressed.
+   */
+  const [regenerateIds, setRegenerateIds] = useState<string[]>([]);
+  /** Bumped when a production ends, so the scene states are re-read, not guessed. */
+  const [plansRefreshToken, setPlansRefreshToken] = useState(0);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isProducingScenes, setIsProducingScenes] = useState(false);
   const [sceneNotice, setSceneNotice] = useState<string | null>(null);
@@ -2434,7 +2486,18 @@ export default function RasAmrChamber() {
       else setPlanNotice(outcome.messageAr);
     });
     return () => { cancelled = true; };
-  }, [storyboardId]);
+  }, [storyboardId, plansRefreshToken]);
+
+  /** How many pictures the next production will buy, counted before it starts. */
+  const framesToBuy = (scenePlans ?? []).filter(
+    (p) => p.sourcing === 'generate'
+      && (p.frameState !== 'COMPLETED' || regenerateIds.includes(p.sceneId)),
+  ).length;
+  const framesReused = (scenePlans ?? []).filter(
+    (p) => p.sourcing === 'generate'
+      && p.frameState === 'COMPLETED' && !regenerateIds.includes(p.sceneId),
+  ).length;
+
 
   const [kernelContinuity, setKernelContinuity] = useState<string | null>(null);
   useEffect(() => {
@@ -5851,7 +5914,40 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                               <div className="scene-plan-head">
                                 <span className="scene-plan-n">{plan.order}</span>
                                 <span className="scene-plan-seen">{plan.seenAr}</span>
+                                {frameStateLabel(plan.frameState) && (
+                                  <span
+                                    className={`scene-frame-state scene-frame-${plan.frameState.toLowerCase()}`}
+                                    data-testid={`scene-frame-state-${plan.order}`}
+                                  >
+                                    {frameStateLabel(plan.frameState)}
+                                  </span>
+                                )}
                               </div>
+                              {plan.frameState === 'FAILED' && sceneFailureSpokenAr(plan.failure) && (
+                                <p className="scene-frame-cause">{sceneFailureSpokenAr(plan.failure)}</p>
+                              )}
+                              {plan.frameState === 'COMPLETED' && plan.sourcing === 'generate' && (
+                                <div className="scene-frame-remake">
+                                  <button
+                                    type="button"
+                                    className={`scene-plan-choice${regenerateIds.includes(plan.sceneId) ? ' scene-plan-choice-on' : ''}`}
+                                    aria-pressed={regenerateIds.includes(plan.sceneId)}
+                                    data-testid={`scene-remake-${plan.order}`}
+                                    onClick={() => setRegenerateIds((ids) => (
+                                      ids.includes(plan.sceneId)
+                                        ? ids.filter((x) => x !== plan.sceneId)
+                                        : [...ids, plan.sceneId]
+                                    ))}
+                                  >
+                                    {regenerateIds.includes(plan.sceneId) ? 'ستُنشأ من جديد ✓' : 'أعد إنشاءها'}
+                                  </button>
+                                  <span className="scene-frame-note">
+                                    {regenerateIds.includes(plan.sceneId)
+                                      ? 'صورةٌ إضافيّةٌ ستُشترى لهذا المشهد.'
+                                      : 'صورتها محفوظةٌ — لن تُشترى مرّةً أخرى.'}
+                                  </span>
+                                </div>
+                              )}
                               <div className="scene-plan-choices" role="group" aria-label={`مصدر صورة المشهد ${plan.order}`}>
                                 {([
                                   ['stock', 'يُبحَث عنه'],
@@ -5921,6 +6017,11 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                           );
                         })}
                         {planNotice && <p className="scene-plan-notice">{planNotice}</p>}
+                      {(framesToBuy > 0 || framesReused > 0) && (
+                        <p className="scene-plan-notice" data-testid="scene-frames-cost">
+                          {`سيُنشأ ${framesToBuy} صورة` + (framesReused > 0 ? ` · ${framesReused} محفوظةٌ لن تُشترى مرّةً أخرى` : '')}
+                        </p>
+                      )}
                       </div>
                     )}
                     <button
@@ -5941,7 +6042,10 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                           const res = await fetch(path, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ outputProfile }),
+                            // The frame the Creator chose, and the ONLY scenes
+                            // they asked to have made again. An empty list is
+                            // the normal case and means «buy nothing twice».
+                            body: JSON.stringify({ outputProfile, regenerateSceneIds: regenerateIds }),
                           });
                           const body = await res.json() as { status?: string; message?: string };
                           if (!res.ok || body.status !== 'accepted') {
@@ -5961,7 +6065,11 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                         // turned into a verdict about the work itself.
                         setSceneNotice('الإنتاج جارٍ… يستغرق عادةً بضع دقائق.');
                         const spokenFailure = (reason: string | null) =>
-                          reason === 'TOO_LARGE_TO_CARRY'  ? 'اكتمل الفيلم، لكنّه جاء أكبر من أن يُحمَل إلى خزانتك. اجعل المشاهد أقصر وأعد المحاولة.'
+                          // A scene the Creator asked to have CREATED has no
+                          // picture, so no film was assembled from a searched
+                          // substitute. Each scene above now says which one.
+                          reason === 'SCENES_NOT_CREATED' ? 'لم تُنشأ صور بعض المشاهد، فلم يُجمَّع الفيلم بصورٍ بديلة. راجع حالة كلِّ مشهد أعلاه ثمّ أعد المحاولة — ما اكتمل لن يُشترى مرّةً أخرى.'
+                          : reason === 'TOO_LARGE_TO_CARRY'  ? 'اكتمل الفيلم، لكنّه جاء أكبر من أن يُحمَل إلى خزانتك. اجعل المشاهد أقصر وأعد المحاولة.'
                           : reason === 'WORKSHOP_UNREACHABLE' ? 'تعذّر إتمام الإنتاج — ورشة الإنتاج لم تستجب.'
                           : reason === 'REFUSED_BY_WORKSHOP' ? 'تعذّر إتمام الإنتاج — رُفض الطلب.'
                           : reason === 'NO_OUTPUT'          ? 'تعذّر إتمام الإنتاج — انتهى دون ناتج.'
@@ -5990,6 +6098,11 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                           } else {
                             setSceneNotice(spokenFailure(op.failureReason ?? null));
                           }
+                          // Re-read rather than assume: the scene states and
+                          // the frames that were pinned are now the stored
+                          // truth, and an explicit remake has been spent.
+                          setRegenerateIds([]);
+                          setPlansRefreshToken((t) => t + 1);
                           setIsProducingScenes(false);
                           return;
                         }

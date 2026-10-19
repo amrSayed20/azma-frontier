@@ -132,6 +132,14 @@ export type CommissionFailure =
 export interface CommissionedScene {
   /** The scene this picture belongs to, so order can never be guessed at. */
   readonly order: number;
+  /**
+   * The scene's own id, carried back so the frame can be PINNED to it.
+   *
+   * Order alone was enough while the pictures only had to be handed to the
+   * workshop in sequence. It is not enough to write a row: two storyboards can
+   * both have a scene 3, and an order is a position while an id is an identity.
+   */
+  readonly sceneId: string;
   readonly assetId?: string;
   /** The sovereign asset's own URI, in the Creator's Vault. */
   readonly assetUrl?: string;
@@ -143,6 +151,8 @@ export interface CommissionedScene {
 /** One scene's demand, as the Chamber that wrote the scene phrased it. */
 export interface SceneDemand {
   readonly order: number;
+  /** Whose demand this is. Required, because the answer is written to it. */
+  readonly sceneId: string;
   /** What should be created — written by whoever wrote the scene. */
   readonly demandAr: string;
   /** The Creator's own words for the scene, kept beside the demand. */
@@ -214,7 +224,9 @@ export async function commissionScenePictures(params: {
   //   third path can forget — that touches trial accounting and is the
   //   Founder's to rule on, and is recorded in the audit rather than taken.
   if (!hasActiveEntitlement(params.creatorId, params.creatorRole)) {
-    return params.demands.map((d) => ({ order: d.order, failure: 'NOT_ENTITLED' as const }));
+    return params.demands.map((d) => ({
+      order: d.order, sceneId: d.sceneId, failure: 'NOT_ENTITLED' as const,
+    }));
   }
 
   const commissioned: CommissionedScene[] = [];
@@ -239,6 +251,7 @@ export async function commissionScenePictures(params: {
       const workshopPath = await handOverToWorkshop(outcome.asset.assetUrl);
       commissioned.push({
         order: demand.order,
+        sceneId: demand.sceneId,
         assetId: outcome.asset.assetId,
         assetUrl: outcome.asset.assetUrl,
         ...(workshopPath ? { workshopPath } : {}),
@@ -249,7 +262,7 @@ export async function commissionScenePictures(params: {
       console.error('[RasAmr] scene commission failed:', JSON.stringify({
         order: demand.order, reason: outcome.reason, stage: outcome.stage,
       }));
-      commissioned.push({ order: demand.order, failure: classify(outcome.reason) });
+      commissioned.push({ order: demand.order, sceneId: demand.sceneId, failure: classify(outcome.reason) });
     }
   }
 

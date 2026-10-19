@@ -45,7 +45,45 @@ export type StoryboardFailure =
    */
   | 'TOO_LARGE_TO_CARRY'
   | 'STORAGE_FAILED'
+  /**
+   * A scene the Creator asked to have CREATED has no picture, so the film was
+   * not assembled.
+   *
+   * MEASURED at 0bada6e: a failed commission fell through to the stock library
+   * and the film was assembled anyway, with a searched picture standing where
+   * the Creator had asked for a made one. The only record was a line in the
+   * server log. The Founder's ruling, 2026-10-19: «لا تستبدل الفشل ببحث مخفي
+   * عن صورة بديلة.» So the production stops and names the scenes, the frames
+   * that WERE made are kept, and a retry does not buy them again.
+   */
+  | 'SCENES_NOT_CREATED'
   | 'INTERNAL';
+
+/** Why one scene has no picture. Three different cures, so three names. */
+export type SceneFrameFailure =
+  | 'NOT_ENTITLED'
+  | 'DEMAND_REFUSED'
+  | 'BUSY'
+  | 'GENERATION_FAILED'
+  | 'STORAGE_FAILED'
+  /** It was made and kept, and the scene could not be told that it owns it. */
+  | 'LINK_FAILED'
+  /**
+   * It exists and could not be put where the production workshop can open it.
+   *
+   * Its own name, because the cure is its own: nothing was refused, nothing
+   * was lost, and nothing needs buying again — a copy failed.
+   */
+  | 'HANDOFF_FAILED';
+
+/** What became of one scene's picture in one production. */
+export interface SceneFrameOutcome {
+  readonly sceneId: string;
+  readonly order: number;
+  readonly state: 'COMPLETED' | 'FAILED';
+  readonly assetId?: string;
+  readonly failure?: SceneFrameFailure;
+}
 
 export interface AcceptedStoryboard {
   readonly operationId: string;
@@ -62,6 +100,12 @@ export interface ObservedStoryboard {
   readonly assetId?: string;
   readonly assetUrl?: string;
   readonly failureReason?: StoryboardFailure;
+  /**
+   * Per-scene truth, so «فاشل» on a scene can name its own cause instead of
+   * borrowing the production's. Absent for productions that ran before this
+   * was recorded — and absent is read as «we hold no record», never as success.
+   */
+  readonly sceneOutcomes?: readonly SceneFrameOutcome[];
 }
 
 function ledger(): OperationLedgerManager {
@@ -80,6 +124,10 @@ export function isTerminal(state: OperationState): boolean {
  */
 export function classifyStoryboardFailure(message: string): StoryboardFailure {
   const text = message.toLowerCase();
+  // Before every pattern below: «failed to» and «refused» both appear in this
+  // sentence, and either would have swallowed it into REFUSED_BY_WORKSHOP —
+  // naming the workshop for something the workshop was never asked to do.
+  if (text.startsWith('scenes-not-created')) return 'SCENES_NOT_CREATED';
   // Asked before the generic HTTP/refusal patterns below, which would other-
   // wise swallow it: this message is about the size of a finished film.
   if (/above the \d+-byte ceiling|too large/.test(text)) return 'TOO_LARGE_TO_CARRY';
@@ -129,13 +177,19 @@ export async function observeStoryboardOperation(
   // Not yours and not found are the same answer: an id cannot be probed.
   if (!row || row.subscriber_tenant_id !== creatorId) return null;
 
-  let carried: { assetId?: string; assetUrl?: string; failureReason?: StoryboardFailure } = {};
+  let carried: {
+    assetId?: string;
+    assetUrl?: string;
+    failureReason?: StoryboardFailure;
+    sceneOutcomes?: readonly SceneFrameOutcome[];
+  } = {};
   try {
     const intent = JSON.parse(row.source_intent_json) as typeof carried;
     carried = {
       assetId: intent.assetId,
       assetUrl: intent.assetUrl,
       failureReason: intent.failureReason,
+      ...(Array.isArray(intent.sceneOutcomes) ? { sceneOutcomes: intent.sceneOutcomes } : {}),
     };
   } catch { /* an unreadable intent still has a state, which is what is asked for */ }
 
@@ -162,7 +216,12 @@ export async function acceptStoryboardProduction(params: {
   readonly creatorId: string;
   readonly storyboardId: string;
   readonly sceneCount: number;
-  readonly run: () => Promise<{ assetId: string; assetUrl: string }>;
+  /**
+   * The work itself. It is handed the operation id it belongs to, because the
+   * outcome of each scene is recorded against that operation and the closure
+   * cannot know an id that is minted here.
+   */
+  readonly run: (operationId: string) => Promise<{ assetId: string; assetUrl: string }>;
 }): Promise<AcceptedStoryboard> {
   const existing = findOperationForStoryboard(params.creatorId, params.storyboardId);
   if (existing) {
@@ -210,13 +269,13 @@ async function runProduction(
     readonly creatorId: string;
     readonly storyboardId: string;
     readonly sceneCount: number;
-    readonly run: () => Promise<{ assetId: string; assetUrl: string }>;
+    readonly run: (operationId: string) => Promise<{ assetId: string; assetUrl: string }>;
   },
 ): Promise<void> {
   const manager = ledger();
   try {
     await manager.updateState(operationId, OperationState.MATERIALIZING);
-    const asset = await params.run();
+    const asset = await params.run(operationId);
     await carry(operationId, { assetId: asset.assetId, assetUrl: asset.assetUrl });
     await manager.updateState(operationId, OperationState.DEPOSITED);
   } catch (err) {
@@ -228,6 +287,23 @@ async function runProduction(
     await carry(operationId, { failureReason: failure }).catch(() => {});
     await manager.updateState(operationId, OperationState.FAILED).catch(() => {});
   }
+}
+
+/**
+ * Record what became of each scene's picture, beside the operation that
+ * commissioned it.
+ *
+ * NO NEW TABLE AND NO NEW COLUMN: `source_intent_json` is where this ledger
+ * already keeps an operation's own particulars, and `carry` is the one writer.
+ * The outcomes are written BEFORE the production is allowed to fail, so a
+ * refusal to substitute still leaves the Creator able to see which scene it
+ * was and why.
+ */
+export async function recordSceneOutcomes(
+  operationId: string,
+  outcomes: readonly SceneFrameOutcome[],
+): Promise<void> {
+  await carry(operationId, { sceneOutcomes: outcomes });
 }
 
 /** Keep the outcome beside the intent that asked for it. */

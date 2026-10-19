@@ -10,7 +10,7 @@ import { createDatabase } from '../db';
 import {
   createProject, getProject, listProjectsForOwner, listProjectsUnderUmbrella,
   createStoryboard, getStoryboard, listStoryboardsForOwner,
-  addScene, listScenes, setSceneOrder, assignSceneAsset,
+  addScene, listScenes, setSceneOrder, assignSceneAsset, setScenePicturePlan,
   recordTombstone, findTombstoneByAssetId, listTombstonesForOwner,
   mintPublicToken, createPublicLink, findPublicLinkByToken, revokePublicLink,
 } from '../sovereign-project-repository';
@@ -194,6 +194,58 @@ describe('B3 — storyboard and scenes, Article 2.2', () => {
       expect(assignSceneAsset(db, s.scene.sceneId, OTHER, { visualAssetId: 'asset-1' })).toBe(false);
       expect(assignSceneAsset(db, s.scene.sceneId, OWNER, { visualAssetId: 'asset-1' })).toBe(true);
       expect(listScenes(db, sb.storyboardId, OWNER)[0].visualAssetId).toBe('asset-1');
+    });
+
+    it('a picture already made survives a re-save of the same demand', () => {
+      // MEASURED 2026-10-19: this function nulled `visual_asset_id` for every
+      // `generate` answer, and the chamber calls it on BLUR of the demand
+      // field. So clicking into a finished scene's demand and clicking away
+      // again discarded the link to a picture that had cost 100 credits, and
+      // the next production bought it a second time. Nothing said so.
+      const sb = createStoryboard(db, { ownerId: OWNER, title: 'x' });
+      const s = addScene(db, {
+        storyboardId: sb.storyboardId, ownerId: OWNER, description: 'أ',
+        sourcing: 'generate', creationDemandAr: 'برطمانُ عسلٍ على خشبٍ داكن',
+      });
+      if (!s.ok) throw new Error('fixture');
+      assignSceneAsset(db, s.scene.sceneId, OWNER, { visualAssetId: 'asset-made' });
+
+      // The same words again: not a new demand, so not a new picture.
+      expect(setScenePicturePlan(db, s.scene.sceneId, OWNER, {
+        sourcing: 'generate', creationDemandAr: 'برطمانُ عسلٍ على خشبٍ داكن',
+      })).toBe(true);
+      expect(listScenes(db, sb.storyboardId, OWNER)[0].visualAssetId).toBe('asset-made');
+    });
+
+    it('a changed demand forgets the picture that answered the old one', () => {
+      // The other half of the same rule: a generated picture answers a demand.
+      // Change the demand and it no longer answers it, so the scene stops
+      // claiming it — and the next production makes one that does.
+      const sb = createStoryboard(db, { ownerId: OWNER, title: 'x' });
+      const s = addScene(db, {
+        storyboardId: sb.storyboardId, ownerId: OWNER, description: 'أ',
+        sourcing: 'generate', creationDemandAr: 'برطمانُ عسلٍ على خشبٍ داكن',
+      });
+      if (!s.ok) throw new Error('fixture');
+      assignSceneAsset(db, s.scene.sceneId, OWNER, { visualAssetId: 'asset-made' });
+
+      expect(setScenePicturePlan(db, s.scene.sceneId, OWNER, {
+        sourcing: 'generate', creationDemandAr: 'ملعقةٌ ترفعُ خيطَ عسلٍ ذهبيّاً',
+      })).toBe(true);
+      expect(listScenes(db, sb.storyboardId, OWNER)[0].visualAssetId).toBeNull();
+    });
+
+    it('turning to the stock library forgets a generated picture too', () => {
+      const sb = createStoryboard(db, { ownerId: OWNER, title: 'x' });
+      const s = addScene(db, {
+        storyboardId: sb.storyboardId, ownerId: OWNER, description: 'أ',
+        sourcing: 'generate', creationDemandAr: 'برطمانُ عسلٍ على خشبٍ داكن',
+      });
+      if (!s.ok) throw new Error('fixture');
+      assignSceneAsset(db, s.scene.sceneId, OWNER, { visualAssetId: 'asset-made' });
+
+      expect(setScenePicturePlan(db, s.scene.sceneId, OWNER, { sourcing: 'stock' })).toBe(true);
+      expect(listScenes(db, sb.storyboardId, OWNER)[0].visualAssetId).toBeNull();
     });
 
     it('assigning one asset does not erase the other', () => {

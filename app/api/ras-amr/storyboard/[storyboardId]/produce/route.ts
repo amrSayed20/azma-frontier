@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/src/authentication';
 import { getDb } from '@/src/persistent-storage/db';
-import { getStoryboard, listScenes } from '@/src/persistent-storage/sovereign-project-repository';
+import {
+  assignSceneAsset,
+  getStoryboard,
+  listScenes,
+} from '@/src/persistent-storage/sovereign-project-repository';
 import {
   MoneyPrinterTurboAdapter,
   isMoneyPrinterTurboConfigured,
@@ -12,7 +16,9 @@ import {
   acceptStoryboardProduction,
   findOperationForStoryboard,
   observeStoryboardOperation,
+  recordSceneOutcomes,
 } from '@/src/ras-amr-production/storyboard-operation-lifecycle';
+import type { SceneFrameOutcome } from '@/src/ras-amr-production/storyboard-operation-lifecycle';
 import { resolveOutputFrame } from '@/src/chambers/ras-al-amr/cinematic-timing';
 import { getDefaultAspectRatio } from '@/src/sovereign-model-selection';
 
@@ -87,9 +93,26 @@ export async function POST(
   //   to landscape — which is exactly what every caller got before. So an old
   //   client, a missing body, malformed JSON and a made-up name all behave
   //   identically to the behaviour this route has always had.
-  const body = await request.json().catch(() => null) as { outputProfile?: unknown } | null;
+  const body = await request.json().catch(() => null) as {
+    outputProfile?: unknown;
+    regenerateSceneIds?: unknown;
+  } | null;
   const chosenProfile = typeof body?.outputProfile === 'string' ? body.outputProfile : undefined;
   const frame = resolveOutputFrame(chosenProfile);
+
+  // ── ONLY AN EXPLICIT ASK BUYS A PICTURE TWICE ─────────────────────────
+  //
+  //   The Founder, 2026-10-19: «لا تُعاد توليدات المشاهد المكتملة عند إعادة
+  //   المحاولة إلا بطلب واضح من المستخدم.» This is that explicit ask, and it
+  //   is the ONLY road to it: a scene whose picture is already pinned is
+  //   otherwise reused, however many times the Creator presses produce.
+  //
+  //   An unnamed scene, a malformed list and an absent body are all the same
+  //   answer — nothing is to be made again.
+  const requestedAgain = new Set(
+    (Array.isArray(body?.regenerateSceneIds) ? body.regenerateSceneIds : [])
+      .filter((id): id is string => typeof id === 'string' && id.length > 0),
+  );
 
   //   ONE declaration feeds both halves. The frame table says which platform
   //   name means this shape; the generation side is handed that NAME, and the
@@ -160,9 +183,32 @@ export async function POST(
   //   Only the PLAN is made here. Commissioning five pictures takes minutes,
   //   and this request answers in milliseconds — the same boundary the
   //   production itself already respects. The work happens inside `run`.
+  //   AND A FRAME ALREADY MADE IS NOT MADE AGAIN. The state is read from the
+  //   scene's own row — `visual_asset_id`, written by the production that made
+  //   it — never from a browser's memory of what it saw. So a refresh, a new
+  //   device and a second Creator session all agree about what is finished.
+  const wantsCreation = (sc: { sourcing?: string | null }) => sc.sourcing === 'generate';
+  const alreadyMade = scenes.filter(
+    (sc) => wantsCreation(sc) && sc.visualAssetId && !requestedAgain.has(sc.sceneId),
+  );
   const toGenerate = scenes
-    .filter((sc) => sc.sourcing === 'generate' && (sc.creationDemandAr ?? '').trim().length > 0)
-    .map((sc) => ({ order: sc.order, demandAr: sc.creationDemandAr as string, seenAr: sc.description }));
+    .filter((sc) => wantsCreation(sc)
+      && (sc.creationDemandAr ?? '').trim().length > 0
+      && (!sc.visualAssetId || requestedAgain.has(sc.sceneId)))
+    .map((sc) => ({
+      order: sc.order,
+      sceneId: sc.sceneId,
+      demandAr: sc.creationDemandAr as string,
+      seenAr: sc.description,
+    }));
+
+  //   A scene that asks to be created and says nothing about what to create
+  //   cannot be commissioned at all. It is not quietly searched for either:
+  //   it is recorded as a scene whose demand was not accepted, and it stops
+  //   the film like any other missing frame.
+  const undecided = scenes.filter(
+    (sc) => wantsCreation(sc) && !sc.visualAssetId && (sc.creationDemandAr ?? '').trim().length === 0,
+  );
 
   // ── SCENES THE CREATOR ALREADY HAS A PICTURE FOR ─────────────────────
   //
@@ -173,7 +219,7 @@ export async function POST(
   //   scene whose picture the Creator has already chosen.
   const chosenByCreator = scenes
     .filter((sc) => sc.sourcing === 'creator-asset' && sc.visualAssetId)
-    .map((sc) => ({ order: sc.order, assetId: sc.visualAssetId as string }));
+    .map((sc) => ({ order: sc.order, sceneId: sc.sceneId, assetId: sc.visualAssetId as string }));
 
   const productionRequest = {
     subject,
@@ -226,16 +272,46 @@ export async function POST(
     creatorId: session.creatorId,
     storyboardId,
     sceneCount: scenes.length,
-    run: async () => {
+    run: async (operationId) => {
       // Commissioned here, not above: this closure is what outlives the
-      // request. A picture the Empire could not make does not stop the film —
-      // that scene is searched for instead, which is what it would have been.
-      // The Creator's own pictures first: they are already theirs, already
-      // paid for, and need no provider at all.
-      let suppliedMaterials: { url: string; order: number }[] = [];
+      // request. The Creator's own pictures first: they are already theirs,
+      // already paid for, and need no provider at all.
+      const suppliedMaterials: { url: string; order: number }[] = [];
+      const outcomes: SceneFrameOutcome[] = [];
+
       for (const chosen of chosenByCreator) {
         const workshopPath = await handOverAssetToWorkshop(chosen.assetId, session.creatorId);
         if (workshopPath) suppliedMaterials.push({ url: workshopPath, order: chosen.order });
+        else {
+          // A picture that exists and cannot be put where the workshop can
+          // open it is its own cause, and not «the provider failed».
+          outcomes.push({
+            sceneId: chosen.sceneId, order: chosen.order, state: 'FAILED',
+            assetId: chosen.assetId, failure: 'HANDOFF_FAILED',
+          });
+        }
+      }
+
+      // Frames made by an earlier production: used as they are, nothing spent.
+      for (const made of alreadyMade) {
+        const assetId = made.visualAssetId as string;
+        const workshopPath = await handOverAssetToWorkshop(assetId, session.creatorId);
+        if (workshopPath) {
+          suppliedMaterials.push({ url: workshopPath, order: made.order });
+          outcomes.push({ sceneId: made.sceneId, order: made.order, state: 'COMPLETED', assetId });
+        } else {
+          outcomes.push({
+            sceneId: made.sceneId, order: made.order, state: 'FAILED',
+            assetId, failure: 'HANDOFF_FAILED',
+          });
+        }
+      }
+
+      for (const blocked of undecided) {
+        outcomes.push({
+          sceneId: blocked.sceneId, order: blocked.order, state: 'FAILED',
+          failure: 'DEMAND_REFUSED',
+        });
       }
 
       if (toGenerate.length > 0) {
@@ -247,20 +323,70 @@ export async function POST(
           // courier carries the word without understanding it.
           platformTarget: frame.platformTarget,
         });
-        // The workshop opens a path on its own filesystem, not a Vault URI.
-        // A picture whose handoff failed is simply absent here, and that scene
-        // is searched for instead.
-        suppliedMaterials = suppliedMaterials.concat(
-          commissioned
-            .filter((c) => typeof c.workshopPath === 'string')
-            .map((c) => ({ url: c.workshopPath as string, order: c.order })),
-        );
-        const refused = commissioned.filter((c) => c.failure);
-        if (refused.length > 0) {
-          console.error('[RasAmr] scenes not commissioned:', JSON.stringify(
-            refused.map((c) => ({ order: c.order, failure: c.failure })),
-          ));
+
+        for (const made of commissioned) {
+          if (made.failure || !made.assetId) {
+            outcomes.push({
+              sceneId: made.sceneId, order: made.order, state: 'FAILED',
+              failure: made.failure ?? 'GENERATION_FAILED',
+            });
+            continue;
+          }
+
+          // ── THE FRAME IS WRITTEN ONTO ITS OWN SCENE ──────────────────
+          //
+          //   Through the Vault-scoped path that already exists, which checks
+          //   that this scene belongs to this Creator before it writes — so a
+          //   session cannot pin a picture onto someone else's storyboard by
+          //   passing an id. Until this line, a commissioned frame existed in
+          //   the Creator's Vault and NOTHING recorded which scene it was for,
+          //   so the next production bought it again.
+          const linked = assignSceneAsset(
+            db, made.sceneId, session.creatorId, { visualAssetId: made.assetId },
+          );
+
+          // The picture is real either way, so it is still given to the
+          // workshop. What a failed link costs is MEMORY, not this film, and
+          // that is what the outcome says.
+          if (typeof made.workshopPath === 'string') {
+            suppliedMaterials.push({ url: made.workshopPath, order: made.order });
+          }
+
+          outcomes.push(
+            linked
+              ? { sceneId: made.sceneId, order: made.order, state: 'COMPLETED', assetId: made.assetId }
+              : {
+                  sceneId: made.sceneId, order: made.order, state: 'FAILED',
+                  assetId: made.assetId,
+                  failure: typeof made.workshopPath === 'string' ? 'LINK_FAILED' : 'HANDOFF_FAILED',
+                },
+          );
         }
+      }
+
+      // Recorded BEFORE anything is allowed to fail, so a refusal below still
+      // leaves the Creator able to see which scene it was and why.
+      await recordSceneOutcomes(operationId, outcomes).catch(() => {});
+
+      // ── NO SILENT SUBSTITUTION ───────────────────────────────────────
+      //
+      //   A scene the Creator asked to have CREATED, with no picture, used to
+      //   fall through to the stock library: the film was assembled and a
+      //   searched picture stood where a made one had been asked for, with
+      //   only a server log to say so. A film built on that substitution is
+      //   not the film they asked for, so it is not built.
+      //
+      //   LINK_FAILED is deliberately not counted here: that scene HAS its
+      //   picture in this film.
+      const missing = outcomes.filter((o) => o.state === 'FAILED' && o.failure !== 'LINK_FAILED');
+      if (missing.length > 0) {
+        console.error('[RasAmr] scenes without a frame:', JSON.stringify(
+          missing.map((o) => ({ order: o.order, failure: o.failure })),
+        ));
+        throw new Error(
+          `scenes-not-created: ${missing.length} scene(s) have no frame `
+          + `(${missing.map((o) => `${o.order}:${o.failure}`).join(', ')})`,
+        );
       }
 
       // In scene order, so the pictures follow the story rather than the
@@ -286,6 +412,10 @@ export async function POST(
       sceneCount: scenes.length,
       operationId: accepted.operationId,
       state: accepted.state,
+      // Said before the work starts, because it is about the Creator's money:
+      // how many pictures this production will buy, and how many it reuses.
+      framesToCreate: toGenerate.length,
+      framesReused: alreadyMade.length,
       // True when this board already had a production running: the Creator is
       // handed the one that exists, never a second run of the same scenes.
       reused: accepted.reused,

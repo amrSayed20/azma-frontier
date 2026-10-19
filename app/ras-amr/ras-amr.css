@@ -6576,6 +6576,42 @@ body:has(.ras-amr-viewport) {
   outline: 2px solid rgba(212, 175, 55, 0.6);
   outline-offset: 1px;
 }
+/* ── WHERE EACH SCENE'S PICTURE STANDS ─────────────────────────────
+   One chip per scene, in the four states the production actually has.
+   Colour carries the same meaning the word does, and never carries it
+   alone: every chip says its state in words too, so a reader who sees
+   no colour loses nothing. */
+.scene-frame-state {
+  margin-inline-start: auto;
+  flex-shrink: 0;
+  font-size: var(--rt-3xs);
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 2px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.scene-frame-required     { color: rgba(212, 175, 55, 0.75); }
+.scene-frame-creating     { color: #7FD4C1; }
+.scene-frame-completed    { color: #8FD3A8; }
+.scene-frame-failed       { color: #E8927C; }
+.scene-frame-creator_asset { color: rgba(239, 230, 208, 0.7); }
+
+.scene-frame-cause {
+  margin: 0;
+  font-size: var(--rt-3xs);
+  line-height: 1.6;
+  color: #E8927C;
+  padding-inline-start: 8px;
+  border-inline-start: 2px solid rgba(232, 146, 124, 0.5);
+}
+.scene-frame-remake { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.scene-frame-note {
+  font-size: var(--rt-3xs);
+  line-height: 1.55;
+  color: rgba(239, 230, 208, 0.6);
+}
+
 .scene-plan-empty,
 .scene-plan-notice {
   margin: 0;

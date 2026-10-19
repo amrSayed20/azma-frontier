@@ -17,7 +17,12 @@ import { readDimensions } from '../../../asset-dimensions/read-dimensions';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { CompiledAssemblyGraph } from '../../../chambers/ras-al-amr/pre-publishing-boundary';
-import { computeVisualWindow, visualOpacityAt } from '../../../chambers/ras-al-amr/cinematic-timing';
+import {
+  OUTPUT_PROFILES,
+  computeLayerGeometry,
+  computeVisualWindow,
+  visualOpacityAt,
+} from '../../../chambers/ras-al-amr/cinematic-timing';
 
 const hasFfmpeg =
   spawnSync('ffmpeg', ['-version']).status === 0 && spawnSync('ffprobe', ['-version']).status === 0;
@@ -45,6 +50,20 @@ function pixel(file: string, t: number, x: number, y: number): [number, number, 
   ]);
   const b = r.stdout as Buffer;
   return [b[0], b[1], b[2]];
+}
+
+/**
+ * The rectangle the picture actually occupies inside the frame, as ffmpeg's own
+ * cropdetect reports it: `w:h:x:y`. This is how the PREVIEW's geometry contract
+ * is checked against the FILE, rather than against another expectation.
+ */
+function pictureRect(file: string): { w: number; h: number; x: number; y: number } | null {
+  const r = spawnSync('ffmpeg', [
+    '-hide_banner', '-ss', '0.4', '-i', file, '-frames:v', '3',
+    '-vf', 'cropdetect=limit=24:round=2:reset=1', '-f', 'null', '-',
+  ]);
+  const m = /crop=(\d+):(\d+):(\d+):(\d+)/g.exec(String(r.stderr ?? ''));
+  return m ? { w: Number(m[1]), h: Number(m[2]), x: Number(m[3]), y: Number(m[4]) } : null;
 }
 
 /** Mean volume (dB) between two instants. */
@@ -373,6 +392,34 @@ describeReal('Ras Al-Amr real render — the MP4 matches the preview contract', 
     const nearTop = pixel(out, 0.5, 540, 120);
     expect(centre[0]).toBeGreaterThan(200);   // the picture is there
     expect(nearTop[0]).toBeLessThan(40);      // and it was not stretched to the edge
+  });
+
+  // ── THE PREVIEW'S GEOMETRY IS THE FILE'S GEOMETRY ─────────────────────────
+  //
+  //   The Founder's condition, 2026-10-19: «سلوك المعاينة يطابق سلوك الإخراج
+  //   النهائي». The chamber draws its preview with `computeLayerGeometry`, and
+  //   the encoder scales with the same contract. Equal CODE is not equal
+  //   behaviour, so this asks the contract what fraction of the frame the
+  //   picture should fill, then measures the rendered file with cropdetect and
+  //   compares. The 4:5 frame is chosen because it is the one whose containment
+  //   the Architect asked to see: a 9:16 picture in it fills the full height and
+  //   0.5625/0.8 = 70.3% of the width.
+  it('the 4:5 preview contract predicts the pillarbox the file actually has', async () => {
+    const g = graph([{ trackId: 'main', nodes: [node('scene', 'marked-portrait.png', 'VISUAL', 0, 1)] }], 1);
+    (g.metadata as { outputProfile?: string }).outputProfile = 'portrait-feed';
+    const out = await encode('op-real-feed-geometry', g);
+
+    const frame = OUTPUT_PROFILES['portrait-feed'];
+    const predicted = computeLayerGeometry({}, 1080 / 1920, frame.aspect);
+    const rect = pictureRect(out);
+    if (!rect) throw new Error('cropdetect found no picture inside the frame');
+
+    // Within two pixels: the filter chain rounds to even dimensions.
+    near(rect.w, predicted.widthFraction * frame.width, 2);
+    near(rect.h, predicted.heightFraction * frame.height, 2);
+    near(rect.x, (frame.width - predicted.widthFraction * frame.width) / 2, 2);
+    // And the bars are the rest of the width, declared rather than discovered.
+    near(frame.width - rect.w, 2 * 160, 4);
   });
 
   // ── THE SIZE THE VAULT WILL RECORD FOR THIS FILM ──────────────────────────
