@@ -5934,7 +5934,15 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                         setSceneAssetUrl(null);
                         const path = `/api/ras-amr/storyboard/${encodeURIComponent(storyboard.storyboardId)}/produce`;
                         try {
-                          const res = await fetch(path, { method: 'POST' });
+                          // The profile the Creator picked in «المشروع» —
+                          // already this component's state, already governing
+                          // the preview and the MP4 export. It travelled
+                          // nowhere on this road until now.
+                          const res = await fetch(path, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ outputProfile }),
+                          });
                           const body = await res.json() as { status?: string; message?: string };
                           if (!res.ok || body.status !== 'accepted') {
                             setSceneNotice(body.message ?? 'تعذّر بدء الإنتاج.');

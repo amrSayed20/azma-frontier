@@ -13,6 +13,8 @@ import {
   findOperationForStoryboard,
   observeStoryboardOperation,
 } from '@/src/ras-amr-production/storyboard-operation-lifecycle';
+import { resolveOutputFrame } from '@/src/chambers/ras-al-amr/cinematic-timing';
+import { getDefaultAspectRatio } from '@/src/sovereign-model-selection';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -72,6 +74,35 @@ export async function POST(
       { status: 404 },
     );
   }
+
+  // ── THE FRAME THE CREATOR CHOSE, ARRIVING WHERE THE FILM IS MADE ─────
+  //
+  //   MEASURED at 57adbda: this route took no body at all and named no
+  //   frame, so a Creator who selected «عمودي» in the chamber got scenes
+  //   commissioned 16:9 and a film assembled 16:9. The selection was real and
+  //   reached nothing on this road.
+  //
+  //   A body is optional and never trusted: anything that is not a profile
+  //   this Empire declares resolves, through the frame table's own resolver,
+  //   to landscape — which is exactly what every caller got before. So an old
+  //   client, a missing body, malformed JSON and a made-up name all behave
+  //   identically to the behaviour this route has always had.
+  const body = await request.json().catch(() => null) as { outputProfile?: unknown } | null;
+  const chosenProfile = typeof body?.outputProfile === 'string' ? body.outputProfile : undefined;
+  const frame = resolveOutputFrame(chosenProfile);
+
+  //   ONE declaration feeds both halves. The frame table says which platform
+  //   name means this shape; the generation side is handed that NAME, and the
+  //   workshop is handed the RATIO the same platform authority resolves it to.
+  //   No second map is written, so the two can never drift apart.
+  //
+  //   The workshop can express three shapes and no more — its own request type
+  //   says so. A ratio it cannot carry is refused here and the film keeps the
+  //   frame it has always had, rather than being sent a value it would
+  //   silently reinterpret.
+  const resolvedRatio = getDefaultAspectRatio(frame.platformTarget);
+  const filmAspect: '16:9' | '9:16' | '1:1' =
+    resolvedRatio === '9:16' || resolvedRatio === '1:1' ? resolvedRatio : '16:9';
 
   const scenes = listScenes(db, storyboardId, session.creatorId);
   if (scenes.length === 0) {
@@ -160,7 +191,10 @@ export async function POST(
     // Arabic voice to narrate it in.
     voiceName: 'ar-EG-SalmaNeural-Female',
     paragraphCount: scenes.length,
-    aspect: '16:9' as const,
+    // Was `'16:9' as const`. A portrait film whose pictures were commissioned
+    // portrait must not be assembled landscape: pillarboxed scenes inside the
+    // old frame would be a worse film than the one this repair replaces.
+    aspect: filmAspect,
     subtitlesEnabled: true,
     // MEASURED and recorded in the provider module: the default font renders
     // Arabic as disconnected boxes. A named Arabic face is not decoration here.
@@ -209,6 +243,9 @@ export async function POST(
           creatorId: session.creatorId,
           creatorRole: session.role,
           demands: toGenerate,
+          // A NAME, not a ratio: the generation side owns that map and the
+          // courier carries the word without understanding it.
+          platformTarget: frame.platformTarget,
         });
         // The workshop opens a path on its own filesystem, not a Vault URI.
         // A picture whose handoff failed is simply absent here, and that scene

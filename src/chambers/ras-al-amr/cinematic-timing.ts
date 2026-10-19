@@ -43,17 +43,43 @@ export interface OutputFrame {
   readonly aspect: number;
   /** For a CSS `aspect-ratio`, so the preview frame cannot drift from the file. */
   readonly cssAspect: string;
+  /**
+   * ── THE NAME THE GENERATION SIDE ALREADY HAS FOR THIS FRAME ──────────────
+   *
+   *   A picture commissioned FOR a film must be generated in the film's own
+   *   frame. The generation side names a frame by PLATFORM, not by ratio:
+   *   `platform-adapter.ts` holds that map, and resolves `tiktok` to 9:16,
+   *   `youtube` to 16:9, `instagram` to 1:1. So no ratio is restated here —
+   *   only the existing name whose ratio is already this row's. One new
+   *   profile is still one row, and it now declares both halves.
+   *
+   *   `portrait-feed` (4:5) has NO name in that vocabulary and none is
+   *   invented for it: it carries the 9:16 name. The platform's own authority
+   *   is what makes that right rather than convenient —
+   *   `assessMasterAdaptability` classes a 9:16 master serving a 4:5 target as
+   *   `crop-adapt`, «reframing only; no new generation», while a landscape
+   *   master for a portrait frame is `regenerate-required`. The nearest
+   *   portrait name is therefore the correct commission, and the remaining
+   *   difference is a declared containment — stated here, and reported to the
+   *   Architect, not covered.
+   */
+  readonly platformTarget: string;
 }
 
-function frame(width: number, height: number, cssAspect: string): OutputFrame {
-  return { width, height, aspect: width / height, cssAspect };
+function frame(
+  width: number,
+  height: number,
+  cssAspect: string,
+  platformTarget: string,
+): OutputFrame {
+  return { width, height, aspect: width / height, cssAspect, platformTarget };
 }
 
 export const OUTPUT_PROFILES: Readonly<Record<OutputProfile, OutputFrame>> = {
-  landscape: frame(1920, 1080, '16/9'),
-  portrait: frame(1080, 1920, '9/16'),
-  square: frame(1080, 1080, '1/1'),
-  'portrait-feed': frame(1080, 1350, '4/5'),
+  landscape: frame(1920, 1080, '16/9', 'youtube'),
+  portrait: frame(1080, 1920, '9/16', 'tiktok'),
+  square: frame(1080, 1080, '1/1', 'instagram'),
+  'portrait-feed': frame(1080, 1350, '4/5', 'tiktok'),
 };
 
 export const DEFAULT_OUTPUT_PROFILE: OutputProfile = 'landscape';

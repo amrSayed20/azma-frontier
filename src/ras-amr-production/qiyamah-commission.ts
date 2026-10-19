@@ -182,6 +182,20 @@ export async function commissionScenePictures(params: {
   readonly creatorId: string;
   readonly creatorRole: CreatorRole;
   readonly demands: readonly SceneDemand[];
+  /**
+   * ── THE FRAME THE FILM IS BEING MADE IN ────────────────────────────────
+   *
+   *   A platform name from the vocabulary `platform-adapter.ts` owns, which
+   *   the output-frame table in cinematic-timing.ts declares for each profile
+   *   the Creator can pick. It is CARRIED, never decided: this courier does
+   *   not know what 9:16 is and must not learn, exactly as it does not know
+   *   what a provider is.
+   *
+   *   Omitted — by any caller written before this existed — means the
+   *   generation service behaves as it did: `platform-adapter.ts`'s
+   *   documented 16:9.
+   */
+  readonly platformTarget?: string;
 }): Promise<readonly CommissionedScene[]> {
   // ── EVERY PATH THAT SPENDS IS GUARDED, NOT ONE THAT REMEMBERS ────────
   //
@@ -212,6 +226,13 @@ export async function commissionScenePictures(params: {
       // The scene's own words, kept so the Vault record says what this picture
       // was for rather than only what was asked of the provider.
       originalIdea: demand.seenAr ?? null,
+      // MEASURED before this line existed: a Creator could choose «عمودي»,
+      // watch a 9:16 preview, and have every commissioned scene generated
+      // 16:9 — because this call named no frame and the default is landscape.
+      // Spread, not set: a commission with no frame must reach `generateImage`
+      // with the field ABSENT, so an unfilled choice stays indistinguishable
+      // from the field never having existed.
+      ...(params.platformTarget ? { platformTarget: params.platformTarget } : {}),
     });
 
     if (outcome.status === 'succeeded') {
