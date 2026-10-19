@@ -195,9 +195,28 @@ function readMp4(b: Uint8Array): PixelDimensions | null {
       if (tkhd) {
         const [s, e] = tkhd;
         const version = b[s];
-        // version 0: 4-byte times; version 1: 8-byte. Then the 9-int matrix,
-        // then width and height as the last two 32-bit fields of the box.
-        const base = version === 1 ? s + 32 : s + 20;
+        // ─── THE FOUR BYTES THAT MADE EVERY FILM 16384 TALL ────────────────
+        //
+        //   MEASURED 2026-10-19 against four real films this Empire encoded:
+        //   the Vault recorded 1080x16384 for a 1080x1350 film, 1920x16384 for
+        //   a 1920x1080 one — every height identical, every width right.
+        //
+        //   This offset was the whole cause. `tkhd` version 0 carries, after
+        //   its own version+flags word: creation_time, modification_time,
+        //   track_ID, a reserved word, and duration — 4 + 20 bytes, so the
+        //   fields after it begin at s+24, not s+20. Reading four bytes early
+        //   put `width` on the matrix's last entry, the fixed 0x40000000,
+        //   which is 16384.0 in 2.30 — and put the rotation test on two zeroed
+        //   words, so EVERY film was also judged a quarter turn and its axes
+        //   swapped. Hence a true width beside an impossible height.
+        //
+        //   Version 1 widens creation, modification and duration to 8 bytes:
+        //   4 + 32, so its fields begin at s+36. It was short by the same four.
+        //
+        //   Measured at both offsets on one real film, before and after:
+        //     s+20 -> w=16384 h=1080 a=0     d=0       (a quarter turn)
+        //     s+24 -> w=1080  h=1350 a=65536 d=65536   (the identity matrix)
+        const base = version === 1 ? s + 36 : s + 24;
         const matrixAt = base + 16;
         if (e >= matrixAt + 36 + 8) {
           const w = u32be(b, matrixAt + 36) / 65536;

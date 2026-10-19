@@ -12,7 +12,8 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { readDimensions } from '../../../asset-dimensions/read-dimensions';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { CompiledAssemblyGraph } from '../../../chambers/ras-al-amr/pre-publishing-boundary';
@@ -145,6 +146,14 @@ describeReal('Ras Al-Amr real render — the MP4 matches the preview contract', 
     ffmpeg(['-f', 'lavfi', '-i', 'color=c=red:s=1920x1080', '-frames:v', '1', 'red.png']);
     ffmpeg(['-f', 'lavfi', '-i', 'color=c=blue:s=1920x1080', '-frames:v', '1', 'blue.png']);
     ffmpeg(['-f', 'lavfi', '-i', 'color=c=red:s=1080x1920', '-frames:v', '1', 'portrait.png']);
+    // A 9:16 picture whose TOP and BOTTOM edges are identifiable: green at the
+    // very top, blue at the very bottom, red between. A file's dimensions
+    // cannot tell a contained picture from a cropped one — these two bands can.
+    ffmpeg([
+      '-f', 'lavfi', '-i', 'color=c=red:s=1080x1920',
+      '-vf', 'drawbox=0:0:1080:60:green@1:t=fill,drawbox=0:1860:1080:60:blue@1:t=fill',
+      '-frames:v', '1', 'marked-portrait.png',
+    ]);
     // 2s green clip with its own 660 Hz soundtrack
     ffmpeg(['-f', 'lavfi', '-i', 'color=c=lime:s=1280x720:d=2', '-f', 'lavfi', '-i', 'sine=f=660:d=2', '-pix_fmt', 'yuv420p', '-shortest', 'clip.mp4']);
     // Browser-style microphone recording: Opus in a .webm container
@@ -364,5 +373,67 @@ describeReal('Ras Al-Amr real render — the MP4 matches the preview contract', 
     const nearTop = pixel(out, 0.5, 540, 120);
     expect(centre[0]).toBeGreaterThan(200);   // the picture is there
     expect(nearTop[0]).toBeLessThan(40);      // and it was not stretched to the edge
+  });
+
+  // ── THE SIZE THE VAULT WILL RECORD FOR THIS FILM ──────────────────────────
+  //
+  //   Two instruments on one real film, because the crafted `tkhd` fixture in
+  //   src/asset-dimensions can only prove that the parser agrees with its
+  //   author. MEASURED 2026-10-19 in the dev Vault: four films this chamber
+  //   encoded were recorded 1080x16384, 1920x16384, 1080x16384, 1080x16384 —
+  //   every width right and every height the same impossible number. So the
+  //   function the Vault calls at deposit is asked for the size of a film that
+  //   exists, and ffprobe is asked the same question.
+  it('the Vault reads the same frame out of a real film that ffprobe measures', async () => {
+    const g = graph([{ trackId: 'main', nodes: [node('scene', 'portrait.png', 'VISUAL', 0, 1)] }], 1);
+    (g.metadata as { outputProfile?: string }).outputProfile = 'portrait';
+    const out = await encode('op-real-vault-size', g);
+
+    const probed = dimensions(out);                       // ffprobe
+    const read = readDimensions(readFileSync(out));       // what the Vault stores
+    expect(probed).toBe('1080x1920');
+    expect(read).toEqual({ width: 1080, height: 1920 });
+    expect(`${read?.width}x${read?.height}`).toBe(probed);
+  });
+
+  // ── THE 4:5 FEED FRAME CARRYING A 9:16 PICTURE ────────────────────────────
+  //
+  //   The Architect's condition, 2026-10-19: «يجب إثبات أن تكييف صورة 9:16 إلى
+  //   4:5 يحافظ على التكوين والعناصر المهمة. لا تعتبر صحة أبعاد الملف وحدها
+  //   دليلًا على سلامة الصورة.»
+  //
+  //   Correct dimensions are exactly what a destructive centre-crop would also
+  //   produce, so the file's size is not the evidence. The source picture
+  //   carries a green band on its first 60 rows and a blue band on its last 60.
+  //   A crop to 4:5 would take the middle 1080×1350 of a 1080×1920 picture and
+  //   BOTH bands would be gone. So the bands are the measurement: if they are
+  //   still at the top and bottom of the film, nothing was cut.
+  //
+  //   The price is paid in width instead — 0.5625/0.8 = 70.3% of the frame, so
+  //   ~160px of ground on each side. That is pillarboxing, declared, and the
+  //   bars are measured here too rather than assumed.
+  it('a 4:5 feed frame CONTAINS a 9:16 picture whole — nothing is cropped, the sides are ground', async () => {
+    const g = graph([{ trackId: 'main', nodes: [node('scene', 'marked-portrait.png', 'VISUAL', 0, 1)] }], 1);
+    (g.metadata as { outputProfile?: string }).outputProfile = 'portrait-feed';
+    const out = await encode('op-real-feed-contain', g);
+
+    expect(dimensions(out)).toBe('1080x1350');
+
+    // The picture's own top and bottom edges are the film's top and bottom.
+    const top = pixel(out, 0.5, 540, 8);
+    const bottom = pixel(out, 0.5, 540, 1341);
+    expect(top[1]).toBeGreaterThan(90);        // green survived
+    expect(top[0]).toBeLessThan(90);
+    expect(bottom[2]).toBeGreaterThan(90);     // blue survived
+    expect(bottom[0]).toBeLessThan(90);
+
+    // The middle of the composition is untouched.
+    const centre = pixel(out, 0.5, 540, 675);
+    expect(centre[0]).toBeGreaterThan(200);
+    expect(centre[1]).toBeLessThan(60);
+
+    // And the sides are ground, not stretched picture.
+    expect(pixel(out, 0.5, 20, 675)[0]).toBeLessThan(40);
+    expect(pixel(out, 0.5, 1060, 675)[0]).toBeLessThan(40);
   });
 });

@@ -41,6 +41,81 @@ function gif(w: number, h: number): Uint8Array {
   return b;
 }
 
+/**
+ * An MP4's `tkhd`, built the way the standard lays it out — because this is
+ * the one format the suite had no fixture for, and the one whose offset was
+ * wrong. A crafted fixture can only encode its author's own reading, so the
+ * real proof stands beside it: `cinematic-real-render.test.ts` asks this same
+ * function for the size of four films this Empire actually encoded and
+ * compares the answer with ffprobe's.
+ *
+ * `rotate` writes the quarter-turn matrix a phone camera writes: a=d=0, so the
+ * stored landscape box is presented portrait and the axes must be swapped.
+ */
+function mp4(w: number, h: number, opts: { rotate?: boolean; version?: 0 | 1 } = {}): Uint8Array {
+  const version = opts.version ?? 0;
+  const timesLen = version === 1 ? 32 : 20;           // times + track_ID + reserved + duration
+  const tkhdLen = 4 + timesLen + 16 + 36 + 8;         // + layer/group/volume + matrix + w/h
+  const parts: Buffer[] = [];
+  const box = (type: string, payload: Buffer) => {
+    const b = Buffer.alloc(8 + payload.length);
+    b.writeUInt32BE(8 + payload.length, 0);
+    b.write(type, 4, 'ascii');
+    payload.copy(b, 8);
+    return b;
+  };
+
+  const tkhd = Buffer.alloc(tkhdLen);
+  tkhd.writeUInt8(version, 0);                        // version, then 3 flag bytes
+  const matrixAt = 4 + timesLen + 16;
+  const unity = 0x00010000;
+  if (opts.rotate) {
+    tkhd.writeUInt32BE(0, matrixAt);                  // a = 0
+    tkhd.writeUInt32BE(unity, matrixAt + 4);          // b = 1
+    tkhd.writeInt32BE(-unity, matrixAt + 12);         // c = -1
+    tkhd.writeUInt32BE(0, matrixAt + 16);             // d = 0
+  } else {
+    tkhd.writeUInt32BE(unity, matrixAt);              // a = 1
+    tkhd.writeUInt32BE(unity, matrixAt + 16);         // d = 1
+  }
+  tkhd.writeUInt32BE(0x40000000, matrixAt + 32);      // the fixed last entry
+  tkhd.writeUInt32BE(w * 65536, matrixAt + 36);
+  tkhd.writeUInt32BE(h * 65536, matrixAt + 40);
+
+  // An audio track first, with a zero-sized tkhd, exactly as a real film has.
+  const silentTkhd = Buffer.alloc(tkhdLen);
+  silentTkhd.writeUInt8(version, 0);
+  const moov = box('moov', Buffer.concat([
+    box('trak', box('tkhd', silentTkhd)),
+    box('trak', box('tkhd', tkhd)),
+  ]));
+  const ftyp = box('ftyp', Buffer.from('isomiso2avc1mp41', 'ascii'));
+  parts.push(ftyp, moov);
+  return Buffer.concat(parts);
+}
+
+it("a film's own box says its size — the format whose offset was four bytes early", () => {
+  // MEASURED before this test existed: the Vault held 1080x16384 for a
+  // 1080x1350 film and 1920x16384 for a 1920x1080 one. 16384 is 0x40000000 in
+  // 2.30 — the matrix's last entry, read where `width` should have been.
+  expect(readDimensions(mp4(1920, 1080))).toEqual({ width: 1920, height: 1080 });
+  expect(readDimensions(mp4(1080, 1920))).toEqual({ width: 1080, height: 1920 });
+  expect(readDimensions(mp4(1080, 1350))).toEqual({ width: 1080, height: 1350 });
+  expect(readDimensions(mp4(1080, 1080))).toEqual({ width: 1080, height: 1080 });
+});
+
+it('a version 1 box is read at its own wider offsets', () => {
+  expect(readDimensions(mp4(1080, 1350, { version: 1 }))).toEqual({ width: 1080, height: 1350 });
+});
+
+it('a quarter-turn matrix still swaps the axes — the rule that was firing on every film', () => {
+  // The swap itself is right and must survive: a phone stores a portrait
+  // recording as a landscape box with a rotating matrix. What was wrong was
+  // that two zeroed words made EVERY film look rotated.
+  expect(readDimensions(mp4(1920, 1080, { rotate: true }))).toEqual({ width: 1080, height: 1920 });
+  expect(readDimensions(mp4(1080, 1350))).toEqual({ width: 1080, height: 1350 });
+});
+
 it('reads a size out of the bytes themselves, in every format the Empire stores', () => {
   expect(readDimensions(png(1920, 1080))).toEqual({ width: 1920, height: 1080 });
   expect(readDimensions(jpeg(1080, 1350))).toEqual({ width: 1080, height: 1350 });
