@@ -189,6 +189,37 @@ describeReal('Ras Al-Amr real render — the MP4 matches the preview contract', 
     if (workDir) rmSync(workDir, { recursive: true, force: true });
   });
 
+  // 2026-10-21, the Founder: «ثانية سوداء أو فارغة في بداية الفيديو».
+  // Every visual node is drawn onto a black canvas at its own start, so a film
+  // opens on black for exactly as long as its first picture is late. Three
+  // openings, measured at the first frame the file has.
+  it('a film opens on its first picture, not on black', async () => {
+    const out = await encode('op-real-opening', graph([
+      { trackId: 'v', nodes: [node('n1', 'red.png', 'VISUAL', 0, 3)] },
+    ], 3));
+    expect(pixel(out, 0.04, 960, 540)[0]).toBeGreaterThan(200);
+  });
+
+  // A soundtrack laid down first must not push the picture off the opening.
+  it('a soundtrack added before the picture does not open the film on black', async () => {
+    const out = await encode('op-real-opening-sound', graph([
+      { trackId: 'a', nodes: [node('s1', 'music.mp3', 'AUDIO', 0, 6)] },
+      { trackId: 'v', nodes: [node('n1', 'red.png', 'VISUAL', 0, 3)] },
+    ], 6));
+    expect(pixel(out, 0.04, 960, 540)[0]).toBeGreaterThan(200);
+  });
+
+  // And when the Creator DID place the first picture late, the black second is
+  // their own composition — the file must honour it rather than silently close
+  // the gap, or the timeline would stop meaning what it shows.
+  it('a gap the Creator composed is kept, not closed', async () => {
+    const out = await encode('op-real-opening-gap', graph([
+      { trackId: 'v', nodes: [node('n1', 'red.png', 'VISUAL', 1, 3)] },
+    ], 4));
+    expect(pixel(out, 0.3, 960, 540)[0]).toBeLessThan(40);
+    expect(pixel(out, 1.4, 960, 540)[0]).toBeGreaterThan(200);
+  });
+
   it('renders the crossfade, the video clip with its sound, the webm recording and the music on one timeline', async () => {
     const crossfade = { transitionInType: 'crossfade', transitionInDurationSeconds: 1 };
     const out = await encode('op-real-mixed', graph([
