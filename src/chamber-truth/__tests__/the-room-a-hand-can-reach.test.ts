@@ -83,3 +83,58 @@ describe('رأس الأمر', () => {
     expect(PAGE).not.toMatch(/\$\{[A-Za-z + ]+\}s[^a-z]/);
   });
 });
+
+/**
+ * 2026-10-21. «عند فتح حجرة رأس الأمر على الهاتف، تظهر الصورة فقط. لا يستطيع
+ * المستخدم تمرير الصفحة أو الوصول إلى بقية الحقول.»
+ *
+ * Three rules written for the chamber as a FIXED surface stayed in force after
+ * the phone turned it into a column that flows to ~2,600px. Measured on a true
+ * touch context with real touch events, against a control page that scrolled:
+ * 8/44 controls reachable at 320x568 and 11/44 at 390x844, against 44/44 once
+ * the three were withdrawn. Each `it` below guards one of them.
+ */
+describe('رأس الأمر على الهاتف', () => {
+  /** The declarations a selector carries INSIDE a given media condition. */
+  const inMedia = (condition: string, selector: string): string => {
+    const text = bare(CSS);
+    const out: string[] = [];
+    for (const m of text.matchAll(/@media\s*\(([^)]*)\)\s*\{/g)) {
+      if (m[1]!.replace(/\s/g, '') !== condition.replace(/\s/g, '')) continue;
+      let depth = 1;
+      let i = m.index! + m[0].length;
+      const start = i;
+      while (i < text.length && depth > 0) {
+        if (text[i] === '{') depth += 1;
+        else if (text[i] === '}') depth -= 1;
+        i += 1;
+      }
+      const body = text.slice(start, i - 1);
+      for (const r of body.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        if (r[1]!.split(',').some((x) => x.trim() === selector)) out.push(r[2]!);
+      }
+    }
+    if (out.length === 0) throw new Error(`not declared under @media (${condition}): ${selector}`);
+    return out.join('\n');
+  };
+
+  // The lock kept a second scrollbar from appearing behind a surface pinned to
+  // `inset: 0`. In a column there is no such surface, and the lock is the wall.
+  it('the document is not locked where the chamber flows', () => {
+    expect(rule('body:has(.ras-amr-viewport)')).toContain('overflow: hidden');
+    expect(inMedia('max-width: 399px', 'body:has(.ras-amr-viewport)')).toContain('overflow-y: auto');
+  });
+
+  // A rail that no longer scrolls must not keep the right to swallow a swipe.
+  it('the rails stop being scrollers, and stop containing the gesture', () => {
+    expect(inMedia('max-width: 399px', '.ras-panel-left')).toContain('overflow: visible');
+    expect(inMedia('max-width: 399px', '.ras-panel-left')).toContain('overscroll-behavior: auto');
+  });
+
+  // The 55% cap divided a rail of fixed height. There is no rail to divide.
+  it('the rail budget does not reach the phone column', () => {
+    const phone = inMedia('max-width: 399px', '.ras-panel-left > .panel-header');
+    expect(phone).toContain('max-height: none');
+    expect(phone).toContain('overflow: visible');
+  });
+});

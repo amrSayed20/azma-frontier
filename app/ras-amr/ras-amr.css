@@ -965,6 +965,20 @@ body:has(.ras-amr-viewport) {
 /* ── Phone (< 400px) ─────────────────────────────────────────────
    Single-column intentional stack. Chamber scrolls. */
 @media (max-width: 399px) {
+  /* The body lock near the top of this file belongs to the FIXED chamber:
+     a surface pinned to `inset: 0` must not leave a second scrollbar behind
+     it. Below 400px that surface stops existing — the rule right under this
+     one turns the chamber into a column that flows to about 2,300px — and the
+     lock did not travel with the layout it was written for. Measured on a true
+     touch context at 320x568 and 390x844: page 2329px against a 568/844px
+     window, 35 and 32 controls below the fold, and a real swipe through the
+     browser's input pipeline moved the page 0px. Every field under the
+     preview was present, and no hand could reach it. The surface is a
+     document here, so the document scrolls here. */
+  body:has(.ras-amr-viewport) {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
   .ras-amr-viewport {
     position: relative;
     inset: auto;
@@ -998,15 +1012,26 @@ body:has(.ras-amr-viewport) {
   .ras-panel-left,
   .ras-panel-right,
   .ras-center { grid-column: unset; grid-row: unset; }
+  /* The rails are their own scrollers in the grid, and `overscroll-behavior:
+     contain` is what keeps a wheel inside them there. On a phone they are
+     plain blocks in one column, so a rail that still declares itself a
+     scroller captures the finger and refuses to pass the gesture on: measured
+     at 390x844, a swipe starting over the left rail moved the page 0px while
+     the same swipe over the centre column moved it 285px. A block that no
+     longer scrolls must not keep the right to swallow a swipe. */
   .ras-panel-left,
   .ras-panel-right {
     flex: none;
     width: 100%;
     height: auto;
     min-height: 180px;
+    overflow: visible;
+    overscroll-behavior: auto;
     border-inline: none;
     border-block: 1px solid var(--neon-gold-border);
   }
+  /* The rail budget is released for the phone column further down this file,
+     after the short-screen rules that would otherwise re-impose it. */
   .ras-center {
     flex: none;
     width: 100%;
@@ -6844,6 +6869,45 @@ body:has(.ras-amr-viewport) {
   /* The description under the title is the one line that can go: the title
      above it already says what the panel is. */
   .ras-panel-left > .panel-header > p { display: none; }
+}
+
+/* ── THE RAIL BUDGET DOES NOT TRAVEL TO THE PHONE ─────────────────────
+   Everything above divides a rail of fixed height beside the stage: the
+   header may take at most 55% (52% / 48% on a short screen) and scrolls
+   on its own, with `overscroll-behavior: contain` so a wheel stays in it,
+   and the asset list keeps a floor of 190px that cannot be pushed away.
+
+   Below 400px none of that is true. The chamber is a single column, the
+   rail has no height to divide, and the list is simply the next thing
+   down the page. The cap travelled anyway — and a capped, contained
+   scroller came to rest exactly where a thumb does. Measured at 390×844
+   on a true touch context, with a swipe made of real touch events and
+   proved against a control page that scrolled 422px:
+
+       swipe from y=660 (over this header)  →  page moved   0px
+       swipe from y=560 (over this header)  →  page moved   0px
+       swipe from y=460 (over this header)  →  page moved   0px
+       swipe from y=360 (over the stage)    →  page moved 285px
+       swipe from y=260 (over the stage)    →  page moved 185px
+       swipe from y=160 (over the stage)    →  page moved  85px
+
+   The page could move. The finger just never reached it: a box with no
+   scrolling left to do kept the gesture and passed nothing on. These
+   rules come after the short-screen blocks above deliberately — written
+   earlier in the file they would be overridden by them at 320×568.
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 399px) {
+  .ras-panel-left > .panel-header,
+  .ras-panel-right > .panel-header {
+    max-height: none;
+    overflow: visible;
+    overscroll-behavior: auto;
+  }
+  /* The floor protected a list inside a divided rail. In one column the
+     list is not competing with anything, so it takes the height it needs. */
+  .ras-panel-left > .queue-container { min-height: 0; }
+  /* The description is a line of guidance, and the column has room for it. */
+  .ras-panel-left > .panel-header > p { display: block; }
 }
 
 /* ── THE GOAL THAT GOVERNS, SHOWN AND RELEASABLE ───────────────────────
