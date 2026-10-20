@@ -74,6 +74,30 @@ export function readXPayCredentials(): XPayCredentials | null {
   const secretKey = process.env['XPAY_SECRET_KEY'];
   const webhookSecret = process.env['XPAY_WEBHOOK_SECRET'];
   if (!secretKey || !webhookSecret) return null;
+
+  // ── A PUBLISHABLE KEY IS NOT A SECRET KEY ───────────────────────────────
+  //
+  //   MEASURED 2026-10-20 against the real API with a `pk_test_…` key:
+  //
+  //     POST /checkout/sessions -> HTTP 403
+  //     { code: 'permission_denied',
+  //       message: 'Missing required permission. Required: CHECKOUT_SESSIONS_WRITE' }
+  //
+  //   Not 401. The key authenticates perfectly well — it simply may not open a
+  //   checkout session, which is what a publishable key is for. Installed as
+  //   `XPAY_SECRET_KEY` it would have made the Empire believe it could take
+  //   money: the purchase buttons would appear, and every press would end at
+  //   «تعذّر فتح صفحة الدفع» after the Creator had already decided to buy.
+  //
+  //   A destination is offered only to a Creator who can complete it, so a key
+  //   that is not `sk_` is treated as no key at all. The refusal is loud in the
+  //   server's log and silent to the Creator, who simply sees no purchase road.
+  //   AND NOTHING IS LOGGED FROM THIS FILE. A suite guards that this module
+  //   contains no console call at all — the strongest form of «a secret is
+  //   never printed» is a file that cannot print. The operator's explanation
+  //   is written where an operator looks: the checkout route.
+  if (xpayMode(secretKey) === 'unknown') return null;
+
   return { secretKey, webhookSecret };
 }
 

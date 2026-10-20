@@ -98,6 +98,23 @@ export async function POST(request: NextRequest) {
   //   nobody, says so on its own page, and reaches the ledger through the very
   //   same webhook handler a real payment travels. A host that sets nothing
   //   still answers «الدفع غير مُهيّأ», exactly as before.
+  // ── AN OPERATOR WHO INSTALLED THE WRONG KIND OF KEY IS TOLD WHY ─────────
+  //
+  //   MEASURED 2026-10-20 against the real API with a publishable test key:
+  //   `POST /checkout/sessions` answered 403 `permission_denied` — «Required:
+  //   CHECKOUT_SESSIONS_WRITE». The key authenticates; it simply may not open
+  //   a session. So the binding treats a non-`sk_` key as no key, and the
+  //   reason is said HERE, in the server's log, because the gateway module is
+  //   forbidden to print anything at all.
+  const rawKey = process.env['XPAY_SECRET_KEY'];
+  if (rawKey && !rawKey.startsWith('sk_test_') && !rawKey.startsWith('sk_live_')) {
+    console.error(
+      '[Economy] XPAY_SECRET_KEY is present but is not a secret key (expected sk_test_… or sk_live_…). '
+      + 'A publishable key authenticates and lacks CHECKOUT_SESSIONS_WRITE, so the purchase road stays shut '
+      + 'rather than opening onto a refusal the Creator would meet after deciding to buy.',
+    );
+  }
+
   const liveGateway = getXPayGateway();
   const simulated = liveGateway ? null : getSimulationGateway(readXPayCredentials() !== null);
   const gateway = liveGateway ?? simulated;
