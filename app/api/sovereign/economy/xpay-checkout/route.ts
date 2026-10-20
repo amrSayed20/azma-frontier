@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { verifySession } from '@/src/authentication';
 import { getCreditPack, VALID_PACK_IDS } from '@/src/economy/payment/credit-packs';
-import { getXPayGateway } from '@/src/economy/payment/xpay-payment-gateway';
+import { getXPayGateway, readXPayCredentials } from '@/src/economy/payment/xpay-payment-gateway';
+import { getSimulationGateway } from '@/src/economy/payment/simulation-payment-gateway';
+import { recordInitiatedPurchase } from '@/src/economy/payment/purchase-order-repository';
 import { PaymentSessionError } from '@/src/economy/payment/payment-gateway-contracts';
 import { BALANCE_PRICING_APPROVED } from '@/src/economy/pricing/sovereign-value-balance';
 import { getDb } from '@/src/persistent-storage/db';
@@ -86,7 +88,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'invalid_pack_id', valid: VALID_PACK_IDS }, { status: 400 });
   }
 
-  const gateway = getXPayGateway();
+  // ── WHICH GATEWAY, AND WHY A SIMULATION IS NEVER A SILENT SUBSTITUTE ─────
+  //
+  //   The real one when a credential exists — and nothing else is tried in
+  //   that case, so a host that can take money never invents it.
+  //
+  //   Otherwise, and ONLY when this server's own environment says
+  //   `AZMA_PAYMENT_SIMULATION=1`, the simulation: a gateway that charges
+  //   nobody, says so on its own page, and reaches the ledger through the very
+  //   same webhook handler a real payment travels. A host that sets nothing
+  //   still answers «الدفع غير مُهيّأ», exactly as before.
+  const liveGateway = getXPayGateway();
+  const simulated = liveGateway ? null : getSimulationGateway(readXPayCredentials() !== null);
+  const gateway = liveGateway ?? simulated;
   if (!gateway) {
     return NextResponse.json(
       { error: 'payment_gateway_unavailable', messageAr: 'الدفع غير مُهيّأ على هذا الخادم.' },
@@ -122,6 +136,26 @@ export async function POST(request: NextRequest) {
       cancelUrl: returnUrl(origin, '/sovereign-balance'),
     });
 
+    // ── THE ORDER, WRITTEN BEFORE ANYONE PAYS ────────────────────────────
+    //
+    //   Until now the XPay road recorded nothing at this point: the first row
+    //   in the Empire's books appeared only when money arrived. So a Creator
+    //   who opened a payment page and came back had no order to point at, and
+    //   nothing tied a session id to a person, a pack and a price.
+    //
+    //   `payment_transactions` already holds exactly these columns — the
+    //   superseded Paymob road wrote them — so no table and no column is
+    //   added. The row is born `initiated` and is moved by the outcome.
+    recordInitiatedPurchase(getDb(), {
+      creatorId: session.creatorId,
+      packId: pack.packId,
+      azmaUnits: pack.azmaUnits,
+      amountEgp: pack.priceEgp,
+      idempotencyKey,
+      providerId: gateway.gatewayId,
+      providerOrderId: created.sessionId,
+    });
+
     return NextResponse.json({
       checkoutUrl: created.checkoutUrl,
       expiresAt: created.expiresAt,
@@ -129,6 +163,11 @@ export async function POST(request: NextRequest) {
       // name, no provider unit, no cost.
       packageNameAr: pack.displayName,
       priceEgp: pack.priceEgp,
+      azmaUnits: pack.azmaUnits,
+      orderId: created.sessionId,
+      // Said plainly, so no surface can show a simulated purchase as a real
+      // one by omission.
+      simulation: simulated !== null,
     });
   } catch (err) {
     if (err instanceof PaymentSessionError) {

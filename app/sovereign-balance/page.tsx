@@ -4,7 +4,8 @@ import { getDb } from '@/src/persistent-storage';
 import { CreatorCreditRepository } from '@/src/economy/credit-ledger/credit-ledger-repository';
 import { verificationStateForCreator } from '@/src/persistent-storage/authentication-identity-repository';
 import { isVerified } from '@/src/identity/sovereign-identity-contract';
-import { getXPayGateway } from '@/src/economy/payment/xpay-payment-gateway';
+import { simulationIsEnabled } from '@/src/economy/payment/simulation-payment-gateway';
+import { getXPayGateway, readXPayCredentials } from '@/src/economy/payment/xpay-payment-gateway';
 import {
   creatorFacingPackages,
   BALANCE_NOTICES_AR,
@@ -65,7 +66,16 @@ export default async function SovereignBalancePage() {
    * though it could — the Empire says the door is shut rather than letting a
    * Creator discover it by pressing.
    */
-  const purchaseAvailable = BALANCE_PRICING_APPROVED && getXPayGateway() !== null;
+  // ── WHETHER A PURCHASE CAN BE STARTED AT ALL ─────────────────────────────
+  //
+  //   The live gateway when there is one. Otherwise a server that was told to
+  //   REHEARSE — `AZMA_PAYMENT_SIMULATION=1` and no live key — can also start
+  //   one, and the page it opens says on its own face that no money moves.
+  //   A host that sets neither still shows no buy action, exactly as before:
+  //   the Empire never offers a destination a Creator cannot complete.
+  const simulating = simulationIsEnabled(readXPayCredentials() !== null);
+  const purchaseAvailable = BALANCE_PRICING_APPROVED
+    && (getXPayGateway() !== null || simulating);
 
   return (
     <SovereignBalanceClient

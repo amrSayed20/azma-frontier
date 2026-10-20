@@ -1,0 +1,87 @@
+/* AZMA OS — محاكاةُ الدفع: سطحٌ واحدٌ، يَقول ما هو قبلَ أن يَعرِض مبلغاً. */
+
+.pay-sim-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: #0b0904;
+  color: #efe6d0;
+  font-family: inherit;
+}
+
+.pay-sim-card {
+  width: 100%;
+  max-width: 520px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 4px;
+  padding: 20px 18px 22px;
+}
+
+/* The warning is the first thing, and it never scrolls away from the amount. */
+.pay-sim-banner {
+  background: rgba(232, 146, 124, 0.12);
+  border: 1px solid rgba(232, 146, 124, 0.55);
+  color: #ffd9cd;
+  border-radius: 3px;
+  padding: 10px 12px;
+  font-size: 0.86rem;
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+
+.pay-sim-title {
+  margin: 0 0 14px;
+  font-size: 1.15rem;
+  color: #E8C860;
+}
+
+.pay-sim-summary { margin: 0 0 14px; display: flex; flex-direction: column; gap: 8px; }
+.pay-sim-summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.14);
+  padding-bottom: 7px;
+}
+.pay-sim-summary dt { color: rgba(239, 230, 208, 0.62); font-size: 0.84rem; }
+.pay-sim-summary dd { margin: 0; font-weight: 700; font-size: 0.95rem; text-align: left; }
+.pay-sim-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.74rem; word-break: break-all; }
+
+.pay-sim-note { font-size: 0.82rem; line-height: 1.7; color: rgba(239, 230, 208, 0.7); margin: 0 0 12px; }
+
+.pay-sim-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.pay-sim-btn {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.88rem;
+  /* A finger, not a pointer: the floor Apple and Google both publish. */
+  min-height: 44px;
+  min-width: 44px;
+  padding: 10px 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  flex: 1 1 auto;
+  transition: filter 0.15s;
+}
+.pay-sim-btn:disabled { opacity: 0.55; cursor: wait; }
+.pay-sim-btn:hover:not(:disabled) { filter: brightness(1.12); }
+.pay-sim-btn-pay { background: linear-gradient(180deg, #E8C860, #D4AF37); border: 1px solid #D4AF37; color: #0b0904; }
+.pay-sim-btn-fail { background: transparent; border: 1px solid rgba(232, 146, 124, 0.6); color: #E8927C; }
+.pay-sim-btn-cancel { background: transparent; border: 1px solid rgba(239, 230, 208, 0.3); color: rgba(239, 230, 208, 0.8); }
+
+.pay-sim-result { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(212, 175, 55, 0.3); }
+.pay-sim-result-line { margin: 0 0 12px; line-height: 1.8; font-size: 0.92rem; }
+.pay-sim-ok .pay-sim-result-line { color: #8FD3A8; }
+.pay-sim-no .pay-sim-result-line { color: #E8927C; }
+.pay-sim-error { color: #E8927C; font-size: 0.86rem; line-height: 1.7; margin: 12px 0 0; }
+.pay-sim-loading { color: rgba(239, 230, 208, 0.7); }
+
+/* At phone width the three acts stack rather than squeeze. */
+@media (max-width: 420px) {
+  .pay-sim-actions { flex-direction: column; }
+  .pay-sim-btn { width: 100%; }
+}
