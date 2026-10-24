@@ -94,6 +94,38 @@ describe('رأس الأمر', () => {
  * 8/44 controls reachable at 320x568 and 11/44 at 390x844, against 44/44 once
  * the three were withdrawn. Each `it` below guards one of them.
  */
+/**
+ * 2026-10-24. «عند ضغط المستخدم على مشهد جديد… لا تُحذف الأصول من الخزانة
+ * السيادية، ولا تُتلف الملفات الأصلية، ولا تُنشأ نسخ سيادية إضافية بلا داعٍ.»
+ *
+ * Walked by finger at 390×844 with two real assets on the canvas: the scene
+ * emptied (2 layers and 2 timeline blocks → 0), the Vault stayed at 30 assets
+ * with the same ids — including the two that had been in the scene — the 9
+ * files on disk were untouched, and an asset was summoned and placed again.
+ * These guard the two facts that make that outcome possible.
+ */
+describe('«مشهد جديد»', () => {
+  // A canvas node holds an asset's ID, never the asset. Nothing is borrowed
+  // from the Vault, so nothing has to be returned to it — and the chamber must
+  // own no road that could destroy one.
+  it('the chamber never asks for an asset to be destroyed', () => {
+    expect(PAGE).not.toMatch(/method:\s*['"]DELETE['"]/);
+    expect(PAGE).not.toMatch(/\/api\/vault\/assets\/[^'"`]*['"`],\s*\{[^}]*DELETE/);
+  });
+
+  // The old production must not come back on the next visit: the working draft
+  // is overwritten with an empty canvas, and the production queue is emptied
+  // in the same act.
+  it('starting a new scene clears the draft and the queue, not the Vault', () => {
+    const body = PAGE.slice(PAGE.indexOf('const handleNewScene'), PAGE.indexOf('const handleNewScene') + 3000);
+    expect(body).toContain("canvasId: 'canvas_narrative_session'");
+    expect(body).toContain('nodes: []');
+    expect(body).toContain('setQueue([])');
+    expect(body).toContain('setActiveAsset(null)');
+    expect(body).not.toContain('DELETE');
+  });
+});
+
 describe('رأس الأمر على الهاتف', () => {
   /** The declarations a selector carries INSIDE a given media condition. */
   const inMedia = (condition: string, selector: string): string => {
