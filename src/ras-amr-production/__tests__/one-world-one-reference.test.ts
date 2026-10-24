@@ -37,6 +37,7 @@ import {
   SUBJECT_INTEGRITY_RULE_AR,
 } from '../qiyamah-commission';
 import type { CommissionFailure } from '../qiyamah-commission';
+import { CAMERA_ANGLES, cameraAngleClauseAr, readCameraAngle } from '../camera-angle';
 
 const WORLD = 'مطبخٌ خشبيٌّ داكن، ضوءٌ ذهبيٌّ جانبيّ، خلفيّةٌ معتمة.';
 const DEMANDS = [
@@ -179,6 +180,48 @@ ${SUBJECT_INTEGRITY_RULE_AR}`);
     expect(instruction).toContain('ولا يُستبدَل بموضوعٍ آخر');
     // And the freedom that must survive it.
     expect(instruction).toContain('يتغيّر كما تَطلُبُه هذه الجملة');
+  });
+
+  // ══ WHERE THE LENS STANDS ═════════════════════════════════════════════════
+  //
+  //   The Founder, 2026-10-21: an option in the interface, or an angle buried
+  //   in the Creator's own sentence, is not a control. These prove the named
+  //   field reaches the instruction and that silence stays silent. Whether the
+  //   engine OBEYS the clause is a question for pictures, answered once with
+  //   real credits and recorded there — never asserted here.
+
+  it('a named angle reaches the instruction, in the same words every time', () => {
+    const a = composeSceneInstruction({ demandAr: DEMANDS[0].demandAr, cameraAngle: 'low' });
+    const b = composeSceneInstruction({ demandAr: DEMANDS[1].demandAr, cameraAngle: 'low' });
+    const clause = cameraAngleClauseAr('low');
+
+    expect(clause.length).toBeGreaterThan(0);
+    expect(a).toContain(clause);
+    expect(b).toContain(clause);
+  });
+
+  it('each angle says where the CAMERA is, and no two say the same thing', () => {
+    const clauses = CAMERA_ANGLES.filter((x) => x.id !== 'unspecified').map((x) => x.clauseAr);
+    expect(new Set(clauses).size).toBe(clauses.length);
+    for (const clause of clauses) expect(clause).toContain('الكاميرا');
+  });
+
+  it('a Creator who names no angle has none added', () => {
+    const bare = composeSceneInstruction({ demandAr: DEMANDS[0].demandAr });
+    expect(composeSceneInstruction({ demandAr: DEMANDS[0].demandAr, cameraAngle: 'unspecified' })).toBe(bare);
+    expect(composeSceneInstruction({ demandAr: DEMANDS[0].demandAr, cameraAngle: null })).toBe(bare);
+    for (const angle of CAMERA_ANGLES) {
+      if (angle.id === 'unspecified') continue;
+      expect(bare).not.toContain(angle.clauseAr);
+    }
+  });
+
+  // A column holds whatever was written to it, including by a client that
+  // knows an angle this build does not.
+  it('a stored value the catalogue does not know is no angle at all', () => {
+    expect(readCameraAngle('dutch-tilt')).toBe('unspecified');
+    expect(readCameraAngle(undefined)).toBe('unspecified');
+    expect(cameraAngleClauseAr('dutch-tilt' as never)).toBe('');
   });
 
   it('a new scene keeps the same world and the same rule, and changes only its own sentence', () => {

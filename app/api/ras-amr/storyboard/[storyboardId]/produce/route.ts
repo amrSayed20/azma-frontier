@@ -21,6 +21,7 @@ import {
 import type { SceneFrameOutcome } from '@/src/ras-amr-production/storyboard-operation-lifecycle';
 import { resolveOutputFrame } from '@/src/chambers/ras-al-amr/cinematic-timing';
 import { getDefaultAspectRatio } from '@/src/sovereign-model-selection';
+import { readCameraAngle } from '@/src/ras-amr-production/camera-angle';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -242,6 +243,9 @@ export async function POST(
       sceneId: sc.sceneId,
       demandAr: sc.creationDemandAr as string,
       seenAr: sc.description,
+      // Narrowed where it leaves storage: a column holds whatever was written
+      // to it, and an angle the catalogue does not know is no angle at all.
+      cameraAngle: readCameraAngle(sc.cameraAngle),
     }));
 
   //   A scene that asks to be created and says nothing about what to create

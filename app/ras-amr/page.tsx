@@ -449,6 +449,7 @@ import type { CanvasMutationPayload } from '@/src/chambers/ras-al-amr/assembly-d
 import { useVoiceMode } from '@/src/components/living-companion/useVoiceMode';
 import type { DirectorPlan, ProductionAssetContext } from '@/src/chambers/ras-al-amr/director-plan-types';
 import { takeDemandFor, resolveDemand, spokenDemandArrival } from '@/src/sovereign-creation-demand/arrival';
+import { CAMERA_ANGLES, readCameraAngle } from '@/src/ras-amr-production/camera-angle';
 import './ras-amr.css';
 import { ChamberDemonstration } from '@/src/chamber-demonstration';
 import { composeStoryboardFromBrief, readScenePlans, setScenePlan } from './actions';
@@ -5956,6 +5957,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                               sceneId: plan.sceneId,
                               sourcing: merged.sourcing,
                               creationDemandAr: merged.creationDemandAr,
+                              cameraAngle: merged.cameraAngle,
                               visualAssetId: merged.visualAssetId,
                             });
                             setPlanNotice(outcome.ok ? null : outcome.messageAr ?? null);
@@ -6068,6 +6070,31 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                                     onBlur={() => { void save({}); }}
                                     placeholder="صف الصورة التي تريدها بدقة."
                                   />
+                                  {/* Where the lens stands. A closed list rather than words
+                                      the Creator must remember to type, so the same sentence
+                                      reaches the engine every time. «دون تحديد» is the
+                                      default and adds nothing: an unasked-for angle would be
+                                      a silent edit to their picture. */}
+                                  <span className="scene-plan-label">زاوية الكاميرا</span>
+                                  <div className="scene-angle-row" role="group" aria-label={`زاوية الكاميرا للمشهد ${plan.order}`}>
+                                    {CAMERA_ANGLES.map((angle) => (
+                                      <button
+                                        key={angle.id}
+                                        type="button"
+                                        className={`scene-angle-btn${readCameraAngle(plan.cameraAngle) === angle.id ? ' scene-angle-on' : ''}`}
+                                        aria-pressed={readCameraAngle(plan.cameraAngle) === angle.id}
+                                        data-testid={`scene-angle-${plan.order}-${angle.id}`}
+                                        onClick={() => { void save({ cameraAngle: angle.id }); }}
+                                      >
+                                        {angle.labelAr}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  {readCameraAngle(plan.cameraAngle) !== 'unspecified' && plan.visualAssetId && (
+                                    <span className="scene-frame-note">
+                                      تغييرُ الزاويةِ يُحرِّر صورةَ هذا المشهد، فيُنشَأ غيرُها في الإنتاج القادم.
+                                    </span>
+                                  )}
                                 </>
                               )}
 

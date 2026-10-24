@@ -805,6 +805,13 @@ export const STORYBOARD_SCENES_MIGRATION_COLUMNS: readonly { readonly name: stri
    */
   { name: 'sourcing', ddl: 'sourcing TEXT' },
   { name: 'creation_demand_ar', ddl: 'creation_demand_ar TEXT' },
+  /**
+   * Where the lens stands for this scene, as a name from a closed list — not
+   * as words the Creator must remember to type into the demand. A row written
+   * before this column existed reads back as 'unspecified', which is what
+   * every scene was: no angle asked for, so none added.
+   */
+  { name: 'camera_angle', ddl: 'camera_angle TEXT' },
 ];
 
 /** Columns added to `cinematic_ledger` after its original creation — applied via ALTER TABLE for pre-existing databases. */

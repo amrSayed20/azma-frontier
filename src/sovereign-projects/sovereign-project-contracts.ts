@@ -124,6 +124,13 @@ export interface StoryboardScene {
    */
   readonly order: number;
   readonly description: string;
+  /**
+   * Where the lens stands for this scene. A name from a closed list
+   * (`camera-angle.ts`), never prose: the Creator picks it, and the courier
+   * turns the name into the one clause the image engine reads. Absent, or
+   * 'unspecified', means they asked for no angle — so none is added.
+   */
+  readonly cameraAngle: string | null;
   /** A sovereign asset assigned to this scene, once one exists. */
   readonly visualAssetId: string | null;
   readonly audioAssetId: string | null;

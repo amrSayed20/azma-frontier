@@ -84,6 +84,7 @@ import {
   assignSceneAsset,
   createStoryboard,
   listScenes,
+  setScenePicturePlan,
 } from '@/src/persistent-storage/sovereign-project-repository';
 import { observeStoryboardOperation, findOperationForStoryboard } from '../storyboard-operation-lifecycle';
 import { POST } from '@/app/api/ras-amr/storyboard/[storyboardId]/produce/route';
@@ -276,6 +277,28 @@ describe('a frame is bought once, and a missing one is never substituted', () =>
     const demandsAsked = mockCommission.mock.calls[1][0].demands as { sceneId: string }[];
     expect(demandsAsked.map((d) => d.sceneId)).toEqual([sceneIds[0]]);
     expect(framesOf(storyboardId)).toEqual(['asset-remade', 'asset-keep']);
+  });
+
+  // The angle is part of what was asked for, so a frame that answered the old
+  // angle does not answer the new one. If it survived, the next production
+  // would hand back a picture shot from a camera the Creator moved — and they
+  // would have paid for nothing.
+  it('changing the angle releases the frame; re-choosing the same angle keeps it', () => {
+    const db = getDb();
+    const demand = 'برطمانُ عسلٍ على منصّةٍ خشبيّة';
+    const { storyboardId, sceneIds } = board([demand]);
+    const plan = { sourcing: 'generate' as const, creationDemandAr: demand };
+
+    setScenePicturePlan(db, sceneIds[0], OWNER, { ...plan, cameraAngle: 'low' });
+    assignSceneAsset(db, sceneIds[0], OWNER, { visualAssetId: 'asset-low' });
+    expect(framesOf(storyboardId)).toEqual(['asset-low']);
+
+    // The same angle re-chosen is not a new demand.
+    setScenePicturePlan(db, sceneIds[0], OWNER, { ...plan, cameraAngle: 'low' });
+    expect(framesOf(storyboardId)).toEqual(['asset-low']);
+
+    setScenePicturePlan(db, sceneIds[0], OWNER, { ...plan, cameraAngle: 'high' });
+    expect(framesOf(storyboardId)).toEqual([null]);
   });
 
   it('a frame that was made and could not be pinned says so, and the film still carries it', async () => {

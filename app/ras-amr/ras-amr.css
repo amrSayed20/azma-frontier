@@ -7150,3 +7150,36 @@ button.ras-path-card:hover { border-color: var(--neon-gold-bright); background: 
     min-height: 44px;
   }
 }
+
+/* ── WHERE THE LENS STANDS ────────────────────────────────────────────
+   Six choices on one row, wrapping rather than scrolling sideways, and
+   each one its own control with a 44px touch floor where the pointer is
+   coarse — the same floor the mode buttons earned. */
+.scene-angle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-block: 4px 2px;
+}
+.scene-angle-btn {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--neon-gold-border);
+  background: rgba(255, 215, 0, 0.04);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: var(--rt-2xs);
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+.scene-angle-btn:hover { color: var(--text-main); border-color: var(--neon-gold-bright); }
+.scene-angle-btn.scene-angle-on {
+  background: rgba(255, 215, 0, 0.16);
+  border-color: var(--neon-gold-bright);
+  color: var(--neon-gold-bright);
+  font-weight: 700;
+}
+@media (pointer: coarse) {
+  .scene-angle-btn { min-height: 44px; padding-inline: 14px; }
+}

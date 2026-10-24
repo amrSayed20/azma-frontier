@@ -29,6 +29,7 @@ import {
   type AssetTombstone,
   type SovereignPublicLink,
 } from '../sovereign-projects/sovereign-project-contracts';
+import { readCameraAngle } from '../ras-amr-production/camera-angle';
 
 // ══ PROJECTS — Article 7 ═══════════════════════════════════════════════════
 
@@ -202,7 +203,7 @@ export function listStoryboardsForOwner(db: DatabaseSync, ownerId: string): read
 }
 
 const SCENE_COLUMNS =
-  'scene_id, storyboard_id, owner_id, scene_order, description, visual_asset_id, audio_asset_id, duration_seconds, transition_intent, direction_notes, visual_search_en, sourcing, creation_demand_ar, created_at, updated_at';
+  'scene_id, storyboard_id, owner_id, scene_order, description, camera_angle, visual_asset_id, audio_asset_id, duration_seconds, transition_intent, direction_notes, visual_search_en, sourcing, creation_demand_ar, created_at, updated_at';
 
 function rowToScene(row: Record<string, unknown>): StoryboardScene {
   return {
@@ -219,6 +220,7 @@ function rowToScene(row: Record<string, unknown>): StoryboardScene {
     visualSearchEn: (row.visual_search_en as string | null) ?? null,
     sourcing: (row.sourcing as 'stock' | 'generate' | 'creator-asset' | null) ?? null,
     creationDemandAr: (row.creation_demand_ar as string | null) ?? null,
+    cameraAngle: (row.camera_angle as string | null) ?? null,
     createdAt: row.created_at as number,
     updatedAt: row.updated_at as number,
   };
@@ -254,6 +256,7 @@ export function addScene(
     visualSearchEn?: string | null;
     sourcing?: 'stock' | 'generate' | 'creator-asset' | null;
     creationDemandAr?: string | null;
+    cameraAngle?: string | null;
     nowMs?: number;
   },
 ): AddSceneOutcome {
@@ -280,12 +283,14 @@ export function addScene(
     visualSearchEn: input.visualSearchEn ?? null,
     sourcing: input.sourcing ?? null,
     creationDemandAr: input.creationDemandAr ?? null,
+    cameraAngle: input.cameraAngle ?? null,
     createdAt: now,
     updatedAt: now,
   };
 
-  db.prepare(`INSERT INTO storyboard_scenes (${SCENE_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+  db.prepare(`INSERT INTO storyboard_scenes (${SCENE_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
     scene.sceneId, scene.storyboardId, scene.ownerId, scene.order, scene.description,
+    scene.cameraAngle,
     scene.visualAssetId, scene.audioAssetId, scene.durationSeconds,
     scene.transitionIntent, scene.directionNotes, scene.visualSearchEn,
     scene.sourcing, scene.creationDemandAr,
@@ -363,23 +368,33 @@ export function setScenePicturePlan(
   plan: {
     sourcing: 'stock' | 'generate' | 'creator-asset';
     creationDemandAr?: string | null;
+    cameraAngle?: string | null;
     visualAssetId?: string | null;
   },
   nowMs: number = Date.now(),
 ): boolean {
   const row = db
     .prepare(
-      `SELECT scene_id, sourcing, creation_demand_ar, visual_asset_id
+      `SELECT scene_id, sourcing, creation_demand_ar, camera_angle, visual_asset_id
          FROM storyboard_scenes WHERE scene_id = ? AND owner_id = ?`,
     )
     .get(sceneId, ownerId) as
-      | { sourcing?: string | null; creation_demand_ar?: string | null; visual_asset_id?: string | null }
+      | {
+          sourcing?: string | null;
+          creation_demand_ar?: string | null;
+          camera_angle?: string | null;
+          visual_asset_id?: string | null;
+        }
       | undefined;
   if (!row) return false;
 
   // Each answer clears what the others would have meant. A scene holding both
   // a demand and a chosen asset is a scene that has not decided.
   const demand = plan.sourcing === 'generate' ? (plan.creationDemandAr ?? null) : null;
+  // The angle is part of what was asked for, so it is stored with the demand
+  // and cleared with it. A scene sourcing a picture the Creator already owns
+  // is not directing a camera.
+  const angle = plan.sourcing === 'generate' ? readCameraAngle(plan.cameraAngle) : null;
 
   // ── A PICTURE ALREADY MADE IS NOT DISCARDED BY A GLANCE ──────────────────
   //
@@ -402,8 +417,15 @@ export function setScenePicturePlan(
   //   picture. So the comparison is on the words, not on the keystrokes.
   const sameWords = (a: string | null, b: string | null) =>
     (a ?? '').trim().replace(/\s+/g, ' ') === (b ?? '').trim().replace(/\s+/g, ' ');
+  // A different angle is a different instruction, and the picture on the scene
+  // answered the old one. So the angle sits inside this comparison rather than
+  // beside it: changing it releases the frame exactly as changing the words
+  // does, and the next production makes the picture that was actually asked
+  // for instead of keeping the one that was not.
   const demandUnchanged =
-    sameWords(row.creation_demand_ar ?? null, demand) && row.sourcing === 'generate';
+    sameWords(row.creation_demand_ar ?? null, demand)
+    && readCameraAngle(row.camera_angle) === readCameraAngle(angle)
+    && row.sourcing === 'generate';
   const asset = plan.sourcing === 'creator-asset'
     ? (plan.visualAssetId ?? null)
     : plan.sourcing === 'generate' && demandUnchanged
@@ -413,10 +435,10 @@ export function setScenePicturePlan(
   const result = db
     .prepare(
       `UPDATE storyboard_scenes
-          SET sourcing = ?, creation_demand_ar = ?, visual_asset_id = ?, updated_at = ?
+          SET sourcing = ?, creation_demand_ar = ?, camera_angle = ?, visual_asset_id = ?, updated_at = ?
         WHERE scene_id = ? AND owner_id = ?`,
     )
-    .run(plan.sourcing, demand, asset, nowMs, sceneId, ownerId);
+    .run(plan.sourcing, demand, angle, asset, nowMs, sceneId, ownerId);
   return Number(result.changes) > 0;
 }
 

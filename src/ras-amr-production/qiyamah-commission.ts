@@ -44,6 +44,7 @@ import { hasActiveEntitlement } from '../billing/entitlement-service';
 import type { CreatorRole } from '../authentication';
 import { generateImage } from '../qiyamah-generation/generation-service';
 import { editSovereignImage } from '../qiyamah-generation/image-edit-service';
+import { cameraAngleClauseAr, type CameraAngleId } from './camera-angle';
 import type { ImageEditRefusal } from '../qiyamah-generation/image-edit-service';
 
 /**
@@ -155,22 +156,35 @@ export type CommissionFailure =
  *   Nothing is invented: if the Creator wrote no world, the demand is the
  *   whole instruction, exactly as it was before this existed.
  *
- *   ANGLE AND COMPOSITION LIVE INSIDE THESE WORDS, and that is a limit, not a
- *   design: MEASURED by reading the engine's own payload, an edit is submitted
- *   as `{ model, style: { prompt }, assets: { image_file_paths } }` — there is
- *   no angle parameter, no composition parameter and no aspect ratio to set.
- *   So a Creator who wants a low angle writes it, and the Empire claims no
- *   structured control it does not have.
+ *   COMPOSITION LIVES INSIDE THESE WORDS, and that is a limit, not a design:
+ *   MEASURED by reading the engine's own payload, an edit is submitted as
+ *   `{ model, style: { prompt }, assets: { image_file_paths } }` — there is no
+ *   composition parameter and no aspect ratio to set. The prompt is the only
+ *   channel the engine has.
+ *
+ *   THE CAMERA ANGLE IS THE ONE EXCEPTION, and it is an exception in the
+ *   Chamber, not in the engine. The Founder, 2026-10-21: an option in the
+ *   interface, or an angle buried in the Creator's own sentence, is not a
+ *   control. So the angle is a NAMED field on the scene's picture plan
+ *   (`camera-angle.ts`), and this function turns that name into the one clause
+ *   the engine will read. It still travels in the prompt — nothing else exists
+ *   to travel in — but the Creator chooses from a closed list, the same words
+ *   go every time, and the clause says where the LENS is rather than what the
+ *   subject should do. A Creator who names no angle has none added: silence is
+ *   not a request for a front view.
  */
 export function composeSceneInstruction(parts: {
   readonly visualWorldAr?: string;
   readonly demandAr: string;
+  readonly cameraAngle?: CameraAngleId | null;
 }): string {
   const world = (parts.visualWorldAr ?? '').trim();
   const demand = parts.demandAr.trim();
   const rule = asksForMultipleSubjects(demand) ? '' : `\n\n${SUBJECT_INTEGRITY_RULE_AR}`;
-  if (world.length === 0) return `${demand}${rule}`;
-  return `${world}\n\nفي هذا المشهد: ${demand}${rule}`;
+  const angleClause = cameraAngleClauseAr(parts.cameraAngle);
+  const angle = angleClause.length > 0 ? `\n\n${angleClause}` : '';
+  if (world.length === 0) return `${demand}${angle}${rule}`;
+  return `${world}\n\nفي هذا المشهد: ${demand}${angle}${rule}`;
 }
 
 /**
@@ -262,6 +276,8 @@ export interface SceneDemand {
   readonly demandAr: string;
   /** The Creator's own words for the scene, kept beside the demand. */
   readonly seenAr?: string;
+  /** Where the lens stands. Absent means the Creator named no angle. */
+  readonly cameraAngle?: CameraAngleId | null;
 }
 
 function classify(reason: string): CommissionFailure {
@@ -396,6 +412,7 @@ export async function commissionScenePictures(params: {
     const instruction = composeSceneInstruction({
       visualWorldAr: params.visualWorldAr,
       demandAr: demand.demandAr,
+      cameraAngle: demand.cameraAngle,
     });
 
     // ── ROAD ONE: OUT OF THE APPROVED FRAME ──────────────────────────────

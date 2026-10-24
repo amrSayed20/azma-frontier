@@ -184,6 +184,8 @@ export interface ScenePlanView {
   readonly sourcing: 'stock' | 'generate' | 'creator-asset';
   /** The demand, when it is to be generated. Theirs to rewrite. */
   readonly creationDemandAr: string | null;
+  /** Where the lens stands, as a name from the closed list. */
+  readonly cameraAngle: string | null;
   /** Their own asset, when they chose one. */
   readonly visualAssetId: string | null;
   /**
@@ -275,6 +277,7 @@ export async function readScenePlans(storyboardId: string): Promise<ScenePlansOu
         saidAr: sc.directionNotes ?? '',
         sourcing,
         creationDemandAr: sc.creationDemandAr,
+        cameraAngle: sc.cameraAngle,
         visualAssetId: sc.visualAssetId,
         frameState,
         // A reason is shown only for the state it explains. A scene that has
@@ -292,6 +295,7 @@ export async function setScenePlan(input: {
   sceneId: string;
   sourcing: 'stock' | 'generate' | 'creator-asset';
   creationDemandAr?: string | null;
+  cameraAngle?: string | null;
   visualAssetId?: string | null;
 }): Promise<{ ok: boolean; messageAr?: string }> {
   const session = await currentSession();
@@ -309,6 +313,7 @@ export async function setScenePlan(input: {
   const changed = setScenePicturePlan(getDb(), input.sceneId, session.creatorId, {
     sourcing: input.sourcing,
     creationDemandAr: input.creationDemandAr ?? null,
+    cameraAngle: input.cameraAngle ?? null,
     visualAssetId: input.visualAssetId ?? null,
   });
   return changed ? { ok: true } : { ok: false, messageAr: 'لم يُحفظ التغيير. أعد المحاولة.' };
