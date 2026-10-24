@@ -206,6 +206,19 @@ ${SUBJECT_INTEGRITY_RULE_AR}`);
     for (const clause of clauses) expect(clause).toContain('الكاميرا');
   });
 
+  // MEASURED, job cmvmrogkb09bpi: «تَظهَر واجهتُه وأحدُ جانبيه معًا» returned the
+  // subject twice in one frame — one view per position the sentence named —
+  // with the one-copy rule present and intact in the same instruction. A
+  // sentence that names two places to look from asks for two pictures, and no
+  // rule after it can take that back.
+  it('no angle names two places to look from', () => {
+    for (const angle of CAMERA_ANGLES) {
+      if (angle.id === 'unspecified') continue;
+      expect(angle.clauseAr).not.toContain('معًا');
+      expect(angle.clauseAr).not.toContain('بينَ الأمامِ والجانبِ');
+    }
+  });
+
   it('a Creator who names no angle has none added', () => {
     const bare = composeSceneInstruction({ demandAr: DEMANDS[0].demandAr });
     expect(composeSceneInstruction({ demandAr: DEMANDS[0].demandAr, cameraAngle: 'unspecified' })).toBe(bare);

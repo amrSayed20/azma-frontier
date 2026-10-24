@@ -58,10 +58,24 @@ export const CAMERA_ANGLES: readonly CameraAngle[] = [
   },
   {
     id: 'three-quarter',
+    // MEASURED, job cmvmrogkb09bpi, 2026-10-24: this clause read
+    // «الكاميرا بينَ الأمامِ والجانبِ … تَظهَر واجهتُه وأحدُ جانبيه معًا», and the
+    // engine returned the man TWICE in one frame — once from each of the two
+    // positions the sentence named — although the one-copy rule was present in
+    // full, in the same instruction. The rule did not fail: the sentence
+    // outranked it by asking, in plain words, for two views «together».
+    //
+    // So the rotation is now stated ONCE, as a single camera placed off the
+    // front axis, and the frame is named as one. An angle is a place to stand,
+    // never a pair of places to compare.
+    //
+    // This wording is NOT proven: the 500 credits the Founder authorised were
+    // spent on the five calls above and one of them is what found this. The
+    // repair stands on reading, and awaits its own picture.
     labelAr: 'ثلاثة أرباع',
     clauseAr:
-      'زاويةُ التصوير: الكاميرا بينَ الأمامِ والجانبِ بنحوِ خمسٍ وأربعينَ درجةً، '
-      + 'وفي مستوى منتصفِ الموضوع؛ تَظهَر واجهتُه وأحدُ جانبيه معًا.',
+      'زاويةُ التصوير: الكاميرا مائلةٌ عن واجهةِ الموضوعِ بنحوِ خمسٍ وأربعينَ درجةً نحوَ أحدِ جانبيه، '
+      + 'وفي مستوى منتصفِه؛ لقطةٌ واحدةٌ من موضعٍ واحد، في إطارٍ واحدٍ لا يَحمِل غيرَ الموضوعِ مرّةً واحدة.',
   },
   {
     id: 'high',
