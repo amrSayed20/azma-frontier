@@ -211,18 +211,25 @@ export class RasAlAmrStateManager {
    *   standing where it was, and the film opens on black for exactly as long
    *   as the scene that no longer exists. Nothing on screen says so.
    *
-   *   So the rule is as narrow as the defect: after a removal, if NO node of
-   *   any kind occupies the time before the earliest one left, that emptiness
-   *   is closed by moving every remaining node earlier by exactly that much.
-   *   Relative timing is preserved to the millisecond and nothing is
-   *   reordered. An opening the Creator actually composed — music over black,
-   *   a held title, anything at all — is not empty, so it is never touched. A
-   *   film that begins with nothing at all is not a composition; it is what a
-   *   deletion left behind.
+   *   So the rule is as narrow as the defect: the emptiness is closed only
+   *   when THIS REMOVAL made it — the film began at zero before the node went
+   *   and does not begin at zero after. Then every remaining node moves
+   *   earlier by exactly that much, relative timing preserved to the
+   *   millisecond, nothing reordered.
+   *
+   *   The first draft of this rule asked only whether the opening was empty
+   *   NOW, and that was too wide: a Creator who had deliberately started
+   *   their film at 4s and then deleted some later clip would have had their
+   *   opening taken away by a deletion that had nothing to do with it. An
+   *   opening that was already late before the removal is a composition, and
+   *   so is any opening that carries sound or a held title — neither is
+   *   touched. Only an opening that a deletion emptied is closed.
    */
   private handleRemoveNode(canvas: SovereignCanvas, payload: RemoveNodePayload): SovereignCanvas {
     const location = this.locateNode(canvas, payload.targetNodeId);
     if (!location) return canvas;
+
+    const openedAtZero = this.filmOpensAtZero(canvas);
 
     const track = canvas.tracks[location.trackIndex];
     const updatedTrack: AssemblyTrack = {
@@ -231,22 +238,33 @@ export class RasAlAmrStateManager {
     };
 
     canvas.tracks[location.trackIndex] = updatedTrack;
-    return this.closeEmptyOpening(canvas);
+    return openedAtZero ? this.closeOpeningThisRemovalEmptied(canvas) : canvas;
+  }
+
+  private static startOfNode(node: AssemblyNode): number {
+    return node.temporal?.globalStartTimeSeconds ?? 0;
+  }
+
+  /** Where the earliest node of any kind stands, or null on an empty canvas. */
+  private earliestStart(canvas: SovereignCanvas): number | null {
+    const starts = canvas.tracks.flatMap((t) => t.nodes).map(RasAlAmrStateManager.startOfNode);
+    return starts.length === 0 ? null : Math.min(...starts);
+  }
+
+  /** A millisecond of float drift is not a gap anybody composed. */
+  private filmOpensAtZero(canvas: SovereignCanvas): boolean {
+    const earliest = this.earliestStart(canvas);
+    return earliest !== null && Number.isFinite(earliest) && earliest <= 0.001;
   }
 
   /**
-   * Move every node earlier by the length of a leading emptiness that holds
-   * nothing. Returns the canvas unchanged when the opening carries anything
-   * at all, which is the ordinary case.
+   * Move every node earlier by the emptiness a removal just left at the head.
+   * Called only when the film DID open at zero a moment ago, so a late
+   * opening that was already there is never disturbed.
    */
-  private closeEmptyOpening(canvas: SovereignCanvas): SovereignCanvas {
-    const nodes = canvas.tracks.flatMap((t) => t.nodes);
-    if (nodes.length === 0) return canvas;
-
-    const startOf = (n: AssemblyNode) => n.temporal?.globalStartTimeSeconds ?? 0;
-    const earliest = Math.min(...nodes.map(startOf));
-    // A millisecond of float drift is not a gap anybody composed.
-    if (!Number.isFinite(earliest) || earliest <= 0.001) return canvas;
+  private closeOpeningThisRemovalEmptied(canvas: SovereignCanvas): SovereignCanvas {
+    const earliest = this.earliestStart(canvas);
+    if (earliest === null || !Number.isFinite(earliest) || earliest <= 0.001) return canvas;
 
     canvas.tracks = canvas.tracks.map((track) => ({
       ...track,
@@ -254,7 +272,8 @@ export class RasAlAmrStateManager {
         ...node,
         temporal: {
           ...(node.temporal ?? {}),
-          globalStartTimeSeconds: Math.round((startOf(node) - earliest) * 1000) / 1000,
+          globalStartTimeSeconds:
+            Math.round((RasAlAmrStateManager.startOfNode(node) - earliest) * 1000) / 1000,
         },
       })),
     })) as AssemblyTrack[];

@@ -133,19 +133,22 @@ describe('The Narrative Canvas Foundation — RasAlAmrStateManager.ADD_NODE', ()
 describe('a removal does not leave the film opening on nothing', () => {
   const manager = new RasAlAmrStateManager();
 
-  /** Two nodes on one track, at the starts given. */
-  function canvasWith(specs: { asset: string; cap: CapabilityTarget; start: number }[]): SovereignCanvas {
+  /** Nodes on one or two tracks, at the starts given. */
+  function canvasWith(specs: { asset: string; cap: CapabilityTarget; start: number; track?: number }[]): SovereignCanvas {
     const canvas = makeEmptyCanvas();
-    canvas.tracks[0].nodes = specs.map((spec, i) => ({
-      nodeId: 'node-' + i,
-      assetId: spec.asset,
-      assetFamily: AssetFamily.MEDIA,
-      capabilityOrigin: spec.cap,
-      isActive: true,
-      isLocked: false,
-      temporal: { globalStartTimeSeconds: spec.start, playDurationSeconds: 4 },
-      spatial: { positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: i },
-    })) as typeof canvas.tracks[0]['nodes'];
+    canvas.tracks.push({ trackId: 'track-2', trackName: 'Sound', isMuted: false, isHidden: false, nodes: [] });
+    specs.forEach((spec, i) => {
+      canvas.tracks[spec.track ?? 0].nodes.push({
+        nodeId: 'node-' + i,
+        assetId: spec.asset,
+        assetFamily: AssetFamily.MEDIA,
+        capabilityOrigin: spec.cap,
+        isActive: true,
+        isLocked: false,
+        temporal: { globalStartTimeSeconds: spec.start, playDurationSeconds: 4 },
+        spatial: { positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: i },
+      } as never);
+    });
     return canvas;
   }
   const remove = (canvas: SovereignCanvas, nodeId: string) => manager.applyMutation(canvas, {
@@ -158,6 +161,7 @@ describe('a removal does not leave the film opening on nothing', () => {
   const starts = (canvas: SovereignCanvas) =>
     canvas.tracks.flatMap((t) => t.nodes).map((n) => n.temporal?.globalStartTimeSeconds);
 
+  // ١ — حذف المشهد الأول مع وجود مشهد تالٍ
   it('dropping the first scene brings what is left to the opening', () => {
     const canvas = canvasWith([
       { asset: 'a', cap: CapabilityTarget.VISUAL, start: 0 },
@@ -166,6 +170,62 @@ describe('a removal does not leave the film opening on nothing', () => {
     expect(starts(remove(canvas, 'node-0'))).toEqual([0]);
   });
 
+  // ٢ — حذف مشهد مع وجود عنوان أو موسيقى قبله
+  it('an opening that still carries sound is left exactly where it is', () => {
+    const canvas = canvasWith([
+      { asset: 'tune', cap: CapabilityTarget.AUDIO, start: 0, track: 1 },
+      { asset: 'a', cap: CapabilityTarget.VISUAL, start: 3 },
+      { asset: 'b', cap: CapabilityTarget.VISUAL, start: 7 },
+    ]);
+    expect(starts(remove(canvas, 'node-2'))).toEqual([3, 0]);
+  });
+
+  // ٣ — افتتاحية مقصودة خالية من الصورة، لم يصنعها حذف
+  it('an opening that was already late is never taken away by a later deletion', () => {
+    const canvas = canvasWith([
+      { asset: 'a', cap: CapabilityTarget.VISUAL, start: 4 },
+      { asset: 'b', cap: CapabilityTarget.VISUAL, start: 8 },
+    ]);
+    expect(starts(remove(canvas, 'node-1'))).toEqual([4]);
+  });
+
+  // ٤ — عدة مسارات صوتية وبصرية متزامنة
+  it('the head is read across every track, not only the one the node was in', () => {
+    const canvas = canvasWith([
+      { asset: 'pic', cap: CapabilityTarget.VISUAL, start: 0 },
+      { asset: 'pic2', cap: CapabilityTarget.VISUAL, start: 5 },
+      { asset: 'tune', cap: CapabilityTarget.AUDIO, start: 2, track: 1 },
+      { asset: 'voice', cap: CapabilityTarget.AUDIO, start: 6, track: 1 },
+    ]);
+    // Removing the only node at zero empties the head; everything moves by 2.
+    expect(starts(remove(canvas, 'node-0'))).toEqual([3, 0, 4]);
+  });
+
+  // ٥ — عقدة تبدأ متأخرة عمدًا دون أن يسبقها حذف
+  it('a late start composed without any deletion is not disturbed', () => {
+    const canvas = canvasWith([{ asset: 'a', cap: CapabilityTarget.VISUAL, start: 4 }]);
+    const moved = manager.applyMutation(canvas, {
+      actionType: CanvasActionType.UPDATE_TEMPORAL,
+      canvasId: 'canvas-1',
+      subscriberTenantId: 'tenant-1',
+      targetTrackId: 'track-1',
+      targetNodeId: 'node-0',
+      temporalUpdates: { globalStartTimeSeconds: 6, playDurationSeconds: 4 },
+    });
+    expect(starts(moved)).toEqual([6]);
+  });
+
+  // ٦ — حذف عقدة لا يغيّر توقيت ما هو مستقل عنها
+  it('removing a node that is not at the head moves nothing', () => {
+    const canvas = canvasWith([
+      { asset: 'a', cap: CapabilityTarget.VISUAL, start: 0 },
+      { asset: 'b', cap: CapabilityTarget.VISUAL, start: 4 },
+      { asset: 'c', cap: CapabilityTarget.VISUAL, start: 9 },
+    ]);
+    expect(starts(remove(canvas, 'node-1'))).toEqual([0, 9]);
+  });
+
+  // The spacing of whatever survives is the Creator's, and it is kept.
   it('what remains keeps the spacing it had', () => {
     const canvas = canvasWith([
       { asset: 'a', cap: CapabilityTarget.VISUAL, start: 0 },
@@ -173,17 +233,6 @@ describe('a removal does not leave the film opening on nothing', () => {
       { asset: 'c', cap: CapabilityTarget.VISUAL, start: 10 },
     ]);
     expect(starts(remove(canvas, 'node-0'))).toEqual([0, 6]);
-  });
-
-  // Music over black at the head is a composition. The opening is not empty,
-  // so nothing moves — the Creator's own silence of picture is theirs.
-  it('an opening that carries sound is left exactly where it is', () => {
-    const canvas = canvasWith([
-      { asset: 'tune', cap: CapabilityTarget.AUDIO, start: 0 },
-      { asset: 'a', cap: CapabilityTarget.VISUAL, start: 3 },
-      { asset: 'b', cap: CapabilityTarget.VISUAL, start: 7 },
-    ]);
-    expect(starts(remove(canvas, 'node-2'))).toEqual([0, 3]);
   });
 });
 
