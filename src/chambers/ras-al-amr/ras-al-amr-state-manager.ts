@@ -191,6 +191,35 @@ export class RasAlAmrStateManager {
     return canvas;
   }
 
+  /**
+   * ─── A REMOVAL MUST NOT LEAVE THE FILM OPENING ON NOTHING ──────────────
+   *
+   *   The Founder, 2026-10-24: «ثانية سوداء أو فارغة في بداية الفيديو».
+   *
+   *   MEASURED on the live host, 2026-10-25. Five produced films carry black,
+   *   and the one still reachable as a saved canvas is a Creator's working
+   *   draft titled «اختبار قصه»: ONE node, a picture starting at 4s for 4s,
+   *   with nothing whatever before it — no sound, no second picture, no
+   *   subtitle. Rendered, that is eight seconds of film whose first four are
+   *   black. The encoder is not the author of it: three films produced
+   *   through the chamber's own render route settle that — pictures from 0
+   *   open on the picture, a soundtrack laid first does not push them, and a
+   *   gap that was composed is reproduced to the frame (0 → 3.00s).
+   *
+   *   The stranding happens HERE. Removal deleted a node and reconsidered
+   *   nothing, so a Creator who drops their first scene keeps the second one
+   *   standing where it was, and the film opens on black for exactly as long
+   *   as the scene that no longer exists. Nothing on screen says so.
+   *
+   *   So the rule is as narrow as the defect: after a removal, if NO node of
+   *   any kind occupies the time before the earliest one left, that emptiness
+   *   is closed by moving every remaining node earlier by exactly that much.
+   *   Relative timing is preserved to the millisecond and nothing is
+   *   reordered. An opening the Creator actually composed — music over black,
+   *   a held title, anything at all — is not empty, so it is never touched. A
+   *   film that begins with nothing at all is not a composition; it is what a
+   *   deletion left behind.
+   */
   private handleRemoveNode(canvas: SovereignCanvas, payload: RemoveNodePayload): SovereignCanvas {
     const location = this.locateNode(canvas, payload.targetNodeId);
     if (!location) return canvas;
@@ -202,6 +231,33 @@ export class RasAlAmrStateManager {
     };
 
     canvas.tracks[location.trackIndex] = updatedTrack;
+    return this.closeEmptyOpening(canvas);
+  }
+
+  /**
+   * Move every node earlier by the length of a leading emptiness that holds
+   * nothing. Returns the canvas unchanged when the opening carries anything
+   * at all, which is the ordinary case.
+   */
+  private closeEmptyOpening(canvas: SovereignCanvas): SovereignCanvas {
+    const nodes = canvas.tracks.flatMap((t) => t.nodes);
+    if (nodes.length === 0) return canvas;
+
+    const startOf = (n: AssemblyNode) => n.temporal?.globalStartTimeSeconds ?? 0;
+    const earliest = Math.min(...nodes.map(startOf));
+    // A millisecond of float drift is not a gap anybody composed.
+    if (!Number.isFinite(earliest) || earliest <= 0.001) return canvas;
+
+    canvas.tracks = canvas.tracks.map((track) => ({
+      ...track,
+      nodes: track.nodes.map((node) => ({
+        ...node,
+        temporal: {
+          ...(node.temporal ?? {}),
+          globalStartTimeSeconds: Math.round((startOf(node) - earliest) * 1000) / 1000,
+        },
+      })),
+    })) as AssemblyTrack[];
     return canvas;
   }
 

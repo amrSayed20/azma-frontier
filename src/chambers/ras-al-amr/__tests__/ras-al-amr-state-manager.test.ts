@@ -120,6 +120,73 @@ describe('The Narrative Canvas Foundation — RasAlAmrStateManager.ADD_NODE', ()
   });
 });
 
+/**
+ * 2026-10-25. «ثانية سوداء أو فارغة في بداية الفيديو».
+ *
+ * A Creator's live draft on the production host held ONE node, a picture
+ * starting at 4s, with nothing before it — the sibling that had occupied
+ * 0–4s was removed and the survivor was left standing where it was. Rendered,
+ * that is four seconds of black at the head of an eight-second film. The
+ * encoder was measured innocent on three real films through the chamber's own
+ * render route; the stranding is here.
+ */
+describe('a removal does not leave the film opening on nothing', () => {
+  const manager = new RasAlAmrStateManager();
+
+  /** Two nodes on one track, at the starts given. */
+  function canvasWith(specs: { asset: string; cap: CapabilityTarget; start: number }[]): SovereignCanvas {
+    const canvas = makeEmptyCanvas();
+    canvas.tracks[0].nodes = specs.map((spec, i) => ({
+      nodeId: 'node-' + i,
+      assetId: spec.asset,
+      assetFamily: AssetFamily.MEDIA,
+      capabilityOrigin: spec.cap,
+      isActive: true,
+      isLocked: false,
+      temporal: { globalStartTimeSeconds: spec.start, playDurationSeconds: 4 },
+      spatial: { positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotationDegrees: 0, zIndex: i },
+    })) as typeof canvas.tracks[0]['nodes'];
+    return canvas;
+  }
+  const remove = (canvas: SovereignCanvas, nodeId: string) => manager.applyMutation(canvas, {
+    actionType: CanvasActionType.REMOVE_NODE,
+    canvasId: 'canvas-1',
+    subscriberTenantId: 'tenant-1',
+    targetTrackId: 'track-1',
+    targetNodeId: nodeId,
+  });
+  const starts = (canvas: SovereignCanvas) =>
+    canvas.tracks.flatMap((t) => t.nodes).map((n) => n.temporal?.globalStartTimeSeconds);
+
+  it('dropping the first scene brings what is left to the opening', () => {
+    const canvas = canvasWith([
+      { asset: 'a', cap: CapabilityTarget.VISUAL, start: 0 },
+      { asset: 'b', cap: CapabilityTarget.VISUAL, start: 4 },
+    ]);
+    expect(starts(remove(canvas, 'node-0'))).toEqual([0]);
+  });
+
+  it('what remains keeps the spacing it had', () => {
+    const canvas = canvasWith([
+      { asset: 'a', cap: CapabilityTarget.VISUAL, start: 0 },
+      { asset: 'b', cap: CapabilityTarget.VISUAL, start: 4 },
+      { asset: 'c', cap: CapabilityTarget.VISUAL, start: 10 },
+    ]);
+    expect(starts(remove(canvas, 'node-0'))).toEqual([0, 6]);
+  });
+
+  // Music over black at the head is a composition. The opening is not empty,
+  // so nothing moves — the Creator's own silence of picture is theirs.
+  it('an opening that carries sound is left exactly where it is', () => {
+    const canvas = canvasWith([
+      { asset: 'tune', cap: CapabilityTarget.AUDIO, start: 0 },
+      { asset: 'a', cap: CapabilityTarget.VISUAL, start: 3 },
+      { asset: 'b', cap: CapabilityTarget.VISUAL, start: 7 },
+    ]);
+    expect(starts(remove(canvas, 'node-2'))).toEqual([0, 3]);
+  });
+});
+
 describe('PACKAGE XX — Direction Assembly Layer: REORDER_NODE', () => {
   const manager = new RasAlAmrStateManager();
 
