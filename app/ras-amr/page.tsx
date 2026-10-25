@@ -2569,6 +2569,16 @@ export default function RasAmrChamber() {
           if (crossing) {
             sessionStorage.setItem(HELD_STORYBOARD, storyboardRaw);
             setActiveWorkspaceTab('direction');
+            // MEASURED 2026-10-25, walking «⟡ فكّك الموضوع إلى مشاهد» from
+            // الحُجّة الدامغة: five scenes were written and kept — each with
+            // what is seen and what is said, drawn from the investigation's
+            // own evidence — and the Chamber opened on المونتاج, where none of
+            // them is visible. The Creator had to know to press «عالَم
+            // الستوري بورد» to find the work that had just been made for
+            // them. This Chamber already holds that material arriving out of
+            // sight has not arrived; a crossing that writes scenes opens on
+            // the scenes.
+            setCreationPhase('storyboard');
           }
         }
       } catch {
