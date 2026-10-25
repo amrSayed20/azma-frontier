@@ -261,7 +261,25 @@ export function validateUploadContent(
   // the standard never settled — but an image declared as a video still fails.
   const declaredFamily = declaredMimeType.split('/')[0]?.toLowerCase() ?? '';
   const actualFamily = identity.mimeType.split('/')[0];
-  if (declaredMimeType.length > 0 && declaredFamily !== actualFamily) {
+  //
+  // ─── ONE CONTAINER, TWO FAMILIES ─────────────────────────────────────────
+  //
+  //   A WebM file begins with the same four EBML bytes whether it carries a
+  //   picture or only a voice, so the signature cannot tell them apart and
+  //   this table calls every one of them `video/webm`. A browser recording
+  //   from a microphone declares `audio/webm`, truthfully — and until now the
+  //   family comparison called that a lie and refused the upload.
+  //
+  //   MEASURED 2026-10-25 on a running chamber with a real microphone stream:
+  //   «🔴 ابدأ التسجيل» recorded, stopped, and posted its blob, and the Vault
+  //   answered HTTP 400 `declared-type-mismatch`. A Creator's own voice could
+  //   not enter their own Vault.
+  //
+  //   So the one ambiguity the bytes genuinely have is admitted, and nothing
+  //   else is: an image declared as a video still fails, and so does anything
+  //   else whose family disagrees with its content.
+  const webmEitherWay = identity.mimeType === 'video/webm' && declaredMimeType.toLowerCase() === 'audio/webm';
+  if (declaredMimeType.length > 0 && declaredFamily !== actualFamily && !webmEitherWay) {
     return { ok: false, rejection: 'declared-type-mismatch' };
   }
 

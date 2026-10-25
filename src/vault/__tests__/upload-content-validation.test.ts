@@ -193,3 +193,29 @@ describe('upload content validation — the format is read, never declared', () 
     }
   });
 });
+/**
+ * 2026-10-25. A Creator pressed «🔴 ابدأ التسجيل» on a running chamber, spoke,
+ * and the Vault answered HTTP 400: «محتوى الملفّ لا يطابق نوعه المُعلن.»
+ * A WebM container opens with the same four EBML bytes whether it holds a
+ * picture or only a voice, so the signature says `video/webm` while the
+ * browser truthfully declares `audio/webm`.
+ */
+describe('تسجيلُ الميكروفون', () => {
+  const webm = () => {
+    const bytes = Buffer.alloc(64);
+    Buffer.from([0x1a, 0x45, 0xdf, 0xa3]).copy(bytes, 0);
+    return bytes;
+  };
+
+  it('a microphone recording declared audio/webm is admitted', () => {
+    const outcome = validateUploadContent(webm(), 'audio/webm', 'recording-1.webm');
+    expect(outcome.ok).toBe(true);
+  });
+
+  it('and the ambiguity reaches no further: a picture declared as sound still fails', () => {
+    const png = Buffer.alloc(32);
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(png, 0);
+    const outcome = validateUploadContent(png, 'audio/webm', 'claimed.webm');
+    expect(outcome.ok).toBe(false);
+  });
+});
