@@ -1155,12 +1155,24 @@ export default function RasAmrChamber() {
     startedAt: number;
     fileUrl?: string;
     downloadUrl?: string;
+    /** The Vault asset the film became — what the acceptance step acts on. */
+    assetId?: string;
     reason?: string;
     message?: string;
     canvasSignature?: string;
   };
   const [renderJob, setRenderJob] = useState<RenderJob | null>(null);
   const [isStartingRender, setIsStartingRender] = useState(false);
+  // ── THE CREATOR'S OWN WORD ON THE FILM ────────────────────────────────────
+  //   A Vault asset is INTERMEDIATE until its owner says «this one is right»;
+  //   Article A-6 forbids inferring finality from an asset's type or location.
+  //   MEASURED 2026-10-27: the acceptance step existed and only القيامة offered
+  //   it, so a film made here could never reach FINAL. This is that same step,
+  //   the same route, the same rule — offered where the film is watched.
+  //   Keyed by assetId so returning to the panel does not forget what was said.
+  const [acceptedAssetIds, setAcceptedAssetIds] = useState<ReadonlySet<string>>(new Set());
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
   const [renderStartError, setRenderStartError] = useState<string | null>(null);
   const [showExportPanel, setShowExportPanel] = useState(false);
   const [renderClock, setRenderClock] = useState(0);
@@ -3170,6 +3182,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
       startedAt: typeof data.startedAt === 'number' ? data.startedAt : prev?.startedAt ?? Date.now(),
       fileUrl: typeof data.fileUrl === 'string' ? data.fileUrl : undefined,
       downloadUrl: typeof data.downloadUrl === 'string' ? data.downloadUrl : undefined,
+      assetId: typeof data.assetId === 'string' ? data.assetId : undefined,
       reason: typeof data.reason === 'string' ? data.reason : undefined,
       message: typeof data.message === 'string' ? data.message : undefined,
       canvasSignature: prev?.operationId === operationId ? prev.canvasSignature : fallbackSignature,
@@ -3280,6 +3293,34 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
   // distribution and publishing only. When the current canvas has a finished
   // MP4, the handoff also carries that final file, so Makman never has to be
   // the place the Creator gets it.
+  /**
+   * The Creator accepts the film, and the Vault records that they did.
+   *
+   * One mechanism, not a second: this is the Empire's existing acceptance
+   * route, which scopes the write to the owner and refuses an asset that is
+   * not theirs. Nothing here accepts on their behalf and nothing accepts
+   * automatically — the button is pressed or the film stays a working asset.
+   */
+  const handleAcceptRender = async () => {
+    const assetId = renderJob?.assetId;
+    if (!assetId || isAccepting) return;
+    setIsAccepting(true);
+    setAcceptError(null);
+    try {
+      const res = await fetch(`/api/vault/assets/${encodeURIComponent(assetId)}/accept`, { method: 'POST' });
+      const body = (await res.json().catch(() => ({}))) as { status?: string; message?: string };
+      if (!res.ok || body.status !== 'succeeded') {
+        setAcceptError(body.message ?? 'لم يُسجَّل اعتمادك. أعد المحاولة.');
+        return;
+      }
+      setAcceptedAssetIds((prev) => new Set(prev).add(assetId));
+    } catch {
+      setAcceptError('لم يُسجَّل اعتمادك. أعد المحاولة.');
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
   const handleForwardToMakman = () => {
     const firstSceneAsset = sessionCanvas?.tracks
       .flatMap((t) => t.nodes)
@@ -5721,6 +5762,28 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                           ? 'عدّلت المشهد بعد هذا الإخراج. أعد الإخراج ليشمل التعديلات.'
                           : 'هذا فيلمٌ سابقٌ من جلسةٍ أخرى، ولا نعرف أيَّ مشهدٍ ولا أيَّ مقاسٍ خرج منه. أعد الإخراج لتضمَن ما تراه الآن.'}
                       </p>
+                    )}
+                    {/* The acceptance step, where the film is actually watched.
+                        Offered only when the Vault row is known and only while
+                        the film still matches the timeline — accepting a stale
+                        render would record the Creator's word about a film they
+                        are no longer looking at. */}
+                    {renderJob.assetId && !isStale && (
+                      acceptedAssetIds.has(renderJob.assetId) ? (
+                        <p className="ras-export-note" role="status">✓ اعتمدتَ هذا المخرج. صار عملاً نهائيّاً في خزانتك.</p>
+                      ) : (
+                        <div className="ras-export-accept">
+                          <button
+                            className="creator-action-btn creator-action-primary"
+                            onClick={handleAcceptRender}
+                            disabled={isAccepting}
+                          >
+                            {isAccepting ? 'يُسجَّل اعتمادك…' : '✓ اعتمد هذا المخرج'}
+                          </button>
+                          <span className="ras-export-note">حتى تعتمده، يبقى عملاً تحت يدك لا عملاً نهائيّاً.</span>
+                          {acceptError && <p className="ras-export-warn" role="alert">{acceptError}</p>}
+                        </div>
+                      )
                     )}
                     <div className="ras-export-actions">
                       <a className="creator-action-btn creator-action-primary" href={renderJob.downloadUrl} download>تحميل MP4 ↓</a>

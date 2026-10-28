@@ -28,6 +28,15 @@ export enum CapabilityTarget {
 }
 
 /**
+ * Type-only, deliberately: sovereign-vault-types already imports
+ * CapabilityTarget from this file, so a value import in this direction would
+ * close a runtime cycle. `import type` is erased when the code is built, and
+ * the enum is still imported as a VALUE where a value is actually needed —
+ * the dispatcher and Ras Al Amr's render entry, neither of which is in the loop.
+ */
+import type { SourceChamber } from '../../vault/sovereign-vault-types';
+
+/**
  * VaultContextReference enforces the Vault-Centric Ownership model.
  * Domains do not hold assets; they reference assets owned by the user.
  */
@@ -46,6 +55,17 @@ export interface BaseAZMAIntent {
   capabilityTarget: CapabilityTarget;
   contextReferences: VaultContextReference[];
   projectContainerId?: string;      // Strictly optional organizational metadata
+  /**
+   * Which chamber is materially producing this work. Article 10.
+   *
+   * MEASURED before it was added: the deposit boundary had nothing to read and
+   * so named QIYAMAH for everything, including films that Ras Al Amr composed.
+   * Optional on purpose — an intent that omits it is attributed exactly as it
+   * was before this field existed, so no existing caller changes behaviour and
+   * no stored asset is touched. Declared by the originator, never inferred
+   * from an operation id or a file's location.
+   */
+  originChamber?: SourceChamber;
 }
 
 /**

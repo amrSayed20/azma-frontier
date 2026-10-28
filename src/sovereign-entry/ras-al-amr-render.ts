@@ -21,6 +21,7 @@
  */
 
 import { getDb } from '../persistent-storage/db';
+import { findVaultAssetByStorageUri } from '../persistent-storage/vault-asset-repository';
 import { OperationLedgerManager } from '../orchestrator/fleet-materialization/ledger/operation-ledger-manager';
 import { OperationState } from '../orchestrator/fleet-materialization/ledger/operation-ledger-types';
 import type { OperationLedgerEntry } from '../orchestrator/fleet-materialization/ledger/operation-ledger-types';
@@ -32,6 +33,7 @@ import {
   isEncodingTracked,
 } from '../orchestrator/fleet-materialization/fleet/adapters/cinematic-ffmpeg-encoder';
 import { CapabilityTarget } from '../core/sovereign-orchestrator/qiyamah-intent-types';
+import { SourceChamber } from '../vault/sovereign-vault-types';
 import { CanvasType } from '../chambers/ras-al-amr/assembly-contracts';
 import type { SovereignCanvas } from '../chambers/ras-al-amr/assembly-contracts';
 import type { CompiledAssemblyGraph } from '../chambers/ras-al-amr/pre-publishing-boundary';
@@ -97,7 +99,23 @@ export type RenderFailureReason =
 
 export type RasAlAmrRenderStatus =
   | { readonly status: 'processing'; readonly operationId: string; readonly startedAt: number }
-  | { readonly status: 'succeeded'; readonly operationId: string; readonly startedAt: number; readonly finishedAt?: number; readonly fileUrl: string; readonly downloadUrl: string }
+  | {
+      readonly status: 'succeeded';
+      readonly operationId: string;
+      readonly startedAt: number;
+      readonly finishedAt?: number;
+      readonly fileUrl: string;
+      readonly downloadUrl: string;
+      /**
+       * The Vault asset the film became, so the chamber can offer the Creator
+       * the acceptance step that already exists at
+       * POST /api/vault/assets/[assetId]/accept. Absent when the row cannot be
+       * found, and the chamber then simply does not offer it — a missing id is
+       * never turned into a guess, and nothing here accepts on the Creator's
+       * behalf.
+       */
+      readonly assetId?: string;
+    }
   | { readonly status: 'failed'; readonly operationId: string; readonly startedAt: number; readonly reason: RenderFailureReason; readonly message: string };
 
 export class RenderAccessError extends Error {
@@ -178,6 +196,26 @@ function fileUrls(operationId: string): { fileUrl: string; downloadUrl: string }
   return { fileUrl: base, downloadUrl: `${base}?download=1` };
 }
 
+/**
+ * Which Vault asset this render became.
+ *
+ * The encoder writes one file per operation and the deposit carries that path
+ * verbatim, so the existing storage-uri lookup answers without a new query,
+ * a new column or a new index. Scoped to the asking tenant before it is
+ * returned — a path is guessable, an asset must still be theirs.
+ *
+ * Returns undefined rather than throwing: the acceptance step is an offer the
+ * chamber makes when it can, never a reason a finished film fails to appear.
+ */
+function depositedAssetId(operationId: string, tenantId: string): string | undefined {
+  try {
+    const asset = findVaultAssetByStorageUri(getDb(), `/renders/${operationId}.mp4`);
+    return asset && asset.subscriberTenantId === tenantId ? asset.assetId : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function ledger(): OperationLedgerManager {
   return new OperationLedgerManager(getDb());
 }
@@ -223,6 +261,9 @@ export async function startRasAlAmrRender(
     capabilityTarget: CapabilityTarget.MOTION, // CINEMATIC = kinetic/temporal artifact (MP4)
     projectContainerId: authoritativeCanvas.canvasId,
     contextReferences: [],
+    // This chamber composes the film, so this chamber is what the Vault records.
+    // Said here rather than guessed at the deposit, which can only see a ledger row.
+    originChamber: SourceChamber.RAS_AL_AMR,
     structuralGraphPayload: compiled,
   };
 
@@ -304,7 +345,7 @@ export async function getRasAlAmrRenderStatus(operationId: string, tenantId: str
   const startedAt = entry.createdAt;
 
   if (entry.currentState === OperationState.DEPOSITED) {
-    return { status: 'succeeded', operationId, startedAt, finishedAt: entry.resolvedAt, ...fileUrls(operationId) };
+    return { status: 'succeeded', operationId, startedAt, finishedAt: entry.resolvedAt, ...fileUrls(operationId), assetId: depositedAssetId(operationId, tenantId) };
   }
   if (entry.currentState === OperationState.FAILED || entry.currentState === OperationState.REJECTED_POLICY || entry.currentState === OperationState.REJECTED_QUOTA) {
     return { status: 'failed', operationId, startedAt, ...await resolveFailure(operationId) };
@@ -313,12 +354,12 @@ export async function getRasAlAmrRenderStatus(operationId: string, tenantId: str
   try {
     const asset = await fleetRuntime.resolutionGateway.checkAndResolveOperation(operationId, tenantId);
     if (asset) {
-      return { status: 'succeeded', operationId, startedAt, finishedAt: Date.now(), ...fileUrls(operationId) };
+      return { status: 'succeeded', operationId, startedAt, finishedAt: Date.now(), ...fileUrls(operationId), assetId: depositedAssetId(operationId, tenantId) };
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
     if (message.includes('already been completed')) {
-      return { status: 'succeeded', operationId, startedAt, ...fileUrls(operationId) };
+      return { status: 'succeeded', operationId, startedAt, ...fileUrls(operationId), assetId: depositedAssetId(operationId, tenantId) };
     }
     // The resolution gateway's own refusal is the most specific thing known
     // here, so it is persisted before the three-source lookup runs.

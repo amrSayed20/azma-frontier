@@ -7019,6 +7019,13 @@ body:has(.ras-amr-viewport) {
 .ras-export-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .ras-export-actions a.creator-action-btn { text-decoration: none; display: inline-flex; align-items: center; }
 .ras-export-warn { color: #e8b04a; font-size: 12px; margin: 0; }
+/* The acceptance step sits above the ordinary actions and is set apart, so
+   «this one is right» never reads as one more button beside «download». */
+.ras-export-accept {
+  display: flex; flex-direction: column; gap: 6px; align-items: flex-start;
+  padding: 12px 14px; border: 1px solid rgba(201, 162, 77, 0.38);
+  border-radius: 8px; background: rgba(201, 162, 77, 0.07); width: 100%;
+}
 .ras-export-fail { color: #ef7a6f; font-size: 13px; font-weight: 600; }
 .ras-export-error { color: #ef7a6f; font-size: 12px; margin: 0; }
 .ras-export-panel .creator-action-btn { min-height: 36px; }

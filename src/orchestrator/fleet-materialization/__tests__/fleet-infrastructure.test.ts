@@ -34,6 +34,7 @@ import { SecureContextHydrator } from '../fleet/secure-context-hydrator';
 import { CinematicAssemblyAdapter } from '../fleet/adapters/cinematic-assembly-adapter';
 import { NativeStructuralAdapter } from '../fleet/adapters/native-structural-adapter';
 import { CapabilityTarget } from '../../../core/sovereign-orchestrator/qiyamah-intent-types';
+import { SourceChamber } from '../../../vault/sovereign-vault-types';
 import { FlattenedRenderingBridge, RenderStatus } from '../../../chambers/makman-al-ghayah/rendering-bridge';
 import { CanvasType } from '../../../chambers/ras-al-amr/assembly-contracts';
 import type { CompiledAssemblyGraph } from '../../../chambers/ras-al-amr/pre-publishing-boundary';
@@ -706,5 +707,76 @@ describe('Repair A — AsynchronousResolutionGateway: FAILED never returns null'
 
     const result = await gateway.checkAndResolveOperation('op-dispatched-still', 'tenant-1');
     expect(result).toBeNull();
+  });
+});
+
+// ============================================================
+// Article 10 — the chamber that materially produced the work
+// ============================================================
+
+/**
+ * MEASURED 2026-10-27 on a real ten-second film: the deposit boundary named
+ * QIYAMAH for every asset, so a montage Ras Al Amr had composed was filed
+ * under a chamber that never touched it. The dispatcher had nothing to read —
+ * the intent carried no originator — so this is what the intent now declares
+ * and what the deposit must carry through unchanged.
+ */
+describe('Article 10 — the deposit names the chamber that produced the work', () => {
+  let db: DatabaseSync;
+  let ledger: OperationLedgerManager;
+  let dispatcher: FleetDispatcher;
+
+  beforeEach(() => {
+    db = createDatabase(':memory:');
+    ledger = new OperationLedgerManager(db);
+    const hydrator = new SecureContextHydrator(stubVaultManager);
+    const registry = new FleetRegistry();
+    registry.registerAdapterSync(new CinematicAssemblyAdapter(hydrator), CinematicAssemblyAdapter.CAPABILITIES);
+    dispatcher = new FleetDispatcher(registry, ledger, stubVaultManager);
+    (stubVaultManager.depositAsset as jest.Mock).mockReset();
+    (stubVaultManager.depositAsset as jest.Mock).mockImplementation(
+      async (d: Record<string, unknown>) => ({ assetId: 'asset-stub', ...d }),
+    );
+  });
+  afterEach(() => { db.close(); });
+
+  /** Dispatch, finish the encode, resolve — and hand back the deposit as built. */
+  async function depositFor(intent: Record<string, unknown>) {
+    await dispatcher.executeMaterialization(intent as never);
+    mockIsEncodingComplete.mockReturnValue(true);
+    mockGetEncodingError.mockReturnValue(null);
+    await dispatcher.resolveOperation(
+      intent.operationId as string,
+      intent.operationId as string,
+      'azma-cinematic-assembly-v1',
+    );
+    return (stubVaultManager.depositAsset as jest.Mock).mock.calls[0][0];
+  }
+
+  it('an intent that names no chamber is attributed exactly as it always was', async () => {
+    const deposit = await depositFor(makeMotionIntent('op-origin-absent'));
+    expect(deposit.creationChamber).toBe(SourceChamber.QIYAMAH);
+  });
+
+  it('an intent that names Ras Al Amr is attributed to Ras Al Amr', async () => {
+    const deposit = await depositFor({
+      ...makeMotionIntent('op-origin-rasamr'),
+      originChamber: SourceChamber.RAS_AL_AMR,
+    });
+    expect(deposit.creationChamber).toBe(SourceChamber.RAS_AL_AMR);
+  });
+
+  it('naming the chamber moves nothing else — owner, operation and URI are untouched', async () => {
+    const plain = await depositFor(makeMotionIntent('op-origin-same'));
+    (stubVaultManager.depositAsset as jest.Mock).mockClear();
+    const named = await depositFor({
+      ...makeMotionIntent('op-origin-same-2'),
+      originChamber: SourceChamber.RAS_AL_AMR,
+    });
+    expect(named.subscriberTenantId).toBe(plain.subscriberTenantId);
+    expect(named.capabilityTarget).toBe(plain.capabilityTarget);
+    expect(named.assetFamily).toBe(plain.assetFamily);
+    expect(named.operationId).toBe('op-origin-same-2');
+    expect(named.secureStorageUri).toBe('/renders/op-origin-same-2.mp4');
   });
 });

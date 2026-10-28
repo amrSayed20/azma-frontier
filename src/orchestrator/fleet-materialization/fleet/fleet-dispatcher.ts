@@ -120,10 +120,17 @@ export class FleetDispatcher {
       capabilityTarget: ledgerEntry.capabilityTarget,
       assetFamily: isStructural ? AssetFamily.STRUCTURAL : AssetFamily.MEDIA,
       secureStorageUri: resolution.assetUrl,
-      // The dispatcher is infrastructure, not a chamber. What it resolves is a
-      // provider fulfilling asset CREATION — Qiyamah's responsibility. Article 10:
-      // the chamber that materially produced it, not the one it passed through.
-      creationChamber: SourceChamber.QIYAMAH,
+      // The dispatcher is infrastructure, not a chamber. Article 10 asks for the
+      // chamber that materially produced the work, not the one it passed
+      // through — so the intent that started the operation is what answers,
+      // because only the originator knows.
+      //
+      // MEASURED 2026-10-27 on a real film: this line was a fixed QIYAMAH and
+      // a montage Ras Al Amr had composed was filed under the chamber that
+      // never touched it. The fallback keeps every intent that says nothing —
+      // every Qiyamah path today, and every operation already in the ledger —
+      // attributed exactly as it was.
+      creationChamber: ledgerEntry.sourceIntent.originChamber ?? SourceChamber.QIYAMAH,
       metadata: resolution.rawMetadata || {}
     };
 

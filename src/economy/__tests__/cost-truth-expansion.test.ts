@@ -21,6 +21,21 @@
  *   `creditsCharged` from the provider's completed job, and all three routes
  *   referenced it ZERO times. The charge was in hand at the moment of
  *   derivation and was discarded — the identical fault the video path had.
+ *
+ * ─── WHERE THE EDIT'S DERIVATION MOVED, AND WHY THESE GUARDS FOLLOWED IT ────
+ *
+ *   2026-10-27: two of these guards went red without a single economic field
+ *   changing. The edit's whole act — own it, read it, edit, write, derive —
+ *   left its route for `src/qiyamah-generation/image-edit-service.ts`, so that
+ *   رأس الأمر could perform the same act without becoming a second authority
+ *   on it. The route that remains is HTTP alone and holds no economic field at
+ *   all, which is correct, and is exactly why a guard reading the route found
+ *   nothing. VERIFIED at the new site: parent, provider job id, charge and
+ *   unit sit inside the one `deriveAsset({…})` call, as they did before.
+ *
+ *   So the rule is unchanged and the guards now read the file that performs
+ *   the derivation, not the file that used to. A charge is recorded by
+ *   whoever writes the lineage — wherever that code lives.
  */
 
 import { readFileSync } from 'fs';
@@ -37,7 +52,22 @@ const ANIMATE = read('app/api/vault/assets/[assetId]/animate/route.ts');
 const UPSCALE = read('app/api/vault/assets/[assetId]/upscale/route.ts');
 const EDITING_ADAPTER = read('src/core/sovereign-ai-integration/adapters/magic-hour-image-editing.ts');
 const I2V_ADAPTER = read('src/core/sovereign-ai-integration/adapters/magic-hour-image-to-video.ts');
+const EDIT_SERVICE = read('src/qiyamah-generation/image-edit-service.ts');
 const ROUTES = { edit: EDIT, animate: ANIMATE, upscale: UPSCALE };
+
+/**
+ * Where each mutation's derivation is actually written. For animate and
+ * upscale that is still the route; for the edit it is the shared service that
+ * both القيامة and رأس الأمر call. The charge belongs wherever the lineage is.
+ */
+const DERIVATIONS = { edit: EDIT_SERVICE, animate: ANIMATE, upscale: UPSCALE };
+
+/**
+ * Everything on a mutation path, for the guards that FORBID rather than
+ * require: an invented charge or a leaked cash figure is just as false in the
+ * HTTP layer as in the derivation, so both are read.
+ */
+const MUTATION_SOURCES = { ...ROUTES, 'edit-service': EDIT_SERVICE };
 
 describe('1 · every mutation records what the provider actually charged', () => {
   it('the provenance can carry a charge and its unit', () => {
@@ -45,8 +75,8 @@ describe('1 · every mutation records what the provider actually charged', () =>
     expect(MUTATION).toContain('readonly creditUnit?: string;');
   });
 
-  it('all three routes hand it over — none of them read it before', () => {
-    for (const [name, src] of Object.entries(ROUTES)) {
+  it('all three mutations hand it over — none of them read it before', () => {
+    for (const [name, src] of Object.entries(DERIVATIONS)) {
       expect({ name, has: src.includes('creditsCharged: produced.creditsCharged') }).toEqual({ name, has: true });
       expect({ name, has: src.includes("creditUnit: 'magic-hour-credits'") }).toEqual({ name, has: true });
     }
@@ -77,7 +107,7 @@ describe('2 · quantity and unit are written together, or neither', () => {
 
 describe('3 · a cost never detaches from its operation or its lineage', () => {
   it('the charge is written in the same derivation that names the parent', () => {
-    for (const [name, src] of Object.entries(ROUTES)) {
+    for (const [name, src] of Object.entries(DERIVATIONS)) {
       const start = src.indexOf('deriveAsset({');
       expect({ name, found: start > -1 }).toEqual({ name, found: true });
       const block = src.slice(start, start + 2200);
@@ -85,6 +115,14 @@ describe('3 · a cost never detaches from its operation or its lineage', () => {
       expect({ name, charge: block.includes('creditsCharged: produced.creditsCharged') }).toEqual({ name, charge: true });
       expect({ name, job: block.includes('providerJobId: produced.providerJobId') }).toEqual({ name, job: true });
     }
+  });
+
+  it('one act, one derivation — the edit cannot be charged twice', () => {
+    // The act moved out of the route. Were a later repair to re-add a
+    // derivation beside the service call, one edit would write two lineages
+    // and two charges for one provider job. The route must hold none.
+    expect(EDIT).not.toContain('deriveAsset({');
+    expect(EDIT_SERVICE.split('deriveAsset({').length - 1).toBe(1);
   });
 
   it('the derived asset keeps parent, root and version — cost cannot hide in the parent', () => {
@@ -108,7 +146,7 @@ describe('4 · the rate belongs to the model, not to the capability', () => {
   });
 
   it('no single video rate is hard-coded anywhere', () => {
-    for (const src of [EDITING_ADAPTER, I2V_ADAPTER, MUTATION, ...Object.values(ROUTES)]) {
+    for (const src of [EDITING_ADAPTER, I2V_ADAPTER, MUTATION, ...Object.values(MUTATION_SOURCES)]) {
       expect(src).not.toMatch(/168\s*\*|creditsPerSecond|CREDITS_PER_SECOND/);
     }
   });
@@ -121,22 +159,22 @@ describe('4 · the rate belongs to the model, not to the capability', () => {
 });
 
 describe('5 · no capability invents a cost it did not incur', () => {
-  it('no route substitutes a default charge', () => {
-    for (const [name, src] of Object.entries(ROUTES)) {
+  it('no mutation path substitutes a default charge', () => {
+    for (const [name, src] of Object.entries(MUTATION_SOURCES)) {
       expect({ name, bad: /creditsCharged:\s*\d/.test(src) }).toEqual({ name, bad: false });
       expect({ name, bad: src.includes('creditsCharged: 0') }).toEqual({ name, bad: false });
     }
   });
 
   it('no cash value is asserted on any mutation path', () => {
-    for (const [name, src] of Object.entries(ROUTES)) {
+    for (const [name, src] of Object.entries(MUTATION_SOURCES)) {
       expect({ name, bad: /(costUsd|priceUsd|amountUsd|priceEgp)/.test(src) }).toEqual({ name, bad: false });
     }
     expect(MUTATION).not.toMatch(/(costUsd|priceUsd|cashCost)/);
   });
 
   it('provider credits are never called AZMA Units', () => {
-    for (const src of [MUTATION, ...Object.values(ROUTES)]) {
+    for (const src of [MUTATION, ...Object.values(MUTATION_SOURCES)]) {
       expect(src).not.toMatch(/azmaUnits[^\n]*credits|credits[^\n]*azmaUnits/i);
     }
   });

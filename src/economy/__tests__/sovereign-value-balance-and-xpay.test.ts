@@ -22,7 +22,7 @@ import {
   VALIDITY_AR, BALANCE_NOTICES_AR,
   BALANCE_PRICING_APPROVED, PAYMENT_PROOF_STATUS, GIFT_BALANCE, PENDING_FOUNDER_DECISIONS,
 } from '../pricing/sovereign-value-balance';
-import { XPayPaymentGateway, readXPayCredentials, xpayMode } from '../payment/xpay-payment-gateway';
+import { XPayPaymentGateway, readXPayCredentials, xpayMode, getXPayGateway } from '../payment/xpay-payment-gateway';
 import { WebhookSignatureError, PaymentSessionError } from '../payment/payment-gateway-contracts';
 import { CREDIT_USD, CREDIT_EGP } from '../cost-engine/qiyamah-cost-truth';
 
@@ -165,11 +165,17 @@ describe('3 · the prices are approved; taking money is a separate gate', () => 
     expect(PAYMENT_PROOF_STATUS.blockedBy).not.toMatch(/xpay/i);
   });
 
-  it('nothing can be sold anyway: the checkout refuses with no gateway', () => {
+  it('nothing can be sold anyway: the checkout refuses on the gateway it resolved', () => {
+    // The route once called ONE binding, and this guard named that call. It
+    // now resolves between two — the live binding, and a simulation that
+    // exists only when the server itself declares it and never beside a real
+    // key. The rule did not change: whichever it resolves, nothing means 503.
+    // So the guard holds the resolution and the refusal, not the one-liner.
     const route = read('app/api/sovereign/economy/xpay-checkout/route.ts');
-    expect(route).toContain("error: 'payment_gateway_unavailable'");
-    expect(route).toContain('const gateway = getXPayGateway();');
+    expect(route).toContain('const liveGateway = getXPayGateway();');
+    expect(route).toContain('const gateway = liveGateway ?? simulated;');
     expect(route).toContain('if (!gateway) {');
+    expect(route).toContain("error: 'payment_gateway_unavailable'");
   });
 
   it('the four approved packages are exactly the Founder figures', () => {
@@ -569,13 +575,30 @@ describe('8 · secrets never leave the server, and test is never live', () => {
     expect(xpayMode('nonsense')).toBe('unknown');
   });
 
-  it('with no credentials configured there is no gateway, and no simulation', () => {
+  it('with no real credentials there is no gateway — the money road has no surface', () => {
+    // This guard used to stop at `readXPayCredentials`, which is one step short
+    // of what the checkout actually calls. `getXPayGateway` is the binding, and
+    // a null binding is what makes the route answer 503. Both steps are driven
+    // here. (The simulation beside it is held by its own suite:
+    // src/economy/payment/__tests__/a-rehearsed-payment-pays-once.test.ts.)
     const before = { k: process.env['XPAY_SECRET_KEY'], w: process.env['XPAY_WEBHOOK_SECRET'] };
-    delete process.env['XPAY_SECRET_KEY'];
-    delete process.env['XPAY_WEBHOOK_SECRET'];
-    expect(readXPayCredentials()).toBeNull();
-    if (before.k) process.env['XPAY_SECRET_KEY'] = before.k;
-    if (before.w) process.env['XPAY_WEBHOOK_SECRET'] = before.w;
+    try {
+      delete process.env['XPAY_SECRET_KEY'];
+      delete process.env['XPAY_WEBHOOK_SECRET'];
+      expect(readXPayCredentials()).toBeNull();
+      expect(getXPayGateway()).toBeNull();
+
+      // MEASURED 2026-10-20: a publishable key authenticates and is refused
+      // CHECKOUT_SESSIONS_WRITE. It must therefore buy nothing either.
+      process.env['XPAY_SECRET_KEY'] = 'pk_test_not_a_secret_key';
+      process.env['XPAY_WEBHOOK_SECRET'] = 'whsec_placeholder';
+      expect(getXPayGateway()).toBeNull();
+    } finally {
+      delete process.env['XPAY_SECRET_KEY'];
+      delete process.env['XPAY_WEBHOOK_SECRET'];
+      if (before.k) process.env['XPAY_SECRET_KEY'] = before.k;
+      if (before.w) process.env['XPAY_WEBHOOK_SECRET'] = before.w;
+    }
   });
 
   it('nothing is logged that could carry a secret', () => {
