@@ -6,7 +6,11 @@ import {
   safeEquals,
   GoogleIdentityError,
 } from '@/src/identity/providers/google-identity-binding';
-import { signInWithVerifiedIdentity } from '@/src/identity/identity-gate';
+import {
+  signInWithVerifiedIdentity,
+  linkVerifiedIdentityToSignedInCreator,
+} from '@/src/identity/identity-gate';
+import { verifySession } from '@/src/authentication';
 import { OAUTH_STATE_COOKIE, OAUTH_NONCE_COOKIE, redirectUriFor, PUBLIC_ORIGIN } from '../start/route';
 
 export const dynamic = 'force-dynamic';
@@ -90,6 +94,29 @@ export async function GET(request: NextRequest) {
     // One case is genuinely the person's own situation and is worth saying:
     // Google itself has not confirmed their address.
     return refuse(request, rejection === 'EMAIL_NOT_VERIFIED' ? 'email-not-verified' : 'verification-failed');
+  }
+
+  // ── A Creator who is ALREADY inside is verifying, not signing in ─────────
+  //
+  //   The one place that offers this to a signed-in Creator is the Balance
+  //   page's «وثّق حسابك», and before this branch existed their journey ended
+  //   at /signup telling them an account already holds their address — which
+  //   was their own. They are sent back where they pressed it, and their
+  //   session continues untouched: no new cookie is minted for a person who
+  //   never left.
+  const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
+  const session = sessionId ? verifySession(sessionId) : null;
+  if (session) {
+    const link = linkVerifiedIdentityToSignedInCreator(session.creatorId, identity);
+    if (link.status === 'linked' || link.status === 'already-linked') {
+      const back = new URL('/sovereign-balance', PUBLIC_ORIGIN);
+      back.searchParams.set('identity', 'verified');
+      const response = NextResponse.redirect(back);
+      clearOAuthCookies(response);
+      return response;
+    }
+    // `not-applicable` — this identity is not this account's. The sign-in path
+    // below decides, exactly as it did before.
   }
 
   const outcome = signInWithVerifiedIdentity(identity);
