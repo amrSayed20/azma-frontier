@@ -155,6 +155,25 @@ export async function POST(
         { status: 'failed', reason: 'timed-out', message: 'استغرق التعديل وقتاً طويلاً. أعد المحاولة.' },
         { status: 504 },
       );
+    // Two refusals the money gate inside the act can return. They are the
+    // Creator's business, not a server error, and they say different things:
+    // one is the Empire's own unfinished work, the other is their balance.
+    case 'cost-unavailable':
+      return NextResponse.json(
+        {
+          status: 'failed', reason: 'cost-unavailable',
+          message: 'هذه العمليّةُ لم تُسعَّر بعد، فلا تُنفَّذ. وستُفتَح فور اعتمادِ سعرها.',
+        },
+        { status: 503 },
+      );
+    case 'insufficient-balance':
+      return NextResponse.json(
+        {
+          status: 'failed', reason: 'payment-required',
+          message: 'رصيدك لا يكفي لهذا العمل. اشترِ باقةً للمتابعة.',
+        },
+        { status: 402 },
+      );
     case 'rejected-by-lineage': {
       const conflict = outcome.rejection === 'OUTPUT_IDENTICAL_TO_PARENT';
       return NextResponse.json(

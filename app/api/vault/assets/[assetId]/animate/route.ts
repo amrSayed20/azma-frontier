@@ -14,6 +14,11 @@ import {
   imageToVideoIsConfigured,
 } from '@/src/core/sovereign-ai-integration/adapters/magic-hour-image-to-video';
 import { ImageEditError } from '@/src/core/sovereign-ai-integration/adapters/magic-hour-image-editing';
+import {
+  authorisePaidOperation,
+  settleAuthorisedOperation,
+  releaseAuthorisedOperation,
+} from '@/src/economy/paid-operation-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -155,6 +160,49 @@ export async function POST(
     return refuse(500, 'source-unreadable', 'تعذّر قراءة الصورة الأصلية.', 'read-source', safeDetail(err));
   }
 
+  /*
+    ─── NOTHING REACHES A BILLED PROVIDER WITHOUT PASSING HERE ───────────────
+
+      AUDITED 2026-10-31 against the live release: this road called the video
+      provider with no entitlement check, no price, no balance check, no
+      reservation and no settlement — and this is the most expensive act the
+      Empire buys. Its own measured provider charge was 840 credits for five
+      seconds of seedance. Any signed-in Creator could spend that, repeatedly,
+      and the ledger would never know.
+
+      The gate stands HERE and not at the top of the route on purpose: every
+      refusal above this line is a validation refusal, and a hold taken before
+      them would be stranded by each one. Nothing is reserved for an operation
+      that was never going to run.
+
+      `video-generation` is `pending-discovery` in the cost catalog, so the
+      gate answers `cost-unavailable` today and the provider is not called.
+  */
+  const gate = authorisePaidOperation({
+    db,
+    creatorId: session.creatorId,
+    role: session.role,
+    capability: 'video-generation',
+    gatewayId: 'magic-hour',
+    modelId: selection.selection.providerModelId,
+    idempotencyKey: `animate:${session.creatorId}:${assetId}:${selection.selection.providerModelId}:${durationSeconds}:${instruction}`,
+    metadata: { assetId, durationSeconds },
+  });
+  if (gate.kind === 'refused') {
+    return refuse(
+      gate.httpStatus, gate.reason, gate.messageAr, 'economy',
+      `gate refused: ${gate.reason}`,
+    );
+  }
+
+  /** Every failure after the hold gives the units back before it answers. */
+  const refuseAndRelease = (
+    http: number, reason: string, messageAr: string, stage: string, detailEn: string,
+  ) => {
+    releaseAuthorisedOperation(db, session.creatorId, gate, `animate_${reason}`);
+    return refuse(http, reason, messageAr, stage, detailEn);
+  };
+
   // ── The provider ───────────────────────────────────────────────────────────
   trail.stage('submit', { providerModelId: selection.selection.providerModelId, durationSeconds });
   let produced;
@@ -166,21 +214,21 @@ export async function POST(
   } catch (err) {
     const rejection = err instanceof ImageEditError ? err.rejection : null;
     if (rejection === 'NO_CREDIT') {
-      return refuse(503, 'capability-unavailable', 'تحريك الصور متوقّفٌ مؤقّتاً لنفاد رصيد الإمبراطوريّة. لا شأن لصورتك بذلك.', 'provider', safeDetail(err));
+      return refuseAndRelease(503, 'capability-unavailable', 'تحريك الصور متوقّفٌ مؤقّتاً لنفاد رصيد الإمبراطوريّة. لا شأن لصورتك بذلك.', 'provider', safeDetail(err));
     }
     if (rejection === 'TIMED_OUT') {
-      return refuse(408, 'timed-out', 'استغرق التحريك وقتاً طويلاً. أعد المحاولة.', 'provider', safeDetail(err));
+      return refuseAndRelease(408, 'timed-out', 'استغرق التحريك وقتاً طويلاً. أعد المحاولة.', 'provider', safeDetail(err));
     }
     // 422, not 502: the edge replaces a 5xx with its own HTML page and the
     // Creator never sees the operation id or the provider's words. Measured
     // 2026-09-22 — the Veo refusal reached the browser as «<!DOCTYPE».
-    return refuse(422, 'animation-failed', 'تعذّر تنفيذ التحريك. لم يُحفظ شيء.', 'provider', safeDetail(err));
+    return refuseAndRelease(422, 'animation-failed', 'تعذّر تنفيذ التحريك. لم يُحفظ شيء.', 'provider', safeDetail(err));
   }
   trail.stage('provider-done', { providerJobId: produced.providerJobId, providerModelId: produced.providerModelId, bytes: produced.bytes.length });
 
   const videoFormat = detectVideoFormat(produced.bytes);
   if (!videoFormat) {
-    return refuse(422, 'animation-failed', 'أعاد المزوّد ما ليس فيديو. لم يُحفظ شيء.', 'validate-output', `${produced.bytes.length} bytes, no MP4/WebM signature`);
+    return refuseAndRelease(422, 'animation-failed', 'أعاد المزوّد ما ليس فيديو. لم يُحفظ شيء.', 'validate-output', `${produced.bytes.length} bytes, no MP4/WebM signature`);
   }
 
   // ── Ours from here ─────────────────────────────────────────────────────────
@@ -219,6 +267,9 @@ export async function POST(
     },
   });
   if (!outcome.ok) {
+    // No asset was deposited and the bytes are being removed, so the Creator
+    // receives nothing. The hold goes back.
+    releaseAuthorisedOperation(db, session.creatorId, gate, `animate_${outcome.rejection}`);
     try { await unlink(join(uploadsDir(), 'generated-assets', basename(persisted.assetUrl))); } catch { /* already gone */ }
     const f = trail.fail('derive', 'deposit', outcome.rejection);
     return NextResponse.json(
@@ -227,6 +278,10 @@ export async function POST(
     );
   }
   trail.stage('asset-deposited', { assetId: outcome.asset.assetId, providerModelId: produced.providerModelId });
+
+  // The asset exists and belongs to the Creator. NOW the units are spent —
+  // not before the provider answered, and not before the work was theirs.
+  settleAuthorisedOperation(db, session.creatorId, gate, undefined, { assetId: outcome.asset.assetId });
 
   // The generation record describes the ANIMATION — its own instruction,
   // its own model — never the source image's generation.

@@ -38,6 +38,11 @@ import type { DatabaseSync } from 'node:sqlite';
 import { getVaultAsset } from '../persistent-storage';
 import { persistUploadedAsset } from '../vault/vault-asset-upload-storage';
 import { deriveAsset } from '../vault/sovereign-asset-mutation';
+import {
+  authorisePaidOperation,
+  settleAuthorisedOperation,
+  releaseAuthorisedOperation,
+} from '../economy/paid-operation-gate';
 import type { MutationRejection } from '../vault/sovereign-asset-mutation';
 import { SourceChamber, DerivationKind, isDerivable, isLegacyAsset } from '../vault/sovereign-vault-types';
 import type { VaultAsset } from '../vault/sovereign-vault-types';
@@ -72,7 +77,16 @@ export type ImageEditRefusal =
   | 'no-credit'
   | 'timed-out'
   | 'edit-failed'
-  | 'rejected-by-lineage';
+  | 'rejected-by-lineage'
+  /**
+   * The act is real and the Creator may perform it — but the Empire has not
+   * approved what it costs, so it is not performed. MEASURED: every Magic
+   * Hour entry in the cost catalog is pending-discovery with azmaUnitsPerUnit
+   * 0. Charging nothing for real provider money is not a gift.
+   */
+  | 'cost-unavailable'
+  /** Priced, and the Creator cannot afford it. */
+  | 'insufficient-balance';
 
 export type ImageEditOutcome =
   | {
@@ -209,6 +223,51 @@ export async function editSovereignImage(params: {
     return { status: 'failed', refusal: 'model-unavailable' };
   }
 
+  /*
+    ─── NOTHING REACHES A BILLED PROVIDER WITHOUT PASSING HERE ───────────────
+
+      AUDITED 2026-10-31 on the live release: this act called Magic Hour with
+      no entitlement check, no price, no balance check, no reservation and no
+      settlement — neither here nor in the route above it.
+
+      The gate stands in the SERVICE and not in the route, for two reasons the
+      audit proved:
+
+        · `editSovereignImage` has a SECOND caller —
+          `src/ras-amr-production/qiyamah-commission.ts` — which never passes
+          through the HTTP route at all. A gate in the route would have left
+          that road wide open, and an internal road is still a road.
+        · Every refusal above this line (not owned, not an image, not
+          derivable, unreadable) must keep its own answer. A money gate placed
+          earlier would tell a Creator editing a nonexistent asset that the
+          price is pending — true, and useless.
+
+      The role is read from the database, never taken from a caller: an
+      exemption a request could assert is not an exemption.
+  */
+  const roleRow = params.db
+    .prepare('SELECT role FROM creators WHERE creator_id = ?')
+    .get(params.creatorId) as { role?: unknown } | undefined;
+
+  const gate = authorisePaidOperation({
+    db: params.db,
+    creatorId: params.creatorId,
+    role: typeof roleRow?.role === 'string' ? roleRow.role : 'creator',
+    capability: 'image-editing',
+    gatewayId: 'magic-hour',
+    modelId: IMAGE_EDIT_MODEL_ID,
+    // The Creator, the picture and the instruction are what make this edit the
+    // edit it is. The same press twice is one intent, not two.
+    idempotencyKey: `image-edit:${params.creatorId}:${params.assetId}:${instruction}`,
+    metadata: { assetId: params.assetId },
+  });
+  if (gate.kind === 'refused') {
+    return {
+      status: 'failed',
+      refusal: gate.reason === 'payment-required' ? 'insufficient-balance' : 'cost-unavailable',
+    };
+  }
+
   // ── The edit itself, on the declared sovereign engine ────────────────────
   let produced;
   try {
@@ -219,6 +278,8 @@ export async function editSovereignImage(params: {
     // The engine's own words stay server-side; they name a provider.
     console.error('[ImageEdit] engine failed:', err);
     const rejection = err instanceof ImageEditError ? err.rejection : null;
+    // The provider produced nothing, so nothing is owed.
+    releaseAuthorisedOperation(params.db, params.creatorId, gate, 'image_edit_provider_failed');
     if (rejection === 'NO_CREDIT') return { status: 'failed', refusal: 'no-credit' };
     if (rejection === 'TIMED_OUT') return { status: 'failed', refusal: 'timed-out' };
     return { status: 'failed', refusal: 'edit-failed' };
@@ -256,8 +317,13 @@ export async function editSovereignImage(params: {
     // NO ORPHAN. The bytes were written a moment ago and are now unreferenced;
     // they are removed before the refusal is returned.
     try { await unlink(join(uploadsDir(), basename(persisted.assetUrl))); } catch { /* already gone */ }
+    // No asset was deposited and the bytes are gone. The hold goes back.
+    releaseAuthorisedOperation(params.db, params.creatorId, gate, `image_edit_${outcome.rejection}`);
     return { status: 'failed', refusal: 'rejected-by-lineage', rejection: outcome.rejection };
   }
+
+  // The asset exists and is the Creator's. NOW the units are spent.
+  settleAuthorisedOperation(params.db, params.creatorId, gate, undefined, { assetId: outcome.asset.assetId });
 
   return {
     status: 'succeeded',
