@@ -11,6 +11,9 @@ import { getDb } from '@/src/persistent-storage/db';
 import { verificationStateForCreator } from '@/src/persistent-storage/authentication-identity-repository';
 import { isVerified } from '@/src/identity/sovereign-identity-contract';
 import { returnUrl } from '@/src/economy/payment/return-destination';
+// The address the Empire answers on, declared once beside the OAuth binding
+// that learned this lesson first. A constant, so no request can move it.
+import { PUBLIC_ORIGIN } from '@/app/api/auth/google/start/route';
 
 export const dynamic = 'force-dynamic';
 
@@ -135,9 +138,23 @@ export async function POST(request: NextRequest) {
   //   a person is least suspicious. The Empire already owns the rule for this
   //   (return-destination.ts); it simply was not applied here.
   //
-  //   `nextUrl.origin` is the server's own view of the request, and the path
-  //   is an internal one this route names itself.
-  const origin = request.nextUrl.origin;
+  //   But the server's own view of the request is not the Empire's address.
+  //   MEASURED on production 2026-10-30, on a payment that fully succeeded:
+  //   the card was authorised, 3-D Secure passed, the webhook credited 1,375
+  //   units — and XPay returned the Creator to
+  //
+  //       http://localhost:3000/sovereign-balance?paid=1
+  //
+  //   where their browser showed ERR_CONNECTION_REFUSED. Behind nginx,
+  //   `nextUrl.origin` is the private origin Next.js was proxied to. The whole
+  //   purchase worked and the last instruction sent the Creator nowhere — at
+  //   the one moment they most need to see that their money arrived.
+  //
+  //   This is the SAME fault, in the same shape, that the Google callback
+  //   already carries a warning about: the lesson was written there and never
+  //   applied here. PUBLIC_ORIGIN is the address the Empire answers on, and it
+  //   is a constant, so no request can move it.
+  const origin = PUBLIC_ORIGIN;
   // One key per logical purchase, so a retried press is replayed by XPay
   // rather than opening a second session for the same intent.
   const idempotencyKey = `purchase:${session.creatorId}:${packId}:${randomUUID()}`;

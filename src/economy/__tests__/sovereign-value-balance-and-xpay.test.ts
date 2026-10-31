@@ -696,8 +696,17 @@ describe('10 · the checkout route carries the guards the older one earned', () 
   });
 
   it('the return destination is the Empire’s, never a header the caller writes', () => {
-    expect(ROUTE).toContain('request.nextUrl.origin');
+    // This guard once named `request.nextUrl.origin`, which was the repair of
+    // its day: it stopped a crafted checkout handing XPay a success URL on
+    // another host. MEASURED on production 2026-10-30, it was not enough —
+    // behind nginx that origin is http://localhost:3000, so a Creator whose
+    // payment had entirely succeeded was returned to ERR_CONNECTION_REFUSED.
+    // The rule the guard was written for is unchanged; the address it must
+    // hold is now the one constant no request can move.
+    expect(ROUTE).toContain('const origin = PUBLIC_ORIGIN;');
     expect(ROUTE).not.toContain("headers.get('origin')");
+    const live = ROUTE.split('\n').filter((l) => !l.trimStart().startsWith('//')).join('\n');
+    expect(live).not.toContain('request.nextUrl.origin');
     // Both destinations pass through the one rule that refuses absolute URLs.
     expect(ROUTE).toContain("returnUrl(origin, '/sovereign-balance?paid=1')");
     expect(ROUTE).toContain("returnUrl(origin, '/sovereign-balance')");

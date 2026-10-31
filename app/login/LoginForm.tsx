@@ -33,6 +33,7 @@ export function LoginForm({ dict, onSuccess }: Props) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -48,7 +49,24 @@ export function LoginForm({ dict, onSuccess }: Props) {
       const result = await response.json();
 
       if (result.status !== 'succeeded') {
-        setError(result.message ?? t(dict, 'login.errorFallback'));
+        /*
+          THE REFUSAL WAS TRUE AND USELESS.
+
+          The server answered «Invalid email or password.» — in English, on an
+          Arabic page, and saying nothing a Creator could act on. For an
+          account made with Google it is also unanswerable: there IS no
+          password, so no amount of trying will ever work.
+
+          What it must NOT do is say «this address signs in with Google»:
+          that would answer, for anyone who asks, whether an address has an
+          account here. So the sentence names BOTH roads without naming which
+          one is theirs, and the Google door now sits directly beneath it.
+        */
+        setError(
+          result.reason === 'invalid-credentials'
+            ? t(dict, 'login.errorCredentials')
+            : result.message ?? t(dict, 'login.errorFallback'),
+        );
         return;
       }
 
@@ -87,6 +105,28 @@ export function LoginForm({ dict, onSuccess }: Props) {
             {submitting ? t(dict, 'login.submitBusy') : t(dict, 'login.submitIdle')}
           </button>
         </form>
+
+        {/*
+          THE DOOR THIS PAGE DID NOT HAVE.
+
+          MEASURED on production 2026-10-31, on a Creator's own account: every
+          account made since registration became Google-only has NO password —
+          deliberately, so there is no credential to guess or stuff. And this
+          page offered nothing but a password. A Creator who had signed up two
+          minutes earlier typed their address, was told «Invalid email or
+          password», and had no way in at all. The Empire kept the key and hid
+          the lock.
+
+          An anchor, not a fetch: the road to Google leaves this origin and
+          comes back carrying a state cookie, which no in-page request can do.
+        */}
+        <a
+          className="creator-access-submit creator-access-google"
+          href="/api/auth/google/start"
+          onClick={() => setLeaving(true)}
+        >
+          {leaving ? t(dict, 'login.googleBusy') : t(dict, 'login.googleContinue')}
+        </a>
 
         <p className="creator-access-footer">
           {t(dict, 'login.footerPrompt')} <ConstitutionalLink to="/signup">{t(dict, 'login.footerLink')}</ConstitutionalLink>

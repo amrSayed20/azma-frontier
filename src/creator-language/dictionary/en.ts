@@ -114,8 +114,13 @@ export const en: Dictionary = {
   'login.submitBusy': 'Signing in…',
   'login.footerPrompt': "Don't have an account?",
   'login.footerLink': 'Sign up',
+  'login.googleContinue': 'Continue with Google',
+  'login.googleBusy': 'Verifying…',
   'login.errorUnreachable': 'Could not reach the server. Please try again.',
   'login.errorFallback': 'Sign in failed.',
+  // Names both roads without naming which one is this address's.
+  'login.errorCredentials':
+    'That did not sign you in. Check the email and password — and if you created your account with Google, use «Continue with Google» below.',
 
   'qiyamah.companionMessage': 'The Empire creates with you',
 

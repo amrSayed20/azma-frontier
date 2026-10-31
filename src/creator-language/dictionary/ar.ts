@@ -113,8 +113,15 @@ export const ar: Dictionary = {
   'login.submitBusy': 'البوابة تعرفك…',
   'login.footerPrompt': 'ليس لديك حساب؟',
   'login.footerLink': 'إنشاء حساب',
+  'login.googleContinue': 'المتابعة باستخدام Google',
+  'login.googleBusy': 'البوابة تتحقّق…',
   'login.errorUnreachable': 'البوابة لا تستجيب. عُد بعد لحظة.',
   'login.errorFallback': 'البوابة لم تعرفك. تأكد من بياناتك.',
+  // Names both roads without naming which one is this address's — saying
+  // «هذا الحساب يدخل بجوجل» would tell anyone who asks whether an address
+  // has an account here.
+  'login.errorCredentials':
+    'البوابة لم تعرفك. تأكّد من البريد وكلمة المرور — وإن أنشأتَ حسابك بجوجل فادخل من «المتابعة باستخدام Google» أدناه.',
 
   'qiyamah.companionMessage': 'الإمبراطورية تصنع معك',
 
