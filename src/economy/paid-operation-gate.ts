@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import { CreatorCreditRepository } from './credit-ledger/credit-ledger-repository';
 import { InsufficientBalanceError } from './credit-ledger/credit-ledger-types';
@@ -13,13 +14,18 @@ import type { TrialCapability } from './trial/trial-entitlement-types';
  *
  * ─── THE HOLE THIS CLOSES, MEASURED ─────────────────────────────────────────
  *
- *   Audited on the live release 2026-10-31. Six paid roads existed. Three of
- *   them — image editing, animation, and the four creative operations — called
- *   a billed provider with NO entitlement check, NO balance check, NO
- *   reservation and NO settlement. Any signed-in Creator could invoke them
- *   directly, without limit and without record. Among them is `animate`, whose
- *   own measured provider charge was 840 credits for five seconds, and
- *   `lip-sync`, `face-swap` and `talking-photo`, which are video projects too.
+ *   Audited on the live release 2026-10-31. Six paid roads existed. TWO of
+ *   them — image editing and animation — called a billed provider with NO
+ *   entitlement check, NO balance check, NO reservation and NO settlement, in
+ *   the route AND in the service beneath it. Any signed-in Creator could
+ *   invoke them directly, without limit and without record. One of the two is
+ *   `animate`, whose own measured provider charge was 840 credits for five
+ *   seconds.
+ *
+ *   Two roads I first reported as naked are NOT: `upscale` carries the whole
+ *   cycle in its route, and `creative/[operation]` carries it inside
+ *   `creative-job-service`. Both corrections came from reading the service and
+ *   not only the route file.
  *
  *   The cure is not a new economy. `reserve / settle / release` already exist,
  *   are atomic, and are correct. What was missing is a single door that every
@@ -88,6 +94,66 @@ export interface AuthoriseRequest {
   /** Hashed by the trial service; never stored raw. */
   readonly claimIp?: string;
   readonly metadata?: Record<string, unknown>;
+}
+
+/**
+ * The key this ATTEMPT reserves under.
+ *
+ * ─── MEASURED, BECAUSE AN INTENT KEY ALONE IS A HOLE ────────────────────────
+ *
+ *   `reserve` deduplicates on `idempotency_key` and returns the existing row
+ *   WHATEVER its status. Probed 2026-10-31 on an in-memory ledger:
+ *
+ *     after settlement — same ledger id, status `completed`, reserved 0,
+ *       available 900 before the replay and 900 after;
+ *     after release    — same ledger id, status `reversed`, reserved 0,
+ *       available 1000, and the later `settle` throws.
+ *
+ *   So a second press of a stable intent key hands the caller a reservation
+ *   that HOLDS NOTHING, and the paid provider then runs with no financial
+ *   cover at all. That is the fourth standing prohibition — a paid provider
+ *   without proper protection — committed by the very door meant to stop it.
+ *
+ * ─── AND WHY NOT A FRESH UUID EITHER ────────────────────────────────────────
+ *
+ *   Six live roads key their reservations on `randomUUID()` or `Date.now()`:
+ *   every press is a new key, so pressing twice reserves twice and charges
+ *   twice. Trading one defect for the other is not a repair.
+ *
+ *   The only window a server can honestly deduplicate is the one it can see:
+ *   an attempt of this exact intent that is STILL PENDING is this same press,
+ *   so it reuses that key and `reserve` hands back the one hold. Once an
+ *   attempt is closed — settled or reversed — the next press is a new
+ *   operation, gets the next attempt index, and holds real units. The server
+ *   cannot tell a retry from a deliberate repetition after that point, and it
+ *   does not pretend to.
+ *
+ *   The intent is hashed so the key has a fixed shape and a prefix match can
+ *   never be confused by a Creator's own text.
+ */
+function attemptKey(db: DatabaseSync, intent: string): string {
+  const stem = createHash('sha256').update(intent).digest('hex').slice(0, 32);
+  const prefix = `${stem}#`;
+
+  const pending = db
+    .prepare(
+      `SELECT idempotency_key FROM credit_ledger
+        WHERE transaction_type = 'reservation' AND status = 'pending'
+          AND substr(idempotency_key, 1, ?) = ?
+        ORDER BY created_at DESC LIMIT 1`,
+    )
+    .get(prefix.length, prefix) as { idempotency_key?: string } | undefined;
+  if (typeof pending?.idempotency_key === 'string') return pending.idempotency_key;
+
+  const closed = db
+    .prepare(
+      `SELECT COUNT(*) AS n FROM credit_ledger
+        WHERE transaction_type = 'reservation' AND status <> 'pending'
+          AND substr(idempotency_key, 1, ?) = ?`,
+    )
+    .get(prefix.length, prefix) as { n?: number } | undefined;
+
+  return `${prefix}${Number(closed?.n ?? 0) + 1}`;
 }
 
 /**
@@ -178,8 +244,9 @@ export function authorisePaidOperation(request: AuthoriseRequest): GateVerdict {
   }
 
   try {
-    const reservation = credits.reserve(creatorId, units, idempotencyKey, {
-      capability, gatewayId, ...(modelId ? { modelId } : {}), ...(metadata ?? {}),
+    const reservation = credits.reserve(creatorId, units, attemptKey(db, idempotencyKey), {
+      capability, gatewayId, intent: idempotencyKey,
+      ...(modelId ? { modelId } : {}), ...(metadata ?? {}),
     });
     return { kind: 'reserved', reservationId: reservation.reservationId, units: reservation.reservedUnits };
   } catch (error) {

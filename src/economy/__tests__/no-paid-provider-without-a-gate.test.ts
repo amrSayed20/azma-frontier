@@ -269,6 +269,51 @@ describe('٥ · لا خصمَ مزدوجًا لنفسِ النيّة', () => {
     expect(balance(me).totalSpent).toBe(verdict.units);
   });
 
+  // PROBED 2026-10-31 on the bare repository: a stable key replayed after its
+  // reservation closes returns that CLOSED row — reserved 0, available
+  // unmoved — and the caller would take it for a hold and call a paid
+  // provider behind nothing. These two hold that shut.
+  it('repeating the intent after it SETTLED holds real units again, and never hands back the spent one', () => {
+    const me = creator();
+    fund(me, 10_000);
+    const key = `gen:${me}:replay-after-settle`;
+
+    const first = priceable(me, key);
+    if (first.kind !== 'reserved') throw new Error('expected a reservation');
+    settleAuthorisedOperation(getDb(), me, first);
+    const availableAfterFirst = balance(me).availableUnits;
+
+    const second = priceable(me, key);
+    if (second.kind !== 'reserved') throw new Error('expected a second reservation');
+
+    expect(second.reservationId).not.toBe(first.reservationId);
+    // The decisive number: the replay actually took units out of availability.
+    expect(balance(me).availableUnits).toBe(availableAfterFirst - second.units);
+    expect(balance(me).reservedUnits).toBe(second.units);
+    expect(ledger(me).filter((e) => e.transaction_type === 'reservation')).toHaveLength(2);
+  });
+
+  it('retrying the intent after a RELEASE holds again, and that settlement succeeds', () => {
+    const me = creator();
+    fund(me, 10_000);
+    const key = `gen:${me}:replay-after-release`;
+
+    const first = priceable(me, key);
+    if (first.kind !== 'reserved') throw new Error('expected a reservation');
+    releaseAuthorisedOperation(getDb(), me, first, 'provider-failed');
+
+    const retry = priceable(me, key);
+    if (retry.kind !== 'reserved') throw new Error('expected a fresh reservation');
+    expect(retry.reservationId).not.toBe(first.reservationId);
+    expect(balance(me).reservedUnits).toBe(retry.units);
+
+    settleAuthorisedOperation(getDb(), me, retry);
+
+    // It settled for real — so no reconciliation debt was written.
+    expect(balance(me).totalSpent).toBe(retry.units);
+    expect(ledger(me).filter((e) => e.transaction_type === 'reconciliation_required')).toHaveLength(0);
+  });
+
   it('a DIFFERENT intent gets its own hold', () => {
     const me = creator();
     fund(me, 1_000);
