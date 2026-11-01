@@ -6,6 +6,8 @@ import { CapabilityTarget } from '../core/sovereign-orchestrator/qiyamah-intent-
 import type { MotionIntent } from '../core/sovereign-orchestrator/qiyamah-intent-types';
 import { generateVideo } from './generation-service';
 import type { VideoGenerationRequest } from './types';
+import { settleReservation, releaseReservation } from '../economy/paid-operation-gate';
+import { completeAttempt, failAttempt } from '../economy/paid-operation-attempts';
 
 /**
  * AZMA OS — Qiyamah
@@ -201,10 +203,40 @@ export async function observeOperation(operationId: string, creatorId: string): 
  * proceeds in this process and writes its own ending there — whether or not
  * anyone is still listening on the socket that asked for it.
  */
+/**
+ * What this production owes, carried into the half that runs after the
+ * answer has already been sent.
+ *
+ * ─── THE DORMANT DEFECT THIS CLOSES ───────────────────────────────────────
+ *
+ *   FOUND 2026-11-01. The route settled the hold immediately after
+ *   ACCEPTANCE, with a comment beside it saying the opposite — «settled by
+ *   the operation's own ending, not here, where nothing is yet known». So a
+ *   production that was accepted and then failed left the Creator charged
+ *   for a video that never existed, and nothing released it.
+ *
+ *   It has never fired, because `video-generation` is pending-discovery in
+ *   the cost catalog and no hold is taken at all today. It would fire on the
+ *   first day a price is approved — which is the decision now before the
+ *   owner. A charge at acceptance is not a charge for work.
+ *
+ *   So the money travels here and is closed at the production's own ending.
+ *   It is ALSO recorded durably on the attempt row by `attachReservation`,
+ *   so a process that dies between the two leaves a hold the resolver can
+ *   still read and finish.
+ */
+export interface ProductionMoney {
+  readonly attemptKey: string;
+  readonly reservationId: string;
+  readonly units: number;
+}
+
 export async function acceptVideoProduction(params: {
   readonly creatorId: string;
   readonly intentKey: string;
   readonly request: VideoGenerationRequest;
+  /** Absent when the act was entitled and nothing is held. */
+  readonly money?: ProductionMoney;
 }): Promise<AcceptedOperation> {
   const existing = findOperationByIntentKey(params.creatorId, params.intentKey);
   if (existing) {
@@ -239,12 +271,18 @@ export async function acceptVideoProduction(params: {
   // The production, from here, belongs to the operation and not to the
   // request. A rejected promise must never become an unhandled rejection
   // that takes the process down with it.
-  void runProduction(operationId, { ...params.request, operationId }).catch(() => { /* recorded below */ });
+  void runProduction(operationId, { ...params.request, operationId }, params.creatorId, params.money)
+    .catch(() => { /* recorded below */ });
 
   return { operationId, state: OperationState.DISPATCHED, reused: false };
 }
 
-async function runProduction(operationId: string, request: VideoGenerationRequest): Promise<void> {
+async function runProduction(
+  operationId: string,
+  request: VideoGenerationRequest,
+  creatorId: string,
+  money?: ProductionMoney,
+): Promise<void> {
   const manager = ledger();
   try {
     await manager.updateState(operationId, OperationState.MATERIALIZING);
@@ -259,6 +297,7 @@ async function runProduction(operationId: string, request: VideoGenerationReques
     console.log('[QiyamahOperation]', JSON.stringify({ operationId, stage: 'failed', detail: detail.slice(0, 240) }));
     writeStored(operationId, { failureReason: classifyFailure(undefined, detail) });
     try { await manager.updateState(operationId, OperationState.FAILED, { resolvedAt: Date.now() }); } catch { /* sealed */ }
+    closeMoney(creatorId, money, 'failed', 'production-threw');
     return;
   }
 
@@ -284,10 +323,44 @@ async function runProduction(operationId: string, request: VideoGenerationReques
           ? { actualResourceCost: result.production.providerCharge } : {}),
       });
     } catch { /* sealed */ }
+    // The asset exists and is the Creator's. NOW the units are spent.
+    closeMoney(creatorId, money, 'succeeded', result.asset.assetId);
     return;
   }
 
   console.log('[QiyamahOperation]', JSON.stringify({ operationId, stage: 'failed', reason: result.reason, detail: String(result.message).slice(0, 240) }));
   writeStored(operationId, { failureReason: classifyFailure(result.reason, result.message) });
   try { await manager.updateState(operationId, OperationState.FAILED, { resolvedAt: Date.now() }); } catch { /* sealed */ }
+  closeMoney(creatorId, money, 'failed', String(result.reason));
+}
+
+/**
+ * Settle or release this production's hold, and record which it was.
+ *
+ * It never throws: a ledger that stumbles here must not take down the half
+ * of the Empire that has already deposited the Creator's video. A stumble
+ * leaves the attempt `owed`, which is the resolver's queue.
+ */
+function closeMoney(
+  creatorId: string,
+  money: ProductionMoney | undefined,
+  outcome: 'succeeded' | 'failed',
+  detail: string,
+): void {
+  if (!money) return;
+  const db = getDb();
+  if (outcome === 'succeeded') {
+    settleReservation({
+      db, creatorId, attemptKey: money.attemptKey,
+      reservationId: money.reservationId, units: money.units,
+      metadata: { assetId: detail },
+    });
+    completeAttempt(db, money.attemptKey, { assetId: detail });
+    return;
+  }
+  releaseReservation({
+    db, creatorId, attemptKey: money.attemptKey,
+    reservationId: money.reservationId, reason: `video_${detail}`,
+  });
+  failAttempt(db, money.attemptKey, detail);
 }

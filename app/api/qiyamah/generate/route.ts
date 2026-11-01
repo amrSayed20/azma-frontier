@@ -253,29 +253,34 @@ export async function POST(request: NextRequest) {
         ...(aspectRatio ? { aspectRatio } : {}),
         originalIdea: typeof idea === 'string' && idea.trim().length > 0 ? idea.trim() : null,
       },
+      // The hold travels WITH the production, so its ending can close it.
+      // Absent when the act was entitled and nothing was held.
+      ...(videoReservationId && videoResolvedCostEstimate
+        ? {
+            money: {
+              attemptKey: videoClaim.attemptKey,
+              reservationId: videoReservationId,
+              units: videoResolvedCostEstimate.estimatedAzmaUnits,
+            },
+          }
+        : {}),
     });
 
     // The reservation, when one exists, is settled by the operation's own
     // ending — not here, where nothing is yet known. While the cost catalog
     // cannot price video there is no reservation to settle at all.
-    if (videoReservationId && videoResolvedCostEstimate) {
-      // A settlement that cannot be applied is no longer swallowed: the
-      // Creator keeps their production and the debt is recorded where the
-      // resolver reads it.
-      settleReservation({
-        db, creatorId: session.creatorId,
-        attemptKey: videoClaim.attemptKey,
-        reservationId: videoReservationId,
-        units: videoResolvedCostEstimate.estimatedAzmaUnits,
-        metadata: { operationId: accepted.operationId },
-      });
-    }
-
-    // The submission is closed, so a resent key is answered rather than
-    // charged. An entitled production has no hold and owes nothing.
-    completeAttempt(db, videoClaim.attemptKey, {
-      status: 'accepted', operationId: accepted.operationId, state: accepted.state,
-    });
+    // NOTHING IS SETTLED HERE, and that is the repair.
+    //
+    //   This line used to settle the hold the moment the production was
+    //   ACCEPTED, with a comment beside it saying the opposite. A production
+    //   accepted and then failed left the Creator charged for a video that
+    //   never existed. The money now travels into the production and is
+    //   closed at its own ending — see `closeMoney` in
+    //   `video-operation-lifecycle.ts`.
+    //
+    //   The attempt is left IN FLIGHT for the same reason: its verdict is
+    //   whatever the production turns out to be, and claiming one here would
+    //   make a resent key replay an «accepted» that may since have failed.
 
     return NextResponse.json(
       {

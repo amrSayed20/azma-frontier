@@ -392,6 +392,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { paidOperationHeaders, operationConcluded } from '@/src/economy/client-operation-key';
 import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import { RasAmrExperience } from '@/src/imperial-experience-engine';
 import type { VaultAsset, AssetFamily } from '@/src/vault/sovereign-vault-types';
@@ -2154,7 +2155,8 @@ export default function RasAmrChamber() {
       const voiceDisplayName = ttsDisplayNameInput.trim() || chosenVoice?.name || 'TTS Voice';
       const response = await fetch('/api/vault/assets/generate-speech', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // One key per press. Resent only if THIS press went unanswered.
+        headers: paidOperationHeaders('ras-amr:speech'),
         body: JSON.stringify({
           text: ttsText.trim(),
           voice: ttsPresetVoiceId,
@@ -2162,6 +2164,9 @@ export default function RasAmrChamber() {
         }),
       });
       const result = await response.json() as { status: string; reason?: string; message?: string; asset?: VaultAsset; estimatedCost?: number; availableUnits?: number };
+      // A verdict arrived, so the next press is a new operation — unless the
+      // answer was «it is still running», which is not a verdict.
+      operationConcluded('ras-amr:speech', result);
       if (!response.ok || result.status !== 'succeeded') {
         if (result.reason === 'provider-error') {
           setTtsError(`خطأ في مزود الصوت (ElevenLabs): ${result.message ?? 'الخدمة غير متاحة.'} — قد يكون رصيد حساب ElevenLabs قد نفد.`);
@@ -2203,7 +2208,7 @@ export default function RasAmrChamber() {
     try {
       const response = await fetch('/api/vault/assets/clone-voice', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: paidOperationHeaders('ras-amr:voice-clone'),
         body: JSON.stringify({
           referenceAssetId: cloneSourceVoiceId,
           consentConfirmed: true,
@@ -2211,6 +2216,7 @@ export default function RasAmrChamber() {
         }),
       });
       const result = await response.json();
+      operationConcluded('ras-amr:voice-clone', result);
       if (!response.ok || result.status !== 'succeeded') {
         setVoiceCloneError(result.message ?? 'الاستنساخ لم يكتمل.');
         return;
@@ -2233,13 +2239,14 @@ export default function RasAmrChamber() {
     try {
       const response = await fetch('/api/vault/assets/generate-cloned-speech', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: paidOperationHeaders('ras-amr:cloned-speech'),
         body: JSON.stringify({
           clonedVoiceAssetId: clonedVoiceSynthTarget,
           text: clonedVoiceSynthText.trim(),
         }),
       });
       const result = await response.json();
+      operationConcluded('ras-amr:cloned-speech', result);
       if (!response.ok || result.status !== 'succeeded') {
         setClonedSpeechError(result.message ?? 'فشل توليد الكلام بالصوت المستنسَخ.');
         return;

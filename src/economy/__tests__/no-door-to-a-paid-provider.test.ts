@@ -96,6 +96,123 @@ function callersOf(name: string): readonly string[] {
   });
 }
 
+/**
+ * ─── THE INVENTORY, AND WHY IT IS A LIST AND NOT A PATTERN ──────────────────
+ *
+ *   Found 2026-11-01 by scanning for provider HTTP boundaries rather than for
+ *   function names: THREE doors to Google Gemini that no earlier audit named,
+ *   because none of them is called `*ViaProvider` and none lives under a
+ *   folder the audits read.
+ *
+ *   Every file in the repository that names a paid provider's HTTP boundary
+ *   must appear below with a classification. The last test in this block
+ *   fails if a new one appears — so a fourth Gemini door, or a new provider
+ *   entirely, cannot be added in silence. It does not require the door to be
+ *   gated; it requires it to be DECLARED.
+ */
+type Classification =
+  /** A billed creative act. It must be behind the economy gate. */
+  | 'metered-creative'
+  /**
+   * Text inference the Empire runs on its own account to do its work —
+   * translation, relevance, intent reading. No price class exists for it and
+   * no AZMA production has measured its cost. Whether it is a billed
+   * capability or Empire overhead is the OWNER'S call, not an engineer's.
+   */
+  | 'unmetered-inference-OWNER-DECISION'
+  /** A Founder-only instrument whose purpose is to measure a provider charge. */
+  | 'founder-measurement';
+
+const PROVIDER_BOUNDARY_FILES: Readonly<Record<string, { readonly kind: Classification; readonly why: string }>> = {
+  'src/core/sovereign-ai-integration/adapters/magic-hour-adapter.ts': {
+    kind: 'metered-creative',
+    why: 'the orchestrator binding behind generateImage/generateVideo, both of which hold money in every caller',
+  },
+  'src/core/sovereign-ai-integration/adapters/magic-hour-image-editing.ts': {
+    kind: 'metered-creative',
+    why: 'editImageViaProvider and upscaleImageViaProvider, each with one gated caller',
+  },
+  'src/chambers/ras-al-amr/voice-cloning-provider.ts': {
+    kind: 'metered-creative',
+    why: 'the three voice roads, each of which reserves before calling',
+  },
+  'src/economy/cost-engine/creative-operations-cost-worksheet.ts': {
+    kind: 'founder-measurement',
+    why: 'reads the provider account balance to measure a charge; Founder-gated and buys nothing',
+  },
+  'src/chambers/hujjah-al-damighah/sovereign-language-bridge.ts': {
+    kind: 'unmetered-inference-OWNER-DECISION',
+    why: 'Gemini generateContent, carrying an Arabic question to English-only sources. No price class, no measured cost.',
+  },
+  'src/chambers/hujjah-al-damighah/subject-relevance.ts': {
+    kind: 'unmetered-inference-OWNER-DECISION',
+    why: 'Gemini generateContent, judging whether a passage bears on the question. No price class, no measured cost.',
+  },
+  'app/api/ras-amr/director/route.ts': {
+    kind: 'unmetered-inference-OWNER-DECISION',
+    why: 'Gemini generateContent, the intent interpreter. No price class, no measured cost.',
+  },
+};
+
+describe('٠ · جردٌ كاملٌ لأبوابِ المزوِّدين، لا لمجلّداتِ الطرُق', () => {
+  /** The HTTP boundaries that cost the Empire money when they are called. */
+  const PAID_HOSTS = [
+    'api.magichour.ai',
+    'api.elevenlabs.io',
+    'api.openai.com',
+    'generativelanguage.googleapis.com',
+  ];
+
+  it('every file that names a paid provider boundary is classified', () => {
+    const touching = FILES.filter((f) => {
+      const source = read(f);
+      return PAID_HOSTS.some((host) => source.includes(host));
+    });
+
+    // AN INSTRUMENT THAT FOUND NOTHING IS NOT REPORTING A ZERO.
+    expect(touching.length).toBeGreaterThanOrEqual(7);
+
+    const unclassified = touching.filter((f) => !(f in PROVIDER_BOUNDARY_FILES));
+    expect(unclassified).toEqual([]);
+  });
+
+  it('no classification names a file that has stopped touching a provider', () => {
+    for (const file of Object.keys(PROVIDER_BOUNDARY_FILES)) {
+      expect(FILES).toContain(file);
+      const source = read(file);
+      expect(PAID_HOSTS.some((host) => source.includes(host))).toBe(true);
+    }
+  });
+
+  it('every classification carries a reason a reader can judge', () => {
+    for (const [file, { kind, why }] of Object.entries(PROVIDER_BOUNDARY_FILES)) {
+      expect({ file, long: why.length > 40 }).toEqual({ file, long: true });
+      expect(['metered-creative', 'unmetered-inference-OWNER-DECISION', 'founder-measurement'])
+        .toContain(kind);
+    }
+  });
+
+  it('the inference doors are DECLARED as awaiting the owner, not quietly gated or quietly free', () => {
+    // Three doors to Gemini carry no economy gate. That is reported, not
+    // repaired: whether reading a Creator's intent is a billed capability or
+    // the Empire's own overhead is a commercial question, and pricing it
+    // would be setting a price.
+    const awaiting = Object.entries(PROVIDER_BOUNDARY_FILES)
+      .filter(([, v]) => v.kind === 'unmetered-inference-OWNER-DECISION')
+      .map(([f]) => f);
+    expect(awaiting).toEqual([
+      'src/chambers/hujjah-al-damighah/sovereign-language-bridge.ts',
+      'src/chambers/hujjah-al-damighah/subject-relevance.ts',
+      'app/api/ras-amr/director/route.ts',
+    ]);
+    // And none of them has acquired a gate behind the Empire's back, which
+    // would be an engineer pricing an act the owner has not priced.
+    for (const file of awaiting) {
+      expect(holdsMoney(read(file))).toBe(false);
+    }
+  });
+});
+
 describe('١ · القائمةُ نفسُها لا تَشيخ في صمت', () => {
   it.each(ADAPTER_FILES)('%s declares no billed entry this sweep does not know', (file) => {
     const source = read(file);
@@ -213,6 +330,37 @@ describe('٣ · والمولِّدُ المدفوعُ نفسُه ليس بابً
     // And both exits exist — a scene that failed gives the units back.
     expect(source).toContain('releaseAuthorisedOperation(');
     expect(source).toContain('settleAuthorisedOperation(');
+  });
+
+  it('the deferred halves close their own money, and not at acceptance', () => {
+    /*  THE DORMANT DEFECT THIS HOLDS SHUT
+     *
+     *    FOUND 2026-11-01: the video route settled the hold the moment the
+     *    production was ACCEPTED — with a comment beside it saying the
+     *    opposite — so a production accepted and then failed left the Creator
+     *    charged for a video that never existed. It had never fired, because
+     *    video is pending-discovery and no hold is taken today; it would have
+     *    fired on the first day a price was approved.
+     */
+    const route = read('app/api/qiyamah/generate/route.ts');
+    const lifecycle = read('src/qiyamah-generation/video-operation-lifecycle.ts');
+
+    // The route hands the money to the production instead of closing it.
+    expect(route).toContain('money: {');
+    // And it does NOT settle the video hold itself.
+    const videoHalf = route.slice(0, route.indexOf('─── IMAGE PATH'));
+    expect(videoHalf).not.toMatch(/settleReservation\(\{/);
+
+    // The production closes it at each of its three endings.
+    expect(lifecycle).toContain('settleReservation(');
+    expect(lifecycle).toContain('releaseReservation(');
+    expect((lifecycle.match(/closeMoney\(/g) ?? []).length).toBeGreaterThanOrEqual(4);
+
+    // The creative job's deferred half does the same, where it already did.
+    const creative = read('src/vault/creative-job-service.ts');
+    expect(creative.indexOf('credits.reserve(')).toBeLessThan(creative.indexOf('void executeJob('));
+    expect(creative).toContain('settleReservation(');
+    expect(creative).toContain('releaseReservation(');
   });
 
   it('the Founder-only road is gated on a verified Founder session, not on a claim in a request', () => {
