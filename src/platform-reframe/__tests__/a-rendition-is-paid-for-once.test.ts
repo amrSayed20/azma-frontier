@@ -18,7 +18,7 @@
  *   from the Founder's own table and not from this file.
  */
 
-import { mkdtempSync } from 'fs';
+import { mkdtempSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -286,7 +286,6 @@ describe('٦ · والسعرُ لم يُمَسّ', () => {
   });
 
   it('and the reuse question is asked BEFORE the hold is taken', () => {
-    const { readFileSync } = require('fs') as typeof import('fs');
     const source = readFileSync(join(process.cwd(), 'app/makman-al-ghayah/reframe-actions.ts'), 'utf8');
     expect(source.indexOf('liveRenditionFor({')).toBeLessThan(source.indexOf('ledger.reserve('));
     // And it is scoped to the asking Creator.

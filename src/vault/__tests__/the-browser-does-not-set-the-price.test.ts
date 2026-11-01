@@ -28,6 +28,7 @@
  *   run here. What it returns is what a real clip would have measured.
  */
 
+import { readFileSync } from 'fs';
 import { mkdtempSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -132,9 +133,7 @@ describe('١ · القياسُ هو الأساس، ورقمُ المتصفِّح
   it('the request body is never read for the frame rate at all', () => {
     // Asserted on the source, because the only way to be sure a value does
     // not decide a charge is that nothing reads it.
-    const { readFileSync } = require('fs') as typeof import('fs');
-    const { join: j } = require('path') as typeof import('path');
-    const source = readFileSync(j(process.cwd(), 'src/vault/creative-job-service.ts'), 'utf8');
+    const source = readFileSync(join(process.cwd(), 'src/vault/creative-job-service.ts'), 'utf8');
     const fn = source.slice(
       source.indexOf('export async function resolveSourceFps'),
       source.indexOf('/**', source.indexOf('export async function resolveSourceFps')),

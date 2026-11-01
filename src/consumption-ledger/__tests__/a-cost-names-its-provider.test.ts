@@ -16,6 +16,7 @@
  *   Creator's balance or price.
  */
 
+import { execSync } from 'child_process';
 import { mkdtempSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -181,7 +182,6 @@ describe('٤ · ولا جدولَ أسعارِ مزوِّدٍ آخرَ يُقر�
 
 describe('٥ · ولا يَمَسُّ هذا رصيدًا ولا سعرًا', () => {
   it('the cost basis authority is read by the record and by nobody else', () => {
-    const { execSync } = require('child_process') as typeof import('child_process');
     const hits = (execSync(
       'git grep -lE "(from|require\\()[^\\"]*provider-cost-basis" -- "*.ts" || true',
       { encoding: 'utf8', cwd: process.cwd() },
