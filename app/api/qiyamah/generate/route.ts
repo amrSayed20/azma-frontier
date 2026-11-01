@@ -139,26 +139,47 @@ export async function POST(request: NextRequest) {
     //
     //   The validation moved above the money for this: a request that will be
     //   refused for want of a key must not first take units.
+    //   And it is validated by the SAME reader the other six roads use, not
+    //   by a trim of its own. FOUND 2026-11-01: this key went to the provider
+    //   lookup unchecked, so control characters and quotes were all accepted
+    //   — and the lookup that had to match it escapes none of them.
     const videoIntentKeyRaw = (body as { intentKey?: unknown })?.intentKey;
-    if (typeof videoIntentKeyRaw !== 'string' || videoIntentKeyRaw.trim().length === 0) {
+    const videoIntentKey = readClientOperationKey(
+      typeof videoIntentKeyRaw === 'string' ? videoIntentKeyRaw.slice(0, 100) : null,
+    );
+    if (videoIntentKey === null) {
       return NextResponse.json(
         { status: 'failed', operationId, stage: 'validate', reason: 'intent-key-required',
           message: 'تعذّر بدء الإنتاج. أعد تحميل الصفحة ثم حاول.' },
         { status: 400 },
       );
     }
-    const videoIntentKey = videoIntentKeyRaw.trim().slice(0, 100);
 
     const videoClaim = claimAttempt({
       db, creatorId: session.creatorId, scope: VIDEO_SCOPE, clientKey: videoIntentKey,
     });
 
-    // A key already spoken for: the production that exists is handed back, and
-    // the money is not touched at all. No hold, no charge, no provider.
+    /*  A key already spoken for: the production that exists is handed back,
+     *  and the money is not touched at all.
+     *
+     *  ── AND IT CANNOT START ONE, WHICH IS THE WHOLE POINT ────────────────
+     *
+     *    FOUND 2026-11-01 by a security review: this branch skips the balance
+     *    check and the reservation below, and it used to call an acceptance
+     *    that DISPATCHES a new production when its lookup finds nothing. With
+     *    the lookup missing on any key carrying a quote, the branch became a
+     *    repeatable unmetered paid video that answered `reused: true`.
+     *
+     *    `reuseOnly` removes the assumption instead of trusting it. A `null`
+     *    means the claim said «running» or «done» and the ledger has no such
+     *    production — a disagreement this road must REPORT, never paper over
+     *    by buying another video.
+     */
     if (videoClaim.kind === 'in-flight' || videoClaim.kind === 'already-succeeded') {
       const existing = await acceptVideoProduction({
         creatorId: session.creatorId,
         intentKey: videoIntentKey,
+        reuseOnly: true,
         request: {
           operationId, prompt,
           style: typeof style === 'string' ? style : undefined,
@@ -168,6 +189,20 @@ export async function POST(request: NextRequest) {
           originalIdea: typeof idea === 'string' && idea.trim().length > 0 ? idea.trim() : null,
         },
       });
+
+      if (!existing) {
+        return NextResponse.json(
+          {
+            status: 'failed', operationId, stage: 'gate',
+            reason: videoClaim.kind === 'in-flight' ? 'operation-in-flight' : 'already-performed',
+            message: videoClaim.kind === 'in-flight'
+              ? 'هذا الإنتاج يَجري الآن. انتظر نتيجته — ولم يُحسَب عليك مرّتين.'
+              : 'هذا الإنتاج نُفِّذ من قبل. اطلبه من خزانتك بدلاً من إعادته.',
+          },
+          { status: 409 },
+        );
+      }
+
       return NextResponse.json(
         {
           status: 'accepted', capability: 'generate-video',

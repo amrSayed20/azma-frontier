@@ -155,14 +155,32 @@ function writeStored(operationId: string, patch: Partial<StoredVideoIntent>, db 
  */
 export function findOperationByIntentKey(creatorId: string, intentKey: string): string | null {
   if (!intentKey) return null;
+
+  // ── THE PATTERN MUST BE WRITTEN THE WAY THE COLUMN IS ────────────────────
+  //
+  //   FOUND 2026-11-01 by a security review. The column holds
+  //   `JSON.stringify(intent)`, and this pattern was built from the RAW key —
+  //   so a key containing a character JSON escapes (`"`, `\`, a control
+  //   character) produced a pattern that could NEVER match the stored text.
+  //   The lookup then reported «no such production», and the one caller that
+  //   assumed it only ever hands work back started a brand-new paid video
+  //   instead, answering `reused: true` with no hold and no record.
+  //
+  //   Two things are fixed here. The key is escaped as JSON escapes it, so
+  //   the pattern reads what the column wrote; and `%` and `_` — both legal
+  //   in a key a browser mints — are escaped with a named ESCAPE character,
+  //   so a key cannot act as a wildcard and match a DIFFERENT production.
+  const asStored = JSON.stringify(intentKey).slice(1, -1);
+  const pattern = `%"intentKey":"${asStored.replace(/[\\%_]/g, (c) => `\\${c}`)}"%`;
+
   const row = getDb()
     .prepare(
       `SELECT operation_id FROM operation_ledger
         WHERE subscriber_tenant_id = ? AND capability_target = ?
-          AND source_intent_json LIKE ?
+          AND source_intent_json LIKE ? ESCAPE '\\'
         ORDER BY created_at DESC LIMIT 1`,
     )
-    .get(creatorId, CapabilityTarget.MOTION, `%"intentKey":"${intentKey}"%`) as { operation_id?: string } | undefined;
+    .get(creatorId, CapabilityTarget.MOTION, pattern) as { operation_id?: string } | undefined;
   return row?.operation_id ?? null;
 }
 
@@ -231,7 +249,7 @@ export interface ProductionMoney {
   readonly units: number;
 }
 
-export async function acceptVideoProduction(params: {
+interface AcceptVideoProductionParams {
   readonly creatorId: string;
   readonly intentKey: string;
   readonly request: VideoGenerationRequest;
@@ -243,7 +261,46 @@ export async function acceptVideoProduction(params: {
    * record, and a row left in-flight for ever is a record that lies.
    */
   readonly attemptKey?: string;
-}): Promise<AcceptedOperation> {
+  /**
+   * Hand back only what already exists, and START NOTHING.
+   *
+   * ─── WHY THIS FLAG HAD TO BE ADDED ─────────────────────────────────────
+   *
+   *   FOUND 2026-11-01 by a security review. The attempt layer gave the
+   *   video road a short-circuit: a claim of `in-flight` or
+   *   `already-succeeded` answered by calling this function and returning
+   *   `reused: true` — SKIPPING the balance check and the reservation
+   *   entirely, on the assumption that this function only ever hands work
+   *   back. It does not: when the lookup finds nothing it dispatches a brand
+   *   new production, and the escaping bug above made the lookup miss for any
+   *   key containing a quote or a backslash.
+   *
+   *   The result was a repeatable, unmetered paid video: no hold, no attempt
+   *   binding, no ledger entry — and an answer that said `reused: true`.
+   *
+   *   The escaping is fixed, and this flag removes the assumption rather
+   *   than relying on it. A caller that means «give me the one that exists»
+   *   now gets `null` when there is none, and must say so to the Creator.
+   */
+  readonly reuseOnly?: boolean;
+}
+
+/**
+ * Two shapes, so the type never lies to a caller.
+ *
+ * With  the answer may be  — nothing existed and nothing was
+ * started. Without it, a production is always returned, because this function
+ * dispatches one when the lookup finds none.
+ */
+export async function acceptVideoProduction(
+  params: AcceptVideoProductionParams & { readonly reuseOnly: true },
+): Promise<AcceptedOperation | null>;
+export async function acceptVideoProduction(
+  params: AcceptVideoProductionParams & { readonly reuseOnly?: false | undefined },
+): Promise<AcceptedOperation>;
+export async function acceptVideoProduction(
+  params: AcceptVideoProductionParams,
+): Promise<AcceptedOperation | null> {
   const existing = findOperationByIntentKey(params.creatorId, params.intentKey);
   if (existing) {
     const observed = await observeOperation(existing, params.creatorId);
@@ -251,6 +308,10 @@ export async function acceptVideoProduction(params: {
     // Never a second provider call, never a second charge.
     return { operationId: existing, state: observed?.state ?? OperationState.PENDING_AUTHORIZATION, reused: true };
   }
+
+  // Nothing exists, and the caller asked for nothing new. Never a provider
+  // call from a road that has already skipped its own money.
+  if (params.reuseOnly) return null;
 
   const operationId = params.request.operationId ?? randomUUID();
   const intent: StoredVideoIntent = {

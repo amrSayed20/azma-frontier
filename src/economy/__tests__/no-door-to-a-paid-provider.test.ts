@@ -380,6 +380,43 @@ describe('٣ · والمولِّدُ المدفوعُ نفسُه ليس بابً
     expect(examined).toBeGreaterThanOrEqual(6);
   });
 
+  it('a road that skipped its own money cannot start a production', () => {
+    /*  THE BILLING BYPASS A SECURITY REVIEW FOUND, 2026-11-01
+     *
+     *    The video road's claim branch answers a resent key with the
+     *    production that exists — and SKIPS the balance check and the
+     *    reservation to do it. It used to reach an acceptance that
+     *    DISPATCHES a new production when its lookup finds nothing, and the
+     *    lookup built its `LIKE` pattern from the raw key while the column
+     *    held `JSON.stringify(intent)` — so any key carrying a quote or a
+     *    backslash could never match. The branch became a repeatable
+     *    unmetered paid video that answered `reused: true`.
+     *
+     *    Three things hold it shut, and all three are asserted: the branch
+     *    asks for reuse only; the lookup escapes the key the way the column
+     *    wrote it; and the body key passes the same reader the other six
+     *    roads use.
+     */
+    const route = read('app/api/qiyamah/generate/route.ts');
+    const lifecycle = read('src/qiyamah-generation/video-operation-lifecycle.ts');
+
+    // 1 · the branch cannot create
+    expect(route).toContain('reuseOnly: true');
+    expect(lifecycle).toContain('if (params.reuseOnly) return null;');
+    // and it reports the disagreement instead of buying a second video
+    expect(route).toContain("reason: videoClaim.kind === 'in-flight' ? 'operation-in-flight' : 'already-performed'");
+
+    // 2 · the lookup is written the way the column is
+    expect(lifecycle).toContain('JSON.stringify(intentKey).slice(1, -1)');
+    expect(lifecycle).toContain("ESCAPE '\\\\'");
+    // the raw key is never pasted into the pattern again
+    expect(lifecycle).not.toContain('`%"intentKey":"${intentKey}"%`');
+
+    // 3 · the body key is validated by the shared reader, not by a local trim
+    expect(route).toContain('readClientOperationKey(');
+    expect(route).not.toContain('videoIntentKeyRaw.trim().slice(0, 100)');
+  });
+
   it('the deferred halves close their own money, and not at acceptance', () => {
     /*  THE DORMANT DEFECT THIS HOLDS SHUT
      *
