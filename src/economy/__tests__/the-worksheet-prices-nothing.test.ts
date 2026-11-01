@@ -173,8 +173,18 @@ describe('4 · no pricing authority reads it', () => {
 
   it('nothing outside the economy folder and its tests imports it', () => {
     const { execSync } = require('child_process');
-    const out = execSync('git grep -l "creative-operations-cost-worksheet" || true',
-      { encoding: 'utf8', cwd: process.cwd() }) as string;
+    // IT MEASURES IMPORTS, because that is what it asserts.
+    //
+    //   CORRECTED 2026-11-01: the pattern was the bare filename over the whole
+    //   repository, so anything that merely NAMED the file counted as an
+    //   importer — and the paid-provider inventory names it in prose, as the
+    //   file it classifies. A guard whose instrument answers a different
+    //   question from its claim is one that gets silenced for being wrong.
+    const out = execSync(
+      'git grep -lE "(from|require\\()[^\\"]*creative-operations-cost-worksheet"'
+      + ' -- "*.ts" "*.tsx" || true',
+      { encoding: 'utf8', cwd: process.cwd() },
+    ) as string;
     const foreign = out.split('\n').map((l) => l.trim()).filter((l) =>
       l.length > 0
       && l !== 'src/economy/cost-engine/creative-operations-cost-worksheet.ts'

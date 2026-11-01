@@ -130,14 +130,29 @@ describe('StateCacheService', () => {
   });
 
   test('throws when cache exceeds max size (10 000)', async () => {
-    // Fill cache to capacity
+    // ── THE TTL MUST OUTLAST THE FILL, OR THE TEST TESTS NOTHING ───────────
+    //
+    //   MEASURED 2026-11-01: this failed in a full run and passed on its own.
+    //   The fill used a 60-second TTL, and under the load of 309 suites this
+    //   one took 109 seconds — so the earliest entries EXPIRED while the loop
+    //   was still writing, the cache was no longer full, and the overflow
+    //   insert correctly succeeded. The service was right; the premise had
+    //   evaporated.
+    //
+    //   An hour cannot elapse inside a test, so the premise now holds on any
+    //   machine. And the premise is ASSERTED before the consequence: if the
+    //   cache is ever not full here, this says so instead of blaming the
+    //   insert that followed.
+    const ONE_HOUR_MS = 60 * 60 * 1_000;
     for (let i = 0; i < 10_000; i++) {
-      await cache.set(createCacheKey(`fill-${i}`), i, 60_000, 'constitutional-structure');
+      await cache.set(createCacheKey(`fill-${i}`), i, ONE_HOUR_MS, 'constitutional-structure');
     }
+
+    expect((await cache.getStatistics()).totalEntries).toBe(10_000);
 
     // Adding a brand-new key should throw
     await expect(
-      cache.set(createCacheKey('overflow'), 'x', 5000, 'constitutional-structure'),
+      cache.set(createCacheKey('overflow'), 'x', ONE_HOUR_MS, 'constitutional-structure'),
     ).rejects.toThrow('State cache full');
   });
 
