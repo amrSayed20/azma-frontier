@@ -6,9 +6,14 @@
  *   Audited against the live release 2026-10-31. Six paid roads existed; two
  *   of them — `edit` and `animate` — reached a billed provider with no
  *   entitlement check, no price, no balance check, no reservation and no
- *   settlement, in the route AND in the service beneath it. `animate` is the
- *   most expensive act the Empire buys: 840 provider credits, measured, for
- *   five seconds.
+ *   settlement, in the route AND in the service beneath it. `animate` is among
+ *   the dearest acts the Empire buys: VEO_MOTION is 96 provider credits per
+ *   second, measured, so five seconds is 480.
+ *
+ *   CORRECTED 2026-11-01: an earlier report said 840 for five seconds. That is
+ *   168/second — Seedance, retired 2026-09-27, and forbidden as a current cost
+ *   by `qiyamah-cost-truth.ts` in terms. The road was naked; the number was not
+ *   its cost.
  *
  *   Two roads I first reported as naked were NOT: `upscale` carries the whole
  *   cycle in its route, and `creative/[operation]` carries it inside
@@ -651,6 +656,16 @@ describe('٨ · كلُّ طريقٍ مدفوعٍ يَمُرُّ ببوّابة',
     { name: 'clone-voice', files: ['app/api/vault/assets/clone-voice/route.ts'] },
     { name: 'generate-speech', files: ['app/api/vault/assets/generate-speech/route.ts'] },
     { name: 'generate-cloned-speech', files: ['app/api/vault/assets/generate-cloned-speech/route.ts'] },
+    // FOUND 2026-11-01, by tracing providers to their callers instead of
+    // listing routes: the storyboard commission reached the billed image
+    // provider from `app/api/ras-amr/*`, which neither earlier audit read.
+    {
+      name: 'ras-amr-scene-commission',
+      files: [
+        'app/api/ras-amr/storyboard/[storyboardId]/produce/route.ts',
+        'src/ras-amr-production/qiyamah-commission.ts',
+      ],
+    },
   ];
 
   it.each(roads)('$name holds the money before it calls the provider', ({ files }) => {
@@ -667,12 +682,15 @@ describe('٨ · كلُّ طريقٍ مدفوعٍ يَمُرُّ ببوّابة',
     expect({ authorises, settles, releases }).toEqual({ authorises: true, settles: true, releases: true });
   });
 
-  it('the two roads the audit found naked now use the shared gate, not a copy of it', () => {
+  it('the three roads the audits found naked now use the shared gate, not a copy of it', () => {
     // The edit's gate lives in the SERVICE, because a second caller reaches
-    // the act without the route. Each road is judged where its act is.
+    // the act without the route; the scene commission's lives in the courier,
+    // because one commission makes many scenes and the money belongs to the
+    // scene. Each road is judged where its act is.
     for (const f of [
       'src/qiyamah-generation/image-edit-service.ts',
       'app/api/vault/assets/[assetId]/animate/route.ts',
+      'src/ras-amr-production/qiyamah-commission.ts',
     ]) {
       const source = read(f);
       expect(source).toContain('authorisePaidOperation(');

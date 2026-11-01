@@ -1522,6 +1522,8 @@ export default function RasAmrChamber() {
       case 'REFERENCE_UNUSABLE': return 'المرجع البصريُّ المعتمد لا يمكن البناء عليه. اختر مرجعاً آخر من أصولك.';
       case 'UNCHANGED_BY_EDITOR': return 'عاد المحرّر بالصورة المرجعيّة نفسها دون تغيير. أعد صياغة المطلوب في هذا المشهد.';
       case 'EDITOR_UNAVAILABLE': return 'البناء على مرجعٍ بصريٍّ غير مهيّأ في الإمبراطوريّة بعد.';
+      case 'NO_BALANCE':        return 'رصيدك لا يكفي لإنشاء هذا المشهد. اشترِ باقةً للمتابعة.';
+      case 'NOT_PRICED':        return 'إنشاء المشاهد لم يُسعَّر بعد، فلا يُنفَّذ. وسيُفتَح فور اعتمادِ سعره.';
       default:                  return null;
     }
   };

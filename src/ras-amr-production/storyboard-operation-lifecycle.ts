@@ -87,7 +87,14 @@ export type SceneFrameFailure =
    * Its own name, because the cure is its own: nothing was refused, nothing
    * was lost, and nothing needs buying again — a copy failed.
    */
-  | 'HANDOFF_FAILED';
+  | 'HANDOFF_FAILED'
+  /**
+   * The economy gate refused this scene. The two are kept apart because they
+   * are two different problems: the Creator's balance, and a price of the
+   * Empire's own that nobody has approved yet.
+   */
+  | 'NO_BALANCE'
+  | 'NOT_PRICED';
 
 /** What became of one scene's picture in one production. */
 export interface SceneFrameOutcome {

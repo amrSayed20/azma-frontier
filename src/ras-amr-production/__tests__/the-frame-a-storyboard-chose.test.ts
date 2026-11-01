@@ -38,8 +38,19 @@ jest.mock('../../qiyamah-generation/asset-storage', () => ({
 // The same double the generation service's own suite uses, for the same
 // reason: a double that does not mirror its module tests something that does
 // not exist.
+const { DatabaseSync: CommissionDb } = require("node:sqlite");
+const { SCHEMA_STATEMENTS: COMMISSION_SCHEMA } = require("../../persistent-storage/schema");
+const realCommissionDb = new CommissionDb(":memory:");
+for (const statement of COMMISSION_SCHEMA) realCommissionDb.exec(statement);
+
 jest.mock('../../persistent-storage', () => ({
-  getDb: jest.fn(() => 'fake-db-handle'),
+  // A REAL in-memory database, not a string.
+  //
+  //   The commission now records which submission each scene belongs to, so a
+  //   re-run of a storyboard whose earlier scenes succeeded replays them
+  //   instead of paying for them again. That is a real write, and a stub that
+  //   cannot be written to does not stand in for a database — it hides it.
+  getDb: jest.fn(() => realCommissionDb),
   recordGeneration: jest.fn(),
   insertVaultAsset: jest.fn(),
   findVaultAssetByContentDigest: jest.fn(() => null),
@@ -99,6 +110,11 @@ describe('Ras Al Amr to Qiyamah: the frame a storyboard chose', () => {
     resetRateLimiterForTests();
     mockOrchestrate.mockReset();
     mockPersistGeneratedImage.mockReset();
+    // Every test here commissions the SAME scene id, and a scene is paid for
+    // once: without this, the second test would be answered from the first
+    // one's record and the provider would never be reached — which is the
+    // economy working, and not what these tests are about.
+    realCommissionDb.exec('DELETE FROM paid_operation_attempts');
     // The handoff copies the finished picture where the production workshop can
     // open it. That path is not under test, and must not be this host's real
     // provider directory: it is pointed at a scratch directory, where the copy

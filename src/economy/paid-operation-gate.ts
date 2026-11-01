@@ -18,9 +18,14 @@ import type { TrialCapability } from './trial/trial-entitlement-types';
  *   them — image editing and animation — called a billed provider with NO
  *   entitlement check, NO balance check, NO reservation and NO settlement, in
  *   the route AND in the service beneath it. Any signed-in Creator could
- *   invoke them directly, without limit and without record. One of the two is
- *   `animate`, whose own measured provider charge was 840 credits for five
- *   seconds.
+ *   invoke them directly, without limit and without record.
+ *
+ *   CORRECTED 2026-11-01: an earlier report put `animate` at 840 provider
+ *   credits for five seconds. That is 168 credits/second, which is Seedance's
+ *   rate — RETIRED on 2026-09-27, and `qiyamah-cost-truth.ts` says in terms
+ *   that it «must never be used as» a current cost. At the Empire's measured
+ *   standard, VEO_MOTION is 96 credits/second: five seconds is 480 credits,
+ *   not 840. The road was still naked; the number was wrong.
  *
  *   Two roads I first reported as naked are NOT: `upscale` carries the whole
  *   cycle in its route, and `creative/[operation]` carries it inside
@@ -76,10 +81,18 @@ export interface AuthoriseRequest {
    * Empire has no price class for it at all.
    *
    * MEASURED: `background-removal`, `lip-sync`, `face-swap` and
-   * `talking-photo` appear in NO catalog entry. Folding them into
-   * `video-generation` would be an assumption about money, and three of them
-   * are video projects whose costs are not known to be equal. A null here is
-   * the honest answer, and it refuses.
+   * `talking-photo` appear in no entry of the PROVIDER COST CATALOG, which is
+   * the only catalog this gate reads. Folding them into `video-generation`
+   * would be an assumption about money, and three of them are video projects
+   * whose costs are not known to be equal. A null here is the honest answer,
+   * and it refuses.
+   *
+   * CORRECTED 2026-11-01: that does NOT mean those four are unpriced. They are
+   * measured and priced under the Chief Architect's ratified 1.70 uplift in
+   * `pricing/new-capability-pricing.ts`, and they reach it through
+   * `creative-job-service`, not through this gate. There are two pricing
+   * authorities in the Empire, and this one reads the catalog. See
+   * `docs/UNPRICED_CAPABILITY_DISCLOSURE.md`.
    */
   readonly capability: CapabilityTarget | null;
   readonly gatewayId: string;

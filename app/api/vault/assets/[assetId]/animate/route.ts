@@ -171,10 +171,15 @@ export async function POST(
 
       AUDITED 2026-10-31 against the live release: this road called the video
       provider with no entitlement check, no price, no balance check, no
-      reservation and no settlement — and this is the most expensive act the
-      Empire buys. Its own measured provider charge was 840 credits for five
-      seconds of seedance. Any signed-in Creator could spend that, repeatedly,
-      and the ledger would never know.
+      reservation and no settlement — and this is among the dearest acts the
+      Empire buys. At the Empire's measured standard, VEO_MOTION costs 96
+      provider credits per second, so five seconds is 480. Any signed-in
+      Creator could spend that, repeatedly, and the ledger would never know.
+
+      CORRECTED 2026-11-01: an earlier report of mine said 840 credits for
+      five seconds. That is 168/second, which is Seedance's rate — retired on
+      2026-09-27, and `qiyamah-cost-truth.ts` forbids its use as a current
+      cost in terms. The road was still naked; the number was wrong.
 
       The gate stands HERE and not at the top of the route on purpose: every
       refusal above this line is a validation refusal, and a hold taken before
@@ -188,9 +193,9 @@ export async function POST(
   //
   //   Claimed after every validation above, so a request that was going to be
   //   refused for a reason of its own never consumes a submission key. This is
-  //   the most expensive door the Empire has — 840 provider credits measured
-  //   for five seconds — so a press that arrives twice must call the engine
-  //   once, and that decision belongs to whoever pressed.
+  //   among the dearest doors the Empire has — 96 provider credits per second,
+  //   measured — so a press that arrives twice must call the engine once, and
+  //   that decision belongs to whoever pressed.
   const claim = claimAttempt({
     db,
     creatorId: session.creatorId,
@@ -373,7 +378,7 @@ export async function POST(
  * The stored answer, read back for a resent key.
  *
  * A row that will not parse back into a success carrying an asset is NOT a
- * licence to spend 840 provider credits again: the caller refuses instead.
+ * licence to spend a second video at the provider: the caller refuses instead.
  */
 function replayAnimateResult(resultJson: string | null): unknown | null {
   if (typeof resultJson !== 'string') return null;
