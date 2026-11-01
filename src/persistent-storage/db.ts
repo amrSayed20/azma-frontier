@@ -24,7 +24,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
-import { SCHEMA_STATEMENTS, GENERATION_RECORDS_MIGRATION_COLUMNS, CINEMATIC_LEDGER_MIGRATION_COLUMNS, CREATORS_MIGRATION_COLUMNS, GOALS_MIGRATION_COLUMNS, HADITH_NARRATIONS_MIGRATION_COLUMNS, STORYBOARD_SCENES_MIGRATION_COLUMNS, VAULT_ASSETS_MIGRATION_COLUMNS, INDEX_STATEMENTS } from './schema';
+import { SCHEMA_STATEMENTS, GENERATION_RECORDS_MIGRATION_COLUMNS, CONSUMPTION_RECORDS_MIGRATION_COLUMNS, CINEMATIC_LEDGER_MIGRATION_COLUMNS, CREATORS_MIGRATION_COLUMNS, GOALS_MIGRATION_COLUMNS, HADITH_NARRATIONS_MIGRATION_COLUMNS, STORYBOARD_SCENES_MIGRATION_COLUMNS, VAULT_ASSETS_MIGRATION_COLUMNS, INDEX_STATEMENTS } from './schema';
 // Economy Foundation: no migration columns needed for new tables — they are
 // created fresh via CREATE TABLE IF NOT EXISTS in SCHEMA_STATEMENTS.
 
@@ -146,6 +146,24 @@ function migrateGoalsTable(db: DatabaseSync): void {
   }
 }
 
+/**
+ * The cost discovery record gains its basis columns.
+ *
+ * See CONSUMPTION_RECORDS_MIGRATION_COLUMNS: the legacy estimate column is
+ * NOT NULL and stays, and the honest figure lives beside it where a null is
+ * allowed to mean «nobody measured this».
+ */
+function migrateConsumptionRecordsTable(db: DatabaseSync): void {
+  const existingColumns = new Set(
+    (db.prepare('PRAGMA table_info(consumption_records)').all() as { name: string }[]).map((row) => row.name),
+  );
+  for (const column of CONSUMPTION_RECORDS_MIGRATION_COLUMNS) {
+    if (!existingColumns.has(column.name)) {
+      db.exec(`ALTER TABLE consumption_records ADD COLUMN ${column.ddl}`);
+    }
+  }
+}
+
 function migrateGenerationRecordsTable(db: DatabaseSync): void {
   const existingColumns = new Set(
     (db.prepare('PRAGMA table_info(generation_records)').all() as { name: string }[]).map((row) => row.name),
@@ -232,6 +250,7 @@ export function createDatabase(path: string = defaultDbPath()): DatabaseSync {
   migrateHadithNarrationsTable(db);
   migrateStoryboardScenesTable(db);
   migrateGenerationRecordsTable(db);
+  migrateConsumptionRecordsTable(db);
   // Provenance must exist before INDEX_STATEMENTS runs — SQLite cannot index a
   // column that is not there yet, the same ordering CREATORS_MIGRATION_COLUMNS
   // already depends on.

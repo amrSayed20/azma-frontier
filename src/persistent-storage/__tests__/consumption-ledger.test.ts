@@ -15,6 +15,7 @@
 
 import { createDatabase } from '../db';
 import { ConsumptionRepository } from '../consumption-repository';
+import { CREDIT_USD } from '../../economy/cost-engine/qiyamah-cost-truth';
 import { OperationType } from '../../consumption-ledger/consumption-ledger-contracts';
 import {
   estimateImageGenerationCost,
@@ -135,6 +136,12 @@ function makeRepo() {
   return new ConsumptionRepository(db);
 }
 
+/** A repository and the database under it, for tests that read the basis. */
+function makeRepoWithDb() {
+  const db = createDatabase(':memory:');
+  return { repo: new ConsumptionRepository(db), db };
+}
+
 const MONTH = '2026-08';
 const OTHER_MONTH = '2026-07';
 const CREATOR_A = 'creator-aaa';
@@ -162,7 +169,11 @@ describe('ConsumptionRepository — record and getMonthlyUsage', () => {
     });
     const usage = repo.getMonthlyUsage(CREATOR_A, MONTH);
     expect(usage.imageGenerations).toBe(1);
-    expect(usage.totalCostUsdEstimate).toBeCloseTo(0.04);
+    // CORRECTED 2026-11-02: the repository now records the MEASURED cost of
+    // the provider that actually served the request — 100 Magic Hour credits
+    // at the acquisition basis — in place of OpenAI's published $0.040 for a
+    // model this Empire does not use. The old figure understated it by 3.4x.
+    expect(usage.totalCostUsdEstimate).toBeCloseTo(100 * CREDIT_USD, 10);
   });
 
   it('accumulates multiple image records', () => {
@@ -172,7 +183,7 @@ describe('ConsumptionRepository — record and getMonthlyUsage', () => {
     }
     const usage = repo.getMonthlyUsage(CREATOR_A, MONTH);
     expect(usage.imageGenerations).toBe(3);
-    expect(usage.totalCostUsdEstimate).toBeCloseTo(0.12);
+    expect(usage.totalCostUsdEstimate).toBeCloseTo(3 * 100 * CREDIT_USD, 10);
   });
 
   it('sums TTS characters correctly', () => {
@@ -216,7 +227,29 @@ describe('ConsumptionRepository — record and getMonthlyUsage', () => {
     repo.record({ creatorId: CREATOR_A, operationType: OperationType.VOICE_CLONE, costUsdEstimate: 0.30, units: 1, monthKey: MONTH, recordedAt: Date.now() });
 
     const usage = repo.getMonthlyUsage(CREATOR_A, MONTH);
-    expect(usage.totalCostUsdEstimate).toBeCloseTo(0.355);
+    // CORRECTED 2026-11-02. The sum used to be 0.355 — an image at OpenAI's
+    // $0.040, speech at OpenAI's $0.015, and a voice clone at an unsourced
+    // $0.300 — three figures for providers that did not serve any of them.
+    //
+    // Now only the image has a measured cost. Speech and voice cloning are
+    // UNKNOWN on ElevenLabs and contribute NOTHING to this total rather than
+    // a rate card's guess: the legacy column holds zero for them and the
+    // `cost_basis` column beside it says why, so the zero is never readable
+    // as «this was free».
+    expect(usage.totalCostUsdEstimate).toBeCloseTo(100 * CREDIT_USD, 10);
+  });
+
+  it('and an unmeasured operation adds nothing to the total, with its basis recorded', () => {
+    const { repo, db } = makeRepoWithDb();
+    repo.record({ creatorId: CREATOR_A, operationType: OperationType.TEXT_TO_SPEECH, costUsdEstimate: 0.015, units: 1000, monthKey: MONTH, recordedAt: Date.now() });
+
+    expect(repo.getMonthlyUsage(CREATOR_A, MONTH).totalCostUsdEstimate).toBe(0);
+    // The zero is not a cost. The row says so itself.
+    const row = db
+      .prepare('SELECT cost_basis, cost_usd_measured FROM consumption_records WHERE creator_id = ?')
+      .get(CREATOR_A) as { cost_basis: string | null; cost_usd_measured: number | null };
+    expect(row.cost_basis).toBe('UNKNOWN');
+    expect(row.cost_usd_measured).toBeNull();
   });
 });
 
@@ -239,13 +272,21 @@ describe('ConsumptionRepository — getAllCreatorsUsage', () => {
   });
 
   it('sorts by total cost descending', () => {
+    // CORRECTED 2026-11-02: this used to make the two totals differ by
+    // passing two different `costUsdEstimate` values — 0.04 and 0.08 — which
+    // the repository no longer reads, because a caller's figure is not a
+    // cost. The difference is now REAL: creator B generated two images and
+    // creator A one, so B's measured total is genuinely the larger.
     const repo = makeRepo();
-    repo.record({ creatorId: CREATOR_A, operationType: OperationType.IMAGE_GENERATION, costUsdEstimate: 0.04, units: 1, monthKey: MONTH, recordedAt: Date.now() });
-    repo.record({ creatorId: CREATOR_B, operationType: OperationType.IMAGE_GENERATION, costUsdEstimate: 0.08, units: 1, monthKey: MONTH, recordedAt: Date.now() });
+    repo.record({ creatorId: CREATOR_A, operationType: OperationType.IMAGE_GENERATION, costUsdEstimate: 0, units: 1, monthKey: MONTH, recordedAt: Date.now() });
+    repo.record({ creatorId: CREATOR_B, operationType: OperationType.IMAGE_GENERATION, costUsdEstimate: 0, units: 2, monthKey: MONTH, recordedAt: Date.now() });
 
     const all = repo.getAllCreatorsUsage(MONTH);
     expect(all[0].creatorId).toBe(CREATOR_B);
     expect(all[1].creatorId).toBe(CREATOR_A);
+    // And the totals are the measured ones, in the order the rule promises.
+    expect(all[0].totalCostUsdEstimate).toBeCloseTo(2 * 100 * CREDIT_USD, 10);
+    expect(all[1].totalCostUsdEstimate).toBeCloseTo(100 * CREDIT_USD, 10);
   });
 
   it('does not include records from other months', () => {

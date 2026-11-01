@@ -117,20 +117,58 @@ export function priceSubmission(request: SubmitRequest): PriceVerdict {
  *
  * Asked of the file, not of the browser and not of a default. A Creator never
  * learns the word «fps»: they choose a clip and a duration, and the Empire
- * reads the rest off their own asset. Null means the price cannot be stated,
- * and `priceSubmission` then refuses rather than guesses.
+ * reads the rest off their own asset. `undefined` means the price cannot be
+ * stated, and `priceSubmission` then refuses rather than guesses.
+ *
+ * ─── WHAT THE BROWSER USED TO BE ALLOWED TO DECIDE ──────────────────────────
+ *
+ *   FOUND 2026-11-01 by a security review, pre-existing on `main`: the first
+ *   line of this function was
+ *
+ *       if (request.sourceFps && request.sourceFps > 0) return request.sourceFps;
+ *
+ *   — so a number from the request body SHORT-CIRCUITED the measurement
+ *   entirely. `LIP_SYNC` and `FACE_SWAP` are priced per FRAME, and the frame
+ *   count is `requestedSeconds × sourceFps`, so a client stating
+ *   `sourceFps: 1` for a 30 fps clip was charged about one THIRTIETH of the
+ *   approved price while the provider billed the Empire for every real frame.
+ *   It was the only client-controlled price input in the Empire.
+ *
+ * ─── THE ORDER NOW, AND WHY FAILURE REFUSES ─────────────────────────────────
+ *
+ *   The measurement is the authority whenever it can be taken. When it cannot
+ *   — the file is unreadable, ffprobe is absent, the stream carries no frame
+ *   rate — this answers `undefined`, and the act is REFUSED as unpriceable.
+ *
+ *   It does not fall back to the client's number. The owner's ruling of
+ *   2026-11-02 is explicit: «عدم قبول request.sourceFps بديلًا غير متحقق
+ *   منه إذا فشل القياس», and the safe behaviour must prevent «الخصم الأقل من
+ *   المستحق أو اعتماد قيمة يسيطر عليها العميل». Refusing is the only ending
+ *   that does both — and it is the ending this chamber already uses for every
+ *   act whose cost it cannot bound before running it.
+ *
+ *   `request.sourceFps` is therefore read by nothing here. It is still
+ *   accepted at the door and still recorded on the job row, because what a
+ *   client CLAIMED is evidence worth keeping beside what we measured; it has
+ *   simply stopped deciding the charge.
  */
 export async function resolveSourceFps(
   db: DatabaseSync,
   request: SubmitRequest,
 ): Promise<number | undefined> {
-  if (request.sourceFps && request.sourceFps > 0) return request.sourceFps;
   const capability = CAPABILITY_OF_OPERATION[request.operation];
+  // Only the frame-billed acts need one at all; for the others a frame rate
+  // is not part of the price and is not asked for.
   if (capability !== 'LIP_SYNC' && capability !== 'FACE_SWAP') return undefined;
+
+  // Scoped to the asking Creator: an asset that is not theirs yields no
+  // measurement, and the act is refused rather than priced off someone
+  // else's file.
   const target = getVaultAsset(db, request.targetAssetId);
   if (!target || target.subscriberTenantId !== request.creatorId) return undefined;
-  const fps = await measureSourceFps(target.secureStorageUri);
-  return fps ?? undefined;
+
+  const measured = await measureSourceFps(target.secureStorageUri);
+  return measured ?? undefined;
 }
 
 /**

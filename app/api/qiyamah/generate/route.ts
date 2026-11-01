@@ -4,7 +4,7 @@ import { verifySession } from '../../../../src/authentication';
 import { getDb } from '../../../../src/persistent-storage';
 import { ConsumptionRepository } from '../../../../src/persistent-storage/consumption-repository';
 import { OperationType } from '../../../../src/consumption-ledger/consumption-ledger-contracts';
-import { estimateImageGenerationCost, getCurrentMonthKey } from '../../../../src/consumption-ledger/cost-estimator';
+import { getCurrentMonthKey } from '../../../../src/consumption-ledger/cost-estimator';
 import { CreatorCreditRepository } from '../../../../src/economy/credit-ledger/credit-ledger-repository';
 import { AzmaUnitCostEngine } from '../../../../src/economy/cost-engine/azma-cost-engine';
 import { TrialEntitlementService } from '../../../../src/economy/trial/trial-entitlement-service';
@@ -529,7 +529,8 @@ export async function POST(request: NextRequest) {
       ledger.record({
         creatorId: session.creatorId,
         operationType: OperationType.IMAGE_GENERATION,
-        costUsdEstimate: estimateImageGenerationCost(),
+        // Superseded: the repository resolves the measured cost and its basis.
+        costUsdEstimate: 0,
         units: 1,
         monthKey: getCurrentMonthKey(),
         recordedAt: Date.now(),

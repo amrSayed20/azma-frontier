@@ -38,6 +38,7 @@ import { buildReframePlan, reframeUnitCost, type ReframePlan } from '@/src/platf
 import { resolveTarget } from '@/src/platform-reframe/platform-target';
 import { reframeToTarget } from '@/src/platform-reframe/reframe-execution';
 import { RETENTION_MS, sweepExpiredRenditions } from '@/src/platform-reframe/retention';
+import { liveRenditionFor } from '@/src/platform-reframe/live-rendition';
 import {
   claimAttempt, completeAttempt, failAttempt, attachReservation,
 } from '@/src/economy/paid-operation-attempts';
@@ -146,19 +147,46 @@ export async function executeReframe(
       continue;
     }
 
+    /*  ── DO YOU ALREADY HAVE IT? ──────────────────────────────────────────
+     *
+     *    RULED 2026-11-02: no second charge for resending a request whose
+     *    answer was lost, and no second charge for a rendition the Creator
+     *    already owns and can still use.
+     *
+     *    One question settles both, and it is not «did you ask before?» —
+     *    that question needs a key, and a key derived from the master and the
+     *    platform never expires while the rendition it names expires in
+     *    fifteen days. It is «DO YOU HAVE THE FILE?». A lost answer and a
+     *    deliberate repeat both find it; an expired rendition finds nothing
+     *    and is new work, which is the one case a charge is due.
+     *
+     *    Validity is read from the stamp the rendition was born with, never
+     *    from whether the sweeper has got to it — otherwise the moment the
+     *    sweeper last ran would decide whether a Creator pays.
+     *
+     *    The price is untouched: twenty units, one platform, one charge.
+     */
+    const existing = liveRenditionFor({
+      db: getDb(), creatorId, sourceAssetId: assetId, platform: target.platform,
+    });
+    if (existing) {
+      produced.push({
+        platform: target.platform,
+        label: target.label,
+        assetId: existing.assetId,
+        storageUri: existing.secureStorageUri,
+      });
+      continue;
+    }
+
     const operationId = `reframe_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     // One reservation per platform, because one platform is one charge and one
     // file. A single reservation for all of them would charge for a failure.
     // An attempt row per reservation — claimed WITHOUT a client key, so it
-    // deduplicates nothing and changes no behaviour. Its only job is to bind
-    // this hold to this outcome, so a settlement the ledger refuses can be
-    // found and finished later instead of vanishing.
-    //
-    // A stable key is deliberately NOT used here: a rendition's natural key is
-    // the master plus the platform, and a rendition expires after fifteen days
-    // — so a Creator who asks again a month later would be refused for ever by
-    // a key that never expires. That needs the Chief Architect's ruling, not a
-    // guess inside a loop.
+    // deduplicates nothing on its own. Its job is to bind this hold to this
+    // outcome, so a settlement the ledger refuses can be found and finished
+    // later instead of vanishing. The reuse question above is what prevents a
+    // duplicate charge; this row is what makes a stuck hold findable.
     const attempt = claimAttempt({
       db: getDb(), creatorId, scope: REFRAME_SCOPE, clientKey: null,
     });

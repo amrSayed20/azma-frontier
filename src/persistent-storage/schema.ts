@@ -1038,6 +1038,31 @@ export const GOALS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly
 ];
 
 /** Run only after CREATORS_MIGRATION_COLUMNS has ensured the columns exist — SQLite cannot index a column that isn't there yet. */
+/**
+ * ─── THE COST DISCOVERY RECORD, MADE AUDITABLE ──────────────────────────────
+ *
+ *   `cost_usd_estimate` is `REAL NOT NULL` and cannot hold a null, so the
+ *   owner's ruling of 2026-11-02 — «تسجيل غير المقيس بوصفه null» — is served
+ *   by columns beside it rather than by rewriting a live table.
+ *
+ *   `cost_usd_measured` is the honest figure and is NULL whenever nobody has
+ *   measured it. `cost_basis` says which of the three states this row is in,
+ *   so the legacy column can never again be read as a cost without its basis.
+ *   `cost_source` and `cost_measured_on` are what make the record auditable:
+ *   every number names the production it came from and the day it was taken.
+ *
+ *   Rows written before this migration keep their legacy estimate and carry
+ *   `cost_basis = NULL`, which reads as «this row predates the separation» —
+ *   not as a measurement, and not as a zero.
+ */
+export const CONSUMPTION_RECORDS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
+  { name: 'cost_usd_measured', ddl: 'cost_usd_measured REAL' },
+  { name: 'cost_basis', ddl: 'cost_basis TEXT' },
+  { name: 'cost_source', ddl: 'cost_source TEXT' },
+  { name: 'cost_measured_on', ddl: 'cost_measured_on TEXT' },
+  { name: 'cost_provider', ddl: 'cost_provider TEXT' },
+];
+
 export const INDEX_STATEMENTS: readonly string[] = [
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_creators_email ON creators(email)',
   // One AZMA account per provider identity, enforced where a race cannot beat

@@ -8,7 +8,7 @@ import { synthesizeSpeechWithClonedVoice } from '../../../../../src/chambers/ras
 import { getDb } from '../../../../../src/persistent-storage';
 import { ConsumptionRepository } from '../../../../../src/persistent-storage/consumption-repository';
 import { OperationType } from '../../../../../src/consumption-ledger/consumption-ledger-contracts';
-import { estimateTtsCost, getCurrentMonthKey } from '../../../../../src/consumption-ledger/cost-estimator';
+import { getCurrentMonthKey } from '../../../../../src/consumption-ledger/cost-estimator';
 import { CreatorCreditRepository } from '../../../../../src/economy/credit-ledger/credit-ledger-repository';
 import { AzmaUnitCostEngine } from '../../../../../src/economy/cost-engine/azma-cost-engine';
 import { InsufficientBalanceError } from '../../../../../src/economy/credit-ledger/credit-ledger-types';
@@ -250,7 +250,8 @@ export async function POST(request: NextRequest) {
       ledger.record({
         creatorId: session.creatorId,
         operationType: OperationType.TEXT_TO_SPEECH,
-        costUsdEstimate: estimateTtsCost(charCount),
+        // Superseded: the repository resolves the measured cost and its basis.
+        costUsdEstimate: 0,
         units: charCount,
         monthKey: getCurrentMonthKey(),
         recordedAt: Date.now(),
