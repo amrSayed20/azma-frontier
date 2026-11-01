@@ -422,6 +422,11 @@ export async function commissionScenePictures(params: {
         assetId: params.referenceAssetId,
         creatorId: params.creatorId,
         instructionAr: instruction,
+        // This road already HAS a stable key and never needed to invent one: a
+        // scene is commissioned once, so a commission re-run for a storyboard
+        // whose earlier scenes succeeded replays them instead of paying for
+        // them again.
+        operationKey: `scene:${demand.sceneId}:${params.referenceAssetId}`,
       });
 
       if (edited.status === 'succeeded') {

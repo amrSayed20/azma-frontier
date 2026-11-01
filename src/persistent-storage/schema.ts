@@ -692,6 +692,56 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   //   job: it holds the provider's own job id, the state, the charge, and the
   //   asset — so a Creator who closes the tab, loses the network, or polls
   //   twice reads the SAME truth rather than starting a second paid job.
+  // ─── ONE PAID ATTEMPT, AND WHAT BECAME OF IT ──────────────────────────────
+  //
+  //   MEASURED 2026-10-31. Six paid roads keyed their reservations on
+  //   `randomUUID()` or `Date.now()`, so every press was a new key: pressing
+  //   twice reserved twice, called the provider twice and charged twice. And
+  //   the obvious cure — keying on the intent itself — is worse, because
+  //   `reserve` returns a CLOSED row for a repeated key and the provider then
+  //   runs behind a hold of nothing.
+  //
+  //   Neither existing table answers it. `creative_jobs` has exactly the right
+  //   shape but is bound to Magic Hour's creative operations — its columns are
+  //   target asset, second asset, duration and fps. `operation_ledger` holds a
+  //   state machine owned by the fleet dispatcher and has no key a client can
+  //   resend. What is missing in both is the same small thing: the mapping
+  //   from ONE SUBMISSION to its verdict.
+  //
+  //   That is all this table is. It does not price, hold, charge or refund —
+  //   `credit_ledger` does all four and stays the only money authority. This
+  //   records which attempt a request belongs to, whether the provider has
+  //   already run for it, what it produced, and whether its hold was ever
+  //   resolved. Three questions follow from those four columns:
+  //
+  //     · a resent key that finds `in-flight` must not call the provider again
+  //     · a resent key that finds `succeeded` is answered from `result_json`
+  //     · a hold whose attempt is decided can be settled or released on the
+  //       RECORD, never on the clock — age alone decides nothing here
+  `CREATE TABLE IF NOT EXISTS paid_operation_attempts (
+    -- Derived: scope + creator + the client's own submission key + attempt no.
+    attempt_key TEXT PRIMARY KEY,
+    creator_id TEXT NOT NULL,
+    -- The road this attempt belongs to, e.g. 'qiyamah:image'. Scoping is what
+    -- stops one capability's key from ever matching another's.
+    scope TEXT NOT NULL,
+    -- in-flight | succeeded | failed
+    state TEXT NOT NULL,
+    -- The hold in credit_ledger, or NULL when the work was entitled and free.
+    reservation_id TEXT,
+    -- not-owed | settled | released | owed
+    -- owed means the ledger refused the settlement and the Empire has not yet
+    -- taken what it is due. It is the resolver's queue.
+    settlement_state TEXT NOT NULL,
+    units_held INTEGER,
+    -- What a resent key is answered with, so a retry costs nothing and
+    -- produces nothing new. Small by construction: the route's own payload.
+    result_json TEXT,
+    failure_reason TEXT,
+    created_at_ms INTEGER NOT NULL,
+    updated_at_ms INTEGER NOT NULL
+  )`,
+
   `CREATE TABLE IF NOT EXISTS creative_jobs (
     job_id TEXT PRIMARY KEY,
     creator_id TEXT NOT NULL,
@@ -1052,4 +1102,8 @@ export const INDEX_STATEMENTS: readonly string[] = [
   // A Creator reads their own jobs, and a retry looks for a live one by key.
   'CREATE INDEX IF NOT EXISTS idx_creative_jobs_creator ON creative_jobs(creator_id, created_at_ms)',
   'CREATE INDEX IF NOT EXISTS idx_creative_jobs_key ON creative_jobs(idempotency_key, state)',
+  // The resolver's only query: holds that were never resolved. It must not
+  // scan the whole history to find them.
+  'CREATE INDEX IF NOT EXISTS idx_attempts_unresolved ON paid_operation_attempts(settlement_state, state)',
+  'CREATE INDEX IF NOT EXISTS idx_attempts_creator ON paid_operation_attempts(creator_id, created_at_ms)',
 ];

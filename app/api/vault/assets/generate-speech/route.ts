@@ -15,7 +15,16 @@ import { AzmaUnitCostEngine } from '../../../../../src/economy/cost-engine/azma-
 import { InsufficientBalanceError } from '../../../../../src/economy/credit-ledger/credit-ledger-types';
 import { CostUnavailableError } from '../../../../../src/economy/cost-engine/cost-engine-types';
 
+import {
+  claimAttempt, completeAttempt, failAttempt, attachReservation,
+  OPERATION_KEY_HEADER, readClientOperationKey,
+} from '@/src/economy/paid-operation-attempts';
+import { settleReservation, releaseReservation } from '@/src/economy/paid-operation-gate';
+
 export const dynamic = 'force-dynamic';
+
+/** The namespace this road's submission keys live in. */
+const SPEECH_SCOPE = 'vault:text-to-speech';
 
 const SESSION_COOKIE = 'azma_session';
 const vaultManager = new SovereignVaultManager();
@@ -94,6 +103,35 @@ export async function POST(request: NextRequest) {
   // CREDIT-FIRST GATE: Founders bypass. Creators require AZMA Units.
   const db = getDb();
   let reservationId: string | null = null;
+  // MEASURED: the settlement re-derived this number from the cost engine
+  // inside its own try block. A hold and a charge computed in two places
+  // are two numbers that can drift, and an estimate that threw there left
+  // the hold stranded in silence. One number now, held and charged.
+  let chargeUnits = 0;
+
+  // The submission, claimed before a unit is held. Where the browser sends
+  // a key, a press that arrives twice is answered once; where it does not,
+  // each request stands alone and covers its own provider call.
+  const claim = claimAttempt({
+    db, creatorId: session.creatorId, scope: SPEECH_SCOPE,
+    clientKey: readClientOperationKey(request.headers.get(OPERATION_KEY_HEADER)),
+  });
+  if (claim.kind === 'in-flight') {
+    return NextResponse.json(
+      { status: 'failed', reason: 'operation-in-flight',
+        message: 'هذا النطق يَجري الآن. انتظر نتيجته — ولم يُحسَب عليك مرّتين.' },
+      { status: 409 },
+    );
+  }
+  if (claim.kind === 'already-succeeded') {
+    const replayed = replaySpeechResult(claim.resultJson);
+    if (replayed) return NextResponse.json(replayed, { status: 200 });
+    return NextResponse.json(
+      { status: 'failed', reason: 'already-performed',
+        message: 'هذا النطق نُفِّذ من قبل. اطلبه من خزانتك بدلاً من إعادته.' },
+      { status: 409 },
+    );
+  }
 
   if (session.role !== 'founder') {
     const costEngine = new AzmaUnitCostEngine();
@@ -102,6 +140,7 @@ export async function POST(request: NextRequest) {
       costEstimate = costEngine.estimate('text-to-speech', 'elevenlabs');
     } catch (err) {
       if (err instanceof CostUnavailableError) {
+        failAttempt(db, claim.attemptKey, 'cost-unavailable');
         return NextResponse.json(
           { status: 'failed', reason: 'cost-unavailable', message: 'TTS cost is not yet available. Generation blocked.' },
           { status: 503 },
@@ -114,6 +153,7 @@ export async function POST(request: NextRequest) {
     const balance = creditRepo.getBalance(session.creatorId);
 
     if (balance.availableUnits < costEstimate.estimatedAzmaUnits) {
+      failAttempt(db, claim.attemptKey, 'insufficient-balance');
       return NextResponse.json(
         {
           status: 'failed',
@@ -130,12 +170,16 @@ export async function POST(request: NextRequest) {
       const reservation = creditRepo.reserve(
         session.creatorId,
         costEstimate.estimatedAzmaUnits,
-        `tts:gen:${randomUUID()}`,
+        // The ATTEMPT's key, not a fresh one. This is the whole repair.
+        claim.attemptKey,
         { capability: 'text-to-speech', gatewayId: 'elevenlabs' },
       );
       reservationId = reservation.reservationId;
+      chargeUnits = reservation.reservedUnits;
+      attachReservation(db, claim.attemptKey, reservation.reservationId, reservation.reservedUnits);
     } catch (err) {
       if (err instanceof InsufficientBalanceError) {
+        failAttempt(db, claim.attemptKey, 'insufficient-balance');
         return NextResponse.json(
           { status: 'failed', reason: 'payment-required', message: 'Insufficient AZMA Units.' },
           { status: 402 },
@@ -156,7 +200,10 @@ export async function POST(request: NextRequest) {
     audioBytes = result.bytes;
   } catch (err) {
     if (reservationId) {
-      try { new CreatorCreditRepository(db).release(reservationId, 'tts_provider_error'); } catch { /* non-fatal */ }
+      releaseReservation({
+        db, creatorId: session.creatorId, attemptKey: claim.attemptKey,
+        reservationId, reason: 'tts_provider_error',
+      });
     }
     return NextResponse.json(
       {
@@ -189,11 +236,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (reservationId) {
-      try {
-        const costEngine = new AzmaUnitCostEngine();
-        const cost = costEngine.estimate('text-to-speech', 'elevenlabs').estimatedAzmaUnits;
-        new CreatorCreditRepository(db).settle(reservationId, cost);
-      } catch { /* non-fatal */ }
+      settleReservation({
+        db, creatorId: session.creatorId, attemptKey: claim.attemptKey,
+        reservationId, units: chargeUnits, metadata: { assetId: asset.assetId },
+      });
     }
 
     try {
@@ -209,11 +255,18 @@ export async function POST(request: NextRequest) {
       });
     } catch { /* non-fatal */ }
 
-    return NextResponse.json({ status: 'succeeded', asset });
+    const answer = { status: 'succeeded' as const, asset };
+    // Closed, so a resent key is ANSWERED rather than spoken again.
+    completeAttempt(db, claim.attemptKey, answer);
+    return NextResponse.json(answer);
   } catch (error) {
     if (reservationId) {
-      try { new CreatorCreditRepository(db).release(reservationId, 'tts_storage_error'); } catch { /* non-fatal */ }
+      releaseReservation({
+        db, creatorId: session.creatorId, attemptKey: claim.attemptKey,
+        reservationId, reason: 'tts_storage_error',
+      });
     }
+    failAttempt(db, claim.attemptKey, 'storage-error');
     return NextResponse.json(
       {
         status: 'failed',
@@ -222,5 +275,21 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 },
     );
+  }
+}
+
+/**
+ * A stored answer, read back for a resent key. A row that will not parse
+ * back into a success carrying an asset is no licence to spend again.
+ */
+function replaySpeechResult(resultJson: string | null): unknown | null {
+  if (typeof resultJson !== 'string') return null;
+  try {
+    const parsed = JSON.parse(resultJson) as { status?: unknown; asset?: { assetId?: unknown } };
+    if (parsed?.status !== 'succeeded') return null;
+    if (typeof parsed.asset?.assetId !== 'string') return null;
+    return parsed;
+  } catch {
+    return null;
   }
 }

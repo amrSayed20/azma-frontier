@@ -15,7 +15,19 @@
 // ─── Mocks (must be before imports) ──────────────────────────────────────────
 
 const mockVerifySession = jest.fn();
-const mockGetDb = jest.fn(() => 'fake-db');
+// A REAL in-memory database, not a string.
+//
+//   The generate route now records which submission each request belongs
+//   to, so that a press arriving twice calls a paid provider once. That is
+//   a real write, and a stub that cannot be written to does not stand in
+//   for a database — it only hides the write. The ledger, the cost engine
+//   and the trial service stay mocked: this suite is about the ORDER they
+//   are consulted in.
+const { DatabaseSync } = require('node:sqlite');
+const { SCHEMA_STATEMENTS } = require('../../../../../src/persistent-storage/schema');
+const realDb = new DatabaseSync(':memory:');
+for (const statement of SCHEMA_STATEMENTS) realDb.exec(statement);
+const mockGetDb = jest.fn(() => realDb);
 const mockGenerateImage = jest.fn();
 const mockGetBalance = jest.fn();
 const mockReserve = jest.fn();
@@ -99,7 +111,11 @@ describe('Qiyamah Generate Route — Free-Entitlement Path', () => {
     jest.clearAllMocks();
     mockVerifySession.mockReturnValue(CREATOR_SESSION);
     mockGenerateImage.mockResolvedValue(SUCCESSFUL_ASSET);
-    mockReserve.mockReturnValue({ reservationId: 'res-1' });
+    // The real `reserve` returns the amount it actually held, and the route
+    // binds that amount to the attempt so a stuck hold can later be settled
+    // for the right number. A mock that omits it is a mock that lies about
+    // the shape of the thing it stands in for.
+    mockReserve.mockReturnValue({ reservationId: 'res-1', reservedUnits: 10 });
     mockGetBalance.mockReturnValue({ availableUnits: 0 });
     mockHasRemainingTrial.mockReturnValue(false);
     mockClaimTrial.mockReturnValue({ usedCount: 1 });

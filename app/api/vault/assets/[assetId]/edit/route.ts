@@ -6,6 +6,10 @@ import {
   editSovereignImage,
   MAX_EDIT_INSTRUCTION,
 } from '@/src/qiyamah-generation/image-edit-service';
+import {
+  OPERATION_KEY_HEADER,
+  readClientOperationKey,
+} from '@/src/economy/paid-operation-attempts';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,6 +85,10 @@ export async function POST(
     assetId,
     creatorId: session.creatorId,
     instructionAr: instruction,
+    // One key per press, minted by the client and resent on its own retries.
+    // Absent, this submission stands alone and pays its own way — which is the
+    // safe side of a question only the client can answer.
+    operationKey: readClientOperationKey(request.headers.get(OPERATION_KEY_HEADER)),
   });
 
   if (outcome.status === 'succeeded') {
@@ -173,6 +181,24 @@ export async function POST(
           message: 'رصيدك لا يكفي لهذا العمل. اشترِ باقةً للمتابعة.',
         },
         { status: 402 },
+      );
+    // The same press, arriving twice. Neither answer charges and neither calls
+    // the engine a second time.
+    case 'operation-in-flight':
+      return NextResponse.json(
+        {
+          status: 'failed', reason: 'operation-in-flight',
+          message: 'هذا التعديل يَجري الآن. انتظر نتيجته — ولم يُحسَب عليك مرّتين.',
+        },
+        { status: 409 },
+      );
+    case 'already-performed':
+      return NextResponse.json(
+        {
+          status: 'failed', reason: 'already-performed',
+          message: 'هذا التعديل نُفِّذ من قبل. اطلبه من خزانتك بدلاً من إعادته.',
+        },
+        { status: 409 },
       );
     case 'rejected-by-lineage': {
       const conflict = outcome.rejection === 'OUTPUT_IDENTICAL_TO_PARENT';

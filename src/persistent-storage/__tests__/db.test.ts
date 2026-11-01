@@ -47,7 +47,11 @@ describe('Persistent Storage Foundation — database connection', () => {
     // sixth. And `distribution_receipts` — the durable record that a copy of
     // a sovereign asset LEFT the Empire, with the provider's own identifier,
     // replacing a console line that could not be read back — is the seventh.
-    expect(tables).toEqual(['asset_tombstones', 'authentication_identities', 'cinematic_ledger', 'cloud_accounts', 'consumption_records', 'creative_jobs', 'creator_balances', 'creators', 'credit_ledger', 'distribution_receipts', 'fulfillment_assessments', 'generation_records', 'goals', 'hadith_narrations', 'knowledge_investigations', 'library_works', 'observations', 'operation_ledger', 'payment_transactions', 'sessions', 'sovereign_canvases', 'sovereign_projects', 'sovereign_public_links', 'sovereign_publications', 'storyboard_scenes', 'storyboards', 'subscriptions', 'transmitted_reports', 'trial_entitlements', 'vault_assets', 'vault_credentials']);
+    // And `paid_operation_attempts` — the mapping from one submission to its
+    // verdict, so a press that arrives twice calls a paid provider once and a
+    // hold whose settlement failed can be finished rather than forgotten — is
+    // the eighth.
+    expect(tables).toEqual(['asset_tombstones', 'authentication_identities', 'cinematic_ledger', 'cloud_accounts', 'consumption_records', 'creative_jobs', 'creator_balances', 'creators', 'credit_ledger', 'distribution_receipts', 'fulfillment_assessments', 'generation_records', 'goals', 'hadith_narrations', 'knowledge_investigations', 'library_works', 'observations', 'operation_ledger', 'paid_operation_attempts', 'payment_transactions', 'sessions', 'sovereign_canvases', 'sovereign_projects', 'sovereign_public_links', 'sovereign_publications', 'storyboard_scenes', 'storyboards', 'subscriptions', 'transmitted_reports', 'trial_entitlements', 'vault_assets', 'vault_credentials']);
     db.close();
   });
 

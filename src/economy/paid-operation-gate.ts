@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
+import { attachReservation, markSettlement } from './paid-operation-attempts';
 import { CreatorCreditRepository } from './credit-ledger/credit-ledger-repository';
 import { InsufficientBalanceError } from './credit-ledger/credit-ledger-types';
 import { AzmaUnitCostEngine } from './cost-engine/azma-cost-engine';
@@ -49,7 +49,13 @@ export type GateVerdict =
   /** No charge is owed — a Founder, or a valid free entitlement. */
   | { readonly kind: 'entitled'; readonly via: 'founder' | 'trial' }
   /** Units are held. The caller MUST settle or release them. */
-  | { readonly kind: 'reserved'; readonly reservationId: string; readonly units: number }
+  | {
+      readonly kind: 'reserved';
+      readonly reservationId: string;
+      readonly units: number;
+      /** The attempt this hold belongs to, so the resolver can read its outcome. */
+      readonly attemptKey: string;
+    }
   /** The provider must not be called. */
   | {
       readonly kind: 'refused';
@@ -79,81 +85,26 @@ export interface AuthoriseRequest {
   readonly gatewayId: string;
   readonly modelId?: string;
   /**
-   * Scoped so two different operations can never collide, and so a retry that
-   * carries the SAME key is recognised as the same intent.
+   * The key of the ATTEMPT this request was admitted under, from
+   * `claimAttempt`. The gate reserves against it and never mints one.
    *
-   * MEASURED: every existing caller passes `${prefix}:${randomUUID()}`, which
-   * is a fresh value on every request and therefore matches nothing — the
-   * idempotency the repository implements has never once been exercised. A
-   * key is only as stable as whoever supplies it, so this gate takes one
-   * rather than minting it, and the caller must say where theirs comes from.
+   * ─── WHY THE GATE NO LONGER DECIDES THIS ──────────────────────────────
+   *
+   *   A first version derived the key from the intent — creator, asset,
+   *   instruction — and reused any hold still pending for it. That is a
+   *   hole: two deliberate presses of the same instruction would share ONE
+   *   hold while BOTH calls ran at the provider, which is a paid call with
+   *   no cover. The opposite, a fresh key every request, charges a retry
+   *   twice. Neither is a guess the server is entitled to make, so the
+   *   decision moved to `claimAttempt`, where the client's own submission
+   *   key answers it. One claimed attempt, one hold, one provider run.
    */
-  readonly idempotencyKey: string;
+  readonly attemptKey: string;
   /** When this operation is covered by the launch gift, which kind it spends. */
   readonly trialCapability?: TrialCapability;
   /** Hashed by the trial service; never stored raw. */
   readonly claimIp?: string;
   readonly metadata?: Record<string, unknown>;
-}
-
-/**
- * The key this ATTEMPT reserves under.
- *
- * ─── MEASURED, BECAUSE AN INTENT KEY ALONE IS A HOLE ────────────────────────
- *
- *   `reserve` deduplicates on `idempotency_key` and returns the existing row
- *   WHATEVER its status. Probed 2026-10-31 on an in-memory ledger:
- *
- *     after settlement — same ledger id, status `completed`, reserved 0,
- *       available 900 before the replay and 900 after;
- *     after release    — same ledger id, status `reversed`, reserved 0,
- *       available 1000, and the later `settle` throws.
- *
- *   So a second press of a stable intent key hands the caller a reservation
- *   that HOLDS NOTHING, and the paid provider then runs with no financial
- *   cover at all. That is the fourth standing prohibition — a paid provider
- *   without proper protection — committed by the very door meant to stop it.
- *
- * ─── AND WHY NOT A FRESH UUID EITHER ────────────────────────────────────────
- *
- *   Six live roads key their reservations on `randomUUID()` or `Date.now()`:
- *   every press is a new key, so pressing twice reserves twice and charges
- *   twice. Trading one defect for the other is not a repair.
- *
- *   The only window a server can honestly deduplicate is the one it can see:
- *   an attempt of this exact intent that is STILL PENDING is this same press,
- *   so it reuses that key and `reserve` hands back the one hold. Once an
- *   attempt is closed — settled or reversed — the next press is a new
- *   operation, gets the next attempt index, and holds real units. The server
- *   cannot tell a retry from a deliberate repetition after that point, and it
- *   does not pretend to.
- *
- *   The intent is hashed so the key has a fixed shape and a prefix match can
- *   never be confused by a Creator's own text.
- */
-function attemptKey(db: DatabaseSync, intent: string): string {
-  const stem = createHash('sha256').update(intent).digest('hex').slice(0, 32);
-  const prefix = `${stem}#`;
-
-  const pending = db
-    .prepare(
-      `SELECT idempotency_key FROM credit_ledger
-        WHERE transaction_type = 'reservation' AND status = 'pending'
-          AND substr(idempotency_key, 1, ?) = ?
-        ORDER BY created_at DESC LIMIT 1`,
-    )
-    .get(prefix.length, prefix) as { idempotency_key?: string } | undefined;
-  if (typeof pending?.idempotency_key === 'string') return pending.idempotency_key;
-
-  const closed = db
-    .prepare(
-      `SELECT COUNT(*) AS n FROM credit_ledger
-        WHERE transaction_type = 'reservation' AND status <> 'pending'
-          AND substr(idempotency_key, 1, ?) = ?`,
-    )
-    .get(prefix.length, prefix) as { n?: number } | undefined;
-
-  return `${prefix}${Number(closed?.n ?? 0) + 1}`;
 }
 
 /**
@@ -166,7 +117,7 @@ function attemptKey(db: DatabaseSync, intent: string): string {
 export function authorisePaidOperation(request: AuthoriseRequest): GateVerdict {
   const {
     db, creatorId, role, capability, gatewayId, modelId,
-    idempotencyKey, trialCapability, claimIp, metadata,
+    attemptKey, trialCapability, claimIp, metadata,
   } = request;
 
   // ── 1 · Entitlements, which are decided before any price is read ─────────
@@ -244,11 +195,19 @@ export function authorisePaidOperation(request: AuthoriseRequest): GateVerdict {
   }
 
   try {
-    const reservation = credits.reserve(creatorId, units, attemptKey(db, idempotencyKey), {
-      capability, gatewayId, intent: idempotencyKey,
-      ...(modelId ? { modelId } : {}), ...(metadata ?? {}),
+    const reservation = credits.reserve(creatorId, units, attemptKey, {
+      capability, gatewayId, ...(modelId ? { modelId } : {}), ...(metadata ?? {}),
     });
-    return { kind: 'reserved', reservationId: reservation.reservationId, units: reservation.reservedUnits };
+    // The hold and the attempt now point at each other. Until one of settle or
+    // release is recorded, this attempt reads as `owed` — which is how the
+    // resolver finds a hold that a crash left behind.
+    attachReservation(db, attemptKey, reservation.reservationId, reservation.reservedUnits);
+    return {
+      kind: 'reserved',
+      reservationId: reservation.reservationId,
+      units: reservation.reservedUnits,
+      attemptKey,
+    };
   } catch (error) {
     // The conditional UPDATE inside `reserve` lost the race to a concurrent
     // spend. The Creator is told the truth, and nothing was taken.
@@ -324,7 +283,11 @@ export function settleAuthorisedOperation(
       Math.min(actualUnits ?? verdict.units, verdict.units),
       metadata,
     );
+    markSettlement(db, verdict.attemptKey, 'settled');
   } catch (error) {
+    // The Creator keeps what they produced, and the debt is recorded in two
+    // places that answer two questions: the ledger row says WHAT happened, and
+    // the attempt staying `owed` is what the resolver reads.
     recordLedgerFailure(db, creatorId, verdict.reservationId, 'settlement', error);
   }
 }
@@ -339,6 +302,7 @@ export function releaseAuthorisedOperation(
   if (verdict.kind !== 'reserved') return;
   try {
     new CreatorCreditRepository(db).release(verdict.reservationId, reason);
+    markSettlement(db, verdict.attemptKey, 'released');
   } catch (error) {
     recordLedgerFailure(db, creatorId, verdict.reservationId, 'release', error);
   }
@@ -352,6 +316,56 @@ export function releaseAuthorisedOperation(
  * actually succeeded gives the result away for nothing. This names them so a
  * human — or a later, evidence-carrying resolver — can act.
  */
+/**
+ * Settle a hold that was taken OUTSIDE this gate, and record the debt if the
+ * ledger refuses.
+ *
+ * ─── WHY THIS EXISTS RATHER THAN A SEVENTH COPY ─────────────────────────────
+ *
+ *   Six roads reserve through the repository directly, each with its own
+ *   entitlement rules written before this gate existed. Rewriting their
+ *   authorisation would change the behaviour of live paid roads, which is not
+ *   what settling a hold requires. What they all needed was this: the same
+ *   settlement, with the same record of failure, in one place instead of seven
+ *   `catch { }` blocks that each forgot something different.
+ */
+export function settleReservation(params: {
+  readonly db: DatabaseSync;
+  readonly creatorId: string;
+  readonly attemptKey: string;
+  readonly reservationId: string;
+  readonly units: number;
+  readonly metadata?: Record<string, unknown>;
+}): void {
+  const { db, creatorId, attemptKey, reservationId, units, metadata } = params;
+  try {
+    new CreatorCreditRepository(db).settle(reservationId, units, metadata);
+    markSettlement(db, attemptKey, 'settled');
+  } catch (error) {
+    // The Creator keeps what they produced. The debt is recorded in both
+    // places that answer about it: the ledger says what happened, and the
+    // attempt staying `owed` is what the resolver reads.
+    recordLedgerFailure(db, creatorId, reservationId, 'settlement', error);
+  }
+}
+
+/** Give back a hold taken outside this gate, and record a failure to do so. */
+export function releaseReservation(params: {
+  readonly db: DatabaseSync;
+  readonly creatorId: string;
+  readonly attemptKey: string;
+  readonly reservationId: string;
+  readonly reason: string;
+}): void {
+  const { db, creatorId, attemptKey, reservationId, reason } = params;
+  try {
+    new CreatorCreditRepository(db).release(reservationId, reason);
+    markSettlement(db, attemptKey, 'released');
+  } catch (error) {
+    recordLedgerFailure(db, creatorId, reservationId, 'release', error);
+  }
+}
+
 export function pendingReservations(
   db: DatabaseSync,
   olderThanMs: number,

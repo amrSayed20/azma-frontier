@@ -43,6 +43,7 @@ import {
   settleAuthorisedOperation,
   releaseAuthorisedOperation,
 } from '../economy/paid-operation-gate';
+import { claimAttempt, completeAttempt, failAttempt } from '../economy/paid-operation-attempts';
 import type { MutationRejection } from '../vault/sovereign-asset-mutation';
 import { SourceChamber, DerivationKind, isDerivable, isLegacyAsset } from '../vault/sovereign-vault-types';
 import type { VaultAsset } from '../vault/sovereign-vault-types';
@@ -57,6 +58,15 @@ import { IMAGE_MODEL_FLEET } from '../sovereign-model-selection/image-model-flee
 
 /** The longest instruction the engine is given. */
 export const MAX_EDIT_INSTRUCTION = 1_000;
+
+/**
+ * The namespace this road's submission keys live in.
+ *
+ * Scoping is what stops one capability's key from ever matching another's: the
+ * same word typed by a Creator into an edit and into an animation are two
+ * submissions, not one.
+ */
+export const EDIT_SCOPE = 'qiyamah:image-edit';
 
 /**
  * Why an edit did not happen — each one a different cure, which is the whole
@@ -86,7 +96,18 @@ export type ImageEditRefusal =
    */
   | 'cost-unavailable'
   /** Priced, and the Creator cannot afford it. */
-  | 'insufficient-balance';
+  | 'insufficient-balance'
+  /**
+   * This exact submission is already running. Saying so is the only answer
+   * that neither charges twice nor calls the provider twice.
+   */
+  | 'operation-in-flight'
+  /**
+   * This exact submission already finished, and its result could not be
+   * replayed from the record. The edit is NOT performed again — the Creator is
+   * sent to look at what they already have.
+   */
+  | 'already-performed';
 
 export type ImageEditOutcome =
   | {
@@ -157,6 +178,16 @@ export async function editSovereignImage(params: {
   readonly instructionAr: string;
   /** Who performed it. The Creator themselves unless a chamber acts for them. */
   readonly actorId?: string;
+  /**
+   * One key per submission, resent verbatim on a retry of THAT submission.
+   *
+   * It is what separates «the network sent my press twice» from «I want a
+   * second edit of the same picture», and only the caller knows which. When it
+   * is absent this attempt stands alone: it holds its own units and is charged
+   * on its own, because an uncovered provider call is the worse of the two
+   * mistakes. See `paid-operation-attempts.ts`.
+   */
+  readonly operationKey?: string | null;
 }): Promise<ImageEditOutcome> {
   const instruction = params.instructionAr.trim();
   if (instruction.length === 0 || instruction.length > MAX_EDIT_INSTRUCTION) {
@@ -249,6 +280,27 @@ export async function editSovereignImage(params: {
     .prepare('SELECT role FROM creators WHERE creator_id = ?')
     .get(params.creatorId) as { role?: unknown } | undefined;
 
+  // ── The submission, claimed before a single unit is held ─────────────────
+  //
+  //   Claimed HERE and not earlier, so a request that was going to be refused
+  //   for a reason of its own never consumes a submission key.
+  const claim = claimAttempt({
+    db: params.db,
+    creatorId: params.creatorId,
+    scope: EDIT_SCOPE,
+    clientKey: params.operationKey ?? null,
+  });
+
+  if (claim.kind === 'in-flight') {
+    return { status: 'failed', refusal: 'operation-in-flight' };
+  }
+  if (claim.kind === 'already-succeeded') {
+    const replayed = replayEditResult(claim.resultJson);
+    // The provider is NOT called again either way. Without a replayable body
+    // the Creator is told it already happened rather than charged for it twice.
+    return replayed ?? { status: 'failed', refusal: 'already-performed' };
+  }
+
   const gate = authorisePaidOperation({
     db: params.db,
     creatorId: params.creatorId,
@@ -256,12 +308,13 @@ export async function editSovereignImage(params: {
     capability: 'image-editing',
     gatewayId: 'magic-hour',
     modelId: IMAGE_EDIT_MODEL_ID,
-    // The Creator, the picture and the instruction are what make this edit the
-    // edit it is. The same press twice is one intent, not two.
-    idempotencyKey: `image-edit:${params.creatorId}:${params.assetId}:${instruction}`,
+    attemptKey: claim.attemptKey,
     metadata: { assetId: params.assetId },
   });
   if (gate.kind === 'refused') {
+    // The attempt is closed, not left hanging: an in-flight row that nothing
+    // will ever finish would make this submission key unusable for ever.
+    failAttempt(params.db, claim.attemptKey, `gate:${gate.reason}`);
     return {
       status: 'failed',
       refusal: gate.reason === 'payment-required' ? 'insufficient-balance' : 'cost-unavailable',
@@ -280,6 +333,9 @@ export async function editSovereignImage(params: {
     const rejection = err instanceof ImageEditError ? err.rejection : null;
     // The provider produced nothing, so nothing is owed.
     releaseAuthorisedOperation(params.db, params.creatorId, gate, 'image_edit_provider_failed');
+    // Closed as failed, so the same submission key may legitimately be tried
+    // again — and the next try holds its own units.
+    failAttempt(params.db, claim.attemptKey, `provider:${rejection ?? 'edit-failed'}`);
     if (rejection === 'NO_CREDIT') return { status: 'failed', refusal: 'no-credit' };
     if (rejection === 'TIMED_OUT') return { status: 'failed', refusal: 'timed-out' };
     return { status: 'failed', refusal: 'edit-failed' };
@@ -319,13 +375,14 @@ export async function editSovereignImage(params: {
     try { await unlink(join(uploadsDir(), basename(persisted.assetUrl))); } catch { /* already gone */ }
     // No asset was deposited and the bytes are gone. The hold goes back.
     releaseAuthorisedOperation(params.db, params.creatorId, gate, `image_edit_${outcome.rejection}`);
+    failAttempt(params.db, claim.attemptKey, `lineage:${outcome.rejection}`);
     return { status: 'failed', refusal: 'rejected-by-lineage', rejection: outcome.rejection };
   }
 
   // The asset exists and is the Creator's. NOW the units are spent.
   settleAuthorisedOperation(params.db, params.creatorId, gate, undefined, { assetId: outcome.asset.assetId });
 
-  return {
+  const succeeded: ImageEditOutcome = {
     status: 'succeeded',
     asset: outcome.asset,
     lineage: {
@@ -334,4 +391,29 @@ export async function editSovereignImage(params: {
       version: outcome.asset.version,
     },
   };
+
+  // Recorded so a resent submission key is ANSWERED rather than performed.
+  // What is stored is exactly what the Creator was handed, and nothing more.
+  completeAttempt(params.db, claim.attemptKey, succeeded);
+
+  return succeeded;
+}
+
+/**
+ * The stored answer, read back for a resent key.
+ *
+ * It is parsed defensively and verified to be a success payload with an asset:
+ * a row that cannot be read back is NOT a reason to perform a paid edit again,
+ * so the caller refuses instead.
+ */
+function replayEditResult(resultJson: string | null): ImageEditOutcome | null {
+  if (typeof resultJson !== 'string') return null;
+  try {
+    const parsed = JSON.parse(resultJson) as ImageEditOutcome;
+    if (parsed?.status !== 'succeeded') return null;
+    if (typeof parsed.asset?.assetId !== 'string') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
 }

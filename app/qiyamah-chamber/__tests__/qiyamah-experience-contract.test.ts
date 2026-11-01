@@ -18,7 +18,19 @@
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
 const mockVerifySession = jest.fn();
-const mockGetDb = jest.fn(() => 'fake-db');
+// A REAL in-memory database, not a string.
+//
+//   The generate route now records which submission each request belongs
+//   to, so that a press arriving twice calls a paid provider once. That is
+//   a real write, and a stub that cannot be written to does not stand in
+//   for a database — it only hides the write. The ledger, the cost engine
+//   and the trial service stay mocked: this suite is about the ORDER they
+//   are consulted in.
+const { DatabaseSync } = require('node:sqlite');
+const { SCHEMA_STATEMENTS } = require('../../../src/persistent-storage/schema');
+const realDb = new DatabaseSync(':memory:');
+for (const statement of SCHEMA_STATEMENTS) realDb.exec(statement);
+const mockGetDb = jest.fn(() => realDb);
 const mockGenerateImage = jest.fn();
 const mockHasRemainingTrial = jest.fn();
 const mockClaimTrial = jest.fn();

@@ -19,10 +19,16 @@ import {
   settleAuthorisedOperation,
   releaseAuthorisedOperation,
 } from '@/src/economy/paid-operation-gate';
+import {
+  claimAttempt, completeAttempt, failAttempt,
+  OPERATION_KEY_HEADER, readClientOperationKey,
+} from '@/src/economy/paid-operation-attempts';
 
 export const dynamic = 'force-dynamic';
 
 const SESSION_COOKIE = 'azma_session';
+/** The namespace this road's submission keys live in. */
+const ANIMATE_SCOPE = 'qiyamah:animate';
 const MAX_INSTRUCTION = 1_000;
 const MIN_SECONDS = 1;
 const MAX_SECONDS = 8;
@@ -178,6 +184,37 @@ export async function POST(
       `video-generation` is `pending-discovery` in the cost catalog, so the
       gate answers `cost-unavailable` today and the provider is not called.
   */
+  // ── The submission, claimed before a single unit is held ─────────────────
+  //
+  //   Claimed after every validation above, so a request that was going to be
+  //   refused for a reason of its own never consumes a submission key. This is
+  //   the most expensive door the Empire has — 840 provider credits measured
+  //   for five seconds — so a press that arrives twice must call the engine
+  //   once, and that decision belongs to whoever pressed.
+  const claim = claimAttempt({
+    db,
+    creatorId: session.creatorId,
+    scope: ANIMATE_SCOPE,
+    clientKey: readClientOperationKey(request.headers.get(OPERATION_KEY_HEADER)),
+  });
+
+  if (claim.kind === 'in-flight') {
+    return refuse(
+      409, 'operation-in-flight',
+      'هذا التحريك يَجري الآن. انتظر نتيجته — ولم يُحسَب عليك مرّتين.',
+      'economy', `attempt in flight since ${new Date(claim.sinceMs).toISOString()}`,
+    );
+  }
+  if (claim.kind === 'already-succeeded') {
+    const replayed = replayAnimateResult(claim.resultJson);
+    if (replayed) return NextResponse.json(replayed, { status: 200 });
+    return refuse(
+      409, 'already-performed',
+      'هذا التحريك نُفِّذ من قبل. اطلبه من خزانتك بدلاً من إعادته.',
+      'economy', 'succeeded attempt with no replayable body',
+    );
+  }
+
   const gate = authorisePaidOperation({
     db,
     creatorId: session.creatorId,
@@ -185,21 +222,29 @@ export async function POST(
     capability: 'video-generation',
     gatewayId: 'magic-hour',
     modelId: selection.selection.providerModelId,
-    idempotencyKey: `animate:${session.creatorId}:${assetId}:${selection.selection.providerModelId}:${durationSeconds}:${instruction}`,
+    attemptKey: claim.attemptKey,
     metadata: { assetId, durationSeconds },
   });
   if (gate.kind === 'refused') {
+    // Closed, not left hanging: an in-flight row nothing will finish would
+    // make this submission key unusable for ever.
+    failAttempt(db, claim.attemptKey, `gate:${gate.reason}`);
     return refuse(
       gate.httpStatus, gate.reason, gate.messageAr, 'economy',
       `gate refused: ${gate.reason}`,
     );
   }
 
-  /** Every failure after the hold gives the units back before it answers. */
+  /**
+   * Every failure after the hold gives the units back before it answers — and
+   * closes the attempt, so the same submission key may honestly be tried again
+   * and the next try holds its own units.
+   */
   const refuseAndRelease = (
     http: number, reason: string, messageAr: string, stage: string, detailEn: string,
   ) => {
     releaseAuthorisedOperation(db, session.creatorId, gate, `animate_${reason}`);
+    failAttempt(db, claim.attemptKey, reason);
     return refuse(http, reason, messageAr, stage, detailEn);
   };
 
@@ -297,8 +342,8 @@ export async function POST(
   trail.stage('record-inserted', { assetId: outcome.asset.assetId });
   trail.done({ assetId: outcome.asset.assetId });
 
-  return NextResponse.json({
-    status: 'succeeded',
+  const answer = {
+    status: 'succeeded' as const,
     operationId: trail.operationId,
     asset: outcome.asset,
     lineage: {
@@ -315,5 +360,29 @@ export async function POST(
       width: produced.width,
       height: produced.height,
     },
-  });
+  };
+
+  // Recorded so the same submission key is ANSWERED, not animated again. What
+  // is stored is exactly what this Creator was handed.
+  completeAttempt(db, claim.attemptKey, answer);
+
+  return NextResponse.json(answer);
+}
+
+/**
+ * The stored answer, read back for a resent key.
+ *
+ * A row that will not parse back into a success carrying an asset is NOT a
+ * licence to spend 840 provider credits again: the caller refuses instead.
+ */
+function replayAnimateResult(resultJson: string | null): unknown | null {
+  if (typeof resultJson !== 'string') return null;
+  try {
+    const parsed = JSON.parse(resultJson) as { status?: unknown; asset?: { assetId?: unknown } };
+    if (parsed?.status !== 'succeeded') return null;
+    if (typeof parsed.asset?.assetId !== 'string') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
 }

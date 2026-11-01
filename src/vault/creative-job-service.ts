@@ -47,6 +47,13 @@ import {
 import type { CreativeOperationId } from '../core/sovereign-ai-integration/adapters/magic-hour-creative-operations';
 import { getVaultAsset } from '../persistent-storage';
 import { measureSourceFps } from './asset-frame-rate';
+import {
+  claimAttempt, completeAttempt, failAttempt, attachReservation,
+} from '../economy/paid-operation-attempts';
+import { settleReservation, releaseReservation } from '../economy/paid-operation-gate';
+
+/** The namespace this road's submission keys live in. */
+const CREATIVE_SCOPE = 'qiyamah:creative';
 
 /** Which priced capability each act consumes. One map, read by both paths. */
 export const CAPABILITY_OF_OPERATION: Readonly<Record<CreativeOperationId, NewCapability>> = {
@@ -157,6 +164,8 @@ export async function submitCreativeJob(
 
   const credits = new CreatorCreditRepository(db);
   let reservationId: string | null = null;
+  /** The attempt this hold belongs to — null when the act is free. */
+  let attemptKey: string | null = null;
   let chargedUnits: number | null = null;
 
   if (paying && price.ok) {
@@ -190,15 +199,24 @@ export async function submitCreativeJob(
   }
 
   if (paying && chargedUnits !== null) {
+    // The durable job row already made this submission unique, so the
+    // attempt takes ITS id as the key rather than inventing a second
+    // notion of sameness. What the attempt adds is the money binding the
+    // resolver reads: this hold, and what became of this operation.
+    attemptKey = claimAttempt({
+      db, creatorId: request.creatorId, scope: CREATIVE_SCOPE, clientKey: row.jobId,
+    }).attemptKey;
     try {
       const reservation = credits.reserve(
-        request.creatorId, chargedUnits, `qiyamah:creative:${row.jobId}`,
+        request.creatorId, chargedUnits, attemptKey,
         { capability: request.operation, gatewayId: 'magic-hour' },
       );
       reservationId = reservation.reservationId;
+      attachReservation(db, attemptKey, reservation.reservationId, reservation.reservedUnits);
       db.prepare('UPDATE creative_jobs SET reservation_id = ? WHERE job_id = ?')
         .run(reservationId, row.jobId);
     } catch (err) {
+      if (attemptKey) failAttempt(db, attemptKey, 'reservation-failed');
       markFailed(db, row.jobId, 'reservation-failed', String(err).slice(0, 200));
       return {
         ok: false, reason: 'insufficient-balance',
@@ -209,7 +227,7 @@ export async function submitCreativeJob(
   }
 
   // Fire and DO NOT await. The row is the record of what happens next.
-  void executeJob(db, row.jobId, request, reservationId, credits);
+  void executeJob(db, row.jobId, request, reservationId, credits, attemptKey);
 
   return { ok: true, jobId: row.jobId, claimed: true, chargedUnits, state: 'PROCESSING' };
 }
@@ -227,6 +245,7 @@ async function executeJob(
   request: SubmitRequest,
   reservationId: string | null,
   credits: CreatorCreditRepository,
+  attemptKey: string | null,
 ): Promise<void> {
   try {
     const outcome = await runCreativeOperation(db, {
@@ -246,21 +265,34 @@ async function executeJob(
       });
       if (reservationId) {
         const job = getJob(db, jobId);
-        try { credits.settle(reservationId, job?.chargedUnits ?? 0); } catch { /* non-fatal */ }
+        settleReservation({
+          db, creatorId: request.creatorId, attemptKey: attemptKey ?? '',
+          reservationId, units: job?.chargedUnits ?? 0,
+          metadata: { jobId, assetId: outcome.assetId },
+        });
       }
+      if (attemptKey) completeAttempt(db, attemptKey, { jobId, assetId: outcome.assetId });
       return;
     }
 
     markFailed(db, jobId, outcome.rejection, outcome.detailEn);
     if (reservationId) {
       // The Creator pays for an act that did not happen exactly never.
-      try { credits.release(reservationId, `creative_${outcome.rejection}`); } catch { /* non-fatal */ }
+      releaseReservation({
+        db, creatorId: request.creatorId, attemptKey: attemptKey ?? '',
+        reservationId, reason: `creative_${outcome.rejection}`,
+      });
     }
+    if (attemptKey) failAttempt(db, attemptKey, outcome.rejection);
   } catch (err) {
     markFailed(db, jobId, 'engine-refused', String(err).slice(0, 300));
     if (reservationId) {
-      try { credits.release(reservationId, 'creative_threw'); } catch { /* non-fatal */ }
+      releaseReservation({
+        db, creatorId: request.creatorId, attemptKey: attemptKey ?? '',
+        reservationId, reason: 'creative_threw',
+      });
     }
+    if (attemptKey) failAttempt(db, attemptKey, 'engine-refused');
   }
 }
 

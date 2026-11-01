@@ -36,6 +36,16 @@ import {
   pendingReservations,
 } from '../paid-operation-gate';
 import type { GateVerdict } from '../paid-operation-gate';
+import {
+  claimAttempt,
+  completeAttempt,
+  failAttempt,
+  readAttempt,
+  unresolvedAttempts,
+  readClientOperationKey,
+} from '../paid-operation-attempts';
+import type { AttemptClaim } from '../paid-operation-attempts';
+import { reconcileOwedAttempts, resolveAttempt } from '../paid-operation-resolver';
 
 let seq = 0;
 const ROOT = process.cwd();
@@ -63,13 +73,44 @@ const ledger = (creatorId: string) =>
 
 const balance = (creatorId: string) => new CreatorCreditRepository(getDb()).getBalance(creatorId);
 
-/** An operation the catalog DOES price, so the paid road can be exercised. */
-function priceable(creatorId: string, key: string): GateVerdict {
-  return authorisePaidOperation({
-    db: getDb(), creatorId, role: 'creator',
+/**
+ * One submission, carried the way a real road carries it: the client's key is
+ * claimed first, and only a CLAIMED attempt is taken to the gate.
+ *
+ * `clientKey` null is the unimproved road — no client token, so every request
+ * stands alone and holds its own units.
+ */
+function submit(
+  creatorId: string,
+  clientKey: string | null,
+  role: 'creator' | 'founder' = 'creator',
+): { claim: AttemptClaim; verdict: GateVerdict | null } {
+  const claim = claimAttempt({ db: getDb(), creatorId, scope: TEST_SCOPE, clientKey });
+  if (claim.kind === 'in-flight' || claim.kind === 'already-succeeded') {
+    return { claim, verdict: null };
+  }
+  const verdict = authorisePaidOperation({
+    db: getDb(), creatorId, role,
     capability: 'image-generation', gatewayId: 'openai',
-    idempotencyKey: key,
+    attemptKey: claim.attemptKey,
   });
+  return { claim, verdict };
+}
+
+const TEST_SCOPE = 'test:image-generation';
+
+/** A fresh claimed attempt, for a test exercising the gate and nothing else. */
+function claimKey(creatorId: string): string {
+  const claim = claimAttempt({ db: getDb(), creatorId, scope: TEST_SCOPE, clientKey: null });
+  if (claim.kind !== 'claimed') throw new Error('a keyless claim is always a new attempt');
+  return claim.attemptKey;
+}
+
+/** An operation the catalog DOES price, reached with no client key at all. */
+function priceable(creatorId: string, _key?: string): GateVerdict {
+  const { verdict } = submit(creatorId, null);
+  if (verdict === null) throw new Error('a keyless submission can never be deduplicated');
+  return verdict;
 }
 
 describe('١ · لا تُنفَّذ عمليّةٌ بلا سعرٍ معتمد', () => {
@@ -80,7 +121,7 @@ describe('١ · لا تُنفَّذ عمليّةٌ بلا سعرٍ معتمد', 
     const verdict = authorisePaidOperation({
       db: getDb(), creatorId: me, role: 'creator',
       capability: 'image-editing', gatewayId: 'magic-hour',
-      idempotencyKey: `edit:${me}:a1`,
+      attemptKey: claimKey(me),
     });
 
     expect(verdict.kind).toBe('refused');
@@ -100,7 +141,7 @@ describe('١ · لا تُنفَّذ عمليّةٌ بلا سعرٍ معتمد', 
     const verdict = authorisePaidOperation({
       db: getDb(), creatorId: me, role: 'creator',
       capability: null, gatewayId: 'magic-hour-lip-sync',
-      idempotencyKey: `lipsync:${me}:a1`,
+      attemptKey: claimKey(me),
     });
 
     expect(verdict.kind).toBe('refused');
@@ -114,7 +155,7 @@ describe('٢ · الاستحقاقات لا تُكسَر ولا تُحاسَب',
     const verdict = authorisePaidOperation({
       db: getDb(), creatorId: founder, role: 'founder',
       capability: 'image-editing', gatewayId: 'magic-hour',
-      idempotencyKey: `edit:${founder}:a1`,
+      attemptKey: claimKey(founder),
     });
     expect(verdict).toEqual({ kind: 'entitled', via: 'founder' });
     expect(ledger(founder)).toHaveLength(0);
@@ -127,7 +168,7 @@ describe('٢ · الاستحقاقات لا تُكسَر ولا تُحاسَب',
     const verdict = authorisePaidOperation({
       db: getDb(), creatorId: me, role: 'creator',
       capability: 'image-generation', gatewayId: 'openai',
-      idempotencyKey: `gen:${me}:a1`,
+      attemptKey: claimKey(me),
       trialCapability: 'image',
     });
 
@@ -160,7 +201,7 @@ describe('٣ · الرصيد غير الكافي يُوقِف قبل المزو�
     const verdict = authorisePaidOperation({
       db: getDb(), creatorId: me, role: 'creator',
       capability: 'image-generation', gatewayId: 'openai',
-      idempotencyKey: `gen:${me}:too-poor`,
+      attemptKey: claimKey(me),
     });
 
     expect(verdict.kind).toBe('refused');
@@ -236,30 +277,133 @@ describe('٤ · الحجز والتسوية والتحرير — على الدف
     expect(balance(me).availableUnits).toBe(100 - verdict.units);
   });
 });
+describe('٥ · ضغطةٌ واحدةٌ وإن وصلت مرّتين', () => {
+  /*  WHAT THESE DECIDE, AND WHY THE SERVER CANNOT DECIDE IT ALONE
+   *
+   *    Two requests with the same Creator, the same prompt and the same model
+   *    are either ONE press the network sent twice, or TWO presses by someone
+   *    who wants two pictures. The server cannot tell, and the two wrong
+   *    guesses are not equally wrong:
+   *
+   *      guess «retry»     → the second provider call runs behind the first
+   *                          call's hold: a paid provider with NO cover.
+   *      guess «new press» → the Creator is charged twice for one press.
+   *
+   *    So the client says which it meant, with one key per press. These hold
+   *    both halves: the key deduplicates, and its ABSENCE never does.
+   */
 
-describe('٥ · لا خصمَ مزدوجًا لنفسِ النيّة', () => {
-  it('the same idempotency key returns the SAME reservation, not a second one', () => {
+  it('the same submission key, arriving while the first is still running, is refused — no second hold, no second call', () => {
     const me = creator();
-    fund(me, 1_000);
-    const key = `gen:${me}:one-intent`;
+    fund(me, 10_000);
 
-    const first = priceable(me, key);
-    const second = priceable(me, key);
+    const first = submit(me, 'press-1');
+    if (first.verdict?.kind !== 'reserved') throw new Error('expected a reservation');
+    const heldAfterFirst = balance(me).reservedUnits;
 
-    expect(first.kind).toBe('reserved');
-    expect(second.kind).toBe('reserved');
-    if (first.kind !== 'reserved' || second.kind !== 'reserved') return;
-    expect(second.reservationId).toBe(first.reservationId);
+    const second = submit(me, 'press-1');
 
-    // One hold, one debit of availability — not two.
+    // The decisive answer: the caller is told to wait, and is handed NO
+    // authorisation — so there is nothing it could call a provider with.
+    expect(second.claim.kind).toBe('in-flight');
+    expect(second.verdict).toBeNull();
+
     expect(ledger(me).filter((e) => e.transaction_type === 'reservation')).toHaveLength(1);
-    expect(balance(me).reservedUnits).toBe(first.units);
+    expect(balance(me).reservedUnits).toBe(heldAfterFirst);
+  });
+
+  it('the same submission key, arriving after it SUCCEEDED, is answered from the record — not charged and not performed', () => {
+    const me = creator();
+    fund(me, 10_000);
+
+    const first = submit(me, 'press-2');
+    if (first.verdict?.kind !== 'reserved') throw new Error('expected a reservation');
+    settleAuthorisedOperation(getDb(), me, first.verdict);
+    completeAttempt(getDb(), first.claim.attemptKey, { assetId: 'asset-xyz' });
+
+    const spentAfterFirst = balance(me).totalSpent;
+    const availableAfterFirst = balance(me).availableUnits;
+
+    const replay = submit(me, 'press-2');
+
+    expect(replay.claim.kind).toBe('already-succeeded');
+    if (replay.claim.kind === 'already-succeeded') {
+      // The Creator is handed back what they already got.
+      expect(JSON.parse(replay.claim.resultJson ?? 'null')).toEqual({ assetId: 'asset-xyz' });
+    }
+    expect(replay.verdict).toBeNull();
+
+    // One reservation, one settlement, and not a unit more spent.
+    expect(ledger(me).filter((e) => e.transaction_type === 'reservation')).toHaveLength(1);
+    expect(ledger(me).filter((e) => e.transaction_type === 'settlement')).toHaveLength(1);
+    expect(balance(me).totalSpent).toBe(spentAfterFirst);
+    expect(balance(me).availableUnits).toBe(availableAfterFirst);
+  });
+
+  it('the same submission key, arriving after it FAILED, is a fresh attempt that holds its own units', () => {
+    const me = creator();
+    fund(me, 10_000);
+
+    const first = submit(me, 'press-3');
+    if (first.verdict?.kind !== 'reserved') throw new Error('expected a reservation');
+    releaseAuthorisedOperation(getDb(), me, first.verdict, 'provider-failed');
+    failAttempt(getDb(), first.claim.attemptKey, 'provider:edit-failed');
+
+    const retry = submit(me, 'press-3');
+
+    expect(retry.claim.kind).toBe('claimed-after-failure');
+    expect(retry.verdict?.kind).toBe('reserved');
+    if (retry.verdict?.kind !== 'reserved') return;
+
+    // A retry of a failed attempt is a real attempt: its own key, its own
+    // hold. The old one holds nothing, so sharing it would be an uncovered
+    // provider call — which is the mistake this whole file exists to stop.
+    expect(retry.verdict.attemptKey).not.toBe(first.claim.attemptKey);
+    expect(retry.verdict.reservationId).not.toBe(first.verdict.reservationId);
+    expect(balance(me).reservedUnits).toBe(retry.verdict.units);
+  });
+
+  it('WITHOUT a submission key, two requests are two operations — each covered', () => {
+    const me = creator();
+    fund(me, 10_000);
+
+    const a = submit(me, null);
+    const b = submit(me, null);
+    if (a.verdict?.kind !== 'reserved' || b.verdict?.kind !== 'reserved') {
+      throw new Error('expected two reservations');
+    }
+
+    expect(b.verdict.reservationId).not.toBe(a.verdict.reservationId);
+    // Both held. Never one hold behind two provider calls.
+    expect(balance(me).reservedUnits).toBe(a.verdict.units + b.verdict.units);
+    expect(ledger(me).filter((e) => e.transaction_type === 'reservation')).toHaveLength(2);
+  });
+
+  it('a key from one road never matches the same key on another', () => {
+    const me = creator();
+    fund(me, 10_000);
+
+    const onThisRoad = claimAttempt({ db: getDb(), creatorId: me, scope: TEST_SCOPE, clientKey: 'same-word' });
+    const onAnother = claimAttempt({ db: getDb(), creatorId: me, scope: 'test:another-road', clientKey: 'same-word' });
+
+    expect(onThisRoad.kind).toBe('claimed');
+    expect(onAnother.kind).toBe('claimed');
+    expect(onAnother.attemptKey).not.toBe(onThisRoad.attemptKey);
+  });
+
+  it('one Creator’s key never matches another’s', () => {
+    const a = creator();
+    const b = creator();
+    const first = claimAttempt({ db: getDb(), creatorId: a, scope: TEST_SCOPE, clientKey: 'shared' });
+    const second = claimAttempt({ db: getDb(), creatorId: b, scope: TEST_SCOPE, clientKey: 'shared' });
+    expect(second.kind).toBe('claimed');
+    expect(second.attemptKey).not.toBe(first.attemptKey);
   });
 
   it('settling the same reservation twice spends it once', () => {
     const me = creator();
     fund(me, 1_000);
-    const verdict = priceable(me, `gen:${me}:settle-twice`);
+    const verdict = priceable(me);
     if (verdict.kind !== 'reserved') throw new Error('expected a reservation');
 
     settleAuthorisedOperation(getDb(), me, verdict);
@@ -269,59 +413,24 @@ describe('٥ · لا خصمَ مزدوجًا لنفسِ النيّة', () => {
     expect(balance(me).totalSpent).toBe(verdict.units);
   });
 
-  // PROBED 2026-10-31 on the bare repository: a stable key replayed after its
-  // reservation closes returns that CLOSED row — reserved 0, available
-  // unmoved — and the caller would take it for a hold and call a paid
-  // provider behind nothing. These two hold that shut.
-  it('repeating the intent after it SETTLED holds real units again, and never hands back the spent one', () => {
-    const me = creator();
-    fund(me, 10_000);
-    const key = `gen:${me}:replay-after-settle`;
+  describe('a key that cannot be trusted is not a key', () => {
+    it.each([
+      ['empty', ''],
+      ['whitespace only', '   '],
+      ['longer than 200 characters', 'k'.repeat(201)],
+      ['carrying a control character', 'abc\u0000def'],
+    ])('%s is read as no key at all', (_name, value) => {
+      expect(readClientOperationKey(value)).toBeNull();
+    });
 
-    const first = priceable(me, key);
-    if (first.kind !== 'reserved') throw new Error('expected a reservation');
-    settleAuthorisedOperation(getDb(), me, first);
-    const availableAfterFirst = balance(me).availableUnits;
+    it('a usable key is returned trimmed', () => {
+      expect(readClientOperationKey('  press-9  ')).toBe('press-9');
+    });
 
-    const second = priceable(me, key);
-    if (second.kind !== 'reserved') throw new Error('expected a second reservation');
-
-    expect(second.reservationId).not.toBe(first.reservationId);
-    // The decisive number: the replay actually took units out of availability.
-    expect(balance(me).availableUnits).toBe(availableAfterFirst - second.units);
-    expect(balance(me).reservedUnits).toBe(second.units);
-    expect(ledger(me).filter((e) => e.transaction_type === 'reservation')).toHaveLength(2);
-  });
-
-  it('retrying the intent after a RELEASE holds again, and that settlement succeeds', () => {
-    const me = creator();
-    fund(me, 10_000);
-    const key = `gen:${me}:replay-after-release`;
-
-    const first = priceable(me, key);
-    if (first.kind !== 'reserved') throw new Error('expected a reservation');
-    releaseAuthorisedOperation(getDb(), me, first, 'provider-failed');
-
-    const retry = priceable(me, key);
-    if (retry.kind !== 'reserved') throw new Error('expected a fresh reservation');
-    expect(retry.reservationId).not.toBe(first.reservationId);
-    expect(balance(me).reservedUnits).toBe(retry.units);
-
-    settleAuthorisedOperation(getDb(), me, retry);
-
-    // It settled for real — so no reconciliation debt was written.
-    expect(balance(me).totalSpent).toBe(retry.units);
-    expect(ledger(me).filter((e) => e.transaction_type === 'reconciliation_required')).toHaveLength(0);
-  });
-
-  it('a DIFFERENT intent gets its own hold', () => {
-    const me = creator();
-    fund(me, 1_000);
-    const a = priceable(me, `gen:${me}:intent-a`);
-    const b = priceable(me, `gen:${me}:intent-b`);
-    if (a.kind !== 'reserved' || b.kind !== 'reserved') throw new Error('expected reservations');
-    expect(b.reservationId).not.toBe(a.reservationId);
-    expect(ledger(me).filter((e) => e.transaction_type === 'reservation')).toHaveLength(2);
+    it('a missing header is no key, not an empty one', () => {
+      expect(readClientOperationKey(null)).toBeNull();
+      expect(readClientOperationKey(undefined)).toBeNull();
+    });
   });
 });
 
@@ -351,12 +460,28 @@ describe('٦ · التزامن — لا يُنفَق أكثرُ من الموج�
 });
 
 describe('٧ · التسويةُ الفاشلةُ تَترُك أثرًا يُصالَح', () => {
+  /*  WHAT WENT WRONG, AND WHAT A RESOLVER MAY AND MAY NOT DO
+   *
+   *    Seven places wrapped `settle` in `catch { }`. The Creator rightly kept
+   *    their result — but the hold stayed pending, the units stayed locked out
+   *    of their own availability, `total_spent` never moved, and nothing said
+   *    so anywhere.
+   *
+   *    The tempting cure is a sweeper that releases anything held for an hour.
+   *    It is wrong and expensive: a provider job that SUCCEEDED and whose
+   *    settlement failed would have its hold handed back, and the Empire would
+   *    have paid for work it then gave away. So the resolver reads the
+   *    attempt's own recorded outcome, and age decides nothing.
+   */
+
   it('a settlement that cannot be applied is recorded, not swallowed', () => {
     const me = creator();
-    // A reservation id that does not exist forces `settle` to throw inside the
-    // gate — the shape of a ledger that stumbled while the Creator's result
-    // was already produced.
-    const phantom: GateVerdict = { kind: 'reserved', reservationId: 'reservation_that_never_was', units: 7 };
+    const phantom: GateVerdict = {
+      kind: 'reserved',
+      reservationId: 'reservation_that_never_was',
+      units: 7,
+      attemptKey: claimKey(me),
+    };
 
     expect(() => settleAuthorisedOperation(getDb(), me, phantom)).not.toThrow();
 
@@ -365,22 +490,146 @@ describe('٧ · التسويةُ الفاشلةُ تَترُك أثرًا يُص
     expect(recon[0].status).toBe('pending');
   });
 
-  it('a stuck hold can be found by age, so nothing is locked in silence', () => {
+  it('a hold whose settlement failed stays OWED, which is what the resolver reads', () => {
+    const me = creator();
+    fund(me, 10_000);
+    const { claim, verdict } = submit(me, 'settle-will-fail');
+    if (verdict?.kind !== 'reserved') throw new Error('expected a reservation');
+
+    completeAttempt(getDb(), claim.attemptKey, { assetId: 'produced' });
+    // The ledger stumbles: the hold is gone from under the settlement.
+    getDb().prepare("UPDATE credit_ledger SET status = 'reversed' WHERE ledger_id = ?").run(verdict.reservationId);
+    settleAuthorisedOperation(getDb(), me, verdict);
+
+    expect(readAttempt(getDb(), claim.attemptKey)?.settlementState).toBe('owed');
+    expect(unresolvedAttempts(getDb()).map((a) => a.attemptKey)).toContain(claim.attemptKey);
+  });
+
+  it('the resolver SETTLES a hold whose operation succeeded', () => {
+    const me = creator();
+    fund(me, 10_000);
+    const { claim, verdict } = submit(me, 'recon-success');
+    if (verdict?.kind !== 'reserved') throw new Error('expected a reservation');
+
+    // The shape of a process that produced and then died before settling.
+    completeAttempt(getDb(), claim.attemptKey, { assetId: 'produced' });
+    const attempt = readAttempt(getDb(), claim.attemptKey);
+    if (!attempt) throw new Error('attempt not recorded');
+
+    const outcome = resolveAttempt(getDb(), attempt);
+
+    expect(outcome.action).toBe('settled');
+    expect(ledger(me).filter((e) => e.transaction_type === 'settlement')).toHaveLength(1);
+    expect(balance(me).totalSpent).toBe(verdict.units);
+    expect(balance(me).reservedUnits).toBe(0);
+    expect(readAttempt(getDb(), claim.attemptKey)?.settlementState).toBe('settled');
+  });
+
+  it('the resolver RELEASES a hold whose operation failed, and the units come back', () => {
+    const me = creator();
+    fund(me, 10_000);
+    const opening = balance(me).availableUnits;
+    const { claim, verdict } = submit(me, 'recon-failure');
+    if (verdict?.kind !== 'reserved') throw new Error('expected a reservation');
+
+    failAttempt(getDb(), claim.attemptKey, 'provider:timed-out');
+    const attempt = readAttempt(getDb(), claim.attemptKey);
+    if (!attempt) throw new Error('attempt not recorded');
+
+    const outcome = resolveAttempt(getDb(), attempt);
+
+    expect(outcome.action).toBe('released');
+    expect(balance(me).availableUnits).toBe(opening);
+    expect(balance(me).totalSpent).toBe(0);
+    expect(readAttempt(getDb(), claim.attemptKey)?.settlementState).toBe('released');
+  });
+
+  it('the resolver NEVER touches a hold whose operation has not reported — however old it is', () => {
+    const me = creator();
+    fund(me, 10_000);
+    const { claim, verdict } = submit(me, 'still-running');
+    if (verdict?.kind !== 'reserved') throw new Error('expected a reservation');
+
+    // Aged by a week. Age is the one thing that must not decide this.
+    getDb()
+      .prepare('UPDATE paid_operation_attempts SET created_at_ms = ? WHERE attempt_key = ?')
+      .run(Date.now() - 7 * 24 * 60 * 60 * 1_000, claim.attemptKey);
+
+    const report = reconcileOwedAttempts(getDb());
+    const mine = report.outcomes.find((o) => o.attemptKey === claim.attemptKey);
+
+    expect(mine?.action).toBe('left-undecided');
+    // Still held, still pending, nothing spent and nothing given back: a
+    // provider job that succeeded must never have its hold released by a clock.
+    expect(balance(me).reservedUnits).toBe(verdict.units);
+    expect(balance(me).totalSpent).toBe(0);
+    expect(
+      getDb().prepare('SELECT status FROM credit_ledger WHERE ledger_id = ?').get(verdict.reservationId),
+    ).toEqual({ status: 'pending' });
+  });
+
+  it('running the resolver twice moves no money the second time', () => {
+    const me = creator();
+    fund(me, 10_000);
+    const { claim, verdict } = submit(me, 'recon-twice');
+    if (verdict?.kind !== 'reserved') throw new Error('expected a reservation');
+    completeAttempt(getDb(), claim.attemptKey, { assetId: 'produced' });
+
+    reconcileOwedAttempts(getDb());
+    const afterFirst = balance(me);
+    const settlementsAfterFirst = ledger(me).filter((e) => e.transaction_type === 'settlement').length;
+
+    reconcileOwedAttempts(getDb());
+
+    expect(balance(me).totalSpent).toBe(afterFirst.totalSpent);
+    expect(balance(me).availableUnits).toBe(afterFirst.availableUnits);
+    expect(ledger(me).filter((e) => e.transaction_type === 'settlement')).toHaveLength(settlementsAfterFirst);
+  });
+
+  it('an entitled operation is never owed anything to resolve', () => {
+    const founder = creator('founder');
+    const claim = claimAttempt({ db: getDb(), creatorId: founder, scope: TEST_SCOPE, clientKey: 'free-work' });
+    if (claim.kind !== 'claimed') throw new Error('expected a claim');
+    completeAttempt(getDb(), claim.attemptKey, { assetId: 'free' });
+
+    expect(readAttempt(getDb(), claim.attemptKey)?.settlementState).toBe('not-owed');
+    expect(unresolvedAttempts(getDb()).map((a) => a.attemptKey)).not.toContain(claim.attemptKey);
+  });
+
+  it('a hold with no recorded amount is left owed rather than settled for zero', () => {
+    const me = creator();
+    fund(me, 10_000);
+    const { claim, verdict } = submit(me, 'amount-lost');
+    if (verdict?.kind !== 'reserved') throw new Error('expected a reservation');
+    completeAttempt(getDb(), claim.attemptKey, { assetId: 'produced' });
+    getDb().prepare('UPDATE paid_operation_attempts SET units_held = NULL WHERE attempt_key = ?').run(claim.attemptKey);
+
+    const attempt = readAttempt(getDb(), claim.attemptKey);
+    if (!attempt) throw new Error('attempt not recorded');
+    const outcome = resolveAttempt(getDb(), attempt);
+
+    // Settling for zero would hand the whole hold back and make a paid
+    // success free. A missing number is not a zero.
+    expect(outcome.action).toBe('still-owed');
+    expect(balance(me).totalSpent).toBe(0);
+    expect(balance(me).reservedUnits).toBe(verdict.units);
+  });
+
+  it('a stuck hold can still be found by age, so nothing is locked in silence', () => {
     const me = creator();
     fund(me, 1_000);
-    const verdict = priceable(me, `gen:${me}:stuck`);
+    const verdict = priceable(me);
     if (verdict.kind !== 'reserved') throw new Error('expected a reservation');
 
-    // Everything newer than the window is invisible to the sweeper…
+    // A report a human reads — not an instruction anything acts on.
     expect(pendingReservations(getDb(), 60_000).map((r) => r.reservationId)).not.toContain(verdict.reservationId);
-    // …and everything older than zero is not.
     expect(pendingReservations(getDb(), -1).map((r) => r.reservationId)).toContain(verdict.reservationId);
   });
 
   it('a settled hold is no longer pending', () => {
     const me = creator();
     fund(me, 1_000);
-    const verdict = priceable(me, `gen:${me}:not-stuck`);
+    const verdict = priceable(me);
     if (verdict.kind !== 'reserved') throw new Error('expected a reservation');
     settleAuthorisedOperation(getDb(), me, verdict);
     expect(pendingReservations(getDb(), -1).map((r) => r.reservationId)).not.toContain(verdict.reservationId);
@@ -407,8 +656,14 @@ describe('٨ · كلُّ طريقٍ مدفوعٍ يَمُرُّ ببوّابة',
   it.each(roads)('$name holds the money before it calls the provider', ({ files }) => {
     const source = files.map(read).join('\n');
     const authorises = /authorisePaidOperation\(/.test(source) || /\.reserve\(/.test(source);
-    const settles = /settleAuthorisedOperation\(|\.settle\(/.test(source);
-    const releases = /releaseAuthorisedOperation\(|\.release\(/.test(source);
+    // Three spellings of one act, because a road may hold its own money
+    // (`.settle`), pass through the gate (`settleAuthorisedOperation`), or use
+    // the shared settlement for a hold taken outside it (`settleReservation`).
+    // This test was written to judge the SHAPE; a regex that knew only one
+    // spelling failed every road the moment the shared helper arrived, while
+    // saying nothing about whether the money was safe.
+    const settles = /settleAuthorisedOperation\(|settleReservation\(|\.settle\(/.test(source);
+    const releases = /releaseAuthorisedOperation\(|releaseReservation\(|\.release\(/.test(source);
     expect({ authorises, settles, releases }).toEqual({ authorises: true, settles: true, releases: true });
   });
 
