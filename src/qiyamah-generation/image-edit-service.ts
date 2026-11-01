@@ -315,10 +315,15 @@ export async function editSovereignImage(params: {
     // The attempt is closed, not left hanging: an in-flight row that nothing
     // will ever finish would make this submission key unusable for ever.
     failAttempt(params.db, claim.attemptKey, `gate:${gate.reason}`);
-    return {
-      status: 'failed',
-      refusal: gate.reason === 'payment-required' ? 'insufficient-balance' : 'cost-unavailable',
-    };
+    // Each verdict keeps its own answer. A two-way ternary here folded
+    // `trial-exhausted` into «not priced yet» — a sentence that would have
+    // been false in the one case it was reached, and the commission road
+    // already passes a trial capability to this gate's sibling.
+    switch (gate.reason) {
+      case 'payment-required': return { status: 'failed', refusal: 'insufficient-balance' };
+      case 'trial-exhausted':  return { status: 'failed', refusal: 'insufficient-balance' };
+      case 'cost-unavailable': return { status: 'failed', refusal: 'cost-unavailable' };
+    }
   }
 
   // ── The edit itself, on the declared sovereign engine ────────────────────

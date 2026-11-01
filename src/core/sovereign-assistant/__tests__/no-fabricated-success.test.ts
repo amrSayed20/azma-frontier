@@ -139,8 +139,6 @@ describe('5 · and the roots are reachable from no production path', () => {
     const listed = execSync('git ls-files -- "app/*.ts" "app/*.tsx" "src/*.ts" "src/*.tsx"', {
       encoding: 'utf8', cwd: process.cwd(), maxBuffer: 32 * 1024 * 1024,
     }) as string;
-    const { readFileSync } = require('fs') as typeof import('fs');
-    const { join } = require('path') as typeof import('path');
 
     const IMPORTS_IT = /(?:from|require\()\s*['"][^'"]*core\/sovereign-assistant/;
     const candidates = listed.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);

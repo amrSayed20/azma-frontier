@@ -28,6 +28,8 @@ import { OPERATION_CONSUMPTION } from '../pricing/sovereign-value-balance';
 import { AzmaUnitCostEngine } from '../cost-engine/azma-cost-engine';
 import { CostUnavailableError, GatewayNotFoundError } from '../cost-engine/cost-engine-types';
 import type { CapabilityTarget } from '../cost-engine/cost-engine-types';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 /** What the gate would charge today, or the reason it refuses. */
 function whatTheGateCharges(capability: CapabilityTarget, gatewayId: string): number | 'refused' {
@@ -142,17 +144,15 @@ describe('٣ · والقرارُ المطلوبُ محصورٌ ومعدودٌ', 
     // A guard against a well-meant future edit: pointing the gate at the
     // price authority is a commercial act, and this test fails if it happens
     // without the Founder's figures being revisited at the same time.
-    const gate = require('fs').readFileSync(
-      require('path').join(process.cwd(), 'src/economy/paid-operation-gate.ts'), 'utf8',
-    ) as string;
+    const gate = readFileSync(join(process.cwd(), 'src/economy/paid-operation-gate.ts'), 'utf8');
     expect(gate).toContain('new AzmaUnitCostEngine()');
     expect(gate).not.toContain('sovereignPriceFor(');
   });
 
   it('the price authority reads no provider cost catalog, ever', () => {
-    const authority = require('fs').readFileSync(
-      require('path').join(process.cwd(), 'src/economy/pricing/sovereign-price-authority.ts'), 'utf8',
-    ) as string;
+    const authority = readFileSync(
+      join(process.cwd(), 'src/economy/pricing/sovereign-price-authority.ts'), 'utf8',
+    );
     // A price source that reaches into a cost catalog is how a provider's
     // invoice becomes a Creator's price without anyone deciding it.
     expect(authority).not.toMatch(/from '.*provider-cost-catalog'/);

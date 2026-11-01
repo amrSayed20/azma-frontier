@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { randomUUID } from 'crypto';
 import { verifySession } from '../../../../../src/authentication';
 import { SovereignVaultManager } from '../../../../../src/vault/sovereign-vault-manager';
 import { AssetFamily, SourceChamber } from '../../../../../src/vault/sovereign-vault-types';
@@ -205,6 +204,9 @@ export async function POST(request: NextRequest) {
         reservationId, reason: 'tts_provider_error',
       });
     }
+    // Closed, like the storage failure below it. A release that leaves the
+    // attempt in-flight is a submission key nobody can reuse.
+    failAttempt(db, claim.attemptKey, 'provider-error');
     return NextResponse.json(
       {
         status: 'failed',

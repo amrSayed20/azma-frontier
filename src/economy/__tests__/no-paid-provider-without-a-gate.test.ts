@@ -112,7 +112,7 @@ function claimKey(creatorId: string): string {
 }
 
 /** An operation the catalog DOES price, reached with no client key at all. */
-function priceable(creatorId: string, _key?: string): GateVerdict {
+function priceable(creatorId: string): GateVerdict {
   const { verdict } = submit(creatorId, null);
   if (verdict === null) throw new Error('a keyless submission can never be deduplicated');
   return verdict;
@@ -225,7 +225,7 @@ describe('٤ · الحجز والتسوية والتحرير — على الدف
     fund(me, 100);
     const before = balance(me);
 
-    const verdict = priceable(me, `gen:${me}:hold`);
+    const verdict = priceable(me);
     expect(verdict.kind).toBe('reserved');
     if (verdict.kind !== 'reserved') return;
 
@@ -241,7 +241,7 @@ describe('٤ · الحجز والتسوية والتحرير — على الدف
   it('settling spends the units and records a settlement', () => {
     const me = creator();
     fund(me, 100);
-    const verdict = priceable(me, `gen:${me}:settle`);
+    const verdict = priceable(me);
     if (verdict.kind !== 'reserved') throw new Error('expected a reservation');
 
     settleAuthorisedOperation(getDb(), me, verdict);
@@ -257,7 +257,7 @@ describe('٤ · الحجز والتسوية والتحرير — على الدف
   it('a provider failure gives every unit back', () => {
     const me = creator();
     fund(me, 100);
-    const verdict = priceable(me, `gen:${me}:fail`);
+    const verdict = priceable(me);
     if (verdict.kind !== 'reserved') throw new Error('expected a reservation');
 
     releaseAuthorisedOperation(getDb(), me, verdict, 'provider_failed');
@@ -272,7 +272,7 @@ describe('٤ · الحجز والتسوية والتحرير — على الدف
   it('releasing after settling takes nothing back — the spend stands', () => {
     const me = creator();
     fund(me, 100);
-    const verdict = priceable(me, `gen:${me}:both`);
+    const verdict = priceable(me);
     if (verdict.kind !== 'reserved') throw new Error('expected a reservation');
 
     settleAuthorisedOperation(getDb(), me, verdict);
@@ -446,15 +446,15 @@ describe('٦ · التزامن — لا يُنفَق أكثرُ من الموج�
     // take its units from.
     const probeOwner = creator();
     fund(probeOwner, 10_000);
-    const probe = priceable(probeOwner, `gen:${probeOwner}:probe`);
+    const probe = priceable(probeOwner);
     if (probe.kind !== 'reserved') throw new Error('expected a priced reservation');
     const unitPrice = probe.units;
 
     const me = creator();
     fund(me, unitPrice);
 
-    const a = priceable(me, `gen:${me}:race-a`);
-    const b = priceable(me, `gen:${me}:race-b`);
+    const a = priceable(me);
+    const b = priceable(me);
 
     expect(a.kind).toBe('reserved');
     expect(b.kind).toBe('refused');

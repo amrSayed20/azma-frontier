@@ -14,6 +14,8 @@
  *   built and tested; the consistency it yields is unmeasured.
  */
 
+import { DatabaseSync } from 'node:sqlite';
+import { SCHEMA_STATEMENTS } from '../../persistent-storage/schema';
 const mockEdit = jest.fn();
 const mockGenerate = jest.fn();
 
@@ -23,10 +25,8 @@ jest.mock('../../qiyamah-generation/image-edit-service', () => ({
 jest.mock('../../qiyamah-generation/generation-service', () => ({
   generateImage: mockGenerate,
 }));
-const { DatabaseSync: CommissionDb } = require("node:sqlite");
-const { SCHEMA_STATEMENTS: COMMISSION_SCHEMA } = require("../../persistent-storage/schema");
-const realCommissionDb = new CommissionDb(":memory:");
-for (const statement of COMMISSION_SCHEMA) realCommissionDb.exec(statement);
+const realCommissionDb = new DatabaseSync(":memory:");
+for (const statement of SCHEMA_STATEMENTS) realCommissionDb.exec(statement);
 
 jest.mock('../../persistent-storage', () => ({
   // A REAL in-memory database, not a string — see the note in

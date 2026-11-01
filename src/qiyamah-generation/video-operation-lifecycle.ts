@@ -237,6 +237,12 @@ export async function acceptVideoProduction(params: {
   readonly request: VideoGenerationRequest;
   /** Absent when the act was entitled and nothing is held. */
   readonly money?: ProductionMoney;
+  /**
+   * The attempt this production belongs to, present whether or not a hold
+   * was taken — because an entitled production still has an outcome to
+   * record, and a row left in-flight for ever is a record that lies.
+   */
+  readonly attemptKey?: string;
 }): Promise<AcceptedOperation> {
   const existing = findOperationByIntentKey(params.creatorId, params.intentKey);
   if (existing) {
@@ -271,7 +277,13 @@ export async function acceptVideoProduction(params: {
   // The production, from here, belongs to the operation and not to the
   // request. A rejected promise must never become an unhandled rejection
   // that takes the process down with it.
-  void runProduction(operationId, { ...params.request, operationId }, params.creatorId, params.money)
+  void runProduction(
+    operationId,
+    { ...params.request, operationId },
+    params.creatorId,
+    params.attemptKey ?? params.money?.attemptKey,
+    params.money,
+  )
     .catch(() => { /* recorded below */ });
 
   return { operationId, state: OperationState.DISPATCHED, reused: false };
@@ -281,6 +293,7 @@ async function runProduction(
   operationId: string,
   request: VideoGenerationRequest,
   creatorId: string,
+  attemptKey: string | undefined,
   money?: ProductionMoney,
 ): Promise<void> {
   const manager = ledger();
@@ -297,7 +310,7 @@ async function runProduction(
     console.log('[QiyamahOperation]', JSON.stringify({ operationId, stage: 'failed', detail: detail.slice(0, 240) }));
     writeStored(operationId, { failureReason: classifyFailure(undefined, detail) });
     try { await manager.updateState(operationId, OperationState.FAILED, { resolvedAt: Date.now() }); } catch { /* sealed */ }
-    closeMoney(creatorId, money, 'failed', 'production-threw');
+    closeMoney(creatorId, attemptKey, money, 'failed', 'production-threw');
     return;
   }
 
@@ -324,14 +337,14 @@ async function runProduction(
       });
     } catch { /* sealed */ }
     // The asset exists and is the Creator's. NOW the units are spent.
-    closeMoney(creatorId, money, 'succeeded', result.asset.assetId);
+    closeMoney(creatorId, attemptKey, money, 'succeeded', result.asset.assetId);
     return;
   }
 
   console.log('[QiyamahOperation]', JSON.stringify({ operationId, stage: 'failed', reason: result.reason, detail: String(result.message).slice(0, 240) }));
   writeStored(operationId, { failureReason: classifyFailure(result.reason, result.message) });
   try { await manager.updateState(operationId, OperationState.FAILED, { resolvedAt: Date.now() }); } catch { /* sealed */ }
-  closeMoney(creatorId, money, 'failed', String(result.reason));
+  closeMoney(creatorId, attemptKey, money, 'failed', String(result.reason));
 }
 
 /**
@@ -343,12 +356,29 @@ async function runProduction(
  */
 function closeMoney(
   creatorId: string,
+  attemptKey: string | undefined,
   money: ProductionMoney | undefined,
   outcome: 'succeeded' | 'failed',
   detail: string,
 ): void {
-  if (!money) return;
   const db = getDb();
+
+  // ── AN ENTITLED PRODUCTION HAS NO HOLD, AND STILL HAS AN OUTCOME ─────────
+  //
+  //   CORRECTED 2026-11-01: this returned early when nothing was held, so
+  //   every video today — all of them, since video is unpriced and entitled
+  //   subscribers reserve nothing — and every Founder video left an attempt
+  //   row `in-flight` that nothing would ever close. No money was locked,
+  //   because none was held; but the record said «running» about a production
+  //   that had finished hours before, and a record that lies about the easy
+  //   case is not trusted about the hard one.
+  if (!money) {
+    if (attemptKey) {
+      if (outcome === 'succeeded') completeAttempt(db, attemptKey, { assetId: detail });
+      else failAttempt(db, attemptKey, detail);
+    }
+    return;
+  }
   if (outcome === 'succeeded') {
     settleReservation({
       db, creatorId, attemptKey: money.attemptKey,

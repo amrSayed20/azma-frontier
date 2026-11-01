@@ -332,6 +332,54 @@ describe('٣ · والمولِّدُ المدفوعُ نفسُه ليس بابً
     expect(source).toContain('settleAuthorisedOperation(');
   });
 
+  it('no road closes an attempt it has just opened — a claim is never failed beside its own reservation', () => {
+    /*  THE DEFECT THIS WAS WRITTEN AGAINST, AND HOW IT SURVIVED EVERYTHING
+     *
+     *    FOUND 2026-11-01 by an automated review, after `tsc --noEmit` was
+     *    clean and 5,482 tests passed. A line-numbered insertion of mine put
+     *    `failAttempt(…, 'insufficient-balance')` immediately AFTER a
+     *    successful `attachReservation` in the image road's success path —
+     *    so every paid generation declared its own attempt failed the instant
+     *    it reserved, and a resent key then took a SECOND hold and made a
+     *    SECOND paid provider call. The `catch` that should have held the line
+     *    had none at all.
+     *
+     *    Not one test saw it, because no test asserted the attempt's state
+     *    between the reservation and the result. This one asserts the SHAPE
+     *    that made it possible: a `failAttempt` must never sit next to the
+     *    `attachReservation` that just succeeded.
+     */
+    const ROADS = [
+      'app/api/qiyamah/generate/route.ts',
+      'app/api/vault/assets/[assetId]/upscale/route.ts',
+      'app/api/vault/assets/generate-speech/route.ts',
+      'app/api/vault/assets/generate-cloned-speech/route.ts',
+      'app/api/vault/assets/clone-voice/route.ts',
+      'app/makman-al-ghayah/reframe-actions.ts',
+      'src/vault/creative-job-service.ts',
+    ];
+
+    let examined = 0;
+    for (const file of ROADS) {
+      const lines = read(file).split(/\r?\n/);
+      lines.forEach((line, i) => {
+        if (!/attachReservation\(/.test(line)) return;
+        examined += 1;
+        // The success path runs from the binding to the END of its try block.
+        // A `failAttempt` inside the `catch` below is correct and must not be
+        // flagged — the first version of this guard could not tell the two
+        // apart and accused the video road, which was right.
+        const rest = lines.slice(i + 1, i + 12);
+        const catchAt = rest.findIndex((l) => /\}\s*catch\b/.test(l));
+        const successPath = (catchAt === -1 ? rest.slice(0, 3) : rest.slice(0, catchAt)).join('\n');
+        expect({ file, line: i + 1, failsItsOwnClaim: /failAttempt\(/.test(successPath) })
+          .toEqual({ file, line: i + 1, failsItsOwnClaim: false });
+      });
+    }
+    // AN INSTRUMENT THAT FOUND NOTHING IS NOT REPORTING A ZERO.
+    expect(examined).toBeGreaterThanOrEqual(6);
+  });
+
   it('the deferred halves close their own money, and not at acceptance', () => {
     /*  THE DORMANT DEFECT THIS HOLDS SHUT
      *

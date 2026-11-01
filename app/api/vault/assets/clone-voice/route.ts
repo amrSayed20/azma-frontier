@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { randomUUID } from 'crypto';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { verifySession } from '../../../../../src/authentication';
@@ -95,63 +94,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (session.role !== 'founder') {
-    const costEngine = new AzmaUnitCostEngine();
-    let costEstimate;
-    try {
-      costEstimate = costEngine.estimate('voice-cloning', 'elevenlabs');
-    } catch (err) {
-      if (err instanceof CostUnavailableError) {
-        failAttempt(db, claim.attemptKey, 'cost-unavailable');
-        return NextResponse.json(
-          { status: 'failed', reason: 'cost-unavailable', message: 'Voice cloning cost is not yet available. Generation blocked.' },
-          { status: 503 },
-        );
-      }
-      throw err;
-    }
-
-    const creditRepo = new CreatorCreditRepository(db);
-    const balance = creditRepo.getBalance(session.creatorId);
-
-    if (balance.availableUnits < costEstimate.estimatedAzmaUnits) {
-      failAttempt(db, claim.attemptKey, 'insufficient-balance');
-      return NextResponse.json(
-        {
-          status: 'failed',
-          reason: 'payment-required',
-          message: 'Insufficient AZMA Units. Purchase a credit pack to continue.',
-          estimatedCost: costEstimate.estimatedAzmaUnits,
-          availableUnits: balance.availableUnits,
-        },
-        { status: 402 },
-      );
-    }
-
-    try {
-      const reservation = creditRepo.reserve(
-        session.creatorId,
-        costEstimate.estimatedAzmaUnits,
-        // The ATTEMPT's key, not a fresh one. This is the whole repair.
-        claim.attemptKey,
-        // The gateway the PRICE came from, so a later cost reconciliation
-        // reads the same provider the charge was computed against.
-        { capability: 'voice-cloning', gatewayId: 'elevenlabs' },
-      );
-      reservationId = reservation.reservationId;
-      chargeUnits = reservation.reservedUnits;
-      attachReservation(db, claim.attemptKey, reservation.reservationId, reservation.reservedUnits);
-    } catch (err) {
-      if (err instanceof InsufficientBalanceError) {
-        failAttempt(db, claim.attemptKey, 'insufficient-balance');
-        return NextResponse.json(
-          { status: 'failed', reason: 'payment-required', message: 'Insufficient AZMA Units.' },
-          { status: 402 },
-        );
-      }
-      throw err;
-    }
-  }
 
   let body: unknown;
   try {
@@ -261,6 +203,79 @@ export async function POST(request: NextRequest) {
 
   const referenceFileName = referenceAsset.secureStorageUri.split('/').pop() ?? 'reference.mp3';
 
+  // ── THE MONEY, MOVED TO WHERE NOTHING CAN REFUSE AFTER IT ───────────────
+  //
+  //   CORRECTED 2026-11-01. This block used to sit far above, BEFORE the
+  //   request body was even parsed — so SEVEN refusals stood between the
+  //   hold and the provider: a body that is not JSON, consent not given, no
+  //   reference asset, an asset that is not a voice, one that is not the
+  //   Creator's, an unreadable address, a file that would not open. Each one
+  //   returned with the units still held and the attempt left `owed` and
+  //   `in-flight`, which the resolver then reports `left-undecided` for ever.
+  //
+  //   It never fired, because `voice-cloning` is pending-discovery and the
+  //   cost engine refuses before the hold is taken. It would have fired on
+  //   the first day a price was approved. The identical defect was repaired
+  //   in the upscale route in this same branch; this is the one it missed.
+
+  if (session.role !== 'founder') {
+    const costEngine = new AzmaUnitCostEngine();
+    let costEstimate;
+    try {
+      costEstimate = costEngine.estimate('voice-cloning', 'elevenlabs');
+    } catch (err) {
+      if (err instanceof CostUnavailableError) {
+        failAttempt(db, claim.attemptKey, 'cost-unavailable');
+        return NextResponse.json(
+          { status: 'failed', reason: 'cost-unavailable', message: 'Voice cloning cost is not yet available. Generation blocked.' },
+          { status: 503 },
+        );
+      }
+      throw err;
+    }
+
+    const creditRepo = new CreatorCreditRepository(db);
+    const balance = creditRepo.getBalance(session.creatorId);
+
+    if (balance.availableUnits < costEstimate.estimatedAzmaUnits) {
+      failAttempt(db, claim.attemptKey, 'insufficient-balance');
+      return NextResponse.json(
+        {
+          status: 'failed',
+          reason: 'payment-required',
+          message: 'Insufficient AZMA Units. Purchase a credit pack to continue.',
+          estimatedCost: costEstimate.estimatedAzmaUnits,
+          availableUnits: balance.availableUnits,
+        },
+        { status: 402 },
+      );
+    }
+
+    try {
+      const reservation = creditRepo.reserve(
+        session.creatorId,
+        costEstimate.estimatedAzmaUnits,
+        // The ATTEMPT's key, not a fresh one. This is the whole repair.
+        claim.attemptKey,
+        // The gateway the PRICE came from, so a later cost reconciliation
+        // reads the same provider the charge was computed against.
+        { capability: 'voice-cloning', gatewayId: 'elevenlabs' },
+      );
+      reservationId = reservation.reservationId;
+      chargeUnits = reservation.reservedUnits;
+      attachReservation(db, claim.attemptKey, reservation.reservationId, reservation.reservedUnits);
+    } catch (err) {
+      if (err instanceof InsufficientBalanceError) {
+        failAttempt(db, claim.attemptKey, 'insufficient-balance');
+        return NextResponse.json(
+          { status: 'failed', reason: 'payment-required', message: 'Insufficient AZMA Units.' },
+          { status: 402 },
+        );
+      }
+      throw err;
+    }
+  }
+
   let cloneResult;
   try {
     cloneResult = await cloneVoiceViaProvider(referenceAudioBytes, referenceFileName, voiceDisplayName);
@@ -271,6 +286,9 @@ export async function POST(request: NextRequest) {
         reservationId, reason: 'voice_clone_provider_error',
       });
     }
+    // Closed, like the storage failure below it. A release that leaves the
+    // attempt in-flight is a submission key nobody can reuse.
+    failAttempt(db, claim.attemptKey, 'provider-error');
     return NextResponse.json(
       {
         status: 'failed',

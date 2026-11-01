@@ -17,6 +17,8 @@
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
+import { DatabaseSync } from 'node:sqlite';
+import { SCHEMA_STATEMENTS } from '../../../src/persistent-storage/schema';
 const mockVerifySession = jest.fn();
 // A REAL in-memory database, not a string.
 //
@@ -26,8 +28,7 @@ const mockVerifySession = jest.fn();
 //   for a database — it only hides the write. The ledger, the cost engine
 //   and the trial service stay mocked: this suite is about the ORDER they
 //   are consulted in.
-const { DatabaseSync } = require('node:sqlite');
-const { SCHEMA_STATEMENTS } = require('../../../src/persistent-storage/schema');
+
 const realDb = new DatabaseSync(':memory:');
 for (const statement of SCHEMA_STATEMENTS) realDb.exec(statement);
 const mockGetDb = jest.fn(() => realDb);

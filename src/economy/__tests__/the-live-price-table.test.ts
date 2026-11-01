@@ -22,6 +22,7 @@
  *   NOTHING HERE CHANGES A PRICE. It measures.
  */
 
+import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -152,13 +153,10 @@ describe('٢ · جدولُ الحقيقةِ الحيِّ مقابلَ المعت
     for (const capability of ['MP4_PRODUCTION', 'STORYBOARD_IMAGE', 'STORYBOARD_VIDEO']) {
       expect(approved(capability)).toBeGreaterThan(0);
     }
-    const everywhere = ['app', 'src'].flatMap(() => []);
-    void everywhere;
-    const { execSync } = require('child_process');
     for (const capability of ['MP4_PRODUCTION', 'STORYBOARD_IMAGE', 'STORYBOARD_VIDEO']) {
-      const hits = (execSync(`git grep -l "${capability}" -- "app" "src" || true`, {
+      const hits = execSync(`git grep -l "${capability}" -- "app" "src" || true`, {
         encoding: 'utf8', cwd: process.cwd(),
-      }) as string)
+      })
         .split('\n').map((l) => l.trim())
         .filter((l) => l.length > 0
           && !l.includes('sovereign-value-balance')

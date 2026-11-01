@@ -26,6 +26,8 @@
 
 // ─── MOCKS (before any import) ───────────────────────────────────────────────
 
+import { DatabaseSync } from 'node:sqlite';
+import { SCHEMA_STATEMENTS } from '../../persistent-storage/schema';
 const mockOrchestrate = jest.fn();
 
 jest.mock('../../core/sovereign-ai-integration/provider-bootstrap', () => ({
@@ -38,10 +40,8 @@ jest.mock('../../qiyamah-generation/asset-storage', () => ({
 // The same double the generation service's own suite uses, for the same
 // reason: a double that does not mirror its module tests something that does
 // not exist.
-const { DatabaseSync: CommissionDb } = require("node:sqlite");
-const { SCHEMA_STATEMENTS: COMMISSION_SCHEMA } = require("../../persistent-storage/schema");
-const realCommissionDb = new CommissionDb(":memory:");
-for (const statement of COMMISSION_SCHEMA) realCommissionDb.exec(statement);
+const realCommissionDb = new DatabaseSync(":memory:");
+for (const statement of SCHEMA_STATEMENTS) realCommissionDb.exec(statement);
 
 jest.mock('../../persistent-storage', () => ({
   // A REAL in-memory database, not a string.

@@ -320,6 +320,10 @@ export async function POST(
     // No asset was deposited and the bytes are being removed, so the Creator
     // receives nothing. The hold goes back.
     releaseAuthorisedOperation(db, session.creatorId, gate, `animate_${outcome.rejection}`);
+    // And the attempt is CLOSED, which the comment fifty lines above promises
+    // of every exit and this one alone was missing: an in-flight row nothing
+    // will ever finish is a submission key the Creator can never reuse.
+    failAttempt(db, claim.attemptKey, `lineage:${outcome.rejection}`);
     try { await unlink(join(uploadsDir(), 'generated-assets', basename(persisted.assetUrl))); } catch { /* already gone */ }
     const f = trail.fail('derive', 'deposit', outcome.rejection);
     return NextResponse.json(

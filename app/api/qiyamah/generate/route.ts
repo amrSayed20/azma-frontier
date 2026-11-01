@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { randomUUID } from 'crypto';
-import { generateImage, generateVideo } from '../../../../src/qiyamah-generation';
+import { generateImage } from '../../../../src/qiyamah-generation';
 import { verifySession } from '../../../../src/authentication';
 import { getDb } from '../../../../src/persistent-storage';
 import { ConsumptionRepository } from '../../../../src/persistent-storage/consumption-repository';
@@ -253,6 +252,10 @@ export async function POST(request: NextRequest) {
         ...(aspectRatio ? { aspectRatio } : {}),
         originalIdea: typeof idea === 'string' && idea.trim().length > 0 ? idea.trim() : null,
       },
+      // The attempt travels whether or not a hold was taken: an entitled
+      // production still has an outcome, and a row left in-flight for ever
+      // is a record that lies about the easy case.
+      attemptKey: videoClaim.attemptKey,
       // The hold travels WITH the production, so its ending can close it.
       // Absent when the act was entitled and nothing was held.
       ...(videoReservationId && videoResolvedCostEstimate
@@ -411,14 +414,15 @@ export async function POST(request: NextRequest) {
         );
         reservationId = reservation.reservationId;
         attachReservation(db, imageClaim.attemptKey, reservation.reservationId, reservation.reservedUnits);
-          failAttempt(db, imageClaim.attemptKey, 'insufficient-balance');
       } catch (err) {
         if (err instanceof InsufficientBalanceError) {
+          failAttempt(db, imageClaim.attemptKey, 'insufficient-balance');
           return NextResponse.json(
             { status: 'failed', operationId, stage: 'gate', reason: 'payment-required', message: 'Insufficient AZMA Units.' },
             { status: 402 },
           );
         }
+        failAttempt(db, imageClaim.attemptKey, 'reserve-failed');
         throw err;
       }
     }

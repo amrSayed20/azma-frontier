@@ -26,6 +26,8 @@ import {
   paidOperationHeaders,
 } from '../client-operation-key';
 import type { PaidRoad } from '../client-operation-key';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 /** A `sessionStorage` that behaves, for the tests that need one that works. */
 function installWorkingStorage(): Map<string, string> {
@@ -173,8 +175,6 @@ describe('٥ · والشاشاتُ تَستعمِلها فعلًا', () => {
    *  the two chambers' own source: each paid fetch must carry the header, and
    *  each must conclude its key where the verdict arrives.
    */
-  const { readFileSync } = require('fs') as typeof import('fs');
-  const { join } = require('path') as typeof import('path');
   const read = (f: string) => readFileSync(join(process.cwd(), f), 'utf8');
 
   const SCREENS: readonly { file: string; roads: readonly PaidRoad[] }[] = [

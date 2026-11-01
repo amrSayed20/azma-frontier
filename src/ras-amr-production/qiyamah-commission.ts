@@ -54,21 +54,6 @@ import { claimAttempt, completeAttempt, failAttempt } from '../economy/paid-oper
 /** The namespace this road's scene submissions live in. */
 const SCENE_GENERATION_SCOPE = 'ras-amr:scene-generation';
 
-/**
- * A commissioned scene, read back for a resent key.
- *
- * A row that will not parse back into an asset is NOT a licence to generate a
- * paid picture again: the caller reports a failure instead.
- */
-function replayCommissionedScene(resultJson: string | null): { assetId: string } | null {
-  if (typeof resultJson !== 'string') return null;
-  try {
-    const parsed = JSON.parse(resultJson) as { assetId?: unknown };
-    return typeof parsed.assetId === 'string' ? { assetId: parsed.assetId } : null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Where the production workshop can read a picture the Empire made.
@@ -358,7 +343,20 @@ function classifyEditRefusal(refusal: ImageEditRefusal): CommissionFailure {
     case 'requires-adoption':
     case 'source-unresolvable':
     case 'source-unreadable':     return 'REFERENCE_UNUSABLE';
-    default:                      return 'GENERATION_FAILED';
+    // ── THE FOUR THE ECONOMY ADDED, EACH KEEPING ITS OWN CURE ────────────
+    //
+    //   CORRECTED 2026-11-01: these fell through to GENERATION_FAILED, so a
+    //   Creator on the reference road was told «we could not make it» when
+    //   the truth was «your balance is short» or «we have not priced this».
+    //   The `NO_BALANCE` and `NOT_PRICED` wording existed and could not be
+    //   reached from the only road that had it.
+    case 'insufficient-balance':  return 'NO_BALANCE';
+    case 'cost-unavailable':      return 'NOT_PRICED';
+    // Running or already done: neither is a failure of this scene, and
+    // neither can be said better than «it did not come back this time».
+    case 'operation-in-flight':
+    case 'already-performed':     return 'GENERATION_FAILED';
+    case 'edit-failed':           return 'GENERATION_FAILED';
   }
 }
 
@@ -454,11 +452,10 @@ export async function commissionScenePictures(params: {
         assetId: params.referenceAssetId,
         creatorId: params.creatorId,
         instructionAr: instruction,
-        // This road already HAS a stable key and never needed to invent one: a
-        // scene is commissioned once, so a commission re-run for a storyboard
-        // whose earlier scenes succeeded replays them instead of paying for
-        // them again.
-        operationKey: `scene:${demand.sceneId}:${params.referenceAssetId}`,
+        // No key, for the reason given at the words road below: a scene id
+        // outlives the scene's picture, and the Creator's own
+        // `regenerateSceneIds` is an ask this would have refused for ever.
+        operationKey: null,
       });
 
       if (edited.status === 'succeeded') {
@@ -516,27 +513,36 @@ export async function commissionScenePictures(params: {
         `docs/UNPRICED_CAPABILITY_DISCLOSURE.md`. Spending without a record is
         not reversible; a refusal is.
     */
+    /*  ── NO CLIENT KEY HERE, AND THE REASON IS THE CREATOR'S OWN ASK ──────
+     *
+     *    CORRECTED 2026-11-01. A first version keyed this on `scene:<id>`,
+     *    reasoning that a scene is commissioned once. It is not: the produce
+     *    road reads `regenerateSceneIds` from the Creator — an explicit «make
+     *    this one again» — and a key derived from the scene id never expires,
+     *    so that ask would have been answered with the OLD picture for ever.
+     *    A Creator could never have replaced a scene they disliked.
+     *
+     *    And worse: a process that died mid-generation would leave the
+     *    attempt `in-flight`, which neither `claimAttempt` nor the resolver
+     *    may touch — bricking that scene permanently and, once priced,
+     *    locking its units with it.
+     *
+     *    So this road deduplicates NOTHING, exactly as the reframe does, and
+     *    for the same reason: the natural key outlives the thing it names.
+     *    What protects against a double press is upstream and is the right
+     *    guard — the produce road commissions only scenes that have no
+     *    `visualAssetId` yet, or that the Creator named for regeneration. It
+     *    asks «do you have the picture?», not «did you ask before?».
+     *
+     *    The attempt row is still created, because the resolver must be able
+     *    to find a hold that a crash left behind.
+     */
     const sceneClaim = claimAttempt({
       db: getDb(),
       creatorId: params.creatorId,
       scope: SCENE_GENERATION_SCOPE,
-      // A scene is commissioned once. The storyboard's own id is the stable
-      // key this road already had — so re-running a commission whose earlier
-      // scenes succeeded replays them instead of paying for them again.
-      clientKey: `scene:${demand.sceneId}`,
+      clientKey: null,
     });
-
-    if (sceneClaim.kind === 'in-flight' || sceneClaim.kind === 'already-succeeded') {
-      const replayed = replayCommissionedScene(
-        sceneClaim.kind === 'already-succeeded' ? sceneClaim.resultJson : null,
-      );
-      commissioned.push(
-        replayed
-          ? { order: demand.order, sceneId: demand.sceneId, assetId: replayed.assetId }
-          : { order: demand.order, sceneId: demand.sceneId, failure: 'GENERATION_FAILED' },
-      );
-      continue;
-    }
 
     const sceneGate = authorisePaidOperation({
       db: getDb(),
