@@ -87,6 +87,37 @@ const UPLIFT_CAPABILITIES: readonly NewCapability[] =
   MEASURED_COSTS.map((r) => r.capability);
 
 /**
+ * ─── THE SCENE'S OWN ENTRY — PREPARED, AND DELIBERATELY NOT ACTIVE ──────────
+ *
+ *   RULED 2026-11-02 (decision 2): a commissioned scene gets its OWN price
+ *   classification. It is not `STORYBOARD_IMAGE` merely because that name
+ *   exists in the table — that figure (70) was set for an open-source
+ *   storyboard component that charges nothing externally, and it is read by
+ *   no line in this repository. The scene is produced by `generateImage` →
+ *   Magic Hour → `nano-banana-2`, a PAID provider measured at 100 credits.
+ *
+ *   «لا تَعتمِد ٩٨ وحدةً سعرًا نهائيًّا تلقائيًّا» — the break-even is a
+ *   calculation, not an approval. And «لا تُفعِّل أيَّ سعرٍ جديدٍ للمشهد
+ *   قبل اعتمادِ قيمتِه صراحةً».
+ *
+ *   So the classification exists, by name, and carries **no number**. Asking
+ *   for it answers `absent`, which every caller already treats as «refuse,
+ *   and never charge zero». The day a value is written here the scene road
+ *   begins charging it with no other change; until then it stays refused,
+ *   and the refusal is the ruling being obeyed rather than a defect.
+ */
+export const SCENE_CAPABILITY = 'RAS_AMR_SCENE' as const;
+
+/**
+ * The value the owner has approved for a commissioned scene.
+ *
+ * `null` means «not yet approved». It is NOT zero, and nothing may read it
+ * as a price. A test holds it at null so that activating it is a deliberate,
+ * visible act with the owner's figure in the diff.
+ */
+export const SCENE_APPROVED_UNITS: number | null = null;
+
+/**
  * What the Empire has approved for one capability.
  *
  * The order is deliberate: the Founder's own table FIRST, because a figure he
@@ -94,6 +125,32 @@ const UPLIFT_CAPABILITIES: readonly NewCapability[] =
  * answers only for the five it names.
  */
 export function sovereignPriceFor(capability: string): SovereignPrice {
+  // The scene's own classification, awaiting the owner's figure. It answers
+  // before the signed table is consulted, because it is not in it yet — and
+  // it answers `absent` while `SCENE_APPROVED_UNITS` is null, so the road
+  // refuses rather than charging anything.
+  if (capability === SCENE_CAPABILITY) {
+    if (SCENE_APPROVED_UNITS === null) {
+      return {
+        capability,
+        status: 'absent',
+        unitsPerQuantity: null,
+        quantity: null,
+        authority: 'awaiting the owner’s figure — ruled 2026-11-02, decision 2',
+        note: 'A commissioned scene is produced by a PAID provider (Magic Hour, '
+          + 'nano-banana-2, 100 credits measured). Break-even is 98 units, which is '
+          + 'a calculation and not an approval. See docs/PRE_EXECUTION_PRICE_MAP.md.',
+      };
+    }
+    return {
+      capability,
+      status: 'approved',
+      unitsPerQuantity: SCENE_APPROVED_UNITS,
+      quantity: 'per-image',
+      authority: 'sovereign-price-authority.ts · SCENE_APPROVED_UNITS · owner ruling',
+    };
+  }
+
   const approved = OPERATION_CONSUMPTION.find((r) => r.capability === capability);
   if (approved) {
     return {

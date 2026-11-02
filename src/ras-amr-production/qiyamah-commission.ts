@@ -50,6 +50,7 @@ import {
   authorisePaidOperation, settleAuthorisedOperation, releaseAuthorisedOperation,
 } from '../economy/paid-operation-gate';
 import { claimAttempt, completeAttempt, failAttempt } from '../economy/paid-operation-attempts';
+import { SCENE_CAPABILITY } from '../economy/pricing/sovereign-price-authority';
 
 /** The namespace this road's scene submissions live in. */
 const SCENE_GENERATION_SCOPE = 'ras-amr:scene-generation';
@@ -553,6 +554,21 @@ export async function commissionScenePictures(params: {
       capability: 'image-generation',
       gatewayId: 'magic-hour',
       attemptKey: sceneClaim.attemptKey,
+      // ── PREPARED, AND NOT YET ACTIVE — RULED 2026-11-02, DECISION 2 ────
+      //
+      //   A commissioned scene has its OWN price classification. It is not
+      //   `IMAGE_GENERATION` and it is not `STORYBOARD_IMAGE`: the first is
+      //   the single-image act the Creator buys one at a time, the second
+      //   was priced for an open-source component that charges nothing and
+      //   is read by no line in this repository.
+      //
+      //   `SCENE_APPROVED_UNITS` is null until the owner writes a figure, so
+      //   this answers `absent` and the scene is REFUSED — never charged
+      //   zero, and never silently priced as something else. The day the
+      //   figure is written, this road begins charging it with no other
+      //   change: it names the classification, not the number.
+      sovereignCapability: SCENE_CAPABILITY,
+      quantity: 1,
       trialCapability: 'image',
       metadata: { sceneId: demand.sceneId },
     });

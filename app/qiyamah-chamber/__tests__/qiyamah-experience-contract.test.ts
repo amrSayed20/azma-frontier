@@ -292,18 +292,32 @@ describe('Qiyamah Three-Stage Experience Contract', () => {
     expect(mockCostEstimate).not.toHaveBeenCalled();
   });
 
-  it('f. Creator with exhausted trial + cost unavailable → 503 cost-unavailable (not silent fail)', async () => {
+  it('f. Creator with exhausted trial meets the SIGNED price, and never a silent fail', async () => {
+    /*  REWRITTEN 2026-11-02 by the owner's ruling (decision 1, option ب).
+     *
+     *    This asserted a 503 «cost-unavailable»: the road priced an image
+     *    from the PROVIDER COST CATALOG, whose Magic Hour entry is zero and
+     *    pending, so a Creator past their gift was told the capability was
+     *    not ready — while `IMAGE_GENERATION` sat approved at 200 units in
+     *    the Founder's own table.
+     *
+     *    What this test was really protecting survives untouched: the
+     *    Creator is never failed silently, and never shown engineering
+     *    language. Only the reason changed, from «we have not priced this»
+     *    to «your balance is short» — which is the truth now.
+     */
     mockHasRemainingTrial.mockReturnValue(false);
-    mockCostEstimate.mockImplementation(() => {
-      throw new CostUnavailableError('image-generation', 'magic-hour', 'pending-discovery');
-    });
+    mockGetBalance.mockReturnValue({ availableUnits: 10 });
 
     const res  = await generatePOST(makeGenerateRequest({ prompt: 'test', style: 'cinematic' }));
     const data = await res.json();
 
-    expect(res.status).toBe(503);
-    expect(data.reason).toBe('cost-unavailable');
-    // User-facing message must not contain internal engineering language
+    expect(res.status).toBe(402);
+    expect(data.reason).toBe('payment-required');
+    // Not a silent failure: the Creator is told the figure and their balance.
+    expect(data.estimatedCost).toBe(200);
+    expect(data.availableUnits).toBe(10);
+    // And still no internal engineering language.
     expect(data.message).not.toContain('Generation blocked');
     expect(data.message).not.toContain('pending-discovery');
   });

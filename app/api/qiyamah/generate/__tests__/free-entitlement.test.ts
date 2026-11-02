@@ -167,24 +167,40 @@ describe('Qiyamah Generate Route — Free-Entitlement Path', () => {
 
   // ── COST-UNAVAILABLE AFTER TRIAL EXHAUSTED ────────────────────────────────
 
-  it('Creator with no trial + cost unavailable → 503 (cost-unavailable), not 402', async () => {
+  it('Creator with no trial is now priced by the SIGNED table, not by the catalog', async () => {
+    /*  REWRITTEN 2026-11-02, by the owner's ruling (decision 1, option ب).
+     *
+     *    This used to assert a 503: the road asked the PROVIDER COST
+     *    CATALOG for a price, that catalog's Magic Hour entry is zero and
+     *    `pending-discovery`, and so every Creator past their free trial
+     *    was told «paid image generation is coming soon» — while
+     *    `IMAGE_GENERATION` sat approved at 200 units in the Founder's own
+     *    table of 2026-09-27.
+     *
+     *    The road now reads that table. So a throwing cost engine changes
+     *    nothing — it is not consulted — and the Creator meets the real
+     *    question instead: can they afford the signed price.
+     */
     mockHasRemainingTrial.mockReturnValue(false);
     mockCostEstimate.mockImplementation(() => {
       throw new CostUnavailableError('image-generation', 'magic-hour', 'pending-discovery');
     });
+    mockGetBalance.mockReturnValue({ availableUnits: 100 });
 
     const res = await POST(makeRequest());
     const json = await res.json();
 
-    expect(res.status).toBe(503);
-    expect(json.reason).toBe('cost-unavailable');
+    // 100 units against the signed 200: a balance answer, not a pricing one.
+    expect(res.status).toBe(402);
+    expect(json.reason).toBe('payment-required');
+    expect(json.estimatedCost).toBe(200);
+    // And the catalog was never asked.
+    expect(mockCostEstimate).not.toHaveBeenCalled();
   });
 
-  it('cost-unavailable message does not expose engineering internals to the Creator', async () => {
+  it('the refusal message exposes no engineering internals to the Creator', async () => {
     mockHasRemainingTrial.mockReturnValue(false);
-    mockCostEstimate.mockImplementation(() => {
-      throw new CostUnavailableError('image-generation', 'magic-hour', 'pending-discovery');
-    });
+    mockGetBalance.mockReturnValue({ availableUnits: 1 });
 
     const res = await POST(makeRequest());
     const json = await res.json();
@@ -199,8 +215,9 @@ describe('Qiyamah Generate Route — Free-Entitlement Path', () => {
 
   it('Creator with no trial + sufficient paid balance → proceeds with unit reservation', async () => {
     mockHasRemainingTrial.mockReturnValue(false);
-    mockGetBalance.mockReturnValue({ availableUnits: 100 });
-    mockCostEstimate.mockReturnValue({ estimatedAzmaUnits: 10, availability: 'available' });
+    // Enough for the SIGNED price of 200 — the figure the road now reads
+    // from the Founder's table rather than from a mocked catalog.
+    mockGetBalance.mockReturnValue({ availableUnits: 1_000 });
 
     const res = await POST(makeRequest());
     const json = await res.json();
@@ -208,6 +225,8 @@ describe('Qiyamah Generate Route — Free-Entitlement Path', () => {
     expect(json.status).toBe('succeeded');
     expect(mockReserve).toHaveBeenCalled();
     expect(mockSettle).toHaveBeenCalled();
+    // And it held exactly his figure.
+    expect(mockReserve.mock.calls[0][1]).toBe(200);
   });
 
   it('Creator with no trial + insufficient balance → 402 payment-required', async () => {

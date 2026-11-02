@@ -19,6 +19,7 @@ import {
   OPERATION_KEY_HEADER, readClientOperationKey,
 } from '../../../../src/economy/paid-operation-attempts';
 import { settleReservation } from '../../../../src/economy/paid-operation-gate';
+import { sovereignPriceFor } from '../../../../src/economy/pricing/sovereign-price-authority';
 
 export const dynamic = 'force-dynamic';
 
@@ -404,23 +405,44 @@ export async function POST(request: NextRequest) {
         throw err;
       }
     } else {
-      // Paid path — resolve cost before proceeding. Never invent a price;
-      // block honestly if the cost rate is not yet approved.
-      try {
-        resolvedCostEstimate = costEngine.estimate('image-generation', GATEWAY_ID);
-      } catch (err) {
-        if (err instanceof CostUnavailableError) {
-          failAttempt(db, imageClaim.attemptKey, 'cost-unavailable');
-          return NextResponse.json(
-            { status: 'failed', operationId, stage: 'gate',
-              reason: 'cost-unavailable',
-              message: 'Your free generation has been used. Paid image generation is coming soon — pricing is being finalized.',
-            },
-            { status: 503 },
-          );
-        }
-        throw err;
+      /*  ── THE SIGNED PRICE, BY THE OWNER'S RULING OF 2026-11-02 ──────────
+       *
+       *    `IMAGE_GENERATION` = 200 units per image, in the Founder's own
+       *    table of 2026-09-27, with its basis measured at 100 provider
+       *    credits on nano-banana-2 through Magic Hour.
+       *
+       *    This road used to ask the PROVIDER COST CATALOG for that number,
+       *    whose `magic-hour/image-generation` entry is zero and
+       *    `pending-discovery` — so every Creator past their free trial was
+       *    told «paid image generation is coming soon» while the price sat
+       *    approved and unread.
+       *
+       *    INFOGRAPHIC is the same road with a style, and the signed table
+       *    prices it at the same 200. The day those two figures differ, this
+       *    road must learn to tell them apart; today it cannot, and does not
+       *    need to.
+       *
+       *    The free-trial branch above is untouched: a Creator with a gift
+       *    still generates without a price being read at all.
+       */
+      const approved = sovereignPriceFor('IMAGE_GENERATION');
+      if (approved.status === 'absent' || approved.unitsPerQuantity === null) {
+        failAttempt(db, imageClaim.attemptKey, 'cost-unavailable');
+        return NextResponse.json(
+          { status: 'failed', operationId, stage: 'gate',
+            reason: 'cost-unavailable',
+            message: 'إنشاءُ الصورةِ لم يُسعَّر بعد، فلا يُنفَّذ. وسيُفتَح فور اعتمادِ سعره.',
+          },
+          { status: 503 },
+        );
       }
+      // One image per request. The shape the rest of this road already uses.
+      resolvedCostEstimate = {
+        estimatedAzmaUnits: approved.unitsPerQuantity,
+        capabilityTarget: 'image-generation',
+        gatewayId: GATEWAY_ID,
+        availability: 'available',
+      } as CostEstimate;
 
       const balance = creditRepo.getBalance(session.creatorId);
       const hasPaidBalance = balance.availableUnits >= resolvedCostEstimate.estimatedAzmaUnits;

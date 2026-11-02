@@ -309,6 +309,18 @@ export async function editSovereignImage(params: {
     gatewayId: 'magic-hour',
     modelId: IMAGE_EDIT_MODEL_ID,
     attemptKey: claim.attemptKey,
+    // ── THE SIGNED PRICE, BY THE OWNER'S RULING OF 2026-11-02 ────────────
+    //
+    //   `IMAGE_EDIT` = 200 units per image, in the Founder's own table of
+    //   2026-09-27. It was approved all along; this road refused every
+    //   paying Creator because the gate was reading a provider COST catalog
+    //   whose Magic Hour entries are all zero.
+    //
+    //   One image per call, so the quantity is one. The measured provider
+    //   cost behind it is 100 credits — read from the cost truth, never
+    //   from here, and never added to the price.
+    sovereignCapability: 'IMAGE_EDIT',
+    quantity: 1,
     metadata: { assetId: params.assetId },
   });
   if (gate.kind === 'refused') {

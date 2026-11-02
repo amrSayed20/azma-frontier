@@ -109,8 +109,25 @@ describe('2 · UNKNOWN is never converted to zero', () => {
 
 describe('3–4 · provider cost and customer price never cross', () => {
   it('the generation route refuses rather than inventing a price', () => {
-    expect(GENERATE_ROUTE).toContain('Never invent a price');
+    /*  RESTATED 2026-11-02, not weakened.
+     *
+     *    It asserted the comment «Never invent a price», which sat above a
+     *    lookup in the PROVIDER COST CATALOG. The owner ruled (decision 1,
+     *    option ب) that this road reads his own signed table instead, so
+     *    that comment went with the lookup.
+     *
+     *    The CONSTITUTIONAL RULE is unchanged and is what is asserted now:
+     *    the road reads an approved figure from a price authority, and when
+     *    that authority has none it REFUSES — it does not fall back, derive,
+     *    or charge zero. The absence of a fallback is the guarantee.
+     */
+    expect(GENERATE_ROUTE).toContain("sovereignPriceFor('IMAGE_GENERATION')");
+    // The refusal is still there, for the case where the table has no entry.
     expect(GENERATE_ROUTE).toContain("reason: 'cost-unavailable'");
+    expect(GENERATE_ROUTE).toContain("approved.status === 'absent'");
+    // And no price is ever derived from a provider's charge in this road.
+    expect(GENERATE_ROUTE).not.toMatch(/providerCredits?\s*\*/);
+    expect(GENERATE_ROUTE).not.toMatch(/CREDIT_USD|CREDIT_EGP/);
   });
 
   it('the credit ledger stores no provider cost and no cash', () => {

@@ -20,9 +20,12 @@
  *   the last test states exactly which figures it would move.
  */
 
+import { execSync } from 'child_process';
 import {
   sovereignPriceFor,
   allSovereignPrices,
+  SCENE_CAPABILITY,
+  SCENE_APPROVED_UNITS,
 } from '../pricing/sovereign-price-authority';
 import { OPERATION_CONSUMPTION } from '../pricing/sovereign-value-balance';
 import { AzmaUnitCostEngine } from '../cost-engine/azma-cost-engine';
@@ -140,13 +143,122 @@ describe('٣ · والقرارُ المطلوبُ محصورٌ ومعدودٌ', 
     ]);
   });
 
-  it('and the gate is still reading the cost catalog — unchanged, on purpose', () => {
-    // A guard against a well-meant future edit: pointing the gate at the
-    // price authority is a commercial act, and this test fails if it happens
-    // without the Founder's figures being revisited at the same time.
+  it('the gate reads the signed table ONLY where the owner named it, and the catalog elsewhere', () => {
+    /*  THIS GUARD HAS ALREADY DONE ITS JOB ONCE.
+     *
+     *    Until 2026-11-02 it read: «the gate must NOT contain
+     *    `sovereignPriceFor(`» — because pointing the gate at the price
+     *    authority is a commercial act, and the guard existed to fail the day
+     *    an engineer did it without the owner revisiting his figures.
+     *
+     *    He revisited them and ruled option (ب): connect the capabilities
+     *    that are STOPPED, change no live charge. So the rule changes with
+     *    the ruling — and what it now holds is the shape of that ruling:
+     *    the signed table is reached only by a road that asks for it by name,
+     *    and every other road keeps the catalog it has always used.
+     *
+     *    A global switch would fail this test, which is the point: three live
+     *    behaviours he excluded by name — video, 2× upscale, speech — must
+     *    stay where they are.
+     */
     const gate = readFileSync(join(process.cwd(), 'src/economy/paid-operation-gate.ts'), 'utf8');
+
+    // Both authorities are present, and neither replaced the other.
+    expect(gate).toContain('sovereignPriceFor(');
     expect(gate).toContain('new AzmaUnitCostEngine()');
-    expect(gate).not.toContain('sovereignPriceFor(');
+
+    // The signed table is opt-in: it answers only when a caller names a
+    // capability in it, never by default.
+    expect(gate).toContain('if (sovereignCapability !== undefined) {');
+    // And a road that asks for it must state its quantity, because the table
+    // prices per image, per operation and per REQUESTED SECOND.
+    expect(gate).toContain('const asked = quantity ?? 1;');
+
+    // One hold for both, so a money bug cannot live in a second copy.
+    expect((gate.match(/credits\.reserve\(/g) ?? []).length).toBe(1);
+  });
+
+  it('and exactly the roads the owner named read the signed table — no more', () => {
+    /*  The blast radius IS the reader list, so the reader list is asserted.
+     *
+     *  Two shapes, because the roads are not built alike: `edit` and
+     *  `animate` go through the shared gate and name their capability to it,
+     *  while the image half of `generate` holds its own money and reads the
+     *  authority directly. Both are readers; neither is a switch.
+     */
+    const readers = (execSync(
+      'git grep -lE "sovereignCapability:|sovereignPriceFor\\(" -- "app" "src" || true',
+      { encoding: 'utf8', cwd: process.cwd() },
+    ) as string)
+      .split('\n').map((l) => l.trim())
+      .filter((l) => l.length > 0
+        && !l.includes('__tests__')
+        && !l.includes('paid-operation-gate.ts')
+        && !l.includes('sovereign-price-authority.ts'))
+      .sort();
+
+    expect(readers).toEqual([
+      'app/api/qiyamah/generate/route.ts',
+      'app/api/vault/assets/[assetId]/animate/route.ts',
+      'src/qiyamah-generation/image-edit-service.ts',
+      // The fifth capability, PREPARED and not active: it names its own
+      // classification and the authority answers `absent` until the owner
+      // writes a figure, so the scene is refused rather than priced.
+      'src/ras-amr-production/qiyamah-commission.ts',
+    ]);
+  });
+
+  it('and the scene is prepared but NOT priced — `absent`, never zero', () => {
+    const scene = sovereignPriceFor(SCENE_CAPABILITY);
+    expect(scene.status).toBe('absent');
+    expect(scene.unitsPerQuantity).toBeNull();
+    // The decisive assertion: absence must never be readable as a free act.
+    expect(scene.unitsPerQuantity).not.toBe(0);
+    expect(SCENE_APPROVED_UNITS).toBeNull();
+    // And it is not silently priced as something else.
+    expect(scene.capability).not.toBe('STORYBOARD_IMAGE');
+    expect(scene.capability).not.toBe('IMAGE_GENERATION');
+    expect(scene.authority).toContain('awaiting');
+  });
+
+  it('and each names the capability the owner approved, with its own quantity', () => {
+    const read = (f: string) => readFileSync(join(process.cwd(), f), 'utf8');
+
+    // Per image.
+    expect(read('src/qiyamah-generation/image-edit-service.ts'))
+      .toContain("sovereignCapability: 'IMAGE_EDIT'");
+    expect(read('src/qiyamah-generation/image-edit-service.ts')).toContain('quantity: 1');
+
+    // Per REQUESTED second — the duration the Creator asked for, never what
+    // the provider later reports it produced.
+    const animate = read('app/api/vault/assets/[assetId]/animate/route.ts');
+    expect(animate).toContain("sovereignCapability: 'MOTION'");
+    expect(animate).toContain('quantity: durationSeconds');
+
+    // Per image, read directly because this road holds its own money.
+    expect(read('app/api/qiyamah/generate/route.ts'))
+      .toContain("sovereignPriceFor('IMAGE_GENERATION')");
+  });
+
+  it('and the roads the owner excluded still read the catalog, untouched', () => {
+    // Video, 2× upscale and speech. Asserted as an ABSENCE, because what
+    // proves a partial connection is what did not move.
+    for (const file of [
+      'app/api/vault/assets/[assetId]/upscale/route.ts',
+      'app/api/vault/assets/generate-speech/route.ts',
+      'app/api/vault/assets/generate-cloned-speech/route.ts',
+      'app/api/vault/assets/clone-voice/route.ts',
+    ]) {
+      const source = readFileSync(join(process.cwd(), file), 'utf8');
+      expect({ file, named: source.includes('sovereignCapability') })
+        .toEqual({ file, named: false });
+    }
+
+    // The video half of the generate road is excluded too, though the image
+    // half of the same file is connected: the exclusion is per ACT.
+    const generate = readFileSync(join(process.cwd(), 'app/api/qiyamah/generate/route.ts'), 'utf8');
+    const videoHalf = generate.slice(0, generate.indexOf('─── IMAGE PATH'));
+    expect(videoHalf).not.toContain('sovereignCapability');
   });
 
   it('the price authority reads no provider cost catalog, ever', () => {

@@ -228,6 +228,23 @@ export async function POST(
     gatewayId: 'magic-hour',
     modelId: selection.selection.providerModelId,
     attemptKey: claim.attemptKey,
+    // ── THE SIGNED PRICE, BY THE OWNER'S RULING OF 2026-11-02 ────────────
+    //
+    //   `MOTION` = 200 units per REQUESTED SECOND, in the Founder's own
+    //   table, with its basis named there as `VEO_MOTION` — measured at 96
+    //   provider credits per second on `magic-hour-image-to-video`, the
+    //   very endpoint this road calls.
+    //
+    //   The quantity is the duration the CREATOR ASKED FOR, not what the
+    //   provider later reports it produced. Those are two different numbers
+    //   — the cost truth says so in terms — and the one a Creator agreed to
+    //   is the one they are charged for.
+    //
+    //   Ruled 2026-11-02: one standard across every model, never swapped
+    //   silently for a cheaper one. So this passes no model-dependent price;
+    //   the model is recorded, and the charge does not follow it.
+    sovereignCapability: 'MOTION',
+    quantity: durationSeconds,
     metadata: { assetId, durationSeconds },
   });
   if (gate.kind === 'refused') {

@@ -154,13 +154,30 @@ describe('٢ · جدولُ الحقيقةِ الحيِّ مقابلَ المعت
       expect(approved(capability)).toBeGreaterThan(0);
     }
     for (const capability of ['MP4_PRODUCTION', 'STORYBOARD_IMAGE', 'STORYBOARD_VIDEO']) {
+      /*  IT MEASURES READS, NOT MENTIONS.
+       *
+       *    The first version grepped the bare name, so a COMMENT naming the
+       *    capability counted as a consumer — and on 2026-11-02 two files
+       *    explaining why a commissioned scene is NOT priced as
+       *    `STORYBOARD_IMAGE` failed this test while reading nothing.
+       *
+       *    That is the third instrument in this repository to answer a
+       *    different question from the one it claimed. A CONSUMER passes the
+       *    name to something; a comment says the name.
+       */
+      const reads = new RegExp(
+        `sovereignCapability:\\s*'${capability}'`
+        + `|sovereignPriceFor\\('${capability}'\\)`
+        + `|consumptionFor\\('${capability}'\\)`,
+      );
       const hits = execSync(`git grep -l "${capability}" -- "app" "src" || true`, {
         encoding: 'utf8', cwd: process.cwd(),
       })
         .split('\n').map((l) => l.trim())
         .filter((l) => l.length > 0
           && !l.includes('sovereign-value-balance')
-          && !l.includes('__tests__'));
+          && !l.includes('__tests__'))
+        .filter((f) => reads.test(readFileSync(join(process.cwd(), f), 'utf8')));
       expect({ capability, consumers: hits }).toEqual({ capability, consumers: [] });
     }
   });

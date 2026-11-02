@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { attachReservation, markSettlement } from './paid-operation-attempts';
+import { sovereignPriceFor } from './pricing/sovereign-price-authority';
 import { CreatorCreditRepository } from './credit-ledger/credit-ledger-repository';
 import { InsufficientBalanceError } from './credit-ledger/credit-ledger-types';
 import { AzmaUnitCostEngine } from './cost-engine/azma-cost-engine';
@@ -98,6 +99,35 @@ export interface AuthoriseRequest {
   readonly gatewayId: string;
   readonly modelId?: string;
   /**
+   * The name of this act in `OPERATION_CONSUMPTION` — the Founder's own
+   * signed price table — when the owner has ruled that this road reads it.
+   *
+   * ─── WHY THIS IS OPT-IN AND NOT A SWITCH ──────────────────────────────
+   *
+   *   RULED 2026-11-02, option (ب): connect ONLY the capabilities that are
+   *   stopped today, and change no live charge. Video and 2× upscale are
+   *   free this minute by the owner's own earlier decisions, and speech is
+   *   charged with no sovereign entry at all — so a global switch would have
+   *   moved three live behaviours he explicitly excluded.
+   *
+   *   A road that passes this reads the signed table. A road that does not
+   *   keeps the cost catalog it has always used, byte for byte. The blast
+   *   radius is the list of callers that pass it, and that list is the whole
+   *   decision.
+   *
+   *   Absent → the `AzmaUnitCostEngine` path below, unchanged.
+   */
+  readonly sovereignCapability?: string;
+  /**
+   * How many of the price's own unit this act is.
+   *
+   * The signed table prices per image, per operation, or **per requested
+   * second** — three units that are never interchangeable. A road that
+   * passes `sovereignCapability` must say how many it is asking for, and the
+   * gate refuses rather than assuming one.
+   */
+  readonly quantity?: number;
+  /**
    * The key of the ATTEMPT this request was admitted under, from
    * `claimAttempt`. The gate reserves against it and never mints one.
    *
@@ -131,6 +161,7 @@ export function authorisePaidOperation(request: AuthoriseRequest): GateVerdict {
   const {
     db, creatorId, role, capability, gatewayId, modelId,
     attemptKey, trialCapability, claimIp, metadata,
+    sovereignCapability, quantity,
   } = request;
 
   // ── 1 · Entitlements, which are decided before any price is read ─────────
@@ -165,6 +196,47 @@ export function authorisePaidOperation(request: AuthoriseRequest): GateVerdict {
       messageAr: 'هذه العمليّةُ لم تُسعَّر بعد، فلا تُنفَّذ. وستُفتَح فور اعتمادِ سعرها.',
     };
   }
+  /*  ── THE SIGNED TABLE, FOR THE ROADS THE OWNER NAMED ──────────────────
+   *
+   *    `OPERATION_CONSUMPTION` is the only price source the Founder signed
+   *    (2026-09-27). The catalog this gate used to read is a PROVIDER COST
+   *    catalog whose Magic Hour entries are all zero — which is why image
+   *    editing, animation and scene generation refused every paying Creator
+   *    while their prices sat approved in his own table.
+   *
+   *    Read, never copied: the figure comes from the authority at call time,
+   *    so a price cannot drift by being transcribed into this file.
+   */
+  if (sovereignCapability !== undefined) {
+    const approved = sovereignPriceFor(sovereignCapability);
+    if (approved.status === 'absent' || approved.unitsPerQuantity === null) {
+      return {
+        kind: 'refused',
+        httpStatus: 503,
+        reason: 'cost-unavailable',
+        messageAr: 'هذه العمليّةُ لم تُسعَّر بعد، فلا تُنفَّذ. وستُفتَح فور اعتمادِ سعرها.',
+      };
+    }
+
+    // The quantity is the caller's to state, because only the road knows
+    // whether it is asking for one image or eight seconds. A road that
+    // forgets is refused, never charged for a quantity this file assumed.
+    const asked = quantity ?? 1;
+    if (!Number.isInteger(asked) || asked <= 0) {
+      return {
+        kind: 'refused',
+        httpStatus: 503,
+        reason: 'cost-unavailable',
+        messageAr: 'هذه العمليّةُ لم تُسعَّر بعد، فلا تُنفَّذ. وستُفتَح فور اعتمادِ سعرها.',
+      };
+    }
+
+    return holdOrRefuse({
+      db, creatorId, attemptKey, capability, gatewayId, modelId, metadata,
+      units: approved.unitsPerQuantity * asked,
+    });
+  }
+
   const engine = new AzmaUnitCostEngine();
   let units: number;
   try {
@@ -193,7 +265,29 @@ export function authorisePaidOperation(request: AuthoriseRequest): GateVerdict {
     };
   }
 
-  // ── 3 · The balance, read and then held under one lock ───────────────────
+  // ── 3 · One hold, whichever authority stated the price ───────────────────
+  return holdOrRefuse({ db, creatorId, attemptKey, capability, gatewayId, modelId, metadata, units });
+}
+
+/**
+ * Read the balance, take the hold, and bind it to the attempt.
+ *
+ * Factored out so the signed price table and the provider cost catalog reach
+ * the SAME balance check and the SAME reservation. Two copies of this would
+ * be two places for a money bug to live, and only one of them would be read
+ * the day it mattered.
+ */
+function holdOrRefuse(params: {
+  readonly db: DatabaseSync;
+  readonly creatorId: string;
+  readonly attemptKey: string;
+  readonly capability: CapabilityTarget;
+  readonly gatewayId: string;
+  readonly modelId?: string;
+  readonly metadata?: Record<string, unknown>;
+  readonly units: number;
+}): GateVerdict {
+  const { db, creatorId, attemptKey, capability, gatewayId, modelId, metadata, units } = params;
   const credits = new CreatorCreditRepository(db);
   const balance = credits.getBalance(creatorId);
   if (balance.availableUnits < units) {
