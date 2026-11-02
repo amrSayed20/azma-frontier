@@ -121,7 +121,13 @@ describe('3–4 · provider cost and customer price never cross', () => {
      *    that authority has none it REFUSES — it does not fall back, derive,
      *    or charge zero. The absence of a fallback is the guarantee.
      */
-    expect(GENERATE_ROUTE).toContain("sovereignPriceFor('IMAGE_GENERATION')");
+    //    AMENDED 2026-11-03: the call now also names the RESOLUTION it is
+    //    about to send, because the provider's published cost moves with it
+    //    (nano-banana-2: 100 credits at 1K, 150 at 2K) and the Empire sends
+    //    2K for the «إعلاني» style. The rule is unchanged — a figure read
+    //    from a price authority, and a refusal where there is none. What
+    //    changed is that the configuration is part of the question.
+    expect(GENERATE_ROUTE).toContain("sovereignPriceFor('IMAGE_GENERATION', sentResolution)");
     // The refusal is still there, for the case where the table has no entry.
     expect(GENERATE_ROUTE).toContain("reason: 'cost-unavailable'");
     expect(GENERATE_ROUTE).toContain("approved.status === 'absent'");

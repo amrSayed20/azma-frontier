@@ -57,6 +57,7 @@ import { OPERATION_CONSUMPTION } from './sovereign-value-balance';
 import { MEASURED_COSTS, priceNewCapability, NEW_CAPABILITY_UPLIFT } from './new-capability-pricing';
 import type { NewCapability } from './new-capability-pricing';
 import { MP4_UNITS_PER_SECOND, MP4_ROUNDING } from './local-export-pricing';
+import { imageCreditsAtResolution, TARIFF_SOURCE } from './official-provider-tariff';
 
 /**
  * How a Creator's charge is counted. No two of these are interchangeable.
@@ -156,7 +157,85 @@ export const MP4_EXPORT_CAPABILITY = 'MP4_EXPORT' as const;
  * signed outranks one derived from a provider's invoice. The ratified uplift
  * answers for every capability whose provider cost is measured.
  */
-export function sovereignPriceFor(capability: string): SovereignPrice {
+/**
+ * ─── THE MARGIN FLOOR — AND WHY IT ONLY EVER RAISES ─────────────────────────
+ *
+ *   Two of the Founder's instructions meet here, and they are not the same:
+ *
+ *     «يجب تطبيق القاعدة على كل عملية مدفوعة موجودة فعليًا في المنصة»
+ *        — price = actual provider cost × 1.70, everywhere.      (2026-11-03)
+ *
+ *     «تبقى الأسعار والباقات القائمة كما اعتمدها المؤسس»
+ *        — an approved price is not changed without his order.   (2026-11-02)
+ *
+ *   Read as a replacement, the first would LOWER image generation from the 200
+ *   he signed to the 170 the rule derives. That is a live price change, and
+ *   lowering one is no more mine to do than raising one.
+ *
+ *   Read as a FLOOR, both hold completely: his signed figure stands wherever
+ *   it already clears his own margin, and the rule binds only where the signed
+ *   figure has fallen BELOW the cost it was meant to cover. Nothing is ever
+ *   lowered; something is raised only when the alternative is selling under
+ *   the margin he ratified.
+ *
+ *   MEASURED 2026-11-03, which is why this exists at all: the «إعلاني» style
+ *   sends `resolution: '2k'`, nano-banana-2 at 2K costs 150 published credits,
+ *   and 200 units is 1.33× that — under his 1.70. At 1K the same operation
+ *   costs 100 and 200 units is 2.0×, comfortably clear. One operation, one
+ *   signed price, two costs — because the provider's unit is image × resolution
+ *   and ours was only image.
+ *
+ *   And the floor NEVER invents a cost. An unpublished, unmeasured
+ *   configuration yields no floor at all, and the signed price stands as it
+ *   is — because a floor computed from a guessed cost is a guessed price.
+ */
+/**
+ * The published cost of this capability in this configuration, or null.
+ *
+ * Only the image acts have a cost that moves with a configuration today, and
+ * only one configuration moves it: the resolution the Empire sends. Anything
+ * else answers null, which yields no floor rather than a guessed one.
+ */
+function imageCostFor(capability: string, dimension: string): number | null {
+  const IMAGE_ACTS = ['IMAGE_GENERATION', 'INFOGRAPHIC', 'IMAGE_EDIT', SCENE_CAPABILITY];
+  if (!IMAGE_ACTS.includes(capability)) return null;
+  return imageCreditsAtResolution(dimension);
+}
+
+function flooredBySovereignRule(
+  price: SovereignPrice,
+  costCredits: number | null,
+  dimension: string,
+): SovereignPrice {
+  if (price.unitsPerQuantity === null || costCredits === null) return price;
+
+  const floor = Math.ceil(costCredits * NEW_CAPABILITY_UPLIFT);
+  if (floor <= price.unitsPerQuantity) return price;
+
+  return {
+    ...price,
+    status: 'derived-ratified',
+    unitsPerQuantity: floor,
+    authority:
+      `${price.authority} — RAISED to the Founder's margin floor: published cost `
+      + `${costCredits} credits at ${dimension} × ${NEW_CAPABILITY_UPLIFT} `
+      + `(official-provider-tariff.ts, read ${TARIFF_SOURCE.readOn})`,
+    note:
+      `The signed figure of ${price.unitsPerQuantity} is below cost × ${NEW_CAPABILITY_UPLIFT} `
+      + `for this configuration, so the ruling of 2026-11-03 binds. Awaiting the `
+      + `Founder's ratification of the raised figure.`,
+  };
+}
+
+/**
+ * What the Empire has approved for one capability.
+ *
+ * `dimension` is the provider configuration this act will actually run in —
+ * an image's resolution today. It is optional because most capabilities have
+ * a flat cost; where one does not, omitting it means the floor cannot be
+ * computed and the signed price stands unchanged.
+ */
+export function sovereignPriceFor(capability: string, dimension?: string): SovereignPrice {
   // The export answers before the signed table, because the table's own
   // `MP4_PRODUCTION` row was superseded in both figure and basis and must
   // never be reached by an export asking what it costs.
@@ -175,7 +254,7 @@ export function sovereignPriceFor(capability: string): SovereignPrice {
 
   const approved = OPERATION_CONSUMPTION.find((r) => r.capability === capability);
   if (approved) {
-    return {
+    const signed: SovereignPrice = {
       capability,
       status: 'approved',
       unitsPerQuantity: approved.balancePerUnit,
@@ -183,11 +262,14 @@ export function sovereignPriceFor(capability: string): SovereignPrice {
       authority: 'sovereign-value-balance.ts · OPERATION_CONSUMPTION · Founder decision 2026-09-27',
       ...(approved.note ? { note: approved.note } : {}),
     };
+    return dimension === undefined
+      ? signed
+      : flooredBySovereignRule(signed, imageCostFor(capability, dimension), dimension);
   }
 
   if ((UPLIFT_CAPABILITIES as readonly string[]).includes(capability)) {
     const rule = MEASURED_COSTS.find((r) => r.capability === capability)!;
-    return {
+    const derived: SovereignPrice = {
       capability,
       status: 'derived-ratified',
       // ONE unit of the basis, so a caller can multiply by the quantity it
@@ -198,6 +280,9 @@ export function sovereignPriceFor(capability: string): SovereignPrice {
       authority: `new-capability-pricing.ts · measured ${rule.providerCreditsPerUnit} × ${NEW_CAPABILITY_UPLIFT} · Chief Architect 2026-10-12, rounding ratified 2026-10-13`,
       note: 'The whole-job price, with rounding applied once, comes from priceNewCapability().',
     };
+    return dimension === undefined
+      ? derived
+      : flooredBySovereignRule(derived, imageCostFor(capability, dimension), dimension);
   }
 
   return {
@@ -221,7 +306,10 @@ export function allSovereignPrices(): readonly SovereignPrice[] {
     ...UPLIFT_CAPABILITIES,
     MP4_EXPORT_CAPABILITY,
   ]);
-  return [...names].sort().map(sovereignPriceFor);
+  // NOT `.map(sovereignPriceFor)`: `map` passes the INDEX as the second
+  // argument, which is now the provider dimension — so every entry after the
+  // first would have been priced against a resolution called "1".
+  return [...names].sort().map((name) => sovereignPriceFor(name));
 }
 
 /** Re-exported so a caller never needs to know which authority answered. */

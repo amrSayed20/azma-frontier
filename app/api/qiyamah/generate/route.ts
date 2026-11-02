@@ -20,6 +20,7 @@ import {
 } from '../../../../src/economy/paid-operation-attempts';
 import { settleReservation } from '../../../../src/economy/paid-operation-gate';
 import { sovereignPriceFor } from '../../../../src/economy/pricing/sovereign-price-authority';
+import { resolutionForStyle } from '../../../../src/sovereign-model-selection/intent-builder';
 
 export const dynamic = 'force-dynamic';
 
@@ -425,7 +426,16 @@ export async function POST(request: NextRequest) {
        *    The free-trial branch above is untouched: a Creator with a gift
        *    still generates without a price being read at all.
        */
-      const approved = sovereignPriceFor('IMAGE_GENERATION');
+      // ── THE RESOLUTION IS PART OF THE COST, SO IT IS PART OF THE PRICE ──
+      //
+      //   MEASURED 2026-11-03: this provider publishes nano-banana-2 at 100
+      //   credits per image at 1K and 150 at 2K, and the Empire sends 2K for
+      //   the «إعلاني» style. Pricing all fourteen styles alike sold that one
+      //   at 1.33× its cost, under the Founder's ratified 1.70 floor.
+      //
+      //   Read from the same maps the selector reads, never guessed here.
+      const sentResolution = resolutionForStyle(typeof style === 'string' ? style : undefined);
+      const approved = sovereignPriceFor('IMAGE_GENERATION', sentResolution);
       if (approved.status === 'absent' || approved.unitsPerQuantity === null) {
         failAttempt(db, imageClaim.attemptKey, 'cost-unavailable');
         return NextResponse.json(

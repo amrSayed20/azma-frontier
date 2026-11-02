@@ -145,6 +145,29 @@ export function buildVideoCreationIntent(
 export { STYLE_QUALITY_MAP, QUALITY_RESOLUTION_MAP, STYLE_CHARACTERISTIC_MAP };
 
 /**
+ * ─── WHAT RESOLUTION THIS STYLE WILL SEND, ASKED BEFORE THE ACT ─────────────
+ *
+ *   The economy has to know a cost BEFORE it reserves, and this provider's
+ *   cost moves with the resolution: nano-banana-2 is published at 100 credits
+ *   per image at 1K and 150 at 2K. The style decides which.
+ *
+ *   MEASURED 2026-11-03 on the production selector: «إعلاني» maps to the
+ *   `ultra` tier and sends `2k`; the other thirteen styles send `1k`. The
+ *   gate was pricing all fourteen as if they cost the same, so an advertising
+ *   image was sold at 1.33× its cost while the Founder's ratified floor is
+ *   1.70×.
+ *
+ *   It reads the SAME two maps the intent builder reads, in the same order,
+ *   so a style whose tier changes cannot be priced against a stale answer.
+ *   Nothing is duplicated and no figure is copied.
+ */
+export function resolutionForStyle(style: string | null | undefined, qualityOverride?: QualityTier): string {
+  const resolvedStyle = style ?? '';
+  const tier = qualityOverride ?? STYLE_QUALITY_MAP[resolvedStyle] ?? 'standard';
+  return QUALITY_RESOLUTION_MAP[tier];
+}
+
+/**
  * Builds a SovereignCreationIntent for animate-asset: an existing sovereign
  * image brought into motion by a model the Creator REQUIRES.
  *

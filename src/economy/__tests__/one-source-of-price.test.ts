@@ -91,7 +91,10 @@ describe('٢ · الفجوةُ بين ما يُخصَم اليومَ وما اع
 
   it('image generation: the live charge is a fifth of the approved price', () => {
     expect(whatTheGateCharges('image-generation', 'openai')).toBe(40);
-    expect(sovereignPriceFor('IMAGE_GENERATION').unitsPerQuantity).toBe(200);
+    // At the 1k the Empire sends for thirteen of its fourteen styles, the
+    // Founder's signed 200 stands: it already clears his 1.70 floor over the
+    // published cost of 100 credits.
+    expect(sovereignPriceFor('IMAGE_GENERATION', '1k').unitsPerQuantity).toBe(200);
   });
 
   it('image editing: refused by the gate, and approved in the Founder table', () => {
@@ -243,7 +246,7 @@ describe('٣ · والقرارُ المطلوبُ محصورٌ ومعدودٌ', 
 
     // Per image, read directly because this road holds its own money.
     expect(read('app/api/qiyamah/generate/route.ts'))
-      .toContain("sovereignPriceFor('IMAGE_GENERATION')");
+      .toContain("sovereignPriceFor('IMAGE_GENERATION', sentResolution)");
   });
 
   it('and the roads the owner excluded still read the catalog, untouched', () => {
