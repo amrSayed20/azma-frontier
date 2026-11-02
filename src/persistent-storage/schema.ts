@@ -738,6 +738,18 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     -- produces nothing new. Small by construction: the route's own payload.
     result_json TEXT,
     failure_reason TEXT,
+    -- The long-running job this attempt paid for, when there is one.
+    --
+    -- Most paid roads learn their outcome inside the same request that took
+    -- the hold, so they need no link. The MP4 export does not: the encode is
+    -- a child process, the request returns as soon as the job is accepted,
+    -- and the final duration — which is what the Founder ruled the charge
+    -- follows — is only knowable later, by whoever observes the finish.
+    --
+    -- So the attempt names its operation. The settlement then reads the
+    -- attempt BY the operation and sees whether this job has already been
+    -- charged, which is what makes a repeated status poll free.
+    operation_id TEXT,
     created_at_ms INTEGER NOT NULL,
     updated_at_ms INTEGER NOT NULL
   )`,
@@ -1063,6 +1075,18 @@ export const CONSUMPTION_RECORDS_MIGRATION_COLUMNS: readonly { readonly name: st
   { name: 'cost_provider', ddl: 'cost_provider TEXT' },
 ];
 
+/**
+ * `paid_operation_attempts` has never reached a release, so the CREATE above
+ * already carries `operation_id`. This exists for the development databases
+ * created between the table's first commit and the export road that needed
+ * the column — `CREATE TABLE IF NOT EXISTS` does not add a column to a table
+ * that is already there, and a settlement that cannot find its attempt would
+ * leave a Creator's units held with the film already delivered.
+ */
+export const PAID_OPERATION_ATTEMPTS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
+  { name: 'operation_id', ddl: 'operation_id TEXT' },
+];
+
 export const INDEX_STATEMENTS: readonly string[] = [
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_creators_email ON creators(email)',
   // One AZMA account per provider identity, enforced where a race cannot beat
@@ -1130,5 +1154,7 @@ export const INDEX_STATEMENTS: readonly string[] = [
   // The resolver's only query: holds that were never resolved. It must not
   // scan the whole history to find them.
   'CREATE INDEX IF NOT EXISTS idx_attempts_unresolved ON paid_operation_attempts(settlement_state, state)',
+  // The settlement of a long-running job reads its attempt by the job's name.
+  'CREATE INDEX IF NOT EXISTS idx_attempts_operation ON paid_operation_attempts(operation_id)',
   'CREATE INDEX IF NOT EXISTS idx_attempts_creator ON paid_operation_attempts(creator_id, created_at_ms)',
 ];

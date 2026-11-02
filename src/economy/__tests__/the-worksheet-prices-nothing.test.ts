@@ -11,6 +11,7 @@
  * ever open a paid door.
  */
 
+import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import {
@@ -172,7 +173,6 @@ describe('4 · no pricing authority reads it', () => {
   });
 
   it('nothing outside the economy folder and its tests imports it', () => {
-    const { execSync } = require('child_process');
     // IT MEASURES IMPORTS, because that is what it asserts.
     //
     //   CORRECTED 2026-11-01: the pattern was the bare filename over the whole
@@ -198,7 +198,6 @@ describe('4 · no pricing authority reads it', () => {
   });
 
   it('the 75% uplift exists ONLY as a comparison, never as a markup constant', () => {
-    const { execSync } = require('child_process');
     // This file is excluded: it names the forbidden symbol in order to forbid
     // it, and an instrument that counts its own words is measuring itself.
     const hits = (execSync('git grep -n "UNIFIED_MARKUP" || true',

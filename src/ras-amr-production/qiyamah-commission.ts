@@ -554,7 +554,7 @@ export async function commissionScenePictures(params: {
       capability: 'image-generation',
       gatewayId: 'magic-hour',
       attemptKey: sceneClaim.attemptKey,
-      // ── PREPARED, AND NOT YET ACTIVE — RULED 2026-11-02, DECISION 2 ────
+      // ── ACTIVE — RULED 2026-11-02, DECISIONS 2 AND 1 ───────────────────
       //
       //   A commissioned scene has its OWN price classification. It is not
       //   `IMAGE_GENERATION` and it is not `STORYBOARD_IMAGE`: the first is
@@ -562,11 +562,12 @@ export async function commissionScenePictures(params: {
       //   was priced for an open-source component that charges nothing and
       //   is read by no line in this repository.
       //
-      //   `SCENE_APPROVED_UNITS` is null until the owner writes a figure, so
-      //   this answers `absent` and the scene is REFUSED — never charged
-      //   zero, and never silently priced as something else. The day the
-      //   figure is written, this road begins charging it with no other
-      //   change: it names the classification, not the number.
+      //   The closure order's first decision then settled the number without
+      //   anyone choosing one: «سعر المبدع بالوحدات = التكلفة الأصلية
+      //   الفعلية للمزوّد بالوحدات × 1.70». The scene's provider cost is
+      //   measured at 100 credits, so the charge is 170 units — DERIVED, and
+      //   read at call time from the one pricing authority. This line names
+      //   the classification; it never carries the figure.
       sovereignCapability: SCENE_CAPABILITY,
       quantity: 1,
       trialCapability: 'image',

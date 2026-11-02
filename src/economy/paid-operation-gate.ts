@@ -188,14 +188,6 @@ export function authorisePaidOperation(request: AuthoriseRequest): GateVerdict {
   //   An operation with no price CLASS is further from priced than one whose
   //   class is pending: there is nothing to approve later and nothing to read
   //   now. It is refused before the engine is even asked.
-  if (capability === null) {
-    return {
-      kind: 'refused',
-      httpStatus: 503,
-      reason: 'cost-unavailable',
-      messageAr: 'هذه العمليّةُ لم تُسعَّر بعد، فلا تُنفَّذ. وستُفتَح فور اعتمادِ سعرها.',
-    };
-  }
   /*  ── THE SIGNED TABLE, FOR THE ROADS THE OWNER NAMED ──────────────────
    *
    *    `OPERATION_CONSUMPTION` is the only price source the Founder signed
@@ -232,9 +224,29 @@ export function authorisePaidOperation(request: AuthoriseRequest): GateVerdict {
     }
 
     return holdOrRefuse({
-      db, creatorId, attemptKey, capability, gatewayId, modelId, metadata,
+      db, creatorId, attemptKey, gatewayId, modelId, metadata,
+      // A ruled price does not need the COST CATALOG to know the act, so a
+      // road on this path may have no catalog class at all — the local MP4
+      // export has none, and never will: no provider invoices it. The label
+      // then falls back to the ruled name, which is the truer one anyway.
+      capability: capability ?? sovereignCapability,
       units: approved.unitsPerQuantity * asked,
     });
+  }
+
+  /*  ── NO RULED PRICE, SO THE COST CATALOG ANSWERS ───────────────────────
+   *
+   *    And it can only answer about an act it has a CLASS for. An operation
+   *    with no class is further from priced than one whose class is pending:
+   *    there is nothing to approve later and nothing to read now.
+   */
+  if (capability === null) {
+    return {
+      kind: 'refused',
+      httpStatus: 503,
+      reason: 'cost-unavailable',
+      messageAr: 'هذه العمليّةُ لم تُسعَّر بعد، فلا تُنفَّذ. وستُفتَح فور اعتمادِ سعرها.',
+    };
   }
 
   const engine = new AzmaUnitCostEngine();
@@ -281,7 +293,15 @@ function holdOrRefuse(params: {
   readonly db: DatabaseSync;
   readonly creatorId: string;
   readonly attemptKey: string;
-  readonly capability: CapabilityTarget;
+  /**
+   * What this hold is for, as the reservation's metadata will record it.
+   *
+   * A plain string, because it is a label and not a lookup: a road priced by
+   * the owner's ruling may have no entry in the provider cost catalog, and
+   * forcing its name into that catalog's union would make the Empire claim a
+   * provider sells something it does not.
+   */
+  readonly capability: string;
   readonly gatewayId: string;
   readonly modelId?: string;
   readonly metadata?: Record<string, unknown>;

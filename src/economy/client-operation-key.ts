@@ -49,7 +49,8 @@ export type PaidRoad =
   | 'qiyamah:edit'
   | 'ras-amr:speech'
   | 'ras-amr:voice-clone'
-  | 'ras-amr:cloned-speech';
+  | 'ras-amr:cloned-speech'
+  | 'ras-amr:mp4-export';
 
 const storageKeyFor = (road: PaidRoad): string => `azma.op.${road}`;
 

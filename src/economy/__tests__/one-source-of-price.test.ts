@@ -25,8 +25,8 @@ import {
   sovereignPriceFor,
   allSovereignPrices,
   SCENE_CAPABILITY,
-  SCENE_APPROVED_UNITS,
 } from '../pricing/sovereign-price-authority';
+import { MEASURED_COSTS, NEW_CAPABILITY_UPLIFT } from '../pricing/new-capability-pricing';
 import { OPERATION_CONSUMPTION } from '../pricing/sovereign-value-balance';
 import { AzmaUnitCostEngine } from '../cost-engine/azma-cost-engine';
 import { CostUnavailableError, GatewayNotFoundError } from '../cost-engine/cost-engine-types';
@@ -201,24 +201,30 @@ describe('٣ · والقرارُ المطلوبُ محصورٌ ومعدودٌ', 
       'app/api/qiyamah/generate/route.ts',
       'app/api/vault/assets/[assetId]/animate/route.ts',
       'src/qiyamah-generation/image-edit-service.ts',
-      // The fifth capability, PREPARED and not active: it names its own
-      // classification and the authority answers `absent` until the owner
-      // writes a figure, so the scene is refused rather than priced.
+      // The fifth capability: the scene names its own classification, and
+      // the authority derives its figure from the ratified uplift.
       'src/ras-amr-production/qiyamah-commission.ts',
+      // The sixth, and the first that is not a provider act at all: the local
+      // MP4 export, priced by the Founder's ruling of 2026-11-02 at 100 units
+      // per second of the finished film.
+      'src/sovereign-entry/ras-al-amr-render.ts',
     ]);
   });
 
-  it('and the scene is prepared but NOT priced — `absent`, never zero', () => {
+  it('and the scene price is the measured cost × 1.70, derived and not chosen', () => {
     const scene = sovereignPriceFor(SCENE_CAPABILITY);
-    expect(scene.status).toBe('absent');
-    expect(scene.unitsPerQuantity).toBeNull();
-    // The decisive assertion: absence must never be readable as a free act.
-    expect(scene.unitsPerQuantity).not.toBe(0);
-    expect(SCENE_APPROVED_UNITS).toBeNull();
-    // And it is not silently priced as something else.
-    expect(scene.capability).not.toBe('STORYBOARD_IMAGE');
-    expect(scene.capability).not.toBe('IMAGE_GENERATION');
-    expect(scene.authority).toContain('awaiting');
+    const measured = MEASURED_COSTS.find((r) => r.capability === SCENE_CAPABILITY)!;
+
+    // The Founder's own rule and his own example: 100 → 170.
+    expect(scene.status).toBe('derived-ratified');
+    expect(scene.unitsPerQuantity)
+      .toBe(Math.ceil(measured.providerCreditsPerUnit * NEW_CAPABILITY_UPLIFT));
+
+    // And it is neither of the two figures that were never approved for it:
+    // 70 belonged to the open-source storyboard, 98 was a break-even
+    // calculation the Founder refused to let stand as a price.
+    expect(scene.unitsPerQuantity).not.toBe(70);
+    expect(scene.unitsPerQuantity).not.toBe(98);
   });
 
   it('and each names the capability the owner approved, with its own quantity', () => {

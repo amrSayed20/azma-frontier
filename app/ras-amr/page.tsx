@@ -393,6 +393,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { paidOperationHeaders, operationConcluded } from '@/src/economy/client-operation-key';
+import { MP4_UNITS_PER_SECOND } from '@/src/economy/pricing/local-export-pricing';
 import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import { RasAmrExperience } from '@/src/imperial-experience-engine';
 import type { VaultAsset, AssetFamily } from '@/src/vault/sovereign-vault-types';
@@ -3206,10 +3207,14 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
     try {
       const response = await fetch('/api/ras-amr/render', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // RULED 2026-11-02: the export is charged, so a resent press must pay
+        // once. The key is minted here and forgotten the moment a verdict
+        // arrives, exactly as at every other paid door in this chamber.
+        headers: { 'Content-Type': 'application/json', ...paidOperationHeaders('ras-amr:mp4-export') },
         body: JSON.stringify({ canvas: { ...sessionCanvas, updatedAt: Date.now() } }),
       });
       const data = await response.json();
+      operationConcluded('ras-amr:mp4-export', data);
       if (response.status !== 202 || data.status !== 'accepted') {
         setRenderStartError(data.message ?? 'تعذّر بدء الإخراج. مشهدك محفوظ؛ حاول مرة أخرى.');
         return;
@@ -5735,7 +5740,20 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                       {`⚠ الصوت يمتد إلى ${mmss(r.soundEndSeconds)} — والفيلم ينتهي مع آخر صورة، فلن يُسمع ما بعدها`}
                     </li>
                   )}
-                  <li className="meta">الإخراج لا يستهلك وحدات AZMA</li>
+                  {/* ─── WHAT THIS EXPORT COSTS, BEFORE IT IS PRESSED ───────
+                        RULED 2026-11-02: «١٠٠ وحدة لكل ثانية من ملف MP4
+                        النهائي». Until that ruling this line said the export
+                        consumed no units, and it must not outlive the charge.
+
+                        The seconds are the FILM's own length — the furthest
+                        end of the pictures — which is exactly what the server
+                        computes as `filmDurationSeconds` and holds against.
+                        The warning above says the sound may run longer; the
+                        charge never follows it, because the file does not. */}
+                  <li className="meta">
+                    {`الإخراج يُخصَم ${(Math.ceil(r.durationSeconds) * MP4_UNITS_PER_SECOND).toLocaleString('ar-EG')} وحدة`
+                      + ` (${MP4_UNITS_PER_SECOND} لكل ثانية من الفيلم النهائيّ)`}
+                  </li>
                 </ul>
                 {renderStartError && <p className="ras-export-error" role="alert">{renderStartError}</p>}
                 <button

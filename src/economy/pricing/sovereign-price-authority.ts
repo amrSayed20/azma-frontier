@@ -56,9 +56,23 @@
 import { OPERATION_CONSUMPTION } from './sovereign-value-balance';
 import { MEASURED_COSTS, priceNewCapability, NEW_CAPABILITY_UPLIFT } from './new-capability-pricing';
 import type { NewCapability } from './new-capability-pricing';
+import { MP4_UNITS_PER_SECOND, MP4_ROUNDING } from './local-export-pricing';
 
-/** How a Creator's charge is counted. The three are never interchangeable. */
-export type PriceQuantity = 'per-image' | 'per-operation' | 'per-requested-second' | 'per-frame';
+/**
+ * How a Creator's charge is counted. No two of these are interchangeable.
+ *
+ * `per-requested-second` and `per-final-second` differ by WHO states the
+ * duration: the first is the length the Creator asked a provider for, the
+ * second is the length the finished file turned out to be. The Founder ruled
+ * on 2026-11-02 that the MP4 export follows the second — «وليس وفق مدة
+ * تخمينية يرسلها العميل» — so they are kept apart by name.
+ */
+export type PriceQuantity =
+  | 'per-image'
+  | 'per-operation'
+  | 'per-requested-second'
+  | 'per-final-second'
+  | 'per-frame';
 
 export type PriceStatus =
   /** The Founder approved this figure directly, in `OPERATION_CONSUMPTION`. */
@@ -87,7 +101,7 @@ const UPLIFT_CAPABILITIES: readonly NewCapability[] =
   MEASURED_COSTS.map((r) => r.capability);
 
 /**
- * ─── THE SCENE'S OWN ENTRY — PREPARED, AND DELIBERATELY NOT ACTIVE ──────────
+ * ─── THE SCENE'S OWN ENTRY — NOW ACTIVE, AND DERIVED RATHER THAN CHOSEN ─────
  *
  *   RULED 2026-11-02 (decision 2): a commissioned scene gets its OWN price
  *   classification. It is not `STORYBOARD_IMAGE` merely because that name
@@ -96,58 +110,66 @@ const UPLIFT_CAPABILITIES: readonly NewCapability[] =
  *   no line in this repository. The scene is produced by `generateImage` →
  *   Magic Hour → `nano-banana-2`, a PAID provider measured at 100 credits.
  *
- *   «لا تَعتمِد ٩٨ وحدةً سعرًا نهائيًّا تلقائيًّا» — the break-even is a
- *   calculation, not an approval. And «لا تُفعِّل أيَّ سعرٍ جديدٍ للمشهد
- *   قبل اعتمادِ قيمتِه صراحةً».
+ *   RULED AGAIN, the same day, in the closure order's first decision:
  *
- *   So the classification exists, by name, and carries **no number**. Asking
- *   for it answers `absent`, which every caller already treats as «refuse,
- *   and never charge zero». The day a value is written here the scene road
- *   begins charging it with no other change; until then it stays refused,
- *   and the refusal is the ruling being obeyed rather than a defect.
+ *     «سعر المبدع بالوحدات = التكلفة الأصلية الفعلية للمزوّد بالوحدات × 1.70»
+ *     — with his own example: «تكلفة أصلية قدرها 100 وحدة: يُخصم 170 وحدة».
+ *
+ *   That settles the figure without anyone choosing one. The scene's measured
+ *   provider cost is 100 credits (job `cmujkc33903p5nq019ccursva`, measured
+ *   2026-09-27), so its price is 170 units — read from the rule, never typed
+ *   here. It obeys «لا تَعتمِد ٩٨ وحدةً سعرًا نهائيًّا تلقائيًّا» exactly:
+ *   98 was the break-even calculation and it is not the price; 170 is the
+ *   Founder's own arithmetic over the same measurement.
+ *
+ *   So the scene no longer needs a branch of its own. Its entry lives in
+ *   `MEASURED_COSTS` beside the other measured capabilities, and this module
+ *   answers for it through the one ratified uplift path below — which is why
+ *   the constant that used to hold a hand-written figure for it is gone.
  */
 export const SCENE_CAPABILITY = 'RAS_AMR_SCENE' as const;
 
 /**
- * The value the owner has approved for a commissioned scene.
+ * ─── THE FINAL EXPORT'S OWN CLASSIFICATION ──────────────────────────────────
  *
- * `null` means «not yet approved». It is NOT zero, and nothing may read it
- * as a price. A test holds it at null so that activating it is a deliberate,
- * visible act with the owner's figure in the diff.
+ *   RULED 2026-11-02, decision 2:
+ *
+ *     «١٠٠ وحدة من رصيد المبدع لكل ثانية من ملف MP4 النهائي الذي لا يعتمد
+ *     إنشاء محتواه على مزوّد خارجي مدفوع.»
+ *
+ *   It is NOT `MP4_PRODUCTION`, the 2026-09-27 entry in the signed table.
+ *   That entry says 70 per REQUESTED second, and the ruling changes both
+ *   halves — the figure and the basis. It is also read by no line in this
+ *   repository, so nothing is being taken away from any road. The old entry
+ *   stays where it is as the record of what was signed before; this name is
+ *   what the export road asks for, and the two never answer the same call.
+ *
+ *   The figure is read from `local-export-pricing.ts` at call time, never
+ *   written here, so the Empire keeps ONE place where 100 is stated.
  */
-export const SCENE_APPROVED_UNITS: number | null = null;
+export const MP4_EXPORT_CAPABILITY = 'MP4_EXPORT' as const;
 
 /**
  * What the Empire has approved for one capability.
  *
  * The order is deliberate: the Founder's own table FIRST, because a figure he
  * signed outranks one derived from a provider's invoice. The ratified uplift
- * answers only for the five it names.
+ * answers for every capability whose provider cost is measured.
  */
 export function sovereignPriceFor(capability: string): SovereignPrice {
-  // The scene's own classification, awaiting the owner's figure. It answers
-  // before the signed table is consulted, because it is not in it yet — and
-  // it answers `absent` while `SCENE_APPROVED_UNITS` is null, so the road
-  // refuses rather than charging anything.
-  if (capability === SCENE_CAPABILITY) {
-    if (SCENE_APPROVED_UNITS === null) {
-      return {
-        capability,
-        status: 'absent',
-        unitsPerQuantity: null,
-        quantity: null,
-        authority: 'awaiting the owner’s figure — ruled 2026-11-02, decision 2',
-        note: 'A commissioned scene is produced by a PAID provider (Magic Hour, '
-          + 'nano-banana-2, 100 credits measured). Break-even is 98 units, which is '
-          + 'a calculation and not an approval. See docs/PRE_EXECUTION_PRICE_MAP.md.',
-      };
-    }
+  // The export answers before the signed table, because the table's own
+  // `MP4_PRODUCTION` row was superseded in both figure and basis and must
+  // never be reached by an export asking what it costs.
+  if (capability === MP4_EXPORT_CAPABILITY) {
     return {
       capability,
       status: 'approved',
-      unitsPerQuantity: SCENE_APPROVED_UNITS,
-      quantity: 'per-image',
-      authority: 'sovereign-price-authority.ts · SCENE_APPROVED_UNITS · owner ruling',
+      unitsPerQuantity: MP4_UNITS_PER_SECOND,
+      quantity: 'per-final-second',
+      authority: 'local-export-pricing.ts · MP4_UNITS_PER_SECOND · Founder ruling 2026-11-02, decision 2',
+      note: 'Counted on the FINAL file\'s own duration, rounded up once '
+        + `(${MP4_ROUNDING.id}). It supersedes MP4_PRODUCTION (70 per requested `
+        + 'second, 2026-09-27), which no road reads.',
     };
   }
 
@@ -197,6 +219,7 @@ export function allSovereignPrices(): readonly SovereignPrice[] {
   const names = new Set<string>([
     ...OPERATION_CONSUMPTION.map((r) => r.capability),
     ...UPLIFT_CAPABILITIES,
+    MP4_EXPORT_CAPABILITY,
   ]);
   return [...names].sort().map(sovereignPriceFor);
 }

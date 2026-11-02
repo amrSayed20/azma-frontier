@@ -17,6 +17,8 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { paidOperationHeaders, operationConcluded } from '@/src/economy/client-operation-key';
+import { MP4_UNITS_PER_SECOND } from '@/src/economy/pricing/local-export-pricing';
 import type { VaultAsset } from '@/src/vault/sovereign-vault-types';
 import { AssetFamily } from '@/src/vault/sovereign-vault-types';
 import { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
@@ -405,10 +407,12 @@ export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCo
     try {
       const response = await fetch('/api/ras-amr/render', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // The export is charged, so a resent press pays once.
+        headers: { 'Content-Type': 'application/json', ...paidOperationHeaders('ras-amr:mp4-export') },
         body: JSON.stringify({ canvas: production }),
       });
       const data = await response.json();
+      operationConcluded('ras-amr:mp4-export', data);
       if (response.status !== 202 || data.status !== 'accepted') {
         setRenderStartError(data.message ?? 'تعذّر بدء الإخراج. مشروعك محفوظ؛ حاول مرة أخرى.');
         return;
@@ -657,7 +661,15 @@ export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCo
                         ? <li className="ok">✓ كل مشهد له إطار من الخزانة — جاهز للإخراج</li>
                         : readiness.blocking.map((issue, i) => <li key={`b${i}`} className="block">✕ {issue.message}</li>)}
                       {readiness.warnings.map((issue, i) => <li key={`w${i}`} className="warn">• {issue.message}</li>)}
-                      <li className="meta">{`المدة ${formatSeconds(readiness.totalDurationSeconds)} · 1920×1080 · H.264/AAC · الإخراج لا يستهلك وحدات AZMA`}</li>
+                      <li className="meta">{`المدة ${formatSeconds(readiness.totalDurationSeconds)} · 1920×1080 · H.264/AAC`}</li>
+                      {/* RULED 2026-11-02: «١٠٠ وحدة لكل ثانية من ملف MP4
+                          النهائي». This line said the opposite until the
+                          ruling, and a sentence about money must not outlive
+                          the rule it described. */}
+                      <li className="meta">
+                        {`الإخراج يُخصَم ${(Math.ceil(readiness.totalDurationSeconds) * MP4_UNITS_PER_SECOND).toLocaleString('ar-EG')} وحدة`
+                          + ` (${MP4_UNITS_PER_SECOND} لكل ثانية، وتُحسَب على مدّة الفيلم النهائيّ)`}
+                      </li>
                     </ul>
                   )}
                   {!vaultLoaded && <p className="sb-muted">الخزانة تُحمَّل…</p>}

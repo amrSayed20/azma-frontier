@@ -19,6 +19,7 @@
 
 import type { ExportQuality, OutputProfile } from './assembly-contracts';
 import { SovereignCanvas, CanvasType } from './assembly-contracts';
+import { CapabilityTarget } from '../../core/sovereign-orchestrator/qiyamah-intent-types';
 import { VaultRehydrationBridge, HydratedSovereignCanvas } from './vault-rehydration-bridge';
 import type { AudioMixingDirective } from './assembly-directive-payloads';
 import type { SubtitleDirective } from './subtitle-directive';
@@ -31,6 +32,26 @@ export interface CompilationMetadata {
   totalTracks: number;
   totalNodes: number;
   estimatedDurationSeconds?: number; // Crucial for CINEMATIC timelines
+  /**
+   * ─── HOW LONG THE FILM WILL BE, AS OPPOSED TO THE TIMELINE ────────────────
+   *
+   *   `estimatedDurationSeconds` is the furthest end of EVERY live node,
+   *   audio included. The encoder does not make a file that long: it stops at
+   *   the last picture and trims the sound with it
+   *   (`cinematic-ffmpeg-encoder.ts` — `totalDuration = min(declared,
+   *   lastFrameSeconds)`). So ten seconds of images under a sixty-second
+   *   music bed is a TEN-second film.
+   *
+   *   That difference used to live only inside the encoder, where nothing
+   *   before the encode could see it. It is computed here because two things
+   *   now need it before a frame exists: what the Creator is told the export
+   *   will cost, and what the Empire holds for it. A hold sized on the
+   *   timeline would refuse a Creator who can afford the film.
+   *
+   *   The Vault's own capability decides what is a picture — never the file
+   *   extension, which calls a microphone recording `video/webm`.
+   */
+  filmDurationSeconds?: number;
   aggregatedAssetFamilies: string[]; // Defines the multi-modal footprint of the project
   /** XLII — output profile carried from SovereignCanvas for encoder use. */
   outputProfile?: OutputProfile;
@@ -277,6 +298,7 @@ export class PrePublishingBoundary {
   private computeMasterMetadata(hydratedCanvas: HydratedSovereignCanvas): CompilationMetadata {
     let totalNodes = 0;
     let maxCinematicDuration = 0;
+    let maxVisualDuration = 0;
     const assetFamilies = new Set<string>();
 
     for (const track of hydratedCanvas.tracks) {
@@ -295,6 +317,12 @@ export class PrePublishingBoundary {
           if (nodeEndTime > maxCinematicDuration) {
             maxCinematicDuration = nodeEndTime;
           }
+          // The film's own end. Sound that outruns the last picture is not in
+          // the file, so it must not be in the charge either.
+          if (node.runtimeAsset.capabilityTarget !== CapabilityTarget.AUDIO
+              && nodeEndTime > maxVisualDuration) {
+            maxVisualDuration = nodeEndTime;
+          }
         }
       }
     }
@@ -303,6 +331,7 @@ export class PrePublishingBoundary {
       totalTracks: hydratedCanvas.tracks.filter(t => !t.isMuted && !t.isHidden).length,
       totalNodes,
       estimatedDurationSeconds: hydratedCanvas.canvasType === CanvasType.CINEMATIC ? maxCinematicDuration : undefined,
+      filmDurationSeconds: hydratedCanvas.canvasType === CanvasType.CINEMATIC ? maxVisualDuration : undefined,
       aggregatedAssetFamilies: Array.from(assetFamilies),
       outputProfile: hydratedCanvas.outputProfile,
       exportQuality: hydratedCanvas.exportQuality,

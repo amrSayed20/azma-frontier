@@ -37,9 +37,37 @@ import { SourceChamber } from '../vault/sovereign-vault-types';
 import { CanvasType } from '../chambers/ras-al-amr/assembly-contracts';
 import type { SovereignCanvas } from '../chambers/ras-al-amr/assembly-contracts';
 import type { CompiledAssemblyGraph } from '../chambers/ras-al-amr/pre-publishing-boundary';
+import { probeDurationSeconds } from '../vault/media-stream-probe';
+import {
+  authorisePaidOperation,
+  settleReservation,
+  releaseReservation,
+} from '../economy/paid-operation-gate';
+import {
+  claimAttempt,
+  attachOperation,
+  attemptForOperation,
+  completeAttempt,
+  failAttempt,
+} from '../economy/paid-operation-attempts';
+import type { AttemptRecord } from '../economy/paid-operation-attempts';
+import { MP4_EXPORT_CAPABILITY } from '../economy/pricing/sovereign-price-authority';
+import { priceMp4Export } from '../economy/pricing/local-export-pricing';
 import { fleetRuntime, soel } from './composition';
 
 export const RAS_AL_AMR_RENDER_PREFIX = 'op_rasamr_';
+
+/** The road an export attempt belongs to. Scoping keeps one road's key from matching another's. */
+const MP4_EXPORT_SCOPE = 'rasamr:mp4-export';
+
+/**
+ * The encoder is this host's own FFmpeg, not a provider.
+ *
+ * Named so the ledger row says where the work happened. The gate never asks
+ * a cost catalog about it — the price comes from the Founder's own ruling for
+ * the final export, which has no provider behind it to invoice.
+ */
+const LOCAL_ENCODER_GATEWAY = 'local-ffmpeg';
 
 /**
  * ─── THE ENCODER IS GIVEN SOMEWHERE DURABLE TO PUT ITS REASON ───────────────
@@ -127,6 +155,36 @@ export class RenderAccessError extends Error {
 export class RenderRequestError extends Error {
   constructor(public readonly reason: RenderFailureReason | 'forbidden', message: string) {
     super(message);
+  }
+}
+
+/**
+ * ─── THE EXPORT WAS NOT PAID FOR, AND SO IT DID NOT RUN ─────────────────────
+ *
+ *   Kept apart from `RenderRequestError` on purpose: that class carries the
+ *   taxonomy of why an ENCODE failed, and a Creator who is short of units has
+ *   nothing wrong with their film. The gate's own Arabic sentence and its own
+ *   HTTP status travel out untouched, so the chamber says the same thing here
+ *   as it does at every other paid door.
+ */
+export class RenderPaymentError extends Error {
+  constructor(
+    public readonly httpStatus: 402 | 503,
+    /**
+     * The gate's three reasons, plus the one this road adds.
+     *
+     * `operation-in-flight` is deliberately NOT a verdict: it means the
+     * Empire has not decided anything yet, so the browser must KEEP this
+     * press's key rather than mint a new one. `operationConcluded` reads
+     * exactly this string and returns early on it — the same contract every
+     * other paid road in the Empire uses.
+     */
+    public readonly reason: 'payment-required' | 'cost-unavailable' | 'trial-exhausted' | 'operation-in-flight',
+    messageAr: string,
+    public readonly requiredUnits?: number,
+    public readonly availableUnits?: number,
+  ) {
+    super(messageAr);
   }
 }
 
@@ -236,11 +294,42 @@ async function ownedEntry(operationId: string, tenantId: string): Promise<Operat
   return entry;
 }
 
+/**
+ * What the Empire needs in order to charge for an export, read from the
+ * verified session and from the browser's own key for this press.
+ */
+export interface RasAlAmrRenderMoney {
+  /** From the session cookie. A Founder owes nothing, as at every other door. */
+  readonly creatorRole: string;
+  /**
+   * The browser's key for THIS press, so a resent press pays once. Null when
+   * the client sent none, and then each press is a separate export — which is
+   * the honest reading of a request that refuses to identify itself.
+   */
+  readonly clientOperationKey: string | null;
+}
+
+/** What the Creator was charged for an export, or why nothing was. */
+export interface RasAlAmrRenderCharge {
+  /** Units held for this export. Zero only when the export was entitled. */
+  readonly units: number;
+  /** Whole seconds the hold was taken on, from the Empire's own computation. */
+  readonly heldForSeconds: number;
+  /** `founder` or `trial` when no units were held. */
+  readonly entitledVia?: 'founder' | 'trial';
+}
+
 /** Compiles the Creator's canvas and starts the real MP4 render. Returns once the job is accepted. */
 export async function startRasAlAmrRender(
   canvas: SovereignCanvas,
   tenantId: string,
-): Promise<{ operationId: string; compiled: CompiledAssemblyGraph }> {
+  /**
+   * REQUIRED, not optional. An optional money argument is a free export
+   * waiting for one caller to forget it, and this road's whole charge lives
+   * in this parameter. A caller that genuinely owes nothing says so by role.
+   */
+  money: RasAlAmrRenderMoney,
+): Promise<{ operationId: string; compiled: CompiledAssemblyGraph; charge: RasAlAmrRenderCharge }> {
   // The session-verified tenant always wins over whatever the client sent.
   const authoritativeCanvas: SovereignCanvas = { ...canvas, subscriberTenantId: tenantId, canvasType: CanvasType.CINEMATIC };
 
@@ -255,6 +344,13 @@ export async function startRasAlAmrRender(
   }
 
   const operationId = `${RAS_AL_AMR_RENDER_PREFIX}${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
+  // ── THE CHARGE, TAKEN AFTER THE FILM IS COMPILED AND BEFORE IT IS MADE ───
+  //
+  //   Compiled first, because only the compiled graph knows how long the film
+  //   is; before dispatch, because an encode that has begun has already spent
+  //   the Empire's machine. Nothing is held for a film that would not compile.
+  const charge = holdForExport(operationId, tenantId, money, compiled);
   const dispatchIntent = {
     operationId,
     subscriberTenantId: tenantId,
@@ -280,9 +376,204 @@ export async function startRasAlAmrRender(
     // of guessing. See recordFailureDiagnostic for the 33 production failures
     // that had no reason at all.
     await persistFailure(operationId, failure.reason, raw);
+    // The job never started, so the hold has nothing to pay for. Released
+    // here rather than left to the status poll, which will never see a job
+    // the dispatcher refused to accept.
+    releaseExportHold(operationId, `dispatch:${failure.reason}`);
     throw new RenderRequestError(failure.reason, failure.message);
   }
-  return { operationId, compiled };
+  return { operationId, compiled, charge };
+}
+
+/**
+ * ─── ONE PRESS, ONE PRICE, ONE HOLD ─────────────────────────────────────────
+ *
+ *   RULED 2026-11-02, decision 2: «١٠٠ وحدة من رصيد المبدع لكل ثانية من ملف
+ *   MP4 النهائي». The final file does not exist at this moment, so the hold
+ *   is taken on the length the Empire itself computed for the compiled
+ *   timeline — never on a number the browser sent — and the settlement later
+ *   follows the finished file, measured.
+ *
+ *   A timeline with no picture in it is refused as what it is — an empty
+ *   film — and never as a film whose cost could not be worked out.
+ */
+function holdForExport(
+  operationId: string,
+  tenantId: string,
+  money: RasAlAmrRenderMoney,
+  compiled: CompiledAssemblyGraph,
+): RasAlAmrRenderCharge {
+  // ── WHICH DURATION, AND WHY IT IS NOT THE OBVIOUS ONE ──────────────────
+  //
+  //   MEASURED: `estimatedDurationSeconds` spans every live node, audio
+  //   included, and the encoder stops at the last picture. Sizing the hold on
+  //   it would reserve 6,000 units for a ten-second film under a minute of
+  //   music — and REFUSE a Creator holding 3,000 who can easily afford the
+  //   1,000 the film actually costs. A hold that blocks what the Creator can
+  //   pay for is not caution; it is a wrong number.
+  //
+  //   `filmDurationSeconds` is the same arithmetic over the pictures alone,
+  //   computed by the compiler that already walks every node. It is the figure
+  //   the chamber quotes before the press, so the quote and the hold agree.
+  const price = priceMp4Export(compiled.metadata.filmDurationSeconds);
+  if (!price.ok) {
+    // ── AND THIS IS NOT A PRICING PROBLEM, IT IS AN EMPTY FILM ───────────
+    //
+    //   A film with no picture has no length, so it has no price. But there
+    //   is nothing wrong with the Creator's money — there is nothing in their
+    //   timeline, and the Empire already has a sentence that says exactly
+    //   that and names what to do about it. Answering «this could not be
+    //   priced» would hide the real cause behind the money.
+    //
+    //   MEASURED: before this branch a sound-only canvas was refused 422 by
+    //   the dispatcher with 'no-visual-scenes'. The charge now sits before
+    //   the dispatch, so that refusal has to be made here or it is lost.
+    throw new RenderRequestError('no-visual-scenes', renderFailureMessageAr('no-visual-scenes'));
+  }
+
+  const claim = claimAttempt({
+    db: getDb(),
+    creatorId: tenantId,
+    scope: MP4_EXPORT_SCOPE,
+    clientKey: money.clientOperationKey,
+  });
+
+  // ── THE FOUR VERDICTS, AND THE TWO THAT ARE NOT DUPLICATES ─────────────
+  //
+  //   An earlier version refused everything but `claimed` with
+  //   `cost-unavailable`, and that was wrong twice over:
+  //
+  //   · `cost-unavailable` is a NAMED VERDICT, so the browser forgot this
+  //     press's key — and the next press minted a new one, took a SECOND
+  //     hold and dispatched a SECOND encode of the same film. The refusal
+  //     meant to prevent a double charge was causing one.
+  //
+  //   · `claimed-after-failure` is a legitimate retry: the previous attempt
+  //     ran and failed, and `claimAttempt` has already issued a fresh key
+  //     for a fresh try. Rejecting it left the Creator unable to export ever
+  //     again with that key, and left the row it had just written
+  //     permanently `in-flight`.
+  if (claim.kind === 'in-flight' || claim.kind === 'already-succeeded') {
+    throw new RenderPaymentError(
+      503,
+      'operation-in-flight',
+      'هذا الإخراجُ جارٍ بالفعل. انتظِر فيلمَك بدلَ أن تَبدأه مرّتَين.',
+    );
+  }
+
+  const verdict = authorisePaidOperation({
+    db: getDb(),
+    creatorId: tenantId,
+    role: money.creatorRole,
+    // No provider cost class, and there never will be one: the encode runs
+    // on this host and no invoice is issued for it. The gate reads the ruled
+    // price instead, which is what `sovereignCapability` below names.
+    capability: null,
+    gatewayId: LOCAL_ENCODER_GATEWAY,
+    attemptKey: claim.attemptKey,
+    sovereignCapability: MP4_EXPORT_CAPABILITY,
+    // Whole seconds, ceiled once, as the ratified rounding requires.
+    quantity: price.chargedSeconds,
+    metadata: { operationId, basis: 'estimated-duration', exactSeconds: price.exactSeconds },
+  });
+
+  if (verdict.kind === 'refused') {
+    failAttempt(getDb(), claim.attemptKey, `gate:${verdict.reason}`);
+    throw new RenderPaymentError(
+      verdict.httpStatus,
+      verdict.reason,
+      verdict.messageAr,
+      verdict.requiredUnits,
+      verdict.availableUnits,
+    );
+  }
+
+  if (verdict.kind === 'entitled') {
+    // Nothing is owed, and the attempt says so rather than saying «settled
+    // zero». The job is still named, so a status poll finds a resolved
+    // attempt instead of hunting for a hold that never existed.
+    attachOperation(getDb(), claim.attemptKey, operationId);
+    completeAttempt(getDb(), claim.attemptKey, { operationId, entitledVia: verdict.via });
+    return { units: 0, heldForSeconds: price.chargedSeconds, entitledVia: verdict.via };
+  }
+
+  attachOperation(getDb(), claim.attemptKey, operationId);
+  return { units: verdict.units, heldForSeconds: price.chargedSeconds };
+}
+
+/**
+ * ─── THE SETTLEMENT FOLLOWS THE FILE, NOT THE ESTIMATE ──────────────────────
+ *
+ *   «يُحسب الخصم وفق مدة الفيديو النهائي الفعلية بالثواني.» So the finished
+ *   MP4 is measured with ffprobe and charged for its own length.
+ *
+ *   `settleReservation` never takes more than was held and gives back the
+ *   difference, so a film that came out shorter costs less, and one that came
+ *   out longer cannot quietly cost more — the hold is the ceiling, and the gap
+ *   is visible in the ledger rather than charged in silence.
+ *
+ *   Idempotent by the attempt's own settlement state: a chamber polling every
+ *   second settles once. A film whose duration cannot be measured is settled
+ *   at the held amount rather than released — the Creator has their film, and
+ *   a failed instrument is not a refund.
+ */
+function settleExportHold(operationId: string, tenantId: string): void {
+  let attempt: AttemptRecord | null;
+  try {
+    attempt = attemptForOperation(getDb(), operationId);
+  } catch { return; }
+
+  // No attempt, nothing owed, or already resolved — all three are endings.
+  if (!attempt || attempt.creatorId !== tenantId) return;
+  if (attempt.settlementState !== 'owed' || !attempt.reservationId || attempt.unitsHeld === null) return;
+
+  // ── MEASURED IF IT CAN BE, AND OTHERWISE THE FILM WE QUOTED ────────────
+  //
+  //   `probeDurationSeconds` returns null when ffprobe is absent or cannot
+  //   read the file. Charging the full hold then would turn a missing tool on
+  //   the render host into a silent MAXIMUM charge on every export.
+  //
+  //   So the fallback is the figure the Creator was shown and the hold was
+  //   taken on — which, since the hold now follows the film's own length, is
+  //   the honest charge for the film they received. Never more than was held,
+  //   and the basis is recorded either way so the ledger says which happened.
+  const measured = probeDurationSeconds(getOutputPath(operationId) ?? `/renders/${operationId}.mp4`);
+  const finalPrice = priceMp4Export(measured);
+  const units = finalPrice.ok
+    ? Math.min(finalPrice.chargedUnits, attempt.unitsHeld)
+    : attempt.unitsHeld;
+
+  settleReservation({
+    db: getDb(),
+    creatorId: tenantId,
+    attemptKey: attempt.attemptKey,
+    reservationId: attempt.reservationId,
+    units,
+    metadata: {
+      operationId,
+      basis: finalPrice.ok ? 'measured-final-duration' : 'held-amount-unmeasured',
+      ...(finalPrice.ok ? { finalSeconds: finalPrice.exactSeconds, chargedSeconds: finalPrice.chargedSeconds } : {}),
+    },
+  });
+  completeAttempt(getDb(), attempt.attemptKey, { operationId, chargedUnits: units });
+}
+
+/** The film was never made, so its hold is given back in full. */
+function releaseExportHold(operationId: string, reason: string): void {
+  let attempt: AttemptRecord | null;
+  try {
+    attempt = attemptForOperation(getDb(), operationId);
+  } catch { return; }
+  if (!attempt || attempt.settlementState !== 'owed' || !attempt.reservationId) return;
+
+  releaseReservation({
+    db: getDb(),
+    creatorId: attempt.creatorId,
+    attemptKey: attempt.attemptKey,
+    reservationId: attempt.reservationId,
+    reason,
+  });
+  failAttempt(getDb(), attempt.attemptKey, reason);
 }
 
 /**
@@ -344,32 +635,50 @@ export async function getRasAlAmrRenderStatus(operationId: string, tenantId: str
   const entry = await ownedEntry(operationId, tenantId);
   const startedAt = entry.createdAt;
 
+  // ── THE MONEY IS RESOLVED WHERE THE OUTCOME BECOMES KNOWN ────────────────
+  //
+  //   This poll is the only place in the Empire that learns whether an export
+  //   finished, so it is the only place that can honestly close its hold.
+  //   Both calls are no-ops unless there is a hold still owed for this job,
+  //   which is what makes a chamber polling every second free.
+
   if (entry.currentState === OperationState.DEPOSITED) {
+    settleExportHold(operationId, tenantId);
     return { status: 'succeeded', operationId, startedAt, finishedAt: entry.resolvedAt, ...fileUrls(operationId), assetId: depositedAssetId(operationId, tenantId) };
   }
   if (entry.currentState === OperationState.FAILED || entry.currentState === OperationState.REJECTED_POLICY || entry.currentState === OperationState.REJECTED_QUOTA) {
-    return { status: 'failed', operationId, startedAt, ...await resolveFailure(operationId) };
+    const failure = await resolveFailure(operationId);
+    releaseExportHold(operationId, `render:${failure.reason}`);
+    return { status: 'failed', operationId, startedAt, ...failure };
   }
 
   try {
     const asset = await fleetRuntime.resolutionGateway.checkAndResolveOperation(operationId, tenantId);
     if (asset) {
+      settleExportHold(operationId, tenantId);
       return { status: 'succeeded', operationId, startedAt, finishedAt: Date.now(), ...fileUrls(operationId), assetId: depositedAssetId(operationId, tenantId) };
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
     if (message.includes('already been completed')) {
+      settleExportHold(operationId, tenantId);
       return { status: 'succeeded', operationId, startedAt, ...fileUrls(operationId), assetId: depositedAssetId(operationId, tenantId) };
     }
     // The resolution gateway's own refusal is the most specific thing known
     // here, so it is persisted before the three-source lookup runs.
     const resolutionReason = classifyRenderFailure(message);
     if (resolutionReason !== 'unknown') await persistFailure(operationId, resolutionReason, message);
-    return { status: 'failed', operationId, startedAt, ...await resolveFailure(operationId) };
+    const resolutionFailure = await resolveFailure(operationId);
+    releaseExportHold(operationId, `resolution:${resolutionFailure.reason}`);
+    return { status: 'failed', operationId, startedAt, ...resolutionFailure };
   }
 
   // Still encoding — unless no process is encoding it any more.
   if (!isEncodingTracked(operationId) && !isEncodingComplete(operationId) && Date.now() - startedAt > INTERRUPTED_AFTER_MS) {
+    // Nothing was produced, so nothing is owed. This is the one ending that
+    // reads a clock — and it decides whether the RENDER died, never whether a
+    // hold may be swept: the release follows the outcome being known.
+    releaseExportHold(operationId, 'render:interrupted');
     return {
       status: 'failed',
       operationId,
@@ -394,13 +703,57 @@ export async function getRasAlAmrRenderStatus(operationId: string, tenantId: str
  * montage session and every storyboard file their renders under their own
  * canvasId (the intent's projectContainerId).
  */
+/**
+ * ─── A HOLD WHOSE JOB ENDED WHILE NOBODY WAS WATCHING ───────────────────────
+ *
+ *   The status poll closes an export's money, because that is where the
+ *   outcome becomes known. But a Creator who closes the tab mid-encode never
+ *   polls again, and their hold would then sit `owed` for good — units they
+ *   can neither spend nor see.
+ *
+ *   MEASURED: the resolver that exists for exactly this (`reconcileOwedAttempts`)
+ *   has no production caller, and it could not speak for an export anyway: the
+ *   attempt stays `in-flight` until something observes the job, and the
+ *   resolver refuses — rightly — to decide for a job nobody can speak for.
+ *
+ *   So the Empire looks again at the moment the Creator comes back, which is
+ *   the moment this chamber lists their renders. **It is not a sweeper and it
+ *   reads no clock:** the operation ledger has already recorded DEPOSITED or
+ *   FAILED durably, and that record — never an age — is what decides.
+ */
+function resolveFinishedExports(
+  tenantId: string,
+  entries: readonly { operationId: string; currentState: OperationState }[],
+): void {
+  for (const entry of entries) {
+    try {
+      if (entry.currentState === OperationState.DEPOSITED) {
+        settleExportHold(entry.operationId, tenantId);
+      } else if (entry.currentState === OperationState.FAILED
+        || entry.currentState === OperationState.REJECTED_POLICY
+        || entry.currentState === OperationState.REJECTED_QUOTA) {
+        releaseExportHold(entry.operationId, `render:${entry.currentState}`);
+      }
+      // Anything else is still running, and nothing here speaks for it.
+    } catch {
+      // Listing a Creator's films must never fail because one hold would not
+      // close. The hold stays `owed`, which is where the resolver finds it.
+    }
+  }
+}
+
 export function listRasAlAmrRenders(
   tenantId: string,
   limit = 5,
   projectId?: string,
 ): { operationId: string; projectId?: string; state: OperationState; startedAt: number; finishedAt?: number }[] {
-  return ledger()
-    .listRecentForTenant(tenantId, RAS_AL_AMR_RENDER_PREFIX, projectId ? 50 : limit)
+  const recent = ledger().listRecentForTenant(tenantId, RAS_AL_AMR_RENDER_PREFIX, projectId ? 50 : limit);
+
+  // Before answering, finish the money of any export whose outcome is already
+  // recorded. Both calls are no-ops unless a hold is still owed for that job.
+  resolveFinishedExports(tenantId, recent);
+
+  return recent
     .filter((entry) => !projectId || entry.sourceIntent.projectContainerId === projectId)
     .slice(0, limit)
     .map((entry) => ({

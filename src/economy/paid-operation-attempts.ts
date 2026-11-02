@@ -57,6 +57,8 @@ export interface AttemptRecord {
   readonly unitsHeld: number | null;
   readonly resultJson: string | null;
   readonly failureReason: string | null;
+  /** The long-running job this attempt paid for, when there is one. */
+  readonly operationId: string | null;
   readonly createdAtMs: number;
   readonly updatedAtMs: number;
 }
@@ -85,6 +87,7 @@ interface AttemptRow {
   attempt_key: string; creator_id: string; scope: string; state: string;
   reservation_id: string | null; settlement_state: string; units_held: number | null;
   result_json: string | null; failure_reason: string | null;
+  operation_id: string | null;
   created_at_ms: number; updated_at_ms: number;
 }
 
@@ -99,6 +102,7 @@ function toRecord(row: AttemptRow): AttemptRecord {
     unitsHeld: row.units_held,
     resultJson: row.result_json,
     failureReason: row.failure_reason,
+    operationId: row.operation_id ?? null,
     createdAtMs: row.created_at_ms,
     updatedAtMs: row.updated_at_ms,
   };
@@ -217,6 +221,40 @@ export function attachReservation(
         SET reservation_id = ?, units_held = ?, settlement_state = 'owed', updated_at_ms = ?
       WHERE attempt_key = ?`,
   ).run(reservationId, unitsHeld, Date.now(), attemptKey);
+}
+
+/**
+ * ─── AN ATTEMPT THAT PAID FOR A JOB NAMES THAT JOB ──────────────────────────
+ *
+ *   Only for work whose outcome is learned AFTER the request that paid for it
+ *   returns — today, the MP4 export alone. The encode is a child process, and
+ *   the duration the Founder ruled the charge follows exists only once the
+ *   file does.
+ *
+ *   Written once, right after the hold, and never overwritten: the WHERE
+ *   clause requires the column to still be empty, so two jobs can never claim
+ *   the same payment and a replayed call cannot move a payment to a newer job.
+ */
+export function attachOperation(db: DatabaseSync, attemptKey: string, operationId: string): void {
+  db.prepare(
+    `UPDATE paid_operation_attempts
+        SET operation_id = ?, updated_at_ms = ?
+      WHERE attempt_key = ? AND operation_id IS NULL`,
+  ).run(operationId, Date.now(), attemptKey);
+}
+
+/**
+ * The attempt that paid for one job, or null when no attempt did.
+ *
+ * Null is the honest answer for an entitled render (a Founder, a trial) and
+ * for a job started before this link existed. A settlement must read it as
+ * «nothing is owed for this job», never as «settle zero».
+ */
+export function attemptForOperation(db: DatabaseSync, operationId: string): AttemptRecord | null {
+  const row = db
+    .prepare('SELECT * FROM paid_operation_attempts WHERE operation_id = ?')
+    .get(operationId) as unknown as AttemptRow | undefined;
+  return row ? toRecord(row) : null;
 }
 
 /** Mark how the hold ended. Called by the gate, never by a route directly. */

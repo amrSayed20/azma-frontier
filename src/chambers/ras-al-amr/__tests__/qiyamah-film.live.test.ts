@@ -113,7 +113,7 @@ describeLive('حجرة القيامة — فيلمُ عشرِ ثوانٍ', () =>
       updatedAt: Date.now(),
     };
 
-    const { operationId, compiled } = await startRasAlAmrRender(canvas, OWNER!);
+    const { operationId, compiled } = await startRasAlAmrRender(canvas, OWNER!, { creatorRole: 'founder', clientOperationKey: null });
     let last = '';
     let done = false;
     for (let i = 0; i < 300; i++) {

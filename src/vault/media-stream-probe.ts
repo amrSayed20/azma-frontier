@@ -33,3 +33,38 @@ export function probeStreamKinds(filePath: string): StreamKinds | null {
     return null;
   }
 }
+
+/**
+ * ─── HOW LONG THE FILE ACTUALLY IS ──────────────────────────────────────────
+ *
+ *   Measured, never claimed. The Founder's ruling of 2026-11-02 charges the
+ *   final export «وفق مدة الفيديو النهائي الفعلية بالثواني، وليس وفق مدة
+ *   تخمينية يرسلها العميل» — so the settlement needs the file's own duration,
+ *   read from the file by the same instrument that reads its streams.
+ *
+ *   `format=duration` is the container's figure for the whole file, which is
+ *   what a Creator watches and what they are charged for. A stream's own
+ *   duration can differ (an audio track that outruns the picture), and the
+ *   container's is the honest one for a film.
+ *
+ *   Returns null — never 0 — when ffprobe is absent, fails, or reports
+ *   something unusable. A missing measurement is an absence, and the caller
+ *   must treat it as one: an instrument returning nothing is not returning a
+ *   zero.
+ */
+export function probeDurationSeconds(filePath: string): number | null {
+  if (typeof spawnSync !== 'function') return null;
+  try {
+    const result = spawnSync(
+      'ffprobe',
+      ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', filePath],
+      { encoding: 'utf-8', timeout: 15000 },
+    );
+    if (result.status !== 0) return null;
+    const seconds = Number.parseFloat(String(result.stdout ?? '').trim());
+    if (!Number.isFinite(seconds) || seconds <= 0) return null;
+    return seconds;
+  } catch {
+    return null;
+  }
+}

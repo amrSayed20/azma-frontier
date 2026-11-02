@@ -38,6 +38,10 @@ jest.setTimeout(120000);
 
 const CREATOR = 'creator-render-a';
 const OTHER_CREATOR = 'creator-render-b';
+const FOUNDER = 'creator-render-founder';
+
+/** The in-memory database this suite runs against, shared by every case. */
+const getDb = () => (jest.requireMock('../../../../../src/persistent-storage/db') as { getDb: () => never }).getDb();
 let workDir = '';
 const savedEnv = { UPLOADS_DIR: process.env.UPLOADS_DIR };
 
@@ -58,10 +62,10 @@ function request(url: string, init: { method?: string; body?: unknown; headers?:
 
 const params = (operationId: string) => ({ params: Promise.resolve({ operationId }) });
 
-function asset(assetId: string, file: string, capabilityTarget: string) {
+function asset(assetId: string, file: string, capabilityTarget: string, owner: string = CREATOR) {
   return {
     assetId,
-    subscriberTenantId: CREATOR,
+    subscriberTenantId: owner,
     originatingOperationId: `upload-${assetId}`,
     capabilityTarget,
     assetFamily: 'MEDIA',
@@ -127,16 +131,28 @@ describeReal('Ras Al-Amr in-chamber render — real routes, real FFmpeg', () => 
     make(['-f', 'lavfi', '-i', 'sine=f=440:d=3', '-c:a', 'libopus', 'voice.webm']);
     make(['-f', 'lavfi', '-i', 'color=c=blue:s=1280x720', '-frames:v', '1', 'doomed.png']);
 
-    const { getDb } = jest.requireMock('../../../../../src/persistent-storage/db') as { getDb: () => unknown };
     const { insertVaultAsset } = jest.requireActual('../../../../../src/persistent-storage/vault-asset-repository');
     for (const a of [
       asset('a-scene', 'scene.png', 'VISUAL'),
       asset('a-clip', 'clip.mp4', 'MOTION'),
       asset('a-voice', 'voice.webm', 'AUDIO'),
       asset('a-doomed', 'doomed.png', 'VISUAL'),
+      // Owned elsewhere, so the money cases below are refused for the reason
+      // they are testing and never for a tenancy breach.
+      asset('a-scene-poor', 'scene.png', 'VISUAL', OTHER_CREATOR),
+      asset('a-scene-founder', 'scene.png', 'VISUAL', FOUNDER),
     ]) {
       insertVaultAsset(getDb(), a);
     }
+
+    // ── THE EXPORT IS PAID FOR NOW, SO THE CREATOR MUST HAVE UNITS ────────
+    //
+    //   RULED 2026-11-02, decision 2: 100 units per second of the final MP4.
+    //   Before that ruling these renders were free, and this grant is part of
+    //   the proof: without it every successful case below answers 402, which
+    //   is exactly what a Creator with an empty balance now gets.
+    const { CreatorCreditRepository } = jest.requireActual('../../../../../src/economy/credit-ledger/credit-ledger-repository');
+    new CreatorCreditRepository(getDb()).creditUnits(CREATOR, 100_000, 'grant', 'render-route-proof-grant');
 
     routes = {
       start: await import('../route'),
@@ -207,6 +223,136 @@ describeReal('Ras Al-Amr in-chamber render — real routes, real FFmpeg', () => 
     mockVerifySession.mockReturnValue({ creatorId: OTHER_CREATOR, role: 'creator' });
     expect((await routes.status.GET(request(`/api/ras-amr/render/${started.operationId}`), params(started.operationId))).status).toBe(403);
     expect((await routes.file.GET(request(`/api/ras-amr/render/${started.operationId}/file`), params(started.operationId))).status).toBe(403);
+  });
+
+  /* ─── THE CHARGE, ON A REAL FILM THAT A REAL FFPROBE MEASURED ───────────────
+   *
+   *   RULED 2026-11-02, decision 2. This is the only place in the Empire where
+   *   a genuine MP4 exists inside a test, so it is where the ruling is proven:
+   *   the hold is stated before the encode, the settlement follows the file's
+   *   own measured length, and the Creator is told the figure in the answer.
+   */
+  it('charges 100 units for every second of the film it actually produced', async () => {
+    const { CreatorCreditRepository } = jest.requireActual('../../../../../src/economy/credit-ledger/credit-ledger-repository');
+    const { attemptForOperation } = jest.requireActual('../../../../../src/economy/paid-operation-attempts');
+    const credits = new CreatorCreditRepository(getDb());
+    const before = credits.getBalance(CREATOR);
+
+    // Three seconds of picture. The hold must be 300, not a guess and not zero.
+    const res = await routes.start.POST(request('/api/ras-amr/render', {
+      method: 'POST',
+      body: { canvas: canvas([{ nodeId: 'n-paid', assetId: 'a-scene', capability: 'VISUAL', start: 0, dur: 3 }]) },
+    }));
+    expect(res.status).toBe(202);
+    const started = await res.json();
+    expect(started.charge).toEqual({ units: 300, heldForSeconds: 3 });
+
+    // Held, not yet spent: the film does not exist at this moment.
+    const held = credits.getBalance(CREATOR);
+    expect(held.reservedUnits - before.reservedUnits).toBe(300);
+    expect(held.totalSpent).toBe(before.totalSpent);
+
+    expect((await pollUntilDone(started.operationId)).status).toBe('succeeded');
+
+    // Settled on the FILE: ffprobe reads it, and the charge follows that.
+    const mp4 = join(process.env.UPLOADS_DIR!, 'renders', `${started.operationId}.mp4`);
+    const measured = Number(spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', mp4]).stdout.toString());
+    expect(measured).toBeCloseTo(3, 0);
+
+    const after = credits.getBalance(CREATOR);
+    expect(after.reservedUnits).toBe(before.reservedUnits);
+    expect(after.totalSpent - before.totalSpent).toBe(Math.ceil(measured) * 100);
+    // And never more than was held, whatever the file turned out to be.
+    expect(after.totalSpent - before.totalSpent).toBeLessThanOrEqual(300);
+
+    const attempt = attemptForOperation(getDb(), started.operationId);
+    expect(attempt.settlementState).toBe('settled');
+    expect(attempt.state).toBe('succeeded');
+  });
+
+  it('pays once for one press, however many times the browser resends it', async () => {
+    const { CreatorCreditRepository } = jest.requireActual('../../../../../src/economy/credit-ledger/credit-ledger-repository');
+    const credits = new CreatorCreditRepository(getDb());
+    const before = credits.getBalance(CREATOR);
+    const press = { 'x-azma-operation-key': 'one-press-of-export' };
+    const body = { canvas: canvas([{ nodeId: 'n-once', assetId: 'a-scene', capability: 'VISUAL', start: 0, dur: 2 }]) };
+
+    const first = await routes.start.POST(request('/api/ras-amr/render', { method: 'POST', body, headers: press }));
+    expect(first.status).toBe(202);
+    expect((await first.json()).charge.units).toBe(200);
+
+    // The same key again: no second hold, no second film.
+    const second = await routes.start.POST(request('/api/ras-amr/render', { method: 'POST', body, headers: press }));
+    expect(second.status).toBe(503);
+    // NOT a verdict: the browser must keep this press's key, or the next
+    // press takes a second hold and encodes the same film twice.
+    expect((await second.json()).reason).toBe('operation-in-flight');
+    expect(credits.getBalance(CREATOR).reservedUnits - before.reservedUnits).toBe(200);
+  });
+
+  it('closes the hold of a Creator who closed the tab, when they come back', async () => {
+    const { CreatorCreditRepository } = jest.requireActual('../../../../../src/economy/credit-ledger/credit-ledger-repository');
+    const { attemptForOperation } = jest.requireActual('../../../../../src/economy/paid-operation-attempts');
+    const credits = new CreatorCreditRepository(getDb());
+    const spentBefore = credits.getBalance(CREATOR).totalSpent;
+
+    const started = await (await routes.start.POST(request('/api/ras-amr/render', {
+      method: 'POST',
+      body: { canvas: canvas([{ nodeId: 'n-abandoned', assetId: 'a-scene', capability: 'VISUAL', start: 0, dur: 2 }]) },
+    }))).json();
+    expect(started.charge.units).toBe(200);
+    expect((await pollUntilDone(started.operationId)).status).toBe('succeeded');
+
+    // Now put the money back the way an ABANDONED export leaves it: the film
+    // is made and recorded, and the hold was never closed because nobody
+    // polled the moment it finished.
+    const attempt = attemptForOperation(getDb(), started.operationId);
+    const db = getDb() as unknown as {
+      prepare: (sql: string) => { run: (...args: unknown[]) => void; get: (...args: unknown[]) => unknown };
+    };
+    db.prepare("UPDATE paid_operation_attempts SET settlement_state = 'owed', state = 'in-flight' WHERE attempt_key = ?")
+      .run(attempt.attemptKey);
+    db.prepare("UPDATE credit_ledger SET status = 'pending' WHERE ledger_id = ?").run(attempt.reservationId);
+    expect(attemptForOperation(getDb(), started.operationId).settlementState).toBe('owed');
+
+    // The Creator comes back. Listing their films closes the money — decided
+    // by the operation ledger's own record of DEPOSITED, never by an age.
+    await routes.start.GET(request('/api/ras-amr/render'));
+
+    // THIS hold is closed, and its units became a charge rather than going
+    // back: the film was delivered. The Creator's total reserved figure is
+    // deliberately not asserted — the same return closes every OTHER
+    // stranded hold it can speak for, which is the point of it.
+    const closed = attemptForOperation(getDb(), started.operationId);
+    expect(closed.settlementState).toBe('settled');
+    expect(closed.state).toBe('succeeded');
+    const row = db.prepare('SELECT status FROM credit_ledger WHERE ledger_id = ?')
+      .get(closed.reservationId) as { status: string };
+    expect(row.status).not.toBe('pending');
+    expect(credits.getBalance(CREATOR).totalSpent).toBeGreaterThan(spentBefore);
+  });
+
+  it('refuses the export when the balance is short, and makes no film', async () => {
+    mockVerifySession.mockReturnValue({ creatorId: OTHER_CREATOR, role: 'creator' });
+    const res = await routes.start.POST(request('/api/ras-amr/render', {
+      method: 'POST',
+      body: { canvas: canvas([{ nodeId: 'n-poor', assetId: 'a-scene-poor', capability: 'VISUAL', start: 0, dur: 2 }]) },
+    }));
+    expect(res.status).toBe(402);
+    const body = await res.json();
+    expect(body.reason).toBe('payment-required');
+    expect(body.requiredUnits).toBe(200);
+    expect(body.operationId).toBeUndefined();
+  });
+
+  it('owes nothing for a Founder, and still names the film it made', async () => {
+    mockVerifySession.mockReturnValue({ creatorId: FOUNDER, role: 'founder' });
+    const res = await routes.start.POST(request('/api/ras-amr/render', {
+      method: 'POST',
+      body: { canvas: canvas([{ nodeId: 'n-free', assetId: 'a-scene-founder', capability: 'VISUAL', start: 0, dur: 2 }]) },
+    }));
+    expect(res.status).toBe(202);
+    expect((await res.json()).charge).toEqual({ units: 0, heldForSeconds: 2, entitledVia: 'founder' });
   });
 
   it('renders a storyboard project as its own MP4, filed under that project, adoptable by distribution', async () => {
