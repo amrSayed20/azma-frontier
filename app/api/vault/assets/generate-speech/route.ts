@@ -11,6 +11,7 @@ import { OperationType } from '../../../../../src/consumption-ledger/consumption
 import { getCurrentMonthKey } from '../../../../../src/consumption-ledger/cost-estimator';
 import { authorisePaidOperation } from '../../../../../src/economy/paid-operation-gate';
 import { SPEECH_CAPABILITY } from '../../../../../src/economy/pricing/sovereign-price-authority';
+import { priceSpeechFromCredits } from '@/src/economy/pricing/speech-pricing';
 
 import {
   claimAttempt, completeAttempt, failAttempt,
@@ -100,6 +101,8 @@ export async function POST(request: NextRequest) {
   // CREDIT-FIRST GATE: Founders bypass. Creators require AZMA Units.
   const db = getDb();
   let reservationId: string | null = null;
+  /** What the provider said this narration cost, in its own credits. */
+  let meteredCredits: number | null = null;
   // MEASURED: the settlement re-derived this number from the cost engine
   // inside its own try block. A hold and a charge computed in two places
   // are two numbers that can drift, and an estimate that threw there left
@@ -146,6 +149,18 @@ export async function POST(request: NextRequest) {
    *    meters, and never a number the browser states about it. The gate
    *    multiplies and rounds once, at the job, as the Constitution ratified.
    */
+  /*  ── THE HOLD IS A CEILING, NOT THE CHARGE ───────────────────────────
+   *
+   *    MEASURED ON PRODUCTION 2026-11-03: a 134-character Arabic narration
+   *    metered **54** provider credits, and a 12-character one metered 5 —
+   *    about 0.41 credits per character. The provider's published line says
+   *    one character is one credit; for diacritised Arabic it is not.
+   *
+   *    So the Creator's text length is an UPPER BOUND on the cost and never
+   *    a measure of it. It is what can honestly be quoted before the
+   *    narration exists, so it is what is held — and the settlement below
+   *    follows the credits the provider reports, which is always less.
+   */
   const spokenCharacters = text.trim().length;
   const speechGate = authorisePaidOperation({
     db,
@@ -189,6 +204,9 @@ export async function POST(request: NextRequest) {
   try {
     const result = await synthesizeSpeechWithClonedVoice(text.trim(), voice);
     audioBytes = result.bytes;
+    // Carried out of this block because the settlement, further down, is the
+    // only place that can act on it.
+    meteredCredits = result.meteredCredits ?? null;
   } catch (err) {
     if (reservationId) {
       releaseReservation({
@@ -230,10 +248,32 @@ export async function POST(request: NextRequest) {
     });
 
     if (reservationId) {
+      /*  ── SETTLED ON WHAT THE PROVIDER SAID IT COST ──────────────────────
+       *
+       *    «يجب أن يتطابق الاستهلاك المسجل مع العملية الفعلية لدى المزود.»
+       *
+       *    The figure comes from the provider's `character-cost` response
+       *    header, which it returns on every call. The subscription counter
+       *    does NOT serve here: measured three times at twenty-second
+       *    intervals after a real call, it still read the pre-call value.
+       *
+       *    When the header is absent the hold stands — the Creator has their
+       *    narration, and a provider that declined to state a cost is not a
+       *    refund. `settleReservation` never takes more than was held.
+       */
+      const measured = priceSpeechFromCredits(meteredCredits);
+      const settledUnits = measured.ok ? Math.min(measured.chargedUnits, chargeUnits) : chargeUnits;
       settleReservation({
         db, creatorId: session.creatorId, attemptKey: claim.attemptKey,
-        reservationId, units: chargeUnits, metadata: { assetId: asset.assetId },
+        reservationId, units: settledUnits,
+        metadata: {
+          assetId: asset.assetId,
+          basis: measured.ok ? 'provider-metered-credits' : 'held-ceiling-unmetered',
+          ...(measured.ok ? { meteredCredits: measured.credits } : {}),
+          quotedCeilingUnits: chargeUnits,
+        },
       });
+      chargeUnits = settledUnits;
     }
 
     try {

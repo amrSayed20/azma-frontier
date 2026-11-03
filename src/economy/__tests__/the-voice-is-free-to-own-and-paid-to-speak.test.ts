@@ -26,9 +26,10 @@ import {
   SPEECH_CAPABILITY,
 } from '../pricing/sovereign-price-authority';
 import {
-  priceSpeech,
-  SPEECH_COST_UNITS_PER_CHARACTER,
-  SPEECH_UNITS_PER_CHARACTER,
+  priceSpeechFromCredits,
+  speechUpperBoundUnits,
+  SPEECH_COST_UNITS_PER_CREDIT,
+  SPEECH_UNITS_PER_CREDIT,
   SPEECH_ROUNDING,
   VOICE_SUBSCRIPTION,
 } from '../pricing/speech-pricing';
@@ -78,24 +79,47 @@ describe('owning a voice is free', () => {
 });
 
 describe('speaking with it is paid, by the character', () => {
-  it('derives the Founder’s own two figures rather than transcribing them', () => {
-    // He stated 0.07584 cost and 0.128928 price. Both are computed here from
-    // the measured subscription, so the day it changes the price changes too.
-    expect(SPEECH_COST_UNITS_PER_CHARACTER).toBeCloseTo(0.07584, 5);
-    expect(SPEECH_UNITS_PER_CHARACTER).toBeCloseTo(0.128928, 5);
-    expect(SPEECH_UNITS_PER_CHARACTER)
-      .toBeCloseTo(SPEECH_COST_UNITS_PER_CHARACTER * NEW_CAPABILITY_UPLIFT, 10);
-    // And the denominator is a measurement, with the instrument named.
-    expect(VOICE_SUBSCRIPTION.characters).toBe(66_458);
+  it('derives its price from the subscription MEASURED on the live key', () => {
+    // The Founder's order carried 0.07584 and 0.128928, derived from the
+    // 66,458 allowance measured on 2026-11-01. The renewal reset the cycle
+    // and the allowance was measured again at 90,000 on 2026-11-03, so the
+    // figures are recomputed from the rule rather than transcribed.
+    expect(VOICE_SUBSCRIPTION.credits).toBe(90_000);
+    expect(VOICE_SUBSCRIPTION.status).toBe('active');
     expect(VOICE_SUBSCRIPTION.measuredFrom).toContain('/v1/user/subscription');
+    expect(SPEECH_UNITS_PER_CREDIT)
+      .toBeCloseTo(SPEECH_COST_UNITS_PER_CREDIT * NEW_CAPABILITY_UPLIFT, 10);
+    // And the margin is exactly the ratified one, never more and never less.
+    expect(SPEECH_UNITS_PER_CREDIT / SPEECH_COST_UNITS_PER_CREDIT)
+      .toBeCloseTo(NEW_CAPABILITY_UPLIFT, 10);
   });
 
-  it('rounds ONCE at the job, because a character costs an eighth of a unit', () => {
-    // The decisive case: ceiling per character would charge 500 units for a
-    // 500-character narration instead of 65 — nearly eight times the ruling.
-    expect(priceSpeech(500)).toMatchObject({ ok: true, chargedUnits: 65 });
-    expect(priceSpeech(1000)).toMatchObject({ ok: true, chargedUnits: 129 });
-    expect(priceSpeech(1)).toMatchObject({ ok: true, chargedUnits: 1 });
+  it('prices the PROVIDER’S credits, not the length of the Creator’s text', () => {
+    /*  THE DEFECT THIS WAS WRITTEN AGAINST, MEASURED ON PRODUCTION
+     *
+     *    A real 134-character Arabic narration metered **54** credits, and a
+     *    12-character one metered **5** — about 0.41 credits per character.
+     *    The provider's published line claims one character is one credit;
+     *    for diacritised Arabic it is not.
+     *
+     *    Charging by text length billed 134 where the Empire was billed 54:
+     *    two and a half times over.
+     */
+    const measured = priceSpeechFromCredits(54);
+    const byTextLength = speechUpperBoundUnits(134);
+    expect(measured.ok && byTextLength.ok).toBe(true);
+    expect((measured as { chargedUnits: number }).chargedUnits)
+      .toBeLessThan((byTextLength as { chargedUnits: number }).chargedUnits);
+    // The real charge for the measured narration, and the ceiling it is under.
+    expect(measured).toMatchObject({ ok: true, credits: 54, chargedUnits: 6 });
+    expect(byTextLength).toMatchObject({ ok: true, chargedUnits: 13 });
+  });
+
+  it('rounds ONCE at the job, because a credit costs a eleventh of a unit', () => {
+    // Ceiling per credit would charge the measured 54-credit narration 54
+    // units instead of 6 — nine times the ruling.
+    expect(priceSpeechFromCredits(54)).toMatchObject({ ok: true, chargedUnits: 6 });
+    expect(priceSpeechFromCredits(1)).toMatchObject({ ok: true, chargedUnits: 1 });
     expect(SPEECH_ROUNDING.id).toBe('CEIL_AT_JOB_LEVEL');
 
     // And the gate is where that single ceiling actually happens, so every
@@ -104,9 +128,42 @@ describe('speaking with it is paid, by the character', () => {
       .toContain('units: Math.ceil(approved.unitsPerQuantity * asked),');
   });
 
-  it('refuses a narration with nothing in it rather than charging nothing', () => {
+  it('refuses rather than settling a narration the provider never priced', () => {
     for (const nothing of [0, -5, 1.5, null, undefined, Number.NaN]) {
-      expect(priceSpeech(nothing as number).ok).toBe(false);
+      expect(priceSpeechFromCredits(nothing as number).ok).toBe(false);
+      expect(speechUpperBoundUnits(nothing as number).ok).toBe(false);
+    }
+  });
+
+  it('reads the provider’s own figure, and never the lagging counter', () => {
+    const provider = read('src/chambers/ras-al-amr/voice-cloning-provider.ts');
+    // MEASURED: the subscription counter still read the pre-call value three
+    // times at twenty-second intervals after a real call. The header did not.
+    expect(provider).toContain("response.headers.get('character-cost')");
+    // Absent or unusable yields null, never a zero that would settle a real
+    // narration for nothing.
+    expect(provider).toContain('meteredCredits = Number.isInteger(parsedCost) && parsedCost > 0 ? parsedCost : null');
+
+    /*  IT MEASURES THE ARGUMENT, NOT THE CALL
+     *
+     *    The first version asserted only that the file CONTAINED
+     *    `priceSpeechFromCredits(` — and it still did when the argument was
+     *    swapped back to the Creator's text length, which is the whole defect.
+     *    A guard whose instrument answers a different question from its claim
+     *    is one that gets silenced for being wrong.
+     */
+    const SETTLES_ON_THE_METERED: Readonly<Record<string, string>> = {
+      'generate-speech': 'priceSpeechFromCredits(meteredCredits)',
+      'generate-cloned-speech': 'priceSpeechFromCredits(synthResult.meteredCredits ?? null)',
+    };
+    for (const road of ['generate-speech', 'generate-cloned-speech']) {
+      const file = read(`app/api/vault/assets/${road}/route.ts`);
+      expect(file).toContain(SETTLES_ON_THE_METERED[road]);
+      // And never on the text's own length, which is the ceiling not the cost.
+      expect(file).not.toContain('priceSpeechFromCredits(spokenCharacters)');
+      expect(file).toContain("basis: measured.ok ? 'provider-metered-credits' : 'held-ceiling-unmetered'");
+      // And never more than was held, whatever the provider reported.
+      expect(file).toContain('Math.min(measured.chargedUnits, chargeUnits)');
     }
   });
 
@@ -126,7 +183,7 @@ describe('speaking with it is paid, by the character', () => {
   it('is the same price on both roads, because both spend the same characters', () => {
     const price = sovereignPriceFor(SPEECH_CAPABILITY);
     expect(price.quantity).toBe('per-character');
-    expect(price.unitsPerQuantity).toBe(SPEECH_UNITS_PER_CHARACTER);
+    expect(price.unitsPerQuantity).toBe(SPEECH_UNITS_PER_CREDIT);
     // One capability, named by both roads — not two prices that must be kept
     // in step by hand.
     for (const road of ['generate-speech', 'generate-cloned-speech']) {

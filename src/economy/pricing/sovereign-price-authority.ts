@@ -58,7 +58,7 @@ import { MEASURED_COSTS, priceNewCapability, NEW_CAPABILITY_UPLIFT } from './new
 import type { NewCapability } from './new-capability-pricing';
 import { MP4_UNITS_PER_SECOND, MP4_ROUNDING } from './local-export-pricing';
 import { imageCreditsAtResolution, TARIFF_SOURCE } from './official-provider-tariff';
-import { SPEECH_UNITS_PER_CHARACTER, VOICE_SUBSCRIPTION } from './speech-pricing';
+import { SPEECH_UNITS_PER_CREDIT, VOICE_SUBSCRIPTION } from './speech-pricing';
 
 /**
  * How a Creator's charge is counted. No two of these are interchangeable.
@@ -326,10 +326,10 @@ export function sovereignPriceFor(capability: string, dimension?: string): Sover
     return {
       capability,
       status: 'derived-ratified',
-      unitsPerQuantity: SPEECH_UNITS_PER_CHARACTER,
+      unitsPerQuantity: SPEECH_UNITS_PER_CREDIT,
       quantity: 'per-character',
       authority: `speech-pricing.ts · measured ${VOICE_SUBSCRIPTION.usd} USD ÷ `
-        + `${VOICE_SUBSCRIPTION.characters} characters × ${NEW_CAPABILITY_UPLIFT} · `
+        + `${VOICE_SUBSCRIPTION.credits} provider credits × ${NEW_CAPABILITY_UPLIFT} · `
         + 'Founder ruling 2026-11-03, decision 2',
       note: 'It supersedes the flat 30 units per operation the cost catalog gave, which '
         + 'broke even at 395 characters and lost on every longer narration.',

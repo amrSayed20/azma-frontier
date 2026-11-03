@@ -119,10 +119,23 @@ describe('Ministry III — Voice Cloning: synthesizeSpeechWithClonedVoice', () =
     // shared-pool padding, ensuring the round-trip assertion is exact.
     const fakeArrayBuffer = new TextEncoder().encode(fakeContent).buffer;
     const fakeAudio = Buffer.from(fakeArrayBuffer);
+    /*  THE MOCK NOW CARRIES THE BOUNDARY'S REAL SHAPE
+     *
+     *    MEASURED ON PRODUCTION 2026-11-03: the provider answers every
+     *    text-to-speech call with a `character-cost` header — 5 for a
+     *    12-character Arabic text, 54 for a 134-character one. That figure is
+     *    the only honest basis for the settlement, because the subscription
+     *    counter still read its pre-call value twenty seconds later.
+     *
+     *    This mock had no `headers` at all, so the line that reads it
+     *    crashed three of these tests the moment it was written. A mock that
+     *    omits part of the boundary lets the code assume the part away.
+     */
     mockFetch.mockResolvedValue({
       ok: true,
       arrayBuffer: async () => fakeArrayBuffer,
       text: async () => '',
+      headers: new Headers({ 'character-cost': '54' }),
     });
 
     const result = await synthesizeSpeechWithClonedVoice(
@@ -132,6 +145,9 @@ describe('Ministry III — Voice Cloning: synthesizeSpeechWithClonedVoice', () =
 
     expect(result.bytes).toEqual(fakeAudio);
     expect(result.mimeType).toBe('audio/mpeg');
+    // What the provider said it cost — carried out so the settlement can
+    // charge the measurement instead of the Creator's text length.
+    expect(result.meteredCredits).toBe(54);
 
     const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
     expect(url).toContain('/v1/text-to-speech/pNInz6obpgDQGcFmaJgB');
@@ -144,11 +160,34 @@ describe('Ministry III — Voice Cloning: synthesizeSpeechWithClonedVoice', () =
     expect(body.model_id).toBe('eleven_multilingual_v2');
   });
 
+  it('delivers the audio even when the provider states no cost, and says so', async () => {
+    // Null, never zero: a zero would settle a real narration for nothing.
+    mockFetch.mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => Buffer.from('audio').buffer,
+      text: async () => '',
+      headers: new Headers({}),
+    });
+    const silentOnCost = await synthesizeSpeechWithClonedVoice('text', 'voice-1');
+    expect(silentOnCost.bytes.length).toBeGreaterThan(0);
+    expect(silentOnCost.meteredCredits).toBeNull();
+
+    // And an unusable figure is treated the same way.
+    mockFetch.mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => Buffer.from('audio').buffer,
+      text: async () => '',
+      headers: new Headers({ 'character-cost': 'not-a-number' }),
+    });
+    expect((await synthesizeSpeechWithClonedVoice('text', 'voice-1')).meteredCredits).toBeNull();
+  });
+
   it('URL-encodes the voice_id in the endpoint path', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       arrayBuffer: async () => Buffer.from('audio').buffer,
       text: async () => '',
+      headers: new Headers({ 'character-cost': '3' }),
     });
 
     await synthesizeSpeechWithClonedVoice('text', 'voice/with/slashes');
@@ -164,6 +203,7 @@ describe('Ministry III — Voice Cloning: synthesizeSpeechWithClonedVoice', () =
       status: 404,
       text: async () => 'voice not found',
       arrayBuffer: async () => new ArrayBuffer(0),
+      headers: new Headers({ 'character-cost': '1' }),
     });
 
     await expect(
