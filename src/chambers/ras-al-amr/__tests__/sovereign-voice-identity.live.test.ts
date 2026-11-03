@@ -46,10 +46,12 @@ jest.mock('../../../persistent-storage/db', () => {
 const EVIDENCE = join(process.cwd(), 'docs', 'evidence', 'voice-identity-2026-11-03');
 const REFERENCE = join(EVIDENCE, 'reference.mp3');
 const CLONED_SPEECH = join(EVIDENCE, 'sovereign-speech.mp3');
+/** The visible frame the film shows. Kept, so what was measured can be seen. */
+const SCENE = join(EVIDENCE, 'scene.png');
 
 const hasFfmpeg = spawnSync('ffmpeg', ['-version']).status === 0
   && spawnSync('ffprobe', ['-version']).status === 0;
-const hasEvidence = existsSync(REFERENCE) && existsSync(CLONED_SPEECH);
+const hasEvidence = existsSync(REFERENCE) && existsSync(CLONED_SPEECH) && existsSync(SCENE);
 const describeReal = hasFfmpeg && hasEvidence ? describe : describe.skip;
 
 jest.setTimeout(180_000);
@@ -85,6 +87,34 @@ const waveformDistance = (a: string, b: string): number | null => {
   return energy === 0 ? null : Math.sqrt(diff / energy);
 };
 
+/**
+ * ─── WHAT A FRAME ACTUALLY SHOWS ────────────────────────────────────────────
+ *
+ *   Sampled down to 64×36 and read as raw pixels, because the two things a
+ *   black screen and a real picture differ by are both there:
+ *
+ *     · how BRIGHT it is — a 9% mean is a dark rectangle, whatever its codec;
+ *     · how VARIED it is — a flat fill has one colour, a picture has hundreds.
+ *
+ *   Either alone can be fooled. A bright flat fill passes the first; a dark
+ *   photograph passes the second. Together they cannot both be satisfied by
+ *   an empty frame.
+ */
+const visibility = (file: string, atSecond: number) => {
+  const raw = spawnSync('ffmpeg', ['-v', 'error', '-ss', String(atSecond), '-i', file,
+    '-frames:v', '1', '-vf', 'scale=64:36', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'],
+    { maxBuffer: 1 << 24 }).stdout;
+  if (!raw || raw.length < 3) return null;
+  const colours = new Set<string>();
+  let luminance = 0;
+  for (let i = 0; i + 2 < raw.length; i += 3) {
+    colours.add(`${raw[i]},${raw[i + 1]},${raw[i + 2]}`);
+    luminance += raw[i]! * 0.299 + raw[i + 1]! * 0.587 + raw[i + 2]! * 0.114;
+  }
+  const pixels = Math.floor(raw.length / 3);
+  return { distinctColours: colours.size, meanLuminance: luminance / pixels };
+};
+
 const levels = (file: string) => {
   const text = String(spawnSync('ffmpeg', ['-hide_banner', '-i', file, '-af', 'volumedetect', '-f', 'null', '-'],
     { encoding: 'utf-8' }).stderr ?? '');
@@ -115,11 +145,24 @@ describeReal('the sovereign voice identity reaches a real MP4', () => {
     mkdirSync(uploads, { recursive: true });
     process.env.UPLOADS_DIR = uploads;
 
-    // A picture for the film to show. Generated, because what is being proven
-    // here is the VOICE — the picture only has to exist and be visible.
-    const made = spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi',
-      '-i', 'color=c=0x0b1a2a:s=1280x720', '-frames:v', '1', 'scene.png'], { cwd: uploads });
-    if (made.status !== 0) throw new Error(made.stderr.toString());
+    /*  ── THE PICTURE, AND WHY IT IS NO LONGER A FLAT FILL ────────────────
+     *
+     *    FOUND BY THE FOUNDER'S OWN EYE, 2026-11-03: «الفيلم بدون صورة، صوت
+     *    فقط». He was right, and this suite had called it a pass.
+     *
+     *    The first version filled the frame with `color=c=0x0b1a2a` — a navy
+     *    so dark it measured ONE distinct colour at 9% luminance across all
+     *    350 frames. ffprobe reported a 1920×1080 H.264 stream, every
+     *    assertion held, and a Creator watching it would see a black screen.
+     *
+     *    The guard asserted that a video stream EXISTED. It never asserted
+     *    that the stream SHOWED anything — which is the difference between a
+     *    film and a black rectangle with sound.
+     *
+     *    So the scene is now a real, visible frame kept beside the evidence,
+     *    and `visibility()` below measures what reaches the eye.
+     */
+    copyFileSync(SCENE, join(uploads, 'scene.png'));
 
     // THE REAL ARTEFACTS, copied in unchanged.
     copyFileSync(REFERENCE, join(uploads, 'reference.mp3'));
@@ -224,6 +267,22 @@ describeReal('the sovereign voice identity reaches a real MP4', () => {
 
     // The audio is AUDIBLE, not an empty track laid in to satisfy a probe.
     expect(levels(mp4)!).toBeGreaterThan(-45);
+
+    /*  ── AND THE PICTURE IS VISIBLE, WHICH IS NOT THE SAME AS PRESENT ─────
+     *
+     *    The Founder watched the first film and reported «صوت فقط» — sound
+     *    only. Every assertion above had passed: a 1920×1080 H.264 stream,
+     *    350 frames, the right duration. The frames were a single colour at
+     *    9% luminance.
+     *
+     *    Measured at three points across the film, so a picture that appears
+     *    and then vanishes cannot pass either.
+     */
+    for (const second of [1, 7, 13]) {
+      const seen = visibility(mp4, second)!;
+      expect(seen.meanLuminance).toBeGreaterThan(40);
+      expect(seen.distinctColours).toBeGreaterThan(20);
+    }
 
     // And the speech inside it is as long as the speech that went in, so the
     // narration was carried rather than truncated to nothing.
