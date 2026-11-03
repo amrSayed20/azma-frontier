@@ -14,6 +14,8 @@
  *   built and tested; the consistency it yields is unmeasured.
  */
 
+import { DatabaseSync } from 'node:sqlite';
+import { SCHEMA_STATEMENTS } from '../../persistent-storage/schema';
 const mockEdit = jest.fn();
 const mockGenerate = jest.fn();
 
@@ -23,8 +25,14 @@ jest.mock('../../qiyamah-generation/image-edit-service', () => ({
 jest.mock('../../qiyamah-generation/generation-service', () => ({
   generateImage: mockGenerate,
 }));
+const realCommissionDb = new DatabaseSync(":memory:");
+for (const statement of SCHEMA_STATEMENTS) realCommissionDb.exec(statement);
+
 jest.mock('../../persistent-storage', () => ({
-  getDb: jest.fn(() => 'fake-db-handle'),
+  // A REAL in-memory database, not a string — see the note in
+  // `the-frame-a-storyboard-chose.test.ts`. The commission records each
+  // scene's submission, and that is a write.
+  getDb: jest.fn(() => realCommissionDb),
 }));
 
 import { join } from 'path';
@@ -67,6 +75,10 @@ describe('one shared world, one approved reference', () => {
   beforeEach(() => {
     mockEdit.mockReset();
     mockGenerate.mockReset();
+    // These tests commission the same three scene ids over and over, and a
+    // scene is paid for once. Clearing the record gives each test its own
+    // world rather than the previous test's answers.
+    realCommissionDb.exec('DELETE FROM paid_operation_attempts');
     process.env['MPT_HANDOFF_DIR'] = join(tmpdir(), 'azma-ref-test-handoff');
     jest.spyOn(console, 'error').mockImplementation(() => {});
   });

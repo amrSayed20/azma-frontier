@@ -14,10 +14,21 @@ import {
   imageToVideoIsConfigured,
 } from '@/src/core/sovereign-ai-integration/adapters/magic-hour-image-to-video';
 import { ImageEditError } from '@/src/core/sovereign-ai-integration/adapters/magic-hour-image-editing';
+import {
+  authorisePaidOperation,
+  settleAuthorisedOperation,
+  releaseAuthorisedOperation,
+} from '@/src/economy/paid-operation-gate';
+import {
+  claimAttempt, completeAttempt, failAttempt,
+  OPERATION_KEY_HEADER, readClientOperationKey,
+} from '@/src/economy/paid-operation-attempts';
 
 export const dynamic = 'force-dynamic';
 
 const SESSION_COOKIE = 'azma_session';
+/** The namespace this road's submission keys live in. */
+const ANIMATE_SCOPE = 'qiyamah:animate';
 const MAX_INSTRUCTION = 1_000;
 const MIN_SECONDS = 1;
 const MAX_SECONDS = 8;
@@ -155,6 +166,110 @@ export async function POST(
     return refuse(500, 'source-unreadable', 'تعذّر قراءة الصورة الأصلية.', 'read-source', safeDetail(err));
   }
 
+  /*
+    ─── NOTHING REACHES A BILLED PROVIDER WITHOUT PASSING HERE ───────────────
+
+      AUDITED 2026-10-31 against the live release: this road called the video
+      provider with no entitlement check, no price, no balance check, no
+      reservation and no settlement — and this is among the dearest acts the
+      Empire buys. At the Empire's measured standard, VEO_MOTION costs 96
+      provider credits per second, so five seconds is 480. Any signed-in
+      Creator could spend that, repeatedly, and the ledger would never know.
+
+      CORRECTED 2026-11-01: an earlier report of mine said 840 credits for
+      five seconds. That is 168/second, which is Seedance's rate — retired on
+      2026-09-27, and `qiyamah-cost-truth.ts` forbids its use as a current
+      cost in terms. The road was still naked; the number was wrong.
+
+      The gate stands HERE and not at the top of the route on purpose: every
+      refusal above this line is a validation refusal, and a hold taken before
+      them would be stranded by each one. Nothing is reserved for an operation
+      that was never going to run.
+
+      `video-generation` is `pending-discovery` in the cost catalog, so the
+      gate answers `cost-unavailable` today and the provider is not called.
+  */
+  // ── The submission, claimed before a single unit is held ─────────────────
+  //
+  //   Claimed after every validation above, so a request that was going to be
+  //   refused for a reason of its own never consumes a submission key. This is
+  //   among the dearest doors the Empire has — 96 provider credits per second,
+  //   measured — so a press that arrives twice must call the engine once, and
+  //   that decision belongs to whoever pressed.
+  const claim = claimAttempt({
+    db,
+    creatorId: session.creatorId,
+    scope: ANIMATE_SCOPE,
+    clientKey: readClientOperationKey(request.headers.get(OPERATION_KEY_HEADER)),
+  });
+
+  if (claim.kind === 'in-flight') {
+    return refuse(
+      409, 'operation-in-flight',
+      'هذا التحريك يَجري الآن. انتظر نتيجته — ولم يُحسَب عليك مرّتين.',
+      'economy', `attempt in flight since ${new Date(claim.sinceMs).toISOString()}`,
+    );
+  }
+  if (claim.kind === 'already-succeeded') {
+    const replayed = replayAnimateResult(claim.resultJson);
+    if (replayed) return NextResponse.json(replayed, { status: 200 });
+    return refuse(
+      409, 'already-performed',
+      'هذا التحريك نُفِّذ من قبل. اطلبه من خزانتك بدلاً من إعادته.',
+      'economy', 'succeeded attempt with no replayable body',
+    );
+  }
+
+  const gate = authorisePaidOperation({
+    db,
+    creatorId: session.creatorId,
+    role: session.role,
+    capability: 'video-generation',
+    gatewayId: 'magic-hour',
+    modelId: selection.selection.providerModelId,
+    attemptKey: claim.attemptKey,
+    // ── THE SIGNED PRICE, BY THE OWNER'S RULING OF 2026-11-02 ────────────
+    //
+    //   `MOTION` = 200 units per REQUESTED SECOND, in the Founder's own
+    //   table, with its basis named there as `VEO_MOTION` — measured at 96
+    //   provider credits per second on `magic-hour-image-to-video`, the
+    //   very endpoint this road calls.
+    //
+    //   The quantity is the duration the CREATOR ASKED FOR, not what the
+    //   provider later reports it produced. Those are two different numbers
+    //   — the cost truth says so in terms — and the one a Creator agreed to
+    //   is the one they are charged for.
+    //
+    //   Ruled 2026-11-02: one standard across every model, never swapped
+    //   silently for a cheaper one. So this passes no model-dependent price;
+    //   the model is recorded, and the charge does not follow it.
+    sovereignCapability: 'MOTION',
+    quantity: durationSeconds,
+    metadata: { assetId, durationSeconds },
+  });
+  if (gate.kind === 'refused') {
+    // Closed, not left hanging: an in-flight row nothing will finish would
+    // make this submission key unusable for ever.
+    failAttempt(db, claim.attemptKey, `gate:${gate.reason}`);
+    return refuse(
+      gate.httpStatus, gate.reason, gate.messageAr, 'economy',
+      `gate refused: ${gate.reason}`,
+    );
+  }
+
+  /**
+   * Every failure after the hold gives the units back before it answers — and
+   * closes the attempt, so the same submission key may honestly be tried again
+   * and the next try holds its own units.
+   */
+  const refuseAndRelease = (
+    http: number, reason: string, messageAr: string, stage: string, detailEn: string,
+  ) => {
+    releaseAuthorisedOperation(db, session.creatorId, gate, `animate_${reason}`);
+    failAttempt(db, claim.attemptKey, reason);
+    return refuse(http, reason, messageAr, stage, detailEn);
+  };
+
   // ── The provider ───────────────────────────────────────────────────────────
   trail.stage('submit', { providerModelId: selection.selection.providerModelId, durationSeconds });
   let produced;
@@ -166,21 +281,21 @@ export async function POST(
   } catch (err) {
     const rejection = err instanceof ImageEditError ? err.rejection : null;
     if (rejection === 'NO_CREDIT') {
-      return refuse(503, 'capability-unavailable', 'تحريك الصور متوقّفٌ مؤقّتاً لنفاد رصيد الإمبراطوريّة. لا شأن لصورتك بذلك.', 'provider', safeDetail(err));
+      return refuseAndRelease(503, 'capability-unavailable', 'تحريك الصور متوقّفٌ مؤقّتاً لنفاد رصيد الإمبراطوريّة. لا شأن لصورتك بذلك.', 'provider', safeDetail(err));
     }
     if (rejection === 'TIMED_OUT') {
-      return refuse(408, 'timed-out', 'استغرق التحريك وقتاً طويلاً. أعد المحاولة.', 'provider', safeDetail(err));
+      return refuseAndRelease(408, 'timed-out', 'استغرق التحريك وقتاً طويلاً. أعد المحاولة.', 'provider', safeDetail(err));
     }
     // 422, not 502: the edge replaces a 5xx with its own HTML page and the
     // Creator never sees the operation id or the provider's words. Measured
     // 2026-09-22 — the Veo refusal reached the browser as «<!DOCTYPE».
-    return refuse(422, 'animation-failed', 'تعذّر تنفيذ التحريك. لم يُحفظ شيء.', 'provider', safeDetail(err));
+    return refuseAndRelease(422, 'animation-failed', 'تعذّر تنفيذ التحريك. لم يُحفظ شيء.', 'provider', safeDetail(err));
   }
   trail.stage('provider-done', { providerJobId: produced.providerJobId, providerModelId: produced.providerModelId, bytes: produced.bytes.length });
 
   const videoFormat = detectVideoFormat(produced.bytes);
   if (!videoFormat) {
-    return refuse(422, 'animation-failed', 'أعاد المزوّد ما ليس فيديو. لم يُحفظ شيء.', 'validate-output', `${produced.bytes.length} bytes, no MP4/WebM signature`);
+    return refuseAndRelease(422, 'animation-failed', 'أعاد المزوّد ما ليس فيديو. لم يُحفظ شيء.', 'validate-output', `${produced.bytes.length} bytes, no MP4/WebM signature`);
   }
 
   // ── Ours from here ─────────────────────────────────────────────────────────
@@ -219,6 +334,13 @@ export async function POST(
     },
   });
   if (!outcome.ok) {
+    // No asset was deposited and the bytes are being removed, so the Creator
+    // receives nothing. The hold goes back.
+    releaseAuthorisedOperation(db, session.creatorId, gate, `animate_${outcome.rejection}`);
+    // And the attempt is CLOSED, which the comment fifty lines above promises
+    // of every exit and this one alone was missing: an in-flight row nothing
+    // will ever finish is a submission key the Creator can never reuse.
+    failAttempt(db, claim.attemptKey, `lineage:${outcome.rejection}`);
     try { await unlink(join(uploadsDir(), 'generated-assets', basename(persisted.assetUrl))); } catch { /* already gone */ }
     const f = trail.fail('derive', 'deposit', outcome.rejection);
     return NextResponse.json(
@@ -227,6 +349,10 @@ export async function POST(
     );
   }
   trail.stage('asset-deposited', { assetId: outcome.asset.assetId, providerModelId: produced.providerModelId });
+
+  // The asset exists and belongs to the Creator. NOW the units are spent —
+  // not before the provider answered, and not before the work was theirs.
+  settleAuthorisedOperation(db, session.creatorId, gate, undefined, { assetId: outcome.asset.assetId });
 
   // The generation record describes the ANIMATION — its own instruction,
   // its own model — never the source image's generation.
@@ -242,8 +368,8 @@ export async function POST(
   trail.stage('record-inserted', { assetId: outcome.asset.assetId });
   trail.done({ assetId: outcome.asset.assetId });
 
-  return NextResponse.json({
-    status: 'succeeded',
+  const answer = {
+    status: 'succeeded' as const,
     operationId: trail.operationId,
     asset: outcome.asset,
     lineage: {
@@ -260,5 +386,29 @@ export async function POST(
       width: produced.width,
       height: produced.height,
     },
-  });
+  };
+
+  // Recorded so the same submission key is ANSWERED, not animated again. What
+  // is stored is exactly what this Creator was handed.
+  completeAttempt(db, claim.attemptKey, answer);
+
+  return NextResponse.json(answer);
+}
+
+/**
+ * The stored answer, read back for a resent key.
+ *
+ * A row that will not parse back into a success carrying an asset is NOT a
+ * licence to spend a second video at the provider: the caller refuses instead.
+ */
+function replayAnimateResult(resultJson: string | null): unknown | null {
+  if (typeof resultJson !== 'string') return null;
+  try {
+    const parsed = JSON.parse(resultJson) as { status?: unknown; asset?: { assetId?: unknown } };
+    if (parsed?.status !== 'succeeded') return null;
+    if (typeof parsed.asset?.assetId !== 'string') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
 }

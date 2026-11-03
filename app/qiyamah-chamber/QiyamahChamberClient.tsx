@@ -28,6 +28,10 @@ import {
 } from './_lib/material-from-investigation';
 import type { ChamberState } from '@/src/button-engine';
 import { useInstallInvitation } from '@/src/install-experience';
+import {
+  paidOperationHeaders,
+  operationConcluded,
+} from '@/src/economy/client-operation-key';
 import type { ImperialVisionDocument } from '@/src/chamber-vision';
 import { ChamberDemonstration } from '@/src/chamber-demonstration';
 
@@ -1210,7 +1214,9 @@ export function QiyamahChamberClient({
 
       const response = await fetch('/api/qiyamah/generate', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // The IMAGE half reads this header; the video half carries its own
+        // `intentKey` in the body and keeps its own recovery, untouched.
+        headers: paidOperationHeaders('qiyamah:image'),
         body:    JSON.stringify(requestBody),
       });
       // Guard: Cloudflare may return HTML (not JSON) on gateway timeout or 5xx intercept.
@@ -1232,6 +1238,10 @@ export function QiyamahChamberClient({
         return;
       }
       const result = await response.json();
+      // A verdict arrived on the IMAGE half, so its key is spent and the next
+      // press is a new operation. The video half is governed by `intentKey`
+      // and `rememberOperation` below, which this does not touch.
+      if (mediaType !== 'video') operationConcluded('qiyamah:image', result);
       // A video is ACCEPTED, not completed: its truth is the operation.
       if (result.status === 'accepted' && typeof result.operationId === 'string') {
         rememberOperation({ intentKey, operationId: result.operationId });
@@ -1730,7 +1740,8 @@ export function QiyamahChamberClient({
     try {
       const res = await fetch(`/api/vault/assets/${animateAssetId}/animate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // One key per press. Resent only if THIS press went unanswered.
+        headers: paidOperationHeaders('qiyamah:animate'),
         body: JSON.stringify({
           instruction,
           modelId: animateModelId,
@@ -1739,6 +1750,9 @@ export function QiyamahChamberClient({
         }),
       });
       const result = await res.json();
+      // A verdict arrived, so the next press is a new operation — unless
+      // the answer was «it is still running», which is not a verdict.
+      operationConcluded('qiyamah:animate', result);
       if (result.status !== 'succeeded') {
         const trace = typeof result.operationId === 'string' ? ` — العملية ${result.operationId.slice(0, 8)}` : '';
         setAnimateError((result.message ?? 'تعذّر تنفيذ التحريك.') + trace);
@@ -1784,13 +1798,14 @@ export function QiyamahChamberClient({
     try {
       const res = await fetch(`/api/vault/assets/${assetId}/upscale`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: paidOperationHeaders('qiyamah:upscale'),
         // The factor the Creator chose. The door checks it again, and refuses
         // the one that carries no price — this screen does not get to decide
         // that question for itself.
         body: JSON.stringify({ scaleFactor: upscaleFactor }),
       });
       const result = await res.json();
+      operationConcluded('qiyamah:upscale', result);
       if (result.status !== 'succeeded') {
         // The route speaks Arabic and names no engine. Shown as it is.
         setUpscaleError(result.message ?? 'تعذّر رفع الدقّة.');
@@ -1823,10 +1838,11 @@ export function QiyamahChamberClient({
     try {
       const res = await fetch(`/api/vault/assets/${assetId}/edit`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: paidOperationHeaders('qiyamah:edit'),
         body: JSON.stringify({ instruction }),
       });
       const result = await res.json();
+      operationConcluded('qiyamah:edit', result);
 
       if (result.status !== 'succeeded') {
         // The route already speaks Arabic and names no engine. Shown as it is.

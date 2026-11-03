@@ -38,8 +38,16 @@ import { buildReframePlan, reframeUnitCost, type ReframePlan } from '@/src/platf
 import { resolveTarget } from '@/src/platform-reframe/platform-target';
 import { reframeToTarget } from '@/src/platform-reframe/reframe-execution';
 import { RETENTION_MS, sweepExpiredRenditions } from '@/src/platform-reframe/retention';
+import { liveRenditionFor } from '@/src/platform-reframe/live-rendition';
+import {
+  claimAttempt, completeAttempt, failAttempt, attachReservation,
+} from '@/src/economy/paid-operation-attempts';
+import { settleReservation, releaseReservation } from '@/src/economy/paid-operation-gate';
 
 const SESSION_COOKIE = 'azma_session';
+
+/** The namespace this road's attempt rows live in. */
+const REFRAME_SCOPE = 'makman:platform-reframe';
 
 async function creator(): Promise<string | null> {
   const id = (await cookies()).get(SESSION_COOKIE)?.value;
@@ -139,16 +147,62 @@ export async function executeReframe(
       continue;
     }
 
+    /*  ── DO YOU ALREADY HAVE IT? ──────────────────────────────────────────
+     *
+     *    RULED 2026-11-02: no second charge for resending a request whose
+     *    answer was lost, and no second charge for a rendition the Creator
+     *    already owns and can still use.
+     *
+     *    One question settles both, and it is not «did you ask before?» —
+     *    that question needs a key, and a key derived from the master and the
+     *    platform never expires while the rendition it names expires in
+     *    fifteen days. It is «DO YOU HAVE THE FILE?». A lost answer and a
+     *    deliberate repeat both find it; an expired rendition finds nothing
+     *    and is new work, which is the one case a charge is due.
+     *
+     *    Validity is read from the stamp the rendition was born with, never
+     *    from whether the sweeper has got to it — otherwise the moment the
+     *    sweeper last ran would decide whether a Creator pays.
+     *
+     *    The price is untouched: twenty units, one platform, one charge.
+     */
+    const existing = liveRenditionFor({
+      db: getDb(), creatorId, sourceAssetId: assetId, platform: target.platform,
+    });
+    if (existing) {
+      produced.push({
+        platform: target.platform,
+        label: target.label,
+        assetId: existing.assetId,
+        storageUri: existing.secureStorageUri,
+      });
+      continue;
+    }
+
     const operationId = `reframe_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     // One reservation per platform, because one platform is one charge and one
     // file. A single reservation for all of them would charge for a failure.
-    const reservation = ledger.reserve(creatorId, unit, operationId, {
-      capability: 'PLATFORM_REFRAME', platform: target.platform, sourceAssetId: assetId,
+    // An attempt row per reservation — claimed WITHOUT a client key, so it
+    // deduplicates nothing on its own. Its job is to bind this hold to this
+    // outcome, so a settlement the ledger refuses can be found and finished
+    // later instead of vanishing. The reuse question above is what prevents a
+    // duplicate charge; this row is what makes a stuck hold findable.
+    const attempt = claimAttempt({
+      db: getDb(), creatorId, scope: REFRAME_SCOPE, clientKey: null,
     });
+    const reservation = ledger.reserve(creatorId, unit, attempt.attemptKey, {
+      capability: 'PLATFORM_REFRAME', platform: target.platform, sourceAssetId: assetId,
+      operationId,
+    });
+    attachReservation(getDb(), attempt.attemptKey, reservation.reservationId, reservation.reservedUnits);
 
     const outcome = await reframeToTarget(asset.secureStorageUri, target, operationId);
     if (!outcome.ok) {
-      ledger.release(reservation.reservationId, outcome.reason);
+      releaseReservation({
+        db: getDb(), creatorId, attemptKey: attempt.attemptKey,
+        reservationId: reservation.reservationId, reason: outcome.reason,
+      });
+      failAttempt(getDb(), attempt.attemptKey, outcome.reason);
       refused.push({
         platform: target.platform,
         label: target.label,
@@ -159,8 +213,9 @@ export async function executeReframe(
       continue;
     }
 
+    let rendition: Awaited<ReturnType<typeof vault.depositAsset>>;
     try {
-      const rendition = await vault.depositAsset({
+      rendition = await vault.depositAsset({
         subscriberTenantId: creatorId,
         operationId,
         capabilityTarget: asset.capabilityTarget,
@@ -187,25 +242,49 @@ export async function executeReframe(
           sourceAssetId: asset.assetId,
         },
       });
-      ledger.settle(reservation.reservationId, unit, { assetId: rendition.assetId });
-      unitsCharged += unit;
-      produced.push({
-        platform: target.platform,
-        label: target.label,
-        assetId: rendition.assetId,
-        storageUri: outcome.storageUri,
-      });
     } catch (err) {
       // The file exists but could not be recorded. Releasing is the only
       // honest end: a Creator must not pay for a rendition the Vault refused.
-      ledger.release(reservation.reservationId, 'deposit-failed');
+      releaseReservation({
+        db: getDb(), creatorId, attemptKey: attempt.attemptKey,
+        reservationId: reservation.reservationId, reason: 'deposit-failed',
+      });
+      failAttempt(getDb(), attempt.attemptKey, 'deposit-failed');
       refused.push({
         platform: target.platform,
         label: target.label,
         reasonAr: 'أُعدّت النسخة ولم تُقبل في خزانتك — لم يُخصم شيء.',
       });
       console.error('[Makman reframe] deposit failed:', err instanceof Error ? err.message : String(err));
+      continue;
     }
+
+    // ── THE SETTLEMENT MOVED OUT OF THE DEPOSIT'S TRY ──────────────────────
+    //
+    //   MEASURED 2026-11-01: `settle` sat INSIDE the block above, with no
+    //   catch of its own. A ledger that stumbled there threw into the deposit's
+    //   handler, which then RELEASED the hold — while the rendition was
+    //   already in the Vault. The Creator kept a file they had not paid for,
+    //   and was told «لم يُخصم شيء», which was true and was not the point.
+    //
+    //   Now the deposit's failure and the settlement's failure are two
+    //   different events with two different endings. This one never throws: a
+    //   settlement the ledger refuses becomes a recorded debt, and the
+    //   rendition stays the Creator's.
+    settleReservation({
+      db: getDb(), creatorId, attemptKey: attempt.attemptKey,
+      reservationId: reservation.reservationId, units: unit,
+      metadata: { assetId: rendition.assetId, platform: target.platform },
+    });
+    completeAttempt(getDb(), attempt.attemptKey, { assetId: rendition.assetId });
+
+    unitsCharged += unit;
+    produced.push({
+      platform: target.platform,
+      label: target.label,
+      assetId: rendition.assetId,
+      storageUri: outcome.storageUri,
+    });
   }
 
   return {

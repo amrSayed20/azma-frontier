@@ -50,6 +50,7 @@ jest.mock('@/src/authentication', () => ({
   verifySession: (...args: unknown[]) => sessionMock(...args),
 }));
 
+import { createCreator } from '@/src/persistent-storage';
 import { getDb, resetDbSingletonForTests, getVaultAsset, listAssetLineage } from '@/src/persistent-storage';
 import { SovereignVaultManager } from '@/src/vault/sovereign-vault-manager';
 import { AssetFamily, SourceChamber, DerivationPermission } from '@/src/vault/sovereign-vault-types';
@@ -91,6 +92,18 @@ beforeEach(() => {
   editMock.mockResolvedValue({ bytes: EDITED_BYTES, mimeType: 'image/png', creditsCharged: 50 });
   sessionMock.mockReset();
   sessionMock.mockReturnValue({ creatorId: OWNER });
+  /*
+    The act is now behind the sovereign money gate, which reads the actor's
+    role from the database — never from the session, so a request cannot
+    assert an exemption. These suites exist to prove the ACT (lineage, the
+    anti-replay guard, orphan cleanup), not the economy, so their actor is
+    entitled and the money road has a suite of its own:
+    src/economy/__tests__/no-paid-provider-without-a-gate.test.ts
+  */
+  createCreator(getDb(), {
+    creatorId: OWNER, email: OWNER + '@azma.test', passwordHash: null,
+    role: 'founder', displayName: 'مبدع',
+  });
 });
 
 afterEach(() => { resetDbSingletonForTests(); });

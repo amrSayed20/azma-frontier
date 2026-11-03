@@ -28,7 +28,23 @@ const hasFfmpeg =
   spawnSync('ffmpeg', ['-version']).status === 0 && spawnSync('ffprobe', ['-version']).status === 0;
 const describeReal = hasFfmpeg ? describe : describe.skip;
 
-jest.setTimeout(120000);
+/*  ── WHY THE BUDGET IS LARGER THAN THE WAIT IT CONTAINS ──────────────────
+ *
+ *    MEASURED 2026-11-03: this suite failed once in a full run at 464 s and
+ *    passed alone, three times, and again beside the other two real-FFmpeg
+ *    suites. The cause was not the encoder.
+ *
+ *    `encode()` below polls 600 times at 200 ms — **exactly 120 seconds** of
+ *    patience, which was exactly this budget. So when a real encode ran slow
+ *    under CPU contention, Jest killed the test one tick before the loop's
+ *    own «encode timed out» could fire, and the failure arrived as a bare
+ *    timeout that names nothing.
+ *
+ *    A budget equal to the wait it contains can only ever report the wrong
+ *    cause. It is now comfortably larger, so the loop's named error wins and
+ *    a genuinely stuck encode is reported as a stuck encode.
+ */
+jest.setTimeout(300_000);
 
 type Encoder = typeof import('../fleet/adapters/cinematic-ffmpeg-encoder');
 
@@ -136,15 +152,19 @@ function graph(tracks: { trackId: string; nodes: ReturnType<typeof node>[] }[], 
   } as unknown as CompiledAssemblyGraph;
 }
 
+/** How long a real encode is given. Must stay well under `jest.setTimeout`. */
+const ENCODE_PATIENCE_MS = 120_000;
+const ENCODE_POLL_MS = 200;
+
 async function encode(operationId: string, g: CompiledAssemblyGraph): Promise<string> {
   encoder.spawnEncoding(operationId, g);
-  for (let i = 0; i < 600; i++) {
+  for (let i = 0; i < ENCODE_PATIENCE_MS / ENCODE_POLL_MS; i++) {
     if (encoder.isEncodingComplete(operationId)) return encoder.getOutputPath(operationId);
     const err = encoder.getEncodingError(operationId);
     if (err) throw err;
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, ENCODE_POLL_MS));
   }
-  throw new Error(`encode ${operationId} timed out`);
+  throw new Error(`encode ${operationId} timed out after ${ENCODE_PATIENCE_MS} ms`);
 }
 
 const near = (value: number, expected: number, tolerance: number) =>

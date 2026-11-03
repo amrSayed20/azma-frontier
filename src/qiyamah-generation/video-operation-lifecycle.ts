@@ -6,6 +6,8 @@ import { CapabilityTarget } from '../core/sovereign-orchestrator/qiyamah-intent-
 import type { MotionIntent } from '../core/sovereign-orchestrator/qiyamah-intent-types';
 import { generateVideo } from './generation-service';
 import type { VideoGenerationRequest } from './types';
+import { settleReservation, releaseReservation } from '../economy/paid-operation-gate';
+import { completeAttempt, failAttempt } from '../economy/paid-operation-attempts';
 
 /**
  * AZMA OS — Qiyamah
@@ -153,14 +155,32 @@ function writeStored(operationId: string, patch: Partial<StoredVideoIntent>, db 
  */
 export function findOperationByIntentKey(creatorId: string, intentKey: string): string | null {
   if (!intentKey) return null;
+
+  // ── THE PATTERN MUST BE WRITTEN THE WAY THE COLUMN IS ────────────────────
+  //
+  //   FOUND 2026-11-01 by a security review. The column holds
+  //   `JSON.stringify(intent)`, and this pattern was built from the RAW key —
+  //   so a key containing a character JSON escapes (`"`, `\`, a control
+  //   character) produced a pattern that could NEVER match the stored text.
+  //   The lookup then reported «no such production», and the one caller that
+  //   assumed it only ever hands work back started a brand-new paid video
+  //   instead, answering `reused: true` with no hold and no record.
+  //
+  //   Two things are fixed here. The key is escaped as JSON escapes it, so
+  //   the pattern reads what the column wrote; and `%` and `_` — both legal
+  //   in a key a browser mints — are escaped with a named ESCAPE character,
+  //   so a key cannot act as a wildcard and match a DIFFERENT production.
+  const asStored = JSON.stringify(intentKey).slice(1, -1);
+  const pattern = `%"intentKey":"${asStored.replace(/[\\%_]/g, (c) => `\\${c}`)}"%`;
+
   const row = getDb()
     .prepare(
       `SELECT operation_id FROM operation_ledger
         WHERE subscriber_tenant_id = ? AND capability_target = ?
-          AND source_intent_json LIKE ?
+          AND source_intent_json LIKE ? ESCAPE '\\'
         ORDER BY created_at DESC LIMIT 1`,
     )
-    .get(creatorId, CapabilityTarget.MOTION, `%"intentKey":"${intentKey}"%`) as { operation_id?: string } | undefined;
+    .get(creatorId, CapabilityTarget.MOTION, pattern) as { operation_id?: string } | undefined;
   return row?.operation_id ?? null;
 }
 
@@ -201,11 +221,86 @@ export async function observeOperation(operationId: string, creatorId: string): 
  * proceeds in this process and writes its own ending there — whether or not
  * anyone is still listening on the socket that asked for it.
  */
-export async function acceptVideoProduction(params: {
+/**
+ * What this production owes, carried into the half that runs after the
+ * answer has already been sent.
+ *
+ * ─── THE DORMANT DEFECT THIS CLOSES ───────────────────────────────────────
+ *
+ *   FOUND 2026-11-01. The route settled the hold immediately after
+ *   ACCEPTANCE, with a comment beside it saying the opposite — «settled by
+ *   the operation's own ending, not here, where nothing is yet known». So a
+ *   production that was accepted and then failed left the Creator charged
+ *   for a video that never existed, and nothing released it.
+ *
+ *   It has never fired, because `video-generation` is pending-discovery in
+ *   the cost catalog and no hold is taken at all today. It would fire on the
+ *   first day a price is approved — which is the decision now before the
+ *   owner. A charge at acceptance is not a charge for work.
+ *
+ *   So the money travels here and is closed at the production's own ending.
+ *   It is ALSO recorded durably on the attempt row by `attachReservation`,
+ *   so a process that dies between the two leaves a hold the resolver can
+ *   still read and finish.
+ */
+export interface ProductionMoney {
+  readonly attemptKey: string;
+  readonly reservationId: string;
+  readonly units: number;
+}
+
+interface AcceptVideoProductionParams {
   readonly creatorId: string;
   readonly intentKey: string;
   readonly request: VideoGenerationRequest;
-}): Promise<AcceptedOperation> {
+  /** Absent when the act was entitled and nothing is held. */
+  readonly money?: ProductionMoney;
+  /**
+   * The attempt this production belongs to, present whether or not a hold
+   * was taken — because an entitled production still has an outcome to
+   * record, and a row left in-flight for ever is a record that lies.
+   */
+  readonly attemptKey?: string;
+  /**
+   * Hand back only what already exists, and START NOTHING.
+   *
+   * ─── WHY THIS FLAG HAD TO BE ADDED ─────────────────────────────────────
+   *
+   *   FOUND 2026-11-01 by a security review. The attempt layer gave the
+   *   video road a short-circuit: a claim of `in-flight` or
+   *   `already-succeeded` answered by calling this function and returning
+   *   `reused: true` — SKIPPING the balance check and the reservation
+   *   entirely, on the assumption that this function only ever hands work
+   *   back. It does not: when the lookup finds nothing it dispatches a brand
+   *   new production, and the escaping bug above made the lookup miss for any
+   *   key containing a quote or a backslash.
+   *
+   *   The result was a repeatable, unmetered paid video: no hold, no attempt
+   *   binding, no ledger entry — and an answer that said `reused: true`.
+   *
+   *   The escaping is fixed, and this flag removes the assumption rather
+   *   than relying on it. A caller that means «give me the one that exists»
+   *   now gets `null` when there is none, and must say so to the Creator.
+   */
+  readonly reuseOnly?: boolean;
+}
+
+/**
+ * Two shapes, so the type never lies to a caller.
+ *
+ * With  the answer may be  — nothing existed and nothing was
+ * started. Without it, a production is always returned, because this function
+ * dispatches one when the lookup finds none.
+ */
+export async function acceptVideoProduction(
+  params: AcceptVideoProductionParams & { readonly reuseOnly: true },
+): Promise<AcceptedOperation | null>;
+export async function acceptVideoProduction(
+  params: AcceptVideoProductionParams & { readonly reuseOnly?: false | undefined },
+): Promise<AcceptedOperation>;
+export async function acceptVideoProduction(
+  params: AcceptVideoProductionParams,
+): Promise<AcceptedOperation | null> {
   const existing = findOperationByIntentKey(params.creatorId, params.intentKey);
   if (existing) {
     const observed = await observeOperation(existing, params.creatorId);
@@ -213,6 +308,10 @@ export async function acceptVideoProduction(params: {
     // Never a second provider call, never a second charge.
     return { operationId: existing, state: observed?.state ?? OperationState.PENDING_AUTHORIZATION, reused: true };
   }
+
+  // Nothing exists, and the caller asked for nothing new. Never a provider
+  // call from a road that has already skipped its own money.
+  if (params.reuseOnly) return null;
 
   const operationId = params.request.operationId ?? randomUUID();
   const intent: StoredVideoIntent = {
@@ -239,12 +338,25 @@ export async function acceptVideoProduction(params: {
   // The production, from here, belongs to the operation and not to the
   // request. A rejected promise must never become an unhandled rejection
   // that takes the process down with it.
-  void runProduction(operationId, { ...params.request, operationId }).catch(() => { /* recorded below */ });
+  void runProduction(
+    operationId,
+    { ...params.request, operationId },
+    params.creatorId,
+    params.attemptKey ?? params.money?.attemptKey,
+    params.money,
+  )
+    .catch(() => { /* recorded below */ });
 
   return { operationId, state: OperationState.DISPATCHED, reused: false };
 }
 
-async function runProduction(operationId: string, request: VideoGenerationRequest): Promise<void> {
+async function runProduction(
+  operationId: string,
+  request: VideoGenerationRequest,
+  creatorId: string,
+  attemptKey: string | undefined,
+  money?: ProductionMoney,
+): Promise<void> {
   const manager = ledger();
   try {
     await manager.updateState(operationId, OperationState.MATERIALIZING);
@@ -259,6 +371,7 @@ async function runProduction(operationId: string, request: VideoGenerationReques
     console.log('[QiyamahOperation]', JSON.stringify({ operationId, stage: 'failed', detail: detail.slice(0, 240) }));
     writeStored(operationId, { failureReason: classifyFailure(undefined, detail) });
     try { await manager.updateState(operationId, OperationState.FAILED, { resolvedAt: Date.now() }); } catch { /* sealed */ }
+    closeMoney(creatorId, attemptKey, money, 'failed', 'production-threw');
     return;
   }
 
@@ -284,10 +397,61 @@ async function runProduction(operationId: string, request: VideoGenerationReques
           ? { actualResourceCost: result.production.providerCharge } : {}),
       });
     } catch { /* sealed */ }
+    // The asset exists and is the Creator's. NOW the units are spent.
+    closeMoney(creatorId, attemptKey, money, 'succeeded', result.asset.assetId);
     return;
   }
 
   console.log('[QiyamahOperation]', JSON.stringify({ operationId, stage: 'failed', reason: result.reason, detail: String(result.message).slice(0, 240) }));
   writeStored(operationId, { failureReason: classifyFailure(result.reason, result.message) });
   try { await manager.updateState(operationId, OperationState.FAILED, { resolvedAt: Date.now() }); } catch { /* sealed */ }
+  closeMoney(creatorId, attemptKey, money, 'failed', String(result.reason));
+}
+
+/**
+ * Settle or release this production's hold, and record which it was.
+ *
+ * It never throws: a ledger that stumbles here must not take down the half
+ * of the Empire that has already deposited the Creator's video. A stumble
+ * leaves the attempt `owed`, which is the resolver's queue.
+ */
+function closeMoney(
+  creatorId: string,
+  attemptKey: string | undefined,
+  money: ProductionMoney | undefined,
+  outcome: 'succeeded' | 'failed',
+  detail: string,
+): void {
+  const db = getDb();
+
+  // ── AN ENTITLED PRODUCTION HAS NO HOLD, AND STILL HAS AN OUTCOME ─────────
+  //
+  //   CORRECTED 2026-11-01: this returned early when nothing was held, so
+  //   every video today — all of them, since video is unpriced and entitled
+  //   subscribers reserve nothing — and every Founder video left an attempt
+  //   row `in-flight` that nothing would ever close. No money was locked,
+  //   because none was held; but the record said «running» about a production
+  //   that had finished hours before, and a record that lies about the easy
+  //   case is not trusted about the hard one.
+  if (!money) {
+    if (attemptKey) {
+      if (outcome === 'succeeded') completeAttempt(db, attemptKey, { assetId: detail });
+      else failAttempt(db, attemptKey, detail);
+    }
+    return;
+  }
+  if (outcome === 'succeeded') {
+    settleReservation({
+      db, creatorId, attemptKey: money.attemptKey,
+      reservationId: money.reservationId, units: money.units,
+      metadata: { assetId: detail },
+    });
+    completeAttempt(db, money.attemptKey, { assetId: detail });
+    return;
+  }
+  releaseReservation({
+    db, creatorId, attemptKey: money.attemptKey,
+    reservationId: money.reservationId, reason: `video_${detail}`,
+  });
+  failAttempt(db, money.attemptKey, detail);
 }

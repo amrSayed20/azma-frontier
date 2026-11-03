@@ -392,6 +392,8 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { paidOperationHeaders, operationConcluded } from '@/src/economy/client-operation-key';
+import { MP4_UNITS_PER_SECOND } from '@/src/economy/pricing/local-export-pricing';
 import { useConstitutionalNavigation } from '@/src/constitutional-navigation';
 import { RasAmrExperience } from '@/src/imperial-experience-engine';
 import type { VaultAsset, AssetFamily } from '@/src/vault/sovereign-vault-types';
@@ -1522,6 +1524,8 @@ export default function RasAmrChamber() {
       case 'REFERENCE_UNUSABLE': return 'المرجع البصريُّ المعتمد لا يمكن البناء عليه. اختر مرجعاً آخر من أصولك.';
       case 'UNCHANGED_BY_EDITOR': return 'عاد المحرّر بالصورة المرجعيّة نفسها دون تغيير. أعد صياغة المطلوب في هذا المشهد.';
       case 'EDITOR_UNAVAILABLE': return 'البناء على مرجعٍ بصريٍّ غير مهيّأ في الإمبراطوريّة بعد.';
+      case 'NO_BALANCE':        return 'رصيدك لا يكفي لإنشاء هذا المشهد. اشترِ باقةً للمتابعة.';
+      case 'NOT_PRICED':        return 'إنشاء المشاهد لم يُسعَّر بعد، فلا يُنفَّذ. وسيُفتَح فور اعتمادِ سعره.';
       default:                  return null;
     }
   };
@@ -2152,7 +2156,8 @@ export default function RasAmrChamber() {
       const voiceDisplayName = ttsDisplayNameInput.trim() || chosenVoice?.name || 'TTS Voice';
       const response = await fetch('/api/vault/assets/generate-speech', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // One key per press. Resent only if THIS press went unanswered.
+        headers: paidOperationHeaders('ras-amr:speech'),
         body: JSON.stringify({
           text: ttsText.trim(),
           voice: ttsPresetVoiceId,
@@ -2160,6 +2165,9 @@ export default function RasAmrChamber() {
         }),
       });
       const result = await response.json() as { status: string; reason?: string; message?: string; asset?: VaultAsset; estimatedCost?: number; availableUnits?: number };
+      // A verdict arrived, so the next press is a new operation — unless the
+      // answer was «it is still running», which is not a verdict.
+      operationConcluded('ras-amr:speech', result);
       if (!response.ok || result.status !== 'succeeded') {
         if (result.reason === 'provider-error') {
           setTtsError(`خطأ في مزود الصوت (ElevenLabs): ${result.message ?? 'الخدمة غير متاحة.'} — قد يكون رصيد حساب ElevenLabs قد نفد.`);
@@ -2201,7 +2209,7 @@ export default function RasAmrChamber() {
     try {
       const response = await fetch('/api/vault/assets/clone-voice', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: paidOperationHeaders('ras-amr:voice-clone'),
         body: JSON.stringify({
           referenceAssetId: cloneSourceVoiceId,
           consentConfirmed: true,
@@ -2209,6 +2217,7 @@ export default function RasAmrChamber() {
         }),
       });
       const result = await response.json();
+      operationConcluded('ras-amr:voice-clone', result);
       if (!response.ok || result.status !== 'succeeded') {
         setVoiceCloneError(result.message ?? 'الاستنساخ لم يكتمل.');
         return;
@@ -2231,13 +2240,14 @@ export default function RasAmrChamber() {
     try {
       const response = await fetch('/api/vault/assets/generate-cloned-speech', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: paidOperationHeaders('ras-amr:cloned-speech'),
         body: JSON.stringify({
           clonedVoiceAssetId: clonedVoiceSynthTarget,
           text: clonedVoiceSynthText.trim(),
         }),
       });
       const result = await response.json();
+      operationConcluded('ras-amr:cloned-speech', result);
       if (!response.ok || result.status !== 'succeeded') {
         setClonedSpeechError(result.message ?? 'فشل توليد الكلام بالصوت المستنسَخ.');
         return;
@@ -3197,10 +3207,14 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
     try {
       const response = await fetch('/api/ras-amr/render', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // RULED 2026-11-02: the export is charged, so a resent press must pay
+        // once. The key is minted here and forgotten the moment a verdict
+        // arrives, exactly as at every other paid door in this chamber.
+        headers: { 'Content-Type': 'application/json', ...paidOperationHeaders('ras-amr:mp4-export') },
         body: JSON.stringify({ canvas: { ...sessionCanvas, updatedAt: Date.now() } }),
       });
       const data = await response.json();
+      operationConcluded('ras-amr:mp4-export', data);
       if (response.status !== 202 || data.status !== 'accepted') {
         setRenderStartError(data.message ?? 'تعذّر بدء الإخراج. مشهدك محفوظ؛ حاول مرة أخرى.');
         return;
@@ -5726,7 +5740,20 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                       {`⚠ الصوت يمتد إلى ${mmss(r.soundEndSeconds)} — والفيلم ينتهي مع آخر صورة، فلن يُسمع ما بعدها`}
                     </li>
                   )}
-                  <li className="meta">الإخراج لا يستهلك وحدات AZMA</li>
+                  {/* ─── WHAT THIS EXPORT COSTS, BEFORE IT IS PRESSED ───────
+                        RULED 2026-11-02: «١٠٠ وحدة لكل ثانية من ملف MP4
+                        النهائي». Until that ruling this line said the export
+                        consumed no units, and it must not outlive the charge.
+
+                        The seconds are the FILM's own length — the furthest
+                        end of the pictures — which is exactly what the server
+                        computes as `filmDurationSeconds` and holds against.
+                        The warning above says the sound may run longer; the
+                        charge never follows it, because the file does not. */}
+                  <li className="meta">
+                    {`الإخراج يُخصَم ${(Math.ceil(r.durationSeconds) * MP4_UNITS_PER_SECOND).toLocaleString('ar-EG')} وحدة`
+                      + ` (${MP4_UNITS_PER_SECOND} لكل ثانية من الفيلم النهائيّ)`}
+                  </li>
                 </ul>
                 {renderStartError && <p className="ras-export-error" role="alert">{renderStartError}</p>}
                 <button

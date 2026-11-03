@@ -47,6 +47,13 @@ import {
 import type { CreativeOperationId } from '../core/sovereign-ai-integration/adapters/magic-hour-creative-operations';
 import { getVaultAsset } from '../persistent-storage';
 import { measureSourceFps } from './asset-frame-rate';
+import {
+  claimAttempt, completeAttempt, failAttempt, attachReservation,
+} from '../economy/paid-operation-attempts';
+import { settleReservation, releaseReservation } from '../economy/paid-operation-gate';
+
+/** The namespace this road's submission keys live in. */
+const CREATIVE_SCOPE = 'qiyamah:creative';
 
 /** Which priced capability each act consumes. One map, read by both paths. */
 export const CAPABILITY_OF_OPERATION: Readonly<Record<CreativeOperationId, NewCapability>> = {
@@ -110,20 +117,58 @@ export function priceSubmission(request: SubmitRequest): PriceVerdict {
  *
  * Asked of the file, not of the browser and not of a default. A Creator never
  * learns the word «fps»: they choose a clip and a duration, and the Empire
- * reads the rest off their own asset. Null means the price cannot be stated,
- * and `priceSubmission` then refuses rather than guesses.
+ * reads the rest off their own asset. `undefined` means the price cannot be
+ * stated, and `priceSubmission` then refuses rather than guesses.
+ *
+ * ─── WHAT THE BROWSER USED TO BE ALLOWED TO DECIDE ──────────────────────────
+ *
+ *   FOUND 2026-11-01 by a security review, pre-existing on `main`: the first
+ *   line of this function was
+ *
+ *       if (request.sourceFps && request.sourceFps > 0) return request.sourceFps;
+ *
+ *   — so a number from the request body SHORT-CIRCUITED the measurement
+ *   entirely. `LIP_SYNC` and `FACE_SWAP` are priced per FRAME, and the frame
+ *   count is `requestedSeconds × sourceFps`, so a client stating
+ *   `sourceFps: 1` for a 30 fps clip was charged about one THIRTIETH of the
+ *   approved price while the provider billed the Empire for every real frame.
+ *   It was the only client-controlled price input in the Empire.
+ *
+ * ─── THE ORDER NOW, AND WHY FAILURE REFUSES ─────────────────────────────────
+ *
+ *   The measurement is the authority whenever it can be taken. When it cannot
+ *   — the file is unreadable, ffprobe is absent, the stream carries no frame
+ *   rate — this answers `undefined`, and the act is REFUSED as unpriceable.
+ *
+ *   It does not fall back to the client's number. The owner's ruling of
+ *   2026-11-02 is explicit: «عدم قبول request.sourceFps بديلًا غير متحقق
+ *   منه إذا فشل القياس», and the safe behaviour must prevent «الخصم الأقل من
+ *   المستحق أو اعتماد قيمة يسيطر عليها العميل». Refusing is the only ending
+ *   that does both — and it is the ending this chamber already uses for every
+ *   act whose cost it cannot bound before running it.
+ *
+ *   `request.sourceFps` is therefore read by nothing here. It is still
+ *   accepted at the door and still recorded on the job row, because what a
+ *   client CLAIMED is evidence worth keeping beside what we measured; it has
+ *   simply stopped deciding the charge.
  */
 export async function resolveSourceFps(
   db: DatabaseSync,
   request: SubmitRequest,
 ): Promise<number | undefined> {
-  if (request.sourceFps && request.sourceFps > 0) return request.sourceFps;
   const capability = CAPABILITY_OF_OPERATION[request.operation];
+  // Only the frame-billed acts need one at all; for the others a frame rate
+  // is not part of the price and is not asked for.
   if (capability !== 'LIP_SYNC' && capability !== 'FACE_SWAP') return undefined;
+
+  // Scoped to the asking Creator: an asset that is not theirs yields no
+  // measurement, and the act is refused rather than priced off someone
+  // else's file.
   const target = getVaultAsset(db, request.targetAssetId);
   if (!target || target.subscriberTenantId !== request.creatorId) return undefined;
-  const fps = await measureSourceFps(target.secureStorageUri);
-  return fps ?? undefined;
+
+  const measured = await measureSourceFps(target.secureStorageUri);
+  return measured ?? undefined;
 }
 
 /**
@@ -157,6 +202,8 @@ export async function submitCreativeJob(
 
   const credits = new CreatorCreditRepository(db);
   let reservationId: string | null = null;
+  /** The attempt this hold belongs to — null when the act is free. */
+  let attemptKey: string | null = null;
   let chargedUnits: number | null = null;
 
   if (paying && price.ok) {
@@ -190,15 +237,24 @@ export async function submitCreativeJob(
   }
 
   if (paying && chargedUnits !== null) {
+    // The durable job row already made this submission unique, so the
+    // attempt takes ITS id as the key rather than inventing a second
+    // notion of sameness. What the attempt adds is the money binding the
+    // resolver reads: this hold, and what became of this operation.
+    attemptKey = claimAttempt({
+      db, creatorId: request.creatorId, scope: CREATIVE_SCOPE, clientKey: row.jobId,
+    }).attemptKey;
     try {
       const reservation = credits.reserve(
-        request.creatorId, chargedUnits, `qiyamah:creative:${row.jobId}`,
+        request.creatorId, chargedUnits, attemptKey,
         { capability: request.operation, gatewayId: 'magic-hour' },
       );
       reservationId = reservation.reservationId;
+      attachReservation(db, attemptKey, reservation.reservationId, reservation.reservedUnits);
       db.prepare('UPDATE creative_jobs SET reservation_id = ? WHERE job_id = ?')
         .run(reservationId, row.jobId);
     } catch (err) {
+      if (attemptKey) failAttempt(db, attemptKey, 'reservation-failed');
       markFailed(db, row.jobId, 'reservation-failed', String(err).slice(0, 200));
       return {
         ok: false, reason: 'insufficient-balance',
@@ -209,7 +265,7 @@ export async function submitCreativeJob(
   }
 
   // Fire and DO NOT await. The row is the record of what happens next.
-  void executeJob(db, row.jobId, request, reservationId, credits);
+  void executeJob(db, row.jobId, request, reservationId, credits, attemptKey);
 
   return { ok: true, jobId: row.jobId, claimed: true, chargedUnits, state: 'PROCESSING' };
 }
@@ -227,6 +283,7 @@ async function executeJob(
   request: SubmitRequest,
   reservationId: string | null,
   credits: CreatorCreditRepository,
+  attemptKey: string | null,
 ): Promise<void> {
   try {
     const outcome = await runCreativeOperation(db, {
@@ -246,21 +303,34 @@ async function executeJob(
       });
       if (reservationId) {
         const job = getJob(db, jobId);
-        try { credits.settle(reservationId, job?.chargedUnits ?? 0); } catch { /* non-fatal */ }
+        settleReservation({
+          db, creatorId: request.creatorId, attemptKey: attemptKey ?? '',
+          reservationId, units: job?.chargedUnits ?? 0,
+          metadata: { jobId, assetId: outcome.assetId },
+        });
       }
+      if (attemptKey) completeAttempt(db, attemptKey, { jobId, assetId: outcome.assetId });
       return;
     }
 
     markFailed(db, jobId, outcome.rejection, outcome.detailEn);
     if (reservationId) {
       // The Creator pays for an act that did not happen exactly never.
-      try { credits.release(reservationId, `creative_${outcome.rejection}`); } catch { /* non-fatal */ }
+      releaseReservation({
+        db, creatorId: request.creatorId, attemptKey: attemptKey ?? '',
+        reservationId, reason: `creative_${outcome.rejection}`,
+      });
     }
+    if (attemptKey) failAttempt(db, attemptKey, outcome.rejection);
   } catch (err) {
     markFailed(db, jobId, 'engine-refused', String(err).slice(0, 300));
     if (reservationId) {
-      try { credits.release(reservationId, 'creative_threw'); } catch { /* non-fatal */ }
+      releaseReservation({
+        db, creatorId: request.creatorId, attemptKey: attemptKey ?? '',
+        reservationId, reason: 'creative_threw',
+      });
     }
+    if (attemptKey) failAttempt(db, attemptKey, 'engine-refused');
   }
 }
 

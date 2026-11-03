@@ -87,7 +87,23 @@ export type NewCapability =
   | 'LIP_SYNC'
   | 'FACE_SWAP'
   | 'TALKING_PHOTO'
-  | 'UPSCALE_4X';
+  | 'UPSCALE_4X'
+  // ── RULED 2026-11-02, DECISION 1 ──────────────────────────────────────
+  //
+  //   «سعر المبدع بالوحدات = التكلفة الأصلية الفعلية للمزوّد بالوحدات ×
+  //   1.70» — for every creative operation inside رأس الأمر that actually
+  //   calls a paid external provider.
+  //
+  //   The commissioned scene is such an operation, PROVEN and not assumed:
+  //   `qiyamah-commission.ts` imports `generateImage`, the orchestrator
+  //   registers `MagicHourImageAdapter`, the authorised model is
+  //   `nano-banana-2` with `providerId: magic-hour-image`, and the cost
+  //   truth measures it at 100 provider credits per image.
+  //
+  //   It joins THIS module rather than getting a figure of its own, because
+  //   the ruling is a RULE and this is where the ratified uplift lives. Its
+  //   price is therefore derived, not chosen: 100 × 1.70 = 170.
+  | 'RAS_AMR_SCENE';
 
 /** What the charge actually follows, as the campaign measured it. */
 export type BillingBasis = 'per-image' | 'per-frame' | 'per-requested-second' | 'per-operation';
@@ -138,6 +154,14 @@ export const MEASURED_COSTS: readonly MeasuredCostRule[] = [
     providerCreditsPerUnit: 48, basis: 'per-requested-second',
     measuredBy: { providerJobId: 'cmv59prfj092po50107ra2f2j', on: '2026-10-12' },
     basisAr: 'لكلّ ثانيةٍ تَطلبها',
+  },
+  {
+    capability: 'RAS_AMR_SCENE', nameAr: 'مشهدٌ في رأس الأمر',
+    providerCreditsPerUnit: 100, basis: 'per-image',
+    // The same production that priced IMAGE_GENERATION in the cost truth:
+    // nano-banana-2 through Magic Hour, measured, not a rate card.
+    measuredBy: { providerJobId: 'cmujkc33903p5nq019ccursva', on: '2026-09-27' },
+    basisAr: 'لكلّ مشهدٍ يُنشَأ',
   },
   {
     capability: 'UPSCALE_4X', nameAr: 'رفع الدقّة أربعَ مرّات',

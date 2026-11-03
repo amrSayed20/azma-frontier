@@ -123,14 +123,32 @@ describe('4 · the surface is preserved — nothing was deleted', () => {
 describe('5 · and the roots are reachable from no production path', () => {
   it('nothing outside its own folder imports the sovereign assistant', () => {
     const { execSync } = require('child_process');
-    const out = execSync(
-      'git grep -l "core/sovereign-assistant" -- "app/**/*.ts" "app/**/*.tsx" '
-      + '"src/**/*.ts" "src/**/*.tsx" || true',
-      { encoding: 'utf8', cwd: process.cwd() },
-    ) as string;
-    const foreign = out.split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0 && !l.startsWith('src/core/sovereign-assistant/'));
+    // IT MEASURES IMPORTS, because that is what it asserts.
+    //
+    //   CORRECTED 2026-11-01: the pattern was the bare path, so ANY file that
+    //   merely NAMED it counted as an importer. The economy's provider
+    //   inventory names this path as data — it lists every caller of
+    //   `generateImage`, and the Founder command centre is one — and that
+    //   mention failed this guard while importing nothing.
+    //
+    //   A guard whose instrument answers a different question from its claim
+    //   is a guard that will one day be silenced for being wrong.
+    //   The pattern lives in JavaScript and not in a shell argument, because
+    //   a regex that has to survive two layers of quoting is a regex that
+    //   fails as a syntax error and takes its guard with it.
+    const listed = execSync('git ls-files -- "app/*.ts" "app/*.tsx" "src/*.ts" "src/*.tsx"', {
+      encoding: 'utf8', cwd: process.cwd(), maxBuffer: 32 * 1024 * 1024,
+    }) as string;
+
+    const IMPORTS_IT = /(?:from|require\()\s*['"][^'"]*core\/sovereign-assistant/;
+    const candidates = listed.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+    // AN INSTRUMENT THAT LISTED NOTHING IS NOT REPORTING A ZERO.
+    expect(candidates.length).toBeGreaterThan(200);
+
+    const foreign = candidates.filter((f) => {
+      if (f.startsWith('src/core/sovereign-assistant/')) return false;
+      return IMPORTS_IT.test(readFileSync(join(process.cwd(), f), 'utf8'));
+    });
     // If this ever fails, the module became reachable — and then its
     // unimplemented commands need a ruling before anything calls them.
     expect(foreign).toEqual([]);

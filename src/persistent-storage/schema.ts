@@ -692,6 +692,68 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   //   job: it holds the provider's own job id, the state, the charge, and the
   //   asset — so a Creator who closes the tab, loses the network, or polls
   //   twice reads the SAME truth rather than starting a second paid job.
+  // ─── ONE PAID ATTEMPT, AND WHAT BECAME OF IT ──────────────────────────────
+  //
+  //   MEASURED 2026-10-31. Six paid roads keyed their reservations on
+  //   `randomUUID()` or `Date.now()`, so every press was a new key: pressing
+  //   twice reserved twice, called the provider twice and charged twice. And
+  //   the obvious cure — keying on the intent itself — is worse, because
+  //   `reserve` returns a CLOSED row for a repeated key and the provider then
+  //   runs behind a hold of nothing.
+  //
+  //   Neither existing table answers it. `creative_jobs` has exactly the right
+  //   shape but is bound to Magic Hour's creative operations — its columns are
+  //   target asset, second asset, duration and fps. `operation_ledger` holds a
+  //   state machine owned by the fleet dispatcher and has no key a client can
+  //   resend. What is missing in both is the same small thing: the mapping
+  //   from ONE SUBMISSION to its verdict.
+  //
+  //   That is all this table is. It does not price, hold, charge or refund —
+  //   `credit_ledger` does all four and stays the only money authority. This
+  //   records which attempt a request belongs to, whether the provider has
+  //   already run for it, what it produced, and whether its hold was ever
+  //   resolved. Three questions follow from those four columns:
+  //
+  //     · a resent key that finds `in-flight` must not call the provider again
+  //     · a resent key that finds `succeeded` is answered from `result_json`
+  //     · a hold whose attempt is decided can be settled or released on the
+  //       RECORD, never on the clock — age alone decides nothing here
+  `CREATE TABLE IF NOT EXISTS paid_operation_attempts (
+    -- Derived: scope + creator + the client's own submission key + attempt no.
+    attempt_key TEXT PRIMARY KEY,
+    creator_id TEXT NOT NULL,
+    -- The road this attempt belongs to, e.g. 'qiyamah:image'. Scoping is what
+    -- stops one capability's key from ever matching another's.
+    scope TEXT NOT NULL,
+    -- in-flight | succeeded | failed
+    state TEXT NOT NULL,
+    -- The hold in credit_ledger, or NULL when the work was entitled and free.
+    reservation_id TEXT,
+    -- not-owed | settled | released | owed
+    -- owed means the ledger refused the settlement and the Empire has not yet
+    -- taken what it is due. It is the resolver's queue.
+    settlement_state TEXT NOT NULL,
+    units_held INTEGER,
+    -- What a resent key is answered with, so a retry costs nothing and
+    -- produces nothing new. Small by construction: the route's own payload.
+    result_json TEXT,
+    failure_reason TEXT,
+    -- The long-running job this attempt paid for, when there is one.
+    --
+    -- Most paid roads learn their outcome inside the same request that took
+    -- the hold, so they need no link. The MP4 export does not: the encode is
+    -- a child process, the request returns as soon as the job is accepted,
+    -- and the final duration — which is what the Founder ruled the charge
+    -- follows — is only knowable later, by whoever observes the finish.
+    --
+    -- So the attempt names its operation. The settlement then reads the
+    -- attempt BY the operation and sees whether this job has already been
+    -- charged, which is what makes a repeated status poll free.
+    operation_id TEXT,
+    created_at_ms INTEGER NOT NULL,
+    updated_at_ms INTEGER NOT NULL
+  )`,
+
   `CREATE TABLE IF NOT EXISTS creative_jobs (
     job_id TEXT PRIMARY KEY,
     creator_id TEXT NOT NULL,
@@ -988,6 +1050,43 @@ export const GOALS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly
 ];
 
 /** Run only after CREATORS_MIGRATION_COLUMNS has ensured the columns exist — SQLite cannot index a column that isn't there yet. */
+/**
+ * ─── THE COST DISCOVERY RECORD, MADE AUDITABLE ──────────────────────────────
+ *
+ *   `cost_usd_estimate` is `REAL NOT NULL` and cannot hold a null, so the
+ *   owner's ruling of 2026-11-02 — «تسجيل غير المقيس بوصفه null» — is served
+ *   by columns beside it rather than by rewriting a live table.
+ *
+ *   `cost_usd_measured` is the honest figure and is NULL whenever nobody has
+ *   measured it. `cost_basis` says which of the three states this row is in,
+ *   so the legacy column can never again be read as a cost without its basis.
+ *   `cost_source` and `cost_measured_on` are what make the record auditable:
+ *   every number names the production it came from and the day it was taken.
+ *
+ *   Rows written before this migration keep their legacy estimate and carry
+ *   `cost_basis = NULL`, which reads as «this row predates the separation» —
+ *   not as a measurement, and not as a zero.
+ */
+export const CONSUMPTION_RECORDS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
+  { name: 'cost_usd_measured', ddl: 'cost_usd_measured REAL' },
+  { name: 'cost_basis', ddl: 'cost_basis TEXT' },
+  { name: 'cost_source', ddl: 'cost_source TEXT' },
+  { name: 'cost_measured_on', ddl: 'cost_measured_on TEXT' },
+  { name: 'cost_provider', ddl: 'cost_provider TEXT' },
+];
+
+/**
+ * `paid_operation_attempts` has never reached a release, so the CREATE above
+ * already carries `operation_id`. This exists for the development databases
+ * created between the table's first commit and the export road that needed
+ * the column — `CREATE TABLE IF NOT EXISTS` does not add a column to a table
+ * that is already there, and a settlement that cannot find its attempt would
+ * leave a Creator's units held with the film already delivered.
+ */
+export const PAID_OPERATION_ATTEMPTS_MIGRATION_COLUMNS: readonly { readonly name: string; readonly ddl: string }[] = [
+  { name: 'operation_id', ddl: 'operation_id TEXT' },
+];
+
 export const INDEX_STATEMENTS: readonly string[] = [
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_creators_email ON creators(email)',
   // One AZMA account per provider identity, enforced where a race cannot beat
@@ -1052,4 +1151,10 @@ export const INDEX_STATEMENTS: readonly string[] = [
   // A Creator reads their own jobs, and a retry looks for a live one by key.
   'CREATE INDEX IF NOT EXISTS idx_creative_jobs_creator ON creative_jobs(creator_id, created_at_ms)',
   'CREATE INDEX IF NOT EXISTS idx_creative_jobs_key ON creative_jobs(idempotency_key, state)',
+  // The resolver's only query: holds that were never resolved. It must not
+  // scan the whole history to find them.
+  'CREATE INDEX IF NOT EXISTS idx_attempts_unresolved ON paid_operation_attempts(settlement_state, state)',
+  // The settlement of a long-running job reads its attempt by the job's name.
+  'CREATE INDEX IF NOT EXISTS idx_attempts_operation ON paid_operation_attempts(operation_id)',
+  'CREATE INDEX IF NOT EXISTS idx_attempts_creator ON paid_operation_attempts(creator_id, created_at_ms)',
 ];

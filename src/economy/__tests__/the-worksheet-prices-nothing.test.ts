@@ -11,6 +11,7 @@
  * ever open a paid door.
  */
 
+import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import {
@@ -172,9 +173,18 @@ describe('4 · no pricing authority reads it', () => {
   });
 
   it('nothing outside the economy folder and its tests imports it', () => {
-    const { execSync } = require('child_process');
-    const out = execSync('git grep -l "creative-operations-cost-worksheet" || true',
-      { encoding: 'utf8', cwd: process.cwd() }) as string;
+    // IT MEASURES IMPORTS, because that is what it asserts.
+    //
+    //   CORRECTED 2026-11-01: the pattern was the bare filename over the whole
+    //   repository, so anything that merely NAMED the file counted as an
+    //   importer — and the paid-provider inventory names it in prose, as the
+    //   file it classifies. A guard whose instrument answers a different
+    //   question from its claim is one that gets silenced for being wrong.
+    const out = execSync(
+      'git grep -lE "(from|require\\()[^\\"]*creative-operations-cost-worksheet"'
+      + ' -- "*.ts" "*.tsx" || true',
+      { encoding: 'utf8', cwd: process.cwd() },
+    ) as string;
     const foreign = out.split('\n').map((l) => l.trim()).filter((l) =>
       l.length > 0
       && l !== 'src/economy/cost-engine/creative-operations-cost-worksheet.ts'
@@ -188,7 +198,6 @@ describe('4 · no pricing authority reads it', () => {
   });
 
   it('the 75% uplift exists ONLY as a comparison, never as a markup constant', () => {
-    const { execSync } = require('child_process');
     // This file is excluded: it names the forbidden symbol in order to forbid
     // it, and an instrument that counts its own words is measuring itself.
     const hits = (execSync('git grep -n "UNIFIED_MARKUP" || true',
@@ -404,10 +413,21 @@ describe('10 · the 4× upscale is a capability, and now a priced offer', () => 
   it('and nothing is charged for it until an asset exists', () => {
     const route = read('app/api/vault/assets/[assetId]/upscale/route.ts');
     // Reserved before the engine, settled only after a deposit, released on
-    // every refusal — the three exits a charge can take.
-    expect(route).toContain('creditRepo.reserve(');
-    expect(route).toContain('creditRepo.settle(upscaleReservationId, upscaleChargeUnits)');
-    expect(route).toContain("creditRepo.release(upscaleReservationId, 'upscale_engine_failed')");
+    // every refusal — the three exits a charge can take. Asserted as the RULE
+    // and not as three spellings: the settlement moved into a shared helper on
+    // 2026-11-01, and a test that reads a call's exact text fails on a repair
+    // while saying nothing about whether the money is still safe.
+    expect(route).toMatch(/creditRepo\.reserve\(/);
+    expect(route).toMatch(/settleReservation\(\{|creditRepo\.settle\(/);
+    expect(route).toMatch(/releaseReservation\(\{|creditRepo\.release\(/);
+    // The order is the safety, and it is what actually protects the Creator:
+    // the hold is taken after every refusal and the charge after the deposit.
+    const reserveAt = route.indexOf('creditRepo.reserve(');
+    const providerAt = route.indexOf('upscaleImageViaProvider(');
+    const settleAt = route.search(/settleReservation\(\{/);
+    const deriveAt = route.indexOf('await deriveAsset(');
+    expect(reserveAt).toBeLessThan(providerAt);
+    expect(deriveAt).toBeLessThan(settleAt);
   });
 
   it('and 2× keeps everything it had — proven, priced, unchanged', () => {

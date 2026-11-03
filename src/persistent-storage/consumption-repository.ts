@@ -12,6 +12,7 @@
  * the domain layer never needs to inspect individual records.
  */
 
+import { resolveProviderCost } from '../consumption-ledger/provider-cost-basis';
 import type { DatabaseSync } from 'node:sqlite';
 import type {
   ConsumptionRecord,
@@ -65,14 +66,39 @@ export class ConsumptionRepository implements IConsumptionLedger {
   constructor(private readonly db: DatabaseSync) {}
 
   /** Appends one immutable consumption record. */
+  /**
+   * Write one consumption record, with its cost's BASIS beside its number.
+   *
+   * ─── WHY THE HONEST FIGURE IS A SECOND COLUMN ─────────────────────────────
+   *
+   *   `cost_usd_estimate` is `REAL NOT NULL`, so a null cannot go in it. The
+   *   owner's ruling of 2026-11-02 requires an unmeasured cost to be recorded
+   *   as `null`, and that lives in `cost_usd_measured`.
+   *
+   *   The legacy column is kept and is written with ZERO when nothing was
+   *   measured — and a zero there is never a cost, because `cost_basis` says
+   *   `UNKNOWN` in the same row. Any reader that takes the legacy column
+   *   without its basis is reading a column that has been superseded, and the
+   *   basis is what makes that visible rather than silent.
+   */
   public record(r: ConsumptionRecord): void {
+    const cost = resolveProviderCost(r.operationType, r.units);
     this.db
       .prepare(
         `INSERT INTO consumption_records
-           (creator_id, operation_type, cost_usd_estimate, units, month_key, recorded_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+           (creator_id, operation_type, cost_usd_estimate, units, month_key, recorded_at,
+            cost_usd_measured, cost_basis, cost_source, cost_measured_on, cost_provider)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(r.creatorId, r.operationType, r.costUsdEstimate, r.units, r.monthKey, r.recordedAt);
+      .run(
+        r.creatorId, r.operationType,
+        // Superseded, and kept only so the column's NOT NULL holds and older
+        // readers do not crash. It is the measured figure when there is one,
+        // and zero — never a rate card — when there is not.
+        cost.usd ?? 0,
+        r.units, r.monthKey, r.recordedAt,
+        cost.usd, cost.basis, cost.source, cost.measuredOn, cost.provider,
+      );
   }
 
   /** Returns aggregated monthly usage for one Creator. Returns zero-totals when no records exist. */

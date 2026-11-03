@@ -24,6 +24,14 @@ export interface ProviderVoiceCloneResult {
 }
 
 export interface ProviderSpeechFromCloneResult {
+  /**
+   * What the provider says this one call cost, in its own credits, read from
+   * the `character-cost` response header. Null when it did not say.
+   *
+   * It is the only honest basis for the settlement: the Creator's text length
+   * is an upper bound on it, not a measure of it.
+   */
+  readonly meteredCredits?: number | null;
   readonly bytes: Buffer;
   readonly mimeType: string;
 }
@@ -109,11 +117,42 @@ export async function synthesizeSpeechWithClonedVoice(
     );
   }
 
+  /*  ── WHAT THIS NARRATION ACTUALLY COST, FROM THE PROVIDER ITSELF ──────
+   *
+   *    MEASURED ON PRODUCTION 2026-11-03, and it changes the money:
+   *
+   *      · a 134-character Arabic narration metered **54** credits
+   *      · a 12-character one metered **5**
+   *
+   *    So the provider's unit is its CREDIT, and a credit is not a character
+   *    of diacritised Arabic — the ratio measured about 0.41. Charging the
+   *    Creator by the length of their own text would have billed 134 where
+   *    the Empire was billed 54: two and a half times over.
+   *
+   *    The provider states the figure in a `character-cost` response header
+   *    on every call. The subscription counter does NOT: measured three times
+   *    at twenty-second intervals, it still read the pre-call value. **The
+   *    header is the instrument; the counter lags.**
+   *
+   *    Returned as `null` when the header is absent or unusable — never as a
+   *    zero, because a zero would settle a real narration for nothing.
+   */
+  //    Read defensively: a response without a usable `headers` is not an
+  //    error on this road — the audio is what the Creator came for. Reaching
+  //    into it unguarded turned three passing tests into crashes the moment
+  //    this line was added, which is exactly what it would do to any proxy or
+  //    runtime that answers without one.
+  const costHeader = typeof response.headers?.get === 'function'
+    ? response.headers.get('character-cost')
+    : null;
+  const parsedCost = costHeader === null ? Number.NaN : Number.parseInt(costHeader, 10);
+  const meteredCredits = Number.isInteger(parsedCost) && parsedCost > 0 ? parsedCost : null;
+
   const arrayBuffer = await response.arrayBuffer();
   const bytes = Buffer.from(arrayBuffer);
   if (bytes.length === 0) {
     throw new Error('The Launch Provider returned no audio data.');
   }
 
-  return { bytes, mimeType: 'audio/mpeg' };
+  return { bytes, mimeType: 'audio/mpeg', meteredCredits };
 }

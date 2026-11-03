@@ -8,16 +8,22 @@
  * GET /api/ras-amr/render/[operationId]. See src/sovereign-entry/ras-al-amr-render.ts.
  *
  * The tenant always comes from the verified session cookie, never the body.
- * Rendering consumes no AZMA Units — no price or unit rule is touched here.
+ *
+ * RULED 2026-11-02, decision 2: the final export costs 100 units per second
+ * of the finished film. The hold is taken here, on the Empire's own
+ * computation of the timeline's length; the settlement follows the measured
+ * file and happens at the status poll. See src/sovereign-entry/ras-al-amr-render.ts.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/src/authentication';
 import {
+  RenderPaymentError,
   RenderRequestError,
   listRasAlAmrRenders,
   startRasAlAmrRender,
 } from '@/src/sovereign-entry/ras-al-amr-render';
+import { OPERATION_KEY_HEADER, readClientOperationKey } from '@/src/economy/paid-operation-attempts';
 import type { SovereignCanvas } from '@/src/chambers/ras-al-amr/assembly-contracts';
 
 export const dynamic = 'force-dynamic';
@@ -48,7 +54,16 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { operationId, compiled } = await startRasAlAmrRender(canvas as SovereignCanvas, session.creatorId);
+    const { operationId, compiled, charge } = await startRasAlAmrRender(
+      canvas as SovereignCanvas,
+      session.creatorId,
+      {
+        // The role decides entitlement, and it is read from the verified
+        // session — never from anything the browser chose to send.
+        creatorRole: session.role,
+        clientOperationKey: readClientOperationKey(request.headers.get(OPERATION_KEY_HEADER)),
+      },
+    );
     return NextResponse.json(
       {
         status: 'accepted',
@@ -56,6 +71,13 @@ export async function POST(request: NextRequest) {
         compilationId: compiled.compilationId,
         totalNodes: compiled.metadata.totalNodes,
         estimatedDurationSeconds: compiled.metadata.estimatedDurationSeconds ?? null,
+        // The FILM's own length — the furthest end of the pictures. This is
+        // what the charge follows, so the chamber is told it rather than
+        // inferring it from the timeline figure above.
+        filmDurationSeconds: compiled.metadata.filmDurationSeconds ?? null,
+        // What this export cost, stated with the acceptance rather than left
+        // for the Creator to work out from a changed balance.
+        charge: charge ?? null,
         // The same sealed assembly the chamber hands to Makman Al-Ghayah for
         // distribution, so the published work is exactly what was rendered.
         compiledGraph: compiled,
@@ -63,6 +85,18 @@ export async function POST(request: NextRequest) {
       { status: 202 },
     );
   } catch (error) {
+    if (error instanceof RenderPaymentError) {
+      return NextResponse.json(
+        {
+          status: 'failed',
+          reason: error.reason,
+          message: error.message,
+          ...(error.requiredUnits !== undefined ? { requiredUnits: error.requiredUnits } : {}),
+          ...(error.availableUnits !== undefined ? { availableUnits: error.availableUnits } : {}),
+        },
+        { status: error.httpStatus },
+      );
+    }
     if (error instanceof RenderRequestError) {
       const status = error.reason === 'forbidden' ? 403 : error.reason === 'renderer-unavailable' ? 503 : 422;
       return NextResponse.json({ status: 'failed', reason: error.reason, message: error.message }, { status });

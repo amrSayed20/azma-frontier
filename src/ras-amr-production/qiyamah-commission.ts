@@ -46,6 +46,15 @@ import { generateImage } from '../qiyamah-generation/generation-service';
 import { editSovereignImage } from '../qiyamah-generation/image-edit-service';
 import { cameraAngleClauseAr, type CameraAngleId } from './camera-angle';
 import type { ImageEditRefusal } from '../qiyamah-generation/image-edit-service';
+import {
+  authorisePaidOperation, settleAuthorisedOperation, releaseAuthorisedOperation,
+} from '../economy/paid-operation-gate';
+import { claimAttempt, completeAttempt, failAttempt } from '../economy/paid-operation-attempts';
+import { SCENE_CAPABILITY } from '../economy/pricing/sovereign-price-authority';
+
+/** The namespace this road's scene submissions live in. */
+const SCENE_GENERATION_SCOPE = 'ras-amr:scene-generation';
+
 
 /**
  * Where the production workshop can read a picture the Empire made.
@@ -142,7 +151,12 @@ export type CommissionFailure =
   | 'TIMED_OUT'           // it was attempted and took longer than the wait
   | 'REFERENCE_UNUSABLE'  // the approved frame itself cannot be read or built on
   | 'UNCHANGED_BY_EDITOR' // the engine returned the reference untouched
-  | 'EDITOR_UNAVAILABLE'; // the editing capability is not configured here
+  | 'EDITOR_UNAVAILABLE'  // the editing capability is not configured here
+  // The economy gate's two refusals, kept apart because they are the
+  // Creator's two different problems: one is their balance, one is the
+  // Empire's own unapproved price.
+  | 'NO_BALANCE'
+  | 'NOT_PRICED';
 
 /**
  * ─── HOW A SCENE'S WORDS BECOME ONE INSTRUCTION ──────────────────────────────
@@ -302,6 +316,10 @@ export function commissionFailureSpokenAr(failure: CommissionFailure): string {
     case 'REFERENCE_UNUSABLE': return 'المرجع البصريُّ المعتمد لا يمكن البناء عليه. اختر مرجعاً آخر.';
     case 'UNCHANGED_BY_EDITOR': return 'عاد المحرّر بالصورة المرجعيّة نفسها دون تغيير. أعد صياغة المطلوب في هذا المشهد.';
     case 'EDITOR_UNAVAILABLE': return 'البناء على مرجعٍ بصريٍّ غير مهيّأ في الإمبراطوريّة بعد.';
+    case 'NO_BALANCE':        return 'رصيدك لا يكفي لإنشاء هذا المشهد. اشترِ باقةً للمتابعة.';
+    // The Empire's own unfinished work, said as the Empire's and not as the
+    // Creator's mistake.
+    case 'NOT_PRICED':        return 'إنشاء المشاهد لم يُسعَّر بعد، فلا يُنفَّذ. وسيُفتَح فور اعتمادِ سعره.';
   }
 }
 
@@ -326,7 +344,20 @@ function classifyEditRefusal(refusal: ImageEditRefusal): CommissionFailure {
     case 'requires-adoption':
     case 'source-unresolvable':
     case 'source-unreadable':     return 'REFERENCE_UNUSABLE';
-    default:                      return 'GENERATION_FAILED';
+    // ── THE FOUR THE ECONOMY ADDED, EACH KEEPING ITS OWN CURE ────────────
+    //
+    //   CORRECTED 2026-11-01: these fell through to GENERATION_FAILED, so a
+    //   Creator on the reference road was told «we could not make it» when
+    //   the truth was «your balance is short» or «we have not priced this».
+    //   The `NO_BALANCE` and `NOT_PRICED` wording existed and could not be
+    //   reached from the only road that had it.
+    case 'insufficient-balance':  return 'NO_BALANCE';
+    case 'cost-unavailable':      return 'NOT_PRICED';
+    // Running or already done: neither is a failure of this scene, and
+    // neither can be said better than «it did not come back this time».
+    case 'operation-in-flight':
+    case 'already-performed':     return 'GENERATION_FAILED';
+    case 'edit-failed':           return 'GENERATION_FAILED';
   }
 }
 
@@ -422,6 +453,10 @@ export async function commissionScenePictures(params: {
         assetId: params.referenceAssetId,
         creatorId: params.creatorId,
         instructionAr: instruction,
+        // No key, for the reason given at the words road below: a scene id
+        // outlives the scene's picture, and the Creator's own
+        // `regenerateSceneIds` is an ask this would have refused for ever.
+        operationKey: null,
       });
 
       if (edited.status === 'succeeded') {
@@ -451,7 +486,107 @@ export async function commissionScenePictures(params: {
       continue;
     }
 
-    // ── ROAD TWO: FROM WORDS ALONE ───────────────────────────────────────
+    /*  ── ROAD TWO: FROM WORDS ALONE ──────────────────────────────────────
+
+        AUDITED 2026-11-01, and this is how it was found: not by reading
+        routes, but by tracing every paid provider entry point back to its one
+        caller. `generateImage` reaches the billed image provider — 100 credits
+        per image, measured — and this call carried NO entitlement check, no
+        price, no balance check, no reservation and no settlement. The road
+        above it, `POST /api/ras-amr/storyboard/[storyboardId]/produce`, asks
+        only for a session. A Creator commissioning ten scenes spent a thousand
+        provider credits and the ledger never knew.
+
+        It was invisible to the earlier audit because that audit enumerated
+        `app/api/vault/assets/*` and `app/api/qiyamah/*`. This road lives in
+        `app/api/ras-amr/*`, and a paid provider does not care which folder
+        called it.
+
+        The gate stands HERE rather than in the route for the same reason it
+        stands inside `editSovereignImage`: one commission makes many scenes,
+        and the money belongs to the scene, not to the request.
+
+        CONSEQUENCE, stated plainly: `image-generation` on this gateway is
+        `pending-discovery` with azmaUnitsPerUnit 0, so a Creator who is
+        neither the Founder nor holding a free entitlement is refused, and
+        scene generation from words stops until a price is approved. That is
+        the same single ruling that reopens editing and animation — see
+        `docs/UNPRICED_CAPABILITY_DISCLOSURE.md`. Spending without a record is
+        not reversible; a refusal is.
+    */
+    /*  ── NO CLIENT KEY HERE, AND THE REASON IS THE CREATOR'S OWN ASK ──────
+     *
+     *    CORRECTED 2026-11-01. A first version keyed this on `scene:<id>`,
+     *    reasoning that a scene is commissioned once. It is not: the produce
+     *    road reads `regenerateSceneIds` from the Creator — an explicit «make
+     *    this one again» — and a key derived from the scene id never expires,
+     *    so that ask would have been answered with the OLD picture for ever.
+     *    A Creator could never have replaced a scene they disliked.
+     *
+     *    And worse: a process that died mid-generation would leave the
+     *    attempt `in-flight`, which neither `claimAttempt` nor the resolver
+     *    may touch — bricking that scene permanently and, once priced,
+     *    locking its units with it.
+     *
+     *    So this road deduplicates NOTHING, exactly as the reframe does, and
+     *    for the same reason: the natural key outlives the thing it names.
+     *    What protects against a double press is upstream and is the right
+     *    guard — the produce road commissions only scenes that have no
+     *    `visualAssetId` yet, or that the Creator named for regeneration. It
+     *    asks «do you have the picture?», not «did you ask before?».
+     *
+     *    The attempt row is still created, because the resolver must be able
+     *    to find a hold that a crash left behind.
+     */
+    const sceneClaim = claimAttempt({
+      db: getDb(),
+      creatorId: params.creatorId,
+      scope: SCENE_GENERATION_SCOPE,
+      clientKey: null,
+    });
+
+    const sceneGate = authorisePaidOperation({
+      db: getDb(),
+      creatorId: params.creatorId,
+      // Read from the session by the route and carried here. It is the same
+      // role the Empire's own billing authority reads.
+      role: params.creatorRole,
+      capability: 'image-generation',
+      gatewayId: 'magic-hour',
+      attemptKey: sceneClaim.attemptKey,
+      // ── ACTIVE — RULED 2026-11-02, DECISIONS 2 AND 1 ───────────────────
+      //
+      //   A commissioned scene has its OWN price classification. It is not
+      //   `IMAGE_GENERATION` and it is not `STORYBOARD_IMAGE`: the first is
+      //   the single-image act the Creator buys one at a time, the second
+      //   was priced for an open-source component that charges nothing and
+      //   is read by no line in this repository.
+      //
+      //   The closure order's first decision then settled the number without
+      //   anyone choosing one: «سعر المبدع بالوحدات = التكلفة الأصلية
+      //   الفعلية للمزوّد بالوحدات × 1.70». The scene's provider cost is
+      //   measured at 100 credits, so the charge is 170 units — DERIVED, and
+      //   read at call time from the one pricing authority. This line names
+      //   the classification; it never carries the figure.
+      sovereignCapability: SCENE_CAPABILITY,
+      quantity: 1,
+      trialCapability: 'image',
+      metadata: { sceneId: demand.sceneId },
+    });
+
+    if (sceneGate.kind === 'refused') {
+      failAttempt(getDb(), sceneClaim.attemptKey, `gate:${sceneGate.reason}`);
+      console.error('[RasAmr] scene generation refused by the economy gate:', JSON.stringify({
+        order: demand.order, reason: sceneGate.reason,
+      }));
+      commissioned.push({
+        order: demand.order,
+        sceneId: demand.sceneId,
+        failure: sceneGate.reason === 'payment-required' ? 'NO_BALANCE' : 'NOT_PRICED',
+      });
+      continue;
+    }
+
     const outcome = await generateImage({
       prompt: instruction,
       creatorId: params.creatorId,
@@ -469,6 +604,11 @@ export async function commissionScenePictures(params: {
 
     if (outcome.status === 'succeeded') {
       const workshopPath = await handOverToWorkshop(outcome.asset.assetUrl);
+      // The scene exists and is the Creator's. NOW the units are spent.
+      settleAuthorisedOperation(
+        getDb(), params.creatorId, sceneGate, undefined, { assetId: outcome.asset.assetId },
+      );
+      completeAttempt(getDb(), sceneClaim.attemptKey, { assetId: outcome.asset.assetId });
       commissioned.push({
         order: demand.order,
         sceneId: demand.sceneId,
@@ -482,6 +622,9 @@ export async function commissionScenePictures(params: {
       console.error('[RasAmr] scene commission failed:', JSON.stringify({
         order: demand.order, reason: outcome.reason, stage: outcome.stage,
       }));
+      // Nothing was produced, so nothing is owed.
+      releaseAuthorisedOperation(getDb(), params.creatorId, sceneGate, `scene_${outcome.reason}`);
+      failAttempt(getDb(), sceneClaim.attemptKey, String(outcome.reason));
       commissioned.push({ order: demand.order, sceneId: demand.sceneId, failure: classify(outcome.reason) });
     }
   }

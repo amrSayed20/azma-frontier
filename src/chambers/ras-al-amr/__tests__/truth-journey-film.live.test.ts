@@ -96,7 +96,7 @@ describeLive('رحلةُ البحثِ عن الحقيقة — من البحثِ 
     expect(placed.map((x) => x.assetId)).toEqual(wanted);
 
     // ── the very function the chamber's own route calls ──────────────────
-    const { operationId, compiled } = await startRasAlAmrRender(production, OWNER!);
+    const { operationId, compiled } = await startRasAlAmrRender(production, OWNER!, { creatorRole: 'founder', clientOperationKey: null });
     let last = '';
     let done = false;
     for (let i = 0; i < 240; i++) {
