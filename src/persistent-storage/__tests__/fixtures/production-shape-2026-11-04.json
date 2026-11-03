@@ -1,0 +1,491 @@
+{
+ "measuredOn": "2026-11-04",
+ "tableCount": 31,
+ "tables": {
+  "asset_tombstones": {
+   "rows": 14,
+   "cols": [
+    "tombstone_id",
+    "asset_id",
+    "owner_id",
+    "asset_family",
+    "capability_target",
+    "parent_asset_id",
+    "root_asset_id",
+    "project_id",
+    "creation_chamber",
+    "deleted_by",
+    "deleted_at",
+    "deletion_reason",
+    "published_protection",
+    "metadata_snapshot"
+   ]
+  },
+  "authentication_identities": {
+   "rows": 20,
+   "cols": [
+    "identity_id",
+    "creator_id",
+    "provider",
+    "provider_subject",
+    "provider_email",
+    "linked_at",
+    "last_authenticated_at"
+   ]
+  },
+  "cinematic_ledger": {
+   "rows": 39,
+   "cols": [
+    "publication_id",
+    "publisher_tenant_id",
+    "source_canvas_id",
+    "source_compilation_id",
+    "operation_id",
+    "canvas_type",
+    "title",
+    "description",
+    "render_status",
+    "flattened_vault_asset_id",
+    "goal_id",
+    "published_at",
+    "created_at",
+    "updated_at"
+   ]
+  },
+  "cloud_accounts": {
+   "rows": 9,
+   "cols": [
+    "account_id",
+    "creator_id",
+    "provider",
+    "provider_account_id",
+    "account_label",
+    "refresh_token_sealed",
+    "scopes",
+    "linked_at",
+    "last_used_at",
+    "revoked_at"
+   ]
+  },
+  "consumption_records": {
+   "rows": 2,
+   "cols": [
+    "id",
+    "creator_id",
+    "operation_type",
+    "cost_usd_estimate",
+    "units",
+    "month_key",
+    "recorded_at"
+   ]
+  },
+  "creative_jobs": {
+   "rows": 2,
+   "cols": [
+    "job_id",
+    "creator_id",
+    "operation",
+    "target_asset_id",
+    "second_asset_id",
+    "duration_seconds",
+    "source_fps",
+    "idempotency_key",
+    "state",
+    "worker_boot_id",
+    "provider_job_id",
+    "provider_credits_charged",
+    "charged_units",
+    "reservation_id",
+    "output_asset_id",
+    "error_reason",
+    "error_detail",
+    "created_at_ms",
+    "updated_at_ms",
+    "finished_at_ms"
+   ]
+  },
+  "creator_balances": {
+   "rows": 2,
+   "cols": [
+    "creator_id",
+    "available_units",
+    "reserved_units",
+    "total_purchased",
+    "total_spent",
+    "updated_at"
+   ]
+  },
+  "creators": {
+   "rows": 22,
+   "cols": [
+    "creator_id",
+    "email",
+    "password_hash",
+    "role",
+    "display_name",
+    "preferred_locale",
+    "created_at",
+    "sovereign_purpose",
+    "sovereign_purpose_created_at",
+    "sovereign_purpose_updated_at",
+    "vault_pin_hash",
+    "verification_state",
+    "verified_at",
+    "verified_via_provider"
+   ]
+  },
+  "credit_ledger": {
+   "rows": 2,
+   "cols": [
+    "ledger_id",
+    "creator_id",
+    "transaction_type",
+    "direction",
+    "amount",
+    "balance_after",
+    "reference_id",
+    "idempotency_key",
+    "status",
+    "metadata_json",
+    "created_at"
+   ]
+  },
+  "distribution_receipts": {
+   "rows": 9,
+   "cols": [
+    "receipt_id",
+    "creator_id",
+    "source_asset_id",
+    "provider",
+    "account_id",
+    "provider_target",
+    "provider_message_id",
+    "status",
+    "failure_reason",
+    "created_at"
+   ]
+  },
+  "fulfillment_assessments": {
+   "rows": 10,
+   "cols": [
+    "assessment_id",
+    "goal_id",
+    "publisher_tenant_id",
+    "assessed_at_ms",
+    "overall_verdict",
+    "criteria_assessments_json"
+   ]
+  },
+  "generation_records": {
+   "rows": 61,
+   "cols": [
+    "record_id",
+    "creator_id",
+    "prompt",
+    "style",
+    "asset_url",
+    "generated_at",
+    "original_idea",
+    "media_type",
+    "asset_id"
+   ]
+  },
+  "goals": {
+   "rows": 50,
+   "cols": [
+    "goal_id",
+    "subscriber_tenant_id",
+    "title",
+    "description",
+    "priority",
+    "status",
+    "dependencies_json",
+    "metrics_json",
+    "commercial_intent_json",
+    "pacing_preference",
+    "transition_preference",
+    "sovereign_purpose_statement",
+    "success_criteria_json",
+    "created_at_ms",
+    "updated_at_ms",
+    "archived_at_ms",
+    "archived_by"
+   ]
+  },
+  "hadith_narrations": {
+   "rows": 36064,
+   "cols": [
+    "narration_id",
+    "edition",
+    "collection_ar",
+    "narration_number",
+    "text_ar",
+    "normalised_text",
+    "grades_json",
+    "ingested_at_ms",
+    "normalised_matn"
+   ]
+  },
+  "knowledge_investigations": {
+   "rows": 87,
+   "cols": [
+    "investigation_id",
+    "goal_id",
+    "creator_id",
+    "record_count",
+    "records_json",
+    "investigated_at_ms"
+   ]
+  },
+  "library_works": {
+   "rows": 78130,
+   "cols": [
+    "work_id",
+    "title",
+    "authors",
+    "subjects",
+    "language",
+    "issued",
+    "searchable",
+    "ingested_at_ms"
+   ]
+  },
+  "observations": {
+   "rows": 23,
+   "cols": [
+    "observation_id",
+    "goal_id",
+    "publisher_tenant_id",
+    "publication_id",
+    "signal",
+    "outcome",
+    "observed_at_ms"
+   ]
+  },
+  "operation_ledger": {
+   "rows": 75,
+   "cols": [
+    "operation_id",
+    "subscriber_tenant_id",
+    "capability_target",
+    "current_state",
+    "source_intent_json",
+    "estimated_resource_cost",
+    "actual_resource_cost",
+    "allocated_provider_id",
+    "external_job_id",
+    "resolved_at",
+    "created_at",
+    "updated_at"
+   ]
+  },
+  "payment_transactions": {
+   "rows": 4,
+   "cols": [
+    "transaction_id",
+    "creator_id",
+    "pack_id",
+    "azma_units",
+    "amount_egp",
+    "idempotency_key",
+    "provider_id",
+    "provider_order_id",
+    "provider_reference",
+    "provider_transaction_id",
+    "status",
+    "created_at",
+    "updated_at"
+   ]
+  },
+  "sessions": {
+   "rows": 598,
+   "cols": [
+    "session_id",
+    "creator_id",
+    "created_at",
+    "expires_at"
+   ]
+  },
+  "sovereign_canvases": {
+   "rows": 34,
+   "cols": [
+    "canvas_id",
+    "subscriber_tenant_id",
+    "title",
+    "canvas_type",
+    "canvas_json",
+    "saved_at"
+   ]
+  },
+  "sovereign_projects": {
+   "rows": 0,
+   "cols": [
+    "project_id",
+    "owner_id",
+    "project_type",
+    "title",
+    "lifecycle_state",
+    "parent_project_id",
+    "created_at",
+    "updated_at"
+   ]
+  },
+  "sovereign_public_links": {
+   "rows": 4,
+   "cols": [
+    "link_id",
+    "public_token",
+    "owner_id",
+    "final_work_asset_id",
+    "publication_state",
+    "created_at",
+    "revoked_at",
+    "revoked_by"
+   ]
+  },
+  "sovereign_publications": {
+   "rows": 1,
+   "cols": [
+    "publication_id",
+    "publisher_tenant_id",
+    "source_compilation_id",
+    "title",
+    "description",
+    "cover_art_uri",
+    "distribution_tier",
+    "pricing_base_price",
+    "pricing_currency",
+    "pricing_rental_duration_hours",
+    "geo_restrictions_json",
+    "requires_age_verification",
+    "is_published",
+    "published_at",
+    "scheduled_publish_at",
+    "created_at",
+    "updated_at"
+   ]
+  },
+  "storyboard_scenes": {
+   "rows": 140,
+   "cols": [
+    "scene_id",
+    "storyboard_id",
+    "owner_id",
+    "scene_order",
+    "description",
+    "visual_asset_id",
+    "audio_asset_id",
+    "duration_seconds",
+    "transition_intent",
+    "direction_notes",
+    "created_at",
+    "updated_at",
+    "visual_search_en",
+    "sourcing",
+    "creation_demand_ar",
+    "camera_angle"
+   ]
+  },
+  "storyboards": {
+   "rows": 30,
+   "cols": [
+    "storyboard_id",
+    "owner_id",
+    "knowledge_project_id",
+    "composition_project_id",
+    "title",
+    "lifecycle_state",
+    "created_at",
+    "updated_at"
+   ]
+  },
+  "subscriptions": {
+   "rows": 0,
+   "cols": [
+    "subscription_id",
+    "creator_id",
+    "stripe_customer_id",
+    "stripe_subscription_id",
+    "status",
+    "plan",
+    "current_period_end",
+    "created_at",
+    "updated_at"
+   ]
+  },
+  "transmitted_reports": {
+   "rows": 5060,
+   "cols": [
+    "report_id",
+    "work_id",
+    "work_title",
+    "compiler",
+    "location",
+    "text_en",
+    "searchable_text",
+    "provenance_ar",
+    "status",
+    "scholarly_note_ar",
+    "ingested_at_ms"
+   ]
+  },
+  "trial_entitlements": {
+   "rows": 8,
+   "cols": [
+    "creator_id",
+    "images_used",
+    "images_granted",
+    "video_used",
+    "video_granted",
+    "claimed_at",
+    "claim_ip_hash",
+    "credential_id",
+    "webauthn_public_key",
+    "created_at",
+    "updated_at"
+   ]
+  },
+  "vault_assets": {
+   "rows": 169,
+   "cols": [
+    "asset_id",
+    "subscriber_tenant_id",
+    "originating_operation_id",
+    "capability_target",
+    "asset_family",
+    "secure_storage_uri",
+    "metadata",
+    "created_at",
+    "updated_at",
+    "parent_asset_id",
+    "root_asset_id",
+    "version",
+    "derivation",
+    "creation_chamber",
+    "project_id",
+    "lifecycle_state",
+    "derivation_permission",
+    "created_by",
+    "last_modified_by",
+    "last_modified_at",
+    "content_digest",
+    "pixel_width",
+    "pixel_height",
+    "expires_at_ms"
+   ]
+  },
+  "vault_credentials": {
+   "rows": 3,
+   "cols": [
+    "credential_id",
+    "creator_id",
+    "public_key",
+    "counter",
+    "transports",
+    "device_label",
+    "created_at",
+    "last_used_at"
+   ]
+  }
+ }
+}
