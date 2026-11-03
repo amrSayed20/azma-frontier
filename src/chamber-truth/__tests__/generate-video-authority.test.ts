@@ -130,7 +130,11 @@ describe('ENTITLEMENT 16–20 · the decision is made before the provider', () =
     // acceptVideoProduction replaced the in-request generateVideo call when
     // the production boundary became asynchronous (2026-09-23). The rule is
     // unchanged: nothing that can reach the provider may precede the gate.
-    for (const later of ['costEngine.estimate', 'creditRepo.reserve', 'acceptVideoProduction(']) {
+    // AMENDED 2026-11-03: `costEngine.estimate` is gone from this road —
+    // the video half now reads the Founder's signed price instead of a cost
+    // catalog that refused to price video at all. The RULE is unchanged, so
+    // the new pricing call takes the old one's place in the list.
+    for (const later of ['sovereignPriceFor(', 'creditRepo.reserve', 'acceptVideoProduction(']) {
       expect(video.indexOf(later)).toBeGreaterThan(gateAt);
     }
   });

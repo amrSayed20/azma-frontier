@@ -90,22 +90,26 @@ describe('٢ · جدولُ الحقيقةِ الحيِّ مقابلَ المعت
     expect(approved('IMAGE_GENERATION')).toBe(200);
   });
 
-  it('video generation: FREE for an entitled subscriber, 200 approved', () => {
+  it('video generation: CHARGED 200 per requested second since 2026-11-03', () => {
     const route = read('app/api/qiyamah/generate/route.ts');
+    // The catalog still refuses it, and that is now irrelevant: the road
+    // stopped asking. The Founder activated the charge on 2026-11-03, so the
+    // 200 that sat approved and unread is what a Creator pays.
     expect(engine('video-generation', 'magic-hour')).toBe('refused');
-    // And the road says so in its own words: an entitled subscriber generates
-    // with no reservation at all, and the fact is logged rather than hidden.
-    expect(route).toContain('entitled; video not metered');
-    expect(route).toContain('videoResolvedCostEstimate = null');
     expect(approved('VIDEO_GENERATION')).toBe(200);
+    expect(route).toContain("sovereignPriceFor('VIDEO_GENERATION')");
+    expect(route).toContain('approvedVideo.unitsPerQuantity * duration');
+    // And the sentence that described the free state is gone with the state.
+    expect(route).not.toContain('entitled; video not metered');
+    expect(route).not.toContain('videoResolvedCostEstimate = null');
   });
 
-  it('upscale 2×: FREE today, 50 approved', () => {
+  it('upscale 2×: CHARGED 50 per operation since 2026-11-03', () => {
     const route = read('app/api/vault/assets/[assetId]/upscale/route.ts');
-    // The charge block runs only for 4×; 2× keeps a charge of zero, and the
-    // route tells the Creator that number rather than hiding it.
-    expect(route).toContain('if (scaleFactor === 4 && factorRecord?.creatorPriceExists)');
-    expect(route).toContain('let upscaleChargeUnits = 0;');
+    // The charge block used to name one factor, so 2× passed the price check
+    // and reserved nothing. It now covers both, and reads the signed 50.
+    expect(route).not.toContain('if (scaleFactor === 4 && factorRecord?.creatorPriceExists)');
+    expect(route).toContain("sovereignPriceFor('UPSCALE_2X')");
     expect(route).toContain('chargedUnits: upscaleChargeUnits');
     expect(approved('UPSCALE_2X')).toBe(50);
   });

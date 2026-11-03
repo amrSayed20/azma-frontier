@@ -9,13 +9,11 @@ import { getDb } from '../../../../../src/persistent-storage';
 import { ConsumptionRepository } from '../../../../../src/persistent-storage/consumption-repository';
 import { OperationType } from '../../../../../src/consumption-ledger/consumption-ledger-contracts';
 import { getCurrentMonthKey } from '../../../../../src/consumption-ledger/cost-estimator';
-import { CreatorCreditRepository } from '../../../../../src/economy/credit-ledger/credit-ledger-repository';
-import { AzmaUnitCostEngine } from '../../../../../src/economy/cost-engine/azma-cost-engine';
-import { InsufficientBalanceError } from '../../../../../src/economy/credit-ledger/credit-ledger-types';
-import { CostUnavailableError } from '../../../../../src/economy/cost-engine/cost-engine-types';
+import { authorisePaidOperation } from '../../../../../src/economy/paid-operation-gate';
+import { SPEECH_CAPABILITY } from '../../../../../src/economy/pricing/sovereign-price-authority';
 
 import {
-  claimAttempt, completeAttempt, failAttempt, attachReservation,
+  claimAttempt, completeAttempt, failAttempt,
   OPERATION_KEY_HEADER, readClientOperationKey,
 } from '@/src/economy/paid-operation-attempts';
 import { settleReservation, releaseReservation } from '@/src/economy/paid-operation-gate';
@@ -159,66 +157,54 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (session.role !== 'founder') {
-    const costEngine = new AzmaUnitCostEngine();
-    let costEstimate;
-    try {
-      costEstimate = costEngine.estimate('text-to-speech', 'elevenlabs');
-    } catch (err) {
-      if (err instanceof CostUnavailableError) {
-        failAttempt(db, claim.attemptKey, 'cost-unavailable');
-        return NextResponse.json(
-          {
-            status: 'failed',
-            reason: 'cost-unavailable',
-            message: 'Cloned voice speech generation cost is not yet available. Generation blocked.',
-          },
-          { status: 503 },
-        );
-      }
-      throw err;
-    }
+  /*  ── CHARGED BY THE CHARACTERS IT WILL SPEND ───────────────────────────
+   *
+   *    RULED 2026-11-03, decision 2: «يُحاسب توليد الكلام وفق الاستهلاك
+   *    الفعلي للأحرف والتعريفة الفعلية للمزود… التكلفة الفعلية × 1.70.»
+   *
+   *    It supersedes what this road used to charge: a flat 30 units per
+   *    OPERATION, taken from a provider COST catalog that was never a price
+   *    authority. MEASURED against the real tariff, that flat figure broke
+   *    even at 395 characters and lost money on every narration longer than
+   *    that — and a scene's voice-over is long by nature. A 1,000-character
+   *    narration cost the Empire 75.8 units and charged 30.
+   *
+   *    The quantity is the TEXT'S OWN LENGTH, which is what the provider
+   *    meters, and never a number the browser states about it. The gate
+   *    multiplies and rounds once, at the job, as the Constitution ratified.
+   */
+  const spokenCharacters = text.trim().length;
+  const speechGate = authorisePaidOperation({
+    db,
+    creatorId: session.creatorId,
+    role: session.role,
+    // The catalog's flat per-operation entry is exactly what this road is
+    // leaving behind, so it is not consulted at all.
+    capability: null,
+    gatewayId: 'elevenlabs',
+    attemptKey: claim.attemptKey,
+    sovereignCapability: SPEECH_CAPABILITY,
+    quantity: spokenCharacters,
+    metadata: { characters: spokenCharacters },
+  });
 
-    const creditRepo = new CreatorCreditRepository(db);
-    const balance = creditRepo.getBalance(session.creatorId);
+  if (speechGate.kind === 'refused') {
+    failAttempt(db, claim.attemptKey, `gate:${speechGate.reason}`);
+    return NextResponse.json(
+      {
+        status: 'failed',
+        reason: speechGate.reason,
+        message: speechGate.messageAr,
+        ...(speechGate.requiredUnits !== undefined ? { requiredUnits: speechGate.requiredUnits } : {}),
+        ...(speechGate.availableUnits !== undefined ? { availableUnits: speechGate.availableUnits } : {}),
+      },
+      { status: speechGate.httpStatus },
+    );
+  }
 
-    if (balance.availableUnits < costEstimate.estimatedAzmaUnits) {
-      failAttempt(db, claim.attemptKey, 'insufficient-balance');
-      return NextResponse.json(
-        {
-          status: 'failed',
-          reason: 'payment-required',
-          message: 'Insufficient AZMA Units. Purchase a credit pack to continue.',
-          estimatedCost: costEstimate.estimatedAzmaUnits,
-          availableUnits: balance.availableUnits,
-        },
-        { status: 402 },
-      );
-    }
-
-    try {
-      const reservation = creditRepo.reserve(
-        session.creatorId,
-        costEstimate.estimatedAzmaUnits,
-        // The ATTEMPT's key, not a fresh one. This is the whole repair.
-        claim.attemptKey,
-        // The gateway the PRICE came from, so a later cost reconciliation
-        // reads the same provider the charge was computed against.
-        { capability: 'text-to-speech', gatewayId: 'elevenlabs' },
-      );
-      reservationId = reservation.reservationId;
-      chargeUnits = reservation.reservedUnits;
-      attachReservation(db, claim.attemptKey, reservation.reservationId, reservation.reservedUnits);
-    } catch (err) {
-      if (err instanceof InsufficientBalanceError) {
-        failAttempt(db, claim.attemptKey, 'insufficient-balance');
-        return NextResponse.json(
-          { status: 'failed', reason: 'payment-required', message: 'Insufficient AZMA Units.' },
-          { status: 402 },
-        );
-      }
-      throw err;
-    }
+  if (speechGate.kind === 'reserved') {
+    reservationId = speechGate.reservationId;
+    chargeUnits = speechGate.units;
   }
 
   const voiceDisplayName =

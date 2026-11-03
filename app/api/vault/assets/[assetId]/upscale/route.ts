@@ -19,6 +19,7 @@ import {
   authorizeCostMeasurement, CAMPAIGN_METADATA_KEY,
 } from '@/src/economy/cost-engine/cost-measurement-authority';
 import { priceNewCapability } from '@/src/economy/pricing/new-capability-pricing';
+import { sovereignPriceFor } from '../../../../../../src/economy/pricing/sovereign-price-authority';
 import { CreatorCreditRepository } from '@/src/economy/credit-ledger/credit-ledger-repository';
 import {
   claimAttempt, completeAttempt, failAttempt, attachReservation,
@@ -233,15 +234,51 @@ export async function POST(
   //   image, not derivable, an unresolvable address, an unreadable file. Each
   //   one returned with the hold still standing. The repair is not seven
   //   releases: it is putting the money where nothing can refuse after it.
-  if (scaleFactor === 4 && factorRecord?.creatorPriceExists) {
-    const price = priceNewCapability({ capability: 'UPSCALE_4X' });
-    if (!price.ok) {
+  /*  ── BOTH FACTORS ARE CHARGED NOW — RULED 2026-11-03, DECISION 4 ──────
+   *
+   *    «أعتمد تفعيل خصم 50 وحدة لعملية رفع الدقة 2× وفق السعر المسجل
+   *    حاليًا. يجب توثيق وحدة السعر ونطاقه الفعليين، والتحقق من أن الخصم
+   *    يحدث عند تنفيذ العملية الحقيقية.»
+   *
+   *    THE UNIT, WITH ITS EVIDENCE: `OPERATION_CONSUMPTION` carries
+   *    UPSCALE_2X as `quantity: 'per-operation'`, signed 2026-09-27 — not
+   *    per image, not per pixel, and not assumed here. One press that
+   *    produces one upscaled asset is one charge of 50.
+   *
+   *    VERIFIED against the provider's published tariff on 2026-11-03: the
+   *    upscaler at `style.mode: 'preserve'` and `scale_factor: 2` costs 25
+   *    credits per image, which is exactly the configuration this road sends
+   *    and exactly what `UPSCALE_FACTORS` recorded. The Founder's floor is
+   *    25 × 1.70 = 43, and the charge is 50 — clear of it.
+   *
+   *    WHAT CHANGED, MEASURED: the condition below read `scaleFactor === 4`
+   *    alone, so a 2× upscale passed the price check and then reserved
+   *    NOTHING — it was performed free while 50 sat approved in his table,
+   *    read by no line. 4× was always charged.
+   *
+   *    AND THE CHARGE IS STILL WHERE NOTHING CAN REFUSE AFTER IT: this block
+   *    sits immediately before the engine, which is the repair described
+   *    above, and it now covers both factors instead of one.
+   */
+  if (factorRecord?.creatorPriceExists) {
+    // 4× is derived by the ratified uplift from its measured 100 credits;
+    // 2× is the Founder's own signed figure. Two authorities, one for each,
+    // and neither road invents a number.
+    let chargeUnits: number | null;
+    if (scaleFactor === 4) {
+      const derived = priceNewCapability({ capability: 'UPSCALE_4X' });
+      chargeUnits = derived.ok ? derived.chargedUnits : null;
+    } else {
+      chargeUnits = sovereignPriceFor('UPSCALE_2X').unitsPerQuantity;
+    }
+
+    if (chargeUnits === null || chargeUnits <= 0) {
       return NextResponse.json(
         { status: 'failed', reason: 'unpriceable', message: 'تعذّر تحديدُ كلفةِ هذه العمليّة.' },
         { status: 400 },
       );
     }
-    upscaleChargeUnits = price.chargedUnits;
+    upscaleChargeUnits = chargeUnits;
 
     const claim = claimAttempt({
       db, creatorId: session.creatorId, scope: UPSCALE_SCOPE,

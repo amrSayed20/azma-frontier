@@ -316,7 +316,7 @@ export interface RasAlAmrRenderCharge {
   /** Whole seconds the hold was taken on, from the Empire's own computation. */
   readonly heldForSeconds: number;
   /** `founder` or `trial` when no units were held. */
-  readonly entitledVia?: 'founder' | 'trial';
+  readonly entitledVia?: 'founder' | 'trial' | 'free-operation';
 }
 
 /** Compiles the Creator's canvas and starts the real MP4 render. Returns once the job is accepted. */

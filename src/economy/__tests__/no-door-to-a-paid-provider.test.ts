@@ -22,6 +22,7 @@
  *   answers a question that suite cannot: is there anywhere ELSE.
  */
 
+import { execSync } from 'child_process';
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
 
@@ -349,15 +350,30 @@ describe('٣ · والمولِّدُ المدفوعُ نفسُه ليس بابً
      *    that made it possible: a `failAttempt` must never sit next to the
      *    `attachReservation` that just succeeded.
      */
-    const ROADS = [
-      'app/api/qiyamah/generate/route.ts',
-      'app/api/vault/assets/[assetId]/upscale/route.ts',
-      'app/api/vault/assets/generate-speech/route.ts',
-      'app/api/vault/assets/generate-cloned-speech/route.ts',
-      'app/api/vault/assets/clone-voice/route.ts',
-      'app/makman-al-ghayah/reframe-actions.ts',
-      'src/vault/creative-job-service.ts',
-    ];
+    /*  AMENDED 2026-11-03 — AND THE AMENDMENT IS THE POINT
+     *
+     *    The road list was written by hand, and it went stale the moment
+     *    three roads stopped binding their own holds: the two speech roads
+     *    and the clone road now ask the shared gate, which binds for them.
+     *    A hand-written list would have kept examining three files that no
+     *    longer bind anything and quietly stopped covering the gate that
+     *    binds for all four.
+     *
+     *    So the sites are DISCOVERED instead. Whoever binds a hold is
+     *    examined, including any road written after this test, and the count
+     *    is asserted against what the sweep itself found rather than a
+     *    number somebody has to remember to raise.
+     */
+    const ROADS = execSync(
+      'git grep -l "attachReservation(" -- "app/**/*.ts" "src/**/*.ts"',
+      { encoding: 'utf8', cwd: process.cwd() },
+    )
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0
+        && !l.includes('__tests__')
+        // It DEFINES the binding rather than performing one.
+        && !l.endsWith('paid-operation-attempts.ts'));
 
     let examined = 0;
     for (const file of ROADS) {
@@ -376,8 +392,13 @@ describe('٣ · والمولِّدُ المدفوعُ نفسُه ليس بابً
           .toEqual({ file, line: i + 1, failsItsOwnClaim: false });
       });
     }
-    // AN INSTRUMENT THAT FOUND NOTHING IS NOT REPORTING A ZERO.
-    expect(examined).toBeGreaterThanOrEqual(6);
+    // AN INSTRUMENT THAT FOUND NOTHING IS NOT REPORTING A ZERO — and now it
+    // also cannot find FEWER sites than exist, because it found them itself.
+    expect(ROADS.length).toBeGreaterThanOrEqual(4);
+    expect(examined).toBeGreaterThanOrEqual(ROADS.length);
+    // The shared gate binds for every road on the sovereign-price path, so it
+    // is the one site that must always be among them.
+    expect(ROADS).toContain('src/economy/paid-operation-gate.ts');
   });
 
   it('a road that skipped its own money cannot start a production', () => {

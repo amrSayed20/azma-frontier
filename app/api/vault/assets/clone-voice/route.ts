@@ -10,13 +10,11 @@ import { getDb } from '../../../../../src/persistent-storage';
 import { ConsumptionRepository } from '../../../../../src/persistent-storage/consumption-repository';
 import { OperationType } from '../../../../../src/consumption-ledger/consumption-ledger-contracts';
 import { getCurrentMonthKey } from '../../../../../src/consumption-ledger/cost-estimator';
-import { CreatorCreditRepository } from '../../../../../src/economy/credit-ledger/credit-ledger-repository';
-import { AzmaUnitCostEngine } from '../../../../../src/economy/cost-engine/azma-cost-engine';
-import { InsufficientBalanceError } from '../../../../../src/economy/credit-ledger/credit-ledger-types';
-import { CostUnavailableError } from '../../../../../src/economy/cost-engine/cost-engine-types';
+import { authorisePaidOperation } from '../../../../../src/economy/paid-operation-gate';
+import { VOICE_IDENTITY_CAPABILITY } from '../../../../../src/economy/pricing/sovereign-price-authority';
 
 import {
-  claimAttempt, completeAttempt, failAttempt, attachReservation,
+  claimAttempt, completeAttempt, failAttempt,
   OPERATION_KEY_HEADER, readClientOperationKey,
 } from '@/src/economy/paid-operation-attempts';
 import { settleReservation, releaseReservation } from '@/src/economy/paid-operation-gate';
@@ -218,62 +216,72 @@ export async function POST(request: NextRequest) {
   //   the first day a price was approved. The identical defect was repaired
   //   in the upscale route in this same branch; this is the one it missed.
 
-  if (session.role !== 'founder') {
-    const costEngine = new AzmaUnitCostEngine();
-    let costEstimate;
-    try {
-      costEstimate = costEngine.estimate('voice-cloning', 'elevenlabs');
-    } catch (err) {
-      if (err instanceof CostUnavailableError) {
-        failAttempt(db, claim.attemptKey, 'cost-unavailable');
-        return NextResponse.json(
-          { status: 'failed', reason: 'cost-unavailable', message: 'Voice cloning cost is not yet available. Generation blocked.' },
-          { status: 503 },
-        );
-      }
-      throw err;
-    }
+  /*  ── CREATING AN IDENTITY IS FREE, AND THAT IS A FINDING ───────────────
+   *
+   *    RULED 2026-11-03: «إنشاء الهوية الصوتية المستنسخة مجاني للمبدع: 0
+   *    وحدة سيادية… لا يجوز أن يؤدي الصفر إلى رفض العملية باعتبارها غير
+   *    مسعّرة.»
+   *
+   *    MEASURED, and it is why this was a launch blocker: the cost engine
+   *    was asked about `voice-cloning`, whose catalog entry is 0 and
+   *    `pending-discovery`, so it raised `CostUnavailableError` and EVERY
+   *    paying Creator was refused 503 at step 3 of the voice-identity proof.
+   *    The engine was right to refuse an unexplained zero; what was missing
+   *    was anywhere to record that this particular zero is the provider's
+   *    own published term — Instant Voice Cloning carries no per-identity
+   *    charge, and what it bills is the characters of generation.
+   *
+   *    So the question moved to the one authority that can tell a confirmed
+   *    free act from an unfinished catalog entry. A Founder still owes
+   *    nothing, by role, exactly as before.
+   */
+  /*  ── CREATING AN IDENTITY IS FREE, AND THAT IS A FINDING ───────────────
+   *
+   *    RULED 2026-11-03: «إنشاء الهوية الصوتية المستنسخة مجاني للمبدع: 0
+   *    وحدة سيادية… لا يجوز أن يؤدي الصفر إلى رفض العملية باعتبارها غير
+   *    مسعّرة.»
+   *
+   *    MEASURED, and it is why this was a launch blocker: this road asked
+   *    the cost engine about `voice-cloning`, whose catalog entry is 0 and
+   *    `pending-discovery`, so the engine raised `CostUnavailableError` and
+   *    EVERY paying Creator was refused 503 at step 3 of the voice-identity
+   *    proof. The engine was right to refuse an unexplained zero; what was
+   *    missing was anywhere to record that THIS zero is the provider's own
+   *    published term — Instant Voice Cloning carries no per-identity
+   *    charge, and what it bills is the characters of later generation.
+   *
+   *    So the question goes to the shared gate, which answers `entitled via
+   *    free-operation`. Nothing is held and nothing is settled, and the road
+   *    stays inside the one economy door rather than deciding its own money.
+   */
+  const identityGate = authorisePaidOperation({
+    db,
+    creatorId: session.creatorId,
+    role: session.role,
+    // No provider cost class: the catalog's `voice-cloning` entry is the
+    // unexplained zero this road used to die on. The ruled price answers
+    // instead, and it is the only authority that can say «free, confirmed».
+    capability: null,
+    gatewayId: 'elevenlabs',
+    attemptKey: claim.attemptKey,
+    sovereignCapability: VOICE_IDENTITY_CAPABILITY,
+    metadata: { act: 'voice-identity-creation' },
+  });
 
-    const creditRepo = new CreatorCreditRepository(db);
-    const balance = creditRepo.getBalance(session.creatorId);
+  if (identityGate.kind === 'refused') {
+    failAttempt(db, claim.attemptKey, `gate:${identityGate.reason}`);
+    return NextResponse.json(
+      { status: 'failed', reason: identityGate.reason, message: identityGate.messageAr },
+      { status: identityGate.httpStatus },
+    );
+  }
 
-    if (balance.availableUnits < costEstimate.estimatedAzmaUnits) {
-      failAttempt(db, claim.attemptKey, 'insufficient-balance');
-      return NextResponse.json(
-        {
-          status: 'failed',
-          reason: 'payment-required',
-          message: 'Insufficient AZMA Units. Purchase a credit pack to continue.',
-          estimatedCost: costEstimate.estimatedAzmaUnits,
-          availableUnits: balance.availableUnits,
-        },
-        { status: 402 },
-      );
-    }
-
-    try {
-      const reservation = creditRepo.reserve(
-        session.creatorId,
-        costEstimate.estimatedAzmaUnits,
-        // The ATTEMPT's key, not a fresh one. This is the whole repair.
-        claim.attemptKey,
-        // The gateway the PRICE came from, so a later cost reconciliation
-        // reads the same provider the charge was computed against.
-        { capability: 'voice-cloning', gatewayId: 'elevenlabs' },
-      );
-      reservationId = reservation.reservationId;
-      chargeUnits = reservation.reservedUnits;
-      attachReservation(db, claim.attemptKey, reservation.reservationId, reservation.reservedUnits);
-    } catch (err) {
-      if (err instanceof InsufficientBalanceError) {
-        failAttempt(db, claim.attemptKey, 'insufficient-balance');
-        return NextResponse.json(
-          { status: 'failed', reason: 'payment-required', message: 'Insufficient AZMA Units.' },
-          { status: 402 },
-        );
-      }
-      throw err;
-    }
+  if (identityGate.kind === 'reserved') {
+    // Unreachable while the act is ruled free, and kept because the day a
+    // price is approved for it the hold must be carried to an outcome rather
+    // than abandoned. `reservationId` is what every release below reads.
+    reservationId = identityGate.reservationId;
+    chargeUnits = identityGate.units;
   }
 
   let cloneResult;

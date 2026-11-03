@@ -6,12 +6,10 @@ import { ConsumptionRepository } from '../../../../src/persistent-storage/consum
 import { OperationType } from '../../../../src/consumption-ledger/consumption-ledger-contracts';
 import { getCurrentMonthKey } from '../../../../src/consumption-ledger/cost-estimator';
 import { CreatorCreditRepository } from '../../../../src/economy/credit-ledger/credit-ledger-repository';
-import { AzmaUnitCostEngine } from '../../../../src/economy/cost-engine/azma-cost-engine';
 import { TrialEntitlementService } from '../../../../src/economy/trial/trial-entitlement-service';
 import { hasActiveEntitlement } from '../../../../src/billing/entitlement-service';
 import { acceptVideoProduction } from '../../../../src/qiyamah-generation/video-operation-lifecycle';
 import { InsufficientBalanceError } from '../../../../src/economy/credit-ledger/credit-ledger-types';
-import { CostUnavailableError } from '../../../../src/economy/cost-engine/cost-engine-types';
 import { TrialExhaustedError } from '../../../../src/economy/trial/trial-entitlement-types';
 import type { CostEstimate } from '../../../../src/economy/cost-engine/cost-engine-types';
 import {
@@ -71,7 +69,6 @@ export async function POST(request: NextRequest) {
 
   const db = getDb();
   const creditRepo = new CreatorCreditRepository(db);
-  const costEngine = new AzmaUnitCostEngine();
   const trialService = new TrialEntitlementService(db);
 
   // ─── VIDEO PATH — the capability is `generate-video` ────────────────────────
@@ -108,26 +105,64 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    /*  ── THE REQUESTED DURATION, RESOLVED BEFORE THE MONEY ───────────────
+     *
+     *    It used to be resolved twenty lines BELOW the reservation, which was
+     *    harmless while video was charged nothing. The price is per REQUESTED
+     *    SECOND, so a hold cannot be sized without it, and a road that
+     *    reserved first and learned the duration afterwards would have to
+     *    guess. Moved up, unchanged: the same clamp, the same default.
+     */
+    const duration =
+      typeof durationSeconds === 'number' && durationSeconds > 0 && durationSeconds <= 60
+        ? Math.round(durationSeconds)
+        : 6;
+
     if (session.role !== 'founder') {
-      // Entitled by subscription. The credit path below runs only while the
-      // cost catalog can price video at all: its magic-hour/video-generation
-      // entry is `availability: 'pending-discovery'` («per-frame credit cost
-      // not publicly documented»), and a price that is not known must not be
-      // charged. While it is unknown, an entitled subscriber generates
-      // without a unit reservation, and that fact is recorded rather than
-      // hidden. Pricing itself is not this package's to decide.
-      try {
-        videoResolvedCostEstimate = costEngine.estimate('video-generation', GATEWAY_ID);
-      } catch (err) {
-        if (err instanceof CostUnavailableError) {
-          console.log('[QiyamahGenerate]', JSON.stringify({
-            operationId, capability: 'generate-video', note: 'entitled; video not metered — cost catalog pending-discovery',
-          }));
-          videoResolvedCostEstimate = null;
-        } else {
-          throw err;
-        }
+      /*  ── VIDEO IS CHARGED NOW — RULED 2026-11-03, DECISION 3 ───────────
+       *
+       *    «أعتمد تفعيل خصم 200 وحدة للفيديو وفق السعر المسجل حاليًا. لكن
+       *    قبل التفعيل النهائي، يجب توثيق وحدة هذا السعر ونطاقه بدقة.»
+       *
+       *    THE UNIT, WITH ITS EVIDENCE — and it is not an assumption:
+       *    `OPERATION_CONSUMPTION` carries VIDEO_GENERATION as
+       *    `quantity: 'per-requested-second'`, signed 2026-09-27, with its
+       *    own note: «Priced on the Veo 3.1 basis (96 credits/s) by Founder
+       *    ruling, NOT on the allocated H3 binding (48 credits/s). Per
+       *    REQUESTED second.» The unit, the basis and the reason the basis is
+       *    not the allocated model are all declared in the table itself.
+       *
+       *    VERIFIED against the provider's published tariff on 2026-11-03:
+       *    minimax-h3 costs 48 credits per second at 720p, which is what this
+       *    road sends. The Founder's floor is 48 × 1.70 = 82, and the charge
+       *    is 200 — clear of it, so his signed figure stands untouched.
+       *
+       *    WHAT CHANGED, MEASURED: before this, the road asked the cost
+       *    catalog, whose magic-hour video entry is `pending-discovery`, so
+       *    it wrote `null` and an entitled subscriber generated video with
+       *    NO reservation at all — while 200 per second sat approved in his
+       *    own table, read by nothing.
+       */
+      const approvedVideo = sovereignPriceFor('VIDEO_GENERATION');
+      if (approvedVideo.status === 'absent' || approvedVideo.unitsPerQuantity === null) {
+        // No attempt is closed here because none has been claimed yet: the
+        // price is read BEFORE the submission is claimed, so a refusal at
+        // this point leaves nothing open behind it.
+        return NextResponse.json(
+          { status: 'failed', operationId, stage: 'gate',
+            reason: 'cost-unavailable',
+            message: 'توليدُ الفيديو لم يُسعَّر بعد، فلا يُنفَّذ. وسيُفتَح فور اعتمادِ سعره.',
+          },
+          { status: 503 },
+        );
       }
+      videoResolvedCostEstimate = {
+        // Per REQUESTED second, which is the unit the table declares.
+        estimatedAzmaUnits: approvedVideo.unitsPerQuantity * duration,
+        capabilityTarget: 'video-generation',
+        gatewayId: GATEWAY_ID,
+        availability: 'available',
+      } as CostEstimate;
     }
 
     // ── THE SUBMISSION, CLAIMED BEFORE A SINGLE UNIT IS HELD ─────────────
@@ -253,11 +288,6 @@ export async function POST(request: NextRequest) {
         throw err;
       }
     }
-
-    const duration =
-      typeof durationSeconds === 'number' && durationSeconds > 0 && durationSeconds <= 60
-        ? Math.round(durationSeconds)
-        : 6;
 
     // ── THE BOUNDARY THAT BROKE ON 2026-09-22 ────────────────────────────────
     //

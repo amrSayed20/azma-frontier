@@ -211,7 +211,20 @@ describe('٣ · والقرارُ المطلوبُ محصورٌ ومعدودٌ', 
       // MP4 export, priced by the Founder's ruling of 2026-11-02 at 100 units
       // per second of the finished film.
       'src/sovereign-entry/ras-al-amr-render.ts',
-    ]);
+      // ── AND THREE MORE BY THE RULING OF 2026-11-03 ──────────────────────
+      //
+      //   The voice roads. Creating an identity is a CONFIRMED free act — the
+      //   provider charges nothing for it — and speaking with one is charged
+      //   by the characters it actually spends, superseding the flat 30 per
+      //   operation that a provider COST catalog was supplying.
+      // And 2× upscale, activated the same day: «أعتمد تفعيل خصم 50 وحدة
+      // لعملية رفع الدقة 2× وفق السعر المسجل حاليًا». It was the last road
+      // the owner had excluded by name.
+      'app/api/vault/assets/[assetId]/upscale/route.ts',
+      'app/api/vault/assets/clone-voice/route.ts',
+      'app/api/vault/assets/generate-cloned-speech/route.ts',
+      'app/api/vault/assets/generate-speech/route.ts',
+    ].sort());
   });
 
   it('and the scene price is the measured cost × 1.70, derived and not chosen', () => {
@@ -250,13 +263,20 @@ describe('٣ · والقرارُ المطلوبُ محصورٌ ومعدودٌ', 
   });
 
   it('and the roads the owner excluded still read the catalog, untouched', () => {
-    // Video, 2× upscale and speech. Asserted as an ABSENCE, because what
-    // proves a partial connection is what did not move.
+    /*  NARROWED 2026-11-03, BY RULING AND NOT BY DRIFT
+     *
+     *    Three of the four roads this once covered were connected by the
+     *    Founder's own decisions of 2026-11-03: both speech roads are priced
+     *    per character now, and the clone road is a confirmed free act. They
+     *    are asserted in `the-voice-is-free-to-own-and-paid-to-speak.test.ts`
+     *    instead, where the ruling that moved them is quoted.
+     *
+     *    2× upscale is the one road genuinely still excluded, and the absence
+     *    below is what proves the connection is still partial rather than a
+     *    switch somebody threw.
+     */
     for (const file of [
       'app/api/vault/assets/[assetId]/upscale/route.ts',
-      'app/api/vault/assets/generate-speech/route.ts',
-      'app/api/vault/assets/generate-cloned-speech/route.ts',
-      'app/api/vault/assets/clone-voice/route.ts',
     ]) {
       const source = readFileSync(join(process.cwd(), file), 'utf8');
       expect({ file, named: source.includes('sovereignCapability') })

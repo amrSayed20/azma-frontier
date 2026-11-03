@@ -58,6 +58,7 @@ import { MEASURED_COSTS, priceNewCapability, NEW_CAPABILITY_UPLIFT } from './new
 import type { NewCapability } from './new-capability-pricing';
 import { MP4_UNITS_PER_SECOND, MP4_ROUNDING } from './local-export-pricing';
 import { imageCreditsAtResolution, TARIFF_SOURCE } from './official-provider-tariff';
+import { SPEECH_UNITS_PER_CHARACTER, VOICE_SUBSCRIPTION } from './speech-pricing';
 
 /**
  * How a Creator's charge is counted. No two of these are interchangeable.
@@ -73,13 +74,37 @@ export type PriceQuantity =
   | 'per-operation'
   | 'per-requested-second'
   | 'per-final-second'
-  | 'per-frame';
+  | 'per-frame'
+  /**
+   * Per character of the Creator's own text — the unit the voice provider
+   * meters. It is the Empire's first FRACTIONAL per-unit price (about an
+   * eighth of a unit), which is why the gate forms the product before it
+   * rounds, once, at the job.
+   */
+  | 'per-character';
 
 export type PriceStatus =
   /** The Founder approved this figure directly, in `OPERATION_CONSUMPTION`. */
   | 'approved'
   /** Derived by the ratified uplift from a measured provider cost. */
   | 'derived-ratified'
+  /**
+   * ─── A ZERO THAT IS A FINDING, NOT AN ABSENCE ────────────────────────────
+   *
+   *   The Empire's oldest money rule is that an unpriced act is refused and
+   *   never performed for free, because a zero usually means «nobody looked».
+   *   This status is the one case where a zero means the opposite: somebody
+   *   looked, and the provider charges nothing.
+   *
+   *   RULED 2026-11-03: «يجب تمثيل هذه الحالة في بوابة الاقتصاد باعتبارها
+   *   عملية مجانية مؤكدة، لا تكلفة مجهولة… لا يجوز أن يؤدي الصفر إلى رفض
+   *   العملية باعتبارها غير مسعّرة.»
+   *
+   *   It is never inferred. A capability reaches it only by being written
+   *   here beside the published tariff that says so, which is why it cannot
+   *   spread to an act whose cost merely failed to be found.
+   */
+  | 'free-confirmed'
   /**
    * No approved price exists anywhere. Not a zero — an absence. An operation
    * in this state must not be performed for a charge, and must not be
@@ -149,6 +174,48 @@ export const SCENE_CAPABILITY = 'RAS_AMR_SCENE' as const;
  *   written here, so the Empire keeps ONE place where 100 is stated.
  */
 export const MP4_EXPORT_CAPABILITY = 'MP4_EXPORT' as const;
+
+/**
+ * ─── CREATING A SOVEREIGN VOICE IDENTITY — FREE, AND PROVEN FREE ────────────
+ *
+ *   The provider publishes Instant Voice Cloning as a PLAN FEATURE with no
+ *   per-identity charge: what it consumes is the characters of later
+ *   generation, not the act of creating the voice
+ *   (elevenlabs.io/pricing · elevenlabs.io/voice-cloning · read 2026-11-03).
+ *   Our own subscription is the `starter` tier, measured on the live key, so
+ *   the feature is genuinely ours.
+ *
+ *   RULED 2026-11-03: «إنشاء الهوية الصوتية المستنسخة مجاني للمبدع: 0 وحدة
+ *   سيادية… ولا يجوز فرض رسم اعتباطي على إنشاء الهوية.»
+ *
+ *   MEASURED BEFORE THE RULING, which is why it was a launch blocker: the
+ *   catalog carried voice-cloning as 0 and `pending-discovery`, and the gate
+ *   refuses an act whose cost is zero — correctly, because a zero it cannot
+ *   explain is a catalog nobody finished. So every paying Creator was refused
+ *   at step 3 of the voice-identity proof. The refusal was right; what was
+ *   missing was a way to say «this one really is free».
+ */
+export const VOICE_IDENTITY_CAPABILITY = 'VOICE_IDENTITY_CREATION' as const;
+
+/**
+ * ─── SPEAKING WITH A VOICE — CHARGED BY THE CHARACTERS IT SPENDS ────────────
+ *
+ *   RULED 2026-11-03: «يُحاسب توليد الكلام وفق الاستهلاك الفعلي للأحرف
+ *   والتعريفة الفعلية للمزود. يُطبّق هامش المؤسس المعتمد: التكلفة الفعلية
+ *   × 1.70.»
+ *
+ *   It supersedes what the live roads charged: a flat 30 units per
+ *   OPERATION, read from a provider cost catalog that is not a price
+ *   authority. MEASURED against the real tariff, that flat figure broke even
+ *   at 395 characters and lost money on every narration longer than that —
+ *   and a scene's voice-over is long by nature. A 1,000-character narration
+ *   cost the Empire 75.8 units and charged 30.
+ *
+ *   Both speech roads share this one price, because both spend the same
+ *   characters at the same provider on the same model. The identity used to
+ *   say them is free to create; saying them is what costs.
+ */
+export const SPEECH_CAPABILITY = 'SPEECH_GENERATION' as const;
 
 /**
  * What the Empire has approved for one capability.
@@ -249,6 +316,40 @@ export function sovereignPriceFor(capability: string, dimension?: string): Sover
       note: 'Counted on the FINAL file\'s own duration, rounded up once '
         + `(${MP4_ROUNDING.id}). It supersedes MP4_PRODUCTION (70 per requested `
         + 'second, 2026-09-27), which no road reads.',
+    };
+  }
+
+  // Speaking: priced per character, from the measured subscription, with the
+  // ratified uplift already applied. The gate multiplies by the characters
+  // and rounds once.
+  if (capability === SPEECH_CAPABILITY) {
+    return {
+      capability,
+      status: 'derived-ratified',
+      unitsPerQuantity: SPEECH_UNITS_PER_CHARACTER,
+      quantity: 'per-character',
+      authority: `speech-pricing.ts · measured ${VOICE_SUBSCRIPTION.usd} USD ÷ `
+        + `${VOICE_SUBSCRIPTION.characters} characters × ${NEW_CAPABILITY_UPLIFT} · `
+        + 'Founder ruling 2026-11-03, decision 2',
+      note: 'It supersedes the flat 30 units per operation the cost catalog gave, which '
+        + 'broke even at 395 characters and lost on every longer narration.',
+    };
+  }
+
+  // Creating a voice identity: free by the provider's published terms and by
+  // the Founder's ruling. It answers before the signed table, which has no
+  // entry for it, and before the cost catalog, whose unexplained zero is
+  // exactly what blocked it.
+  if (capability === VOICE_IDENTITY_CAPABILITY) {
+    return {
+      capability,
+      status: 'free-confirmed',
+      unitsPerQuantity: 0,
+      quantity: 'per-operation',
+      authority: 'elevenlabs.io/pricing — Instant Voice Cloning is a plan feature with no '
+        + 'per-identity charge (read 2026-11-03) · Founder ruling 2026-11-03',
+      note: 'Zero because the provider charges nothing for it, NOT because a cost was never '
+        + 'found. What the provider bills is the characters of generation, priced separately.',
     };
   }
 

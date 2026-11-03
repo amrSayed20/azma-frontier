@@ -210,16 +210,19 @@ describe('٣ · وإثباتُ ما لم يَتحرَّك — الثلاثُ ا�
     expect(engine('voice-cloning', 'elevenlabs')).toBe('refused');
   });
 
-  it('2× upscale is still free, and its signed 50 still unread', () => {
-    // The signed figure exists and this road does not read it — by the
-    // owner's exclusion, not by an oversight.
+  it('2× upscale now READS its signed 50 — the exclusion was lifted 2026-11-03', () => {
+    // It was excluded by the owner's own earlier decision, and he activated
+    // it on 2026-11-03: «أعتمد تفعيل خصم 50 وحدة لعملية رفع الدقة 2× وفق
+    // السعر المسجل حاليًا». So the assertion flips from an absence to a read.
     expect(signed('UPSCALE_2X')).toBe(50);
     const upscale = readFileSync(
       join(process.cwd(), 'app/api/vault/assets/[assetId]/upscale/route.ts'), 'utf8',
     );
+    expect(upscale).toContain("sovereignPriceFor('UPSCALE_2X')");
+    // The zero it starts from is still there, and it still means «nothing is
+    // owed until a price is read» — a Founder and a 2× with no price both
+    // reach the engine on it.
     expect(upscale).toContain('let upscaleChargeUnits = 0;');
-    expect(upscale).not.toContain('sovereignCapability');
-    expect(upscale).not.toContain('sovereignPriceFor');
   });
 
   it('and reframe keeps the 20 it always matched', () => {

@@ -53,7 +53,17 @@ import type { TrialCapability } from './trial/trial-entitlement-types';
 /** What the Empire decided about one attempt to spend. */
 export type GateVerdict =
   /** No charge is owed — a Founder, or a valid free entitlement. */
-  | { readonly kind: 'entitled'; readonly via: 'founder' | 'trial' }
+  /**
+   * No charge is owed.
+   *
+   * `free-operation` is not an entitlement spent or a role held: it is an act
+   * the provider does not bill the Empire for, ruled free for the Creator on
+   * 2026-11-03. It shares this verdict because every caller already treats
+   * `entitled` correctly — nothing held, nothing to settle, nothing to
+   * release — and a fourth verdict would have to be handled in nine routes
+   * that already do the right thing.
+   */
+  | { readonly kind: 'entitled'; readonly via: 'founder' | 'trial' | 'free-operation' }
   /** Units are held. The caller MUST settle or release them. */
   | {
       readonly kind: 'reserved';
@@ -128,6 +138,19 @@ export interface AuthoriseRequest {
    */
   readonly quantity?: number;
   /**
+   * The provider configuration this act will actually run in.
+   *
+   * This provider's cost moves with it: nano-banana-2 is published at 100
+   * credits per image at 1K and 150 at 2K, and the Empire sends 2K for one
+   * of its fourteen styles. A road that knows which configuration it is
+   * about to send says so here, and the price authority applies the
+   * Founder's margin floor for that configuration.
+   *
+   * Omitted means «flat cost», which is true of every other capability — and
+   * then no floor is computed rather than one built on a guess.
+   */
+  readonly dimension?: string;
+  /**
    * The key of the ATTEMPT this request was admitted under, from
    * `claimAttempt`. The gate reserves against it and never mints one.
    *
@@ -161,7 +184,7 @@ export function authorisePaidOperation(request: AuthoriseRequest): GateVerdict {
   const {
     db, creatorId, role, capability, gatewayId, modelId,
     attemptKey, trialCapability, claimIp, metadata,
-    sovereignCapability, quantity,
+    sovereignCapability, quantity, dimension,
   } = request;
 
   // ── 1 · Entitlements, which are decided before any price is read ─────────
@@ -200,7 +223,25 @@ export function authorisePaidOperation(request: AuthoriseRequest): GateVerdict {
    *    so a price cannot drift by being transcribed into this file.
    */
   if (sovereignCapability !== undefined) {
-    const approved = sovereignPriceFor(sovereignCapability);
+    const approved = sovereignPriceFor(sovereignCapability, dimension);
+
+    /*  ── A CONFIRMED FREE ACT IS PERFORMED, NOT REFUSED ─────────────────
+     *
+     *    RULED 2026-11-03: «لا يجوز أن يؤدي الصفر إلى رفض العملية باعتبارها
+     *    غير مسعّرة.»
+     *
+     *    The check below this one refuses a zero, and it must keep doing so:
+     *    a zero in the provider cost catalog means the catalog was never
+     *    finished, and performing a paid act against it would spend the
+     *    Empire's money on a receipt of nothing. This branch is the single
+     *    exception, and it is reached ONLY by a capability the authority has
+     *    marked `free-confirmed` against a published tariff — never by a
+     *    figure that merely happens to be zero.
+     */
+    if (approved.status === 'free-confirmed') {
+      return { kind: 'entitled', via: 'free-operation' };
+    }
+
     if (approved.status === 'absent' || approved.unitsPerQuantity === null) {
       return {
         kind: 'refused',
@@ -230,7 +271,22 @@ export function authorisePaidOperation(request: AuthoriseRequest): GateVerdict {
       // export has none, and never will: no provider invoices it. The label
       // then falls back to the ruled name, which is the truer one anyway.
       capability: capability ?? sovereignCapability,
-      units: approved.unitsPerQuantity * asked,
+      /*  ── ROUNDED ONCE, OVER THE WHOLE JOB ─────────────────────────────
+       *
+       *    This is where the ratified CEIL_AT_JOB_LEVEL actually happens for
+       *    every road on this path, and it became load-bearing on 2026-11-03
+       *    when speech began to be priced PER CHARACTER at about an eighth
+       *    of a unit each.
+       *
+       *    Ceiling per unit instead would charge one whole unit per
+       *    character: a 500-character narration would cost 500 units rather
+       *    than the 65 the Founder's own rule gives — nearly eight times.
+       *    So the product is formed first and the ceiling applied once, to
+       *    the job, exactly as the Constitution ratified on 2026-10-13.
+       *
+       *    Every integer price is unaffected: 200 × 5 is still 1,000.
+       */
+      units: Math.ceil(approved.unitsPerQuantity * asked),
     });
   }
 
