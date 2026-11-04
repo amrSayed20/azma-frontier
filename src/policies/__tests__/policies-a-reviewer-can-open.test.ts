@@ -122,7 +122,7 @@ describe('the likeness clauses, where a Creator actually reads them', () => {
 
   it('every published document that gained a clause also gained a version', () => {
     expect(policyBySlug('terms-of-service')!.version).toBe('1.2');
-    expect(policyBySlug('privacy-policy')!.version).toBe('1.2');
+    expect(policyBySlug('privacy-policy')!.version).toBe('1.3');
     expect(policyBySlug('refunds-and-credit-balance')!.version).toBe('1.2');
   });
 
@@ -131,7 +131,57 @@ describe('the likeness clauses, where a Creator actually reads them', () => {
     // text. Two numbers for one document is how a reader cites a text nobody
     // can find.
     expect(terms).toContain('الإصدار: 1.2');
-    expect(privacy).toContain('الإصدار: 1.2');
+    expect(privacy).toContain('الإصدار: 1.3');
     expect(policyBySlug('refunds-and-credit-balance')!.body).toContain('إصدار السياسة: 1.2');
+  });
+});
+
+/**
+ * ─── WHAT GOOGLE'S OWN POLICY REQUIRES OF OURS, 2026-11-05 ─────────────────
+ *
+ *   The Founder, reaching for Google approval so a Creator who is not on a
+ *   test-user allowlist can link Drive: «اعتقد ان google يريد تعديلا فى
+ *   السياسات الخاصه بنا». MEASURED against Google's API Services User Data
+ *   Policy, and he was right — on three counts, one of which was a false
+ *   statement rather than a missing one:
+ *
+ *     · «لا نطلب إذن القراءة، ولا إذن حذف ما لديك» was written about every
+ *       linked platform at once. For Drive we request `drive.file`, which
+ *       GRANTS read, modify and delete over the files the app creates or the
+ *       Creator opens with it. Google's rule is that «your use … must be
+ *       limited to the practices disclosed in your published policy», and a
+ *       reviewer compares the requested scope against this text. A sentence
+ *       that denies a permission we hold is the one kind of error that cannot
+ *       be defended as an omission.
+ *     · the policy named no scope, so it documented no scope.
+ *     · and it carried no Limited Use undertaking, which Google's additional
+ *       requirements attach to sensitive scopes — and `youtube.upload` is one.
+ *
+ *   These assert the SUBSTANCE Google checks for. They do not assert prose.
+ */
+describe('the privacy policy a Google reviewer opens', () => {
+  const privacy = policyBySlug('privacy-policy')!.body;
+
+  it('names each Google permission it asks for, instead of describing it', () => {
+    expect(privacy).toContain('drive.file');
+    expect(privacy).toContain('youtube.upload');
+  });
+
+  it('no longer denies the read and delete that drive.file actually grants', () => {
+    // The removed sentence; its return is the defect, not its absence.
+    expect(privacy).not.toContain('لا نطلب إذن القراءة، ولا إذن حذف ما لديك');
+  });
+
+  it('and states plainly which files that permission reaches', () => {
+    expect(privacy).toContain('التي ينشئها التطبيق نفسه، أو التي تفتحها به أنت');
+  });
+
+  it('carries the Limited Use undertaking Google attaches to sensitive scopes', () => {
+    expect(privacy).toContain('Google API Services User Data Policy');
+    expect(privacy).toContain('Limited Use');
+  });
+
+  it('and promises no advertising use and no sale of Google data', () => {
+    expect(privacy).toContain('لا نستعمل بيانات جوجل للإعلان');
   });
 });
