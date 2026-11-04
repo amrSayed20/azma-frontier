@@ -68,6 +68,27 @@ export interface StoryboardWorldProps {
   onOpenInMontage: (production: SovereignCanvas) => void;
   /** How many nodes the montage session holds right now (for the confirm). */
   montageNodeCount: number;
+  /**
+   * ─── TURNING AN IDEA INTO SCENES — WHERE IT BELONGS ───────────────────
+   *
+   *   RULED BY THE FOUNDER, 2026-11-04: «هذا القسم خاص بعالم الاستوري بورد
+   *   ولا ينتمي إلى المونتاج… وأرى إزالته وليس تغطيته».
+   *
+   *   MEASURED, and he was right on every point: the block lived in the
+   *   MONTAGE rail, and its button creates a storyboard and then calls
+   *   `setWorkMode('storyboard')` — it existed only to leave the room it
+   *   was standing in. The Founder's own earlier note sits above it in
+   *   that file: «حقلاً لكتابة مراده **لإنشاء الاستوري بورد**».
+   *
+   *   It is passed in rather than rebuilt here because its logic — the
+   *   compose call, the storyboard it creates, the scenes it hands over —
+   *   already works. What changes is only where a Creator meets it.
+   *
+   *   And it is REMOVED from the montage rail, not hidden there: hiding it
+   *   with a rule scoped to one view leaves it standing in the phone
+   *   column, which is the layout that can least afford it.
+   */
+  ideaToScenes?: React.ReactNode;
 }
 
 /** Wall clock for edit timestamps (event handlers only). */
@@ -137,7 +158,7 @@ function AssetThumb({ asset, capability }: { asset: VaultAsset | undefined; capa
   return <img className="sb-thumb" src={asset.secureStorageUri} alt="" />;
 }
 
-export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCount }: StoryboardWorldProps) {
+export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCount, ideaToScenes }: StoryboardWorldProps) {
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [project, setProject] = useState<SovereignCanvas | null>(null);
@@ -796,6 +817,9 @@ export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCo
                     <button className="sb-btn" onClick={() => { setUploadError(null); setPickerSceneId(scene.sceneId); }}>＋ أصل من الخزانة أو رفع ملف</button>
                   </article>
                 ))}
+                {/* An idea becomes scenes here, above the hand-made one —
+                    which is the order of the work: say it, then shape it. */}
+                {ideaToScenes}
                 <button
                   className="sb-btn sb-add-scene"
                   onClick={() => commit(addScene(project, {}, clock()).canvas)}

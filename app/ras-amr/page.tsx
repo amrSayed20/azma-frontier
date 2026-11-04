@@ -4588,6 +4588,116 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
     setCreationPhase('intent');
   };
 
+
+  /* ── AN IDEA BECOMES SCENES — AND NOT IN THIS ROOM ────────────────────
+
+     RULED BY THE FOUNDER, 2026-11-04, after finding it by hand on the live
+     release: «هذا القسم خاص بعالم الاستوري بورد ولا ينتمي إلى المونتاج…
+     وأرى إزالته وليس تغطيته».
+
+     MEASURED against the code, and he was right at every point:
+
+       · the button creates a storyboard and then calls
+         setWorkMode('storyboard') — it existed only to leave the room it
+         was standing in;
+       · his own earlier note sat directly above it in this file:
+         «حقلاً لكتابة مراده لإنشاء الاستوري بورد»;
+       · and عالم الاستوري بورد already carries its own preview, its own
+         export, and a bridge back to montage — so nothing in the montage
+         rail was holding the other world up.
+
+     REMOVED from the rail, not hidden in it. A rule that hides it in one
+     view leaves it standing in the phone column, where the montage section
+     can least afford the height. That is the Founder's own reason, and the
+     Empire's own law: a rejected element is removed, never covered.
+
+     The logic is unchanged and merely handed over — the same compose call,
+     the same storyboard, the same scenes. Only the room changes. */
+  const ideaToScenes = storyboard ? null : (
+    <div className="brief-compose" data-testid="rasamr-brief">
+      <span className="brief-tag">✦ اكتب فكرتك — تُفكّك إلى مشاهد</span>
+      <label className="brief-label" htmlFor="ras-brief-idea">الفكرة</label>
+      <textarea
+        id="ras-brief-idea"
+        className="brief-idea"
+        data-testid="rasamr-brief-idea"
+        rows={3}
+        value={briefIdea}
+        disabled={isComposingBrief}
+        onChange={(e) => setBriefIdea(e.target.value)}
+        placeholder="ما الذي تريد أن تصنعه؟ اكتبه بلغتك كما تتخيّله."
+      />
+      <label className="brief-label" htmlFor="ras-brief-specs">المواصفات — ما تلتزم به المشاهد</label>
+      <textarea
+        id="ras-brief-specs"
+        className="brief-specs"
+        data-testid="rasamr-brief-specs"
+        rows={3}
+        value={briefSpecs}
+        disabled={isComposingBrief}
+        onChange={(e) => setBriefSpecs(e.target.value)}
+        placeholder="النبرة، الإيقاع، من يُخاطَب، ما يجب أن يُرى وما يجب ألّا يُرى."
+      />
+      <div className="brief-count-row">
+        <label className="brief-label" htmlFor="ras-brief-count">عدد المشاهد</label>
+        <input
+          id="ras-brief-count"
+          className="brief-count"
+          type="number"
+          min={3}
+          max={7}
+          value={briefSceneCount}
+          disabled={isComposingBrief}
+          onChange={(e) => setBriefSceneCount(Math.max(3, Math.min(7, Number(e.target.value) || 5)))}
+        />
+        <span className="brief-count-hint">من ثلاثة إلى سبعة</span>
+      </div>
+      <button
+        type="button"
+        className="brief-compose-btn"
+        data-testid="rasamr-brief-compose"
+        disabled={isComposingBrief || briefIdea.trim().length < 8}
+        onClick={async () => {
+          setIsComposingBrief(true);
+          setBriefNotice('يُفكّك — ثوانٍ…');
+          try {
+            const outcome = await composeStoryboardFromBrief({
+              ideaAr: briefIdea,
+              specificationsAr: briefSpecs,
+              sceneCount: briefSceneCount,
+            });
+            if (!outcome.ok) {
+              setBriefNotice(outcome.messageAr);
+              return;
+            }
+            // Straight into the panel that produces. The road from
+            // here to a finished film is already measured.
+            setStoryboard({
+              storyboardId: outcome.storyboardId,
+              sceneCount: outcome.scenes.length,
+              questionAr: briefIdea.trim(),
+              origin: 'brief',
+            });
+            // Carried to the scenes rather than left to find them:
+            // the Creator asked for this and it is ready.
+            // The scenes live in the storyboard world — sending a
+            // Creator to a montage tab instead would deliver them to
+            // a room their own work is not in.
+            setWorkMode('storyboard');
+            setBriefNotice(null);
+          } catch {
+            setBriefNotice('تعذّر التفكيك الآن. أعد المحاولة.');
+          } finally {
+            setIsComposingBrief(false);
+          }
+        }}
+      >
+        {isComposingBrief ? 'يُفكّك…' : '✦ أنشئ المشاهد'}
+      </button>
+      {briefNotice && <p className="brief-notice">{briefNotice}</p>}
+    </div>
+  );
+
   return (
     <RasAmrExperience>
       {/* ── THE STORYBOARD PATH, MOUNTED OUTSIDE THE VIEWPORT ───────────────
@@ -4599,6 +4709,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
           its place relative to the gate; the gate's stacking fix stays intact. */}
       {creationPhase === 'storyboard' && (
         <StoryboardWorld
+          ideaToScenes={ideaToScenes}
           onBack={() => setCreationPhase('intent')}
           onOpenInMontage={(production) => { void handleOpenStoryboardInMontage(production); }}
           montageNodeCount={sessionCanvas?.tracks.reduce((n, t) => n + t.nodes.length, 0) ?? 0}
@@ -5148,102 +5259,6 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                 for the upload and could not find it. A capability nobody can
                 find is not a capability. There are two ways to bring an asset
                 in, so there are two doors, and each says what it opens. */}
-            {/* MEASURED 2026-09-25 after building it: this panel was
-                placed inside the التوجيه tab, and a Creator lands on
-                المشهد — so the Chamber's first road was behind a tab,
-                which is the same fault the upload had. Stating an idea
-                is the first act in this room, so it stands where the
-                room begins, above the two doors that are the second. */}
-            {/* ── THE CREATOR STATES WHAT THEY WANT ─────────────────
-                The Founder, 2026-09-25: «يجب أن يجد المنشئ حقلاً
-                لكتابة مراده لإنشاء الاستوري بورد ووضع الفكرة
-                والمواصفات وضغط زر الإنشاء». It sits directly above
-                the scenes panel because that is the order of the work:
-                state it, see it, produce it. */}
-            {!storyboard && (
-              <div className="brief-compose" data-testid="rasamr-brief">
-                <span className="brief-tag">✦ اكتب فكرتك — تُفكّك إلى مشاهد</span>
-                <label className="brief-label" htmlFor="ras-brief-idea">الفكرة</label>
-                <textarea
-                  id="ras-brief-idea"
-                  className="brief-idea"
-                  data-testid="rasamr-brief-idea"
-                  rows={3}
-                  value={briefIdea}
-                  disabled={isComposingBrief}
-                  onChange={(e) => setBriefIdea(e.target.value)}
-                  placeholder="ما الذي تريد أن تصنعه؟ اكتبه بلغتك كما تتخيّله."
-                />
-                <label className="brief-label" htmlFor="ras-brief-specs">المواصفات — ما تلتزم به المشاهد</label>
-                <textarea
-                  id="ras-brief-specs"
-                  className="brief-specs"
-                  data-testid="rasamr-brief-specs"
-                  rows={3}
-                  value={briefSpecs}
-                  disabled={isComposingBrief}
-                  onChange={(e) => setBriefSpecs(e.target.value)}
-                  placeholder="النبرة، الإيقاع، من يُخاطَب، ما يجب أن يُرى وما يجب ألّا يُرى."
-                />
-                <div className="brief-count-row">
-                  <label className="brief-label" htmlFor="ras-brief-count">عدد المشاهد</label>
-                  <input
-                    id="ras-brief-count"
-                    className="brief-count"
-                    type="number"
-                    min={3}
-                    max={7}
-                    value={briefSceneCount}
-                    disabled={isComposingBrief}
-                    onChange={(e) => setBriefSceneCount(Math.max(3, Math.min(7, Number(e.target.value) || 5)))}
-                  />
-                  <span className="brief-count-hint">من ثلاثة إلى سبعة</span>
-                </div>
-                <button
-                  type="button"
-                  className="brief-compose-btn"
-                  data-testid="rasamr-brief-compose"
-                  disabled={isComposingBrief || briefIdea.trim().length < 8}
-                  onClick={async () => {
-                    setIsComposingBrief(true);
-                    setBriefNotice('يُفكّك — ثوانٍ…');
-                    try {
-                      const outcome = await composeStoryboardFromBrief({
-                        ideaAr: briefIdea,
-                        specificationsAr: briefSpecs,
-                        sceneCount: briefSceneCount,
-                      });
-                      if (!outcome.ok) {
-                        setBriefNotice(outcome.messageAr);
-                        return;
-                      }
-                      // Straight into the panel that produces. The road from
-                      // here to a finished film is already measured.
-                      setStoryboard({
-                        storyboardId: outcome.storyboardId,
-                        sceneCount: outcome.scenes.length,
-                        questionAr: briefIdea.trim(),
-                        origin: 'brief',
-                      });
-                      // Carried to the scenes rather than left to find them:
-                      // the Creator asked for this and it is ready.
-                      // The scenes live in the storyboard world — sending a
-                      // Creator to a montage tab instead would deliver them to
-                      // a room their own work is not in.
-                      setWorkMode('storyboard');
-                      setBriefNotice(null);
-                    } catch {
-                      setBriefNotice('تعذّر التفكيك الآن. أعد المحاولة.');
-                    } finally {
-                      setIsComposingBrief(false);
-                    }
-                  }}
-                >
-                  {isComposingBrief ? 'يُفكّك…' : '✦ أنشئ المشاهد'}
-                </button>
-                {briefNotice && <p className="brief-notice">{briefNotice}</p>}
-              </div>
-            )}
 
           </header>
 

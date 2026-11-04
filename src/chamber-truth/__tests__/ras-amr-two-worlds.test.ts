@@ -56,3 +56,54 @@ it('and neither of them is cut off in a narrow rail', () => {
   const at = css.indexOf('.ras-work-bar {');
   expect(css.slice(at, css.indexOf('}', at))).toContain('flex-wrap: wrap');
 });
+
+/*  ── AN IDEA BECOMES SCENES IN THE WORLD THAT KEEPS THEM ───────────────
+ *
+ *    RULED BY THE FOUNDER, 2026-11-04, after finding it by hand on the
+ *    live release: «هذا القسم خاص بعالم الاستوري بورد ولا ينتمي إلى
+ *    المونتاج… وأرى إزالته وليس تغطيته».
+ *
+ *    He was right at every point, and the code said so itself: the block
+ *    sat in the MONTAGE rail, and its button created a storyboard and then
+ *    called setWorkMode('storyboard') — it existed only to leave the room
+ *    it stood in.
+ *
+ *    REMOVED, not hidden. Hiding it with a rule scoped to one view leaves
+ *    it standing in the phone column, where the montage section can least
+ *    afford the height — which is the Founder's own reason for insisting
+ *    on removal, and the Empire's own law.
+ */
+it('the idea-to-scenes block is gone from the montage rail, not hidden in it', () => {
+  const page = PAGE;
+  const rail = page.slice(page.indexOf('<aside className="ras-panel-left'),
+                          page.indexOf('<div className="queue-container'));
+
+  // Not in the rail at all — neither the compose block nor its button.
+  expect(rail).not.toContain('brief-compose');
+  expect(rail).not.toContain('أنشئ المشاهد');
+
+  // And not hidden there either: a removal that is really a stylesheet is
+  // the thing the Founder forbade.
+  const css = readFileSync(join(process.cwd(), 'app/ras-amr/ras-amr.css'), 'utf8');
+  //   IT MEASURES WHAT IT CLAIMS. The first version of this line lost its
+  //   backslashes on the way into the file and read `display:s*none`, which
+  //   matches nothing ever written. It passed over a stylesheet that really
+  //   did hide the block — and only putting the defect back revealed that the
+  //   instrument, not the code, was the thing that was broken.
+  const hidden = /\.brief-compose[^{]*\{[^}]*display:\s*none/.test(css);
+  expect(hidden).toBe(false);
+});
+
+it('and it is rendered by the world that keeps the scenes', () => {
+  const page = PAGE;
+  const world = readFileSync(join(process.cwd(), 'app/ras-amr/storyboard/StoryboardWorld.tsx'), 'utf8');
+
+  // Declared once in the chamber and handed over — the logic is unchanged,
+  // only the room it is met in.
+  expect(page).toContain('const ideaToScenes =');
+  expect(page).toContain('ideaToScenes={ideaToScenes}');
+
+  // And drawn in the storyboard world, above the hand-made scene.
+  expect(world).toContain('{ideaToScenes}');
+  expect(world.indexOf('{ideaToScenes}')).toBeLessThan(world.indexOf('＋ مشهد جديد'));
+});
