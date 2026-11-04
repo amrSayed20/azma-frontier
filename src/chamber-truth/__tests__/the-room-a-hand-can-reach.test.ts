@@ -169,4 +169,44 @@ describe('رأس الأمر على الهاتف', () => {
     expect(phone).toContain('max-height: none');
     expect(phone).toContain('overflow: visible');
   });
+
+  /*  ── AND THE SAME CURE REACHES THE DESKTOP THE FOUNDER WORKS ON ──────
+   *
+   *    FOUND BY HIS HAND on the live release, 2026-11-04: «القائمة مختفية»,
+   *    with his cursor photographed resting on TWO scrollbars side by side
+   *    in the left rail. Between his two frames the thing that moved was
+   *    the capped header — «ما الذي تريد أن» became «✦ أنشئ المشاهد» —
+   *    while the asset list beneath it never moved.
+   *
+   *    The cause was already measured and written in this very file, at
+   *    390×844: «a box with no scrolling left to do kept the gesture and
+   *    passed nothing on». The cure was written with it — and scoped to
+   *    `max-width: 399px`, so it never reached the rail a desktop uses.
+   *
+   *    These two cases are the cure travelling. They fail the moment it is
+   *    scoped back to one breakpoint again.
+   */
+  it('the capped header passes the wheel on at EVERY width, not only on a phone', () => {
+    // Unscoped: the base rule, which is what a desktop at any zoom gets.
+    const header = rule('.ras-panel-left > .panel-header');
+    expect(header).toContain('overscroll-behavior: auto');
+    expect(header).not.toContain('overscroll-behavior: contain');
+
+    // And the rail itself still contains the wheel, which is the boundary
+    // that was ever actually needed — a wheel must not reach the page.
+    expect(rule('.ras-panel-left')).toContain('overscroll-behavior: contain');
+  });
+
+  it('a rail too short to divide becomes ONE scroller, not two', () => {
+    // 48% of a 560px viewport is a sliver no compose block fits in: the cap
+    // buys the list nothing there and costs a second scrollbar inside a
+    // letterbox. Browser zoom is how a desktop arrives — 150% of a 900px
+    // window is a 600px viewport, 175% is 514px.
+    const short = inMedia('max-height: 560px', '.ras-panel-left > .panel-header');
+    expect(short).toContain('max-height: none');
+    expect(short).toContain('overflow: visible');
+    // And the floor goes with it: the list is no longer competing for height.
+    expect(inMedia('max-height: 560px', '.ras-panel-left > .queue-container'))
+      .toContain('min-height: 0');
+  });
 });
