@@ -9,9 +9,10 @@ import type { MetadataRoute } from 'next';
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'AZMA OS',
+    name: 'AZMA OS — نظام تشغيل إبداعي لصنّاع المحتوى',
     short_name: 'AZMA OS',
-    description: 'The Living Empire — sovereign generation with Qiyamah.',
+    description:
+      'نظام تشغيل إبداعي لصنّاع المحتوى: إنتاج أفلام قصيرة ومشاهد وصور وأصوات ونصوص لمحتواك ولتسويق عملك، وحفظها في خزانتك، ونشرها إلى حساباتك.',
     start_url: '/',
     display: 'standalone',
     background_color: '#000000',

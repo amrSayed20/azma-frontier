@@ -33,8 +33,9 @@ const latinFont = IBM_Plex_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "AZMA OS",
-  description: "The Living Empire — sovereign generation with Qiyamah.",
+  title: "AZMA OS — نظام تشغيل إبداعي لصنّاع المحتوى",
+  description:
+    "نظامُ تشغيلٍ إبداعيٌّ لصُنّاعِ المحتوى: إنتاجُ أفلامٍ قصيرةٍ ومشاهدَ وصورٍ وأصواتٍ ونصوصٍ لمحتواك ولتسويقِ عملك، وحفظُها في خزانتك، ونشرُها إلى حساباتك. ولا يُسمح بإنتاج مادّةٍ جنسيّةٍ أو حميميّةٍ لأشخاصٍ حقيقيّين، ولا بإنتاج شبيهِ شخصٍ بغير إذنه.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

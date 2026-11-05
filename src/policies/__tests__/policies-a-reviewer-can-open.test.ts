@@ -121,7 +121,7 @@ describe('the likeness clauses, where a Creator actually reads them', () => {
   });
 
   it('every published document that gained a clause also gained a version', () => {
-    expect(policyBySlug('terms-of-service')!.version).toBe('1.2');
+    expect(policyBySlug('terms-of-service')!.version).toBe('1.3');
     expect(policyBySlug('privacy-policy')!.version).toBe('1.3');
     expect(policyBySlug('refunds-and-credit-balance')!.version).toBe('1.2');
   });
@@ -130,7 +130,7 @@ describe('the likeness clauses, where a Creator actually reads them', () => {
     // MEASURED HAZARD: the version lives twice — in the field and inside the
     // text. Two numbers for one document is how a reader cites a text nobody
     // can find.
-    expect(terms).toContain('الإصدار: 1.2');
+    expect(terms).toContain('الإصدار: 1.3');
     expect(privacy).toContain('الإصدار: 1.3');
     expect(policyBySlug('refunds-and-credit-balance')!.body).toContain('إصدار السياسة: 1.2');
   });
@@ -183,5 +183,63 @@ describe('the privacy policy a Google reviewer opens', () => {
 
   it('and promises no advertising use and no sale of Google data', () => {
     expect(privacy).toContain('لا نستعمل بيانات جوجل للإعلان');
+  });
+});
+
+/**
+ * ─── THE ABUSE GOOGLE COULD NOT RULE OUT, 2026-11-05 ───────────────────────
+ *
+ *   Brand verification refused the project, and the refusal named its own
+ *   remedy: «يُرجى تحديث صفحتك الرئيسية لتوضيح غرض تطبيقك بشكل جليّ والتأكد من
+ *   عدم استخدامه لواجهات برمجة تطبيقات جوجل الخاصة بالذكاء الاصطناعي لإنشاء
+ *   صور حميمية غير توافقية (AI NCII)».
+ *
+ *   The prohibition list in §5 forbade a likeness without permission and
+ *   anything touching a minor — but it NEVER NAMED intimate or sexual
+ *   material. A reviewer checking for one specific abuse cannot find it in a
+ *   clause that does not mention it, and neither can a Creator.
+ */
+describe('the one abuse a reviewer checks for by name', () => {
+  const terms = policyBySlug('terms-of-service')!.body;
+
+  it('the terms forbid non-consensual intimate material in words, not by implication', () => {
+    expect(terms).toContain('مادّة جنسيّة أو عارية أو حميميّة');
+    expect(terms).toContain('بغير موافقته الصريحة');
+  });
+
+  it('and forbid it absolutely where a minor is involved, consent or no consent', () => {
+    expect(terms).toContain('وما يمسّ قاصراً من ذلك محظورٌ مطلقاً');
+  });
+
+  it('and say the providers’ own interfaces may not be used for it', () => {
+    // Google's wording is about ITS APIs being used for this. The answer has
+    // to cover the providers, not only the platform's own buttons.
+    expect(terms).toContain('ولا أيٌّ من واجهات مزوّديها');
+  });
+});
+
+/**
+ * ─── A POLICY THAT DENIES ITS OWN FORCE, 2026-11-05 ────────────────────────
+ *
+ *   All three published documents carried `effectiveDate: null`, and the page
+ *   printed it plainly in both tongues: «لم يُحدَّد تاريخ سريانها بعد» ·
+ *   «Effective date not yet set». That is not a formatting gap. It is the
+ *   Empire telling a Creator — and telling the platform reviewer who opens
+ *   the very same URL — that nothing on the page binds anybody.
+ *
+ *   The day was the Founder's alone to name, and he named it on 2026-11-05:
+ *   «تاريخ النشر يبدأ من 1-10-2026».
+ */
+describe('a published policy governs, or it is not published', () => {
+  it('every published document names the day it began to govern', () => {
+    for (const p of PUBLISHED_POLICIES) {
+      expect(p.effectiveDate).not.toBeNull();
+    }
+  });
+
+  it('and it is the day the Founder named', () => {
+    for (const p of PUBLISHED_POLICIES) {
+      expect(p.effectiveDate).toBe('2026-10-01');
+    }
   });
 });

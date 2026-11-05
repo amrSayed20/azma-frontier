@@ -41,9 +41,21 @@ const DIALOG = 'https://www.facebook.com/v21.0/dialog/oauth';
 /**
  * The narrowest set that can list Pages and publish to both destinations.
  *
- * `pages_read_engagement` is required by Meta alongside `pages_manage_posts`;
- * `business_management` is deliberately NOT requested — it grants control over
- * a Creator's whole business portfolio for a capability that posts one file.
+ * `pages_read_engagement` is required by Meta alongside `pages_manage_posts`.
+ *
+ * AND `business_management` IS REQUESTED, THOUGH THIS HEADER ONCE SAID IT
+ * WAS NOT. It said so honestly — a permission over a whole business
+ * portfolio is far wider than posting one file, and it was left out on
+ * purpose. Then it was MEASURED on production over several real consents
+ * (2026-10-07/08) that a Page held by a portfolio is invisible to
+ * `/me/accounts`, and the Creator saw an empty list while holding a real
+ * Page. The narrower set was tried first and found insufficient for a real
+ * Creator's real Page, so the wider one was added with the portfolio path
+ * in b7006cf — and this header was not moved with it.
+ *
+ * The reasoning, with the measurements that forced it, is at the call site
+ * in `discoverPages`. It is also the justification Meta App Review asks for
+ * when this permission is submitted.
  */
 export const META_SCOPES: readonly string[] = [
   'business_management',

@@ -361,6 +361,28 @@ export function SovereignGateway({
           <p className="gi-lede gi-lede--second">{t(dict, 'gateway.introSecond')}</p>
         </section>
 
+        {/*
+          WHAT THIS PLACE IS NOT FOR — on the first page, 2026-11-05.
+
+          Google's brand verification refused the app with a reason that
+          named its own remedy: «لم نتمكن من التأكد من امتثال تطبيقك…
+          يُرجى تحديث صفحتك الرئيسية لتوضيح غرض تطبيقك بشكل جليّ والتأكد من
+          عدم استخدامه … لإنشاء صور حميمية غير توافقية (AI NCII)».
+
+          It could not rule the abuse out because NOTHING ON THE PAGE RULED
+          IT OUT. The prohibition existed — in clause five of the terms —
+          and a clause nobody is shown is not a thing a stranger, or a
+          reviewer, can read. So it is said here, where the purpose is said.
+
+          It borrows the intro section's classes deliberately: a new class
+          with no stylesheet behind it paints browser white, which this
+          platform has already been bitten by once.
+        */}
+        <section className="gi-intro gi-limits">
+          <h2 className="gi-h2">{t(dict, 'gateway.limitsTitle')}</h2>
+          <p className="gi-lede">{t(dict, 'gateway.limitsBody')}</p>
+        </section>
+
         <section className="gi-chambers">
           <h2 className="gi-h2">{t(dict, 'gateway.chambersTitle')}</h2>
           <p className="gi-note">{t(dict, 'gateway.chambersLede')}</p>

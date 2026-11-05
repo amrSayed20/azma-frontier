@@ -50,8 +50,11 @@ it('the Founder’s text is now SERVED IN ARABIC, by his own order', () => {
   expect(policy.body).toContain('01069269456');
   // The translation says what it is, so nobody mistakes it for a new policy.
   expect(policy.body).toContain('مترجمةً عن نصّها الإنجليزي');
-  // Still unset, still his.
-  expect(policy.effectiveDate).toBeNull();
+  // HIS, AND NOW NAMED. It read «Still unset, still his» and asserted null —
+  // a guard whose whole job was to stop ME setting a date only the Founder
+  // may set. He set it on 2026-11-05: «تاريخ النشر يبدأ من 1-10-2026». So the
+  // guard now binds HIS ruling instead of its absence, which is the same duty.
+  expect(policy.effectiveDate).toBe('2026-10-01');
 });
 
 it('a document with no effective date is not shown as if it governed', () => {

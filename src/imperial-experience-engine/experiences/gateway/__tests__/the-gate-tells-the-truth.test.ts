@@ -275,3 +275,55 @@ describe('9 · the chosen tongue reaches everything the journey shows', () => {
     expect(doc).toContain('lang={policy.language}');
   });
 });
+
+/*  ── THE FIRST PAGE MUST SAY WHAT THIS IS, AND WHAT IT IS NOT FOR ──────────
+ *
+ *    Google's brand verification refused the project on 2026-11-05 and named
+ *    its own remedy: «لم نتمكن من التأكد من امتثال تطبيقك للمعايير. يُرجى
+ *    تحديث صفحتك الرئيسية لتوضيح غرض تطبيقك بشكل جليّ والتأكد من عدم استخدامه
+ *    لواجهات برمجة تطبيقات جوجل الخاصة بالذكاء الاصطناعي لإنشاء صور حميمية
+ *    غير توافقية (AI NCII)».
+ *
+ *    MEASURED on the live page, and the refusal was fair on both counts:
+ *
+ *      · the layer a crawler reads said «The Living Empire — sovereign
+ *        generation with Qiyamah» — a generation of nothing named, for nobody
+ *        named, which is the one shape no reviewer can clear;
+ *      · and the page carried ZERO mention of the abuse, so there was nothing
+ *        on it to rule the abuse out. The prohibition existed in clause five
+ *        of the terms, and a clause nobody is shown is not a thing a stranger
+ *        can read.
+ *
+ *    These bind the repair where it was made, in both tongues.
+ */
+describe('9 · what the first page says this is, and what it is not for', () => {
+  it('the purpose names what is produced and for whom, in both tongues', () => {
+    expect(AR).toContain('لصُنّاعِ المحتوى');
+    expect(EN).toContain('for content creators');
+  });
+
+  it('and it is not the empty claim a reviewer refused', () => {
+    // IT WAS WRITTEN TOO NARROWLY ONCE, AND THE BUILD CAUGHT IT: this read app/layout.tsx alone and passed, while the SAME refused sentence sat in app/manifest.ts — served, public and machine-read at /manifest.webmanifest. A guard that names one file guards one file.
+    for (const f of ['app/layout.tsx', 'app/manifest.ts']) {
+      expect(read(f)).not.toContain('sovereign generation with Qiyamah');
+      expect(read(f)).toContain('لصنّاع المحتوى');
+    }
+  });
+
+  it('the layer a crawler reads states the purpose, not a slogan', () => {
+    expect(read('app/layout.tsx')).toContain('لصنّاع المحتوى');
+  });
+
+  it('the page itself names the abuse it forbids, in both tongues', () => {
+    expect(AR).toContain('gateway.limitsBody');
+    expect(AR).toContain('بغير موافقته الصريحة');
+    expect(EN).toContain('gateway.limitsBody');
+  });
+
+  it('and the gateway actually draws that block, not merely holds the words', () => {
+    // A label in a dictionary that no component renders is a prohibition
+    // nobody is shown — which is the exact defect being repaired.
+    expect(CLIENT).toContain("t(dict, 'gateway.limitsTitle')");
+    expect(CLIENT).toContain("t(dict, 'gateway.limitsBody')");
+  });
+});

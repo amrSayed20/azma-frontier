@@ -51,8 +51,19 @@ export const REFUNDS_AND_CREDIT_BALANCE: PolicyDocument = {
   titleAr: 'الاسترداد ورصيد الوحدات',
   language: 'ar',
   version: '1.2',
-  /** «[To be added]» in the Founder's text. Until it is a date, it is null. */
-  effectiveDate: null,
+  /**
+   * RULED BY THE FOUNDER, 2026-11-05: «تاريخ النشر يبدأ من 1-10-2026».
+   *
+   * It was null, and the page said so in both tongues — «لم يُحدَّد تاريخ
+   * سريانها بعد». A policy that denies its own force is not one a Creator
+   * can rely on, nor one a platform reviewer can accept. The day is his to
+   * name and nobody else’s, and this is the day he named.
+   *
+   * It is the day the policy BEGAN to govern, not the day this revision was
+   * written — the body carries its own version and revision date, which is
+   * the ordinary shape of a published policy.
+   */
+  effectiveDate: '2026-10-01',
   body: `سياسة الاسترداد ورصيد الوحدات
 AZMA OS
 

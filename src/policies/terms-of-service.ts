@@ -40,12 +40,23 @@ export const TERMS_OF_SERVICE: PolicyDocument = {
   titleEn: 'Terms of Service',
   titleAr: 'شروط الاستخدام',
   language: 'ar',
-  version: '1.2',
-  /** No day was named. Until one is, the document does not govern. */
-  effectiveDate: null,
+  version: '1.3',
+  /**
+   * RULED BY THE FOUNDER, 2026-11-05: «تاريخ النشر يبدأ من 1-10-2026».
+   *
+   * It was null, and the page said so in both tongues — «لم يُحدَّد تاريخ
+   * سريانها بعد». A policy that denies its own force is not one a Creator
+   * can rely on, nor one a platform reviewer can accept. The day is his to
+   * name and nobody else’s, and this is the day he named.
+   *
+   * It is the day the policy BEGAN to govern, not the day this revision was
+   * written — the body carries its own version and revision date, which is
+   * the ordinary shape of a published policy.
+   */
+  effectiveDate: '2026-10-01',
   body: `شروط استخدام AZMA OS
 
-الإصدار: 1.2 · التاريخ: 2026-10-12
+الإصدار: 1.3 · التاريخ: 2026-10-12
 
 تُشغَّل AZMA OS بواسطة Topline Design — مدينة نصر، القاهرة — azma.os27@gmail.com
 
@@ -92,6 +103,12 @@ AZMA OS منصّة إنشاء محتوى رقمي تعمل عبر الإنترن
 ٥. الاستخدام المقبول
 
 يُمنع استعمال المنصّة في إنتاج أو نشر: ما يخالف القانون · ما ينتحل شخصية غيرك أو يوهم بصدوره عن جهة ليست أنت · ما يضلّل في أمرٍ له أثر (صحّة أو مال أو انتخاب) · ما يمسّ قاصراً · ما ينتهك حقوق طرف ثالث · ما يُستعمل في مضايقة شخص بعينه أو التحريض عليه · شبيهَ شخصٍ بغير إذنه — بتبديل وجهٍ أو إنطاق صورةٍ أو مزامنة شفاهٍ أو أيّ وسيلةٍ أخرى — ويشمل ذلك إيهامَ الناس بأنّ شخصاً قال أو فعل ما لم يقل أو يفعل، ولا يُعدّ امتلاكُك المادّةَ إذناً.
+
+ويُمنع منعاً باتّاً إنتاج أو نشر مادّة جنسيّة أو عارية أو حميميّة تُصوّر شخصاً حقيقيّاً بغير موافقته الصريحة — ويشمل ذلك تعريةَ صورةٍ قائمة، أو تركيبَ جسدٍ عارٍ أو مشهدٍ جنسيٍّ على وجه شخصٍ أو شبيهه، بتبديلِ وجهٍ أو إنطاقِ صورةٍ أو مزامنةِ شفاهٍ أو أيّ وسيلةٍ أخرى. ولا يُعدّ امتلاكُك الصورةَ الأصليّةَ موافقةً، ولا يُعدّ إقرارُك دليلاً على موافقةٍ لم تُعطَ.
+
+وما يمسّ قاصراً من ذلك محظورٌ مطلقاً، بأيّ حال، ومهما كانت الموافقة المُدّعاة.
+
+ولا تُستعمل أدوات AZMA OS، ولا أيٌّ من واجهات مزوّديها، في شيءٍ من ذلك.
 
 ومخالفة هذا القسم سببٌ كافٍ لتعليق الحساب.
 
