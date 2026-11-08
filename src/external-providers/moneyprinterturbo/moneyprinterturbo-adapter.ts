@@ -176,6 +176,14 @@ export interface VideoProductionRequest {
   readonly language?: string;
   readonly paragraphCount?: number;
   readonly voiceName?: string;
+  /**
+   * A narration this Empire already spoke, as a path the WORKSHOP can open
+   * — i.e. a container-side path from workshop-handoff.ts, never a host
+   * path and never a web URL. When present the workshop plays it and never
+   * reaches for its own speech service, which is the point: that service is
+   * refused from this address and no setting fixes that.
+   */
+  readonly customAudioFile?: string;
   readonly aspect?: '9:16' | '16:9' | '1:1';
   readonly clipDurationSeconds?: number;
   readonly subtitlesEnabled?: boolean;
@@ -301,6 +309,12 @@ export class MoneyPrinterTurboAdapter {
         video_language: request.language ?? 'Arabic',
         paragraph_number: request.paragraphCount ?? 2,
         voice_name: request.voiceName ?? '',
+        // Only sent when we actually have one. Sending null explicitly is
+        // the same as omitting it to the workshop, but omitting keeps the
+        // request identical to what every existing caller already sends.
+        ...(request.customAudioFile
+          ? { custom_audio_file: request.customAudioFile }
+          : {}),
         /**
          * Written once, from whether pictures were supplied.
          *

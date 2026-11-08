@@ -214,7 +214,7 @@ export const QIYAMAH_COST_TRUTH: readonly CostTruthEntry[] = [
     capability: 'STORYBOARD',
     model: null, provider: null, credits: null, unit: '1 storyboard',
     basis: 'UNKNOWN', measuredFrom: null, effectiveFrom: '2026-09-27',
-    note: 'The PixelLab/storyboard binding is unchanged by this closure and its charge has never been measured.',
+    note: 'The visual engine of this world is the isolated provider, by the Founder\u2019s directive of 2026-11-09. PixelLab is bound to nothing in this repository and is excluded from the Storyboard world. The charge has never been measured.',
   },
   {
     capability: 'VOICE_AND_TTS',

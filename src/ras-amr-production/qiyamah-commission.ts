@@ -38,6 +38,7 @@
  */
 
 import { copyFile, mkdir } from 'fs/promises';
+import { HOST_HANDOFF_DIR, CONTAINER_HANDOFF_DIR } from './workshop-handoff';
 import { basename, join } from 'path';
 import { getDb } from '../persistent-storage';
 import { hasActiveEntitlement } from '../billing/entitlement-service';
@@ -74,10 +75,10 @@ const SCENE_GENERATION_SCOPE = 'ras-amr:scene-generation';
  *   is added, nothing is exposed over HTTP, and the sovereign asset itself
  *   never leaves the Creator's Vault — this is a render copy, like any other.
  */
-const HOST_HANDOFF_DIR = process.env['MPT_HANDOFF_DIR']
-  ?? '/opt/providers/mpt-runtime/storage/azma-commissioned';
-const CONTAINER_HANDOFF_DIR = process.env['MPT_HANDOFF_CONTAINER_DIR']
-  ?? '/MoneyPrinterTurbo/storage/azma-commissioned';
+// The pair lives in workshop-handoff.ts, which both the picture road and
+// the narration road import — see that file for why one directory may not
+// be declared in two places.
+export { HOST_HANDOFF_DIR, CONTAINER_HANDOFF_DIR } from './workshop-handoff';
 
 /** Where the generated file actually sits on this host. */
 function hostPathForAsset(assetUrl: string): string {
