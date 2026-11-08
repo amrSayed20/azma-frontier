@@ -320,6 +320,16 @@ describe('9 · what the first page says this is, and what it is not for', () => 
     expect(EN).toContain('gateway.limitsBody');
   });
 
+  it('and it states what the APP itself does, which is a different claim', () => {
+    // THE DISTINCTION THE REFUSAL TURNED ON. The sibling test above proves
+    // the page forbids the CREATOR — and it passed while Google refused the
+    // page twice. Google's bullet asks the home page to confirm that the
+    // APPLICATION does not use Google APIs to create AI NCII. A conduct rule
+    // binding the user is not a first-party declaration about the app.
+    expect(AR).toContain('ولا يَستعمل AZMA OS واجهاتِ جوجل البرمجيّة (Google APIs)');
+    expect(EN).toContain('AZMA OS does not use Google APIs');
+    expect(AR).toContain('AI NCII');
+  });
   it('and the gateway actually draws that block, not merely holds the words', () => {
     // A label in a dictionary that no component renders is a prohibition
     // nobody is shown — which is the exact defect being repaired.
