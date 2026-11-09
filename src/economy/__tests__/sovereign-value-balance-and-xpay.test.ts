@@ -302,7 +302,7 @@ describe('3 · the prices are approved; taking money is a separate gate', () => 
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('3b · each capability is its own charge — nothing is charged twice', () => {
-  it('the ten approved capabilities are distinct, with no alias', () => {
+  it('the eleven approved capabilities are distinct, with no alias', () => {
     // PLATFORM_REFRAME added 2026-09-29 by Founder ruling: «اعاده التاطير
     // تتكلف 20 نقطه... ولن يكون بمكمن الغايه ايه معاملات من الرصيد بخلاف
     // اعاده التاطير». It is its own capability precisely so it can never be
@@ -312,8 +312,14 @@ describe('3b · each capability is its own charge — nothing is charged twice',
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids.sort()).toEqual([
       'IMAGE_EDIT', 'IMAGE_GENERATION', 'INFOGRAPHIC', 'MOTION', 'MP4_PRODUCTION',
-      'PLATFORM_REFRAME', 'STORYBOARD_IMAGE', 'STORYBOARD_VIDEO', 'UPSCALE_2X',
-      'VIDEO_GENERATION',
+      // RAS_AMR_SCENE joined by the Founder’s decision of 2026-11-09. It
+      // is in THIS table, and not derived like its siblings in
+      // new-capability-pricing.ts, for one reason: at 1K he signed 200
+      // where the uplift rule derives 170. The other two resolutions he
+      // named (255 at 2K, 340 at 4K) are NOT written anywhere — the
+      // margin floor reaches them from the provider’s published cost.
+      'PLATFORM_REFRAME', 'RAS_AMR_SCENE', 'STORYBOARD_IMAGE', 'STORYBOARD_VIDEO',
+      'UPSCALE_2X', 'VIDEO_GENERATION',
     ]);
   });
 

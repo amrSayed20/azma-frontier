@@ -38,7 +38,7 @@
  */
 
 import { copyFile, mkdir } from 'fs/promises';
-import { HOST_HANDOFF_DIR, CONTAINER_HANDOFF_DIR } from './workshop-handoff';
+import { HOST_HANDOFF_DIR } from './workshop-handoff';
 import { basename, join } from 'path';
 import { getDb } from '../persistent-storage';
 import { hasActiveEntitlement } from '../billing/entitlement-service';
@@ -52,6 +52,7 @@ import {
 } from '../economy/paid-operation-gate';
 import { claimAttempt, completeAttempt, failAttempt } from '../economy/paid-operation-attempts';
 import { SCENE_CAPABILITY } from '../economy/pricing/sovereign-price-authority';
+import { resolutionForStyle } from '../sovereign-model-selection/intent-builder';
 
 /** The namespace this road's scene submissions live in. */
 const SCENE_GENERATION_SCOPE = 'ras-amr:scene-generation';
@@ -102,9 +103,10 @@ async function handOverToWorkshop(assetUrl: string): Promise<string | null> {
     const name = basename(assetUrl);
     await mkdir(HOST_HANDOFF_DIR, { recursive: true });
     await copyFile(hostPathForAsset(assetUrl), join(HOST_HANDOFF_DIR, name));
-    // The container is Linux; its path is built explicitly rather than by
-    // this host's separator, which on Windows would be the wrong one.
-    return `${CONTAINER_HANDOFF_DIR}/${name}`;
+    // The bare filename: the form MEASURED to pass the workshop’s own
+    // path guard on 2026-11-09. See workshop-handoff.ts for the refusal
+    // that taught this road which directory and which form.
+    return name;
   } catch (err) {
     console.error('[RasAmr] handoff to workshop failed:', assetUrl, err);
     return null;
@@ -570,6 +572,20 @@ export async function commissionScenePictures(params: {
       //   read at call time from the one pricing authority. This line names
       //   the classification; it never carries the figure.
       sovereignCapability: SCENE_CAPABILITY,
+      // ── THE FOUNDER’S DECISION, 2026-11-09 ─────────────────────────
+      //
+      //   «تُطبّق تعريفة Nano Banana 2 المعتمدة بحسب الدقة: 1K: 200 ·
+      //    2K: 255 · 4K: 340. لا تُستخدم تعريفة موحدة بصرف النظر عن الدقة.»
+      //
+      //   The provider’s own cost moves with the resolution — 100 credits
+      //   at 1K, 150 at 2K, 200 at 4K. Without this line the hold was one
+      //   figure for all three, and a 4K scene would have been sold for
+      //   less than the Empire paid to make it.
+      //
+      //   Asked, never assumed: this road sends no style, so it asks what
+      //   a styleless scene resolves to — the same answer the generator
+      //   will reach, from the same maps.
+      dimension: resolutionForStyle(null),
       quantity: 1,
       trialCapability: 'image',
       metadata: { sceneId: demand.sceneId },

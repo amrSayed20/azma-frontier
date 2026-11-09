@@ -24,8 +24,8 @@ jest.mock('../../chambers/ras-al-amr/voice-cloning-provider', () => ({
   synthesizeSpeechWithClonedVoice: jest.fn(),
 }));
 jest.mock('../workshop-handoff', () => ({
-  CONTAINER_HANDOFF_DIR: '/MoneyPrinterTurbo/storage/azma-commissioned',
-  HOST_HANDOFF_DIR: '/opt/providers/mpt-runtime/storage/azma-commissioned',
+  CONTAINER_HANDOFF_DIR: '/MoneyPrinterTurbo/storage/local_videos',
+  HOST_HANDOFF_DIR: '/opt/providers/mpt-runtime/storage/local_videos',
   placeIntoWorkshop: jest.fn(),
 }));
 jest.mock('../../persistent-storage', () => ({ getDb: jest.fn(() => ({})) }));
@@ -63,16 +63,17 @@ const PRESET = { kind: 'preset', voice: 'onyx' } as const;
 beforeEach(() => {
   jest.clearAllMocks();
   authorise.mockReturnValue({ kind: 'authorised', holdId: 'hold-1' });
-  place.mockImplementation(async (name: string) => `/MoneyPrinterTurbo/storage/azma-commissioned/${name}`);
+  place.mockImplementation(async (name: string) => name);
 });
 
 describe('the Empire speaks its own films', () => {
-  it('hands the workshop the path the WORKSHOP can open, not the host path', async () => {
-    // THE DEFECT CLASS THIS CATCHES: the picture road already learned it —
-    // the container opens the path it is given on its OWN filesystem.
+  it('hands the workshop the reference IT resolves, not a path from this host', async () => {
+    // THE DEFECT CLASS THIS CATCHES, measured on the live engine: the
+    // workshop resolves a supplied reference inside its own directory and
+    // skips anything that escapes it. See the-workshop-opens-what-we-hand-it.
     preset.mockResolvedValue({ bytes: AUDIO, mimeType: 'audio/mpeg' });
     const out = await ask('قافلة تعبر الصحراء', PRESET);
-    expect(out.spoken && out.workshopPath.startsWith('/MoneyPrinterTurbo/storage/')).toBe(true);
+    expect(out.spoken && out.workshopPath).toMatch(/^narration-[0-9a-f]{16}\.mp3$/);
   });
 
   it('asks the clone service when a Creator’s own voice was chosen', async () => {

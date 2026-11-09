@@ -207,6 +207,18 @@ describe('٣ · والقرارُ المطلوبُ محصورٌ ومعدودٌ', 
       // The fifth capability: the scene names its own classification, and
       // the authority derives its figure from the ratified uplift.
       'src/ras-amr-production/qiyamah-commission.ts',
+      // ── AND THE NARRATION ROAD, 2026-11-09 ─────────────────────────────
+      //
+      //   The Empire speaks its own films now, because the production
+      //   workshop cannot — Microsoft refuses its speech socket from this
+      //   server. That road calls two paid providers, so it holds money,
+      //   and holding money is what puts a file on this list.
+      //
+      //   NOTE FOR WHOEVER ADDS THE NEXT ONE: this guard greps with
+      //   `git grep`, which reads TRACKED files only. A new reader is
+      //   invisible to it until the commit that adds it — so this list
+      //   can pass on a working tree that already violates it.
+      'src/ras-amr-production/sovereign-narration.ts',
       // The sixth, and the first that is not a provider act at all: the local
       // MP4 export, priced by the Founder's ruling of 2026-11-02 at 100 units
       // per second of the finished film.
@@ -227,14 +239,21 @@ describe('٣ · والقرارُ المطلوبُ محصورٌ ومعدودٌ', 
     ].sort());
   });
 
-  it('and the scene price is the measured cost × 1.70, derived and not chosen', () => {
+  it('and the scene price is the owner’s signed figure, no longer derived', () => {
     const scene = sovereignPriceFor(SCENE_CAPABILITY);
     const measured = MEASURED_COSTS.find((r) => r.capability === SCENE_CAPABILITY)!;
 
-    // The Founder's own rule and his own example: 100 → 170.
-    expect(scene.status).toBe('derived-ratified');
+    // THIS GUARD ONCE ASSERTED THE OPPOSITE, and was right to: until
+    // 2026-11-09 the scene had no signed figure and the uplift rule
+    // derived one — 100 × 1.70 = 170. The Founder then signed 200 at 1K
+    // and named 255 at 2K and 340 at 4K. A price he has chosen is not a
+    // price to re-derive, so the guard now holds his figure instead.
+    expect(scene.status).toBe('approved');
+    expect(scene.unitsPerQuantity).toBe(200);
+    // And it is 30 units ABOVE the derivation on purpose — the gap is
+    // his, not a rounding error for a later reader to tidy away.
     expect(scene.unitsPerQuantity)
-      .toBe(Math.ceil(measured.providerCreditsPerUnit * NEW_CAPABILITY_UPLIFT));
+      .toBeGreaterThan(Math.ceil(measured.providerCreditsPerUnit * NEW_CAPABILITY_UPLIFT));
 
     // And it is neither of the two figures that were never approved for it:
     // 70 belonged to the open-source storyboard, 98 was a break-even

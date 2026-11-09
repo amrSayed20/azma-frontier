@@ -236,6 +236,25 @@ export const OPERATION_CONSUMPTION: readonly ConsumptionRule[] = [
     pricingBasisCapability: 'INFOGRAPHIC' },
   { capability: 'IMAGE_EDIT', balancePerUnit: 200, quantity: 'per-image',
     pricingBasisCapability: 'IMAGE_EDIT' },
+  // ── A SCENE IN RAS AL AMR — THE FOUNDER’S DECISION, 2026-11-09 ───────
+  //
+  //   «تُطبّق تعريفة Nano Banana 2 المعتمدة بحسب الدقة: 1K: 200 · 2K: 255 ·
+  //    4K: 340. لا تُستخدم تعريفة موحدة بصرف النظر عن الدقة.»
+  //
+  //   This row carries the 1K figure only. The other two are NOT written
+  //   anywhere: the margin floor derives them from the provider’s own
+  //   published cost at each resolution, and lands on his numbers exactly.
+  //   A reader who "corrects" this to 170 to match cost × 1.70 would be
+  //   undoing a signed figure — it is 30 units above the derivation on
+  //   purpose, and that is the whole reason it is in THIS table.
+  { capability: 'RAS_AMR_SCENE', balancePerUnit: 200, quantity: 'per-image',
+    // NULL, and honestly so: the scene's measured provider cost lives in
+    // new-capability-pricing.ts (100 credits, job cmujkc33903p5nq019ccursva,
+    // 2026-09-27), not in the cost truth this field indexes. Naming a basis
+    // that table does not hold would price against nothing while looking
+    // priced — a guard catches exactly that.
+    pricingBasisCapability: null,
+    note: 'Founder\u2019s decision 2026-11-09 — the 1K figure. 2K and 4K come from the margin floor.' },
   { capability: 'UPSCALE_2X', balancePerUnit: 50, quantity: 'per-operation',
     pricingBasisCapability: 'UPSCALE_2X' },
 
