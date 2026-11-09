@@ -4730,6 +4730,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
       {creationPhase === 'storyboard' && (
         <StoryboardWorld
           ideaToScenes={ideaToScenes}
+          templates={SOVEREIGN_TEMPLATES}
           onBack={() => setCreationPhase('intent')}
           onOpenInMontage={(production) => { void handleOpenStoryboardInMontage(production); }}
           montageNodeCount={sessionCanvas?.tracks.reduce((n, t) => n + t.nodes.length, 0) ?? 0}

@@ -30,6 +30,10 @@ import {
   type StoryboardHistory,
 } from '@/src/chambers/ras-al-amr/storyboard-history';
 import {
+  adoptTemplateIntoProject, type AdoptableTemplate,
+} from '@/src/chambers/ras-al-amr/template-adoption';
+import TemplateShelf from './TemplateShelf';
+import {
   addScene,
   assessStoryboardReadiness,
   attachAsset,
@@ -94,6 +98,8 @@ export interface StoryboardWorldProps {
    *   column, which is the layout that can least afford it.
    */
   ideaToScenes?: React.ReactNode;
+  /** The chamber owns the templates; the workshop gives them a shelf. */
+  templates?: readonly AdoptableTemplate[];
 }
 
 /** Wall clock for edit timestamps (event handlers only). */
@@ -163,7 +169,7 @@ function AssetThumb({ asset, capability }: { asset: VaultAsset | undefined; capa
   return <img className="sb-thumb" src={asset.secureStorageUri} alt="" />;
 }
 
-export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCount, ideaToScenes }: StoryboardWorldProps) {
+export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCount, ideaToScenes, templates = [] }: StoryboardWorldProps) {
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [project, setProject] = useState<SovereignCanvas | null>(null);
@@ -561,6 +567,17 @@ export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCo
     saveTimerRef.current = window.setTimeout(() => { void flushSave(); }, 700);
   };
 
+  /**
+   * A template becomes scenes in the project that is OPEN. It never
+   * leaves the workshop, never replaces existing work, and travels
+   * through `commit` — so one step back removes exactly what it added.
+   */
+  const handleAdoptTemplate = (template: AdoptableTemplate) => {
+    const base = latestProjectRef.current;
+    if (!base || picturingSceneId) return;
+    commit(adoptTemplateIntoProject(base, template, clock()).canvas);
+  };
+
   const handleUpload = async (file: File) => {
     if (!pickerSceneId) return;
     const sceneId = pickerSceneId;
@@ -931,6 +948,14 @@ export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCo
                     )}
                   </article>
                 ))}
+                {/* The shelf sits with the other ways a scene comes to exist:
+                    from a template, from an idea, or from the hand. */}
+                <TemplateShelf
+                  templates={templates}
+                  vault={vault}
+                  onAdopt={handleAdoptTemplate}
+                  busy={picturingSceneId !== null}
+                />
                 {/* An idea becomes scenes here, above the hand-made one —
                     which is the order of the work: say it, then shape it. */}
                 {ideaToScenes}
