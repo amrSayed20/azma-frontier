@@ -446,6 +446,7 @@ import { isStoryboardCanvasId } from '@/src/chambers/ras-al-amr/storyboard';
 import type { ExportQuality, OutputProfile } from '@/src/chambers/ras-al-amr/assembly-contracts';
 import { computeTemplateSlotTemporal, visualScenesEnd } from '@/src/chambers/ras-al-amr/template-slots';
 import type { SoundNodeTest } from '@/src/chambers/ras-al-amr/template-slots';
+import { fillTemplateSlots, filledSlotCount } from '@/src/chambers/ras-al-amr/template-fill';
 import StoryboardWorld from './storyboard/StoryboardWorld';
 import type { CanvasMutationPayload } from '@/src/chambers/ras-al-amr/assembly-directive-payloads';
 import { useVoiceMode } from '@/src/components/living-companion/useVoiceMode';
@@ -866,14 +867,31 @@ const DEMO_TOTAL_SECS = 12;
 interface DemoFrame {
   role: string;
   svgDataUri: string;   // data:image/svg+xml — rendered as <img src={svgDataUri}/>
+  /**
+   * The Creator's OWN picture for this slot, when their Vault had one.
+   * Null leaves the drawn placeholder standing — and the preview says so,
+   * because a Creator must never be shown their own work where there is
+   * none.
+   */
+  vaultUri: string | null;
+  /** MOTION is played, not shown: a still frame of a clip is a lie. */
+  vaultIsMotion: boolean;
   scaledDur: number;
   scaledStart: number;
   fadeDur: number;
   hasFade: boolean;
 }
 
-function buildDemoFrames(template: SovereignTemplate): DemoFrame[] {
+/**
+ * Build the preview's frames, filled with the Creator's own work.
+ *
+ * The Vault is handed in newest-first, so a Creator sees what they were
+ * just looking at. Filling costs nothing: it reads the Vault, calls no
+ * provider and holds no unit.
+ */
+function buildDemoFrames(template: SovereignTemplate, vault: readonly VaultAsset[] = []): DemoFrame[] {
   const total = template.slotDurations.reduce((a, b) => a + b, 0);
+  const filled = fillTemplateSlots(template.slotDurations.length, vault);
   const isCrossfade = template.transitionPreference === 'crossfade';
   const rawFadeSecs = isCrossfade ? (template.transitionDurationSeconds ?? 0.6) : 0;
   const scaledFade = isCrossfade ? rawFadeSecs * (DEMO_TOTAL_SECS / total) : 0;
@@ -883,6 +901,8 @@ function buildDemoFrames(template: SovereignTemplate): DemoFrame[] {
     const frame: DemoFrame = {
       role: template.slotRoles?.[i] ?? `موضع ${i + 1}`,
       svgDataUri: template.demoSvgFrames[i] ?? template.demoSvgFrames[0],
+      vaultUri: filled[i]?.asset?.secureStorageUri ?? null,
+      vaultIsMotion: filled[i]?.asset?.capabilityTarget === CapabilityTarget.MOTION,
       scaledDur,
       scaledStart: start,
       fadeDur: scaledFade,
@@ -4905,11 +4925,29 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                 Frames use the same opacity/crossfade math as the real production preview.
                 No creator state touched. Demo disappears on phase exit. */}
             {(() => {
-              const demoFrames = buildDemoFrames(selectedTemplate);
+              // Filled with the Creator's OWN work — «املأ هذه القوالب
+              // بأصولٍ حقيقيّةٍ من الخزانة». Newest first, so what they see is
+              // what they were just looking at. Reading the Vault costs
+              // nothing: no provider is called and no unit is held.
+              const demoFrames = buildDemoFrames(selectedTemplate, vaultAssets);
               return (
                 <div className="ras-tp-demo-stage" aria-label={`معاينة مباشرة: ${selectedTemplate.name}`}>
                   {/* Cinematic scanlines overlay */}
                   <div className="ras-tp-demo-scanlines" aria-hidden="true" />
+                  {/* The Creator is told what they are looking at. A preview that
+                      shows drawn placeholders while implying «this is your film»
+                      is the one thing this fill exists to stop. */}
+                  <p className="ras-tp-fill-note">
+                    {(() => {
+                      const own = filledSlotCount(
+                        fillTemplateSlots(selectedTemplate.slotDurations.length, vaultAssets),
+                      );
+                      const all = selectedTemplate.slotDurations.length;
+                      return own === 0
+                        ? 'مواضعُ هذا القالب مرسومةٌ — خزانتُك لا تحمل صورةً بعد.'
+                        : `${own.toLocaleString('ar-EG')} من ${all.toLocaleString('ar-EG')} مواضعَ من خزانتك أنت.`;
+                    })()}
+                  </p>
 
                   {/* Frame layers — identical opacity math to the real composition preview */}
                   {demoFrames.map((frame, i) => {
@@ -4949,13 +4987,29 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                         style={{ opacity: clampedOpacity }}
                         aria-hidden={clampedOpacity < 0.05}
                       >
-                        {/* PACKAGE XL-D — real SVG <img> element per slot, not a CSS box */}
+                        {/* PACKAGE XL-D — real SVG <img> element per slot, not a CSS box.
+                            FILLED 2026-11-09 with the Creator's own work: the slot shows
+                            THEIR picture when the Vault had one, and the drawn placeholder
+                            — declared as one — when it did not. A clip is played rather
+                            than shown, because a still frame of a clip is a lie about it. */}
+                        {frame.vaultUri && frame.vaultIsMotion ? (
+                          <video
+                            src={frame.vaultUri}
+                            className="ras-tp-demo-frame-img"
+                            muted
+                            playsInline
+                            preload="metadata"
+                            aria-label={frame.role}
+                          />
+                        ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={frame.svgDataUri}
-                          alt={frame.role}
+                          src={frame.vaultUri ?? frame.svgDataUri}
+                          alt={frame.vaultUri ? `${frame.role} — من خزانتك` : `${frame.role} — موضعٌ فارغ`}
                           className="ras-tp-demo-frame-img"
                           draggable={false}
                         />
+                        )}
                         <div className="ras-tp-demo-frame-inner">
                           <span className="ras-tp-demo-frame-num">
                             {selectedTemplate.transitionPreference === 'crossfade' ? '≈' : '|'}&nbsp;{i + 1}

@@ -7247,3 +7247,19 @@ button.ras-path-card:hover { border-color: var(--neon-gold-bright); background: 
   }
   .ras-panel-left > .queue-container { min-height: 0; }
 }
+
+/* What the Creator is looking at inside a template preview: their own work,
+ * or a drawn placeholder said to be one. Paints its own surface — a note on
+ * a dark stage with no colour of its own is the browser's black-on-black. */
+.ras-tp-fill-note {
+  margin: 0 0 10px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(20, 16, 6, 0.82);
+  border: 1px solid rgba(212, 175, 55, 0.42);
+  color: #ffe680;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  text-align: center;
+  align-self: center;
+}
