@@ -19,6 +19,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { paidOperationHeaders, operationConcluded } from '@/src/economy/client-operation-key';
 import { MP4_UNITS_PER_SECOND } from '@/src/economy/pricing/local-export-pricing';
+import { SCENE_PICTURE_UNITS_1K } from '@/src/economy/pricing/creator-facing-prices';
 import type { VaultAsset } from '@/src/vault/sovereign-vault-types';
 import { AssetFamily } from '@/src/vault/sovereign-vault-types';
 import { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-intent-types';
@@ -166,6 +167,10 @@ export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCo
   const [newTitle, setNewTitle] = useState('');
   const [saveState, setSaveState] = useState<SaveState>('saved');
   const [vault, setVault] = useState<VaultAsset[]>([]);
+  // One scene at a time, by id, so every other scene’s button stays live
+  // and the Creator can see exactly which frame is being made.
+  const [picturingSceneId, setPicturingSceneId] = useState<string | null>(null);
+  const [pictureError, setPictureError] = useState<{ sceneId: string; message: string } | null>(null);
   const [vaultLoaded, setVaultLoaded] = useState(false);
   const [pickerSceneId, setPickerSceneId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -482,6 +487,51 @@ export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCo
     if (!project) return;
     commit(attachAsset(project, sceneId, asset, clock()).canvas);
     setPickerSceneId(null);
+  };
+
+  /**
+   * Ask for ONE scene’s picture. The rest of the film is not touched —
+   * no render, no other scene, no re-commission of what already exists.
+   *
+   * The server commissions and deposits; attaching is this workshop’s own
+   * act, through the same `attachAsset` a Vault pick uses. That is why the
+   * road answers with the whole asset rather than an id.
+   */
+  const handleMakeScenePicture = async (sceneId: string) => {
+    const base = latestProjectRef.current;
+    if (!base || picturingSceneId) return;
+    setPictureError(null);
+    setPicturingSceneId(sceneId);
+    // Hoisted so the conclusion can read it: an answer of «operation-in-flight»
+    // must NOT spend the key, or the press that is still running would lose
+    // the idempotency that protects it from being charged twice.
+    let answer: { readonly reason?: unknown } = {};
+    try {
+      const response = await fetch(
+        `/api/ras-amr/canvas/${encodeURIComponent(base.canvasId)}/scene/${encodeURIComponent(sceneId)}/picture`,
+        { method: 'POST', headers: paidOperationHeaders('ras-amr:scene-picture'), body: '{}' },
+      );
+      const data = await response.json();
+      answer = data ?? {};
+      if (data.status !== 'succeeded' || !data.asset) {
+        setPictureError({ sceneId, message: data.message ?? 'تعذّر صنعُ صورة هذا المشهد.' });
+        return;
+      }
+      const asset = data.asset as VaultAsset;
+      setVault((prev) => [asset, ...prev.filter((a) => a.assetId !== asset.assetId)]);
+      const current = latestProjectRef.current;
+      if (current) {
+        commit(attachAsset(current, sceneId, asset, clock()).canvas);
+        void flushSave();
+      }
+    } catch {
+      setPictureError({ sceneId, message: 'البوابة لا تستجيب. عُد بعد لحظة.' });
+    } finally {
+      // The key is spent whatever happened, so a second press is a second
+      // act and never a silent repeat of a charge already taken.
+      operationConcluded('ras-amr:scene-picture', answer);
+      setPicturingSceneId(null);
+    }
   };
 
   const handleUpload = async (file: File) => {
@@ -814,7 +864,26 @@ export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCo
                         );
                       })}
                     </ul>
-                    <button className="sb-btn" onClick={() => { setUploadError(null); setPickerSceneId(scene.sceneId); }}>＋ أصل من الخزانة أو رفع ملف</button>
+                    <div className="sb-scene-actions">
+                      <button className="sb-btn" onClick={() => { setUploadError(null); setPickerSceneId(scene.sceneId); }}>＋ أصل من الخزانة أو رفع ملف</button>
+                      {/* THE PRICE IS ON THE BUTTON. A Creator never meets a
+                          charge after the press — the Founder’s ninth article. */}
+                      <button
+                        className="sb-btn sb-btn-make"
+                        disabled={picturingSceneId !== null || scene.description.trim().length === 0}
+                        onClick={() => void handleMakeScenePicture(scene.sceneId)}
+                      >
+                        {picturingSceneId === scene.sceneId
+                          ? 'يُصنع الآن…'
+                          : `✦ اصنع صورة هذا المشهد — ${SCENE_PICTURE_UNITS_1K.toLocaleString('ar-EG')} وحدة`}
+                      </button>
+                    </div>
+                    {scene.description.trim().length === 0 && (
+                      <p className="sb-scene-hint">اكتُب وصفَ المشهد أوّلاً، ثم اطلب صورته.</p>
+                    )}
+                    {pictureError?.sceneId === scene.sceneId && (
+                      <p className="sb-scene-error" role="alert">{pictureError.message}</p>
+                    )}
                   </article>
                 ))}
                 {/* An idea becomes scenes here, above the hand-made one —

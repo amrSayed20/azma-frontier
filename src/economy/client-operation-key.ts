@@ -50,7 +50,11 @@ export type PaidRoad =
   | 'ras-amr:speech'
   | 'ras-amr:voice-clone'
   | 'ras-amr:cloned-speech'
-  | 'ras-amr:mp4-export';
+  | 'ras-amr:mp4-export'
+  // One scene asking for its own picture. Its OWN road, never shared with the
+  // export: two presses on two different acts must not collapse into one key,
+  // or the second would be answered as a repeat of the first and never run.
+  | 'ras-amr:scene-picture';
 
 const storageKeyFor = (road: PaidRoad): string => `azma.op.${road}`;
 

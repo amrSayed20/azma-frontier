@@ -312,3 +312,67 @@
   .sb-header { grid-template-columns: auto 1fr; }
   .sb-header .sb-save { grid-column: 1 / -1; }
 }
+
+/* ─── A SCENE ASKS FOR ITS OWN PICTURE ──────────────────────────────────────
+ *
+ *   Every class here paints its OWN background and colour. A control given
+ *   geometry and nothing else inherits the browser's white — invisible to
+ *   tsc, to every test, and to a token sweep, and visible only to an eye on
+ *   the live page. This Empire has paid for that lesson once.
+ *
+ *   The palette is the chamber's own: #D4AF37 gold on near-black, with the
+ *   make-button carrying the warmer glow so the paid act is the one the eye
+ *   lands on — without becoming the loudest thing in a scene card.
+ */
+.sb-scene-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.sb-btn-make {
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.22), rgba(139, 101, 8, 0.28));
+  border-color: rgba(255, 230, 128, 0.75);
+  color: #ffe680;
+  font-weight: 600;
+}
+
+.sb-btn-make:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.34), rgba(139, 101, 8, 0.4));
+  border-color: #ffe680;
+}
+
+/* Disabled must still READ. The shared .sb-btn:disabled drops opacity to
+ * 0.45, which on this gradient takes the label under the contrast the rest
+ * of the chamber holds — so the disabled state paints itself flat instead. */
+.sb-btn-make:disabled {
+  background: rgba(20, 16, 6, 0.9);
+  border-color: rgba(212, 175, 55, 0.3);
+  color: rgba(229, 231, 235, 0.65);
+  opacity: 1;
+}
+
+.sb-scene-hint {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: rgba(229, 231, 235, 0.72);
+  background: transparent;
+}
+
+.sb-scene-error {
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(196, 84, 74, 0.6);
+  background: rgba(91, 26, 20, 0.5);
+  color: #ffd9d4;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 560px) {
+  .sb-scene-actions { flex-direction: column; align-items: stretch; }
+  .sb-scene-actions > .sb-btn { width: 100%; }
+}
