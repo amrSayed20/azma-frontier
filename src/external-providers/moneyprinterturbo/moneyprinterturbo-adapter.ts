@@ -17,6 +17,18 @@
 
 export const MONEYPRINTERTURBO_PROVIDER_ID = 'moneyprinterturbo' as const;
 
+/**
+ * The workshop's own sentinel for «produce this with no narration».
+ * MEASURED in its voice service: `is_no_voice` matches this exactly, and
+ * a production carrying it skips the speech stage entirely — proven by
+ * task 804b08c5, which rendered 1920x1080 while every voiced attempt
+ * before it died at the audio stage.
+ *
+ * An EMPTY string is NOT this: the workshop rejects it as «Invalid voice»
+ * on purpose, so that a lost setting cannot disguise itself as a choice.
+ */
+export const SILENT_PRODUCTION = 'none' as const;
+
 /** Mirrors app/models/const.py in the pinned provider build. */
 const TASK_STATE_FAILED = -1;
 const TASK_STATE_COMPLETE = 1;
@@ -308,7 +320,25 @@ export class MoneyPrinterTurboAdapter {
           : {}),
         video_language: request.language ?? 'Arabic',
         paragraph_number: request.paragraphCount ?? 2,
-        voice_name: request.voiceName ?? '',
+        // ── THE WORKSHOP IS NEVER ASKED TO SPEAK ────────────────────
+        //
+        //   MEASURED 2026-11-09: given a provider voice, the workshop
+        //   calls that provider with ITS OWN credential. It produced
+        //   real speech in the Founder’s cloned identity that way —
+        //   and no hold was taken, no settlement made, no units given
+        //   back. The Empire paid, silently, outside its own economy.
+        //
+        //   «لا يُسمح بأي مسار بديل يستدعي المزود ويتجاوز البوابة.»
+        //
+        //   A rule in a document cannot close that; the REQUEST can.
+        //   This Empire asks the workshop for pictures and silence, and
+        //   speaks its films itself through the sovereign gate — where
+        //   the hold is taken before the provider and the settlement
+        //   follows what the provider says it cost.
+        //
+        //   `SILENT_PRODUCTION` is the workshop’s own sentinel for «no
+        //   narration», read from its voice service, not invented here.
+        voice_name: SILENT_PRODUCTION,
         // Only sent when we actually have one. Sending null explicitly is
         // the same as omitting it to the workshop, but omitting keeps the
         // request identical to what every existing caller already sends.

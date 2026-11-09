@@ -50,6 +50,7 @@ import {
 } from '../economy/paid-operation-gate';
 import { claimAttempt, completeAttempt, failAttempt } from '../economy/paid-operation-attempts';
 import { SPEECH_CAPABILITY } from '../economy/pricing/sovereign-price-authority';
+import { priceSpeechFromCredits } from '../economy/pricing/speech-pricing';
 import { generateSpeechViaProvider, type TtsProviderVoice } from '../chambers/ras-al-amr/speech-provider';
 import { synthesizeSpeechWithClonedVoice } from '../chambers/ras-al-amr/voice-cloning-provider';
 import { placeIntoWorkshop } from './workshop-handoff';
@@ -132,10 +133,19 @@ export async function narrateForProduction(request: NarrationRequest): Promise<N
   }
 
   let bytes: Buffer;
+  // What the PROVIDER says this one call cost, in its own credits. The
+  // Creator’s text length is an upper bound on it, never a measure of it.
+  let meteredCredits: number | null = null;
   try {
-    bytes = request.voice.kind === 'cloned'
-      ? (await synthesizeSpeechWithClonedVoice(script, request.voice.voiceId)).bytes
-      : (await generateSpeechViaProvider(script, request.voice.voice)).bytes;
+    if (request.voice.kind === 'cloned') {
+      const spoken = await synthesizeSpeechWithClonedVoice(script, request.voice.voiceId);
+      bytes = spoken.bytes;
+      meteredCredits = spoken.meteredCredits ?? null;
+    } else {
+      // The preset road states no cost, so its hold stands. Recorded as a
+      // known difference rather than a silent one.
+      bytes = (await generateSpeechViaProvider(script, request.voice.voice)).bytes;
+    }
   } catch (error) {
     // A missing credential is a different fact from a provider that answered
     // badly, and the Creator is owed the difference: one is ours to fix.
@@ -163,7 +173,28 @@ export async function narrateForProduction(request: NarrationRequest): Promise<N
     // up copies, and two different narrations can never collide.
     const digest = createHash('sha256').update(bytes).digest('hex').slice(0, 16);
     const workshopPath = await placeIntoWorkshop(`narration-${digest}.mp3`, bytes);
-    settleAuthorisedOperation(db, request.creatorId, gate, undefined, { bytes: bytes.length });
+    // ── SETTLED ON WHAT THE PROVIDER SAID IT COST ──────────────────────
+    //
+    //   «التسوية وفق الاستهلاك الفعلي الموثوق من المزود، وليس مجرد تقدير
+    //    عدد الحروف» — the Founder, 2026-11-09.
+    //
+    //   Capped at the hold, and never above it: a provider that reported
+    //   more than was held does not get to charge more than the Creator
+    //   agreed to. When it reported nothing the hold stands — a provider
+    //   that declined to state a cost is not a refund, and the Creator
+    //   has their narration either way.
+    const measured = priceSpeechFromCredits(meteredCredits);
+    // An ENTITLED verdict held no units at all (a Founder, a trial, a free
+    // operation), so there is no ceiling to cap against and nothing to settle
+    // down to. Only a reservation can be settled, and only below its own hold.
+    const settledUnits = measured.ok && gate.kind === 'reserved'
+      ? Math.min(measured.chargedUnits, gate.units)
+      : undefined;
+    settleAuthorisedOperation(db, request.creatorId, gate, settledUnits, {
+      bytes: bytes.length,
+      meteredCredits,
+      settledOn: measured.ok ? 'provider-metered' : 'hold',
+    });
     completeAttempt(db, claim.attemptKey, { bytes: bytes.length });
     return { spoken: true, workshopPath, bytes: bytes.length };
   } catch {
