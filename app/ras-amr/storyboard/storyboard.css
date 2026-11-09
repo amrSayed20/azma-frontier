@@ -376,3 +376,29 @@
   .sb-scene-actions { flex-direction: column; align-items: stretch; }
   .sb-scene-actions > .sb-btn { width: 100%; }
 }
+
+/* A step back and a step forward. Paints its own surface — the shared
+ * .sb-icon-btn is transparent on a dark ground, which reads correctly here;
+ * what it does NOT carry is a disabled state that stays legible, and a
+ * control a Creator cannot press must still be readable or they will press
+ * it again wondering why nothing happened. */
+.sb-step {
+  background: rgba(20, 16, 6, 0.9);
+  border-color: rgba(212, 175, 55, 0.45);
+  color: #ffe680;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.sb-step:hover:not(:disabled) {
+  background: rgba(212, 175, 55, 0.18);
+  border-color: #ffe680;
+}
+
+.sb-step:disabled {
+  background: rgba(10, 10, 10, 0.9);
+  border-color: rgba(212, 175, 55, 0.18);
+  color: rgba(229, 231, 235, 0.45);
+  cursor: not-allowed;
+  opacity: 1;
+}

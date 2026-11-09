@@ -26,6 +26,10 @@ import { CapabilityTarget } from '@/src/core/sovereign-orchestrator/qiyamah-inte
 import type { AssemblyNode, SovereignCanvas } from '@/src/chambers/ras-al-amr/assembly-contracts';
 import { computeVisualWindow, mapNextVisualSiblings, visualOpacityAt } from '@/src/chambers/ras-al-amr/cinematic-timing';
 import {
+  EMPTY_HISTORY, remember, stepBack, stepForward, canStepBack, canStepForward,
+  type StoryboardHistory,
+} from '@/src/chambers/ras-al-amr/storyboard-history';
+import {
   addScene,
   assessStoryboardReadiness,
   attachAsset,
@@ -163,6 +167,7 @@ export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCo
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [project, setProject] = useState<SovereignCanvas | null>(null);
+  const [history, setHistory] = useState<StoryboardHistory>(EMPTY_HISTORY);
   const [openError, setOpenError] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [saveState, setSaveState] = useState<SaveState>('saved');
@@ -228,6 +233,10 @@ export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCo
 
   /** Every edit goes through here: state now, a debounced save shortly after. */
   const commit = (next: SovereignCanvas) => {
+    // The canvas that WAS current becomes the step back. Read from the
+    // ref, not from `project`: a handler that commits twice in one React
+    // tick would otherwise remember the same stale canvas both times.
+    setHistory((h) => remember(h, latestProjectRef.current));
     applyProject(next);
     pendingSaveRef.current = next;
     setSaveState('pending');
@@ -288,6 +297,9 @@ export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCo
       setPlayhead(0);
       setIsPlaying(false);
       setRenderJob(null);
+      // Another film entirely. Stepping back out of one project into
+      // another is not undo — it is losing the work you opened.
+      setHistory(EMPTY_HISTORY);
       writeLocal(LAST_PROJECT_KEY, data.canvas.canvasId);
       void restoreLatestRender(data.canvas.canvasId);
     } catch {
@@ -534,6 +546,21 @@ export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCo
     }
   };
 
+  /**
+   * A step back does NOT go through `commit` — committing would remember
+   * the step itself and the Creator could never move. It applies the
+   * canvas and saves it, and the history is handed back already moved.
+   */
+  const takeStep = (step: ReturnType<typeof stepBack>) => {
+    if (!step) return;
+    setHistory(step.history);
+    applyProject(step.canvas);
+    pendingSaveRef.current = step.canvas;
+    setSaveState('pending');
+    if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(() => { void flushSave(); }, 700);
+  };
+
   const handleUpload = async (file: File) => {
     if (!pickerSceneId) return;
     const sceneId = pickerSceneId;
@@ -636,6 +663,24 @@ export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCo
               />
               <span className="sb-muted">{`${scenes.length} مشهد · ${formatSeconds(totalDuration)}`}</span>
               <button className="sb-btn sb-btn-ghost" onClick={() => void handleCloseProject()}>كل المشاريع</button>
+              {/* A production in flight forbids a step: a commission is
+                  already carrying a scene id, and a canvas that moved
+                  under it would attach the picture to a scene that no
+                  longer asked for it. */}
+              <button
+                className="sb-icon-btn sb-step"
+                disabled={!canStepBack(history, picturingSceneId !== null)}
+                onClick={() => takeStep(stepBack(history, latestProjectRef.current))}
+                aria-label="تراجَع عن آخر تغيير"
+                title="تراجَع"
+              >↶</button>
+              <button
+                className="sb-icon-btn sb-step"
+                disabled={!canStepForward(history, picturingSceneId !== null)}
+                onClick={() => takeStep(stepForward(history, latestProjectRef.current))}
+                aria-label="أعِد ما تراجعتَ عنه"
+                title="أعِد"
+              >↷</button>
             </div>
 
             {/* The sequence at a glance */}
