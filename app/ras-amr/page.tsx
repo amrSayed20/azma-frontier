@@ -6065,7 +6065,27 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
               <header className="panel-header">
                 <div className="neon-tag">عالَم الستوري بورد</div>
                 <h2>من فكرةٍ إلى مشاهد</h2>
-                <p>اكتب فكرتك في لوح «اكتب فكرتك» إلى يمينك — ثم قرّر مصدر صورة كلّ مشهد.</p>
+                {/* ── A SENTENCE THAT HAD STOPPED BEING TRUE ──────────────────
+                    MEASURED 2026-11-10, after the Founder pointed at this card:
+                    it read «اكتب فكرتك في لوح «اكتب فكرتك» إلى يمينك» and sent
+                    the Creator to a board that is not on this screen at all.
+                    `ideaToScenes` — the «اكتب فكرتك» board — is rendered in
+                    exactly ONE place, inside StoryboardWorld, and the block that
+                    once stood to the right here was removed.
+
+                    His ruling was the only two honest options: «اما ان ينقلنا
+                    هذا الزر الى عالم الاستورى بورد بالفعل او يجب الا تكون
+                    موجوده فهي تعتبر كاذبه». Removing it would have stranded the
+                    scenes that arrive from the Chamber of Evidence, which this
+                    panel is the only reader of — so the card is made true
+                    instead: it says where the board is, and carries a door to it. */}
+                <p>هنا تَصِل المشاهد وتُقرَّر مصادر صورها. ولكتابة فكرة جديدة، ادخُل ورشة عالَم الستوري بورد.</p>
+                <button
+                  className="creator-action-btn creator-action-primary"
+                  onClick={() => setCreationPhase('storyboard')}
+                >
+                  ✦ افتَح ورشة الستوري بورد
+                </button>
               </header>
 
               <div className="creator-intent-panel">
