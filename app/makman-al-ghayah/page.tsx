@@ -1844,17 +1844,17 @@ export default function MakmanAlGhayah() {
               </div>
             ) : (
               <p className="project-status">
-                وصل تجميع حقيقي مختوم من رأس الأمر — {compiledGraph.compilationId}
+                وصل تجميعٌ مختومٌ من رأس الأمر — جاهزٌ للتسجيل والتوزيع.
               </p>
             )}
 
             <div className="makman-packaging-section">
               <div className="form-group">
-                <label>الوصف (Description)</label>
+                <label>الوصف</label>
                 <textarea ref={descriptionRef} className="cyber-input textarea" rows={3} defaultValue={arrivedDemand ?? 'الوصف الافتراضي للعمل الفني...'} />
               </div>
               <div className="form-group">
-                <label>تفضيل الإيقاع — اختياري</label>
+                <label>إيقاعُ هذا الهدف — يُسجَّل عليه، ولا يُعيد قصَّ فيلمٍ جاهز</label>
                 <select ref={pacingPreferenceRef} className="cyber-input" defaultValue="">
                   <option value="">لم يُحدَّد</option>
                   <option value={PacingPreference.CONTEMPLATIVE}>تأملي</option>
@@ -1863,7 +1863,7 @@ export default function MakmanAlGhayah() {
                 </select>
               </div>
               <div className="form-group">
-                <label>تفضيل الانتقال — اختياري</label>
+                <label>انتقالُ هذا الهدف — يُسجَّل عليه، ولا يُعيد قصَّ فيلمٍ جاهز</label>
                 <select ref={transitionPreferenceRef} className="cyber-input" defaultValue="">
                   <option value="">لم يُحدَّد</option>
                   <option value={TransitionPreference.SOFT}>ناعم</option>
@@ -1900,7 +1900,7 @@ export default function MakmanAlGhayah() {
             {realDistributionResult && (
               <>
                 <p className="project-status">
-                  هدف مسجّل: {realDistributionResult.goal?.goalId} — منشور: {realDistributionResult.bridgeResult.publication.publicationId}
+                  سُجِّل هدفُك وانطلق التوزيع.
                   {(realDistributionResult.bridgeResult.publication as { scheduledPublishAt?: number }).scheduledPublishAt
                     ? ` — مجدول: ${new Date((realDistributionResult.bridgeResult.publication as { scheduledPublishAt: number }).scheduledPublishAt).toLocaleString('ar-EG')}`
                     : ' — نُشر فوراً'}
