@@ -53,6 +53,32 @@ describe('Makman says what it means', () => {
     for (const l of labels) expect(l).toContain('ولا يُعيد قصَّ فيلمٍ جاهز');
   });
 
+  it('a Creator meets their PURPOSE before any account plumbing', () => {
+    // MEASURED: this chamber gave purpose 53 lines and account plumbing 507,
+    // and 480 of those sat BETWEEN the status and the purpose. The status
+    // kept its place; only the management moved.
+    const purposeAt = CHAMBER.indexOf('makman-purpose-section');
+    const manageAt = CHAMBER.indexOf('makman-cloud-manage');
+    expect(manageAt).toBeGreaterThan(purposeAt);
+  });
+
+  it('and the carrier travelled with it, to the work that uses it', () => {
+    // «FROM THE VAULT, INTO THE DISTRIBUTION» by its own heading — so it
+    // belongs beside distribution, not between a Creator and their purpose.
+    expect(CHAMBER.indexOf('makman-carrier'))
+      .toBeGreaterThan(CHAMBER.indexOf('makman-distribution-section'));
+  });
+
+  it('the moved section paints the same surface its children came from', () => {
+    // Geometry without the layout its children were written for is a silent
+    // re-flow — invisible to tsc and to every test but this one.
+    const css = readFileSync(
+      join(__dirname, '..', '..', '..', 'app', 'makman-al-ghayah', 'makman-al-ghayah.css'), 'utf8');
+    expect(css).toContain('.makman-cloud-manage');
+    // Extended, never copied: both names share one rule.
+    expect(css).toMatch(/\.makman-cloud-panel,\s*\.makman-cloud-manage/);
+  });
+
   it('and the connection status still greets the Creator first, as it was built to', () => {
     // NOT A REPAIR — A GUARD ON A DECISION THIS SESSION ALMOST REVERSED.
     // The cloud panel is first on purpose, recorded in its own comment: a

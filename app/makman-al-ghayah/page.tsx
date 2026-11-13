@@ -989,488 +989,6 @@ export default function MakmanAlGhayah() {
               : '○ تيليجرام — غير مرتبط'}
           </p>
 
-          {cloud?.accounts.map((acc) => (
-            <div key={acc.accountId} className="makman-plan-row makman-done-row">
-              <span>
-                {PROVIDER_MARK[acc.provider] ?? '◈'}{' '}
-                {acc.accountLabel ?? PROVIDER_FALLBACK_AR[acc.provider] ?? 'حسابٌ مرتبط'}
-                {' · '}
-                <span className="makman-receipt-when">{PROVIDER_FALLBACK_AR[acc.provider] ?? acc.provider}</span>
-              </span>
-              <button
-                className="makman-unlink-btn"
-                disabled={cloudBusy !== null}
-                onClick={async () => {
-                  setCloudBusy(acc.accountId);
-                  // ── UNLINKING A SESSION THE SERVER DOES NOT HOLD ────────
-                  //   Revoking the row alone would leave the authorization
-                  //   alive in this browser AND standing in the Creator's own
-                  //   Telegram session list — the opposite of what «فُكَّ
-                  //   الربط» promises. So Telegram is told first, here.
-                  if (acc.provider === 'telegram-user') {
-                    const app = await telegramAppCredentialsForBrowser();
-                    if (app.ok) {
-                      const tg = await import('./telegram-user-client');
-                      await tg.forgetSession({ apiId: app.apiId, apiHash: app.apiHash });
-                    }
-                  }
-                  const r = await unlinkCloudAccount(acc.accountId);
-                  setCloudNotice(r.messageAr);
-                  setCloud(await listCloudAccounts());
-                  setCloudBusy(null);
-                }}
-              >
-                {cloudBusy === acc.accountId ? '…' : '✕ فُكَّ الربط'}
-              </button>
-            </div>
-          ))}
-
-          {cloud?.available && (
-            <a className="makman-download-btn" href="/api/cloud/google/start">
-              {/* DRIVE accounts, not all accounts. A Creator who linked a
-                  Telegram channel and no Drive would otherwise be invited to
-                  «اربط حساباً آخر» for a provider they never linked once. */}
-              {driveAccounts.length > 0 ? '+ اربط حساباً آخر' : '+ اربط جوجل درايف'}
-            </a>
-          )}
-
-          {cloud?.available && driveAccounts.length === 0 && (
-            <p className="makman-capability-hint">
-              يُرفع عملُك إلى حسابك أنت. والإمبراطوريّة لا تملك فيه شيئاً — ترى الملفّات التي تُنشئها هي وحدها.
-            </p>
-          )}
-
-          {/* ── THE SOCIAL DESTINATIONS, ONE ROW EACH, FROM DATA ───────────
-              «Do NOT build four unrelated account systems.» So there is one
-              list and one rule: a destination states whether the Empire can
-              offer it at all, how many of the Creator's accounts are linked
-              through it, and what it is actually able to publish.
-
-              A provider the Empire holds no credential for says «غير مهيّأ»,
-              and a platform that has not yet opened its door to THIS Creator
-              says «قيد مراجعة المنصّة». Neither draws a button — never a
-              control that cannot work, and never a door that slams. */}
-          {LINKABLE_DESTINATIONS.map((d) => {
-            const linked = (cloud?.accounts ?? []).filter((a) => d.providers.includes(a.provider));
-            // ── THE STATE, NOT A BOOLEAN ────────────────────────────────
-            //   `offers[key] === true` meant «the Empire holds a key» and was
-            //   drawn as «+ اربط». The server now answers the question the
-            //   Creator actually has — can I finish this today — and the row
-            //   draws that answer, reason and all.
-            const state = cloud?.destinations?.[d.offerKey];
-            const open = state?.access === 'OPEN';
-            return (
-              <div key={d.offerKey} className="makman-destination-row">
-                <p className="makman-cloud-state">
-                  {!cloud || !state ? 'يُقرأ…'
-                    : state.access === 'NOT_CONFIGURED' ? `◌ ${d.labelAr} — ${state.reasonAr}`
-                    : state.access === 'AWAITING_PLATFORM_REVIEW' ? `◌ ${d.labelAr} — قيد مراجعة المنصّة`
-                    : linked.length > 0 ? `● ${d.labelAr} — مرتبط (${linked.length})`
-                    : `○ ${d.labelAr} — غير مرتبط`}
-                </p>
-                <p className="makman-capability-hint">
-                  {/* The reason, where the capability would be — because a
-                      capability the platform has not opened is not a capability
-                      yet. For «غير مهيّأ» the heading above already said it all. */}
-                  {state?.access === 'AWAITING_PLATFORM_REVIEW' ? state.reasonAr : d.capabilityAr}
-                </p>
-                {open && (
-                  <a className="makman-download-btn" href={d.href}>
-                    {linked.length > 0 ? `+ اربط حساباً آخر — ${d.labelAr}` : `+ اربط ${d.labelAr}`}
-                  </a>
-                )}
-              </div>
-            );
-          })}
-
-          {/* ── TELEGRAM: NO JOURNEY TO A PROVIDER'S SCREEN ────────────────
-              Google's link is an anchor to `/api/cloud/google/start` because
-              the grant is made on Google's own page. Telegram issues no such
-              page: the Creator holds the credential already, and hands it
-              over here.
-
-              The token field is `type="password"` with autocomplete off, and
-              BOTH fields are cleared the instant the answer returns — so a
-              bot token never remains in a rendered input, and never lands in
-              the browser's saved form values. */}
-          {cloud?.telegramAvailable && (
-            <div className="makman-telegram-link">
-              <p className="makman-capability-hint">
-                ✈ تيليجرام — أنشئ بوتاً من @BotFather، أضفه مشرفاً في قناتك، ثمّ ضَع رمزه ووجهتك.
-              </p>
-              <input
-                id="makman-telegram-token"
-                className="makman-telegram-input"
-                type="password"
-                autoComplete="off"
-                dir="ltr"
-                placeholder="رمز البوت من @BotFather"
-                value={tgToken}
-                onChange={(e) => setTgToken(e.target.value)}
-                disabled={tgBusy}
-              />
-              <input
-                id="makman-telegram-chat"
-                className="makman-telegram-input"
-                type="text"
-                autoComplete="off"
-                dir="ltr"
-                placeholder="@اسم_القناة أو معرّف المحادثة"
-                value={tgChat}
-                onChange={(e) => setTgChat(e.target.value)}
-                disabled={tgBusy}
-              />
-              <button
-                type="button"
-                className="makman-download-btn"
-                data-testid="makman-telegram-connect"
-                disabled={tgBusy || tgToken.trim().length === 0 || tgChat.trim().length === 0}
-                onClick={async () => {
-                  setTgBusy(true);
-                  setCloudNotice(null);
-                  const r = await connectTelegramBot(tgToken, tgChat);
-                  // Cleared on EVERY outcome, success or refusal: a rejected
-                  // token is still a token, and it does not stay on screen.
-                  setTgToken('');
-                  setTgChat('');
-                  setCloudNotice(r.messageAr);
-                  setCloud(await listCloudAccounts());
-                  setTgBusy(false);
-                }}
-              >
-                {tgBusy ? 'يُتحقَّق من تيليجرام…' : '+ اربط وجهة تيليجرام'}
-              </button>
-            </div>
-          )}
-
-          {/* ── TELEGRAM BY THE CREATOR'S OWN ACCOUNT ──────────────────────
-              FOUNDER'S RULING, 2026-10-04: the session must never reach the
-              AZMA server. So everything below that touches Telegram runs in
-              this browser, and the only things that cross to the server are a
-              label, a destination id, and afterwards a message id.
-
-              PARTIAL ZERO-CUSTODY, in his own words — never «zero custody».
-              The session lives in this browser's storage, on AZMA's origin.
-
-              GramJS is two megabytes and is reached ONLY through
-              `await import()` inside these handlers, so a Creator who never
-              links Telegram never downloads a byte of it. */}
-          {cloud?.telegramUserAvailable && (
-            <div className="makman-telegram-link">
-              <p className="makman-capability-hint">
-                ✦ تيليجرام — بحسابك أنت. امسح الرمز بتطبيقك كما تفعل مع تيليجرام على الحاسوب.
-                إذنُك يبقى في متصفّحك، ولا يصل خادمَ أزما.
-              </p>
-
-              {tgQrDataUrl && (
-                <div className="makman-tg-qr">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={tgQrDataUrl} alt="رمز الدخول إلى تيليجرام" width={200} height={200} />
-                  <p className="makman-capability-hint">
-                    تيليجرام ← الإعدادات ← الأجهزة ← ربط جهاز سطح المكتب
-                  </p>
-                </div>
-              )}
-
-              {tgNeedsPassword && (
-                <>
-                  <input
-                    id="makman-telegram-2fa"
-                    className="makman-telegram-input"
-                    type="password"
-                    autoComplete="off"
-                    dir="ltr"
-                    placeholder="كلمة التحقّق بخطوتين"
-                    value={tgPassword}
-                    onChange={(e) => setTgPassword(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="makman-download-btn"
-                    onClick={() => {
-                      const resolve = tgPasswordResolver.current;
-                      tgPasswordResolver.current = null;
-                      setTgNeedsPassword(false);
-                      const given = tgPassword;
-                      setTgPassword('');
-                      resolve?.(given);
-                    }}
-                  >
-                    ↵ تابِع
-                  </button>
-                </>
-              )}
-
-              {tgDestinations.length > 0 && (
-                <>
-                  <p className="makman-capability-hint">◆ اختر وجهةً تنشر فيها</p>
-                  {tgDestinations.map((d) => (
-                    <button
-                      key={d.peerId}
-                      type="button"
-                      className="makman-download-btn"
-                      disabled={tgUserBusy}
-                      onClick={async () => {
-                        setTgBusy(true);
-                        const r = await linkTelegramUserAccount({
-                          telegramUserId: tgIdentity?.telegramUserId ?? '',
-                          username: tgIdentity?.username ?? null,
-                          peerId: d.peerId,
-                          peerTitle: d.title,
-                        });
-                        setCloudNotice(r.messageAr);
-                        setTgDestinations([]);
-                        setCloud(await listCloudAccounts());
-                        setTgBusy(false);
-                      }}
-                    >
-                      ✦ {d.title} — {d.roleAr}
-                    </button>
-                  ))}
-                </>
-              )}
-
-              <button
-                type="button"
-                className="makman-download-btn"
-                data-testid="makman-telegram-user-connect"
-                disabled={tgUserBusy}
-                onClick={async () => {
-                  setTgBusy(true);
-                  setCloudNotice(null);
-                  setTgQrDataUrl(null);
-                  try {
-                    const app = await telegramAppCredentialsForBrowser();
-                    if (!app.ok) { setCloudNotice(app.messageAr); setTgBusy(false); return; }
-                    const tg = await import('./telegram-user-client');
-                    const qrlib = await import('qrcode');
-
-                    // An already-authorized browser skips the scan entirely.
-                    if (!tg.hasStoredSession()) {
-                      const who = await tg.authorizeWithQr({
-                        apiId: app.apiId, apiHash: app.apiHash,
-                        onQrUrl: async (url: string) => {
-                          setTgQrDataUrl(await qrlib.toDataURL(url, { width: 200, margin: 1 }));
-                        },
-                        onPassword: () => new Promise<string>((resolve) => {
-                          tgPasswordResolver.current = resolve;
-                          setTgNeedsPassword(true);
-                        }),
-                      });
-                      setTgIdentity(who);
-                    } else {
-                      // Already authorized in this browser — no scan is owed.
-                      setTgIdentity(await tg.identify({ apiId: app.apiId, apiHash: app.apiHash }));
-                    }
-                    setTgQrDataUrl(null);
-                    setTgDestinations(await tg.listDestinations({ apiId: app.apiId, apiHash: app.apiHash }));
-                  } catch (e) {
-                    setCloudNotice('لم يتمّ الربط. أعد المحاولة.');
-                    console.error('[telegram-user] link failed:', e instanceof Error ? e.message : e);
-                  }
-                  setTgBusy(false);
-                }}
-              >
-                {tgUserBusy ? 'يُنتظر تيليجرام…' : '✦ اربط حسابك في تيليجرام'}
-              </button>
-            </div>
-          )}
-
-          {cloudNotice && <p className="project-status">{cloudNotice}</p>}
-
-          {/* ── THE CARRIER: FROM THE VAULT, INTO THE DISTRIBUTION ──────────
-              FOUNDER, 2026-10-04, after a live test: «THE ASSET DOES NOT MOVE
-              WITH THE DRAG. THE DROP TARGET DOES NOT RECEIVE THE ASSET.»
-
-              MEASURED before touching anything: this Chamber had ZERO drag or
-              drop handlers — no source, no target, no dataTransfer contract —
-              while رأس الأمر, الحجّة and القيامة all had one. The drag did not
-              fail; there was nothing built to receive it. And the only path to
-              an upload ran through `reframeDone`, session state filled only by
-              a reframe finished minutes earlier, so an asset ALREADY in the
-              Vault had no route at all.
-
-              What moves is an ASSET ID. Never a File, never a Blob, never
-              bytes. The server resolves it through the ownership boundary it
-              already has, and the Vault stays the source of truth. */}
-          <div className="makman-carrier">
-
-            {/* The drop target. It states its own condition and never claims
-                acceptance before the resolution returns. */}
-            <div
-              className={`makman-drop-target drop-${dropState}${carried ? ' drop-carrying' : ''}`}
-              data-testid="makman-drop-target"
-              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setDropState('over'); }}
-              onDragLeave={() => setDropState((s) => (s === 'over' ? 'idle' : s))}
-              onDrop={async (e) => {
-                e.preventDefault();
-                const assetId = readDraggedAssetId(e.dataTransfer);
-                if (!assetId) {
-                  // A desktop file, a URL, a text selection — none is sovereign.
-                  setDropState('rejected');
-                  setCarryNotice('ما أُفلِت ليس أصلاً سياديّاً من خزانتك.');
-                  return;
-                }
-                setDropState('resolving');
-                setCarryNotice(null);
-                const outcome = await resolveAssetForDistribution(assetId);
-                if (outcome.ok) {
-                  setCarried(outcome.asset);
-                  setDropState('idle');
-                } else {
-                  setDropState('rejected');
-                  setCarryNotice(outcome.messageAr);
-                }
-              }}
-            >
-              {carried ? (
-                <div className="makman-carried">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={carried.previewUri} alt="" className="makman-carried-thumb" />
-                  <span className="makman-carried-name">◈ {carried.labelAr}</span>
-                  <button
-                    className="makman-unlink-btn"
-                    onClick={() => { setCarried(null); setCarryNotice(null); }}
-                  >
-                    ✕ أزِله
-                  </button>
-                </div>
-              ) : (
-                <p className="makman-drop-hint">
-                  {dropState === 'over' ? '◉ أفلِته هنا'
-                    : dropState === 'resolving' ? 'يُتحقَّق من ملكيّتك…'
-                    : dropState === 'rejected' ? '✕ لم يُقبَل'
-                    : '⇣ اسحب أصلاً من خزانتك إلى هنا — أو اضغط عليه'}
-                </p>
-              )}
-            </div>
-
-            {carryNotice && <p className="project-status">{carryNotice}</p>}
-
-            {/* ── THE DESTINATION, ONCE SOMETHING IS CARRIED ──────────────── */}
-            {carried && cloud?.accounts.map((acc) => {
-              // ── A LINKED ACCOUNT ITS PLATFORM NOW REFUSES ─────────────
-              //   Linking is not permission to publish, and a platform may
-              //   narrow what it admits after a grant was made. Offering
-              //   «انشره في» here would promise first and fail after — the
-              //   worse half of the same debt. The reason replaces the
-              //   button; the account itself stays, because nothing is
-              //   wrong with it.
-              const refusedAr = cloud?.accountRefusals?.[acc.accountId];
-              if (refusedAr) {
-                return (
-                  <p key={acc.accountId} className="makman-capability-hint">
-                    {PROVIDER_MARK[acc.provider] ?? '✦'}{' '}
-                    {acc.accountLabel ?? 'وجهتك'} — {refusedAr}
-                  </p>
-                );
-              }
-              return (
-              <button
-                key={acc.accountId}
-                className="makman-download-btn"
-                disabled={cloudBusy !== null}
-                onClick={async () => {
-                  setCloudBusy(`${carried.assetId}:${acc.accountId}`);
-                  setCarryNotice(null);
-                  // ── WHO DELIVERS, DECIDED BY THE PROVIDER ───────────────
-                  //   For every server-delivered provider the Empire spends a
-                  //   credential it holds. For `telegram-user` it holds none,
-                  //   so the delivery happens HERE, in the Creator's browser,
-                  //   and the server is told only what came back.
-                  const r = acc.provider === 'telegram-user'
-                    ? await publishByCreatorBrowser(carried, acc)
-                    : await uploadAssetToCloud(carried.assetId, acc.accountId);
-                  setCarryNotice(r.messageAr);
-                  setCloud(await listCloudAccounts());
-                  // The receipt, re-read from the database — so what the
-                  // screen says next came from the table, not from a
-                  // remembered success.
-                  setReceipts(await listDistributionReceipts());
-                  setCloudBusy(null);
-                }}
-              >
-                {cloudBusy === `${carried.assetId}:${acc.accountId}`
-                  ? (acc.provider === 'google-drive' ? 'يُرفع…' : 'يُنشَر…')
-                  : acc.provider === 'google-drive'
-                    ? `☁ ارفعه إلى ${acc.accountLabel ?? 'حسابك'}`
-                    // TikTok is never «انشره»: without its audit the file lands
-                    // as a draft its owner must finish by hand.
-                    : acc.provider === 'tiktok'
-                      ? `♪ أرسِله مسوّدةً إلى ${acc.accountLabel ?? 'تيك توك'}`
-                      : `${PROVIDER_MARK[acc.provider] ?? '✦'} انشره في ${acc.accountLabel ?? 'وجهتك'}`}
-              </button>
-              );
-            })}
-
-            {carried && cloud?.accounts.length === 0 && (
-              <p className="makman-capability-hint">اربط حساباً سحابيّاً أعلاه لترفع هذا الأصل إليه.</p>
-            )}
-
-            {/* ── WHAT ACTUALLY LEFT THE EMPIRE ────────────────────────────
-                FOUNDER'S ORDER, 2026-10-04: «Refresh/re-enter the relevant
-                area and confirm the published state remains truthful».
-
-                A message shown once after a publication proves nothing an
-                hour later. This list is read from `distribution_receipts` on
-                every entry to the Chamber — so «✓ نُشِر» on this screen is
-                the database speaking, and a failure stays visible as a
-                failure instead of vanishing with the page. */}
-            {receipts.length > 0 && (
-              <>
-                <p className="makman-capability-hint">◆ سجلّ التوزيع الخارجي</p>
-                <div data-testid="makman-receipts">
-                  {receipts.map((r) => (
-                    <div key={r.receiptId} className="makman-plan-row makman-done-row">
-                      <span>
-                        {r.status === 'PUBLISHED' ? '✓ نُشِر' : '✕ لم يُنشَر'}
-                        {' — '}{r.providerLabelAr}{' · '}{r.whereAr}
-                      </span>
-                      <span className="makman-receipt-when">
-                        {new Date(r.atMs).toLocaleString('ar-EG')}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* ── THE VAULT DOOR ──────────────────────────────────────────
-                A VIEW of the Vault, never a second registry. Every card is
-                draggable AND pressable: «كل أصل قابل للاختيار بالضغط لمن لا
-                يستخدم السحب والإفلات». */}
-            <p className="makman-capability-hint">◆ أصولك في الخزانة السيادية</p>
-            <div className="makman-vault-door" data-testid="makman-vault-door">
-              {vaultDoor.length === 0 && (
-                <p className="project-status">لا أصول في خزانتك بعد.</p>
-              )}
-              {vaultDoor.map((a) => (
-                <button
-                  key={a.assetId}
-                  type="button"
-                  className={`makman-vault-card${carried?.assetId === a.assetId ? ' vault-card-on' : ''}`}
-                  draggable
-                  onDragStart={(e) => {
-                    // The Empire's one sovereign-asset drag contract.
-                    e.dataTransfer.setData(SOVEREIGN_ASSET_DRAG_TYPE, a.assetId);
-                    e.dataTransfer.effectAllowed = 'copy';
-                  }}
-                  onClick={async () => {
-                    setDropState('resolving');
-                    setCarryNotice(null);
-                    const outcome = await resolveAssetForDistribution(a.assetId);
-                    if (outcome.ok) { setCarried(outcome.asset); setDropState('idle'); }
-                    else { setDropState('rejected'); setCarryNotice(outcome.messageAr); }
-                  }}
-                  title={a.labelAr}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={a.previewUri} alt="" className="makman-vault-thumb" draggable={false} />
-                  <span className="makman-vault-kind">{a.kindAr}</span>
-                </button>
-              ))}
-            </div>
-          </div>
         </section>
 
         {/* ── Sovereign Purpose ──────────────────────────────────── */}
@@ -2212,6 +1730,511 @@ export default function MakmanAlGhayah() {
             <p>لتسجيل هدف استراتيجي جديد: أكمل إنتاجك في رأس الأمر ← صهر القماش ← أرسل إلى مكمن الغاية.</p>
           </div>
         )}
+
+        {/* ── YOUR CLOUD ACCOUNTS, AND THE CARRIER INTO THEM ──────────────
+
+            MOVED HERE 2026-11-13. It used to sit between the connection
+            status at the top of this Chamber and the Creator’s own purpose:
+            480 lines of account plumbing in a room named for a purpose that
+            got 53.
+
+            THE STATUS DID NOT MOVE, and reversing that was never the repair.
+            It is first by a decision recorded in its own comment — a Creator
+            meets the condition of their destinations before anything is asked
+            of them — and it still opens with one line per provider.
+
+            The MANAGEMENT moved, and the carrier came with it: taking an
+            asset from the Vault into a destination is distribution work by
+            its own heading, so it belongs beside distribution. */}
+        <section className="makman-cloud-manage neon-border" data-testid="makman-cloud-manage">
+          <div className="panel-header">
+            <div className="neon-tag">التوزيع الخارجي</div>
+            <h2>☁ إدارة حساباتك ورفع أصولك</h2>
+          </div>
+
+          {cloud?.accounts.map((acc) => (
+            <div key={acc.accountId} className="makman-plan-row makman-done-row">
+              <span>
+                {PROVIDER_MARK[acc.provider] ?? '◈'}{' '}
+                {acc.accountLabel ?? PROVIDER_FALLBACK_AR[acc.provider] ?? 'حسابٌ مرتبط'}
+                {' · '}
+                <span className="makman-receipt-when">{PROVIDER_FALLBACK_AR[acc.provider] ?? acc.provider}</span>
+              </span>
+              <button
+                className="makman-unlink-btn"
+                disabled={cloudBusy !== null}
+                onClick={async () => {
+                  setCloudBusy(acc.accountId);
+                  // ── UNLINKING A SESSION THE SERVER DOES NOT HOLD ────────
+                  //   Revoking the row alone would leave the authorization
+                  //   alive in this browser AND standing in the Creator's own
+                  //   Telegram session list — the opposite of what «فُكَّ
+                  //   الربط» promises. So Telegram is told first, here.
+                  if (acc.provider === 'telegram-user') {
+                    const app = await telegramAppCredentialsForBrowser();
+                    if (app.ok) {
+                      const tg = await import('./telegram-user-client');
+                      await tg.forgetSession({ apiId: app.apiId, apiHash: app.apiHash });
+                    }
+                  }
+                  const r = await unlinkCloudAccount(acc.accountId);
+                  setCloudNotice(r.messageAr);
+                  setCloud(await listCloudAccounts());
+                  setCloudBusy(null);
+                }}
+              >
+                {cloudBusy === acc.accountId ? '…' : '✕ فُكَّ الربط'}
+              </button>
+            </div>
+          ))}
+
+          {cloud?.available && (
+            <a className="makman-download-btn" href="/api/cloud/google/start">
+              {/* DRIVE accounts, not all accounts. A Creator who linked a
+                  Telegram channel and no Drive would otherwise be invited to
+                  «اربط حساباً آخر» for a provider they never linked once. */}
+              {driveAccounts.length > 0 ? '+ اربط حساباً آخر' : '+ اربط جوجل درايف'}
+            </a>
+          )}
+
+          {cloud?.available && driveAccounts.length === 0 && (
+            <p className="makman-capability-hint">
+              يُرفع عملُك إلى حسابك أنت. والإمبراطوريّة لا تملك فيه شيئاً — ترى الملفّات التي تُنشئها هي وحدها.
+            </p>
+          )}
+
+          {/* ── THE SOCIAL DESTINATIONS, ONE ROW EACH, FROM DATA ───────────
+              «Do NOT build four unrelated account systems.» So there is one
+              list and one rule: a destination states whether the Empire can
+              offer it at all, how many of the Creator's accounts are linked
+              through it, and what it is actually able to publish.
+
+              A provider the Empire holds no credential for says «غير مهيّأ»,
+              and a platform that has not yet opened its door to THIS Creator
+              says «قيد مراجعة المنصّة». Neither draws a button — never a
+              control that cannot work, and never a door that slams. */}
+          {LINKABLE_DESTINATIONS.map((d) => {
+            const linked = (cloud?.accounts ?? []).filter((a) => d.providers.includes(a.provider));
+            // ── THE STATE, NOT A BOOLEAN ────────────────────────────────
+            //   `offers[key] === true` meant «the Empire holds a key» and was
+            //   drawn as «+ اربط». The server now answers the question the
+            //   Creator actually has — can I finish this today — and the row
+            //   draws that answer, reason and all.
+            const state = cloud?.destinations?.[d.offerKey];
+            const open = state?.access === 'OPEN';
+            return (
+              <div key={d.offerKey} className="makman-destination-row">
+                <p className="makman-cloud-state">
+                  {!cloud || !state ? 'يُقرأ…'
+                    : state.access === 'NOT_CONFIGURED' ? `◌ ${d.labelAr} — ${state.reasonAr}`
+                    : state.access === 'AWAITING_PLATFORM_REVIEW' ? `◌ ${d.labelAr} — قيد مراجعة المنصّة`
+                    : linked.length > 0 ? `● ${d.labelAr} — مرتبط (${linked.length})`
+                    : `○ ${d.labelAr} — غير مرتبط`}
+                </p>
+                <p className="makman-capability-hint">
+                  {/* The reason, where the capability would be — because a
+                      capability the platform has not opened is not a capability
+                      yet. For «غير مهيّأ» the heading above already said it all. */}
+                  {state?.access === 'AWAITING_PLATFORM_REVIEW' ? state.reasonAr : d.capabilityAr}
+                </p>
+                {open && (
+                  <a className="makman-download-btn" href={d.href}>
+                    {linked.length > 0 ? `+ اربط حساباً آخر — ${d.labelAr}` : `+ اربط ${d.labelAr}`}
+                  </a>
+                )}
+              </div>
+            );
+          })}
+
+          {/* ── TELEGRAM: NO JOURNEY TO A PROVIDER'S SCREEN ────────────────
+              Google's link is an anchor to `/api/cloud/google/start` because
+              the grant is made on Google's own page. Telegram issues no such
+              page: the Creator holds the credential already, and hands it
+              over here.
+
+              The token field is `type="password"` with autocomplete off, and
+              BOTH fields are cleared the instant the answer returns — so a
+              bot token never remains in a rendered input, and never lands in
+              the browser's saved form values. */}
+          {cloud?.telegramAvailable && (
+            <div className="makman-telegram-link">
+              <p className="makman-capability-hint">
+                ✈ تيليجرام — أنشئ بوتاً من @BotFather، أضفه مشرفاً في قناتك، ثمّ ضَع رمزه ووجهتك.
+              </p>
+              <input
+                id="makman-telegram-token"
+                className="makman-telegram-input"
+                type="password"
+                autoComplete="off"
+                dir="ltr"
+                placeholder="رمز البوت من @BotFather"
+                value={tgToken}
+                onChange={(e) => setTgToken(e.target.value)}
+                disabled={tgBusy}
+              />
+              <input
+                id="makman-telegram-chat"
+                className="makman-telegram-input"
+                type="text"
+                autoComplete="off"
+                dir="ltr"
+                placeholder="@اسم_القناة أو معرّف المحادثة"
+                value={tgChat}
+                onChange={(e) => setTgChat(e.target.value)}
+                disabled={tgBusy}
+              />
+              <button
+                type="button"
+                className="makman-download-btn"
+                data-testid="makman-telegram-connect"
+                disabled={tgBusy || tgToken.trim().length === 0 || tgChat.trim().length === 0}
+                onClick={async () => {
+                  setTgBusy(true);
+                  setCloudNotice(null);
+                  const r = await connectTelegramBot(tgToken, tgChat);
+                  // Cleared on EVERY outcome, success or refusal: a rejected
+                  // token is still a token, and it does not stay on screen.
+                  setTgToken('');
+                  setTgChat('');
+                  setCloudNotice(r.messageAr);
+                  setCloud(await listCloudAccounts());
+                  setTgBusy(false);
+                }}
+              >
+                {tgBusy ? 'يُتحقَّق من تيليجرام…' : '+ اربط وجهة تيليجرام'}
+              </button>
+            </div>
+          )}
+
+          {/* ── TELEGRAM BY THE CREATOR'S OWN ACCOUNT ──────────────────────
+              FOUNDER'S RULING, 2026-10-04: the session must never reach the
+              AZMA server. So everything below that touches Telegram runs in
+              this browser, and the only things that cross to the server are a
+              label, a destination id, and afterwards a message id.
+
+              PARTIAL ZERO-CUSTODY, in his own words — never «zero custody».
+              The session lives in this browser's storage, on AZMA's origin.
+
+              GramJS is two megabytes and is reached ONLY through
+              `await import()` inside these handlers, so a Creator who never
+              links Telegram never downloads a byte of it. */}
+          {cloud?.telegramUserAvailable && (
+            <div className="makman-telegram-link">
+              <p className="makman-capability-hint">
+                ✦ تيليجرام — بحسابك أنت. امسح الرمز بتطبيقك كما تفعل مع تيليجرام على الحاسوب.
+                إذنُك يبقى في متصفّحك، ولا يصل خادمَ أزما.
+              </p>
+
+              {tgQrDataUrl && (
+                <div className="makman-tg-qr">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={tgQrDataUrl} alt="رمز الدخول إلى تيليجرام" width={200} height={200} />
+                  <p className="makman-capability-hint">
+                    تيليجرام ← الإعدادات ← الأجهزة ← ربط جهاز سطح المكتب
+                  </p>
+                </div>
+              )}
+
+              {tgNeedsPassword && (
+                <>
+                  <input
+                    id="makman-telegram-2fa"
+                    className="makman-telegram-input"
+                    type="password"
+                    autoComplete="off"
+                    dir="ltr"
+                    placeholder="كلمة التحقّق بخطوتين"
+                    value={tgPassword}
+                    onChange={(e) => setTgPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="makman-download-btn"
+                    onClick={() => {
+                      const resolve = tgPasswordResolver.current;
+                      tgPasswordResolver.current = null;
+                      setTgNeedsPassword(false);
+                      const given = tgPassword;
+                      setTgPassword('');
+                      resolve?.(given);
+                    }}
+                  >
+                    ↵ تابِع
+                  </button>
+                </>
+              )}
+
+              {tgDestinations.length > 0 && (
+                <>
+                  <p className="makman-capability-hint">◆ اختر وجهةً تنشر فيها</p>
+                  {tgDestinations.map((d) => (
+                    <button
+                      key={d.peerId}
+                      type="button"
+                      className="makman-download-btn"
+                      disabled={tgUserBusy}
+                      onClick={async () => {
+                        setTgBusy(true);
+                        const r = await linkTelegramUserAccount({
+                          telegramUserId: tgIdentity?.telegramUserId ?? '',
+                          username: tgIdentity?.username ?? null,
+                          peerId: d.peerId,
+                          peerTitle: d.title,
+                        });
+                        setCloudNotice(r.messageAr);
+                        setTgDestinations([]);
+                        setCloud(await listCloudAccounts());
+                        setTgBusy(false);
+                      }}
+                    >
+                      ✦ {d.title} — {d.roleAr}
+                    </button>
+                  ))}
+                </>
+              )}
+
+              <button
+                type="button"
+                className="makman-download-btn"
+                data-testid="makman-telegram-user-connect"
+                disabled={tgUserBusy}
+                onClick={async () => {
+                  setTgBusy(true);
+                  setCloudNotice(null);
+                  setTgQrDataUrl(null);
+                  try {
+                    const app = await telegramAppCredentialsForBrowser();
+                    if (!app.ok) { setCloudNotice(app.messageAr); setTgBusy(false); return; }
+                    const tg = await import('./telegram-user-client');
+                    const qrlib = await import('qrcode');
+
+                    // An already-authorized browser skips the scan entirely.
+                    if (!tg.hasStoredSession()) {
+                      const who = await tg.authorizeWithQr({
+                        apiId: app.apiId, apiHash: app.apiHash,
+                        onQrUrl: async (url: string) => {
+                          setTgQrDataUrl(await qrlib.toDataURL(url, { width: 200, margin: 1 }));
+                        },
+                        onPassword: () => new Promise<string>((resolve) => {
+                          tgPasswordResolver.current = resolve;
+                          setTgNeedsPassword(true);
+                        }),
+                      });
+                      setTgIdentity(who);
+                    } else {
+                      // Already authorized in this browser — no scan is owed.
+                      setTgIdentity(await tg.identify({ apiId: app.apiId, apiHash: app.apiHash }));
+                    }
+                    setTgQrDataUrl(null);
+                    setTgDestinations(await tg.listDestinations({ apiId: app.apiId, apiHash: app.apiHash }));
+                  } catch (e) {
+                    setCloudNotice('لم يتمّ الربط. أعد المحاولة.');
+                    console.error('[telegram-user] link failed:', e instanceof Error ? e.message : e);
+                  }
+                  setTgBusy(false);
+                }}
+              >
+                {tgUserBusy ? 'يُنتظر تيليجرام…' : '✦ اربط حسابك في تيليجرام'}
+              </button>
+            </div>
+          )}
+
+          {cloudNotice && <p className="project-status">{cloudNotice}</p>}
+
+          {/* ── THE CARRIER: FROM THE VAULT, INTO THE DISTRIBUTION ──────────
+              FOUNDER, 2026-10-04, after a live test: «THE ASSET DOES NOT MOVE
+              WITH THE DRAG. THE DROP TARGET DOES NOT RECEIVE THE ASSET.»
+
+              MEASURED before touching anything: this Chamber had ZERO drag or
+              drop handlers — no source, no target, no dataTransfer contract —
+              while رأس الأمر, الحجّة and القيامة all had one. The drag did not
+              fail; there was nothing built to receive it. And the only path to
+              an upload ran through `reframeDone`, session state filled only by
+              a reframe finished minutes earlier, so an asset ALREADY in the
+              Vault had no route at all.
+
+              What moves is an ASSET ID. Never a File, never a Blob, never
+              bytes. The server resolves it through the ownership boundary it
+              already has, and the Vault stays the source of truth. */}
+          <div className="makman-carrier">
+
+            {/* The drop target. It states its own condition and never claims
+                acceptance before the resolution returns. */}
+            <div
+              className={`makman-drop-target drop-${dropState}${carried ? ' drop-carrying' : ''}`}
+              data-testid="makman-drop-target"
+              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setDropState('over'); }}
+              onDragLeave={() => setDropState((s) => (s === 'over' ? 'idle' : s))}
+              onDrop={async (e) => {
+                e.preventDefault();
+                const assetId = readDraggedAssetId(e.dataTransfer);
+                if (!assetId) {
+                  // A desktop file, a URL, a text selection — none is sovereign.
+                  setDropState('rejected');
+                  setCarryNotice('ما أُفلِت ليس أصلاً سياديّاً من خزانتك.');
+                  return;
+                }
+                setDropState('resolving');
+                setCarryNotice(null);
+                const outcome = await resolveAssetForDistribution(assetId);
+                if (outcome.ok) {
+                  setCarried(outcome.asset);
+                  setDropState('idle');
+                } else {
+                  setDropState('rejected');
+                  setCarryNotice(outcome.messageAr);
+                }
+              }}
+            >
+              {carried ? (
+                <div className="makman-carried">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={carried.previewUri} alt="" className="makman-carried-thumb" />
+                  <span className="makman-carried-name">◈ {carried.labelAr}</span>
+                  <button
+                    className="makman-unlink-btn"
+                    onClick={() => { setCarried(null); setCarryNotice(null); }}
+                  >
+                    ✕ أزِله
+                  </button>
+                </div>
+              ) : (
+                <p className="makman-drop-hint">
+                  {dropState === 'over' ? '◉ أفلِته هنا'
+                    : dropState === 'resolving' ? 'يُتحقَّق من ملكيّتك…'
+                    : dropState === 'rejected' ? '✕ لم يُقبَل'
+                    : '⇣ اسحب أصلاً من خزانتك إلى هنا — أو اضغط عليه'}
+                </p>
+              )}
+            </div>
+
+            {carryNotice && <p className="project-status">{carryNotice}</p>}
+
+            {/* ── THE DESTINATION, ONCE SOMETHING IS CARRIED ──────────────── */}
+            {carried && cloud?.accounts.map((acc) => {
+              // ── A LINKED ACCOUNT ITS PLATFORM NOW REFUSES ─────────────
+              //   Linking is not permission to publish, and a platform may
+              //   narrow what it admits after a grant was made. Offering
+              //   «انشره في» here would promise first and fail after — the
+              //   worse half of the same debt. The reason replaces the
+              //   button; the account itself stays, because nothing is
+              //   wrong with it.
+              const refusedAr = cloud?.accountRefusals?.[acc.accountId];
+              if (refusedAr) {
+                return (
+                  <p key={acc.accountId} className="makman-capability-hint">
+                    {PROVIDER_MARK[acc.provider] ?? '✦'}{' '}
+                    {acc.accountLabel ?? 'وجهتك'} — {refusedAr}
+                  </p>
+                );
+              }
+              return (
+              <button
+                key={acc.accountId}
+                className="makman-download-btn"
+                disabled={cloudBusy !== null}
+                onClick={async () => {
+                  setCloudBusy(`${carried.assetId}:${acc.accountId}`);
+                  setCarryNotice(null);
+                  // ── WHO DELIVERS, DECIDED BY THE PROVIDER ───────────────
+                  //   For every server-delivered provider the Empire spends a
+                  //   credential it holds. For `telegram-user` it holds none,
+                  //   so the delivery happens HERE, in the Creator's browser,
+                  //   and the server is told only what came back.
+                  const r = acc.provider === 'telegram-user'
+                    ? await publishByCreatorBrowser(carried, acc)
+                    : await uploadAssetToCloud(carried.assetId, acc.accountId);
+                  setCarryNotice(r.messageAr);
+                  setCloud(await listCloudAccounts());
+                  // The receipt, re-read from the database — so what the
+                  // screen says next came from the table, not from a
+                  // remembered success.
+                  setReceipts(await listDistributionReceipts());
+                  setCloudBusy(null);
+                }}
+              >
+                {cloudBusy === `${carried.assetId}:${acc.accountId}`
+                  ? (acc.provider === 'google-drive' ? 'يُرفع…' : 'يُنشَر…')
+                  : acc.provider === 'google-drive'
+                    ? `☁ ارفعه إلى ${acc.accountLabel ?? 'حسابك'}`
+                    // TikTok is never «انشره»: without its audit the file lands
+                    // as a draft its owner must finish by hand.
+                    : acc.provider === 'tiktok'
+                      ? `♪ أرسِله مسوّدةً إلى ${acc.accountLabel ?? 'تيك توك'}`
+                      : `${PROVIDER_MARK[acc.provider] ?? '✦'} انشره في ${acc.accountLabel ?? 'وجهتك'}`}
+              </button>
+              );
+            })}
+
+            {carried && cloud?.accounts.length === 0 && (
+              <p className="makman-capability-hint">اربط حساباً سحابيّاً أعلاه لترفع هذا الأصل إليه.</p>
+            )}
+
+            {/* ── WHAT ACTUALLY LEFT THE EMPIRE ────────────────────────────
+                FOUNDER'S ORDER, 2026-10-04: «Refresh/re-enter the relevant
+                area and confirm the published state remains truthful».
+
+                A message shown once after a publication proves nothing an
+                hour later. This list is read from `distribution_receipts` on
+                every entry to the Chamber — so «✓ نُشِر» on this screen is
+                the database speaking, and a failure stays visible as a
+                failure instead of vanishing with the page. */}
+            {receipts.length > 0 && (
+              <>
+                <p className="makman-capability-hint">◆ سجلّ التوزيع الخارجي</p>
+                <div data-testid="makman-receipts">
+                  {receipts.map((r) => (
+                    <div key={r.receiptId} className="makman-plan-row makman-done-row">
+                      <span>
+                        {r.status === 'PUBLISHED' ? '✓ نُشِر' : '✕ لم يُنشَر'}
+                        {' — '}{r.providerLabelAr}{' · '}{r.whereAr}
+                      </span>
+                      <span className="makman-receipt-when">
+                        {new Date(r.atMs).toLocaleString('ar-EG')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* ── THE VAULT DOOR ──────────────────────────────────────────
+                A VIEW of the Vault, never a second registry. Every card is
+                draggable AND pressable: «كل أصل قابل للاختيار بالضغط لمن لا
+                يستخدم السحب والإفلات». */}
+            <p className="makman-capability-hint">◆ أصولك في الخزانة السيادية</p>
+            <div className="makman-vault-door" data-testid="makman-vault-door">
+              {vaultDoor.length === 0 && (
+                <p className="project-status">لا أصول في خزانتك بعد.</p>
+              )}
+              {vaultDoor.map((a) => (
+                <button
+                  key={a.assetId}
+                  type="button"
+                  className={`makman-vault-card${carried?.assetId === a.assetId ? ' vault-card-on' : ''}`}
+                  draggable
+                  onDragStart={(e) => {
+                    // The Empire's one sovereign-asset drag contract.
+                    e.dataTransfer.setData(SOVEREIGN_ASSET_DRAG_TYPE, a.assetId);
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  onClick={async () => {
+                    setDropState('resolving');
+                    setCarryNotice(null);
+                    const outcome = await resolveAssetForDistribution(a.assetId);
+                    if (outcome.ok) { setCarried(outcome.asset); setDropState('idle'); }
+                    else { setDropState('rejected'); setCarryNotice(outcome.messageAr); }
+                  }}
+                  title={a.labelAr}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={a.previewUri} alt="" className="makman-vault-thumb" draggable={false} />
+                  <span className="makman-vault-kind">{a.kindAr}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
 
         {/* ── Import from Vault ──────────────────────────────────── */}
         <div className="makman-vault-link">
