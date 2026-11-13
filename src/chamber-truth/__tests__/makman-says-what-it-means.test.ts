@@ -72,7 +72,9 @@ describe('Makman says what it means', () => {
 
   it('and the chamber draws them instead of the old glyphs', () => {
     expect((CHAMBER.match(/<DestinationMark /g) ?? []).length).toBe(3);
-    expect(CHAMBER).not.toContain('PROVIDER_MARK[acc.provider]');
+    // The old glyph map is gone entirely, not merely unused: a table of
+    // borrowed symbols with no reader is prose, and prose goes.
+    expect(CHAMBER).not.toContain('PROVIDER_MARK');
   });
 
   it('a film and a narration are no longer blank squares', () => {

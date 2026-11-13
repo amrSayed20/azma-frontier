@@ -216,10 +216,6 @@ const PROVIDER_FALLBACK_AR: Record<string, string> = {
 };
 
 /** The icon that tells one kind of destination from another at a glance. */
-const PROVIDER_MARK: Record<string, string> = {
-  'google-drive': '◈', telegram: '✈', 'telegram-user': '✦',
-  youtube: '▶', 'facebook-page': '❖', 'instagram-business': '◉', tiktok: '♪',
-};
 
 /** The platforms, named as a Creator names them — never as an API key. */
 const PLATFORM_AR: Record<string, string> = {
