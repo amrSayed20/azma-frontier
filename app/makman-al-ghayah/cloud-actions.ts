@@ -513,6 +513,13 @@ export interface DistributableAsset {
   readonly kindAr: string;
   /** For a thumbnail the Creator's own browser is already authorised to fetch. */
   readonly previewUri: string;
+  /**
+   * WHAT THIS ASSET IS, in the Empire's own vocabulary — so a surface can
+   * draw it correctly. Without it every asset was rendered through one
+   * `<img>`, and a film or a narration in an `<img>` is a blank square: the
+   * Creator saw an empty Vault that was not empty.
+   */
+  readonly kind: string;
 }
 
 const KIND_AR: Readonly<Record<string, string>> = {
@@ -535,6 +542,7 @@ function describe(asset: {
     assetId: asset.assetId,
     labelAr: named || 'أصل من خزانتك',
     kindAr: KIND_AR[asset.capabilityTarget] ?? 'أصل',
+    kind: asset.capabilityTarget,
     previewUri: asset.secureStorageUri,
   };
 }

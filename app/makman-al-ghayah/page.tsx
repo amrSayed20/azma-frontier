@@ -48,6 +48,7 @@ import {
 } from './cloud-actions';
 import { SOVEREIGN_ASSET_DRAG_TYPE, readDraggedAssetId } from '@/src/vault/sovereign-asset-drag';
 import { reframablePlatforms } from '@/src/platform-reframe/platform-target';
+import DestinationMark from './DestinationMark';
 
 /** The plan as the page displays it — the server's own shape, narrowed. */
 interface ReframePlanView {
@@ -1755,7 +1756,7 @@ export default function MakmanAlGhayah() {
           {cloud?.accounts.map((acc) => (
             <div key={acc.accountId} className="makman-plan-row makman-done-row">
               <span>
-                {PROVIDER_MARK[acc.provider] ?? '◈'}{' '}
+                <DestinationMark provider={acc.provider} />{' '}
                 {acc.accountLabel ?? PROVIDER_FALLBACK_AR[acc.provider] ?? 'حسابٌ مرتبط'}
                 {' · '}
                 <span className="makman-receipt-when">{PROVIDER_FALLBACK_AR[acc.provider] ?? acc.provider}</span>
@@ -2089,7 +2090,17 @@ export default function MakmanAlGhayah() {
               {carried ? (
                 <div className="makman-carried">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={carried.previewUri} alt="" className="makman-carried-thumb" />
+                  {/* A film in an `<img>` is a blank square. The kind
+                      decides the element — the same rule the Ras Al Amr
+                      workshop has always used for a Vault thumbnail. */}
+                  {carried.kind === 'MOTION' ? (
+                    <video src={carried.previewUri} className="makman-carried-thumb" muted preload="metadata" aria-hidden="true" />
+                  ) : carried.kind === 'AUDIO' ? (
+                    <span className="makman-carried-thumb makman-thumb-sound" aria-hidden="true">♪</span>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={carried.previewUri} alt="" className="makman-carried-thumb" />
+                  )}
                   <span className="makman-carried-name">◈ {carried.labelAr}</span>
                   <button
                     className="makman-unlink-btn"
@@ -2123,7 +2134,7 @@ export default function MakmanAlGhayah() {
               if (refusedAr) {
                 return (
                   <p key={acc.accountId} className="makman-capability-hint">
-                    {PROVIDER_MARK[acc.provider] ?? '✦'}{' '}
+                    <DestinationMark provider={acc.provider} />{' '}
                     {acc.accountLabel ?? 'وجهتك'} — {refusedAr}
                   </p>
                 );
@@ -2161,7 +2172,7 @@ export default function MakmanAlGhayah() {
                     // as a draft its owner must finish by hand.
                     : acc.provider === 'tiktok'
                       ? `♪ أرسِله مسوّدةً إلى ${acc.accountLabel ?? 'تيك توك'}`
-                      : `${PROVIDER_MARK[acc.provider] ?? '✦'} انشره في ${acc.accountLabel ?? 'وجهتك'}`}
+                      : <>{<DestinationMark provider={acc.provider} />} {`انشره في ${acc.accountLabel ?? 'وجهتك'}`}</>}
               </button>
               );
             })}
@@ -2228,7 +2239,14 @@ export default function MakmanAlGhayah() {
                   title={a.labelAr}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={a.previewUri} alt="" className="makman-vault-thumb" draggable={false} />
+                  {a.kind === 'MOTION' ? (
+                    <video src={a.previewUri} className="makman-vault-thumb" muted preload="metadata" aria-hidden="true" />
+                  ) : a.kind === 'AUDIO' ? (
+                    <span className="makman-vault-thumb makman-thumb-sound" aria-hidden="true">♪</span>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={a.previewUri} alt="" className="makman-vault-thumb" draggable={false} />
+                  )}
                   <span className="makman-vault-kind">{a.kindAr}</span>
                 </button>
               ))}

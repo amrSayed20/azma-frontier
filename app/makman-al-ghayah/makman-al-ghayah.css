@@ -843,3 +843,51 @@
 
 .makman-destination-row .makman-cloud-state { margin: 0; }
 .makman-destination-row .makman-capability-hint { margin: 0; opacity: 0.8; }
+
+/* ─── A DESTINATION'S OWN MARK, IN THE EMPIRE'S OWN COLOUR ──────────────────
+ *
+ *   «بالروز الخاصه بها ولكن بهويه المنصه» — the Founder, 2026-11-13. The
+ *   SHAPE carries recognition, the COLOUR carries ownership. The mark inherits
+ *   `currentColor` from the row it sits in, so it is gold here and would be
+ *   gold anywhere else in this Empire — never a brand's own colour, which
+ *   would make the room belong to them.
+ */
+.makman-mark-svg {
+  display: inline-block;
+  vertical-align: -0.18em;
+  flex: 0 0 auto;
+  color: inherit;
+}
+
+/* A destination with no mark of its own keeps a neutral lozenge rather than
+   borrowing somebody else's shape. */
+.makman-mark {
+  display: inline-block;
+  color: inherit;
+}
+
+/* ─── A NARRATION HAS A FACE ────────────────────────────────────────────────
+ *
+ *   MEASURED: every Vault asset was drawn through one `<img>`, so a film and
+ *   a narration rendered as blank squares and a full Vault looked empty. The
+ *   kind now picks the element; sound has no frame to show, so it is given a
+ *   mark on its own ground rather than a hole where a picture should be.
+ */
+.makman-thumb-sound {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--azma-gold-rgb), 0.10);
+  border: 1px solid rgba(var(--azma-gold-rgb), 0.28);
+  color: var(--azma-text-primary, #E8D595);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+/* A film thumbnail is a video element now, so it must be sized and clipped
+   exactly as the image it replaced — otherwise the row re-flows around it. */
+.makman-vault-thumb,
+.makman-carried-thumb {
+  object-fit: cover;
+  background: rgba(10, 10, 10, 0.9);
+}

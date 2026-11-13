@@ -53,6 +53,51 @@ describe('Makman says what it means', () => {
     for (const l of labels) expect(l).toContain('ولا يُعيد قصَّ فيلمٍ جاهز');
   });
 
+  it('every destination wears its OWN mark, in the Empire’s colour', () => {
+    // «بالروز الخاصه بها ولكن بهويه المنصه». The shape carries recognition;
+    // the colour carries ownership. A generic ◈ beside a ❖ is a mark that
+    // has to be read, which is not a mark.
+    const mark = readFileSync(
+      join(__dirname, '..', '..', '..', 'app', 'makman-al-ghayah', 'DestinationMark.tsx'), 'utf8');
+    // A hyphenated key is quoted and a plain one is not — the guard reads
+    // the key, not its spelling, because the first draft assumed quotes and
+    // failed on the unquoted ones.
+    for (const p of ['youtube', 'facebook-page', 'instagram-business', 'tiktok', 'telegram', 'google-drive']) {
+      expect(mark.includes(`'${p}':`) || mark.includes(`${p}:`)).toBe(true);
+    }
+    // THE WHOLE POINT: never a brand colour. Drawn in the inherited one.
+    expect(mark).toContain('fill="currentColor"');
+    expect(mark).not.toMatch(/fill="#[0-9a-fA-F]{3,6}"/);
+  });
+
+  it('and the chamber draws them instead of the old glyphs', () => {
+    expect((CHAMBER.match(/<DestinationMark /g) ?? []).length).toBe(3);
+    expect(CHAMBER).not.toContain('PROVIDER_MARK[acc.provider]');
+  });
+
+  it('a film and a narration are no longer blank squares', () => {
+    // MEASURED: the Vault list IS loaded and the filter IS right — every
+    // asset was simply drawn through one `<img>`, so a Creator with a full
+    // Vault saw an empty room.
+    expect(CHAMBER).toContain("a.kind === 'MOTION'");
+    expect(CHAMBER).toContain("carried.kind === 'MOTION'");
+    expect((CHAMBER.match(/makman-thumb-sound/g) ?? []).length).toBe(2);
+  });
+
+  it('and the asset says what it is, so a surface can draw it', () => {
+    const actions = readFileSync(
+      join(__dirname, '..', '..', '..', 'app', 'makman-al-ghayah', 'cloud-actions.ts'), 'utf8');
+    expect(actions).toContain('kind: asset.capabilityTarget,');
+  });
+
+  it('the sound mark paints its own ground', () => {
+    // A span with no background is a hole where a picture should be.
+    const css = readFileSync(
+      join(__dirname, '..', '..', '..', 'app', 'makman-al-ghayah', 'makman-al-ghayah.css'), 'utf8');
+    const rule = css.slice(css.indexOf('.makman-thumb-sound {'));
+    expect(rule.slice(0, rule.indexOf('}'))).toMatch(/background/);
+  });
+
   it('a Creator meets their PURPOSE before any account plumbing', () => {
     // MEASURED: this chamber gave purpose 53 lines and account plumbing 507,
     // and 480 of those sat BETWEEN the status and the purpose. The status
