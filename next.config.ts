@@ -2,6 +2,39 @@ import type { NextConfig } from "next";
 
 // Applied to all routes except Next.js static chunks (those use immutable
 // content-hash URLs and are safe to cache forever).
+// ── WHAT A BROWSER IS TOLD BEFORE THE FIRST BYTE OF THE PAGE ───────────────
+//
+//   MEASURED ON THE LIVE SITE 2026-11-13, before this block existed: the edge
+//   already sent `Strict-Transport-Security` and `X-Content-Type-Options`.
+//   It sent NOTHING about framing — so any site on the internet could put
+//   azmaos.com in an iframe and lay invisible controls over the Creator's own
+//   buttons. The buttons underneath include the one that spends their
+//   balance, and the whole balance and payment surface. That is clickjacking,
+//   and on a platform that holds money it is a commercial risk, not a
+//   hardening nicety.
+//
+//   Declared HERE and not only at the edge on purpose: a header the
+//   repository states travels with every deployment and can be read in a
+//   diff. A header that lives only in a dashboard is true until someone
+//   changes a dashboard.
+const SECURITY_HEADERS = [
+  // No one frames this Empire. `frame-ancestors` is the modern rule and
+  // `X-Frame-Options` is the one older browsers obey — both, because a
+  // Creator's browser is not ours to choose.
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
+  // A Creator's page URL carries their work's identifiers. It does not
+  // travel to another origin.
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  // The chamber records voice when a Creator asks it to, so the microphone is
+  // allowed to THIS origin and nowhere else. Camera and location are asked
+  // for nowhere in this platform, so they are refused outright.
+  { key: 'Permissions-Policy', value: 'camera=(), geolocation=(), microphone=(self), payment=()' },
+  // The edge sends this today. Declared here too, so a change at the edge
+  // cannot silently remove it.
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+];
+
 const NO_CACHE_HEADERS = [
   // Browser: never store this response.
   { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, proxy-revalidate' },
@@ -116,6 +149,12 @@ const nextConfig: NextConfig = {
         // re-fetched).
         source: '/((?!_next/static|_next/image|favicon\\.ico).*)',
         headers: NO_CACHE_HEADERS,
+      },
+      {
+        // Security headers go on EVERYTHING, static assets included: a script
+        // or a font is as framable as a page.
+        source: '/:path*',
+        headers: SECURITY_HEADERS,
       },
     ];
   },

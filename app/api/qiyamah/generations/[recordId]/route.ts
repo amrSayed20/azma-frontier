@@ -136,11 +136,30 @@ export async function DELETE(
     }
   }
 
-  // Delete physical file.
-  // Generated images are stored at UPLOADS_DIR/generated-assets/uuid.png.
-  // path.join('/var/www/azma-uploads', '/generated-assets/uuid.png')
-  //   = '/var/www/azma-uploads/generated-assets/uuid.png' (Node.js joins, not resolves).
-  const filePath = path.join(uploadsDir(), record.assetUrl);
+  // ── DELETE THE FILE, CONFINED TO THE UPLOADS ROOT ──────────────────────
+  //
+  //   THIS WAS THE ONE ROAD THAT DID NOT STRIP THE DIRECTORY. It joined the
+  //   WHOLE stored URL — `path.join(uploadsDir(), record.assetUrl)` — under a
+  //   comment reasoning that «Node.js joins, not resolves». That reasoning is
+  //   wrong: `path.join` NORMALISES, so a stored value carrying `..` walks out
+  //   of the uploads root, and the call below is `unlink`.
+  //
+  //   Nothing can reach it today — `assetUrl` is minted by this Empire as
+  //   `/generated-assets/<uuid>.png` or `/uploads/<uuid>.ext`, never by a
+  //   Creator. But the other four roads that turn a stored URI into a path
+  //   (animate, upscale, image-edit, the asset's own DELETE) all take
+  //   `basename` first, and a deletion that trusts a stored string to be
+  //   well-formed is the one of the five that cannot be audited by reading it.
+  //
+  //   A bare `basename` is NOT the fix here: it would drop the
+  //   `generated-assets` directory and unlink a path that does not exist,
+  //   leaving the file behind while the record says it is gone. So the known
+  //   prefix is matched and the leaf alone is taken — the same shape
+  //   `animate/route.ts` already uses.
+  const leaf = path.basename(record.assetUrl);
+  const filePath = record.assetUrl.startsWith('/generated-assets/')
+    ? path.join(uploadsDir(), 'generated-assets', leaf)
+    : path.join(uploadsDir(), leaf);
   try { unlinkSync(filePath); } catch { /* file may already be absent */ }
 
   // Remove vault entry (by storage URI + tenant — no orphaned asset)
