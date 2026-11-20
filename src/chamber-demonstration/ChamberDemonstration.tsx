@@ -144,17 +144,29 @@ export function ChamberDemonstration({ chamberId, philosophyAr, outcomeAr, steps
               </section>
             )}
 
-            {truth.deferred.length > 0 && (
-              <section className="demo-section">
-                <h3 className="demo-h">ما لا تفعله هذه الحجرة بعد</h3>
-                <ul className="demo-caps demo-caps-absent">
-                  {truth.deferred.map((d) => <li key={d.responsibilityAr}>{d.responsibilityAr}</li>)}
-                </ul>
-                <p className="demo-note">
-                  مذكورٌ لا مسكوتٌ عنه. ما لم يُبنَ بعد يُقال، فلا يُكتشف مفاجأةً.
-                </p>
-              </section>
-            )}
+            {/*
+              ── THE DEFERRED SECTION IS NO LONGER SHOWN TO A CREATOR ────────
+              FOUNDER, 2026-11-20: «يُمنع ظهور تصنيفات حالة البناء والتطوير
+              للمستخدم أو الزائر … ولا تعرض تقريراً عن مراحل تطويرها».
+
+              This panel listed every responsibility a chamber does not yet
+              carry, under the heading «ما لا تفعله هذه الحجرة بعد», in five
+              chambers. It was written in good faith — it exists so nothing is
+              discovered as a surprise — but it is a development report, and a
+              Creator is not the audience for one.
+
+              WHAT WAS NOT DONE, DELIBERATELY: `truth.deferred` is untouched.
+              The registry, its records and every engineering surface that
+              reads it stay exactly as they were, because the same order
+              draws that line — «لا تحذف حالات التشغيل الداخلية أو سجلات
+              المراقبة أو أدوات التشخيص التي يحتاجها الفريق الهندسي».
+
+              AND NOTHING WAS PROMISED IN ITS PLACE. Removing a list of what a
+              chamber does not do cannot create a claim that it does: the two
+              sections above still show only what the chamber performs, and
+              the gated one still says what it needs first. Silence, not a
+              substitution.
+            */}
 
             <button type="button" className="demo-enter" onClick={close}>
               فهمت — ادخل الحجرة

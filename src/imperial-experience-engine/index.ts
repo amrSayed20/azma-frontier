@@ -56,6 +56,10 @@ export { ArrivalExperience } from './experiences/arrival';
 // it is the ceremony this gateway supersedes, not a thing to delete.
 export { SovereignGateway } from './experiences/gateway/SovereignGateway';
 export type { GatewayPolicy, GatewayPackage } from './experiences/gateway/types';
+// The landing approved on 2026-11-20. SovereignGateway stays exported beside
+// it: returning to the previous reception is one line in app/page.tsx, not a
+// revert of a twenty-five-kilobyte file.
+export { default as SovereignLanding } from './experiences/landing/SovereignLanding';
 export { SignupExperience } from './experiences/signup';
 export { LoginExperience } from './experiences/login';
 export { QiyamahChamberExperience } from './experiences/qiyamah-chamber';

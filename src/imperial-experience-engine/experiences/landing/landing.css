@@ -1,0 +1,979 @@
+/*
+ * AZMA OS — SOVEREIGN LANDING STYLESHEET
+ *
+ * ═══ THE LAYOUT IDEA ════════════════════════════════════════════════════════
+ *
+ *   ONE LIT ROOM, not a stack of separately-glowing bands. Three fixed light
+ *   layers sit behind the whole page — a violet bloom high, a gold bloom low,
+ *   and a deep indigo wash between them — and every section is transparent on
+ *   top of them. That is what gives the page depth when you scroll: the light
+ *   stays put and the content moves through it.
+ *
+ *   The Founder, 2026-11-20: «الخلفية الحالية داكنة أكثر مما أريد. اجعلها
+ *   أكثر لمعاناً وحيوية وعمقاً، مع الحفاظ على الفخامة والاتزان». So the ground
+ *   was lifted from near-black to a living indigo, the blooms were brought up
+ *   to where they read, and the cards were given their own quiet rim-light —
+ *   while «تجنب الوهج المبالغ فيه وألوان النيون الصاخبة» kept every one of
+ *   them under the saturation where gold turns to neon.
+ *
+ * ═══ THE ISOLATION CONTRACT ═════════════════════════════════════════════════
+ *
+ *   1 · EVERY selector begins `.lp-`. No element selector, no `*`, no `html`,
+ *       no `body`, no `:root`. `app/globals.css` and five design-system
+ *       sheets are loaded by the ROOT layout on EVERY page of this platform,
+ *       so one bare `body { … }` here would reach every chamber. That has
+ *       happened to this codebase before: `body{overflow:hidden}` in the
+ *       Vault's stylesheet bled into Qiyamah through single-page navigation.
+ *
+ *   2 · EVERY custom property is declared on `.lp-root`, never on `:root`.
+ *       The root layout loads 198 shared tokens; redefining one of them from
+ *       here would recolour the whole Empire.
+ *
+ *   3 · THE `gate-` PREFIX IS FORBIDDEN, by the Founder's order. The Vault
+ *       already defines `.gate-card`, `.gate-icon`, `.gate-name` and
+ *       `.gate-portal-effect` in `app/sovereign-vault/sovereign-vault.css`.
+ *       `gi-` belongs to the gateway and is left to it.
+ *
+ *   4 · DIRECTION IS NEVER HARD-CODED — logical properties only, so one set
+ *       of rules serves Arabic and English with no `[dir=rtl]` override.
+ *
+ *   A guard asserts all four by reading this file.
+ */
+
+/* ══ TOKENS — ON THE CONTAINER, NEVER ON :root ════════════════════════════ */
+
+.lp-root {
+  /* The ground, lifted. The first build used #0a0f1e, which photographed as
+     flat black; these three carry a visible indigo life while staying dark
+     enough for gold to read as gold. */
+  --lp-night:        #0e1530;
+  --lp-night-2:      #141d3f;
+  --lp-surface:      #1a2447;
+  --lp-surface-2:    #202c55;
+  --lp-line:         rgba(174, 190, 255, 0.14);
+  --lp-line-strong:  rgba(188, 202, 255, 0.28);
+
+  --lp-ink:          #f0f3fb;
+  --lp-ink-soft:     #bcc6e4;
+  --lp-ink-faint:    #8f9ac0;
+
+  /* The Empire's own gold (azma-identity.css), pinned here so this page
+     cannot drift if that token is ever retuned for the chambers. */
+  --lp-gold:         #d4af37;
+  --lp-gold-soft:    #ecd68c;
+  --lp-violet:       #7c5cff;
+  --lp-violet-soft:  #b49cff;
+
+  /* The one light band. Its own small palette. */
+  --lp-cream:        #f2eee5;
+  --lp-cream-2:      #ffffff;
+  --lp-cream-ink:    #151a2b;
+  --lp-cream-soft:   #585f75;
+  --lp-cream-line:   rgba(20, 25, 45, 0.12);
+
+  --lp-radius:       20px;
+  --lp-radius-sm:    14px;
+  --lp-gutter:       clamp(16px, 5vw, 56px);
+  --lp-measure:      1180px;
+
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  line-height: 1.75;
+  color: var(--lp-ink);
+  font-family: var(--font-arabic), var(--font-latin), system-ui, sans-serif;
+
+  /* The base wash. Two broad radials over a vertical gradient: the page is
+     never one flat colour at any scroll position. */
+  background:
+    radial-gradient(1200px 760px at 50% -10%, #23306b 0%, transparent 62%),
+    radial-gradient(900px 620px at 12% 108%, #1b2450 0%, transparent 60%),
+    linear-gradient(180deg, #0f1733 0%, #0e1530 48%, #121a39 100%);
+  background-attachment: fixed;
+}
+
+.lp-root[data-locale='en'] {
+  font-family: var(--font-latin), system-ui, sans-serif;
+}
+
+/* ══ THE AMBIENT LAYERS ═══════════════════════════════════════════════════
+   Fixed behind everything, so light stays put while content scrolls through
+   it. `pointer-events: none` on the container: nothing here can ever take a
+   press meant for a control — a defect this platform has already paid for. */
+
+.lp-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.lp-ambient > span { position: absolute; display: block; }
+
+.lp-ambient-violet {
+  inset-block-start: -28vh;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  inline-size: min(1500px, 155vw);
+  block-size: 95vh;
+  background: radial-gradient(
+    closest-side,
+    rgba(124, 92, 255, 0.46) 0%,
+    rgba(124, 92, 255, 0.20) 42%,
+    transparent 72%);
+  filter: blur(42px);
+}
+
+.lp-ambient-gold {
+  inset-block-end: -22vh;
+  inset-inline-end: -14vw;
+  inline-size: min(1000px, 105vw);
+  block-size: 78vh;
+  background: radial-gradient(
+    closest-side,
+    rgba(212, 175, 55, 0.24) 0%,
+    rgba(212, 175, 55, 0.10) 44%,
+    transparent 74%);
+  filter: blur(54px);
+}
+
+.lp-ambient-deep {
+  inset-block-start: 36vh;
+  inset-inline-start: -18vw;
+  inline-size: min(1100px, 115vw);
+  block-size: 85vh;
+  background: radial-gradient(
+    closest-side,
+    rgba(72, 108, 220, 0.26) 0%,
+    transparent 70%);
+  filter: blur(58px);
+}
+
+/* A very faint rule grid. It is what keeps a large dark field from reading as
+   empty, and at this opacity it is felt rather than seen. */
+.lp-ambient-grid {
+  inset: 0;
+  opacity: 0.4;
+  background-image:
+    linear-gradient(rgba(170, 190, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(170, 190, 255, 0.045) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(900px 620px at 50% 12%, #000 0%, transparent 78%);
+}
+
+/* ══ SHARED PIECES ════════════════════════════════════════════════════════ */
+
+.lp-section {
+  position: relative;
+  inline-size: 100%;
+  max-inline-size: var(--lp-measure);
+  margin-inline: auto;
+  padding-inline: var(--lp-gutter);
+  padding-block: clamp(56px, 9vw, 112px);
+}
+
+.lp-section-head {
+  max-inline-size: 760px;
+  margin-inline: auto;
+  margin-block-end: clamp(32px, 5vw, 58px);
+  text-align: center;
+}
+
+.lp-eyebrow {
+  margin: 0 0 14px;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  color: var(--lp-gold-soft);
+}
+
+/* The hero's eyebrow is a pill, lit from inside — the design's first signal
+   that this page is a lit space and not a dark one. */
+.lp-eyebrow--pill {
+  display: inline-block;
+  padding: 7px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.16), rgba(212, 175, 55, 0.05));
+  box-shadow: 0 0 34px rgba(212, 175, 55, 0.14);
+}
+
+.lp-h2 {
+  margin: 0;
+  font-size: clamp(1.65rem, 4.2vw, 2.7rem);
+  font-weight: 600;
+  line-height: 1.35;
+  text-wrap: balance;
+  color: var(--lp-ink);
+}
+
+.lp-h3 {
+  margin: 0 0 14px;
+  font-size: clamp(1.15rem, 2.4vw, 1.45rem);
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--lp-ink);
+}
+
+.lp-section-lede {
+  margin: 18px 0 0;
+  font-size: clamp(0.95rem, 1.9vw, 1.07rem);
+  color: var(--lp-ink-soft);
+}
+
+.lp-headline-lit {
+  color: var(--lp-gold);
+  text-shadow: 0 0 46px rgba(212, 175, 55, 0.30);
+}
+
+/* ── buttons ──────────────────────────────────────────────────────────── */
+
+.lp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 26px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.97rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 140ms ease, background-color 140ms ease,
+              border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.lp-btn--gold {
+  background: linear-gradient(180deg, #e3c257 0%, var(--lp-gold) 100%);
+  color: #1b1403;
+  border-color: rgba(255, 236, 170, 0.5);
+  box-shadow: 0 10px 34px rgba(212, 175, 55, 0.26);
+}
+
+.lp-btn--gold:hover {
+  box-shadow: 0 12px 42px rgba(212, 175, 55, 0.38);
+  transform: translateY(-1px);
+}
+
+.lp-btn--ghost {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--lp-ink);
+  border-color: var(--lp-line-strong);
+}
+
+.lp-btn--ghost:hover { border-color: var(--lp-gold); color: var(--lp-gold-soft); }
+
+.lp-btn--quiet {
+  background: transparent;
+  color: var(--lp-cream-ink);
+  border-color: var(--lp-cream-line);
+}
+
+.lp-btn--quiet:hover { border-color: var(--lp-cream-ink); }
+
+.lp-btn--sm { padding: 9px 18px; font-size: 0.88rem; }
+.lp-btn--block { inline-size: 100%; margin-block-start: auto; }
+
+.lp-btn:focus-visible,
+.lp-filter:focus-visible,
+.lp-faq-q:focus-visible,
+.lp-chamber:focus-visible,
+.lp-footer a:focus-visible,
+.lp-nav-links a:focus-visible {
+  outline: 2px solid var(--lp-gold);
+  outline-offset: 3px;
+}
+
+/* ══ 0 · THE BAR ══════════════════════════════════════════════════════════ */
+
+.lp-nav {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  inline-size: 100%;
+  max-inline-size: var(--lp-measure);
+  margin-inline: auto;
+  padding-inline: var(--lp-gutter);
+  padding-block: 14px;
+  background: rgba(14, 21, 48, 0.72);
+  backdrop-filter: blur(14px);
+  border-block-end: 1px solid var(--lp-line);
+}
+
+.lp-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+
+.lp-brand-mark {
+  inline-size: 30px;
+  block-size: 30px;
+  border-radius: 9px;
+  flex: none;
+  background: linear-gradient(140deg, var(--lp-gold) 0%, var(--lp-violet) 100%);
+  box-shadow: 0 0 22px rgba(124, 92, 255, 0.45);
+}
+
+.lp-brand-text { display: flex; flex-direction: column; line-height: 1.25; }
+.lp-brand-name { font-size: 1rem; font-weight: 700; letter-spacing: 0.04em; }
+.lp-brand-sub  { font-size: 0.7rem; color: var(--lp-ink-faint); }
+
+.lp-nav-links { display: flex; align-items: center; gap: 22px; }
+
+.lp-nav-links a {
+  color: var(--lp-ink-soft);
+  text-decoration: none;
+  font-size: 0.92rem;
+  transition: color 140ms ease;
+}
+
+.lp-nav-links a:hover { color: var(--lp-ink); }
+.lp-nav-actions { display: flex; align-items: center; gap: 12px; }
+
+/* ══ 1 · THE OPENING ══════════════════════════════════════════════════════ */
+
+.lp-hero {
+  position: relative;
+  inline-size: 100%;
+  max-inline-size: var(--lp-measure);
+  margin-inline: auto;
+  padding-inline: var(--lp-gutter);
+  padding-block: clamp(52px, 8vw, 96px) clamp(40px, 6vw, 72px);
+}
+
+.lp-hero-inner { text-align: center; max-inline-size: 830px; margin-inline: auto; }
+
+.lp-headline {
+  margin: 20px 0;
+  font-size: clamp(2rem, 6.4vw, 3.6rem);
+  font-weight: 700;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.lp-hero-lede {
+  margin: 0 auto 32px;
+  max-inline-size: 650px;
+  font-size: clamp(0.98rem, 2.1vw, 1.12rem);
+  color: var(--lp-ink-soft);
+}
+
+.lp-hero-actions { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+
+/* ── the showcase ─────────────────────────────────────────────────────── */
+
+.lp-showcase {
+  position: relative;
+  margin-block-start: clamp(40px, 6vw, 68px);
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid var(--lp-line);
+  border-radius: var(--lp-radius);
+  background:
+    linear-gradient(180deg, rgba(42, 56, 112, 0.58) 0%, rgba(20, 29, 63, 0.72) 100%);
+  box-shadow:
+    0 36px 90px rgba(5, 8, 24, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.lp-showcase-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-block-end: 20px;
+}
+
+.lp-showcase-title { margin: 0; font-size: 0.95rem; color: var(--lp-ink-soft); }
+.lp-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.lp-filter {
+  padding: 7px 15px;
+  border: 1px solid var(--lp-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--lp-ink-soft);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.lp-filter:hover { border-color: var(--lp-line-strong); color: var(--lp-ink); }
+
+.lp-filter--on {
+  background: linear-gradient(180deg, #e3c257, var(--lp-gold));
+  border-color: rgba(255, 236, 170, 0.5);
+  color: #1b1403;
+  font-weight: 600;
+}
+
+.lp-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp-tile { display: flex; flex-direction: column; gap: 9px; min-inline-size: 0; }
+
+.lp-tile-art {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+  max-inline-size: 100%;
+  overflow: hidden;
+  border-radius: var(--lp-radius-sm);
+  border: 1px solid var(--lp-line-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* Two painted layers per tile: a deep gradient ground, and a soft bloom
+   offset into a corner so no two tiles read as the same flat swatch.
+   `pointer-events: none` is NOT decoration-by-habit — the bloom is inset past
+   its own box so the gradient reaches the edge, and the browser measurement
+   caught its rect leaving the viewport on a phone. It is clipped by the
+   tile's `overflow: hidden` and so can never be SEEN outside, but a painted
+   layer that could take a press meant for something else is a defect this
+   platform has already paid for once. Now it cannot. */
+.lp-tile-art-wash,
+.lp-tile-art-mark { position: absolute; inset: 0; display: block; pointer-events: none; }
+
+.lp-tile-art-mark {
+  inset: auto -20% -30% -20%;
+  block-size: 78%;
+  filter: blur(26px);
+  opacity: 0.85;
+}
+
+.lp-tile[data-kind='image']  .lp-tile-art-wash { background: linear-gradient(158deg, #e9cf7a 0%, #8a6f2a 48%, #3a2f12 100%); }
+.lp-tile[data-kind='image']  .lp-tile-art-mark { background: radial-gradient(closest-side, rgba(255, 240, 190, 0.85), transparent); }
+
+.lp-tile[data-kind='motion'] .lp-tile-art-wash { background: linear-gradient(158deg, #a994ff 0%, #5a46b8 48%, #241b52 100%); }
+.lp-tile[data-kind='motion'] .lp-tile-art-mark { background: radial-gradient(closest-side, rgba(216, 204, 255, 0.8), transparent); }
+
+.lp-tile[data-kind='voice']  .lp-tile-art-wash { background: linear-gradient(158deg, #efdcae 0%, #7e6a86 50%, #332a4a 100%); }
+.lp-tile[data-kind='voice']  .lp-tile-art-mark { background: radial-gradient(closest-side, rgba(255, 246, 219, 0.72), transparent); }
+
+.lp-tile[data-kind='film']   .lp-tile-art-wash { background: linear-gradient(158deg, #8f6dff 0%, #3b2d8c 46%, #171340 100%); }
+.lp-tile[data-kind='film']   .lp-tile-art-mark { background: radial-gradient(closest-side, rgba(226, 196, 120, 0.6), transparent); }
+
+.lp-tile-label   { font-size: 0.88rem; font-weight: 600; }
+.lp-tile-chamber { font-size: 0.76rem; color: var(--lp-ink-faint); }
+
+.lp-showcase-note {
+  margin: 20px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  color: var(--lp-ink-faint);
+  text-align: center;
+}
+
+/* ══ 2 · THE JOURNEY ══════════════════════════════════════════════════════ */
+
+.lp-steps {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(20px, 3vw, 34px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The connecting rail, inset so it never runs past the first and last node,
+   and removed entirely when the steps stack. */
+.lp-steps::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 23px;
+  inset-inline: 16%;
+  block-size: 1px;
+  background: linear-gradient(to inline-end, transparent, var(--lp-line-strong), transparent);
+}
+
+.lp-step { position: relative; text-align: center; }
+
+.lp-step-node {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 46px;
+  block-size: 46px;
+  margin-block-end: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 175, 55, 0.6);
+  background: linear-gradient(180deg, #1e2a55, #141d3f);
+  color: var(--lp-gold-soft);
+  font-size: 1rem;
+  font-weight: 700;
+  box-shadow: 0 0 26px rgba(212, 175, 55, 0.2);
+}
+
+.lp-step-title   { margin: 0 0 10px; font-size: 1.1rem; font-weight: 600; }
+.lp-step-body    { margin: 0 0 12px; font-size: 0.93rem; color: var(--lp-ink-soft); }
+.lp-step-chamber { margin: 0; font-size: 0.8rem; color: var(--lp-gold-soft); }
+
+/* ══ 2b · PURPOSE AND LIMITS ══════════════════════════════════════════════ */
+
+.lp-purpose-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(16px, 2.5vw, 24px);
+}
+
+.lp-purpose-card {
+  padding: clamp(22px, 3vw, 34px);
+  border: 1px solid var(--lp-line);
+  border-radius: var(--lp-radius);
+  background: linear-gradient(180deg, rgba(38, 51, 103, 0.5), rgba(21, 30, 64, 0.62));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* The prohibition is MARKED, never hidden. A rule that looks like a footnote
+   is a rule a reviewer cannot find. */
+.lp-purpose-card--limits {
+  border-color: rgba(212, 175, 55, 0.36);
+  background: linear-gradient(180deg, rgba(62, 52, 30, 0.42), rgba(28, 27, 48, 0.62));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 236, 170, 0.14),
+    0 0 48px rgba(212, 175, 55, 0.10);
+}
+
+.lp-purpose-body { margin: 0 0 12px; font-size: 0.96rem; color: var(--lp-ink-soft); }
+.lp-purpose-body:last-child { margin-block-end: 0; }
+
+/* ══ 3 · THE CHAMBERS ═════════════════════════════════════════════════════ */
+
+.lp-chamber-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: clamp(14px, 2vw, 20px);
+}
+
+/* The bento: three across the top, two across the foot. Spans, not widths. */
+.lp-chamber:nth-child(1) { grid-column: span 2; }
+.lp-chamber:nth-child(2) { grid-column: span 2; }
+.lp-chamber:nth-child(3) { grid-column: span 2; }
+.lp-chamber:nth-child(4) { grid-column: span 3; }
+.lp-chamber:nth-child(5) { grid-column: span 3; }
+
+.lp-chamber {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-inline-size: 0;
+  padding: clamp(22px, 2.6vw, 30px);
+  overflow: hidden;
+  border: 1px solid var(--lp-line);
+  border-radius: var(--lp-radius);
+  text-decoration: none;
+  color: inherit;
+  background: linear-gradient(180deg, rgba(40, 54, 109, 0.52), rgba(20, 29, 63, 0.66));
+  box-shadow:
+    0 20px 54px rgba(5, 8, 24, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.lp-chamber:hover {
+  border-color: rgba(212, 175, 55, 0.46);
+  transform: translateY(-2px);
+  box-shadow:
+    0 26px 66px rgba(5, 8, 24, 0.46),
+    inset 0 1px 0 rgba(255, 236, 170, 0.14);
+}
+
+/* The card's own rim-light. Decorative, behind everything, and untouchable:
+   it can never take a press meant for the card. */
+.lp-chamber-art {
+  position: absolute;
+  inset-block-start: -70px;
+  inset-inline-end: -70px;
+  inline-size: 240px;
+  block-size: 240px;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(14px);
+  background: radial-gradient(closest-side, rgba(124, 92, 255, 0.40), transparent 72%);
+}
+
+.lp-chamber[data-chamber='qiyamah'] .lp-chamber-art,
+.lp-chamber[data-chamber='vault']   .lp-chamber-art {
+  background: radial-gradient(closest-side, rgba(212, 175, 55, 0.32), transparent 72%);
+}
+
+.lp-chamber-role {
+  position: relative;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: var(--lp-gold-soft);
+}
+
+.lp-chamber-name { position: relative; margin: 0; font-size: 1.22rem; font-weight: 600; }
+.lp-chamber-body { position: relative; margin: 0; font-size: 0.92rem; color: var(--lp-ink-soft); }
+.lp-chamber-body strong { color: var(--lp-ink); font-weight: 600; }
+
+/* What the chamber GIVES — the sentence that replaced the qualification. */
+.lp-chamber-value {
+  position: relative;
+  margin: 4px 0 0;
+  padding-block-start: 14px;
+  border-block-start: 1px solid var(--lp-line);
+  font-size: 0.86rem;
+  color: var(--lp-ink-faint);
+}
+
+/* ══ 4 · THE CAPABILITIES ═════════════════════════════════════════════════ */
+
+.lp-capability-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(14px, 2vw, 20px);
+}
+
+.lp-capability {
+  min-inline-size: 0;
+  padding: clamp(22px, 2.6vw, 30px);
+  border: 1px solid var(--lp-line);
+  border-radius: var(--lp-radius);
+  background: linear-gradient(180deg, rgba(36, 48, 98, 0.46), rgba(19, 27, 59, 0.6));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.lp-capability-title { margin: 0 0 10px; font-size: 1.1rem; font-weight: 600; }
+.lp-capability-body  { margin: 0 0 14px; font-size: 0.93rem; color: var(--lp-ink-soft); }
+
+/* Evidence under the claim — quieter than the claim, on purpose. */
+.lp-capability-ground {
+  margin: 0;
+  padding-block-start: 14px;
+  border-block-start: 1px solid var(--lp-line);
+  font-size: 0.83rem;
+  color: var(--lp-ink-faint);
+}
+
+/* ══ 5 · THE PACKAGES — THE ONE LIGHT BAND ════════════════════════════════ */
+
+.lp-packages {
+  max-inline-size: none;
+  color: var(--lp-cream-ink);
+  background:
+    radial-gradient(900px 420px at 50% 0%, #fffdf7 0%, transparent 70%),
+    var(--lp-cream);
+}
+
+/* A full-bleed band inside a centred column: it paints edge to edge and
+   re-centres its own contents. */
+.lp-packages > * { max-inline-size: var(--lp-measure); margin-inline: auto; }
+
+.lp-packages .lp-h2           { color: var(--lp-cream-ink); }
+.lp-packages .lp-section-lede { color: var(--lp-cream-soft); }
+.lp-packages .lp-eyebrow      { color: #8a6f1f; }
+
+.lp-package-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(12px, 1.8vw, 18px);
+  align-items: stretch;
+}
+
+.lp-package {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-inline-size: 0;
+  padding: clamp(20px, 2.4vw, 28px);
+  background: var(--lp-cream-2);
+  border: 1px solid var(--lp-cream-line);
+  border-radius: var(--lp-radius);
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(20, 25, 45, 0.07);
+}
+
+.lp-package--featured {
+  color: var(--lp-ink);
+  border-color: transparent;
+  background: linear-gradient(180deg, #1d2750 0%, #131b3c 100%);
+  box-shadow: 0 22px 54px rgba(20, 25, 45, 0.3);
+}
+
+.lp-package-name { margin: 0; font-size: 0.95rem; font-weight: 600; }
+.lp-package--featured .lp-package-name { color: var(--lp-gold-soft); }
+
+.lp-package-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  margin: 6px 0 0;
+}
+
+.lp-package-figure   { font-size: clamp(1.9rem, 4.4vw, 2.5rem); font-weight: 700; font-variant-numeric: tabular-nums; }
+.lp-package-currency { font-size: 0.85rem; color: var(--lp-cream-soft); }
+.lp-package--featured .lp-package-currency { color: var(--lp-ink-faint); }
+
+.lp-package-units {
+  margin: 0 0 18px;
+  font-size: 0.82rem;
+  color: var(--lp-cream-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-package--featured .lp-package-units { color: var(--lp-ink-soft); }
+
+.lp-packages-note {
+  margin: clamp(24px, 3vw, 34px) auto 0;
+  max-inline-size: 640px;
+  font-size: 0.8rem;
+  text-align: center;
+  color: var(--lp-cream-soft);
+}
+
+/* ══ 6 · THE KNOWLEDGE FOUNDATION ═════════════════════════════════════════ */
+
+.lp-proof-total {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-block-end: clamp(26px, 4vw, 40px);
+  text-align: center;
+}
+
+.lp-proof-total-figure {
+  font-size: clamp(2.6rem, 8vw, 4.2rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--lp-gold);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 60px rgba(212, 175, 55, 0.34);
+}
+
+.lp-proof-total-label { font-size: 0.98rem; color: var(--lp-ink-soft); }
+
+.lp-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(10px, 1.6vw, 16px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp-proof-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-inline-size: 0;
+  padding: clamp(16px, 2vw, 22px);
+  border: 1px solid var(--lp-line);
+  border-radius: var(--lp-radius-sm);
+  background: linear-gradient(180deg, rgba(36, 48, 98, 0.44), rgba(19, 27, 59, 0.58));
+  text-align: center;
+}
+
+.lp-proof-figure {
+  font-size: clamp(1.2rem, 2.6vw, 1.5rem);
+  font-weight: 700;
+  color: var(--lp-gold-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-proof-label { font-size: 0.84rem; color: var(--lp-ink-soft); }
+
+/* ══ 7 · THE QUESTIONS ════════════════════════════════════════════════════ */
+
+.lp-faq {
+  max-inline-size: 860px;
+  margin-inline: auto;
+  border-block-start: 1px solid var(--lp-line);
+}
+
+.lp-faq-item { border-block-end: 1px solid var(--lp-line); }
+.lp-faq-heading { margin: 0; font-size: inherit; font-weight: inherit; }
+
+.lp-faq-q {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  inline-size: 100%;
+  padding: 21px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--lp-ink);
+  font: inherit;
+  font-size: clamp(0.98rem, 2vw, 1.07rem);
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+}
+
+.lp-faq-q-text { min-inline-size: 0; }
+
+/* A plus that becomes a minus, drawn with two bars — no glyph, no icon font,
+   and no text for a screen reader to announce, because the button's own
+   `aria-expanded` already states which it is. */
+.lp-faq-sign { position: relative; flex: none; inline-size: 18px; block-size: 18px; }
+
+.lp-faq-sign::before,
+.lp-faq-sign::after {
+  content: '';
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 0;
+  inline-size: 100%;
+  block-size: 1.5px;
+  background: var(--lp-gold);
+  transition: transform 180ms ease;
+}
+
+.lp-faq-sign::after { transform: rotate(90deg); }
+.lp-faq-item--open .lp-faq-sign::after { transform: rotate(0deg); }
+
+.lp-faq-a { padding: 0 4px 22px; }
+.lp-faq-a p { margin: 0; max-inline-size: 70ch; font-size: 0.95rem; color: var(--lp-ink-soft); }
+
+/* ══ 8 · THE INVITATION ═══════════════════════════════════════════════════ */
+
+.lp-invitation { text-align: center; }
+.lp-invitation .lp-section-lede { margin-inline: auto; max-inline-size: 560px; }
+.lp-invitation .lp-hero-actions { margin-block-start: 30px; }
+
+/* ══ 9 · THE FOOTER ═══════════════════════════════════════════════════════ */
+
+.lp-footer {
+  position: relative;
+  inline-size: 100%;
+  max-inline-size: var(--lp-measure);
+  margin-inline: auto;
+  padding-inline: var(--lp-gutter);
+  padding-block: clamp(40px, 6vw, 66px) 28px;
+  border-block-start: 1px solid var(--lp-line);
+}
+
+.lp-footer-grid {
+  display: grid;
+  grid-template-columns: 1.6fr repeat(4, minmax(0, 1fr));
+  gap: clamp(20px, 3vw, 36px);
+}
+
+.lp-footer-brand { min-inline-size: 0; }
+
+.lp-footer-blurb {
+  margin: 12px 0 0;
+  max-inline-size: 36ch;
+  font-size: 0.86rem;
+  color: var(--lp-ink-faint);
+}
+
+.lp-footer-col { min-inline-size: 0; }
+
+.lp-footer-col-title {
+  margin: 0 0 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--lp-ink);
+}
+
+.lp-footer-col ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 9px; }
+
+.lp-footer-col a {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  color: var(--lp-ink-faint);
+  text-decoration: none;
+  font-size: 0.86rem;
+  transition: color 140ms ease;
+}
+
+.lp-footer-col a:hover { color: var(--lp-gold-soft); }
+.lp-footer-version { font-size: 0.7rem; opacity: 0.7; font-variant-numeric: tabular-nums; }
+
+.lp-footer-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-block-start: clamp(30px, 4vw, 48px);
+  padding-block-start: 22px;
+  border-block-start: 1px solid var(--lp-line);
+  font-size: 0.78rem;
+  color: var(--lp-ink-faint);
+}
+
+/* ══ RESPONSIVE ═══════════════════════════════════════════════════════════
+   The gateway this page replaced carried ONE width breakpoint for its whole
+   introduction. Nine bands need a ladder, so there is one. */
+
+@media (max-width: 1040px) {
+  .lp-footer-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lp-footer-brand { grid-column: 1 / -1; }
+  .lp-chamber:nth-child(n) { grid-column: span 3; }
+  .lp-proof-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 860px) {
+  .lp-nav-links { display: none; }
+  .lp-package-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lp-purpose-grid { grid-template-columns: minmax(0, 1fr); }
+  .lp-capability-grid { grid-template-columns: minmax(0, 1fr); }
+  .lp-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lp-proof-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .lp-steps { grid-template-columns: minmax(0, 1fr); gap: 30px; }
+  /* The rail joined three columns. With one column there is nothing to join,
+     and a stray line down the page is worse than no line at all. */
+  .lp-steps::before { content: none; }
+}
+
+@media (max-width: 620px) {
+  .lp-chamber:nth-child(n) { grid-column: 1 / -1; }
+  .lp-footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lp-showcase-head { flex-direction: column; align-items: stretch; }
+  .lp-hero-actions .lp-btn { flex: 1 1 100%; }
+  /* Fixed blooms are expensive to repaint while a phone scrolls, and a fixed
+     background attachment is unreliable on mobile Safari. */
+  .lp-root { background-attachment: scroll; }
+  .lp-ambient { position: absolute; block-size: 180vh; }
+}
+
+@media (max-width: 420px) {
+  .lp-package-grid { grid-template-columns: minmax(0, 1fr); }
+  .lp-tiles { grid-template-columns: minmax(0, 1fr); }
+  .lp-footer-grid { grid-template-columns: minmax(0, 1fr); }
+  .lp-tile-art { aspect-ratio: 16 / 9; }
+}
+
+/* «مراعاة إعدادات تقليل الحركة لدى المستخدم» — the order's seventh clause on
+   lighting. The light stays; only what MOVES is stilled. */
+@media (prefers-reduced-motion: reduce) {
+  .lp-btn,
+  .lp-chamber,
+  .lp-filter,
+  .lp-faq-sign::before,
+  .lp-faq-sign::after {
+    transition: none;
+  }
+
+  .lp-btn--gold:hover,
+  .lp-chamber:hover { transform: none; }
+
+  .lp-root { background-attachment: scroll; }
+}

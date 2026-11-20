@@ -47,23 +47,26 @@ interface Props {
  *   رأس الأمر       compile-production · give-voice · import-subtitles
  *   مكمن الغاية     set-goal · define-success · publish through access tiers
  *
- * Publishing to the Creator's own social accounts is Makman's responsibility
- * by the Founder's ruling of 2026-09-25, and the Chamber will be built to
- * carry it. It does not carry it yet: measured, Makman's distribution is an
- * access policy inside the Empire — private, public, subscription, commercial
- * — with no platform integration of any kind, and its own `deferred` records
- * exactly that gap.
+ * ── `soonAr` WAS REMOVED, 2026-11-20 ────────────────────────────────────────
  *
- * So the purpose is stated, as the Founder instructed, and what is not yet
- * built is marked as not yet built. `soonAr` is never a door the Creator can
- * walk through — it is the Chamber naming its own direction. A promise that
- * reads as an available action is the one thing these cards exist to prevent.
+ *   One card carried a second line: «والنشر إلى حساباتك على مواقع التواصل من
+ *   خصائص هذه الحجرة — لم يُبنَ بعد». The Founder's order of that day forbids
+ *   exactly this on any surface a user meets: «يُمنع ظهور تصنيفات حالة البناء
+ *   والتطوير للمستخدم أو الزائر … ولا تعرض تقريراً عن مراحل تطويرها».
+ *
+ *   REMOVING IT CREATES NO FALSE PROMISE, and that was checked rather than
+ *   assumed: `forAr` on that card names a goal that is measured and a
+ *   publication under an access policy the Creator chooses. It never claimed
+ *   a social account, so deleting the line that denied one leaves nothing
+ *   behind to mislead. Silence, not a substitution.
+ *
+ *   The gap itself is untouched where it belongs: Makman's own `deferred`
+ *   record still states it for the engineering side.
  */
 const DEMANDS: {
   destination: DemandDestination;
   label: string;
   forAr: string;
-  soonAr?: string;
 }[] = [
   {
     destination: 'qiyamah-chamber',
@@ -79,7 +82,6 @@ const DEMANDS: {
     destination: 'makman-al-ghayah',
     label: 'مطالبة لمكمن الغاية',
     forAr: 'لتحويل ما خلص إليه تحقيقك إلى هدفٍ يُقاس، ونشرٍ بسياسة وصولٍ تختارها.',
-    soonAr: 'والنشر إلى حساباتك على مواقع التواصل من خصائص هذه الحجرة — لم يُبنَ بعد.',
   },
 ];
 
@@ -132,7 +134,7 @@ export function InvestigationFile({
           ولكلّ حجرةٍ مطالبتها، لأنّ المشهد والقوسَ والهدفَ أشياءٌ مختلفة.
         </p>
         <div className="inv-demand-actions">
-          {DEMANDS.map(({ destination, label, forAr, soonAr }) => (
+          {DEMANDS.map(({ destination, label, forAr }) => (
             <button
               key={destination}
               className="inv-action inv-demand"
@@ -144,7 +146,6 @@ export function InvestigationFile({
                 {composingDemand === destination ? 'تُصاغ المطالبة…' : `⟡ ${label}`}
               </span>
               <span className="inv-demand-for">{forAr}</span>
-              {soonAr && <span className="inv-demand-soon">{soonAr}</span>}
             </button>
           ))}
         </div>

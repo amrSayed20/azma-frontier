@@ -2,7 +2,7 @@ import { resolveRequestLocale } from "@/src/creator-language/resolve-request-loc
 import { getDictionary } from "@/src/creator-language";
 import { PUBLISHED_POLICIES } from "@/src/policies";
 import { SOVEREIGN_PACKAGES } from "@/src/economy/pricing/sovereign-value-balance";
-import { SovereignGateway } from "@/src/imperial-experience-engine";
+import { SovereignLanding } from "@/src/imperial-experience-engine";
 
 /**
  * AZMA OS — azmaos.com, the first thing a stranger sees.
@@ -66,8 +66,19 @@ export default async function SovereignGate() {
     balanceUnits: p.balanceUnits,
   }));
 
+  /*
+   * MISSION 02, 2026-11-20 — the reception the Founder approved.
+   *
+   * `SovereignGateway` is unchanged, still exported, and still carries its
+   * forty-three guards. Returning to it is this one element name, which is
+   * why the new landing was built BESIDE it rather than inside it.
+   *
+   * What this server component hands down did not change at all: the same
+   * four authorities, read the same way. The landing restates no price and
+   * no policy, exactly as the gateway restated none.
+   */
   return (
-    <SovereignGateway
+    <SovereignLanding
       dict={dict}
       locale={locale}
       policies={policies}

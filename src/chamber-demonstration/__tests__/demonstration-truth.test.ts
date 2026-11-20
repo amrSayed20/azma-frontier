@@ -67,9 +67,43 @@ describe('the panel is derived, not written twice', () => {
   it('reads the Truth registry for every claim it makes', () => {
     expect(PANEL).toMatch(/import \{ CHAMBER_TRUTH \}/);
     expect(PANEL).toMatch(/truth\.capabilities/);
-    expect(PANEL).toMatch(/truth\.deferred/);
     expect(PANEL).toMatch(/c\.performsAr/);
-    expect(PANEL).toMatch(/d\.responsibilityAr/);
+  });
+
+  /*
+   * ── WHY TWO ASSERTIONS LEFT THIS TEST, 2026-11-20 ───────────────────────
+   *
+   *   It required the panel to RENDER `truth.deferred` and
+   *   `d.responsibilityAr` — the list headed «ما لا تفعله هذه الحجرة بعد».
+   *
+   *   The Founder then ruled: «يُمنع ظهور تصنيفات حالة البناء والتطوير
+   *   للمستخدم أو الزائر … ولا تعرض تقريراً عن مراحل تطويرها». So the panel
+   *   stopped drawing it, and this test began failing on a requirement the
+   *   constitution had withdrawn.
+   *
+   *   THE REQUIREMENT WAS NOT SIMPLY DELETED. It was INVERTED, and the test
+   *   below is its replacement — the rule now runs in the opposite
+   *   direction, so the coverage did not shrink, it changed sign.
+   *
+   *   What the deleted assertions protected — that the deferred record is
+   *   kept in Arabic and never invented twice — is untouched: the describe
+   *   block above this one still proves it over the registry itself, which
+   *   is where the engineering side reads it.
+   */
+  it('and it does NOT draw a development report for a Creator', () => {
+    // READ WHAT RUNS, NOT WHAT EXPLAINS. The first draft of this assertion
+    // matched the panel's own comment — the one that records which heading
+    // was removed and under whose order. A guard that cannot tell a
+    // quotation from a rendered string forces every repair to go
+    // undocumented to stay green, and the record of WHY a sentence left is
+    // the main thing standing between it and a well-meaning restoration.
+    const rendered = PANEL
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    expect(rendered).not.toMatch(/truth\.deferred\.map/);
+    expect(rendered).not.toMatch(/d\.responsibilityAr\}/);
+    expect(rendered).not.toContain('ما لا تفعله هذه الحجرة بعد');
   });
 
   it('shows the Arabic and never the engineering line', () => {
