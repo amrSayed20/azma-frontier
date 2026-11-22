@@ -257,7 +257,31 @@ export function createDatabase(path: string = defaultDbPath()): DatabaseSync {
   }
   const db = new DatabaseSync(path);
   if (path !== ':memory:') {
-    db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;');
+    /*
+     * ─── busy_timeout — A WRITER THAT WAITS INSTEAD OF DYING ───────────────
+     *
+     *   MEASURED 2026-11-22: `next build` collects page data with THREE
+     *   workers, and each one evaluates src/sovereign-entry/ras-al-amr-render
+     *   → composition → fleet-factory → this module. Opening the database
+     *   runs the migrations below, which WRITE. Three writers, one SQLite
+     *   file, and the default busy timeout of ZERO: the second and third do
+     *   not wait their turn, they fail instantly with `database is locked`,
+     *   and the whole build dies on
+     *   «Failed to collect configuration for /api/ras-amr/render/[operationId]».
+     *
+     *   PROVEN NOT TO BE THE UI WORK THAT FOUND IT: the same build fails the
+     *   same way with every one of those changes stashed. It is a race that
+     *   had simply been winning.
+     *
+     *   The same zero was measured on PRODUCTION and reported to the Founder
+     *   on 2026-11-20 as a commercial risk: under real concurrency a Creator's
+     *   write is refused rather than queued. This closes it at the source.
+     *
+     *   Five seconds, and it can only ever turn an instant failure into a
+     *   short wait — a blocked writer now retries until the lock clears.
+     *   Nothing that succeeds today behaves differently.
+     */
+    db.exec('PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;');
   }
   for (const statement of SCHEMA_STATEMENTS) {
     db.exec(statement);

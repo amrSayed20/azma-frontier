@@ -1,4 +1,57 @@
 /*
+ * ═══ TAILWIND — ON AT LAST, AND DELIBERATELY CRIPPLED ═══════════════════════
+ *
+ *   MEASURED 2026-11-22, before a line was changed: Tailwind was installed,
+ *   configured, and producing LITERALLY NOTHING. Zero Tailwind signatures in
+ *   the entire built CSS. `app/globals.css` never imported it, which in v4 is
+ *   the switch. So `tailwind.config.ts` was never read by anything, and the
+ *   `h-full antialiased` on <html> and `min-h-full flex flex-col` on <body>
+ *   in app/layout.tsx were inert strings.
+ *
+ *   shadcn components are Tailwind, so none of them could ever have worked.
+ *   This turns it on. And the two lines below are each a REFUSAL:
+ *
+ *   ─── 1 · NO PREFLIGHT ───────────────────────────────────────────────────
+ *
+ *   `@import "tailwindcss"` would pull preflight, whose 398 lines set
+ *   `margin: 0` on everything, `font-size: inherit` on every heading, and
+ *   `list-style: none` on every list — across 32 stylesheets and 27,904 lines
+ *   of CSS written without it. Every chamber would shift. So theme and
+ *   utilities are imported WITHOUT it, and the component zone gets its own
+ *   scoped reset instead (below).
+ *
+ *   ─── 2 · A PREFIX, BECAUSE 83 UTILITIES WERE LYING DORMANT ──────────────
+ *
+ *   Counted in the repository: EIGHTY-THREE real Tailwind utility names are
+ *   already written as standalone classes — `flex`, `grid`, `min-h-full`,
+ *   `mb-8`, `rounded-lg` and the rest — in app/layout.tsx, the Council page
+ *   and the dead backup. They do nothing today. Switching Tailwind on without
+ *   a prefix would animate all eighty-three AT ONCE, and `min-h-full flex
+ *   flex-col` sits on <body>, which is EVERY page in the platform.
+ *
+ *   Patching them one by one is vigilance. `prefix(az)` is a guarantee: a
+ *   bare `flex` can never resolve, now or in any future file. New work writes
+ *   `az:flex`. The prefix also namespaces the generated variables as `--az-*`
+ *   — measured against the platform's `--azma-` / `--lp-` / `--rt-` / `--ig-`
+ *   / `--neon-` / `--aiie-` / `--acde-` families: zero overlap.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme) prefix(az);
+@import "tailwindcss/utilities.css" layer(utilities) prefix(az);
+
+/*
+ *   ─── 3 · THE SOURCES, DECLARED ─────────────────────────────────────────
+ *
+ *   Automatic source detection ships inside `tailwindcss/index.css`. Taking
+ *   theme and utilities separately — which is how preflight is refused above
+ *   — leaves it behind, and MEASURED: zero component utilities reached the
+ *   served CSS until these two lines existed. A pipeline that compiles
+ *   silently to nothing is the worst kind of green.
+ */
+@source "../app/**/*.{ts,tsx}";
+@source "../src/**/*.{ts,tsx}";
+
+/*
  * ─── ONE BOX MODEL FOR THE WHOLE EMPIRE ─────────────────────────────────────
  *
  *   MEASURED 2026-09-28, auditing every room on 13 screens: قلب الإمبراطورية
@@ -300,4 +353,113 @@ label {
     filter: brightness(1.25);
     transition: filter 90ms ease-out;
   }
+}
+
+/*
+ * ═══ THE COMPONENT ZONE — A PREFLIGHT THAT CANNOT LEAVE ITS ROOM ═══════════
+ *
+ *   Tailwind's preflight is refused platform-wide above, for a measured
+ *   reason. But shadcn components genuinely depend on a sliver of it: their
+ *   `border` utilities set a WIDTH and a COLOR and assume a base rule already
+ *   set `border-style: solid; border-width: 0`. Without it a bordered card
+ *   draws no border at all — the silent kind of defect that no type-check and
+ *   no test can see, and that this platform has already paid for once.
+ *
+ *   So the sliver is given, and ONLY inside `.az-ui`. A chamber that never
+ *   carries that class can never be reached by these rules — the containment
+ *   is structural, not a convention someone has to remember.
+ *
+ *   Nothing here redefines a shared token. The platform's 198 live on :root
+ *   untouched; the shadcn names are bound to them on the CONTAINER, so the
+ *   component library inherits the Empire's palette instead of replacing it.
+ */
+@layer base {
+  .az-ui,
+  .az-ui *,
+  .az-ui *::before,
+  .az-ui *::after {
+    border-width: 0;
+    border-style: solid;
+    border-color: var(--az-ui-border);
+  }
+
+  .az-ui button,
+  .az-ui input,
+  .az-ui select,
+  .az-ui textarea {
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+  }
+
+  .az-ui :is(button, [role="button"]) { cursor: pointer; }
+  .az-ui :disabled { cursor: default; }
+  .az-ui img, .az-ui svg, .az-ui video, .az-ui canvas { display: block; max-width: 100%; }
+}
+
+/*
+ * shadcn's own names, bound to the Empire's palette ON THE CONTAINER.
+ *
+ *   `:root` is where the platform's 198 shared tokens live, and the standing
+ *   rule — the Founder's, 2026-11-21 — is that nothing new is defined there:
+ *   one line would recolour every chamber at once. These sit on `.az-ui`, so
+ *   a component reads the Empire's gold because it is INSIDE the Empire, not
+ *   because a global was overwritten.
+ */
+/*
+ * THE COMPONENT PALETTE, REGISTERED WITHOUT TOUCHING :root
+ *
+ *   shadcn components ask for `bg-background`, `text-primary-foreground`,
+ *   `border-input` and the rest. Tailwind only generates those utilities if
+ *   the names exist in its theme — and the ordinary way to add them writes
+ *   a block of variables onto `:root`, which is exactly the one thing the
+ *   Founder's rule of 2026-11-21 forbids: a single line there recolours
+ *   every chamber at once.
+ *
+ *   `@theme inline` is the way out. It registers the NAMES so the utilities
+ *   compile, but substitutes each value INLINE instead of emitting a
+ *   variable of its own. So `az:bg-background` resolves to
+ *   `background-color: var(--az-ui-bg)` — and `--az-ui-bg` is declared only
+ *   on `.az-ui` below. Outside that container the utility has nothing to
+ *   read, which is the containment working as designed rather than a rule
+ *   someone must remember.
+ */
+@theme inline {
+  --color-background:         var(--az-ui-bg);
+  --color-foreground:         var(--az-ui-fg);
+  --color-card:               var(--az-ui-card);
+  --color-card-foreground:    var(--az-ui-fg);
+  --color-popover:            var(--az-ui-card);
+  --color-popover-foreground: var(--az-ui-fg);
+  --color-primary:            var(--az-ui-primary);
+  --color-primary-foreground: var(--az-ui-primary-fg);
+  --color-secondary:          var(--az-ui-secondary);
+  --color-secondary-foreground: var(--az-ui-fg);
+  --color-muted:              var(--az-ui-secondary);
+  --color-muted-foreground:   var(--az-ui-muted);
+  --color-accent:             var(--az-ui-secondary);
+  --color-accent-foreground:  var(--az-ui-fg);
+  --color-destructive:        var(--az-ui-destructive);
+  --color-border:             var(--az-ui-border);
+  --color-input:              var(--az-ui-border);
+  --color-ring:               var(--az-ui-primary);
+  --radius-sm:                calc(var(--az-ui-radius) - 4px);
+  --radius-md:                calc(var(--az-ui-radius) - 2px);
+  --radius-lg:                var(--az-ui-radius);
+  --radius-xl:                calc(var(--az-ui-radius) + 4px);
+}
+
+.az-ui {
+  --az-ui-bg:          var(--azma-surface, #080602);
+  --az-ui-fg:          var(--azma-text-primary, #e8d595);
+  --az-ui-muted:       color-mix(in srgb, var(--az-ui-fg) 62%, transparent);
+  --az-ui-border:      color-mix(in srgb, var(--az-ui-fg) 16%, transparent);
+  --az-ui-primary:     var(--azma-accent-color, #d4af37);
+  --az-ui-primary-fg:  #231a05;
+  --az-ui-card:        color-mix(in srgb, var(--az-ui-fg) 6%, var(--az-ui-bg));
+  --az-ui-secondary:   color-mix(in srgb, var(--az-ui-fg) 10%, var(--az-ui-bg));
+  --az-ui-destructive: #f87171;
+  --az-ui-radius:      14px;
+
+  color: var(--az-ui-fg);
 }
