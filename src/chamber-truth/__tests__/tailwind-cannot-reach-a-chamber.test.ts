@@ -160,6 +160,26 @@ describe('3 · the component palette is bound, never imposed', () => {
       expect(m[1]).toContain('.az-ui');
     }
   });
+
+  it('and a control inside it paints its own surface', () => {
+    /*
+     * SEEN BY EYE, AND BY NOTHING ELSE.
+     *
+     *   The first gallery render showed the ghost button, the link button
+     *   and every accordion trigger as LIGHT GREY bars inside a dark page —
+     *   measured afterwards as `rgb(240, 240, 240)`, the browser's own
+     *   `buttonface`. Those variants set no background on purpose, because
+     *   preflight normally zeroes it. Refusing preflight platform-wide was
+     *   right; leaving this line out of the scoped replacement was not.
+     *
+     *   Every automated check was green while three controls painted
+     *   themselves the wrong colour. This is the one that would have caught
+     *   it.
+     */
+    const block = RULES.slice(RULES.indexOf('.az-ui button,'));
+    const body = block.slice(0, block.indexOf('}'));
+    expect(body).toContain('background-color: transparent');
+  });
 });
 
 describe('4 · the toolchain is wired the way the components were generated', () => {

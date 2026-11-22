@@ -390,6 +390,22 @@ label {
     font: inherit;
     color: inherit;
     letter-spacing: inherit;
+
+    /*
+     * ─── SEEN BY EYE, NOT BY MEASUREMENT ──────────────────────────────────
+     *
+     *   The first gallery render showed the ghost button, the link button
+     *   and every accordion trigger as LIGHT GREY bars inside a dark page.
+     *   Measured: `rgb(240, 240, 240)` — the browser's own `buttonface`.
+     *
+     *   Those three variants deliberately set no background, because
+     *   preflight normally zeroes it. Refusing preflight platform-wide was
+     *   right; forgetting this one line in its place was not. Every
+     *   automated check passed while a control painted itself the wrong
+     *   colour — the exact defect class this platform has already paid for.
+     */
+    background-color: transparent;
+    background-image: none;
   }
 
   .az-ui :is(button, [role="button"]) { cursor: pointer; }
