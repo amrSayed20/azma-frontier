@@ -58,9 +58,17 @@ import {
   LANDING_QUESTIONS,
   LANDING_FOOTER,
 } from './landing-content';
+import { TileScene } from './TileScene';
 import './landing.css';
 
 export interface SovereignLandingProps {
+  /**
+   * The landing's own typeface, declared in `app/page.tsx` with `next/font`
+   * and handed down as a class. It is passed rather than imported because
+   * the face must belong to THIS route alone: the shared layout binds every
+   * chamber to the platform's own face, and that file is not ours to open.
+   */
+  readonly fontClass: string;
   readonly dict: Dictionary;
   readonly locale: Locale;
   readonly policies: readonly GatewayPolicy[];
@@ -97,7 +105,7 @@ const SHOWCASE_FILTERS = [
   { id: 'film',   labelAr: 'عملٌ نهائيّ', labelEn: 'Finished work' },
 ] as const;
 
-export default function SovereignLanding({ dict, locale, policies, packages }: SovereignLandingProps) {
+export default function SovereignLanding({ fontClass, dict, locale, policies, packages }: SovereignLandingProps) {
   const en = locale === 'en';
   const [filter, setFilter] = useState<string>('all');
   const [openQuestion, setOpenQuestion] = useState<string | null>(null);
@@ -123,7 +131,7 @@ export default function SovereignLanding({ dict, locale, policies, packages }: S
   const featuredIndex = Math.min(2, packages.length - 1);
 
   return (
-    <div className="lp-root" data-locale={locale}>
+    <div className={`lp-root ${fontClass}`} data-locale={locale}>
       {/* The ambient ground. Three light layers behind everything, painted
           once here rather than per-section, so the page reads as one lit
           space instead of a stack of separately-glowing bands. */}
@@ -146,7 +154,7 @@ export default function SovereignLanding({ dict, locale, policies, packages }: S
 
         <nav className="lp-nav-links" aria-label={en ? 'Sections' : 'أقسام الصفحة'}>
           <a href="#lp-journey">{en ? 'The journey' : 'الرحلة'}</a>
-          <a href="#lp-chambers">{en ? 'Chambers' : 'الحُجرات'}</a>
+          <a href="#lp-chambers">{en ? 'Workspaces' : 'مساحاتُ العمل'}</a>
           <a href="#lp-capabilities">{en ? 'Capabilities' : 'الأدوات'}</a>
           <a href="#lp-packages">{en ? 'Packages' : 'الباقات'}</a>
           <a href="#lp-questions">{en ? 'Questions' : 'الأسئلة'}</a>
@@ -168,7 +176,7 @@ export default function SovereignLanding({ dict, locale, policies, packages }: S
       <section className="lp-hero" id="lp-top">
         <div className="lp-hero-inner">
           <p className="lp-eyebrow lp-eyebrow--pill">
-            {en ? 'Your idea deserves a chamber' : 'فكرتُك تَستحقُّ حُجرةً تَليق بها'}
+            {en ? 'For every kind of work you make' : 'لكلِّ محتوًى تَصنعه — لا لنوعٍ واحد'}
           </p>
 
           <h1 className="lp-headline">
@@ -217,8 +225,7 @@ export default function SovereignLanding({ dict, locale, policies, packages }: S
             {tiles.map((tile) => (
               <li className="lp-tile" key={tile.id} data-kind={tile.kind}>
                 <span className="lp-tile-art" aria-hidden="true">
-                  <span className="lp-tile-art-wash" />
-                  <span className="lp-tile-art-mark" />
+                  <TileScene kind={tile.kind} />
                 </span>
                 <span className="lp-tile-label">{en ? tile.labelEn : tile.labelAr}</span>
                 <span className="lp-tile-chamber">{en ? tile.chamberEn : tile.chamberAr}</span>
@@ -282,10 +289,10 @@ export default function SovereignLanding({ dict, locale, policies, packages }: S
       {/* ══ 3 · THE CHAMBERS ═══════════════════════════════════════════ */}
       <section className="lp-section lp-chambers" id="lp-chambers">
         <header className="lp-section-head">
-          <p className="lp-eyebrow">{en ? 'Five chambers' : 'خمسُ حُجرات'}</p>
+          <p className="lp-eyebrow">{en ? 'Five workspaces' : 'خمسُ مساحاتِ عمل'}</p>
           <h2 className="lp-h2">
             {en ? 'Every stage of your work has ' : 'لكلِّ مرحلةٍ من عملك '}
-            <span className="lp-headline-lit">{en ? 'its own chamber.' : 'غرفتُها.'}</span>
+            <span className="lp-headline-lit">{en ? 'its own place.' : 'مكانُها.'}</span>
           </h2>
           <p className="lp-section-lede">{t(dict, 'gateway.chambersLede')}</p>
         </header>
@@ -464,7 +471,7 @@ export default function SovereignLanding({ dict, locale, policies, packages }: S
             <p className="lp-footer-blurb">
               {en
                 ? 'A creative operating system for content makers: research, creation, production, keeping and delivery — five chambers, one place.'
-                : 'نظامُ تشغيلٍ إبداعيٌّ لصنّاع المحتوى: بحثٌ وخلقٌ وإنتاجٌ وحفظٌ وتسليم — خمسُ حُجراتٍ في مكانٍ واحد.'}
+                : 'نظامُ تشغيلٍ إبداعيٌّ لصنّاع المحتوى: بحثٌ وخلقٌ وإنتاجٌ وحفظٌ وتسليم — خمسُ مساحاتٍ في مكانٍ واحد.'}
             </p>
           </div>
 

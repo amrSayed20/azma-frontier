@@ -2,7 +2,32 @@ import { resolveRequestLocale } from "@/src/creator-language/resolve-request-loc
 import { getDictionary } from "@/src/creator-language";
 import { PUBLISHED_POLICIES } from "@/src/policies";
 import { SOVEREIGN_PACKAGES } from "@/src/economy/pricing/sovereign-value-balance";
+import { Readex_Pro } from "next/font/google";
 import { SovereignLanding } from "@/src/imperial-experience-engine";
+
+/*
+ * «الفِناء» SETS ITS OWN TYPE — AND ONLY ITS OWN.
+ *
+ *   The platform's typography law binds every chamber to IBM Plex Sans
+ *   Arabic through `app/layout.tsx`, and that file is not this page's to
+ *   touch: it is loaded by every surface in the Empire, and the Founder's
+ *   rule of 2026-11-21 keeps it closed without his word.
+ *
+ *   `next/font` does not require the layout. Declared here, the face is
+ *   hashed, self-hosted and preloaded for THIS route alone, and handed down
+ *   as a variable the landing's own stylesheet reads. No chamber sees it.
+ *
+ *   Readex Pro rather than a classical naskh on purpose: Amiri and its
+ *   siblings are beautiful and they push the reading toward devotional
+ *   material — the exact impression the Founder ordered removed. This face
+ *   was built for Arabic legibility and reads as modern, not as heritage.
+ */
+const landingFont = Readex_Pro({
+  variable: "--lp-font",
+  subsets: ["arabic", "latin"],
+  weight: ["200", "300", "400", "500", "600"],
+  display: "swap",
+});
 
 /**
  * AZMA OS — azmaos.com, the first thing a stranger sees.
@@ -79,6 +104,7 @@ export default async function SovereignGate() {
    */
   return (
     <SovereignLanding
+      fontClass={landingFont.variable}
       dict={dict}
       locale={locale}
       policies={policies}

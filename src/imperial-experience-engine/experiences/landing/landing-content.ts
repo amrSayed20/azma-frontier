@@ -99,8 +99,8 @@ export const LANDING_CHAMBERS: readonly LandingChamber[] = [
   {
     id: 'hujjah',
     href: '/hujjah-al-damighah',
-    nameAr: 'الحُجّة الدامغة',
-    nameEn: 'Hujjah al-Damigha',
+    nameAr: 'البحث والمصادر',
+    nameEn: 'Research and sources',
     roleAr: 'حيثُ تَبدأ المعرفة',
     roleEn: 'Where knowledge begins',
     bodyAr: 'تَطرح سؤالك، فتَبحث لك في القرآن وفي تسعةٍ من أمّهاتِ كتبِ الحديث وفي مصادرَ حيّة، '
@@ -116,8 +116,8 @@ export const LANDING_CHAMBERS: readonly LandingChamber[] = [
   {
     id: 'qiyamah',
     href: '/qiyamah-chamber',
-    nameAr: 'القيامة',
-    nameEn: 'Qiyamah',
+    nameAr: 'إنشاء الصور والمشاهد',
+    nameEn: 'Image and scene creation',
     roleAr: 'مصنعُ الخلق',
     roleEn: 'The creation factory',
     bodyAr: 'هنا تُصنَع المادّة: صورةٌ من وصفٍ تَكتبه، وتعديلٌ على أصلٍ تَملكه، '
@@ -132,8 +132,8 @@ export const LANDING_CHAMBERS: readonly LandingChamber[] = [
   {
     id: 'ras-amr',
     href: '/ras-amr',
-    nameAr: 'رأس الأمر',
-    nameEn: 'Ras Al Amr',
+    nameAr: 'المونتاج والإنتاج',
+    nameEn: 'Montage and production',
     roleAr: 'طريقانِ إبداعيّانِ مختلفان',
     roleEn: 'Two distinct creative paths',
     // The Founder, §4: «وفي رأس الأمر، اشرح المونتاج والاستوري بورد باعتبارهما
@@ -151,12 +151,12 @@ export const LANDING_CHAMBERS: readonly LandingChamber[] = [
   {
     id: 'vault',
     href: '/sovereign-vault-palace',
-    nameAr: 'الخزانة السيادية',
-    nameEn: 'The Sovereign Vault',
+    nameAr: 'خزانةُ أصولك',
+    nameEn: 'Your asset vault',
     roleAr: 'مستودعُ ما تَملك',
     roleEn: 'The store of what you own',
     bodyAr: 'كلُّ أصلٍ صنعتَه أو رفعتَه يُحفَظ هنا بنَسَبه: ما أنتجه، ومتى، وممّ اشتُقّ. '
-      + 'ومنها تَأخذ الحُجراتُ الأخرى ما تَحتاجه، فلا تَرفع الشيءَ نفسَه مرّتين.',
+      + 'ومنها تَأخذ بقيّةُ المساحاتِ ما تَحتاجه، فلا تَرفع الشيءَ نفسَه مرّتين.',
     bodyEn: 'Every asset you made or uploaded is kept here with its lineage: what produced '
       + 'it, when, and what it came from. The other chambers draw what they need from it, so '
       + 'you never upload the same thing twice.',
@@ -167,8 +167,8 @@ export const LANDING_CHAMBERS: readonly LandingChamber[] = [
   {
     id: 'makman',
     href: '/makman-al-ghayah',
-    nameAr: 'مكمن الغاية',
-    nameEn: 'Makman Al-Ghayah',
+    nameAr: 'النشر والتسليم',
+    nameEn: 'Publishing and delivery',
     roleAr: 'حيثُ يَنتهي العمل',
     roleEn: 'Where the work lands',
     // The Founder, §4: «Google Drive مسار مثبت، ولا يجوز الخلط بينه وبين
@@ -208,22 +208,22 @@ export const LANDING_SHOWCASE: readonly LandingShowcaseTile[] = [
   {
     id: 'still', kind: 'image',
     labelAr: 'صورةٌ من وصفٍ تَكتبه', labelEn: 'An image from a description you write',
-    chamberAr: 'القيامة', chamberEn: 'Qiyamah',
+    chamberAr: 'إنشاء الصور والمشاهد', chamberEn: 'Image and scene creation',
   },
   {
     id: 'animate', kind: 'motion',
     labelAr: 'صورةٌ ساكنةٌ تَدِبُّ فيها الحركة', labelEn: 'A still that comes to motion',
-    chamberAr: 'القيامة', chamberEn: 'Qiyamah',
+    chamberAr: 'إنشاء الصور والمشاهد', chamberEn: 'Image and scene creation',
   },
   {
     id: 'speech', kind: 'voice',
     labelAr: 'نصٌّ يُنطَق بصوتٍ تَختاره', labelEn: 'Text spoken in a voice you choose',
-    chamberAr: 'الخزانة', chamberEn: 'The Vault',
+    chamberAr: 'خزانتك', chamberEn: 'Your Vault',
   },
   {
     id: 'assembly', kind: 'film',
     labelAr: 'مشاهدُ تُركَّب عملاً واحداً', labelEn: 'Scenes assembled into one work',
-    chamberAr: 'رأس الأمر', chamberEn: 'Ras Al Amr',
+    chamberAr: 'المونتاج والإنتاج', chamberEn: 'Montage and production',
   },
 ];
 
@@ -239,7 +239,7 @@ export const LANDING_JOURNEY: readonly LandingJourneyStep[] = [
     bodyEn: 'Ask your question and the Qur’an, the hadith collections and live sources '
       + 'are searched for you, and what was found is shown with its evidence. Or begin with '
       + 'your idea alone — the choice is yours.',
-    chamberAr: 'الحُجّة الدامغة', chamberEn: 'Hujjah al-Damigha',
+    chamberAr: 'البحث والمصادر', chamberEn: 'Research and sources',
   },
   {
     id: 'make', ordinal: 2,
@@ -250,7 +250,7 @@ export const LANDING_JOURNEY: readonly LandingJourneyStep[] = [
     bodyEn: 'An image from a description, an edit on an asset you own, a still brought to '
       + 'motion, an upscale, a background removed, a voice that speaks your text. Every act '
       + 'states its price before you press.',
-    chamberAr: 'القيامة', chamberEn: 'Qiyamah',
+    chamberAr: 'إنشاء الصور والمشاهد', chamberEn: 'Image and scene creation',
   },
   {
     id: 'finish', ordinal: 3,
@@ -261,8 +261,8 @@ export const LANDING_JOURNEY: readonly LandingJourneyStep[] = [
     bodyEn: 'Gather what you made from your Vault onto a timeline, set its timing, and a '
       + 'finished work comes out. Then send it to your Google Drive in one press, organised '
       + 'by its purpose.',
-    chamberAr: 'رأس الأمر · الخزانة · مكمن الغاية',
-    chamberEn: 'Ras Al Amr · The Vault · Makman Al-Ghayah',
+    chamberAr: 'المونتاج · خزانتك · النشر',
+    chamberEn: 'Montage · Your Vault · Publishing',
   },
 ];
 
@@ -365,7 +365,7 @@ export const LANDING_QUESTIONS: readonly LandingQuestion[] = [
     questionEn: 'What is this platform, exactly?',
     answerAr: 'نظامُ تشغيلٍ إبداعيٌّ لصنّاع المحتوى: تَبحث فيه عن مادّتك، وتَصنع منها صوراً '
       + 'وأصواتاً، وتُركّبها عملاً نهائيّاً، وتَحفظها في خزانتك، ثمّ تُسلّمها. '
-      + 'خمسُ حُجراتٍ لخمسِ مراحل، لا أداةٌ واحدةٌ تَفعل كلَّ شيء.',
+      + 'خمسُ مساحاتٍ لخمسِ مراحل، لا أداةٌ واحدةٌ تَفعل كلَّ شيء.',
     answerEn: 'A creative operating system for content makers: you research your material, '
       + 'make images and audio from it, assemble a finished work, keep it in your Vault, '
       + 'then deliver it. Five chambers for five stages, not one tool that does everything.',
@@ -434,21 +434,21 @@ export const LANDING_FOOTER: readonly LandingFooterColumn[] = [
     titleEn: 'The platform',
     links: [
       { labelAr: 'رحلة المبدع', labelEn: 'The journey',  href: '#lp-journey' },
-      { labelAr: 'الحُجرات',    labelEn: 'The chambers', href: '#lp-chambers' },
+      { labelAr: 'مساحاتُ العمل',    labelEn: 'Workspaces', href: '#lp-chambers' },
       { labelAr: 'الأدوات',     labelEn: 'Capabilities', href: '#lp-capabilities' },
       { labelAr: 'الباقات',     labelEn: 'Packages',     href: '#lp-packages' },
     ],
   },
   {
     id: 'chambers',
-    titleAr: 'الحُجرات',
-    titleEn: 'The chambers',
+    titleAr: 'مساحاتُ العمل',
+    titleEn: 'Workspaces',
     links: [
-      { labelAr: 'الحُجّة الدامغة',  labelEn: 'Hujjah al-Damigha',   href: '/hujjah-al-damighah' },
-      { labelAr: 'القيامة',          labelEn: 'Qiyamah',             href: '/qiyamah-chamber' },
-      { labelAr: 'رأس الأمر',        labelEn: 'Ras Al Amr',          href: '/ras-amr' },
-      { labelAr: 'الخزانة السيادية', labelEn: 'The Sovereign Vault', href: '/sovereign-vault-palace' },
-      { labelAr: 'مكمن الغاية',      labelEn: 'Makman Al-Ghayah',    href: '/makman-al-ghayah' },
+      { labelAr: 'البحث والمصادر',  labelEn: 'Research and sources',   href: '/hujjah-al-damighah' },
+      { labelAr: 'إنشاء الصور والمشاهد',          labelEn: 'Image and scene creation',             href: '/qiyamah-chamber' },
+      { labelAr: 'المونتاج والإنتاج',        labelEn: 'Montage and production',          href: '/ras-amr' },
+      { labelAr: 'خزانةُ أصولك', labelEn: 'Your asset vault', href: '/sovereign-vault-palace' },
+      { labelAr: 'النشر والتسليم',      labelEn: 'Publishing and delivery',    href: '/makman-al-ghayah' },
     ],
   },
   {
