@@ -103,13 +103,13 @@ export const LANDING_CHAMBERS: readonly LandingChamber[] = [
     nameEn: 'Research and sources',
     roleAr: 'حيثُ تَبدأ المعرفة',
     roleEn: 'Where knowledge begins',
-    bodyAr: 'تَطرح سؤالك، فتَبحث لك في القرآن وفي تسعةٍ من أمّهاتِ كتبِ الحديث وفي مصادرَ حيّة، '
-      + 'وتَعرض عليك ما وجدَته بنصِّه ودرجته ومَن رواه. تَختار منه ما يَنفعك، '
-      + 'فتُهيّئ منه مطالبةً إبداعيّةً جاهزةً للتنفيذ.',
-    bodyEn: 'Ask your question and it searches the Qur’an, nine of the major hadith '
-      + 'collections and live sources, showing you what it found with its text, its grading '
-      + 'and who narrated it. You choose what serves you, and a creative prompt is prepared '
-      + 'from it.',
+    bodyAr: 'تَطرح سؤالك، فيُبحَث لك في مكتبةٍ عالميّةٍ تَتجاوز خمسةً وسبعين ألفَ كتاب، '
+      + 'وفي ويكيبيديا والمكتبةِ المفتوحةِ وأدبيّاتٍ طبّيّةٍ واتّجاهاتِ البحثِ اليوم. '
+      + 'تَقرأ ما وُجِد بمصدره، وتَختار منه ما يَنفعك، فتُهيّأ منه مطالبةٌ إبداعيّةٌ جاهزة.',
+    bodyEn: 'Ask your question and a world library of more than seventy-five thousand books '
+      + 'is searched for you, alongside Wikipedia, the Open Library, medical literature and '
+      + 'what the world is searching for today. You read what was found with its source, '
+      + 'choose what serves you, and a ready creative prompt is prepared from it.',
     valueAr: 'تَبدأ من معرفةٍ لها مصدرٌ تَعرفه، لا من صفحةٍ بيضاء.',
     valueEn: 'You begin from knowledge with a source you can name, not from a blank page.',
   },
@@ -234,11 +234,11 @@ export const LANDING_JOURNEY: readonly LandingJourneyStep[] = [
     id: 'ground', ordinal: 1,
     titleAr: 'ابدأ من أرضٍ صُلبة',
     titleEn: 'Begin on solid ground',
-    bodyAr: 'اطرح سؤالك، فيُبحَث لك في القرآن وكتبِ الحديثِ ومصادرَ حيّة، ويُعرَض عليك '
-      + 'ما وُجِد بدليله. أو ابدأ بفكرتك وحدَها — فالاختيارُ اختيارُك.',
-    bodyEn: 'Ask your question and the Qur’an, the hadith collections and live sources '
-      + 'are searched for you, and what was found is shown with its evidence. Or begin with '
-      + 'your idea alone — the choice is yours.',
+    bodyAr: 'اطرح سؤالك، فيُبحَث لك في مكتبةٍ عالميّةٍ ومصادرَ حيّة، ويُعرَض عليك '
+      + 'ما وُجِد بمصدره. أو ابدأ بفكرتك وحدَها — فالاختيارُ اختيارُك.',
+    bodyEn: 'Ask your question and a world library and live sources are searched for you, '
+      + 'and what was found is shown with its source. Or begin with your idea alone — the '
+      + 'choice is yours.',
     chamberAr: 'البحث والمصادر', chamberEn: 'Research and sources',
   },
   {
@@ -290,15 +290,17 @@ export const LANDING_CAPABILITIES: readonly LandingCapability[] = [
   },
   {
     id: 'knowledge',
-    titleAr: 'بحثٌ مُسنَد',
-    titleEn: 'Sourced research',
-    bodyAr: 'ابحث في القرآن وفي تسعةٍ من أمّهاتِ كتبِ الحديثِ وفي مصادرَ حيّة، '
-      + 'واقرأ ما وُجِد بنصّه ودرجته ومَن رواه.',
-    bodyEn: 'Search the Qur’an, nine of the major hadith collections and live sources, '
-      + 'and read what was found with its text, its grading and who narrated it.',
-    groundAr: 'والدرجةُ تُسافر مع النصّ — فلا تَبني على روايةٍ وأنت لا تَعرف مرتبتَها.',
-    groundEn: 'The grading travels with the text, so you never build on a narration without '
-      + 'knowing its standing.',
+    titleAr: 'بحثٌ له مصدر',
+    titleEn: 'Research with a source',
+    bodyAr: 'ابحث في مكتبةٍ إلكترونيّةٍ تَضُمُّ أكثرَ من خمسةٍ وسبعين ألفَ كتابٍ بمئةٍ وثماني '
+      + 'عشرةَ لغة — يَرجِع بعضُها إلى ما قبل الميلاد — وفي ويكيبيديا والمكتبةِ المفتوحة '
+      + 'وأدبيّاتٍ طبّيّةٍ ومجتمعاتٍ تقنيّةٍ واتّجاهاتِ البحث.',
+    bodyEn: 'Search an electronic library of more than seventy-five thousand books in 118 '
+      + 'languages — some older than the Common Era — alongside Wikipedia, the Open Library, '
+      + 'medical literature, technical communities and search trends.',
+    groundAr: 'وكلُّ نتيجةٍ تَصِلك بمصدرها — فلا تَبني على معلومةٍ لا تَعرف من أينَ جاءت.',
+    groundEn: 'Every result arrives with its source, so you never build on something without '
+      + 'knowing where it came from.',
     door: 'app/api/sovereign/entry/creator-goal/[goalId]/knowledge-investigation/route.ts',
   },
   {
@@ -329,31 +331,51 @@ export const LANDING_CAPABILITIES: readonly LandingCapability[] = [
   },
 ];
 
-/* ══ THE KNOWLEDGE FOUNDATION ═════════════════════════════════════════════ */
+/* ══ THE LIBRARY ═════════════════════════════════════════════════════════ */
 
 /**
- * Counted in the production database on 2026-11-20 with
- * `SELECT collection_ar, COUNT(*) … GROUP BY collection_ar`. Named rather
- * than summed: «تسعةُ كتبٍ» said out loud persuades an Arabic reader that a
- * bare 36,064 cannot, and it is checkable in a way a total is not.
+ * WHAT STANDS HERE, AND WHY IT IS NOT WHAT STOOD HERE BEFORE.
+ *
+ *   FOUNDER, 2026-11-22: «انظر الى كم تلميحا يمس القران الكريم وانا قد نهيتك
+ *   من قبل عن ذلك. عليك الا تذكر مصادر الا المصادر المعروفه. وكذلك عليك ان
+ *   تكتب انه هناك مكتبه تضم اكثر من 75 الف كتابا الكترونيا يرجع بعضها الى ما
+ *   قبل الميلاد».
+ *
+ *   This section used to name nine hadith collections and the Qur'an, and it
+ *   made a platform for every kind of content read as a platform for one. The
+ *   Founder had already ruled against that once; keeping the figures because
+ *   they were the ones I could verify put my standard of proof above his
+ *   ruling. They are gone — every one of them.
+ *
+ *   MEASURED 2026-11-22 against the production database, so the replacement
+ *   is not a softer claim but a truer one:
+ *
+ *     library_works                  78,130   (> 75,000)
+ *     distinct languages                118
+ *     Virgil 137 · Homer 83 · Plato 78 · Euripides 26 · Cicero 22
+ *     Aristotle 21 · Sophocles 19 · Aesop 16 · Herodotus 13 · Confucius 9
+ *
+ *   Every one of those authors predates the Common Era, which is what makes
+ *   «يرجع بعضها إلى ما قبل الميلاد» a measurement rather than a flourish.
+ *   And they are names a stranger already knows — «المصادر المعروفة».
  */
 export const LANDING_PROOF: readonly LandingProofPoint[] = [
-  { id: 'bukhari', figure: '٧٬٥٨٠', labelAr: 'صحيح البخاري',    labelEn: 'Sahih al-Bukhari' },
-  { id: 'muslim',  figure: '٧٬٣٦٠', labelAr: 'صحيح مسلم',       labelEn: 'Sahih Muslim' },
-  { id: 'nasai',   figure: '٥٬٦٧٩', labelAr: 'سنن النسائي',     labelEn: 'Sunan an-Nasa’i' },
-  { id: 'dawud',   figure: '٥٬٢٧٢', labelAr: 'سنن أبي داود',    labelEn: 'Sunan Abi Dawud' },
-  { id: 'majah',   figure: '٤٬٣٣٨', labelAr: 'سنن ابن ماجه',    labelEn: 'Sunan Ibn Majah' },
-  { id: 'tirmidh', figure: '٣٬٩٢٤', labelAr: 'جامع الترمذي',    labelEn: 'Jami’ at-Tirmidhi' },
-  { id: 'malik',   figure: '١٬٨٢٩', labelAr: 'موطأ الإمام مالك', labelEn: 'Muwatta Malik' },
-  { id: 'nawawi',  figure: '٨٢',    labelAr: 'الأربعون النووية والقدسية', labelEn: 'The two Forty collections' },
+  { id: 'homer',    figure: '٨٣',  labelAr: 'هوميروس',  labelEn: 'Homer' },
+  { id: 'plato',    figure: '٧٨',  labelAr: 'أفلاطون',  labelEn: 'Plato' },
+  { id: 'virgil',   figure: '١٣٧', labelAr: 'فرجيل',    labelEn: 'Virgil' },
+  { id: 'aristotle',figure: '٢١',  labelAr: 'أرسطو',    labelEn: 'Aristotle' },
+  { id: 'euripides',figure: '٢٦',  labelAr: 'يوربيديس', labelEn: 'Euripides' },
+  { id: 'cicero',   figure: '٢٢',  labelAr: 'شيشرون',   labelEn: 'Cicero' },
+  { id: 'herodotus',figure: '١٣',  labelAr: 'هيرودوت',  labelEn: 'Herodotus' },
+  { id: 'confucius',figure: '٩',   labelAr: 'كونفوشيوس', labelEn: 'Confucius' },
 ];
 
-/** The one total, stated once, with what it is made of standing beside it. */
+/** The one total, with what it is made of standing beside it. */
 export const LANDING_PROOF_TOTAL = {
-  figureAr: '٣٦٬٠٦٤',
-  figureEn: '36,064',
-  labelAr: 'روايةً، كلٌّ منها بدرجتها',
-  labelEn: 'narrations, each with its grading',
+  figureAr: '٧٨٬١٣٠',
+  figureEn: '78,130',
+  labelAr: 'كتاباً إلكترونيّاً في ١١٨ لغة — يَرجِع بعضُها إلى ما قبل الميلاد',
+  labelEn: 'electronic books in 118 languages — some of them older than the Common Era',
 } as const;
 
 /* ══ THE QUESTIONS ════════════════════════════════════════════════════════ */

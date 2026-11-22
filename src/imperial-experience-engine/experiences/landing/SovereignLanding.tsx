@@ -382,19 +382,26 @@ export default function SovereignLanding({ fontClass, dict, locale, policies, pa
 
       {/* ══ 6 · THE KNOWLEDGE FOUNDATION ═══════════════════════════════
           Where the reference design put testimonials. We hold no Creator
-          testimony we may publish, so what stands here is what we DO hold,
-          named rather than summed.                                       */}
+          testimony we may publish, so what stands here is what we DO hold.
+
+          AND IT IS NO LONGER THE HADITH CORPUS. The Founder had already
+          ruled against making a platform for every kind of content read as
+          a platform for one; I kept those figures anyway because they were
+          the ones I could verify, which put my standard of proof above his
+          ruling. 2026-11-22: every one of them is gone, and the library —
+          78,130 books in 118 languages — is both the truer claim and the
+          one a stranger of any background can see themselves in.          */}
       <section className="lp-section lp-proof" id="lp-proof">
         <header className="lp-section-head">
-          <p className="lp-eyebrow">{en ? 'The foundation' : 'الأساس'}</p>
+          <p className="lp-eyebrow">{en ? 'The library' : 'المكتبة'}</p>
           <h2 className="lp-h2">
-            {en ? 'Your research stands on ' : 'بحثُك يَقوم على '}
-            <span className="lp-headline-lit">{en ? 'named sources.' : 'مصادرَ مُسمّاة.'}</span>
+            {en ? 'Your work begins in ' : 'عملُك يَبدأ من '}
+            <span className="lp-headline-lit">{en ? 'a world library.' : 'مكتبةٍ عالميّة.'}</span>
           </h2>
           <p className="lp-section-lede">
             {en
-              ? 'The Qur’an, searched live, and nine of the major hadith collections — each narration carrying its own grading.'
-              : 'القرآنُ يُبحَث فيه حيّاً، وتسعةٌ من أمّهاتِ كتبِ الحديث — وكلُّ روايةٍ تَحمل درجتها معها.'}
+              ? 'Literature, philosophy, history and science — names a reader already knows, and some of them older than the Common Era.'
+              : 'أدبٌ وفلسفةٌ وتاريخٌ وعلم — أسماءٌ يَعرفها القارئُ سلفاً، وبعضُها أقدمُ من الميلاد.'}
           </p>
         </header>
 

@@ -96,6 +96,57 @@
  */
 body {
   background: var(--azma-void);
+
+  /*
+   * ─── THE FONT THE CONSTITUTION ASSUMED, AND NOBODY EVER SET ────────────
+   *
+   *   MEASURED on production, 2026-11-22, by reading the computed font of
+   *   every VISIBLE element carrying Arabic text:
+   *
+   *       /ras-amr            122 elements in Times New Roman
+   *       /sovereign-balance   41
+   *       /policies            14
+   *       /login /signup /qiyamah-chamber /makman-al-ghayah   4 each
+   *
+   *   The Typography Constitution names one stack and forbids a local
+   *   `font-family` in a chamber. But its ONE application point is
+   *   `.azma-chamber` in azma-identity.css — and that class is on ZERO
+   *   elements in the serving release, measured across six pages. So the
+   *   rule applied to nothing, `body` was never given a font at all, and
+   *   the browser default took every surface that obeyed the law.
+   *
+   *   `policies.css` says it in its own header: «no local font-family». It
+   *   obeyed, and it was the worst punished.
+   *
+   *   `.azma-chamber` cannot simply be moved onto `body`: it also carries
+   *   `position: fixed; inset: 0; overflow: hidden`, which would re-layout
+   *   the platform. Only the FONT belongs at the root, and only the font is
+   *   set here. A chamber that declares its own still wins on specificity,
+   *   so nothing that renders correctly today changes.
+   */
+  font-family: var(--azma-font-family);
+}
+
+/*
+ * ─── AND THE CONTROLS, WHICH NEVER INHERIT ──────────────────────────────
+ *
+ *   Setting the font on `body` fixed 190 elements and left four. Measured:
+ *   three of them were `<button>` — «دخول», «اشترك الآن», «⮜ قلب
+ *   الإمبراطورية» — all rendering in Arial. Form controls do not inherit
+ *   `font-family`; the browser gives them its own, and no amount of styling
+ *   the page reaches them.
+ *
+ *   `azma-identity.css` already knows this and writes
+ *   `.azma-chamber button { font-family: inherit }` — but that class is on
+ *   zero elements, so the knowledge never applied anywhere. This is the
+ *   same rule at a root that exists.
+ */
+button,
+input,
+select,
+textarea,
+optgroup {
+  font-family: inherit;
 }
 
   .sovereign-shell{

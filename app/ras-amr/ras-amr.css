@@ -747,7 +747,11 @@ body:has(.ras-amr-viewport) {
   letter-spacing: 1.5px;
   text-transform: uppercase;
   color: rgba(212, 175, 55, 0.45);
-  font-family: monospace;
+  /* كان `monospace`، ونصُّ هذه الشارةِ عربيٌّ («في انتظار الأصول»).
+     والعربيّةُ في خطٍّ أُحاديِّ التباعدِ تُرسَم متباعدةً ورديئة. والغرضُ
+     كان اصطفافَ ما فيها من أرقام، وهذا ما تُعطيه `tabular-nums` وحدَها
+     دون أن تَمَسَّ الحرف. */
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
   flex-shrink: 0;
 }

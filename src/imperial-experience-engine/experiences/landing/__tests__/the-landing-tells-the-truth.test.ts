@@ -433,44 +433,78 @@ describe('10 · a capability nobody can reach is not named at all', () => {
 /* ═══ 11 · EVERY FIGURE SURVIVED VERIFICATION ═══════════════════════════ */
 
 describe('11 · the numbers mean what a visitor will think they mean', () => {
-  it('the nine collections add up to the one total that is shown', () => {
-    // The strongest check available without a database: the parts and the
-    // sum are two independent statements, and they must agree.
-    const digits = (s: string) =>
-      Number(s.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[^0-9]/g, ''));
-    const sum = LANDING_PROOF.reduce((n, p) => n + digits(p.figure), 0);
-    expect(sum).toBe(digits(LANDING_PROOF_TOTAL.figureAr));
-    expect(digits(LANDING_PROOF_TOTAL.figureEn)).toBe(sum);
+  /*
+   * ── THIS WHOLE SECTION WAS INVERTED ON 2026-11-22, NOT DELETED ─────────
+   *
+   *   It used to require the nine hadith collections to sum to 36,064, and
+   *   it used to require the Gutenberg figure to be ABSENT — I had removed
+   *   it because 78,130 printed beside the Qur'an read as an Arabic library.
+   *
+   *   The Founder then ruled, for the second time:
+   *     «انظر الى كم تلميحا يمس القران الكريم وانا قد نهيتك من قبل عن ذلك.
+   *      عليك الا تذكر مصادر الا المصادر المعروفه. وكذلك عليك ان تكتب انه
+   *      هناك مكتبه تضم اكثر من 75 الف كتابا الكترونيا يرجع بعضها الى ما
+   *      قبل الميلاد.»
+   *
+   *   He had ruled once already and I kept those figures anyway, because
+   *   they were the ones I could verify. That put my standard of proof
+   *   above his ruling, and these assertions are what enforced the mistake.
+   *
+   *   So every one of them now runs in the opposite direction. The coverage
+   *   did not shrink; it changed sign.
+   */
+
+  it('no scripture and no hadith collection is named anywhere a visitor reads', () => {
+    const forbidden = [
+      'القرآن', 'الحديث', 'رواية', 'روايات', 'مُسنَد', 'درجته', 'مرتبتها',
+      'البخاري', 'مسلم', 'النسائي', 'أبي داود', 'ابن ماجه', 'الترمذي',
+      'موطأ', 'النووية', 'القدسية',
+      'Qur', 'hadith', 'narration', 'Bukhari', 'Muslim', 'Tirmidhi',
+    ];
+    for (const src of SOURCE_FILES()) {
+      for (const word of forbidden) expect(src).not.toContain(word);
+    }
   });
 
-  it('the Gutenberg figure is gone, because it read as an Arabic library', () => {
-    // 78,130 is REAL and was REMOVED: measured by language it is 61,675
-    // English, 4,181 French, 3,680 Finnish, and no Arabic in the top eight.
-    // A true number that creates a false impression is a false claim with a
-    // citation.
-    for (const src of SOURCE_FILES()) expect(src).not.toContain('٧٨٬١٣٠');
+  it('and the library is named instead, with the figure he asked for', () => {
+    // MEASURED 2026-11-22 in the production database: 78,130 works across
+    // 118 distinct languages. «أكثر من 75 ألف» is therefore a floor, not a
+    // flourish — the page may never claim more than the table holds.
+    const content = here('landing-content.ts');
+    expect(content).toContain('٧٨٬١٣٠');
+    expect(content).toContain('78,130');
+    expect(content).toContain('١١٨ لغة');
+    expect(content).toContain('ما قبل الميلاد');
   });
 
-  it('and engineering facts are not wearing a visitor’s clothes', () => {
+  it('every name it does show is one a reader already knows', () => {
+    // «عليك الا تذكر مصادر الا المصادر المعروفه». And each count was read
+    // from the table, not estimated: Virgil 137 · Homer 83 · Plato 78 ·
+    // Euripides 26 · Cicero 22 · Aristotle 21 · Herodotus 13 · Confucius 9.
+    const known = ['هوميروس', 'أفلاطون', 'أرسطو', 'فرجيل', 'شيشرون', 'هيرودوت', 'كونفوشيوس'];
+    const content = here('landing-content.ts');
+    for (const n of known) expect(content).toContain(n);
+    expect(LANDING_PROOF.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('and every one of them really is older than the Common Era', () => {
+    // The claim «يرجع بعضها إلى ما قبل الميلاد» rests on these names, so a
+    // later addition must not quietly put a modern author under it.
+    const PRE_COMMON_ERA = new Set([
+      'homer', 'plato', 'aristotle', 'virgil', 'cicero',
+      'euripides', 'herodotus', 'confucius', 'sophocles', 'aesop',
+    ]);
+    for (const p of LANDING_PROOF) expect(PRE_COMMON_ERA.has(p.id)).toBe(true);
+  });
+
+  it('and engineering facts are still not wearing a visitor’s clothes', () => {
     // «لا تجعل عدد الاختبارات بديلاً عن عرض القيمة الإبداعية للمنصة».
     for (const src of SOURCE_FILES()) {
       expect(src).not.toContain('٥٬٧١٢');
       expect(src).not.toContain('اختباراً يَحرس');
     }
   });
-
-  it('the Qur’an is described as searched, never as stored here', () => {
-    // MEASURED: there is no Qur'an table in the production database. It is
-    // served live by sovereign-scripture-provider.ts from api.alquran.cloud,
-    // which answered 200 from the production server on 2026-11-20 (control:
-    // google.com also 200, so the instrument was sound).
-    const content = here('landing-content.ts');
-    expect(content).toContain('تَبحث لك في القرآن');
-    expect(content).not.toContain('القرآنُ في قاعدتنا');
-  });
 });
-
-/* ═══ 12 · THE PAGE IS LIT, AND STILLNESS IS HONOURED ═══════════════════ */
 
 describe('12 · the ground is a lit room, not a flat dark field', () => {
   it('the light is painted once behind everything, not per section', () => {
