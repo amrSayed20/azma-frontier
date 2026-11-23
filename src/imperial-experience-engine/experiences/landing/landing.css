@@ -138,9 +138,9 @@
 
 .lp-ambient-violet {
   inset-block-start: -32vh;
-  inset-inline-start: 50%;
-  transform: translateX(-50%);
-  inline-size: min(1400px, 150vw);
+  inset-inline: 0;
+  margin-inline: auto;
+  inline-size: min(1400px, 100%);
   block-size: 108vh;
   background: radial-gradient(closest-side,
     rgba(255, 243, 210, 0.4) 0%, rgba(255, 228, 160, 0.19) 30%,
@@ -160,9 +160,9 @@
 
 .lp-ambient-deep {
   inset-block-end: -28vh;
-  inset-inline-start: 50%;
-  transform: translateX(-50%);
-  inline-size: min(1200px, 135vw);
+  inset-inline: 0;
+  margin-inline: auto;
+  inline-size: min(1200px, 100%);
   block-size: 66vh;
   background: radial-gradient(closest-side, rgba(38, 56, 156, 0.6) 0%, transparent 72%);
   filter: blur(44px);
@@ -171,9 +171,9 @@
 /* المشربيّة — تَظهَر حيثُ يَسقُط الضوءُ وتَختفي في الظلّ، كالحقيقيّة */
 .lp-ambient-grid {
   inset-block-start: -8vh;
-  inset-inline-start: 50%;
-  transform: translateX(-50%);
-  inline-size: min(1500px, 162vw);
+  inset-inline: 0;
+  margin-inline: auto;
+  inline-size: min(1500px, 100%);
   block-size: 118vh;
   opacity: 0.7;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><g fill='none' stroke='rgba(255,243,210,0.6)' stroke-width='0.85'><path d='M46 4 L58 22 L80 22 L68 40 L80 58 L58 58 L46 76 L34 58 L12 58 L24 40 L12 22 L34 22 Z'/><circle cx='46' cy='40' r='10'/><path d='M0 40 L12 22 M92 40 L80 22 M0 40 L12 58 M92 40 L80 58'/></g></svg>");
@@ -643,9 +643,9 @@
 .lp-chamber-art {
   position: absolute;
   inset-block-start: -62px;
-  inset-inline-start: 50%;
-  transform: translateX(-50%);
-  inline-size: 240px;
+  inset-inline: 0;
+  margin-inline: auto;
+  inline-size: min(240px, 100%);
   block-size: 155px;
   pointer-events: none;
   filter: blur(12px);

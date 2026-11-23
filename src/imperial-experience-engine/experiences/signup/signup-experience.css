@@ -179,9 +179,9 @@
 /* الكُوَّةُ التي يَنزِل منها الضوء */
 .iwan-beam {
   inset-block-start: -34vh;
-  inset-inline-start: 50%;
-  transform: translateX(-50%);
-  inline-size: min(1420px, 152vw);
+  inset-inline: 0;
+  margin-inline: auto;
+  inline-size: min(1420px, 100%);
   block-size: 112vh;
   background: radial-gradient(closest-side,
     rgba(255, 246, 222, 0.44) 0%, rgba(255, 230, 164, 0.2) 30%,
@@ -192,9 +192,9 @@
 /* المشربيّة — تَظهَر حيثُ يَسقُط الضوءُ وتَختفي في الظلّ، كالحقيقيّة */
 .iwan-screen {
   inset-block-start: -8vh;
-  inset-inline-start: 50%;
-  transform: translateX(-50%);
-  inline-size: min(1500px, 162vw);
+  inset-inline: 0;
+  margin-inline: auto;
+  inline-size: min(1500px, 100%);
   block-size: 120vh;
   opacity: 0.72;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><g fill='none' stroke='rgba(255,246,222,0.6)' stroke-width='0.85'><path d='M46 4 L58 22 L80 22 L68 40 L80 58 L58 58 L46 76 L34 58 L12 58 L24 40 L12 22 L34 22 Z'/><circle cx='46' cy='40' r='10'/><path d='M0 40 L12 22 M92 40 L80 22 M0 40 L12 58 M92 40 L80 58'/></g></svg>");
@@ -357,9 +357,9 @@
   content: '';
   position: absolute;
   inset-block-start: -74px;
-  inset-inline-start: 50%;
-  transform: translateX(-50%);
-  inline-size: 300px;
+  inset-inline: 0;
+  margin-inline: auto;
+  inline-size: min(300px, 100%);
   block-size: 180px;
   pointer-events: none;
   background: radial-gradient(closest-side,
@@ -921,5 +921,5 @@
     border-radius: 20px;
   }
   .iwan-voice .companion-text { max-inline-size: none; }
-  .iwan-door::after { inline-size: 220px; block-size: 140px; inset-block-start: -62px; }
+  .iwan-door::after { inline-size: min(220px, 100%); block-size: 140px; inset-block-start: -62px; }
 }
