@@ -22,6 +22,14 @@ interface Props {
   readonly children: (onSuccess: (destination: string) => void) => ReactNode;
   readonly dict: Dictionary;
   readonly locale: Locale;
+  /**
+   * «الدِّهليز», 2026-11-23: the hashed, self-hosted face `app/login/page.tsx`
+   * declares for THIS route alone, handed down as a CSS variable this
+   * experience's own stylesheet reads. `app/layout.tsx` is not this page's to
+   * touch — it is loaded by every surface in the Empire — and `next/font`
+   * does not require it. No chamber sees this face.
+   */
+  readonly fontClass?: string;
 }
 
 /**
@@ -64,7 +72,7 @@ interface Props {
  * beginHandoff differs, computed by LoginForm exactly as before and
  * passed through, not reimplemented here.
  */
-export function LoginExperience({ children, dict, locale }: Props) {
+export function LoginExperience({ children, dict, locale, fontClass = '' }: Props) {
   const { phase, beginHandoff } = useExperienceLifecycle({
     revealDurationMs: REVEAL_DURATION_MS,
     handoffDurationMs: HANDOFF_DURATION_MS,
@@ -84,14 +92,24 @@ export function LoginExperience({ children, dict, locale }: Props) {
   const companionMessageKey = phase === 'exiting' ? 'login.companionMessageRecognized' : 'login.companionMessage';
 
   return (
-    <div className="login-experience" data-phase={phase} data-presence={presence} ref={rootRef}>
-      <div className="login-atmosphere" aria-hidden="true" />
+    <div
+      className={`dihliz-stage ${fontClass}`.trim()}
+      data-phase={phase}
+      data-presence={presence}
+      ref={rootRef}
+    >
+      {/* السِّراجُ والجدارُ والأرض — زخرفيٌّ بالكامل، ولا يَلتقِط لمسة. */}
+      <div className="dihliz-atmosphere" aria-hidden="true">
+        <span className="dihliz-lamp" />
+        <span className="dihliz-screen" />
+        <span className="dihliz-ground" />
+      </div>
 
-      <div className="login-reveal">
+      <div className="dihliz-reveal">
         {children(handleRecognized)}
       </div>
 
-      <div className="login-companion">
+      <div className="dihliz-voice">
         <LivingCompanion
           message={t(dict, companionMessageKey)}
           visible={true}

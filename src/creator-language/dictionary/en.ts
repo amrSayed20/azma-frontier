@@ -116,12 +116,17 @@ export const en: Dictionary = {
   'signup.errorUnreachable': 'Could not reach the server. Please try again.',
   'signup.errorFallback': 'Sign up failed.',
 
-  'login.kicker': 'The Sovereign Passage',
-  'login.companionMessage': 'The Empire knows you',
+  // ═══ «الدِّهليز» — the vestibule, 2026-11-23 ═══════════════════════════
+  // A returning Creator is not a visitor: this page does not explain or sell,
+  // it recognises. The old court vocabulary is retired by the Founder's order.
+  'login.kicker': 'Sign in',
+  'login.brandSub': 'The creation platform',
+  'login.orDivider': 'or',
+  'login.companionMessage': 'I am here if you need me',
   // Deliberately the exact same phrase as gate.titleKnownDefault.
   'login.companionMessageRecognized': 'Welcome back',
-  'login.title': 'Sign in',
-  'login.subtitle': 'Welcome back to AZMA OS.',
+  'login.title': 'Welcome back',
+  'login.subtitle': 'Come in by the road you created your account with.',
   'login.emailLabel': 'Email',
   'login.passwordLabel': 'Password',
   'login.submitIdle': 'Sign in',

@@ -118,14 +118,21 @@ export const ar: Dictionary = {
   'signup.errorUnreachable': 'البوابة لا تستجيب. عُد بعد لحظة.',
   'signup.errorFallback': 'البوابة لم تُفتَح. تأكد من بياناتك.',
 
-  'login.kicker': 'بوابة العبور السيادي',
-  'login.companionMessage': 'الإمبراطورية تعرفك',
+  // ═══ «الدِّهليز» — الممرُّ إلى الدار، 2026-11-23 ═════════════════════════
+  //
+  //   العائدُ ليس زائرًا. فالصفحةُ لا تَشرَح ولا تَعرِض، بل تَعرِف.
+  //   وسَقَطَت «بوابةُ العبورِ السياديّ» و«أهلاً بعودتك إلى عظمة» — الأولى
+  //   معجمٌ يُطلَب تعلُّمُه قبل الدخول، والثانيةُ اسمٌ ليس اسمَ المنصّة.
+  'login.kicker': 'تسجيل الدخول',
+  'login.brandSub': 'منصّةُ الإنشاء',
+  'login.orDivider': 'أو',
+  'login.companionMessage': 'أنا هنا إن احتجتَني',
   // Deliberately the exact same phrase as gate.titleKnownDefault — the
   // Empire's own existing "returning Creator" recognition, echoed here
   // rather than reworded. Continuity of language, not just of mechanism.
   'login.companionMessageRecognized': 'أهلاً بعودتك',
-  'login.title': 'تسجيل الدخول',
-  'login.subtitle': 'أهلاً بعودتك إلى عظمة.',
+  'login.title': 'أهلاً بعودتك',
+  'login.subtitle': 'ادخُل بالطريقِ الذي أنشأتَ به حسابك.',
   'login.emailLabel': 'البريد الإلكتروني',
   'login.passwordLabel': 'كلمة المرور',
   'login.submitIdle': 'دخول',
