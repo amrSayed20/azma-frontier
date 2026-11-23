@@ -1,246 +1,925 @@
-/**
- * AZMA OS — THE IMPERIAL EXPERIENCE ENGINE (IXE)
- * The Registration Gateway — Presentation
+/*
+ * ═══ «الإيوان» — THE ENTRANCE HALL ════════════════════════════════════════
  *
- * PACKAGE I: ATMOSPHERE & PRESENCE CONTINUITY (2026-07-23). Every token
- * here is one Arrival already established (--azma-breath-*, the same
- * ease curves, the same void/gold palette) — nothing invented. The
- * form itself (creator-access.css, SignupForm.tsx) is untouched by this
- * file; this only supplies what wraps around it.
+ *   «الفِناء» is the courtyard a stranger stands in (app/page.tsx). The إيوان
+ *   is the one vaulted hall that opens onto it, and this is where a Creator
+ *   crosses in. Same house, same light, one step further inside — so the
+ *   identity is carried forward deliberately and nothing is re-invented.
  *
- * PACKAGE II: CREATOR BIRTH TRANSITION. The [data-phase='exiting']
- * rules below fire once, on successful registration — see
- * SignupExperience.tsx for how that moment is reached.
+ * ─── THE FOUNDER'S ORDER OF 2026-11-23: «أريد عمقًا ولمعانًا للألوان» ──────
+ *
+ *   Depth and gloss are not a colour choice; they are five physical effects,
+ *   and every one of them is drawn here on purpose:
+ *
+ *   1 · VALUE RANGE. Depth is the distance between the darkest and lightest
+ *       pixel. The floor is #02030a and the light is #fff6de — a far wider
+ *       span than the landing's, which is why the hall reads deeper than the
+ *       courtyard it opens from.
+ *
+ *   2 · ATMOSPHERIC PERSPECTIVE. The far wall is LIGHTER and MORE saturated
+ *       (sapphire blooming toward violet); the near panel is darker and
+ *       crisper. That inversion is what the eye reads as distance.
+ *
+ *   3 · A THREE-PART SHADOW. One blurred shadow reads as a sticker. Every
+ *       raised surface here carries three: a wide ambient shadow, a tight
+ *       contact shadow directly beneath it, and an inset rim of light on its
+ *       upper edge where the light actually lands.
+ *
+ *   4 · SPECULAR GLOSS, NOT A WHITE OVERLAY. A diagonal band of 17% white
+ *       falling to nothing by 36%, over `backdrop-filter: saturate(1.5)` —
+ *       so the jewel colours BEHIND the glass bloom through it instead of
+ *       being washed out by it. That bloom is the «لمعان».
+ *
+ *   5 · A POLISHED FLOOR, AND LIGHT BOUNCING BACK OFF IT. The ground carries
+ *       a specular streak and keeps its chroma instead of dying to black,
+ *       and each panel takes an INSET violet glow along its lower edge —
+ *       light returning from that floor. CSS cannot mirror content, so no
+ *       literal reflection is claimed; the bounce is what the eye actually
+ *       reads as "a solid object standing on a polished surface."
+ *
+ *   And METAL IS FILLED TWICE ON THIS SCREEN, NOT MORE: the house's mark
+ *   (38px) and the one act that matters. Abundance cheapens metal; scarcity
+ *   is what makes it read as precious. Seven stops each, because gold as a
+ *   single hex reads as yellow, not as gold. A guard counts the fills.
+ *
+ * ─── THE ISOLATION CONTRACT ────────────────────────────────────────────────
+ *
+ *   `app/layout.tsx` loads 198 shared tokens onto every page in this
+ *   platform, and one careless line here would recolour every chamber. So:
+ *
+ *     · EVERY selector begins `.iwan-`. No element selector, no `*`, no
+ *       `html`, no `body`, no `:root`, and not one token on the root.
+ *     · `.companion-*` belongs to `LivingCompanion`, which this page hosts
+ *       but does not own. Those rules are therefore written as DESCENDANTS
+ *       of `.iwan-voice` — stricter than the global copies the other pages
+ *       carry, so this page's voice styling cannot reach theirs.
+ *     · `app/creator-access.css` is NOT imported by this route any more. It
+ *       is byte-identical and still serves /login, /subscribe,
+ *       /subscribe/success, /founder and the not-found page. A measurement
+ *       of all five, before and after, is what says so.
+ *     · Direction is never hard-coded: logical properties only. The previous
+ *       build of this file pinned the companion with `left: 30px` and the
+ *       voice divider with `border-left` — both were wrong in Arabic and both
+ *       are gone.
+ *
+ *   A guard asserts all of it: __tests__/the-hall-admits-one-creator.test.ts
  */
 
-.signup-experience {
+/* ══ TOKENS — ON THE CONTAINER, NEVER ON :root ════════════════════════════ */
+
+.iwan-stage {
+  /* الأرض — أعمقُ من ليلِ الفِناء، ليَزيدَ المدى */
+  --iwan-floor: #02030a;
+  --iwan-void:  #050819;
+
+  /* الجدارُ البعيد — أفتحُ وأكثرُ تشبُّعًا: هكذا تُقرأ المسافة */
+  --iwan-wall-1: #0c1342;
+  --iwan-wall-2: #182263;
+  --iwan-wall-3: #24338f;
+  --iwan-wall-4: #3146bd;
+
+  /* الضوء — دافئٌ دائمًا، على ظلٍّ بارد */
+  --iwan-light:    #fff6de;
+  --iwan-light-2:  rgba(255, 246, 222, 0.42);
+
+  --iwan-gold:      #edc94c;
+  --iwan-gold-hi:   #fff8dd;
+  --iwan-gold-soft: #f6e2a4;
+  --iwan-gold-deep: #9c7814;
+
+  --iwan-jewel:   #8355ff;
+  --iwan-jewel-2: #16e0cb;
+  --iwan-ember:   #ff8f45;
+
+  --iwan-ink:       #f6f8ff;
+  --iwan-ink-soft:  #c2cdf4;
+  --iwan-ink-faint: #8694cf;
+
+  --iwan-line:        rgba(164, 184, 255, 0.18);
+  --iwan-line-lit:    rgba(255, 246, 222, 0.46);
+  --iwan-line-strong: rgba(176, 196, 255, 0.36);
+
+  --iwan-danger:    #ff6f5e;
+  --iwan-danger-bg: rgba(255, 76, 58, 0.13);
+
+  --iwan-arch:    118px 118px 20px 20px;
+  --iwan-arch-sm: 76px 76px 16px 16px;
+  --iwan-radius:  18px;
+  --iwan-gutter:  clamp(18px, 5vw, 56px);
+  --iwan-measure: 1120px;
+
+  /* النحاسُ المصقول — سبعُ وقفات: ناصعٌ، ثمّ معتمٌ، ثمّ انعكاس */
+  --iwan-metal: linear-gradient(176deg,
+    #fff9e6 0%, #f9e9b2 9%, #f0d26a 26%, var(--iwan-gold) 48%,
+    #ab8419 66%, #dbba4b 84%, #f8ebbb 100%);
+
+  /* شريطُ اللمعانِ المائل — هذا ما يَجعل السطحَ يُقرأُ سطحًا.
+     شريطان: عريضٌ مائلٌ يَعبُر الوجه، وخيطٌ ضيّقٌ ناصعٌ عند الحافّةِ
+     العليا حيثُ يَقَع الضوءُ فعلًا. الواحدُ وحدَه يُقرأ ضبابًا. */
+  --iwan-gloss: linear-gradient(116deg,
+      rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.09) 15%,
+      transparent 38%, transparent 100%),
+    linear-gradient(180deg,
+      rgba(255, 246, 222, 0.16) 0%, transparent 14%);
+
+  /* الظلُّ الرباعيّ: محيطٌ واسع، تلامسٌ ضيّق، حرفُ ضوءٍ من أعلى،
+     وضوءٌ بنفسجيٌّ مُرتدٌّ عن الأرضِ يَلمِس قاعدةَ اللوح. ذلك الارتدادُ
+     هو ما يَفصِل جسمًا قائمًا في حيّزٍ عن مستطيلٍ ملصوق. */
+  --iwan-lift: 0 42px 96px rgba(1, 2, 9, 0.7),
+               0 10px 26px rgba(1, 2, 9, 0.58),
+               inset 0 1px 0 rgba(255, 246, 222, 0.42),
+               inset 0 -44px 64px -44px rgba(131, 85, 255, 0.5);
+  --iwan-lift-hi: 0 56px 124px rgba(1, 2, 9, 0.78),
+                  0 14px 34px rgba(1, 2, 9, 0.64),
+                  inset 0 1px 0 rgba(255, 246, 222, 0.6),
+                  inset 0 -44px 64px -44px rgba(131, 85, 255, 0.6);
+
+  /* الخطُّ الخاصُّ بهذا الطريقِ وحدَه، يَصِل من `app/signup/page.tsx`.
+     والاحتياطُ خطُّ المنصّةِ نفسُه، فلا تُرسَم الصفحةُ بخطٍّ غريبٍ أبدًا
+     إن تعذَّر تحميلُه — السابقةُ مدفوعٌ ثمنُها: سطحٌ بلا خطٍّ مُعلَنٍ
+     رُسِم Times New Roman على عشرةِ أسطح. */
+  font-family: var(--iwan-font), var(--font-arabic), var(--font-latin), system-ui, sans-serif;
+
   position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
   min-height: 100vh;
-  overflow: hidden;
-  background: var(--azma-void);
+  overflow-x: hidden;
+  line-height: 1.85;
+  font-weight: 300;
+  color: var(--iwan-ink);
+  background: var(--iwan-floor);
 }
 
-/* ── The same living presence, continued ──────────────────────────────
-   A quieter atmosphere than Arrival's — this is a room the Creator is
-   working in, not a threshold to stand at — but the same breathing
-   quality, the same tokens, so it never reads as a different place. */
-.signup-atmosphere {
-  position: absolute;
+/* ══ ١ · الضوءُ الواحد، والجدارُ البعيد ═══════════════════════════════════
+   ثابتٌ خلفَ كلِّ شيءٍ: الضوءُ لا يَتحرَّك، والداخلُ هو الذي يَمُرُّ فيه.
+   و`pointer-events: none` فلا يَلتقِط ضغطةً لغيرِه أبدًا. */
+
+.iwan-atmosphere {
+  position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
+  overflow: hidden;
   background:
-    radial-gradient(ellipse 60% 50% at 50% 38%, rgba(var(--azma-gold-rgb), 0.04), transparent 62%),
-    linear-gradient(180deg, var(--azma-obsidian) 0%, var(--azma-void) 55%, var(--azma-obsidian) 100%);
+    radial-gradient(1280px 820px at 50% -16%, #3b52d8 0%, #1b2878 32%, transparent 66%),
+    radial-gradient(920px 640px at 86% 14%, rgba(131, 85, 255, 0.46) 0%, transparent 62%),
+    radial-gradient(900px 620px at 8% 76%, rgba(22, 224, 203, 0.22) 0%, transparent 64%),
+    radial-gradient(1100px 560px at 76% 92%, rgba(131, 85, 255, 0.26) 0%, transparent 66%),
+    /* النصفُ الأسفلُ لا يَموت إلى الأسود: يَحتفِظ بتشبُّعه، وإلّا قُرِئ
+       المشهدُ مقطوعًا من تحت — وهو أكثرُ ما يَسلُب الصورةَ عُمقَها. */
+    linear-gradient(180deg,
+      var(--iwan-wall-1) 0%, #0b1240 30%, #090e30 56%, #06091f 78%, var(--iwan-void) 100%);
 }
 
+.iwan-atmosphere > span { position: absolute; display: block; }
+
+/* الكُوَّةُ التي يَنزِل منها الضوء */
+.iwan-beam {
+  inset-block-start: -34vh;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  inline-size: min(1420px, 152vw);
+  block-size: 112vh;
+  background: radial-gradient(closest-side,
+    rgba(255, 246, 222, 0.44) 0%, rgba(255, 230, 164, 0.2) 30%,
+    rgba(131, 85, 255, 0.16) 56%, transparent 76%);
+  filter: blur(22px);
+}
+
+/* المشربيّة — تَظهَر حيثُ يَسقُط الضوءُ وتَختفي في الظلّ، كالحقيقيّة */
+.iwan-screen {
+  inset-block-start: -8vh;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  inline-size: min(1500px, 162vw);
+  block-size: 120vh;
+  opacity: 0.72;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><g fill='none' stroke='rgba(255,246,222,0.6)' stroke-width='0.85'><path d='M46 4 L58 22 L80 22 L68 40 L80 58 L58 58 L46 76 L34 58 L12 58 L24 40 L12 22 L34 22 Z'/><circle cx='46' cy='40' r='10'/><path d='M0 40 L12 22 M92 40 L80 22 M0 40 L12 58 M92 40 L80 58'/></g></svg>");
+  background-size: 92px 92px;
+  -webkit-mask-image: radial-gradient(closest-side at 50% 15%, #000 0%, rgba(0, 0, 0, 0.5) 42%, transparent 72%);
+  mask-image: radial-gradient(closest-side at 50% 15%, #000 0%, rgba(0, 0, 0, 0.5) 42%, transparent 72%);
+}
+
+/* وَهَجُ الذهبِ الأسفل — يَربِط الجدارَ بالأرض، فلا تَبدو الأرضُ مقطوعة */
+.iwan-hearth {
+  inset-block-end: -26vh;
+  inset-inline-end: -12vw;
+  inline-size: min(1040px, 110vw);
+  block-size: 78vh;
+  background: radial-gradient(closest-side,
+    rgba(237, 201, 76, 0.24) 0%, rgba(237, 201, 76, 0.1) 44%, transparent 74%);
+  filter: blur(50px);
+}
+
+/* الأرضُ المصقولة: خيطٌ لامعٌ عند حدِّها، ثمّ بريقٌ مُنعكِسٌ يَخفُت —
+   وهذا ما يُقرَأ حجرًا مصقولًا لا حبرًا أسود. */
+.iwan-ground {
+  inset-block-end: 0;
+  inset-inline: 0;
+  /* ٣٢vh لا ٤٦: بالعينِ كان حدُّ الأرضِ يَمُرُّ خلفَ منتصفِ اللوحَين —
+     وهما زجاجٌ — فيُقرأ خطًّا يَشُقُّهما. الأرضُ الآن تَحتَهما. */
+  block-size: 32vh;
+  background:
+    /* حدُّ الأرض: خيطٌ خافتٌ عريض، لا حافّةٌ قاطعة */
+    linear-gradient(180deg, transparent 0%, rgba(255, 246, 222, 0.08) 1.6%, transparent 7%),
+    /* بريقُ الضوءِ المُنعكِسِ عن الحجر */
+    radial-gradient(150% 108% at 50% 102%, rgba(255, 246, 222, 0.16) 0%, transparent 58%),
+    radial-gradient(90% 76% at 22% 100%, rgba(22, 224, 203, 0.16) 0%, transparent 62%),
+    radial-gradient(90% 76% at 80% 100%, rgba(131, 85, 255, 0.24) 0%, transparent 62%),
+    linear-gradient(180deg, transparent 0%, rgba(6, 9, 31, 0.6) 56%, rgba(2, 3, 10, 0.92) 100%);
+}
+
+/* المِحرابُ يَتنفَّس — نفسُ محرِّكِ الحضورِ القائم، بلا توقيتٍ جديد */
 @media (prefers-reduced-motion: no-preference) {
-  .signup-atmosphere {
-    animation: signup-atmosphere-breathe var(--azma-breath) ease-in-out infinite;
-  }
+  .iwan-atmosphere { animation: iwan-breathe var(--azma-breath, 9s) ease-in-out infinite; }
 }
 
-@keyframes signup-atmosphere-breathe {
+@keyframes iwan-breathe {
   0%, 100% { filter: brightness(1); }
-  50%      { filter: brightness(1.04); }
+  50%      { filter: brightness(1.05); }
 }
 
-/* The Empire does not perform for someone who isn't there — same real
-   Presence Engine signal Arrival already uses, same response. */
-.signup-experience[data-presence='away'] .signup-atmosphere {
-  animation-play-state: paused;
+/* الإمبراطوريّةُ لا تُؤدّي لمن ليس حاضرًا — نفسُ إشارةِ الحضورِ القائمة */
+.iwan-stage[data-presence='away'] .iwan-atmosphere { animation-play-state: paused; }
+
+/* لحظةُ القبول: دَفءٌ واحدٌ مضبوط، لا انفجارُ ضوء. وهو `animation` على
+   مُحدِّدٍ أخصَّ لأنّ `filter` الساكنَ تَغلِبه الحركةُ القائمةُ صامتةً —
+   صِنفُ تعارضٍ وُجِد وأُصلِح في هذا المستودَعِ ثلاثَ مرّات. */
+.iwan-stage[data-phase='exiting'] .iwan-atmosphere {
+  animation: iwan-accept 700ms ease-out both;
 }
 
-/*
- * PACKAGE II — CREATOR BIRTH TRANSITION: a single, restrained warming —
- * "the Empire briefly acknowledges" — not a light-burst. Overrides the
- * breathing animation entirely (a new `animation` on a more specific
- * selector, not a static `filter`, which the breathing keyframe already
- * owns and would silently win over a plain rule — the same class of
- * conflict already found and fixed three times this project).
- */
-.signup-experience[data-phase='exiting'] .signup-atmosphere {
-  animation: signup-atmosphere-exit 700ms ease-out both;
-}
-
-@keyframes signup-atmosphere-exit {
+@keyframes iwan-accept {
   from { filter: brightness(1); }
-  to   { filter: brightness(1.1); }
+  to   { filter: brightness(1.14); }
 }
 
-/* ── A brief entrance, not a ceremony ─────────────────────────────────
-   The form must be usable almost immediately — this is a courtesy fade,
-   not a Storyboard beat. Same easing curve as Arrival's own reveals,
-   deliberately short duration. */
-.signup-reveal {
+/* حُبيباتٌ فوقَ كلِّ شيء — ملمسُ الطباعةِ الفاخرة. لا تُلاحَظ، وغيابُها
+   يُلاحَظ. فوقَ المحتوى، وغيرُ قابلةٍ للّمس. */
+.iwan-stage::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  opacity: 0.2;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.86' numOctaves='3'/><feColorMatrix type='saturate' values='0'/></filter><rect width='180' height='180' filter='url(%23n)' opacity='0.5'/></svg>");
+}
+
+/* ══ ٢ · الدخولُ القصير ═══════════════════════════════════════════════════
+   يَجب أن يَصِل الزائرُ إلى البابِ فورًا — هذه مجاملةٌ لا مَشهد. */
+
+.iwan-reveal {
   position: relative;
+  z-index: 2;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
   opacity: 0;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .signup-reveal {
-    animation: signup-reveal-in 550ms var(--azma-ease-architectural) both;
-  }
+  .iwan-reveal { animation: iwan-in 550ms var(--azma-ease-architectural, cubic-bezier(0.22, 1, 0.36, 1)) both; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .signup-reveal { opacity: 1; }
+  .iwan-reveal { opacity: 1; }
 }
 
-@keyframes signup-reveal-in {
-  from { opacity: 0; transform: translateY(6px); }
+@keyframes iwan-in {
+  from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/*
- * PACKAGE II — the form recedes rather than vanishing on the successful
- * step, the same "quiet confirmation" register Arrival's own exit
- * used, not a redesign of the card itself. A new `animation` on a more
- * specific selector correctly replaces signup-reveal-in's held opacity
- * state (fill-mode 'both'), which a static rule alone could not do.
- */
-.signup-experience[data-phase='exiting'] .signup-reveal {
-  animation: signup-reveal-out 700ms var(--azma-ease-architectural) both;
+.iwan-stage[data-phase='exiting'] .iwan-reveal {
+  animation: iwan-out 700ms var(--azma-ease-architectural, cubic-bezier(0.22, 1, 0.36, 1)) both;
 }
 
-@keyframes signup-reveal-out {
+@keyframes iwan-out {
   from { opacity: 1; transform: translateY(0) scale(1); }
-  to   { opacity: 0; transform: translateY(-6px) scale(0.99); }
+  to   { opacity: 0; transform: translateY(-8px) scale(0.99); }
 }
 
-/* ── Imperial Voice, present for the first time on this route ────────
-   Same component, same classes every other page using LivingCompanion
-   already defines locally (Arrival, Hujjah, the Vault Palace) — not a
-   shared stylesheet by this codebase's own established convention. */
-.signup-companion {
+/* ══ ٣ · القاعة ═══════════════════════════════════════════════════════════ */
+
+.iwan-hall {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr);
+  align-items: start;
+  gap: clamp(22px, 3vw, 40px);
+  inline-size: 100%;
+  max-inline-size: var(--iwan-measure);
+  margin-inline: auto;
+  padding-inline: var(--iwan-gutter);
+  padding-block: clamp(42px, 7vh, 84px) clamp(120px, 16vh, 160px);
+}
+
+/* ══ ٤ · البابُ — الإيوانُ نفسُه ═══════════════════════════════════════════
+   سطحٌ زجاجيٌّ: الظلُّ الثلاثيُّ يَرفعه، وشريطُ اللمعانِ يُقرِئه سطحًا،
+   و`saturate` خلفَه يَجعل جواهرَ الجدارِ تَتفتَّح من خلاله — وهذا هو
+   اللمعانُ الذي طَلبه المؤسِّس، لا طبقةٌ بيضاءُ فوقَ اللون. */
+
+/* لا `overflow: hidden` هنا: المعاينةُ بالعينِ أرَت أنّه كان يَقُصُّ حافّةَ
+   الضوءِ فوقَ القوسِ تمامًا، فكانت قاعدةً مكتوبةً لا تَرسُم شيئًا. وبدلَه
+   يَرِث الزجاجُ نصفَ القطرِ من أبيه، فلا تَظهَر له زاويةٌ قائمة. */
+.iwan-door {
+  position: relative;
+  padding: clamp(26px, 3.4vw, 42px);
+  border: 1px solid var(--iwan-line);
+  border-block-start-color: var(--iwan-line-lit);
+  border-radius: var(--iwan-arch);
+  background:
+    linear-gradient(170deg,
+      rgba(49, 70, 189, 0.5) 0%, rgba(24, 34, 99, 0.68) 42%, rgba(6, 9, 28, 0.9) 100%);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
+  box-shadow: var(--iwan-lift);
+  color: var(--iwan-ink);
+}
+
+.iwan-door::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: var(--iwan-gloss);
+}
+
+/* حافّةُ الضوءِ عند قمّةِ القوس — زخرفيّةٌ خلفَ كلِّ شيءٍ ولا تُلمَس */
+.iwan-door::after {
+  content: '';
+  position: absolute;
+  inset-block-start: -74px;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  inline-size: 300px;
+  block-size: 180px;
+  pointer-events: none;
+  background: radial-gradient(closest-side,
+    rgba(255, 246, 222, 0.42) 0%, rgba(255, 246, 222, 0.1) 46%, transparent 74%);
+  filter: blur(8px);
+}
+
+.iwan-door > * { position: relative; z-index: 2; }
+
+/* ══ ٥ · الاسمُ والعنوان ══════════════════════════════════════════════════ */
+
+.iwan-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-block-end: clamp(20px, 2.6vw, 30px);
+}
+
+/* الملءُ المعدنيُّ الأوّل: علامةُ الدار */
+.iwan-mark {
+  flex: none;
+  inline-size: 38px;
+  block-size: 38px;
+  border-radius: 13px 13px 4px 4px;
+  background: var(--iwan-metal);
+  box-shadow:
+    0 4px 18px rgba(237, 201, 76, 0.44),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -2px 6px rgba(120, 90, 10, 0.4);
+}
+
+.iwan-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+  min-inline-size: 0;
+}
+
+.iwan-brand-name {
+  font-size: 1.04rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: var(--iwan-ink);
+}
+
+.iwan-brand-sub {
+  font-size: 0.72rem;
+  color: var(--iwan-ink-faint);
+}
+
+.iwan-kicker {
+  margin: 0 0 10px;
+  font-size: 0.74rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--iwan-gold-soft);
+}
+
+.iwan-title {
+  margin: 0 0 14px;
+  font-size: clamp(1.6rem, 3.6vw, 2.35rem);
+  font-weight: 400;
+  line-height: 1.35;
+  text-wrap: balance;
+  color: var(--iwan-ink);
+  text-shadow: 0 0 36px rgba(255, 246, 222, 0.22);
+}
+
+.iwan-sub {
+  margin: 0 0 clamp(22px, 2.8vw, 30px);
+  font-size: 1.01rem;
+  line-height: 1.95;
+  color: var(--iwan-ink-soft);
+  max-inline-size: 46ch;
+}
+
+/* ══ ٦ · الرفض — يَقول ما يُفعَل، ولا يَفضَح أحدًا ════════════════════════ */
+
+.iwan-error {
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 111, 94, 0.5);
+  border-radius: var(--iwan-radius);
+  background: var(--iwan-danger-bg);
+  color: #ffd2c9;
+  font-size: 0.92rem;
+  line-height: 1.75;
+}
+
+/* ══ ٧ · البابُ الواحد — والملءُ المعدنيُّ الوحيدُ على هذا السطح ══════════
+   وهو `<a>` لا `<button>`: التحقُّقُ يُغادِر هذا الأصلَ إلى Google ويَرجِع
+   حاملًا كعكةً، وذلك انتقالُ صفحةٍ لا طلبٌ داخلَها. */
+
+.iwan-go {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  inline-size: 100%;
+  min-block-size: 56px;
+  padding: 14px 22px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 249, 230, 0.72);
+  border-radius: 999px;
+  background: var(--iwan-metal);
+  color: #281d02;
+  font-family: inherit;
+  font-size: 1.01rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow:
+    0 18px 46px rgba(237, 201, 76, 0.42),
+    0 4px 12px rgba(1, 2, 9, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 -2px 7px rgba(120, 90, 10, 0.42);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.iwan-go:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 26px 60px rgba(237, 201, 76, 0.56),
+    0 6px 16px rgba(1, 2, 9, 0.56),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -2px 7px rgba(120, 90, 10, 0.42);
+}
+
+.iwan-go:focus-visible {
+  outline: 2px solid var(--iwan-light);
+  outline-offset: 3px;
+}
+
+/* شعارُ Google — يُرسَم بأقواسِه الأربعةِ الرسميّة، ولا نَصَّ أجنبيًّا
+   يُضاف حولَه. والاسمُ نفسُه علامةٌ تجاريّةٌ تُكتَب بحرفها. */
+.iwan-go-glyph {
+  flex: none;
+  inline-size: 20px;
+  block-size: 20px;
+}
+
+.iwan-why {
+  margin: 14px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.75;
+  color: var(--iwan-ink-faint);
+  text-align: center;
+}
+
+/* ══ ٨ · الطمأنينةُ الثلاثيّة — ولا مربّعَ فارغٍ على هذا السطح ════════════ */
+
+.iwan-assures {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: clamp(24px, 3vw, 34px) 0 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: 1px solid var(--iwan-line);
+  padding-block-start: clamp(20px, 2.6vw, 26px);
+}
+
+.iwan-assure {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding-block: 10px;
+}
+
+.iwan-assure-mark {
+  flex: none;
+  inline-size: 26px;
+  block-size: 26px;
+  margin-block-start: 4px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(246, 226, 164, 0.4);
+  border-radius: 9px 9px 3px 3px;
+  background: linear-gradient(170deg, rgba(237, 201, 76, 0.22), rgba(237, 201, 76, 0.05));
+  color: var(--iwan-gold-soft);
+  font-size: 0.72rem;
+  line-height: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 249, 230, 0.4);
+}
+
+/* `display: block` ليس زينة: هذان `span`ان، والمعاينةُ بالعينِ أرَتهما
+   مُلتصقَين — «الإنشاءُ مجّانيّلا بطاقةَ…». لا `tsc` رآها ولا اختبار. */
+.iwan-assure-title {
+  display: block;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--iwan-ink);
+}
+
+.iwan-assure-body {
+  display: block;
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  line-height: 1.8;
+  color: var(--iwan-ink-faint);
+}
+
+/* ══ ٩ · مَن له حسابٌ من قبل ══════════════════════════════════════════════ */
+
+.iwan-foot {
+  margin: clamp(22px, 2.8vw, 30px) 0 0;
+  padding-block-start: clamp(18px, 2.2vw, 22px);
+  border-block-start: 1px solid var(--iwan-line);
+  font-size: 0.9rem;
+  color: var(--iwan-ink-soft);
+  text-align: center;
+}
+
+.iwan-foot a {
+  color: var(--iwan-gold-soft);
+  font-weight: 500;
+  text-decoration: none;
+  border-block-end: 1px solid rgba(246, 226, 164, 0.36);
+  padding-block-end: 1px;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+
+.iwan-foot a:hover {
+  color: var(--iwan-gold-hi);
+  border-block-end-color: var(--iwan-gold-hi);
+}
+
+.iwan-foot a:focus-visible {
+  outline: 2px solid var(--iwan-light);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* ══ ١٠ · ما يَفتَحه هذا الحساب ════════════════════════════════════════════
+   الغُرَفُ بأسمائها الوصفيّة كما أَقرَّها المؤسِّس، مقروءةً من مصدرٍ واحدٍ
+   تَقرأُ منه صفحةُ الاستقبالِ نفسُها — فلا يُكتَب اسمُ غرفةٍ مرّتَين. */
+
+.iwan-beyond {
+  position: relative;
+  padding: clamp(24px, 3vw, 34px);
+  border: 1px solid var(--iwan-line);
+  border-block-start-color: var(--iwan-line-strong);
+  border-radius: var(--iwan-arch-sm);
+  background:
+    linear-gradient(172deg,
+      rgba(36, 51, 143, 0.34) 0%, rgba(12, 19, 66, 0.6) 46%, rgba(4, 6, 20, 0.86) 100%);
+  -webkit-backdrop-filter: blur(12px) saturate(1.35);
+  backdrop-filter: blur(12px) saturate(1.35);
+  box-shadow:
+    0 30px 72px rgba(1, 2, 9, 0.62),
+    inset 0 1px 0 rgba(255, 246, 222, 0.34),
+    inset 0 -38px 56px -38px rgba(22, 224, 203, 0.26);
+}
+
+.iwan-beyond::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: var(--iwan-gloss);
+}
+
+.iwan-beyond > * { position: relative; z-index: 2; }
+
+.iwan-beyond-title {
+  margin: 0 0 6px;
+  font-size: 1.02rem;
+  font-weight: 500;
+  color: var(--iwan-ink);
+}
+
+.iwan-beyond-note {
+  margin: 0 0 clamp(16px, 2vw, 20px);
+  font-size: 0.83rem;
+  line-height: 1.8;
+  color: var(--iwan-ink-faint);
+}
+
+.iwan-rooms {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.iwan-room {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding-block: 12px;
+  border-block-start: 1px solid var(--iwan-line);
+}
+
+.iwan-room:first-child { border-block-start: none; }
+
+/* قوسٌ صغيرٌ مُضاء — لا رقم: لا ترتيبَ مفروضًا على الداخل */
+.iwan-room-arch {
+  flex: none;
+  inline-size: 14px;
+  block-size: 18px;
+  margin-block-start: 6px;
+  border-radius: 7px 7px 2px 2px;
+  background: linear-gradient(176deg, rgba(246, 226, 164, 0.85), rgba(156, 120, 20, 0.5));
+  box-shadow: 0 2px 10px rgba(237, 201, 76, 0.3), inset 0 1px 0 rgba(255, 249, 230, 0.8);
+}
+
+.iwan-room-name {
+  display: block;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--iwan-ink);
+}
+
+.iwan-room-role {
+  display: block;
+  margin: 1px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.75;
+  color: var(--iwan-ink-faint);
+}
+
+/* المكتبة — رقمٌ واحدٌ صحيحٌ، مقروءٌ من نفسِ المصدرِ الذي تَقرأُ منه
+   صفحةُ الاستقبال، ولا يُكتَب هنا بيد. */
+.iwan-library {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-block-start: clamp(18px, 2.2vw, 24px);
+  padding-block-start: clamp(16px, 2vw, 20px);
+  border-block-start: 1px solid var(--iwan-line-strong);
+}
+
+.iwan-library-figure {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 500;
+  line-height: 1.1;
+  color: var(--iwan-gold-soft);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 30px rgba(237, 201, 76, 0.34);
+}
+
+.iwan-library-label {
+  flex: 1 1 14ch;
+  min-inline-size: 0;
+  font-size: 0.8rem;
+  line-height: 1.7;
+  color: var(--iwan-ink-faint);
+}
+
+/* ══ ١١ · الصوت — نفسُ المُرافِقِ القائم، مُقيَّدًا داخلَ هذه الصفحة ══════
+   كلُّ قاعدةٍ هنا تَبدأ بـ`.iwan-voice`، فلا تَصِل نسخةَ أيِّ غرفةٍ أخرى. */
+
+.iwan-voice {
   position: fixed;
-  left: 30px;
-  bottom: 30px;
-  z-index: 10;
+  inset-inline-start: 24px;
+  inset-block-end: 24px;
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
+  max-inline-size: min(560px, calc(100% - 48px));
+  padding: 10px 16px;
+  border: 1px solid rgba(246, 226, 164, 0.34);
   border-radius: 999px;
-  background: var(--azma-surface);
-  border: 1px solid rgba(var(--azma-gold-rgb), 0.35);
-  box-shadow: var(--azma-shadow-glow-soft);
+  background: linear-gradient(170deg, rgba(24, 34, 99, 0.88), rgba(5, 8, 25, 0.92));
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(14px) saturate(1.3);
+  box-shadow: 0 18px 44px rgba(1, 2, 9, 0.62), inset 0 1px 0 rgba(255, 246, 222, 0.24);
+  color: var(--iwan-ink);
   opacity: 0;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .signup-companion { animation: signup-reveal-in 550ms 200ms var(--azma-ease-architectural) both; }
+  .iwan-voice { animation: iwan-in 550ms 200ms var(--azma-ease-architectural, cubic-bezier(0.22, 1, 0.36, 1)) both; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .signup-companion { opacity: 1; }
+  .iwan-voice { opacity: 1; }
 }
 
-.companion-mode-cluster {
+.iwan-voice .companion-mode-cluster {
   display: flex;
   align-items: center;
   gap: 5px;
 }
 
-.companion-mode-btn {
-  background: transparent;
-  border: 1px solid rgba(var(--azma-gold-rgb), 0.30);
-  color: var(--azma-text-muted);
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  font-size: 12px;
-  cursor: pointer;
-  transition: border-color 0.25s, color 0.25s, background 0.25s;
+.iwan-voice .companion-mode-btn {
+  inline-size: 27px;
+  block-size: 27px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid rgba(246, 226, 164, 0.3);
+  border-radius: 50%;
+  background: rgba(255, 246, 222, 0.05);
+  color: var(--iwan-ink-faint);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 220ms ease, color 220ms ease, background 220ms ease;
 }
 
-.companion-mode-btn:hover { border-color: var(--azma-gold-6); color: var(--azma-gold-6); }
-.companion-mode-btn.mode-active {
-  border-color: var(--azma-gold-6);
-  color: var(--azma-text-sacred);
-  background: var(--azma-glow-ambient);
+.iwan-voice .companion-mode-btn:hover {
+  border-color: var(--iwan-gold-soft);
+  color: var(--iwan-gold-soft);
+  background: rgba(237, 201, 76, 0.14);
 }
 
-.companion-voice-zone {
+.iwan-voice .companion-mode-btn.mode-active {
+  border-color: var(--iwan-gold-soft);
+  background: rgba(237, 201, 76, 0.2);
+  color: var(--iwan-light);
+}
+
+.iwan-voice .companion-mode-btn:focus-visible {
+  outline: 2px solid var(--iwan-light);
+  outline-offset: 2px;
+}
+
+.iwan-voice .companion-voice-zone {
   display: flex;
   align-items: center;
   gap: 8px;
-  border-left: 1px solid rgba(var(--azma-gold-rgb), 0.20);
-  padding-left: 10px;
+  /* منطقيّةٌ لا فيزيائيّة: البناءُ السابقُ كتبَ `border-left` و`padding-left`
+     فانقلبَ الفاصلُ إلى الجهةِ الخطأِ في العربيّة. */
+  border-inline-start: 1px solid rgba(164, 184, 255, 0.22);
+  padding-inline-start: 10px;
 }
 
-.voice-listen-btn {
-  background: transparent;
-  border: 1px solid rgba(var(--azma-gold-rgb), 0.30);
-  color: var(--azma-gold-6);
-  font-size: 10px;
-  padding: 3px 10px;
-  border-radius: 2px;
-  cursor: pointer;
+.iwan-voice .voice-listen-btn {
+  border: 1px solid rgba(246, 226, 164, 0.3);
+  border-radius: 999px;
+  background: rgba(255, 246, 222, 0.05);
+  color: var(--iwan-gold-soft);
   font-family: inherit;
-  letter-spacing: var(--azma-tracking-open);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: background 220ms ease, border-color 220ms ease;
 }
 
-.voice-listen-btn:hover:not(:disabled) { background: var(--azma-glow-dim); }
-.voice-listen-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.iwan-voice .voice-listen-btn:hover:not(:disabled) {
+  background: rgba(237, 201, 76, 0.16);
+  border-color: var(--iwan-gold-soft);
+}
 
-.voice-listening-indicator {
+.iwan-voice .voice-listen-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+
+.iwan-voice .voice-listen-btn:focus-visible {
+  outline: 2px solid var(--iwan-light);
+  outline-offset: 2px;
+}
+
+.iwan-voice .voice-listening-indicator {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 10px;
-  color: var(--azma-gold-6);
-  font-style: italic;
+  color: var(--iwan-gold-soft);
 }
 
-@keyframes voicePulse {
-  0%, 100% { transform: scale(1); opacity: 0.80; }
-  50%      { transform: scale(1.35); opacity: 1.00; }
-}
-
-.voice-pulse {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--azma-conflict);
-  animation: voicePulse 1.2s ease-in-out infinite;
+.iwan-voice .voice-pulse {
+  inline-size: 7px;
+  block-size: 7px;
   flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--iwan-ember);
 }
 
-.voice-permission-denied {
+@media (prefers-reduced-motion: no-preference) {
+  .iwan-voice .voice-pulse { animation: iwan-pulse 1.2s ease-in-out infinite; }
+}
+
+@keyframes iwan-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50%      { transform: scale(1.35); opacity: 1; }
+}
+
+.iwan-voice .voice-permission-denied {
   font-size: 10px;
-  color: var(--azma-conflict);
-  font-style: italic;
+  color: var(--iwan-danger);
 }
 
-@keyframes companionAppear {
+.iwan-voice .companion-message-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+.iwan-voice .companion-message-zone.companion-visible {
+  opacity: 1;
+  animation: iwan-voice-in 400ms ease forwards;
+}
+
+.iwan-voice .companion-message-zone.companion-hidden {
+  opacity: 0;
+  pointer-events: none;
+  animation: iwan-voice-out 400ms ease forwards;
+}
+
+@keyframes iwan-voice-in {
   from { opacity: 0; transform: translateY(-3px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes companionDisappear {
+
+@keyframes iwan-voice-out {
   from { opacity: 1; }
   to   { opacity: 0; }
 }
 
-.companion-message-zone {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
+.iwan-voice .companion-sigil {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--iwan-gold-soft);
+  opacity: 0.8;
 }
-.companion-message-zone.companion-visible { animation: companionAppear 400ms ease forwards; opacity: 1; }
-.companion-message-zone.companion-hidden { animation: companionDisappear 400ms ease forwards; opacity: 0; pointer-events: none; }
 
-.companion-sigil { color: var(--azma-gold-6); font-size: 11px; flex-shrink: 0; opacity: 0.75; }
-
-.companion-text {
-  color: var(--azma-text-primary);
+/* `white-space: nowrap` كان هنا، فصارت الرسالةُ العربيّةُ الطويلةُ تَخرُج
+   من الشريطِ على الهاتف. تَلتفُّ الآن، والشريطُ يَكبُر معها. */
+.iwan-voice .companion-text {
   font-size: 12px;
-  line-height: 1.4;
-  font-style: italic;
-  letter-spacing: var(--azma-tracking-normal);
-  white-space: nowrap;
+  line-height: 1.6;
+  color: var(--iwan-ink);
+  white-space: normal;
+  max-inline-size: 44ch;
+}
+
+/* ══ ١٢ · الهاتف ══════════════════════════════════════════════════════════
+   قاعدةٌ تَعيش أطولَ من تخطيطها: الشريطُ المُثبَّتُ أسفلَ الشاشةِ كان
+   يُغطّي رابطَ «تسجيل الدخول» على الهاتف، فالقاعةُ تَحمِل فراغًا أسفلَها
+   يُسَعه، والشريطُ يَمتدُّ عرضًا بدلَ أن يَخرُج. */
+
+@media (max-width: 900px) {
+  .iwan-hall { grid-template-columns: minmax(0, 1fr); }
+  .iwan-door { border-radius: var(--iwan-arch-sm); }
+}
+
+@media (max-width: 560px) {
+  .iwan-stage { line-height: 1.8; }
+  .iwan-hall { padding-block-end: 150px; }
+  .iwan-voice {
+    inset-inline: 14px;
+    inset-block-end: 14px;
+    max-inline-size: none;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-radius: 20px;
+  }
+  .iwan-voice .companion-text { max-inline-size: none; }
+  .iwan-door::after { inline-size: 220px; block-size: 140px; inset-block-start: -62px; }
 }

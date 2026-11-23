@@ -76,11 +76,23 @@ export const en: Dictionary = {
   'policies.effectiveFrom': 'Effective',
   'policies.noEffectiveDate': 'Effective date not yet set',
   'policies.arabicIsGoverning': 'This text is in Arabic, and the Arabic is what governs. No ratified English version exists yet — and we will not show you a translation nobody has ratified.',
-  'signup.kicker': 'The Sovereign Passage',
-  'signup.companionMessage': 'You have not left the Empire',
-  'signup.companionMessageBorn': 'You are born a Creator — come',
-  'signup.title': 'Create your account',
-  'signup.subtitle': 'Sign up to generate with Qiyamah.',
+  // ═══ «الإيوان» — the entrance hall, 2026-11-23 ═════════════════════════
+  // The old chamber names are retired by the Founder's order, so nothing on
+  // this page asks a stranger to learn a vocabulary before opening an account.
+  'signup.kicker': 'Start here',
+  'signup.companionMessage': 'I am with you, step by step',
+  'signup.companionMessageBorn': 'Your account is ready — come',
+  'signup.title': 'Create your AZMA account',
+  'signup.subtitle': 'One account opens every room on the platform. Creating it is free, '
+    + 'and asks you for no card and no payment.',
+  'signup.assureFreeTitle': 'Signing up is free',
+  'signup.assureFreeBody': 'No card, no payment to open the account. Payment is asked only when you choose an act whose price is written.',
+  'signup.assureKeyTitle': 'No password is created here',
+  'signup.assureKeyBody': 'Your identity is verified once through Google, so there is no password for you to keep and none for us to hold.',
+  'signup.assureOwnTitle': 'What you make stays yours',
+  'signup.assureOwnBody': 'Everything you produce is kept in your asset vault, and downloads from it whenever you want.',
+  'signup.beyondTitle': 'What this account opens',
+  'signup.beyondNote': 'Five rooms around one courtyard — enter whichever you like first; no order is imposed on you.',
   'signup.emailLabel': 'Email',
   'signup.displayNameLabel': 'Display name (optional)',
   'signup.passwordLabel': 'Password',

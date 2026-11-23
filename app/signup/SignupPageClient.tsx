@@ -10,16 +10,24 @@ import { SignupForm } from './SignupForm';
  * Component, and React Server Components cannot serialize a function
  * (the onSuccess render-prop SignupExperience needs) across the
  * server→client boundary — "Functions are not valid as a child of
- * Client Components." This thin client component is the fix: dict and
- * locale (plain, serializable values) cross the one real RSC boundary,
- * and the function-as-children composition happens entirely within the
- * client tree from here on, never crossing back through a server
- * component.
+ * Client Components." This thin client component is the fix: dict,
+ * locale and the font's class name (plain, serializable values) cross
+ * the one real RSC boundary, and the function-as-children composition
+ * happens entirely within the client tree from here on, never crossing
+ * back through a server component.
  */
-export function SignupPageClient({ dict, locale }: { readonly dict: Dictionary; readonly locale: Locale }) {
+export function SignupPageClient({
+  dict,
+  locale,
+  fontClass,
+}: {
+  readonly dict: Dictionary;
+  readonly locale: Locale;
+  readonly fontClass: string;
+}) {
   return (
-    <SignupExperience dict={dict} locale={locale}>
-      {(onSuccess) => <SignupForm dict={dict} onSuccess={onSuccess} />}
+    <SignupExperience dict={dict} locale={locale} fontClass={fontClass}>
+      {(onSuccess) => <SignupForm dict={dict} locale={locale} onSuccess={onSuccess} />}
     </SignupExperience>
   );
 }
