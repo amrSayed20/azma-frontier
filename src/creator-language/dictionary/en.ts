@@ -143,25 +143,20 @@ export const en: Dictionary = {
 
   'qiyamah.companionMessage': 'The Empire creates with you',
 
-  'subscribe.kicker': 'The Sovereign Passage',
-  'subscribe.title': 'Subscribe',
-  'subscribe.subtitle': 'Unlock generation with Qiyamah.',
-  'subscribe.planName': 'Creator Monthly',
-  'subscribe.planDesc': 'Unlimited access to the First Generation Path, billed monthly.',
-  'subscribe.checkingStatus': 'Checking your session…',
-  'subscribe.signInPrompt': 'to subscribe.',
+  // ═══ THE RETIRED DOOR, 2026-11-23 ══════════════════════════════════════
+  // The Founder's decision: /sovereign-balance is the sole purchase surface.
+  // Every string of /subscribe and /subscribe/success went with the pages,
+  // because they described a product that does not exist — "billed monthly",
+  // against SOVEREIGN_PACKAGES' own `recurrence: 'one-time'` — and the worst
+  // of them announced an activated subscription to anyone who merely opened
+  // the page, with no transaction consulted.
+  //
+  // The three kept are not the page's: action-registry.ts reads them for the
+  // awareness engine's `subscribe` threshold, which is a live engine with its
+  // own tests. An engine with no caller is a connection debt, not a deletion.
   'subscribe.signInLink': 'Sign in',
   'subscribe.founderNotice': 'Founders already have full access — no subscription needed.',
   'subscribe.submitIdle': 'Subscribe',
-  'subscribe.submitBusy': 'Starting checkout…',
-  'subscribe.errorUnreachable': 'Could not reach the server. Please try again.',
-  'subscribe.errorFallback': 'Could not start checkout.',
-
-  'subscribeSuccess.kicker': 'The Sovereign Passage',
-  'subscribeSuccess.title': 'Your standing is confirmed',
-  'subscribeSuccess.subtitleNamed': 'Welcome, {name}. The Empire is now open to you — your subscription is being activated, which usually takes only a moment.',
-  'subscribeSuccess.subtitleAnonymous': 'Welcome. The Empire is now open to you — your subscription is being activated, which usually takes only a moment.',
-  'subscribeSuccess.enterButton': 'Enter the Empire',
 
   'notFound.kicker': 'The Sovereign Passage',
   'notFound.title': 'This path does not exist within the Empire',

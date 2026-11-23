@@ -151,25 +151,21 @@ export const ar: Dictionary = {
 
   'qiyamah.companionMessage': 'الإمبراطورية تصنع معك',
 
-  'subscribe.kicker': 'بوابة العبور السيادي',
-  'subscribe.title': 'الاشتراك',
-  'subscribe.subtitle': 'افتح باب التوليد مع القيامة.',
-  'subscribe.planName': 'الاشتراك السيادي الشهري',
-  'subscribe.planDesc': 'وصول غير محدود إلى مسار التوليد الأول، بفوترة شهرية.',
-  'subscribe.checkingStatus': 'البوابة تقرأ مكانتك…',
-  'subscribe.signInPrompt': 'للاشتراك.',
+  // ═══ البابُ المتقاعِد، 2026-11-23 ═══════════════════════════════════════
+  //
+  //   قرارُ المؤسِّس: `/sovereign-balance` هو سطحُ الشراءِ الوحيد. فسَقَطَت
+  //   نصوصُ `/subscribe` و`/subscribe/success` كلُّها لأنّها كانت تَصِف
+  //   منتَجًا لا وجودَ له — «الاشتراكُ السياديُّ الشهريّ … بفوترةٍ شهريّة» —
+  //   بينما `SOVEREIGN_PACKAGES` تُعلِن `recurrence: 'one-time'` وتَقول نصًّا
+  //   إنّ لا شيءَ هنا اشتراك. وأسوأُها «يجري تفعيل اشتراكك»: كانت تُعلَن
+  //   لمن فَتَح الصفحةَ فقط، بلا معاملةٍ تُقرَأ.
+  //
+  //   والثلاثةُ الباقيةُ ليست من الصفحة: يَقرؤها `action-registry.ts` لعتبةِ
+  //   `subscribe` في محرِّكِ الوعي، وهو محرِّكٌ قائمٌ له اختباراتُه. ومحرِّكٌ
+  //   بلا مُستدعٍ دَينُ وصلٍ لا يُحذَف من طرفٍ واحد.
   'subscribe.signInLink': 'سجّل الدخول',
   'subscribe.founderNotice': 'المؤسسون لديهم وصول كامل بالفعل — لا حاجة للاشتراك.',
   'subscribe.submitIdle': 'اشترك الآن',
-  'subscribe.submitBusy': 'الإمبراطورية تستقبل اشتراكك…',
-  'subscribe.errorUnreachable': 'البوابة لا تستجيب. عُد بعد لحظة.',
-  'subscribe.errorFallback': 'بوابة الاشتراك لم تُفتَح. أعِد المحاولة.',
-
-  'subscribeSuccess.kicker': 'بوابة العبور السيادي',
-  'subscribeSuccess.title': 'مكانتك السيادية مؤكدة الآن',
-  'subscribeSuccess.subtitleNamed': 'أهلاً بك، {name}. الإمبراطورية مفتوحة أمامك الآن — يجري تفعيل اشتراكك، وهذا يستغرق لحظات فقط.',
-  'subscribeSuccess.subtitleAnonymous': 'أهلاً بك. الإمبراطورية مفتوحة أمامك الآن — يجري تفعيل اشتراكك، وهذا يستغرق لحظات فقط.',
-  'subscribeSuccess.enterButton': 'ادخل الإمبراطورية',
 
   'notFound.kicker': 'بوابة العبور السيادي',
   'notFound.title': 'هذا المسار غير موجود داخل الإمبراطورية',

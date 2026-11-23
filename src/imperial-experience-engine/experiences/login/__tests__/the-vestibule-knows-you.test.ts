@@ -111,9 +111,11 @@ describe('٢ · الورقةُ المشتركةُ لم تُمَسّ، وأربع
     }
   });
 
-  it('and the four that do are still served by it, unchanged', () => {
-    for (const f of ['app/subscribe/SubscribeForm.tsx', 'app/subscribe/success/page.tsx',
-                     'app/founder/page.tsx', 'app/not-found.tsx']) {
+  it('and the ones that do are still served by it, unchanged', () => {
+    // Was four. /subscribe and /subscribe/success were RETIRED on 2026-11-23
+    // by the Founder's Option A ruling — redirected to /sovereign-balance,
+    // the sole purchase surface. Two remain on the shared sheet.
+    for (const f of ['app/founder/page.tsx', 'app/not-found.tsx']) {
       expect(read(f)).toContain('creator-access.css');
     }
     for (const cls of ['.creator-access-viewport', '.creator-access-card',

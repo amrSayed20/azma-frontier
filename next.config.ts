@@ -164,6 +164,59 @@ const nextConfig: NextConfig = {
       // route in this app. Redirect immediately to the Foyer so they land
       // somewhere real instead of a 404.
       { source: '/m', destination: '/imperial-foyer', permanent: false },
+
+      // ── THE RETIRED SUBSCRIPTION DOOR ───────────────────────────────────
+      //
+      //   FOUNDER'S DECISION, 2026-11-23, OPTION A: «/sovereign-balance is the
+      //   sole authoritative purchase surface for creator credit packages.»
+      //
+      //   WHAT /subscribe ACTUALLY WAS, MEASURED BEFORE THE RULING:
+      //
+      //     · It POSTed to /api/billing/checkout WITHOUT a packId, which that
+      //       route requires — so every press answered 400, and the Creator
+      //       read an English sentence naming `start / create / achieve`:
+      //       three packages retired on 2026-09-27 that were never sold.
+      //     · Even with a packId it could not have worked. Paymob needs four
+      //       environment variables and the production server has none of
+      //       them; the live gateway is XPay.
+      //     · It advertised «الاشتراك السيادي الشهري … بفوترة شهرية», while
+      //       SOVEREIGN_PACKAGES declares `recurrence: 'one-time'` and states
+      //       in as many words that nothing here is a subscription.
+      //     · NOT ONE internal link pointed at it. The repository already
+      //       recorded the replacement twice: route-gate-context.ts («the
+      //       Balance surface supersedes /subscribe's purpose») and
+      //       action-registry.ts («the Balance is not a subscription, and no
+      //       surface may call it one»).
+      //
+      //   WHY A REDIRECT AND NOT A 404: the address is reachable by hand and
+      //   may sit in a bookmark or an old message. A Creator who types it
+      //   wanted to buy, and the Empire owes them the door that works.
+      //
+      //   WHY `permanent: true` IS SAFE HERE: a 308 is cached by browsers, so
+      //   it is only ever issued for an address this Empire has decided will
+      //   not come back. The Founder's ruling is that decision. The loop
+      //   cannot form: /sovereign-balance issues no redirect of its own, and
+      //   it admits an anonymous visitor rather than bouncing them to a door.
+      { source: '/subscribe', destination: '/sovereign-balance', permanent: true },
+
+      // ── AND ITS RETURN PAGE, WHICH NO PAYMENT EVER USED ─────────────────
+      //
+      //   AUDITED, as the ruling required, before touching it: the ONLY code
+      //   that ever produced a /subscribe/success URL was the dead form above,
+      //   which sent it as `successUrl` to the unconfigured Paymob route. The
+      //   live XPay path never names it — xpay-checkout hard-codes its own
+      //   `/sovereign-balance?paid=1` and `/sovereign-balance`, and
+      //   DEFAULT_RETURN_PATH is `/sovereign-vault-palace`. No callback, no
+      //   webhook and no verification step reads this route.
+      //
+      //   AND IT WAS ITSELF THE FALSE-SUCCESS STATE THE RULING FORBIDS: it
+      //   announced «يجري تفعيل اشتراكك» to anyone who merely opened it, with
+      //   no transaction consulted at all. /sovereign-balance claims nothing —
+      //   it reads the real balance from the database, and the balance is
+      //   granted only by the signature-verified xpay-webhook. So this
+      //   redirect REMOVES a page that asserted a purchase on a browser visit
+      //   and lands the visitor on one that asserts only what is recorded.
+      { source: '/subscribe/success', destination: '/sovereign-balance', permanent: true },
     ];
   },
 };

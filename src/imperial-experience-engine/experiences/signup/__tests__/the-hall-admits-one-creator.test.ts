@@ -135,11 +135,12 @@ describe('٢ · الورقةُ المشتركةُ لم تُمَسّ، وخمسُ
     }
   });
 
-  it('and the five that do are still served by it, unchanged', () => {
+  it('and the ones that do are still served by it, unchanged', () => {
+    // Was five. /login took its own stylesheet («الدِّهليز», 2026-11-23), and
+    // /subscribe + /subscribe/success were RETIRED by the Founder's Option A
+    // ruling the same day — redirected to /sovereign-balance, the sole
+    // purchase surface. Two surfaces still hold the shared sheet.
     const keeps = [
-      'app/login/LoginForm.tsx',
-      'app/subscribe/SubscribeForm.tsx',
-      'app/subscribe/success/page.tsx',
       'app/founder/page.tsx',
       'app/not-found.tsx',
     ];
