@@ -232,6 +232,36 @@ describe('٤ · البابُ نفسُه لم يَتغيَّر — حزمةٌ ب�
     expect(FORM_CODE).not.toMatch(/\b(id_token|aud|iss|client_secret)\b/);
   });
 
+  it('the deployment gate can still find the thing it presses', () => {
+    /**
+     * GUARDS DO NOT TRAVEL — and this one failed to, twice.
+     *
+     *   `scripts/verify-deployment.mjs` proves React hydrated by finding a
+     *   live onClick on an element an anonymous visitor can press, and it
+     *   falls back to `document.body` when it cannot find one. document.body
+     *   always has a fiber and never has a handler, so the fallback does not
+     *   report "I could not find the door" — it reports "the page is inert",
+     *   and the deploy script rolls a correct release back.
+     *
+     *   It happened to `.ras-intent-card` when chambers started sending
+     *   strangers to the door, and again to `.creator-access-google` when
+     *   this package renamed the door. MEASURED on the rejected build: the
+     *   door carried fiber=true, onClick=true, and pressing it really changed
+     *   the label.
+     *
+     *   The probe now asks for the MECHANISM, not the class name — and this
+     *   asserts the two still agree, so a future redress cannot blind it.
+     */
+    const VERIFIER = read('scripts/verify-deployment.mjs');
+    const probe = code(VERIFIER);
+    const selector = 'a[href="/api/auth/google/start"]';
+    expect(probe).toContain(`document.querySelector('${selector}')`);
+    // And the page really renders that anchor, so the probe has a subject.
+    expect(FORM_CODE).toContain('href="/api/auth/google/start"');
+    // The old class name must not be what the gate looks for any more.
+    expect(probe).not.toContain('creator-access-google');
+  });
+
   it('the engines this page hosts are still wired, none retired', () => {
     for (const engine of ['useExperienceLifecycle', 'useVisitorPresence',
                           'applyVariation', 'LivingCompanion', 'beginHandoff']) {

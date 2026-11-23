@@ -221,8 +221,29 @@ try {
     // on /signup, which carries a real React onClick. Either way the element
     // is one a Creator actually presses — never document.body, whose fiber
     // exists on any page and whose missing handler proves nothing.
+    //
+    // ─── THE SAME LESSON THIS FILE ALREADY LEARNED ONCE, 2026-11-23 ────────
+    //
+    //   The paragraph above describes how `.ras-intent-card` stopped existing
+    //   for an anonymous browser and this gate blamed the page for it. It then
+    //   happened AGAIN, to its replacement: «الإيوان» renamed the door's class
+    //   from `.creator-access-google` to `.iwan-go`, the probe fell through to
+    //   document.body, and a correct deployment was rolled back with
+    //
+    //       FAIL  react hydrated  fiber=true onClick=false
+    //
+    //   MEASURED on the same build the gate rejected: the door carried
+    //   fiber=true AND onClick=true, and pressing it really ran the state
+    //   update — the label changed from «المتابعة باستخدام Google» to
+    //   «البوابة تتحقّق…». React had hydrated. The gate was reading a class
+    //   name.
+    //
+    //   So the probe no longer asks what the door is CALLED. It asks for the
+    //   door: the anchor to the verification road. A class name is
+    //   presentation and will be redressed again; that href is the mechanism,
+    //   and a package that changed it would be changing identity, not looks.
     const el = document.querySelector('.ras-intent-card')
-      || document.querySelector('.creator-access-google')
+      || document.querySelector('a[href="/api/auth/google/start"]')
       || document.body;
     const propsKey = Object.keys(el).find((k) => k.startsWith('__reactProps$'));
     return {
