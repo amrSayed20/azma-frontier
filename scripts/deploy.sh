@@ -253,8 +253,30 @@ deployment_id=$deployment_id
 built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 
+# ── P0-1 supplement · artifact integrity ─────────────────────────────────────
+# One line per shipped file in .next: "<sha256>  <path>" (a symlink records its
+# target instead). .next/dev and .next/cache are not shipped (see the tar
+# excludes), and BUILD_SOURCE / BUILD_MANIFEST are left out so the record does
+# not depend on itself. Any added, changed or deleted file changes this text.
+next_manifest_lines() {
+  ( cd "$REPO_ROOT/.next" 2>/dev/null || exit 0
+    find . \( -path ./dev -o -path ./cache \) -prune -o \
+         \( -type f -o -type l \) ! -path ./BUILD_SOURCE ! -path ./BUILD_MANIFEST -print0 \
+      | LC_ALL=C sort -z \
+      | while IFS= read -r -d '' f; do
+          if [ -L "$f" ]; then printf 'symlink:%s  %s\n' "$(readlink "$f")" "$f"
+          else printf '%s  %s\n' "$(sha256sum "$f" | cut -d' ' -f1)" "$f"; fi
+        done
+  )
+}
+next_manifest_sha() { next_manifest_lines | sha256sum | cut -d' ' -f1; }
+
 write_build_source() {
-  printf '%s\n' "$BS_TEXT" > "$REPO_ROOT/.next/BUILD_SOURCE"
+  local manifest_sha
+  next_manifest_lines > "$REPO_ROOT/.next/BUILD_MANIFEST"
+  manifest_sha="$(sha256sum "$REPO_ROOT/.next/BUILD_MANIFEST" | cut -d' ' -f1)"
+  printf '%s\nnext_manifest_sha256=%s\nnext_files=%s\n' "$BS_TEXT" "$manifest_sha" \
+    "$(wc -l < "$REPO_ROOT/.next/BUILD_MANIFEST" | tr -d ' ')" > "$REPO_ROOT/.next/BUILD_SOURCE"
 }
 
 # Compare the recorded build source with the tree as it is right now.
@@ -275,6 +297,18 @@ verify_build_source() {
     [ "$recorded" = "$current" ] \
       || die "the source changed since the build ($field differs) — nothing was sent. Rebuild from the current tree."
   done
+  # The build output itself: every file in .next, by content.
+  recorded="$(bs_get next_manifest_sha256)"
+  [ -n "$recorded" ] || die "BUILD_SOURCE has no next_manifest_sha256 — nothing was sent"
+  [ -f "$REPO_ROOT/.next/BUILD_MANIFEST" ] || die "no .next/BUILD_MANIFEST — the build output cannot be proven; nothing was sent"
+  [ "$(sha256sum "$REPO_ROOT/.next/BUILD_MANIFEST" | cut -d' ' -f1)" = "$recorded" ] \
+    || die "the build output changed since the build (BUILD_MANIFEST was altered) — nothing was sent. Rebuild."
+  current="$(next_manifest_sha)"
+  if [ "$recorded" != "$current" ]; then
+    warn "files in .next that differ from the manifest (first 10):"
+    diff <(cat "$REPO_ROOT/.next/BUILD_MANIFEST") <(next_manifest_lines) | grep '^[<>]' | head -10 >&2 || true
+    die "the build output changed since the build (a file in .next was added, changed or deleted) — nothing was sent. Rebuild."
+  fi
 }
 
 # ── deploy ───────────────────────────────────────────────────────────────────
@@ -390,6 +424,10 @@ cmd_deploy() {
   fi
   local local_sum
   local_sum="$(sha256sum "$ARTIFACT" | cut -d' ' -f1)"
+  # Last check before the first byte leaves this machine.
+  if [ "$source_state" = "verified" ]; then
+    verify_build_source "$head_full"
+  fi
   info "size   $(du -h "$ARTIFACT" | cut -f1)"
   info "sha256 $local_sum"
 
@@ -567,14 +605,14 @@ cmd_deploy() {
   #      filesystem, so this is a real atomic rename)
   step "Installing release"
   # P0-1 · the identity comes from the recorded build, not from HEAD now.
-  local id_commit id_tree id_fp id_lock id_cfg id_pub id_built id_deployment
+  local id_commit id_tree id_fp id_lock id_cfg id_man id_pub id_built id_deployment
   if [ "$source_state" = "verified" ]; then
     id_commit="$(bs_get commit)"; id_tree="$(bs_get tree)"; id_fp="$(bs_get source_fingerprint)"
-    id_lock="$(bs_get lockfile_sha256)"; id_cfg="$(bs_get next_config_sha256)"
+    id_lock="$(bs_get lockfile_sha256)"; id_cfg="$(bs_get next_config_sha256)"; id_man="$(bs_get next_manifest_sha256)"
     id_pub="$(bs_get public_sha256)"; id_built="$(bs_get built_at)"; id_deployment="$(bs_get deployment_id)"
   else
     id_commit="unverified (HEAD at shipping: $head_full)"; id_tree="unknown"; id_fp="unknown"
-    id_lock="unknown"; id_cfg="unknown"; id_pub="unknown"; id_built="unknown"; id_deployment="$release_id"
+    id_lock="unknown"; id_cfg="unknown"; id_man="unknown"; id_pub="unknown"; id_built="unknown"; id_deployment="$release_id"
   fi
   remote "
     set -e
@@ -588,6 +626,7 @@ cmd_deploy() {
       echo 'source_fingerprint=$id_fp'
       echo 'lockfile_sha256=$id_lock'
       echo 'next_config_sha256=$id_cfg'
+      echo 'next_manifest_sha256=$id_man'
       echo 'public_sha256=$id_pub'
       echo 'built_at=$id_built'
       echo 'release_id=$release_id'

@@ -86,13 +86,27 @@ elif [ "$1" = "run" ] && [ "$2" = "build" ]; then
   if [ -n "$MUTATE_COMMIT" ]; then git commit -q --allow-empty -m moved; fi
 fi
 `, 0o755);
+  // tar wrapper: optionally alters .next right before the real tar runs, to
+  // play "something touched the build output after the manifest was made".
+  const realTar = sh(repo, 'command -v tar');
+  write(join(bin, 'tar'), `#!/bin/bash
+if [ -n "$MUTATE_NEXT" ] && [ -d .next ] || [ -n "$MUTATE_NEXT" ] && [ -d "\${REPO_ROOT_FOR_TEST}/.next" ]; then
+  d="\${REPO_ROOT_FOR_TEST:-.}/.next"
+  case "$MUTATE_NEXT" in
+    modify) echo tampered >> "$d/static/chunks/a.js" ;;
+    delete) rm -f "$d/static/chunks/a.js" ;;
+    add)    echo extra > "$d/static/chunks/evil.js" ;;
+  esac
+fi
+exec ${realTar} "$@"
+`, 0o755);
   write(join(bin, 'curl'), '#!/bin/bash\necho 200\n', 0o755);
   write(join(bin, 'pm2'), '#!/bin/bash\necho "pm2 $*" >> "$LOG"\necho "status online"\n', 0o755);
 
   const env: NodeJS.ProcessEnv = {
     ...process.env, ...GIT_ENV,
     PATH: `${bin}:${process.env.PATH}`,
-    LOG: log, SIM: sim,
+    LOG: log, SIM: sim, REPO_ROOT_FOR_TEST: repo,
     AZMA_REMOTE: 'test@host', AZMA_SSH_KEY: join(root, 'key'), AZMA_APP_DIR: join(sim, 'app'),
     AZMA_LIVE_URL: 'http://localhost', HOME: root,
   };
@@ -251,5 +265,89 @@ describe('P0-1 — reusing a build (--skip-build) does not launder its identity'
     const { text } = sourceIdentities(rig)[0];
     expect(text).toContain('source=unverified');
     expect(text).not.toContain('tree=clean');
+  });
+});
+
+describe('P0-1 supplement — the .next output is sealed by a SHA-256 manifest', () => {
+  const nextDir = () => join(rig.repo, '.next');
+  const tamper: Record<string, () => void> = {
+    modify: () => writeFileSync(join(nextDir(), 'static', 'chunks', 'a.js'), 'tampered\n'),
+    delete: () => rmSync(join(nextDir(), 'static', 'chunks', 'a.js')),
+    add: () => writeFileSync(join(nextDir(), 'static', 'chunks', 'evil.js'), 'extra\n'),
+  };
+
+  it('a sound build writes BUILD_MANIFEST, records its hash, and ships both', () => {
+    const r = deploy(rig, ['--commit', rig.head]);
+    expect(r.status).toBe(0);
+    const manifest = readFileSync(join(nextDir(), 'BUILD_MANIFEST'), 'utf8');
+    expect(manifest).toMatch(/^[0-9a-f]{64} {2}\.\/BUILD_ID$/m);
+    expect(manifest).toMatch(/\.\/static\/chunks\/a\.js$/m);
+    expect(manifest).not.toContain('BUILD_SOURCE');   // no circularity
+    expect(manifest).not.toContain('BUILD_MANIFEST');
+    const sha = spawnSync('sha256sum', [join(nextDir(), 'BUILD_MANIFEST')], { encoding: 'utf8' }).stdout.split(' ')[0];
+    const { text, dir } = sourceIdentities(rig)[0];
+    expect(text).toContain(`next_manifest_sha256=${sha}`);
+    expect(readFileSync(join(dir, '.next', 'BUILD_SOURCE'), 'utf8')).toContain(`next_manifest_sha256=${sha}`);
+    expect(existsSync(join(dir, '.next', 'BUILD_MANIFEST'))).toBe(true);
+  });
+
+  it.each(['modify', 'delete', 'add'])(
+    'a file %s in .next after the manifest, before the archive (--skip-build) → refused before the archive and before ssh/scp',
+    (kind) => {
+      expect(deploy(rig, ['--commit', rig.head]).status).toBe(0);
+      const before = calls(rig).length;
+      tamper[kind]();
+      const r = deploy(rig, ['--skip-build']);
+      expect(r.status).not.toBe(0);
+      expect(r.out).toMatch(/build output changed since the build/);
+      expect(calls(rig).length).toBe(before);                         // not one new call
+      expect(existsSync(join(rig.repo, '.deploy-artifact.tar.gz'))).toBe(false);
+    },
+  );
+
+  it.each(['modify', 'delete', 'add'])(
+    'a file %s in .next while the archive is being written → refused after tar, nothing sent',
+    (kind) => {
+      const r = deploy(rig, ['--commit', rig.head], { MUTATE_NEXT: kind });
+      expect(r.status).not.toBe(0);
+      expect(r.out).toMatch(/build output changed since the build/);
+      expect(remoteCalls(rig)).toEqual([]);                           // zero ssh/scp
+    },
+  );
+
+  it('the refusal names the files that differ', () => {
+    expect(deploy(rig, ['--commit', rig.head]).status).toBe(0);
+    tamper.add();
+    const r = deploy(rig, ['--skip-build']);
+    expect(r.out).toContain('static/chunks/evil.js');
+  });
+
+  it('editing BUILD_MANIFEST itself (to hide a change) is refused', () => {
+    expect(deploy(rig, ['--commit', rig.head]).status).toBe(0);
+    const before = calls(rig).length;
+    tamper.modify();
+    const mf = join(nextDir(), 'BUILD_MANIFEST');
+    const forged = spawnSync('bash', ['-c', `cd ${nextDir()} && find . -path ./dev -prune -o -type f ! -name BUILD_SOURCE ! -name BUILD_MANIFEST -print | sort | while read f; do echo "$(sha256sum "$f" | cut -d' ' -f1)  $f"; done > BUILD_MANIFEST`]);
+    expect(forged.status).toBe(0);
+    expect(readFileSync(mf, 'utf8').length).toBeGreaterThan(0);
+    const r = deploy(rig, ['--skip-build']);
+    expect(r.status).not.toBe(0);
+    expect(calls(rig).length).toBe(before);
+  });
+
+  it('a build with no manifest cannot be verified and is not shipped as verified', () => {
+    expect(deploy(rig, ['--commit', rig.head]).status).toBe(0);
+    const before = calls(rig).length;
+    rmSync(join(nextDir(), 'BUILD_MANIFEST'));
+    const r = deploy(rig, ['--skip-build']);
+    expect(r.status).not.toBe(0);
+    expect(calls(rig).length).toBe(before);
+  });
+
+  it('files in .next/cache and .next/dev (never shipped) do not block a sound build', () => {
+    expect(deploy(rig, ['--commit', rig.head]).status).toBe(0);
+    mkdirSync(join(nextDir(), 'cache'), { recursive: true });
+    writeFileSync(join(nextDir(), 'cache', 'x'), 'c\n');
+    expect(deploy(rig, ['--skip-build']).status).toBe(0);
   });
 });
