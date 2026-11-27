@@ -7267,3 +7267,193 @@ button.ras-path-card:hover { border-color: var(--neon-gold-bright); background: 
   text-align: center;
   align-self: center;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   رأس الأمر يَدخل الدِّهليز — RESKIN (2026-11-27)
+   The director's console leaves the black room for the house's navy hall:
+   the walls and light of the gate the Creator crossed, the two paths and
+   the templates poured as navy glass, gold kept for the names and the acts.
+   Layout untouched; this is dress — colour, light, glass and shine.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --chamber-bg: #050819;
+  --panel-bg: rgba(12, 19, 66, 0.72);
+  --workspace-bg: rgba(6, 9, 28, 0.94);
+  --timeline-bg: rgba(3, 5, 18, 0.96);
+  --header-bg: rgba(9, 14, 48, 0.88);
+  --neon-gold-border: rgba(164, 184, 255, 0.16);
+  --neon-gold-border-strong: rgba(164, 184, 255, 0.22);
+  --os-surface-elevated: #141c4e;
+  --os-surface-highlight: #1b2662;
+}
+
+.ras-amr-viewport {
+  background:
+    radial-gradient(1180px 760px at 50% -14%, rgba(59, 82, 216, 0.5) 0%, rgba(27, 40, 120, 0.32) 32%, transparent 66%),
+    linear-gradient(180deg, #0c1342 0%, #0b1240 30%, #090e30 56%, #06091f 78%, #050819 100%);
+  background-attachment: fixed;
+}
+
+/* the gate stands in the hall, not in a black room */
+.ras-intent-gate {
+  background:
+    radial-gradient(1180px 760px at 50% -14%, rgba(59, 82, 216, 0.52) 0%, rgba(27, 40, 120, 0.34) 32%, transparent 66%),
+    linear-gradient(180deg, #0c1342 0%, #0b1240 30%, #090e30 56%, #06091f 78%, #050819 100%);
+  background-attachment: fixed;
+}
+
+/* the mashrabiya falls where the light falls */
+.ras-intent-gate::before {
+  content: '';
+  position: fixed;
+  inset-block-start: -6vh;
+  inset-inline: 0;
+  margin-inline: auto;
+  inline-size: min(1400px, 100%);
+  block-size: 100vh;
+  opacity: 0.5;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><g fill='none' stroke='rgba(255,246,222,0.6)' stroke-width='0.85'><path d='M46 4 L58 22 L80 22 L68 40 L80 58 L58 58 L46 76 L34 58 L12 58 L24 40 L12 22 L34 22 Z'/><circle cx='46' cy='40' r='10'/><path d='M0 40 L12 22 M92 40 L80 22 M0 40 L12 58 M92 40 L80 58'/></g></svg>");
+  background-size: 92px 92px;
+  -webkit-mask-image: radial-gradient(closest-side at 50% 10%, #000 0%, rgba(0,0,0,0.45) 38%, transparent 66%);
+  mask-image: radial-gradient(closest-side at 50% 10%, #000 0%, rgba(0,0,0,0.45) 38%, transparent 66%);
+}
+
+.ras-intent-mini-header { border-bottom-color: rgba(164, 184, 255, 0.14); }
+
+/* the chamber's name: poured gold */
+.ras-chamber-identity-btn {
+  background: linear-gradient(170deg, rgba(24, 34, 99, 0.8), rgba(5, 8, 25, 0.88));
+  border: 1px solid rgba(164, 184, 255, 0.24);
+  border-block-start-color: rgba(255, 246, 222, 0.4);
+  border-radius: 999px;
+  color: #edc94c;
+  box-shadow: 0 8px 22px rgba(1, 2, 9, 0.45), inset 0 1px 0 rgba(255, 246, 222, 0.22), 0 0 18px rgba(237, 201, 76, 0.12);
+}
+.ras-chamber-identity-btn:hover {
+  border-color: rgba(246, 226, 164, 0.55);
+  color: #fff6de;
+  box-shadow: 0 12px 30px rgba(1, 2, 9, 0.5), 0 0 26px rgba(237, 201, 76, 0.22);
+}
+
+.ras-intent-kicker {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  color: #f6e2a4;
+  margin-block-end: 8px;
+}
+
+.ras-intent-question {
+  color: #f6f8ff;
+  text-shadow: 0 2px 24px rgba(1, 2, 9, 0.5);
+}
+
+.ras-intent-sub { color: #a9b6e8; }
+
+/* the two paths and every template: navy liquid glass */
+.ras-intent-card,
+.ras-path-card,
+.ras-resume-card {
+  background:
+    linear-gradient(165deg, rgba(49, 70, 189, 0.4), rgba(24, 34, 99, 0.55) 45%, rgba(6, 9, 28, 0.88)) padding-box,
+    linear-gradient(165deg, rgba(255, 246, 222, 0.4), rgba(164, 184, 255, 0.15) 42%, rgba(164, 184, 255, 0.28)) border-box;
+  border: 1px solid transparent;
+  border-radius: 20px;
+  -webkit-backdrop-filter: blur(14px) saturate(1.45);
+  backdrop-filter: blur(14px) saturate(1.45);
+  box-shadow:
+    0 20px 48px rgba(1, 2, 9, 0.55),
+    inset 0 1px 0 rgba(255, 246, 222, 0.3),
+    inset 0 -24px 40px -24px rgba(131, 85, 255, 0.42);
+  transition: transform 200ms ease, box-shadow 240ms ease, background 240ms ease;
+}
+
+.ras-intent-card:hover,
+.ras-path-card:hover,
+.ras-resume-card:hover {
+  background:
+    linear-gradient(165deg, rgba(71, 96, 220, 0.46), rgba(36, 51, 143, 0.6) 45%, rgba(12, 19, 66, 0.9)) padding-box,
+    linear-gradient(165deg, rgba(255, 246, 222, 0.6), rgba(164, 184, 255, 0.22) 42%, rgba(164, 184, 255, 0.38)) border-box;
+  box-shadow:
+    0 28px 60px rgba(1, 2, 9, 0.6),
+    0 0 30px rgba(237, 201, 76, 0.16),
+    inset 0 1px 0 rgba(255, 246, 222, 0.42);
+  transform: translateY(-3px);
+}
+
+.ras-intent-card-name { color: #fff6de; }
+.ras-intent-card-desc { color: #a9b6e8; }
+.ras-intent-card-domain { color: rgba(246, 226, 164, 0.6); }
+.ras-intent-template { border-color: transparent; }
+
+.ras-path-kicker { color: #f6e2a4; letter-spacing: 0.14em; }
+.ras-path-name {
+  background: linear-gradient(100deg, #edc94c 8%, #fff6de 42%, #edc94c 80%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.ras-path-desc { color: #c2cdf4; }
+
+.ras-intent-mode .ras-intent-card-name { color: #e8edff; }
+
+/* "اصنع ما تتخيل" — the full-width call pours gold */
+.ras-intent-imagine {
+  background:
+    linear-gradient(176deg, rgba(237, 201, 76, 0.16), rgba(171, 132, 25, 0.14)) padding-box,
+    linear-gradient(165deg, rgba(255, 246, 222, 0.55), rgba(237, 201, 76, 0.25) 45%, rgba(237, 201, 76, 0.4)) border-box;
+  border-color: transparent;
+}
+.ras-intent-imagine .ras-intent-card-icon { color: #edc94c; filter: drop-shadow(0 0 12px rgba(237, 201, 76, 0.5)); }
+.ras-intent-imagine .ras-intent-card-name {
+  background: linear-gradient(100deg, #edc94c 8%, #fff6de 42%, #edc94c 80%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.ras-intent-imagine:hover {
+  background:
+    linear-gradient(176deg, rgba(237, 201, 76, 0.24), rgba(171, 132, 25, 0.2)) padding-box,
+    linear-gradient(165deg, rgba(255, 246, 222, 0.7), rgba(237, 201, 76, 0.35) 45%, rgba(237, 201, 76, 0.5)) border-box;
+  box-shadow: 0 24px 56px rgba(1, 2, 9, 0.55), 0 0 36px rgba(237, 201, 76, 0.28);
+}
+
+/* the console header: navy glass */
+.ras-header {
+  background: linear-gradient(180deg, rgba(9, 14, 48, 0.92), rgba(5, 8, 25, 0.88));
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+  border-bottom: 1px solid rgba(164, 184, 255, 0.16);
+  box-shadow: 0 12px 34px rgba(1, 2, 9, 0.45);
+}
+
+.ras-header-name {
+  background: linear-gradient(100deg, #edc94c 8%, #fff6de 42%, #edc94c 80%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  letter-spacing: 0.04em;
+}
+
+.ras-exit-btn {
+  background: linear-gradient(170deg, rgba(24, 34, 99, 0.85), rgba(5, 8, 25, 0.9));
+  border: 1px solid rgba(164, 184, 255, 0.22);
+  border-block-start-color: rgba(255, 246, 222, 0.32);
+  color: #c2cdf4;
+  border-radius: 999px;
+  font-weight: 500;
+  box-shadow: 0 8px 22px rgba(1, 2, 9, 0.45), inset 0 1px 0 rgba(255, 246, 222, 0.18);
+}
+.ras-exit-btn:hover {
+  color: #fff6de;
+  border-color: rgba(246, 226, 164, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 30px rgba(1, 2, 9, 0.5), 0 0 24px rgba(237, 201, 76, 0.18);
+}
+
+.ras-amr-viewport ::selection { background: rgba(131, 85, 255, 0.4); color: #fff6de; }
+.ras-amr-viewport :focus-visible { outline: 2px solid #fff6de; outline-offset: 2px; }

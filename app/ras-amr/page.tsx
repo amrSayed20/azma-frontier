@@ -4752,14 +4752,16 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
               <button
                 className="ras-chamber-identity-btn"
                 onClick={() => handleSelectIntent('blank')}
-                aria-label="الدخول المباشر إلى رأس الأمر"
+                aria-label="الدخول المباشر إلى المونتاج والإنتاج"
               >
-                رأس الأمر
+                المونتاج والإنتاج
               </button>
             </div>
 
             {/* Hero question */}
             <div className="ras-intent-hero">
+              {/* الاسم الجديد من البطاقة الأولى — رأس الأمر = المونتاج والإنتاج */}
+              <span className="ras-intent-kicker">طريقان إبداعيّان مختلفان</span>
               <h1 className="ras-intent-question">ماذا تريد أن تصنع؟</h1>
               <p className="ras-intent-sub">كل مشهد يبدأ باختيار.</p>
             </div>
@@ -5197,7 +5199,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
             🎬 مشهد جديد
           </button>
         </div>
-        <span className="ras-header-name">رأس الأمر</span>
+              <span className="ras-header-name">المونتاج والإنتاج</span>
         <div className="ras-mode-toggle" role="group" aria-label="وضع التوجيه">
           <button
             className={`ras-mode-btn ${directingMode === 'manual' ? 'ras-mode-active' : ''}`}
