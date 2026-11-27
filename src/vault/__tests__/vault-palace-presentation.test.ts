@@ -135,7 +135,7 @@ describe('mapVaultAssetToTreasure — N-3: origin and metadata', () => {
   it('generated asset: origin identifies the generation chamber', () => {
     const asset = makeAsset({ metadata: { providerId: 'openai-gpt-image-1', generationPrompt: 'test' } });
     const result = mapVaultAssetToTreasure(asset);
-    expect(result.origin).toBe('حجرة القيامة');
+    expect(result.origin).toBe('إنشاء الصور والمشاهد');
   });
 
   it('uploaded asset: origin identifies the upload path', () => {

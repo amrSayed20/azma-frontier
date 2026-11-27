@@ -53,9 +53,9 @@ const CHAMBER_INVESTIGATION_GOAL_ID = 'citizen-chamber';
 
 /** The Chamber a demand is addressed to, named as the Creator knows it. */
 const DESTINATION_AR: Record<DemandDestination, string> = {
-  'qiyamah-chamber':  'حجرة القيامة',
-  'ras-amr':          'رأس الأمر',
-  'makman-al-ghayah': 'مكمن الغاية',
+  'qiyamah-chamber':  'إنشاء الصور والمشاهد',
+  'ras-amr':          'المونتاج والإنتاج',
+  'makman-al-ghayah': 'النشر والتسليم',
 };
 
 let investigationStore: KnowledgeInvestigationRepository | null = null;

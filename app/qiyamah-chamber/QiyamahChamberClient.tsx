@@ -300,7 +300,7 @@ function FinalSceneEditor({
           {mineLabelAr}
         </button>
         <button type="button" className="secondary-btn" onClick={() => setConstructedPrompt(originalConstructedPrompt)}>
-          استعِد فهم القيامة
+          استعِد فهم حجرة الإنشاء
         </button>
       </div>
     </div>
@@ -1894,7 +1894,7 @@ export function QiyamahChamberClient({
         stepsAr={[
             'صِف فكرتك في جملةٍ أو جملتين، أو أحضر محثّك الجاهز.',
             'اختر ما تصنع: صورة، أو مقطعاً تختار مدّته وامتداده، أو إنفوغرافاً يُجيد الحرف والترتيب.',
-            'ابنِ المشهد — تقرأ القيامة فكرتك وتوسّعها قبل التجسيد.',
+            'ابنِ المشهد — تقرأ الحجرة فكرتك وتوسّعها قبل التجسيد.',
             'جسِّد، والناتج يُودَع خزانتك أصلاً سياديّاً باسمك.',
             'ثمّ أعِد عليه: عدّله بكلماتك، أو حرّك صورتك إلى مقطع.',
         ]}
@@ -1940,7 +1940,7 @@ export function QiyamahChamberClient({
       </header>
 
       {/* ── Journey Indicator ──────────────────────────────────────────── */}
-      <nav className="stage-indicator" aria-label="مراحل القيامة">
+      <nav className="stage-indicator" aria-label="مراحل إنشاء الصور والمشاهد">
         <span className={`stage-step${activeIndicatorStage === 'thought' ? ' is-active' : ''}`}>
           الفكرة
         </span>
@@ -2214,11 +2214,11 @@ export function QiyamahChamberClient({
               {inputMode === 'idea' ? (
                 <>
                   <p className="genesis-invitation">
-                    أعطِ القيامة فكرتك — وهي تحوّلها إلى مشهد سيادي.
+                    أعطِ الحجرة فكرتك — وهي تحوّلها إلى مشهد سيادي.
                   </p>
                   <div className="idea-field-group">
                     <label className="idea-field-label" htmlFor="qiyamah-idea">
-                      {materialAssetId && idea.trim().length > 0 ? 'فكرتك — من تحقيقك في حجّة الدامغة' : 'فكرتك'}
+                      {materialAssetId && idea.trim().length > 0 ? 'فكرتك — من تحقيقك في البحث والمصادر' : 'فكرتك'}
                     </label>
                     <textarea
                       id="qiyamah-idea"
@@ -2245,7 +2245,7 @@ export function QiyamahChamberClient({
               ) : (
                 <>
                   <p className="genesis-invitation">
-                    أحضِر محثك الخاص — وستقرأه القيامة وتقترح صياغتها.
+                    أحضِر محثك الخاص — وستقرأه الحجرة وتقترح صياغتها.
                   </p>
                   <div className="idea-field-group">
                     <label className="idea-field-label" htmlFor="qiyamah-external">
@@ -2535,7 +2535,7 @@ export function QiyamahChamberClient({
                 <div className="construction-progress">
                   <div className="construction-spinner" aria-hidden="true" />
                   <p className="construction-text pulse-text">
-                    {producingNotice ?? (inputMode === 'idea' ? 'القيامة تبني المشهد السيادي…' : 'القيامة تقرأ محثك…')}
+                    {producingNotice ?? (inputMode === 'idea' ? 'الحجرة تبني المشهد السيادي…' : 'الحجرة تقرأ محثك…')}
                   </p>
                 </div>
               ) : actsOnOwnAsset ? null : (
@@ -2567,7 +2567,7 @@ export function QiyamahChamberClient({
                 </div>
                 <div className="comparison-divider" aria-hidden="true">→</div>
                 <div className="comparison-panel comparison-panel--reading">
-                  <p className="comparison-label">المشهد الذي فهمته القيامة</p>
+                  <p className="comparison-label">المشهد الذي فهمته الحجرة</p>
                   <p className="comparison-text">{originalConstructedPrompt}</p>
                 </div>
               </div>
@@ -2612,7 +2612,7 @@ export function QiyamahChamberClient({
                 </div>
                 <div className="comparison-divider" aria-hidden="true">→</div>
                 <div className="comparison-panel comparison-panel--reading">
-                  <p className="comparison-label">المشهد الذي فهمته القيامة</p>
+                  <p className="comparison-label">المشهد الذي فهمته الحجرة</p>
                   <p className="comparison-text">{qiyamahReading}</p>
                 </div>
               </div>
@@ -2807,7 +2807,7 @@ export function QiyamahChamberClient({
                   className="vault-path-btn"
                   onClick={() => window.location.assign('/sovereign-vault-palace')}
                 >
-                  📥 عرض في القصر السيادي
+                  📥 عرض في خزانة أصولك
                 </button>
               </div>
             </div>
@@ -2892,7 +2892,7 @@ export function QiyamahChamberClient({
                   className="vault-path-btn"
                   onClick={() => window.location.assign('/sovereign-vault-palace')}
                 >
-                  📥 عرض في القصر السيادي
+                  📥 عرض في خزانة أصولك
                 </button>
                 <button className="secondary-btn" onClick={() => setUploadedAsset(null)}>
                   رفع أصل آخر
@@ -2931,7 +2931,7 @@ export function QiyamahChamberClient({
                 className="moved-to-vault-link"
                 onClick={() => goTo('/sovereign-vault-palace')}
               >
-                افتح قصر الخزانة ←
+                افتح خزانة أصولك ←
               </button>
             </p>
           )}

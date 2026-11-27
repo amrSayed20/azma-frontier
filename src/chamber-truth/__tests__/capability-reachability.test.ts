@@ -202,7 +202,7 @@ describe('مكمن الغاية: the chain the Creator walks has no missing step
   it('issuing knowledge requests does not pretend to answer them', () => {
     const page = readFileSync(join(ROOT, 'app/makman-al-ghayah/page.tsx'), 'utf8');
     // The batch is stated and stops; the answer belongs to الحُجّة الدامغة.
-    expect(page).toContain('تبقى دون جواب حتى تُحقَّق في حجّة الدامغة');
+    expect(page).toContain('تبقى دون جواب حتى تُحقَّق في البحث والمصادر');
     const handler = page.slice(page.indexOf('const handleIssueRequests'), page.indexOf('const handleAssessFulfillment'));
     expect(handler).not.toMatch(/hujjah|runInvestigation/i);
   });

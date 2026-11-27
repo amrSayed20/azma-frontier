@@ -147,7 +147,7 @@ export function EvidenceGateway({
               className="gateway-action"
               onClick={() => onSaveToVault(evidence)}
             >
-              ⚑ حفظ في الخزانة السيادية
+              ⚑ حفظ في خزانة أصولك
             </button>
 
           </div>

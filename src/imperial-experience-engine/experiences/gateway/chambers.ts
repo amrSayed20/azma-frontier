@@ -41,7 +41,7 @@ import type { GatewayChamber } from './types';
 export const GATEWAY_CHAMBERS: readonly GatewayChamber[] = [
   {
     id: 'hujjah',
-    nameAr: 'الحُجّة الدامغة',
+    nameAr: 'البحث والمصادر',
     nameEn: 'HUJJAH AL-DAMIGHA',
     roleAr: 'البحثُ وتهيئةُ المادّة',
     roleEn: 'Research and preparation',
@@ -52,8 +52,8 @@ export const GATEWAY_CHAMBERS: readonly GatewayChamber[] = [
       + 'found with its evidence. You choose what serves you, and it prepares a '
       + 'creative prompt from that. You begin from knowledge with a source you '
       + 'can name, not from a blank page.',
-    relationAr: 'هي تَبحث وتُهيّئ. والمطالبةُ تُوجَّه بعدها إلى القيامةِ للتوليد، '
-      + 'أو إلى رأسِ الأمر لبناءِ قصّةٍ مصوّرة. ولا تُولّد هي شيئاً بنفسها.',
+    relationAr: 'هي تَبحث وتُهيّئ. والمطالبةُ تُوجَّه بعدها إلى إنشاء الصور والمشاهد للتوليد، '
+      + 'أو إلى المونتاج والإنتاج لبناءِ قصّةٍ مصوّرة. ولا تُولّد هي شيئاً بنفسها.',
     relationEn: 'It researches and prepares. The prompt then goes to QIYAMAH to be '
       + 'generated, or to RAS AL AMR to become a visual story. It generates nothing itself.',
     state: 'ready',
@@ -62,7 +62,7 @@ export const GATEWAY_CHAMBERS: readonly GatewayChamber[] = [
   },
   {
     id: 'qiyamah',
-    nameAr: 'القيامة',
+    nameAr: 'إنشاء الصور والمشاهد',
     nameEn: 'QIYAMAH',
     roleAr: 'مصنعُ الخلق',
     roleEn: 'The creation factory',
@@ -73,7 +73,7 @@ export const GATEWAY_CHAMBERS: readonly GatewayChamber[] = [
       + 'an edit on an asset you own, a still brought to motion, an upscale, a background '
       + 'removed, a photo made to speak, lips synchronised, a face replaced. '
       + 'Every act states its price before you press.',
-    relationAr: 'تَستقبل مطالبةً من الحُجّة، وتُودِع ناتجَها في الخزانةِ بعد قبولك له.',
+    relationAr: 'تَستقبل مطالبةً من البحث والمصادر، وتُودِع ناتجَها في خزانة أصولك بعد قبولك له.',
     relationEn: 'It receives a prompt from Hujjah and deposits its output in the Vault '
       + 'once you have accepted it.',
     state: 'ready',
@@ -82,7 +82,7 @@ export const GATEWAY_CHAMBERS: readonly GatewayChamber[] = [
   },
   {
     id: 'ras-amr',
-    nameAr: 'رأس الأمر',
+    nameAr: 'المونتاج والإنتاج',
     nameEn: 'RAS AL AMR',
     roleAr: 'حجرةُ الإخراجِ والإنتاج',
     roleEn: 'Direction and production',
@@ -93,7 +93,7 @@ export const GATEWAY_CHAMBERS: readonly GatewayChamber[] = [
       + 'clips, audio and music, arrange them and set their timing, and a finished work comes out. '
       + 'And the storyboard world: you build a visual story scene by scene with coherent assets.',
     relationAr: 'تَأخذ أصولَها من الخزانة، وتُسلّم عملَها النهائيَّ إلى مكمنِ الغاية للنشر. '
-      + 'والقصّةُ المصوَّرةُ قد تَبدأ من الحُجّة.',
+      + 'والقصّةُ المصوَّرةُ قد تَبدأ من البحث والمصادر.',
     relationEn: 'It takes its assets from the Vault and hands its finished work to Makman '
       + 'Al-Ghayah for distribution. A storyboard may begin in Hujjah.',
     state: 'partial',
@@ -102,7 +102,7 @@ export const GATEWAY_CHAMBERS: readonly GatewayChamber[] = [
   },
   {
     id: 'vault',
-    nameAr: 'الخزانة السيادية',
+    nameAr: 'خزانة أصولك',
     nameEn: 'THE SOVEREIGN VAULT',
     roleAr: 'مستودعُ ما تَملك',
     roleEn: 'The store of what you own',
@@ -112,7 +112,7 @@ export const GATEWAY_CHAMBERS: readonly GatewayChamber[] = [
     bodyEn: 'Every asset you made or uploaded is kept here with its lineage: what produced it, '
       + 'when, and what it came from. The other chambers draw what they need from it. Your work '
       + 'is not lost inside a tool you replace, and not remade because you cannot find it.',
-    relationAr: 'هي المرجعُ الوحيدُ للأصول: القيامةُ تُودِع فيها، ورأسُ الأمر ومكمنُ الغاية يَقرآن منها.',
+    relationAr: 'هي المرجعُ الوحيدُ للأصول: إنشاء الصور والمشاهد يُودِع فيها، والمونتاج والإنتاج والنشر والتسليم يَقرأون منها.',
     relationEn: 'It is the one reference for assets: Qiyamah deposits into it, and Ras Al Amr '
       + 'and Makman Al-Ghayah read from it.',
     state: 'ready',
@@ -121,7 +121,7 @@ export const GATEWAY_CHAMBERS: readonly GatewayChamber[] = [
   },
   {
     id: 'makman',
-    nameAr: 'مكمن الغاية',
+    nameAr: 'النشر والتسليم',
     nameEn: 'MAKMAN AL-GHAYAH',
     roleAr: 'مقرُّ الإدارةِ والتوزيع',
     roleEn: 'Administration and distribution',

@@ -85,7 +85,7 @@ const COMPANION_MESSAGES: Record<AzmaTongue, string> = {
 const FIRST_VISIT_REVELATION = [
   'الإمبراطورية تراك.',
   'خمس حجرات. رحلة واحدة.',
-  'القيامة تخلق. رأس الأمر يحكم. الغاية تُحقق.',
+  'الإنشاء يَخلق. المونتاج يُوجِّه. النشر يُحقِّق.',
 ] as const;
 
 const REVELATION_INTERVAL = 2800; // ms per declaration
@@ -152,27 +152,27 @@ function derivePresenceMessage(
   if (p.makman.hasProcessingProduction) {
     return identity?.displayName
       ? `${identity.displayName} — الإمبراطورية تُنتج الآن نحو غايتك`
-      : 'الإمبراطورية تُنتج الآن — مكمن الغاية يسير نحو غايته';
+      : 'الإمبراطورية تُنتج الآن — النشر والتسليم يسير نحو غايته';
   }
   if (p.hujjah.hasActiveGoal) {
     const goalTitle = p.hujjah.mostRecentGoalTitle;
     return goalTitle
-      ? `هدف "${goalTitle}" نشط — حجة الدامغة تنتظر توجيهك`
-      : 'غاية نشطة في التحقيق — حجة الدامغة تنتظر توجيهك';
+      ? `هدف "${goalTitle}" نشط — البحث والمصادر ينتظر توجيهك`
+      : 'غاية نشطة في التحقيق — البحث والمصادر ينتظر توجيهك';
   }
   if (p.rasAlAmr.savedCanvasCount > 0 && p.makman.productionCount === 0) {
     const canvasTitle = p.rasAlAmr.mostRecentTitle;
     return canvasTitle
-      ? `تشكيلة "${canvasTitle}" محفوظة — مكمن الغاية جاهز لاستقبالها`
-      : 'تشكيلة سردية محفوظة في رأس الأمر — هل أنت مستعدّ لصهرها؟';
+      ? `تشكيلة "${canvasTitle}" محفوظة — النشر والتسليم جاهز لاستقبالها`
+      : 'تشكيلة سردية محفوظة في المونتاج والإنتاج — هل أنت مستعدّ لصهرها؟';
   }
   if (p.qiyamah.creationCount > 0 && p.rasAlAmr.savedCanvasCount === 0) {
     return identity?.purpose
-      ? 'إبداعك في الخزانة السيادية — رأس الأمر يستعد لتوجيهه نحو غايتك'
-      : 'إبداعك موجود في الخزانة — رأس الأمر يستقبل توجيهك';
+      ? 'إبداعك في خزانة أصولك — المونتاج والإنتاج يستعد لتوجيهه نحو غايتك'
+      : 'إبداعك موجود في خزانة أصولك — المونتاج والإنتاج يستقبل توجيهك';
   }
   if (identity?.purpose && p.qiyamah.creationCount === 0) {
-    return 'غايتك السيادية أُعلنت — حجرة القيامة تنتظر أول إبداع';
+    return 'غايتك السيادية أُعلنت — حجرة إنشاء الصور والمشاهد تنتظر أول إبداع';
   }
   return null;
 }
@@ -234,9 +234,9 @@ function getChamberPresence(chamberId: string, p: SovereignPresence | null): str
 const CONSTITUTIONAL_RETURN_MESSAGES: Record<string, string> = {
   investigation: 'المعرفة اكتملت — هل تريد تحويلها إلى إبداع أو توجيه؟',
   creation:      'الإبداع وُلد — هل تريد توجيهه أو توزيعه على العالم؟',
-  direction:     'التوجيه اكتمل — هل تريد الانتقال إلى مكمن الغاية؟',
+  direction:     'التوجيه اكتمل — هل تريد الانتقال إلى النشر والتسليم؟',
   distribution:  'الغاية بلغت — الإمبراطورية تستقبلك لرحلة جديدة.',
-  treasury:      'القصر السيادي أغلق أبوابه — ما الذي تريد بناؤه الآن؟',
+  treasury:      'خزانة أصولك أغلقت أبوابها — ما الذي تريد بناؤه الآن؟',
 };
 
 // ── Kernel Companion Message ──────────────────────────────────────────────
@@ -608,7 +608,7 @@ export default function ImperialFoyer() {
           onClick={() => launchChamber('sovereign-vault-palace', '/sovereign-vault-palace', 'خزانة أصولك')}
           onMouseEnter={() => { if (!isPreparing) setHoveredChamber('sovereign-vault-palace'); }}
           onMouseLeave={() => setHoveredChamber(null)}
-          aria-label="الدخول إلى القصر السيادي"
+          aria-label="الدخول إلى خزانة أصولك"
           disabled={isPreparing}
         >
           <span className="vault-card-seal" aria-hidden="true">⬡</span>

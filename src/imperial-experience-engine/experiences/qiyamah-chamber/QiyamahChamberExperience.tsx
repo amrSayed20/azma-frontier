@@ -93,14 +93,14 @@ export function QiyamahChamberExperience({ children, dict, locale }: Props) {
 
     if (origin === 'hujjah-al-damighah') {
       // Creator arrived from Hujjah after an investigation — the most specific context
-      setCompanionMsg('قادم من حجرة المعرفة — القيامة تحوّل ما تعلمته إلى وجود');
+      setCompanionMsg('قادم من حجرة المعرفة — إنشاء الصور والمشاهد يحوّل ما تعلمته إلى وجود');
     } else if (treasureRaw) {
-      setCompanionMsg('الكنز وصل — القيامة تستعدّ لتحويله إلى عمل');
+      setCompanionMsg('الكنز وصل — حجرة الإنشاء تستعدّ لتحويله إلى عمل');
     } else if (kernelRaw) {
       try {
         const s = JSON.parse(kernelRaw) as { status?: string };
         if (s?.status === 'RESOLVED') {
-          setCompanionMsg('الإمبراطورية أعدّت هذه الجلسة — حجرة القيامة تستقبلك');
+          setCompanionMsg('الإمبراطورية أعدّت هذه الجلسة — إنشاء الصور والمشاهد يستقبلك');
         }
       } catch { /* ignore malformed session */ }
     }

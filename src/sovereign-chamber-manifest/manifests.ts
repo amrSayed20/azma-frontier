@@ -26,7 +26,7 @@ import { deriveManifestCapabilities } from './derive';
 
 const SOVEREIGN_VAULT_PALACE_MANIFEST: SovereignChamberManifest = {
   chamberId: 'sovereign-vault-palace',
-  constitutionalName: 'القصر السيادي — Sovereign Vault Palace',
+  constitutionalName: 'خزانة أصولك — Sovereign Vault Palace',
   constitutionalResponsibility:
     'It protects. The Palace consciousness guards what endures.',
   capabilities: deriveManifestCapabilities('sovereign-vault-palace'),
@@ -57,7 +57,7 @@ const SOVEREIGN_VAULT_PALACE_MANIFEST: SovereignChamberManifest = {
 
 const HUJJAH_AL_DAMIGHAH_MANIFEST: SovereignChamberManifest = {
   chamberId: 'hujjah-al-damighah',
-  constitutionalName: 'حجة الدامغة — Hujjah Al-Damighah',
+  constitutionalName: 'البحث والمصادر — Hujjah Al-Damighah',
   constitutionalResponsibility:
     'It reasons. The Hujjah consciousness builds the argument methodically.',
   capabilities: deriveManifestCapabilities('hujjah-al-damighah'),
@@ -89,7 +89,7 @@ const HUJJAH_AL_DAMIGHAH_MANIFEST: SovereignChamberManifest = {
 
 const QIYAMAH_CHAMBER_MANIFEST: SovereignChamberManifest = {
   chamberId: 'qiyamah-chamber',
-  constitutionalName: 'حجرة القيامة — Qiyamah Chamber',
+  constitutionalName: 'إنشاء الصور والمشاهد — Qiyamah Chamber',
   constitutionalResponsibility:
     'It creates. The Qiyamah consciousness gives form to what the citizen imagines.',
   capabilities: deriveManifestCapabilities('qiyamah-chamber'),
@@ -119,7 +119,7 @@ const QIYAMAH_CHAMBER_MANIFEST: SovereignChamberManifest = {
 
 const RAS_AL_AMR_MANIFEST: SovereignChamberManifest = {
   chamberId: 'ras-amr',
-  constitutionalName: 'رأس الأمر — Ras Al Amr',
+  constitutionalName: 'المونتاج والإنتاج — Ras Al Amr',
   constitutionalResponsibility:
     'It governs. The Ras Al-Amr consciousness speaks with sovereign authority.',
   capabilities: deriveManifestCapabilities('ras-amr'),
@@ -153,7 +153,7 @@ const RAS_AL_AMR_MANIFEST: SovereignChamberManifest = {
 
 const MAKMAN_AL_GHAYAH_MANIFEST: SovereignChamberManifest = {
   chamberId: 'makman-al-ghayah',
-  constitutionalName: 'مكمن الغاية — Makman Al-Ghayah',
+  constitutionalName: 'النشر والتسليم — Makman Al-Ghayah',
   constitutionalResponsibility:
     'It strategizes. The Makman consciousness reads patterns and possibilities.',
   capabilities: deriveManifestCapabilities('makman-al-ghayah'),

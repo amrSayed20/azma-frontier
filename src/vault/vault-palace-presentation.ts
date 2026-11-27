@@ -65,8 +65,8 @@ export function mapVaultAssetToTreasure(asset: VaultAsset): TreasureMapping {
   return {
     titleAr:   prompt ? prompt.slice(0, 80) : (isUpload ? 'أصل مرفوع' : 'أصل مُولَّد'),
     vaultId:   capabilityTargetToVaultId(asset.capabilityTarget),
-    origin:    isUpload ? 'رفع سيادي' : 'حجرة القيامة',
-    preview:   style ?? (isUpload ? 'أصل مرفوع من جهازك' : 'أصل حقيقي من القيامة'),
+    origin:    isUpload ? 'رفع سيادي' : 'إنشاء الصور والمشاهد',
+    preview:   style ?? (isUpload ? 'أصل مرفوع من جهازك' : 'أصل حقيقي من حجرة الإنشاء'),
     mediaUrl:  asset.secureStorageUri || undefined,
     mediaType,
   };

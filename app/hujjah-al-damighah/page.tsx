@@ -905,7 +905,7 @@ export default function HujjahAlDamighah() {
         setChamberInit('active');
         if (!quiet) {
           const firstMsg = treasureRaw
-            ? 'كنز القصر ينتظر — الحجة الدامغة تكشف ما بداخله'
+            ? 'كنز الخزانة ينتظر — البحث والمصادر يكشف ما بداخله'
             : foyerResolved
               ? 'الإمبراطورية أعدّت هذه الجلسة — حجرة المعرفة تنتظر سؤالك'
               : greeting;

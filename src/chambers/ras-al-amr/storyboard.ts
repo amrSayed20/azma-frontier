@@ -255,7 +255,7 @@ export function assessStoryboardReadiness(canvas: SovereignCanvas, vaultAssetIds
     const label = `المشهد ${index + 1}`;
     for (const node of scene.nodes) {
       if (!vaultAssetIds.has(node.assetId)) {
-        blocking.push({ kind: 'missing-asset', sceneId: scene.sceneId, nodeId: node.nodeId, message: `${label}: أصل لم يعد في الخزانة السيادية.` });
+        blocking.push({ kind: 'missing-asset', sceneId: scene.sceneId, nodeId: node.nodeId, message: `${label}: أصل لم يعد في خزانة أصولك.` });
       }
     }
     if (!scene.nodes.some((n) => isVisualNode(n) && vaultAssetIds.has(n.assetId))) {

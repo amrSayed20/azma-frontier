@@ -247,7 +247,7 @@ const VERDICT_AR: Record<string, string> = {
 /** What the Empire can do about a requirement — its own words, not a provider's. */
 const AVAILABILITY_AR: Record<string, string> = {
   OBSERVABLE_INTERNALLY:   'تُرصَد داخل الإمبراطورية',
-  REQUIRES_INVESTIGATION:  'تحتاج تحقيقاً في حجّة الدامغة',
+  REQUIRES_INVESTIGATION:  'تحتاج تحقيقاً في البحث والمصادر',
   NOT_CURRENTLY_OBTAINABLE:'غير متاحة حالياً',
 };
 
@@ -1055,7 +1055,7 @@ export default function MakmanAlGhayah() {
             <div className="makman-goals-empty">
               <p className="project-status">لا توجد أهداف مسجّلة بعد.</p>
               <p className="makman-capability-hint">
-                لتسجيل هدف استراتيجي، انطلق أولاً إلى حجرة رأس الأمر.
+                لتسجيل هدف استراتيجي، انطلق أولاً إلى حجرة المونتاج والإنتاج.
               </p>
             </div>
           )}
@@ -1089,9 +1089,9 @@ export default function MakmanAlGhayah() {
             <div className="makman-capability-hint" data-testid="makman-demand">
               {arrivedDemand && (
                 <>
-                  <p><strong>مطالبة غائيّة وصلت من حجّة الدامغة</strong></p>
+                  <p><strong>مطالبة غائيّة وصلت من البحث والمصادر</strong></p>
                   <p>{arrivedDemand}</p>
-                  <p>يُسجَّل الهدف من رسمٍ مُجمَّع في رأس الأمر — والمطالبة محفوظة في خزانتك.</p>
+                  <p>يُسجَّل الهدف من رسمٍ مُجمَّع في المونتاج والإنتاج — والمطالبة محفوظة في خزانتك.</p>
                 </>
               )}
               {demandNotice && <p>{demandNotice}</p>}
@@ -1314,7 +1314,7 @@ export default function MakmanAlGhayah() {
                           <p className="project-status">
                             {knowledgeRequests.length === 0
                               ? 'لا طلبات تُصدَر — لا فجوة قائمة.'
-                              : `طلباتٌ صادرة: ${knowledgeRequests.length} — تبقى دون جواب حتى تُحقَّق في حجّة الدامغة.`}
+                              : `طلباتٌ صادرة: ${knowledgeRequests.length} — تبقى دون جواب حتى تُحقَّق في البحث والمصادر.`}
                           </p>
                           {knowledgeRequests.map((r) => (
                             <p key={r.requestId} className="project-status">
@@ -1347,20 +1347,20 @@ export default function MakmanAlGhayah() {
               // distribution and publishing only.
               <div className="master-display neon-border-gold">
                 {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                <video src={rasAmrRender.fileUrl} controls playsInline preload="metadata" className="cinematic-final-video" aria-label="ملف MP4 النهائي من رأس الأمر" />
-                <p className="project-title">{realProduction?.title ?? 'إنتاج من رأس الأمر'}</p>
-                <p className="project-status">وصل ملف MP4 النهائي من رأس الأمر — جاهز للتسجيل والتوزيع</p>
+                <video src={rasAmrRender.fileUrl} controls playsInline preload="metadata" className="cinematic-final-video" aria-label="ملف MP4 النهائي من المونتاج والإنتاج" />
+                <p className="project-title">{realProduction?.title ?? 'إنتاج من المونتاج والإنتاج'}</p>
+                <p className="project-status">وصل ملف MP4 النهائي من المونتاج والإنتاج — جاهز للتسجيل والتوزيع</p>
               </div>
             ) : realProduction ? (
               <div className="master-display neon-border-gold">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={realProduction.secureStorageUri} alt={realProduction.title} className="real-production-image" />
                 <p className="project-title">{realProduction.title}</p>
-                <p className="project-status">وصل من رأس الأمر — جاهز للتسجيل الاستراتيجي</p>
+                <p className="project-status">وصل من المونتاج والإنتاج — جاهز للتسجيل الاستراتيجي</p>
               </div>
             ) : (
               <p className="project-status">
-                وصل تجميعٌ مختومٌ من رأس الأمر — جاهزٌ للتسجيل والتوزيع.
+                وصل تجميعٌ مختومٌ من المونتاج والإنتاج — جاهزٌ للتسجيل والتوزيع.
               </p>
             )}
 
@@ -1479,7 +1479,7 @@ export default function MakmanAlGhayah() {
                     className="import-btn"
                     onClick={() => window.location.assign('/sovereign-vault-palace')}
                   >
-                    📥 عرض في القصر السيادي
+                    📥 عرض في خزانة أصولك
                   </button>
 
                   {renderOperationId && !shareUrl && (
@@ -1725,7 +1725,7 @@ export default function MakmanAlGhayah() {
           </section>
         ) : (
           <div className="makman-capability-hint neon-border">
-            <p>لتسجيل هدف استراتيجي جديد: أكمل إنتاجك في رأس الأمر ← صهر القماش ← أرسل إلى مكمن الغاية.</p>
+            <p>لتسجيل هدف استراتيجي جديد: أكمل إنتاجك في المونتاج والإنتاج ← صهر القماش ← أرسل إلى النشر والتسليم.</p>
           </div>
         )}
 
@@ -2210,7 +2210,7 @@ export default function MakmanAlGhayah() {
                 A VIEW of the Vault, never a second registry. Every card is
                 draggable AND pressable: «كل أصل قابل للاختيار بالضغط لمن لا
                 يستخدم السحب والإفلات». */}
-            <p className="makman-capability-hint">◆ أصولك في الخزانة السيادية</p>
+            <p className="makman-capability-hint">◆ أصولك في خزانة أصولك</p>
             <div className="makman-vault-door" data-testid="makman-vault-door">
               {vaultDoor.length === 0 && (
                 <p className="project-status">لا أصول في خزانتك بعد.</p>
@@ -2254,7 +2254,7 @@ export default function MakmanAlGhayah() {
         {/* ── Import from Vault ──────────────────────────────────── */}
         <div className="makman-vault-link">
           <button className="import-btn" onClick={() => window.location.assign('/sovereign-vault-palace')}>
-            📥 استيراد من القصر السيادي
+            📥 استيراد من خزانة أصولك
           </button>
         </div>
 

@@ -623,7 +623,7 @@ export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCo
     <div className="sb-world" dir="rtl">
       <div className="sb-inner">
         <header className="sb-header">
-          <button className="sb-btn sb-btn-ghost" onClick={() => void handleBack()}>← رأس الأمر</button>
+          <button className="sb-btn sb-btn-ghost" onClick={() => void handleBack()}>← المونتاج والإنتاج</button>
           <div className="sb-header-title">
             <span className="sb-kicker">المسار الثاني</span>
             <h1>عالم الاستوري بورد</h1>
@@ -871,7 +871,7 @@ export default function StoryboardWorld({ onBack, onOpenInMontage, montageNodeCo
                     </div>
                     {confirmRemoveSceneId === scene.sceneId && (
                       <div className="sb-confirm" role="alertdialog" aria-label="تأكيد حذف المشهد">
-                        <p>يُحذف المشهد من المشروع فقط. أصوله تبقى في الخزانة السيادية.</p>
+                        <p>يُحذف المشهد من المشروع فقط. أصوله تبقى في خزانة أصولك.</p>
                         <div>
                           <button className="sb-btn sb-danger-btn" onClick={() => { commit(removeScene(project, scene.sceneId, clock())); setConfirmRemoveSceneId(null); }}>احذف المشهد</button>
                           <button className="sb-btn sb-btn-ghost" onClick={() => setConfirmRemoveSceneId(null)}>إلغاء</button>

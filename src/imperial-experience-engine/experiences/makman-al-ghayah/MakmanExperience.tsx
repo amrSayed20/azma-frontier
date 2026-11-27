@@ -70,7 +70,7 @@ export function MakmanExperience({ children }: Props) {
       try {
         const s = JSON.parse(kernelRaw) as { status?: string };
         if (s?.status === 'RESOLVED') {
-          setCompanionMsg('الإمبراطورية أعدّت هذه الجلسة — مكمن الغاية يستقبلك');
+          setCompanionMsg('الإمبراطورية أعدّت هذه الجلسة — النشر والتسليم يستقبلك');
         }
       } catch { /* ignore malformed session */ }
     }

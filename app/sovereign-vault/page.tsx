@@ -12,7 +12,7 @@ import './sovereign-vault.css';
 const sovereignGates = [
   { 
     id: 'hujjah', 
-    name: 'الحجة الدامغة', 
+    name: 'البحث والمصادر', 
     path: '/hujjah-al-damighah', 
     icon: '⚖️', 
     description: 'مفاعل المعرفة، حيث تُستخرج الأفكار وتُوثق البراهين التي لا تقبل الشك.',
@@ -20,7 +20,7 @@ const sovereignGates = [
   },
   { 
     id: 'qiyamah', 
-    name: 'حجرة القيامة', 
+    name: 'إنشاء الصور والمشاهد', 
     path: '/qiyamah-chamber', 
     icon: '👁️', 
     description: 'محركات التوليد العظمى والذكاء الاصطناعي.. هنا تُنفخ الروح في الأفكار.',
@@ -28,7 +28,7 @@ const sovereignGates = [
   },
   { 
     id: 'vault', 
-    name: 'قصر الخزانة السيادية', 
+    name: 'خزانة أصولك', 
     path: '/sovereign-vault-palace', 
     icon: '👑', 
     description: 'أرشيف الأصول والممتلكات.. حصنك المنيع لحفظ النسخ الأصلية (الماستر).',
@@ -36,7 +36,7 @@ const sovereignGates = [
   },
   { 
     id: 'ras-amr', 
-    name: 'حجرة رأس الأمر', 
+    name: 'المونتاج والإنتاج', 
     path: '/ras-amr', 
     icon: '🦅', 
     description: 'مركز القيادة وتوزيع المهام.. العقل المدبر لخطوط الإنتاج.',
@@ -44,7 +44,7 @@ const sovereignGates = [
   },
   { 
     id: 'makman', 
-    name: 'مكمن الغاية', 
+    name: 'النشر والتسليم', 
     path: '/makman-al-ghayah', 
     icon: '🚀', 
     description: 'منصة الاعتماد والتغليف.. محطة الإطلاق العالمية نحو النور.',

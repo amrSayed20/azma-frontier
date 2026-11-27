@@ -75,12 +75,12 @@ const DEMANDS: {
   },
   {
     destination: 'ras-amr',
-    label: 'مطالبة لرأس الأمر',
+    label: 'مطالبة للمونتاج والإنتاج',
     forAr: 'لتجميع أصولك إنتاجاً مرئيّاً واحداً، بصوتٍ وترجمةٍ إن شئت.',
   },
   {
     destination: 'makman-al-ghayah',
-    label: 'مطالبة لمكمن الغاية',
+    label: 'مطالبة للنشر والتسليم',
     forAr: 'لتحويل ما خلص إليه تحقيقك إلى هدفٍ يُقاس، ونشرٍ بسياسة وصولٍ تختارها.',
   },
 ];
@@ -118,7 +118,7 @@ export function InvestigationFile({
           {savedToVault ? '✓ محفوظ في الخزانة' : 'حفظ في الخزانة'}
         </button>
         <button className="inv-action inv-qiyamah" onClick={onTransferQiyamah}>
-          انتقال إلى القيامة
+          انتقال إلى إنشاء الصور والمشاهد
         </button>
       </div>
 
@@ -164,7 +164,7 @@ export function InvestigationFile({
             {composingScenes ? 'تُكتَب المشاهد…' : '⟡ فكّك الموضوع إلى مشاهد'}
           </span>
           <span className="inv-demand-for">
-            مشاهد مرتّبة — ما يُرى وما يُقال في كلٍّ منها — تُنتَج وتُجمَّع في رأس الأمر.
+            مشاهد مرتّبة — ما يُرى وما يُقال في كلٍّ منها — تُنتَج وتُجمَّع في المونتاج والإنتاج.
           </span>
         </button>
 

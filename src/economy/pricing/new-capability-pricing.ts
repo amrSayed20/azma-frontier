@@ -156,7 +156,7 @@ export const MEASURED_COSTS: readonly MeasuredCostRule[] = [
     basisAr: 'لكلّ ثانيةٍ تَطلبها',
   },
   {
-    capability: 'RAS_AMR_SCENE', nameAr: 'مشهدٌ في رأس الأمر',
+    capability: 'RAS_AMR_SCENE', nameAr: 'مشهدٌ في المونتاج والإنتاج',
     providerCreditsPerUnit: 100, basis: 'per-image',
     // The same production that priced IMAGE_GENERATION in the cost truth:
     // nano-banana-2 through Magic Hour, measured, not a rate card.

@@ -199,7 +199,7 @@ export default function ImperialHealthPage() {
               <Row label="حجم الملف" value={report.database.dbFileSize} />
             </Section>
 
-            <Section title="الخزانة السيادية">
+            <Section title="خزانة أصولك">
               <Row label="الأصول المُولَّدة (Qiyamah)" value={report.vault.generatedAssets} />
               <Row label="الملفات المرفوعة" value={report.vault.uploads} />
               <Row label="الإجمالي" value={report.vault.total} />
