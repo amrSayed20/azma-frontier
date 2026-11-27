@@ -287,8 +287,10 @@
   opacity: 0.75;
 }
 
-/* the largest package leads: a gold ring, not a badge the data cannot justify */
-[data-dihliz="balance"] .balance-package:first-child {
+/* the largest package leads: a gold ring, not a badge the data cannot justify.
+   The packages arrive in ascending price order, and in RTL the last child sits
+   at the leading edge — so the ring lands on الريادة, not on the cheapest card. */
+[data-dihliz="balance"] .balance-package:last-child {
   border-color: rgba(246, 226, 164, 0.42);
   box-shadow:
     0 22px 54px rgba(1, 2, 9, 0.56),
