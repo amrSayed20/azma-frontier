@@ -41,7 +41,10 @@ describe('Persistent Storage Foundation — database connection', () => {
     // landed, which is the third time it has earned its keep — and the Google
     // Identity Gate's authentication_identities is the fourth, and
     // cloud_accounts — the grants a Creator makes over their own Drive —
-    // is the fifth. And `sovereign_publications` — the durable registry that
+    // is the fifth. The 2026-11 security repair added `vault_unlocks` (the
+// server-side record that a Vault gate was passed) and `login_attempts`
+// (durable failed sign-in counting) — the eighth and ninth.
+//    And `sovereign_publications` — the durable registry that
     // replaced `new Map<string, SovereignPublication>()`, so a restart stops
     // turning a live work into «not found or has been retracted» — is the
     // sixth. And `distribution_receipts` — the durable record that a copy of
@@ -50,8 +53,10 @@ describe('Persistent Storage Foundation — database connection', () => {
     // And `paid_operation_attempts` — the mapping from one submission to its
     // verdict, so a press that arrives twice calls a paid provider once and a
     // hold whose settlement failed can be finished rather than forgotten — is
-    // the eighth.
-    expect(tables).toEqual(['asset_tombstones', 'authentication_identities', 'cinematic_ledger', 'cloud_accounts', 'consumption_records', 'creative_jobs', 'creator_balances', 'creators', 'credit_ledger', 'distribution_receipts', 'fulfillment_assessments', 'generation_records', 'goals', 'hadith_narrations', 'knowledge_investigations', 'library_works', 'observations', 'operation_ledger', 'paid_operation_attempts', 'payment_transactions', 'sessions', 'sovereign_canvases', 'sovereign_projects', 'sovereign_public_links', 'sovereign_publications', 'storyboard_scenes', 'storyboards', 'subscriptions', 'transmitted_reports', 'trial_entitlements', 'vault_assets', 'vault_credentials']);
+    // the eighth. `vault_unlocks` (the durable server-side record that a Vault
+    // gate was passed) and `login_attempts` (durable failed sign-in counting)
+    // are the ninth and tenth.
+    expect(tables).toEqual(['asset_tombstones', 'authentication_identities', 'cinematic_ledger', 'cloud_accounts', 'consumption_records', 'creative_jobs', 'creator_balances', 'creators', 'credit_ledger', 'distribution_receipts', 'fulfillment_assessments', 'generation_records', 'goals', 'hadith_narrations', 'knowledge_investigations', 'library_works', 'login_attempts', 'observations', 'operation_ledger', 'paid_operation_attempts', 'payment_transactions', 'sessions', 'sovereign_canvases', 'sovereign_projects', 'sovereign_public_links', 'sovereign_publications', 'storyboard_scenes', 'storyboards', 'subscriptions', 'transmitted_reports', 'trial_entitlements', 'vault_assets', 'vault_credentials', 'vault_unlocks']);
     db.close();
   });
 
