@@ -1014,7 +1014,9 @@ export default function SovereignVaultPalace() {
       {phase === 'gate' && (
         <div className="palace-gate">
           <div className="gate-seal" aria-hidden="true">⬡</div>
-          <h1 className="gate-title">القصر السيادي</h1>
+          {/* الاسم الجديد من البطاقة الأولى — الخزانة السيادية = خزانة أصولك */}
+          <span className="gate-kicker">مُستودَعُ ما تَملِك</span>
+          <h1 className="gate-title">خزانةُ أصولك</h1>
           <p className="gate-subtitle">هذا مكانك</p>
 
           {/* Auth method selector */}
