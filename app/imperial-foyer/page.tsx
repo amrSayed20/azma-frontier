@@ -64,10 +64,10 @@ interface ChamberCard {
 }
 
 const CONSTITUTIONAL_CHAMBERS: ChamberCard[] = [
-  { id: 'hujjah-al-damighah', nameAr: 'حجة الدامغة', roleAr: 'تستدلّ', actionAr: 'اطرح سؤالاً — ابدأ التحقيق',  glyph: '⚖', route: '/hujjah-al-damighah' },
-  { id: 'qiyamah-chamber',    nameAr: 'القيامة',      roleAr: 'تخلق',   actionAr: 'صِف مشهداً — أنشئ صورة',      glyph: '◈', route: '/qiyamah-chamber'    },
-  { id: 'ras-amr',            nameAr: 'رأس الأمر',    roleAr: 'تحكم',   actionAr: 'وجّه ما خُلق نحو الغاية',     glyph: '◎', route: '/ras-amr'            },
-  { id: 'makman-al-ghayah',   nameAr: 'مكمن الغاية',  roleAr: 'تُحقق',  actionAr: 'أعلن غايتك — سجّل هدفك',     glyph: '⬟', route: '/makman-al-ghayah'  },
+  { id: 'hujjah-al-damighah', nameAr: 'البحث والمصادر', roleAr: 'حيثُ تَبدأ المعرفة', actionAr: 'اطرح سؤالاً — ابدأ التحقيق',  glyph: '⚖', route: '/hujjah-al-damighah' },
+  { id: 'qiyamah-chamber',    nameAr: 'إنشاء الصور والمشاهد', roleAr: 'مِصنَعُ الخَلق',   actionAr: 'صِف مشهداً — أنشئ صورة',      glyph: '◈', route: '/qiyamah-chamber'    },
+  { id: 'ras-amr',            nameAr: 'المونتاج والإنتاج', roleAr: 'طريقان إبداعيّان مختلفان',   actionAr: 'وجّه ما خُلق نحو الغاية',     glyph: '◎', route: '/ras-amr'            },
+  { id: 'makman-al-ghayah',   nameAr: 'النشر والتسليم',  roleAr: 'حيثُ يَنتهي العمل',  actionAr: 'أعلن غايتك — سجّل هدفك',     glyph: '⬟', route: '/makman-al-ghayah'  },
 ];
 
 const COMPANION_MESSAGES: Record<AzmaTongue, string> = {
@@ -605,7 +605,7 @@ export default function ImperialFoyer() {
       <div className="foyer-center">
         <button
           className={`foyer-vault-card ${preparingId === 'sovereign-vault-palace' ? 'vault-preparing' : ''}`}
-          onClick={() => launchChamber('sovereign-vault-palace', '/sovereign-vault-palace', 'القصر السيادي')}
+          onClick={() => launchChamber('sovereign-vault-palace', '/sovereign-vault-palace', 'خزانة أصولك')}
           onMouseEnter={() => { if (!isPreparing) setHoveredChamber('sovereign-vault-palace'); }}
           onMouseLeave={() => setHoveredChamber(null)}
           aria-label="الدخول إلى القصر السيادي"
@@ -613,8 +613,8 @@ export default function ImperialFoyer() {
         >
           <span className="vault-card-seal" aria-hidden="true">⬡</span>
           <div className="vault-card-body">
-            <h1 className="vault-card-name">القصر السيادي</h1>
-            <p className="vault-card-role">مركز الإمبراطورية — كل ما يستحق المحافظة عليه</p>
+            <h1 className="vault-card-name">خزانةُ أصولك</h1>
+            <p className="vault-card-role">مُستودَعُ ما تَملِك — كل ما يستحق المحافظة عليه</p>
           </div>
           <div className="vault-card-state" aria-live="polite">
             {vaultCount === null && (
