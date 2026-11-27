@@ -63,7 +63,7 @@ export default function PaymentSimulationClient() {
   };
 
   return (
-    <main className="pay-sim-shell" dir="rtl">
+    <main className="pay-sim-shell" dir="rtl" data-dihliz="payment-sim">
       <section className="pay-sim-card" data-testid="payment-simulation">
         {/* The first thing read, before the amount: this is not a charge. */}
         <div className="pay-sim-banner" data-testid="pay-sim-banner">

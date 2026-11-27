@@ -2686,18 +2686,18 @@ export default function RasAmrChamber() {
         ].filter(Boolean);
         if (missing.length > 0) {
           setDemandNotice(
-            `وصل «${payload.titleAr ?? 'الأصل'}» من القصر السيادي ناقصاً (${missing.join(' · ')}) — `
-            + 'فلم يدخل المشهد. استدعِه من «◆ استدعِ من الخزانة السيادية» في هذه الحجرة.',
+            `وصل «${payload.titleAr ?? 'الأصل'}» من خزانة أصولك ناقصاً (${missing.join(' · ')}) — `
+            + 'فلم يدخل المشهد. استدعِه من «◆ استدعِ من خزانة أصولك» في هذه الحجرة.',
           );
         }
         if (payload.id && payload.secureStorageUri && payload.assetFamily && payload.capabilityTarget) {
           const queueItem: QueueItem = {
             id: payload.id,
-            title: payload.titleAr ?? 'أصل من الخزانة السيادية',
+            title: payload.titleAr ?? 'أصل من خزانة أصولك',
             type: typeLabelForCapability(payload.capabilityTarget),
-            source: 'القصر السيادي',
+            source: 'خزانة أصولك',
             duration: '--:--',
-            status: 'أصل حقيقي — وصل من القصر السيادي',
+            status: 'أصل حقيقي — وصل من خزانة أصولك',
             isRealAsset: true,
             secureStorageUri: payload.secureStorageUri,
             assetFamily: payload.assetFamily as AssetFamily,
@@ -2708,11 +2708,11 @@ export default function RasAmrChamber() {
           // A success says so too. The asset lands in a rail the Creator may
           // not be looking at, and an arrival nobody is told about is
           // indistinguishable from the silent loss above.
-          setDemandNotice(`وصل «${queueItem.title}» من القصر السيادي، وهو الأصل النشط الآن.`);
+          setDemandNotice(`وصل «${queueItem.title}» من خزانة أصولك، وهو الأصل النشط الآن.`);
         }
       } catch {
         // A payload we cannot read is still an arrival the Creator attempted.
-        setDemandNotice('وصل أصلٌ من القصر السيادي بصيغةٍ لم نستطع قراءتها — استدعِه من الخزانة السيادية في هذه الحجرة.');
+        setDemandNotice('وصل أصلٌ من خزانة أصولك بصيغةٍ لم نستطع قراءتها — استدعِه من خزانة أصولك مباشرة.');
       }
       setKernelContinuity('palace-treasure');
       return;
@@ -3297,11 +3297,11 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
     const prompt = typeof asset.metadata.generationPrompt === 'string' ? asset.metadata.generationPrompt : null;
     const newAsset: QueueItem = {
       id: asset.assetId,
-      title: prompt ? prompt.slice(0, 60) : 'أصل من الخزانة السيادية',
+      title: prompt ? prompt.slice(0, 60) : 'أصل من خزانة أصولك',
       type: typeLabelForCapability(asset.capabilityTarget),
-      source: 'الخزانة السيادية',
+      source: 'خزانة أصولك',
       duration: '--:--',
-      status: 'أصل حقيقي — تم استدعاؤه من الخزانة السيادية',
+      status: 'أصل حقيقي — تم استدعاؤه من خزانة أصولك',
       isRealAsset: true,
       secureStorageUri: asset.secureStorageUri,
       assetFamily: asset.assetFamily,
@@ -3367,7 +3367,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
             id: firstSceneAsset.assetId,
             title: typeof firstSceneAsset.metadata.generationPrompt === 'string'
               ? firstSceneAsset.metadata.generationPrompt.slice(0, 60)
-              : sessionCanvas?.title || 'مشهد من رأس الأمر',
+              : sessionCanvas?.title || 'مشهد من المونتاج والإنتاج',
             secureStorageUri: firstSceneAsset.secureStorageUri,
           }
         : null;
@@ -3652,9 +3652,9 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
       const prompt = typeof asset.metadata.generationPrompt === 'string' ? asset.metadata.generationPrompt : null;
       return [{
         id: asset.assetId,
-        title: prompt ? prompt.slice(0, 60) : 'أصل من الخزانة السيادية',
+        title: prompt ? prompt.slice(0, 60) : 'أصل من خزانة أصولك',
         type: typeLabelForCapability(asset.capabilityTarget),
-        source: 'الخزانة السيادية',
+        source: 'خزانة أصولك',
         duration: '--:--',
         status: 'أصل مُستعاد من المشهد المحفوظ',
         isRealAsset: true,
@@ -4752,14 +4752,16 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
               <button
                 className="ras-chamber-identity-btn"
                 onClick={() => handleSelectIntent('blank')}
-                aria-label="الدخول المباشر إلى رأس الأمر"
+                aria-label="الدخول المباشر إلى المونتاج والإنتاج"
               >
-                رأس الأمر
+                المونتاج والإنتاج
               </button>
             </div>
 
             {/* Hero question */}
             <div className="ras-intent-hero">
+              {/* الاسم الجديد من البطاقة الأولى — رأس الأمر = المونتاج والإنتاج */}
+              <span className="ras-intent-kicker">طريقان إبداعيّان مختلفان</span>
               <h1 className="ras-intent-question">ماذا تريد أن تصنع؟</h1>
               <p className="ras-intent-sub">كل مشهد يبدأ باختيار.</p>
             </div>
@@ -4909,9 +4911,9 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
               <button
                 className="ras-chamber-identity-btn"
                 onClick={() => handleSelectIntent(selectedTemplate.id)}
-                aria-label="الدخول إلى رأس الأمر مع هذا القالب"
+                aria-label="الدخول إلى المونتاج والإنتاج مع هذا القالب"
               >
-                رأس الأمر
+                المونتاج والإنتاج
               </button>
             </div>
 
@@ -5197,7 +5199,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
             🎬 مشهد جديد
           </button>
         </div>
-        <span className="ras-header-name">رأس الأمر</span>
+              <span className="ras-header-name">المونتاج والإنتاج</span>
         <div className="ras-mode-toggle" role="group" aria-label="وضع التوجيه">
           <button
             className={`ras-mode-btn ${directingMode === 'manual' ? 'ras-mode-active' : ''}`}
@@ -5236,7 +5238,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
             : 0;
           const labels = ['الأصول', 'التوجيه', 'المعاينة', 'الإخراج'];
           return (
-            <nav className="ras-stage-indicator" aria-label="مراحل رأس الأمر">
+            <nav className="ras-stage-indicator" aria-label="مراحل المونتاج والإنتاج">
               {labels.map((label, i) => (
                 <React.Fragment key={label}>
                   {i > 0 && <span className="ras-stage-arrow" aria-hidden="true">←</span>}
@@ -5304,7 +5306,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
           <header className="panel-header">
             <div className="neon-tag">الأصول</div>
             <h2>أصول الإنتاج</h2>
-            <p>الأصول المستدعاة من الخزانة السيادية</p>
+            <p>الأصول المستدعاة من خزانة أصولك</p>
             {/* ── TWO DOORS, BOTH VISIBLE ────────────────────────────────
                 MEASURED 2026-09-25: uploading from your own device already
                 worked and lived behind the second tab of the panel this one
@@ -5340,7 +5342,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
               data-testid="rasamr-open-vault"
               onClick={() => { setHudActiveTab('vault'); setIsSummonOpen(true); }}
             >
-              ◆ استدعِ من الخزانة السيادية
+              ◆ استدعِ من خزانة أصولك
             </button>
             <button
               className="summon-bridge-trigger-btn upload-bridge-trigger-btn"
@@ -5353,7 +5355,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
           <div className="queue-container custom-scroll">
             {queue.length === 0 && (
               <p className="queue-empty-hint">
-                لا توجد أصول مستدعاة بعد. استدعِ أصلاً حقيقياً من الخزانة السيادية للبدء.
+                لا توجد أصول مستدعاة بعد. استدعِ أصلاً حقيقياً من خزانة أصولك للبدء.
               </p>
             )}
             {queue.map(asset => {
@@ -5698,7 +5700,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                     ) : (
                     <div className="viewport-chamber-identity">
                       <div className="viewport-sigil" aria-hidden="true">✦</div>
-                      <h2 className="viewport-chamber-name">رأس الأمر</h2>
+                      <h2 className="viewport-chamber-name">المونتاج والإنتاج</h2>
                       <p className="viewport-chamber-mandate">الجهة الدستورية لتوجيه الإنتاج السيادي — مكانية، بصرية، زمنية، وصوتية</p>
                       <p className="viewport-summon-cue">← استدعِ أصلاً من الخزانة للبدء</p>
                     </div>
@@ -5885,13 +5887,13 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                     <div className="ras-export-actions">
                       <a className="creator-action-btn creator-action-primary" href={renderJob.downloadUrl} download>تحميل MP4 ↓</a>
                       <button className="creator-action-btn" onClick={() => setShowExportPanel(false)}>متابعة التحرير</button>
-                      <button className="creator-action-btn" onClick={() => goTo('/sovereign-vault-palace')}>📥 عرض في القصر السيادي</button>
+                      <button className="creator-action-btn" onClick={() => goTo('/sovereign-vault-palace')}>📥 عرض في خزانة أصولك</button>
                       {/* Publishing is offered only for a film that can be tied
                           to what is on the timeline now. Offered on a stale one,
                           a Creator would hand Makman a film in the wrong frame,
                           and the Empire does not offer what it then refuses. */}
                       {!isStale && (
-                        <button className="creator-action-btn creator-action-corridor" onClick={handleForwardToMakman}>✦ أرسل إلى مكمن الغاية للنشر</button>
+                        <button className="creator-action-btn creator-action-corridor" onClick={handleForwardToMakman}>✦ أرسل إلى النشر والتسليم للنشر</button>
                       )}
                     </div>
                     {isStale && readiness}
@@ -6043,7 +6045,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                   <span className="compiled-result-title">المشهد مُجمَّع وجاهز</span>
                 </div>
                 <button className="creator-action-btn creator-action-corridor" onClick={handleForwardToMakman}>
-                  ✦ أرسل إلى مكمن الغاية
+                  ✦ أرسل إلى النشر والتسليم
                 </button>
               </div>
             )}
@@ -6094,7 +6096,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                     <span className="scenes-tag">
                       {storyboard.origin === 'brief'
                         ? '✦ مشاهد من فكرتك'
-                        : 'مشاهد وصلت من حجّة الدامغة'}
+                        : 'مشاهد وصلت من البحث والمصادر'}
                     </span>
                     <p className="scenes-subject">{storyboard.questionAr}</p>
                     <p className="scenes-count">{storyboard.sceneCount} مشاهد مرتّبة.</p>
@@ -7324,8 +7326,8 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
                     happens to be selected. Bound to the asset, an edit elsewhere on
                     the timeline left the chamber claiming a sealed compilation it no
                     longer had. It is the same expression the export gate already uses. */}
-                <button className="action-trigger-btn forward-btn" onClick={handleForwardToMakman} title={isCompiledCurrent ? 'سيصل تجميع حقيقي مختوم إلى مكمن الغاية' : 'لا يوجد تجميع مُصهَر بعد — سيصل عرض أولي فقط'}>
-                  👑 ترحيل العمل المكتمل لـ &quot;مكمن الغاية&quot;
+                <button className="action-trigger-btn forward-btn" onClick={handleForwardToMakman} title={isCompiledCurrent ? 'سيصل تجميع حقيقي مختوم إلى النشر والتسليم' : 'لا يوجد تجميع مُصهَر بعد — سيصل عرض أولي فقط'}>
+                  👑 ترحيل العمل المكتمل لـ &quot;النشر والتسليم&quot;
                 </button>
                 {sessionCanvas && (
                   <button className={`action-trigger-btn canvas-save-btn ${isSavingCanvas ? 'rendering' : ''}`} onClick={() => void handleSaveCanvas()} disabled={isSavingCanvas}>
@@ -7456,7 +7458,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
           <div className="ras-timeline-corridor-zone">
             {compiledGraph && compiledForAssetId === activeAsset?.id && (
               <button className="ras-corridor-btn" onClick={handleForwardToMakman}>
-                ✦ التجميع مكتمل — انتقل إلى مكمن الغاية
+                ✦ التجميع مكتمل — انتقل إلى النشر والتسليم
               </button>
             )}
           </div>
@@ -7631,7 +7633,7 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
           <div className="hud-window-container metallic-surface neon-border-heavy fade-in">
             <header className="hud-header">
               <div className="hud-title-block">
-                <span className="hud-badge">الخزانة السيادية</span>
+                <span className="hud-badge">خزانة أصولك</span>
                 <h2>استدعِ أصلاً من الخزانة</h2>
                 <p>الأصول المُستدعاة تنضم إلى المشهد وتدخل تحت سلطة المخرج الإمبراطوري</p>
               </div>
@@ -7639,15 +7641,15 @@ const [workMode, setWorkMode] = useState<'storyboard' | 'montage'>('montage');
             </header>
 
             <div className="hud-tab-switcher">
-              <button className={`hud-top-tab ${hudActiveTab === 'vault' ? 'hud-top-tab-active' : ''}`} onClick={() => setHudActiveTab('vault')}>◆ من الخزانة السيادية</button>
+              <button className={`hud-top-tab ${hudActiveTab === 'vault' ? 'hud-top-tab-active' : ''}`} onClick={() => setHudActiveTab('vault')}>◆ من خزانة أصولك</button>
               <button className={`hud-top-tab ${hudActiveTab === 'create' ? 'hud-top-tab-active' : ''}`} onClick={() => setHudActiveTab('create')}>⬆ رفع ملف | توليد صوت | استنساخ</button>
             </div>
 
             {hudActiveTab === 'vault' && (
               vaultAssetsLoaded && realVaultCategories.length === 0 ? (
                 <div className="hud-empty-state">
-                  <p>لا توجد أصول في الخزانة السيادية بعد.</p>
-                  <p>انتقل إلى تبويب «إنشاء أصل جديد» لرفع ملف أو توليد صوت، أو أنشئ صورة في حجرة القيامة.</p>
+                  <p>لا توجد أصول في خزانة أصولك بعد.</p>
+                  <p>انتقل إلى تبويب «إنشاء أصل جديد» لرفع ملف أو توليد صوت، أو أنشئ صورة في حجرة إنشاء الصور والمشاهد.</p>
                 </div>
               ) : (
                 <div className="hud-body-layout">

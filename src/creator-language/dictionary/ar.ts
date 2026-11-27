@@ -16,7 +16,7 @@ export const ar: Dictionary = {
   'gate.memberButton': 'تسجيل الدخول',
   'gate.explorerButton': 'المتابعة إلى التسجيل',
   'gate.thresholdCaption': 'اعبر',
-  'gate.enterChamberButton': 'ادخل حجرة القيامة',
+  'gate.enterChamberButton': 'ادخل حجرة إنشاء الصور والمشاهد',
   'gate.languageLabel': 'اللغة',
   'gate.chooseLanguage': 'اختر لغتك',
   'gate.companionMessage': 'الإمبراطورية تراك',
@@ -174,7 +174,7 @@ export const ar: Dictionary = {
 
   'action.signIn': 'تسجيل الدخول',
   'action.signUp': 'إنشاء حساب',
-  'action.enterChamber': 'ادخل حجرة القيامة',
+  'action.enterChamber': 'ادخل حجرة إنشاء الصور والمشاهد',
   'action.subscribe': 'اشترك',
   'action.signInToGenerate': 'سجّل الدخول للتوليد',
   // Not «اشترك»: nothing here renews, recurs or needs cancelling, and the

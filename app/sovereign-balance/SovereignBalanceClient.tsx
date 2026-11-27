@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import './sovereign-balance.css';
+import '@/src/imperial-experience-engine/dihliz/dihliz-member-surface.css';
 
 /**
  * Exactly the shape the server hands down — see the page's own header for why
@@ -94,7 +95,7 @@ export function SovereignBalanceClient({
   };
 
   return (
-    <main className="balance-viewport" dir="rtl">
+    <main className="balance-viewport" dir="rtl" data-dihliz="balance">
       <header className="balance-header">
         <p className="balance-kicker">وحدة القيمة داخل الإمبراطورية</p>
         <h1 className="balance-title">{unitNameAr}</h1>

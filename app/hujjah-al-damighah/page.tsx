@@ -905,7 +905,7 @@ export default function HujjahAlDamighah() {
         setChamberInit('active');
         if (!quiet) {
           const firstMsg = treasureRaw
-            ? 'كنز القصر ينتظر — الحجة الدامغة تكشف ما بداخله'
+            ? 'كنز الخزانة ينتظر — البحث والمصادر يكشف ما بداخله'
             : foyerResolved
               ? 'الإمبراطورية أعدّت هذه الجلسة — حجرة المعرفة تنتظر سؤالك'
               : greeting;
@@ -1642,6 +1642,9 @@ export default function HujjahAlDamighah() {
           <div className="tongue-selector-inner">
             <div className="tongue-header">
               <span className="tongue-crown-glyph" aria-hidden="true">✦</span>
+              {/* الاسم الجديد من البطاقة الأولى — الحُجّة الدامغة = البحث والمصادر */}
+              <span className="tongue-chamber-kicker">حيثُ تَبدأ المعرفة</span>
+              <span className="tongue-chamber-name">البحث والمصادر</span>
               <h2 className="tongue-title">كيف تريد أن نتواصل؟</h2>
               <p className="tongue-subtitle">الحجرة تتكيف معك — لا معك تتكيف معها</p>
               <p className="tongue-mandate">اطرح سؤالاً في أي مجال — علمي، تاريخي، طبي، ثقافي — وستجري الحجرة تحقيقاً حقيقياً مدعوماً بأدلة</p>

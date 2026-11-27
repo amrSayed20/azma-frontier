@@ -14,7 +14,7 @@ export interface AuthResult {
   readonly expiresAt: number;
 }
 
-export type AuthFailureReason = 'invalid-input' | 'email-taken' | 'invalid-credentials';
+export type AuthFailureReason = 'invalid-input' | 'email-taken' | 'invalid-credentials' | 'too-many-attempts';
 
 export interface AuthFailure {
   readonly status: 'failed';

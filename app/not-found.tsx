@@ -2,6 +2,7 @@ import { resolveRequestLocale } from '@/src/creator-language/resolve-request-loc
 import { getDictionary, t } from '@/src/creator-language';
 import { ConstitutionalLink } from '@/src/constitutional-navigation';
 import './creator-access.css';
+import '@/src/imperial-experience-engine/dihliz/dihliz-member-surface.css';
 
 /**
  * PACKAGE IV — LIVING EXPERIENCE FOUNDATION
@@ -19,7 +20,7 @@ export default async function NotFound() {
   const dict = getDictionary(locale);
 
   return (
-    <main className="creator-access-viewport">
+    <main className="creator-access-viewport" data-dihliz="notfound">
       <div className="creator-access-card">
         <p className="creator-access-kicker">{t(dict, 'notFound.kicker')}</p>
         <h1 className="creator-access-title">{t(dict, 'notFound.title')}</h1>

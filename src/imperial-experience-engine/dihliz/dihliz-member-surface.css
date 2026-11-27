@@ -1,0 +1,678 @@
+/* AZMA OS — الدِّهليز يمتدُّ إلى بقية المنصّة.
+   The Dihliz reaches the rest of the platform.
+
+   ─── WHAT THIS FILE IS, AND WHAT IT REFUSES TO BE ──────────────────────────
+
+   The five chambers and the foyer were dressed one at a time, each with its
+   own override layer appended to its own stylesheet. That worked while the
+   platform was six surfaces. It stopped working the moment a Creator walked
+   out of a chamber into the Balance, the policies, the gate hub or a dead
+   route and found a black-and-gold room from a different building.
+
+   So this is ONE layer, imported by every remaining member-facing surface,
+   and it does the same three things everywhere:
+
+     · it redefines the Empire's palette tokens INSIDE the surface's own root
+       (never globally — the chambers and the foyer keep their own),
+     · it paints the Dihliz ground: the deep navy floor, the violet and teal
+       light that falls from above, and the mashrabiya where that light lands,
+     · it dresses the surface's own panels as navy glass with a gold hairline
+       on the lit edge, and its primary action as poured gold.
+
+   Nothing here changes behaviour. No rule in this file touches a form value,
+   a price, a button's disabled logic or a route's data: it is colour, light,
+   depth and type only. The Balance and the payment rehearsal are reskinned
+   here exactly as carefully as anything else and not one line of their logic
+   is altered.
+
+   A surface opts in by carrying `data-dihliz="<surface>"` on its root element
+   and importing this file. Everything is scoped to that attribute, so the
+   Founder's screens, the API routes and the file servers are untouched.
+*/
+
+/* ── 1. THE PALETTE, REDEFINED ONLY INSIDE AN OPTED-IN SURFACE ──────────── */
+
+[data-dihliz] {
+  --dih-floor:      #02030a;
+  --dih-void:       #050819;
+  --dih-wall-1:     #0c1342;
+  --dih-wall-2:     #182263;
+  --dih-wall-3:     #24338f;
+  --dih-wall-4:     #3146bd;
+  --dih-light:      #fff6de;
+  --dih-gold:       #edc94c;
+  --dih-gold-hi:    #f8ebbb;
+  --dih-gold-soft:  #ab8419;
+  --dih-violet:     #8355ff;
+  --dih-teal:       #16e0cb;
+  --dih-ink:        #f6f8ff;
+  --dih-ink-soft:   #c2cdf4;
+  --dih-ink-muted:  #8694cf;
+  --dih-line:       rgba(164, 184, 255, 0.18);
+  --dih-line-lit:   rgba(255, 246, 222, 0.30);
+  --dih-danger:     #ff6f5e;
+
+  /* the Empire's own token names, remapped for this subtree only */
+  --azma-void:            var(--dih-floor);
+  --azma-obsidian:        var(--dih-void);
+  --azma-deep:            var(--dih-void);
+  --azma-surface:         rgba(12, 19, 66, 0.55);
+  --azma-surface-high:    rgba(24, 34, 99, 0.72);
+  --azma-text-sacred:     var(--dih-light);
+  --azma-text-primary:    var(--dih-ink);
+  --azma-text-muted:      var(--dih-ink-muted);
+  --azma-text-dim:        #6b78ad;
+  --azma-gold-2:          var(--dih-line);
+  --azma-gold-3:          rgba(164, 184, 255, 0.26);
+  --azma-gold-4:          rgba(246, 226, 164, 0.45);
+  --azma-gold-5:          var(--dih-gold);
+  --azma-gold-6:          var(--dih-gold-hi);
+  --azma-gold-7:          var(--dih-light);
+  --azma-gold-8:          var(--dih-light);
+  --azma-glow-soft:       rgba(131, 85, 255, 0.35);
+  --azma-glow-bright:     rgba(237, 201, 76, 0.50);
+  --azma-conflict:        var(--dih-danger);
+  --azma-radius-panel:    18px;
+  --azma-radius-slight:   12px;
+  --azma-shadow-sovereign: 0 18px 48px rgba(1, 2, 9, 0.55);
+  --azma-shadow-glow-soft: 0 0 18px rgba(131, 85, 255, 0.25);
+  --azma-shadow-glow-bright: 0 0 30px rgba(237, 201, 76, 0.35);
+
+  position: relative;
+  isolation: isolate;
+  background-color: var(--dih-floor);
+  background-image:
+    radial-gradient(1200px 620px at 50% -14%, rgba(131, 85, 255, 0.20), transparent 68%),
+    radial-gradient(900px 520px at 8% 12%, rgba(22, 224, 203, 0.10), transparent 70%),
+    radial-gradient(1000px 700px at 92% 88%, rgba(49, 70, 189, 0.28), transparent 72%),
+    linear-gradient(178deg, var(--dih-void) 0%, var(--dih-floor) 55%, #010208 100%);
+  background-attachment: fixed;
+  color: var(--dih-ink);
+}
+
+/* the light that falls from the ceiling, and the mashrabiya it falls through */
+[data-dihliz]::before {
+  content: '';
+  position: fixed;
+  inset-block-start: -8vh;
+  inset-inline: 0;
+  margin-inline: auto;
+  inline-size: min(1400px, 100%);
+  block-size: 92vh;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.42;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><g fill='none' stroke='rgba(255,246,222,0.6)' stroke-width='0.85'><path d='M46 4 L58 22 L80 22 L68 40 L80 58 L58 58 L46 76 L34 58 L12 58 L24 40 L12 22 L34 22 Z'/><circle cx='46' cy='40' r='10'/><path d='M0 40 L12 22 M92 40 L80 22 M0 40 L12 58 M92 40 L80 58'/></g></svg>");
+  background-size: 92px 92px;
+  -webkit-mask-image: radial-gradient(closest-side at 50% 8%, #000 0%, rgba(0, 0, 0, 0.42) 40%, transparent 68%);
+  mask-image: radial-gradient(closest-side at 50% 8%, #000 0%, rgba(0, 0, 0, 0.42) 40%, transparent 68%);
+}
+
+[data-dihliz] ::selection { background: rgba(131, 85, 255, 0.42); color: var(--dih-light); }
+[data-dihliz] :focus-visible { outline: 2px solid var(--dih-light); outline-offset: 3px; }
+
+/* ── 2. THE TYPE OF A DIHLIZ SURFACE ────────────────────────────────────── */
+
+[data-dihliz] :is(h1, .policy-title, .balance-title, .creator-access-title) {
+  color: var(--dih-light);
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.16), 0 18px 44px rgba(1, 2, 9, 0.6);
+}
+
+[data-dihliz] :is(.policy-kicker, .balance-kicker, .creator-access-kicker) {
+  color: var(--dih-gold);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.92;
+}
+
+/* the gold hairline that closes a title, as in the chambers */
+[data-dihliz] :is(.policy-header, .balance-header)::after {
+  content: '';
+  display: block;
+  inline-size: 92px;
+  block-size: 1px;
+  margin: 1.1rem auto 0;
+  background: linear-gradient(90deg, transparent, var(--dih-gold), transparent);
+  opacity: 0.8;
+}
+
+/* ── 3. NAVY GLASS, THE SAME RECIPE EVERYWHERE ──────────────────────────── */
+
+[data-dihliz] :is(.balance-package, .balance-rules, .balance-gift, .policy-list-item,
+                   .policy-body, .creator-access-card, .gate-card, .core-telemetry) {
+  position: relative;
+  /* the sheen is a LAYER of the panel's own background, not a pseudo-element:
+     a rotated pseudo-element is clipped by the panel's rounded box and leaves a
+     straight seam down the middle of the glass. A gradient layer cannot. */
+  background:
+    linear-gradient(102deg, transparent 0%, rgba(255, 246, 222, 0.10) 20%, rgba(255, 246, 222, 0.04) 38%, transparent 58%),
+    linear-gradient(168deg, rgba(36, 51, 143, 0.42) 0%, rgba(12, 19, 66, 0.62) 52%, rgba(5, 8, 25, 0.78) 100%);
+  border: 1px solid var(--dih-line);
+  border-block-start-color: var(--dih-line-lit);
+  border-radius: 18px;
+  box-shadow:
+    0 18px 44px rgba(1, 2, 9, 0.5),
+    inset 0 1px 0 rgba(255, 246, 222, 0.16),
+    inset 0 -1px 0 rgba(1, 2, 9, 0.5);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  backdrop-filter: blur(18px) saturate(1.15);
+  overflow: hidden;
+  transition: transform 200ms ease, box-shadow 240ms ease, border-color 240ms ease, background 240ms ease;
+}
+
+[data-dihliz] :is(.balance-package, .policy-list-item, .gate-card):hover {
+  transform: translateY(-2px);
+  background:
+    linear-gradient(102deg, transparent 0%, rgba(255, 246, 222, 0.16) 20%, rgba(255, 246, 222, 0.06) 38%, transparent 58%),
+    linear-gradient(168deg, rgba(49, 70, 189, 0.46) 0%, rgba(18, 27, 84, 0.66) 52%, rgba(6, 10, 30, 0.8) 100%);
+  border-color: rgba(246, 226, 164, 0.42);
+  box-shadow:
+    0 22px 52px rgba(1, 2, 9, 0.58),
+    0 0 26px rgba(237, 201, 76, 0.14),
+    inset 0 1px 0 rgba(255, 246, 222, 0.22);
+}
+
+/* ── 4. POURED GOLD: THE PRIMARY ACTION, AND NOTHING ELSE ───────────────── */
+
+[data-dihliz] :is(.balance-package-buy, .creator-access-submit) {
+  color: #281d02;
+  font-weight: 700;
+  border: 1px solid rgba(255, 246, 222, 0.55);
+  border-radius: 999px;
+  background: linear-gradient(176deg, #fff9e6 0%, var(--dih-gold) 46%, var(--dih-gold-soft) 78%, var(--dih-gold-hi) 100%);
+  box-shadow:
+    0 10px 26px rgba(237, 201, 76, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -2px 6px rgba(120, 88, 12, 0.35);
+  transition: transform 160ms ease, box-shadow 200ms ease, filter 200ms ease;
+}
+
+[data-dihliz] :is(.balance-package-buy, .creator-access-submit):hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow:
+    0 14px 32px rgba(237, 201, 76, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -2px 6px rgba(120, 88, 12, 0.35);
+}
+
+[data-dihliz] :is(.balance-package-buy, .creator-access-submit):disabled {
+  filter: grayscale(0.35) brightness(0.86);
+  opacity: 0.7;
+}
+
+/* ── 5. QUIET GLASS PILLS: back links, exits, ledgers ───────────────────── */
+
+[data-dihliz] :is(.policy-back a, .balance-exit a, .balance-policy-link a) {
+  display: inline-block;
+  color: var(--dih-ink-soft);
+  text-decoration: none;
+  padding: 0.62rem 1.15rem;
+  border: 1px solid var(--dih-line);
+  border-block-start-color: var(--dih-line-lit);
+  border-radius: 999px;
+  background: linear-gradient(168deg, rgba(24, 34, 99, 0.72), rgba(5, 8, 25, 0.86));
+  box-shadow: 0 8px 20px rgba(1, 2, 9, 0.45), inset 0 1px 0 rgba(255, 246, 222, 0.14);
+  transition: color 180ms ease, border-color 180ms ease, transform 180ms ease, box-shadow 200ms ease;
+}
+
+[data-dihliz] :is(.policy-back a, .balance-exit a, .balance-policy-link a):hover {
+  color: var(--dih-light);
+  border-color: rgba(246, 226, 164, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(1, 2, 9, 0.5), 0 0 22px rgba(237, 201, 76, 0.18);
+}
+
+[data-dihliz] :is(.balance-policy-link a) {
+  border-bottom: 1px solid var(--dih-line);
+  min-height: 44px;
+}
+
+/* ── 6. THE BALANCE · ميزان القيمة ──────────────────────────────────────── */
+
+[data-dihliz="balance"] .balance-viewport {
+  padding: 3.4rem 1.25rem 4.5rem;
+  gap: 2.2rem;
+}
+
+[data-dihliz="balance"] .balance-title {
+  font-size: clamp(2rem, 4vw, 2.7rem);
+  font-weight: 800;
+  background: linear-gradient(168deg, #ffffff 6%, var(--dih-light) 42%, var(--dih-gold) 92%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+}
+
+[data-dihliz="balance"] .balance-current {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-top: 1.15rem;
+  padding: 0.6rem 1.25rem;
+  color: var(--dih-ink-soft);
+  border: 1px solid var(--dih-line);
+  border-block-start-color: var(--dih-line-lit);
+  border-radius: 999px;
+  background: linear-gradient(168deg, rgba(24, 34, 99, 0.62), rgba(5, 8, 25, 0.82));
+  box-shadow: inset 0 1px 0 rgba(255, 246, 222, 0.14), 0 10px 24px rgba(1, 2, 9, 0.42);
+}
+
+[data-dihliz="balance"] .balance-current strong {
+  color: var(--dih-gold-hi);
+  font-size: 1.45rem;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 22px rgba(237, 201, 76, 0.35);
+}
+
+[data-dihliz="balance"] .balance-packages { gap: 1.4rem; }
+
+[data-dihliz="balance"] .balance-package {
+  padding: 1.9rem 1.5rem 1.7rem;
+  border-radius: 26px 26px 18px 18px;
+}
+
+/* a lit gold crown on the arched top, the foyer's own gesture */
+[data-dihliz="balance"] .balance-package::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 18%;
+  block-size: 1px;
+  background: linear-gradient(90deg, transparent, var(--dih-gold), transparent);
+  opacity: 0.75;
+}
+
+/* the largest package leads: a gold ring, not a badge the data cannot justify.
+   The packages arrive in ascending price order, and in RTL the last child sits
+   at the leading edge — so the ring lands on الريادة, not on the cheapest card. */
+[data-dihliz="balance"] .balance-package:last-child {
+  border-color: rgba(246, 226, 164, 0.42);
+  box-shadow:
+    0 22px 54px rgba(1, 2, 9, 0.56),
+    0 0 30px rgba(237, 201, 76, 0.14),
+    inset 0 1px 0 rgba(255, 246, 222, 0.26);
+}
+
+[data-dihliz="balance"] .balance-package-name {
+  color: var(--dih-gold);
+  font-size: 1.3rem;
+  letter-spacing: 0.01em;
+}
+
+[data-dihliz="balance"] .balance-package-amount {
+  color: var(--dih-light);
+  font-size: 2.45rem;
+  font-weight: 800;
+  text-shadow: 0 0 26px rgba(237, 201, 76, 0.28);
+}
+
+[data-dihliz="balance"] .balance-package-currency,
+[data-dihliz="balance"] .balance-package-validity { color: var(--dih-ink-muted); }
+
+[data-dihliz="balance"] .balance-package-units { color: var(--dih-ink-soft); }
+[data-dihliz="balance"] .balance-package-units strong { color: var(--dih-light); }
+
+[data-dihliz="balance"] .balance-package-buy {
+  margin-top: 1.1rem;
+  padding: 0.82rem 1rem;
+  font-size: 1rem;
+}
+
+[data-dihliz="balance"] .balance-package-shut { color: var(--dih-ink-muted); }
+[data-dihliz="balance"] .balance-package-shut a { color: var(--dih-gold); }
+
+[data-dihliz="balance"] .balance-rules,
+[data-dihliz="balance"] .balance-gift {
+  padding: 1.7rem 1.8rem;
+  border-radius: 22px;
+}
+
+/* a gold spine down the reading edge, as the chambers mark a column of text */
+[data-dihliz="balance"] .balance-rules::before,
+[data-dihliz="balance"] .balance-gift::before {
+  content: '';
+  position: absolute;
+  inset-block: 1.2rem;
+  inset-inline-start: 0;
+  inline-size: 2px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, transparent, var(--dih-gold), transparent);
+  opacity: 0.55;
+}
+
+[data-dihliz="balance"] .balance-rules p,
+[data-dihliz="balance"] .balance-gift p {
+  color: var(--dih-ink-soft);
+  line-height: 2;
+}
+
+[data-dihliz="balance"] .balance-section-title {
+  color: var(--dih-gold);
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+[data-dihliz="balance"] .balance-rule-emphatic { color: var(--dih-light); }
+
+[data-dihliz="balance"] .balance-failure {
+  color: #ffd9d3;
+  background: linear-gradient(168deg, rgba(120, 30, 22, 0.55), rgba(40, 8, 6, 0.8));
+  border: 1px solid rgba(255, 111, 94, 0.45);
+  border-block-start-color: rgba(255, 190, 180, 0.5);
+  border-radius: 16px;
+}
+
+[data-dihliz="balance"] .balance-exit { margin-top: 0.4rem; }
+[data-dihliz="balance"] .balance-policy-link { color: var(--dih-ink-muted); }
+[data-dihliz="balance"] .balance-policy-link a { padding: 0.62rem 1.15rem; }
+
+/* ── 7. THE GATE HUB · العبور السيادي ───────────────────────────────────── */
+
+[data-dihliz="vault"] {
+  --chamber-bg: var(--dih-floor);
+  --neon-gold-primary: var(--dih-gold);
+  --neon-gold-bright: var(--dih-gold-hi);
+  --neon-gold-dim: rgba(164, 184, 255, 0.34);
+  --neon-gold-shadow: rgba(237, 201, 76, 0.45);
+  --text-main: var(--dih-ink);
+  --text-muted: var(--dih-ink-muted);
+}
+
+[data-dihliz="vault"] .obour-viewport {
+  background: transparent;
+}
+
+[data-dihliz="vault"] .cyber-grid {
+  background-image:
+    linear-gradient(rgba(164, 184, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(164, 184, 255, 0.05) 1px, transparent 1px);
+  opacity: 0.3;
+}
+
+[data-dihliz="vault"] .ambient-glow {
+  background: radial-gradient(circle, rgba(131, 85, 255, 0.16) 0%, transparent 68%);
+}
+
+[data-dihliz="vault"] .core-badge {
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.34em;
+  color: var(--dih-gold);
+  border: 1px solid var(--dih-line);
+  border-block-start-color: var(--dih-line-lit);
+  border-radius: 999px;
+  padding: 0.42rem 1.15rem;
+  background: linear-gradient(168deg, rgba(24, 34, 99, 0.7), rgba(5, 8, 25, 0.85));
+  box-shadow: inset 0 1px 0 rgba(255, 246, 222, 0.16);
+}
+
+[data-dihliz="vault"] .core-title {
+  background: linear-gradient(168deg, #ffffff 4%, var(--dih-light) 40%, var(--dih-gold) 92%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 16px 38px rgba(1, 2, 9, 0.6));
+}
+
+[data-dihliz="vault"] .core-clock {
+  font-family: inherit;
+  font-size: 0.9rem;
+  letter-spacing: 0.12em;
+  color: var(--dih-gold-hi);
+  text-shadow: 0 0 18px rgba(237, 201, 76, 0.3);
+  opacity: 0.9;
+}
+
+[data-dihliz="vault"] .core-telemetry {
+  border-style: solid;
+  border-color: var(--dih-line);
+  border-block-start-color: var(--dih-line-lit);
+  border-radius: 18px;
+  box-shadow:
+    0 16px 40px rgba(1, 2, 9, 0.45),
+    inset 0 1px 0 rgba(255, 246, 222, 0.14);
+}
+
+[data-dihliz="vault"] .telemetry-message { color: var(--dih-ink-soft); }
+[data-dihliz="vault"] .default-message { color: var(--dih-ink-muted); font-style: normal; letter-spacing: 0.02em; }
+[data-dihliz="vault"] .telemetry-icon { color: var(--dih-gold); }
+
+[data-dihliz="vault"] .gate-card {
+  width: 300px;
+  min-height: 178px;
+  border-radius: 28px 28px 18px 18px;
+  gap: 0.85rem;
+}
+
+[data-dihliz="vault"] .gate-card::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 22%;
+  block-size: 1px;
+  background: linear-gradient(90deg, transparent, var(--dih-gold), transparent);
+  opacity: 0.8;
+  z-index: 3;
+}
+
+[data-dihliz="vault"] .gate-icon {
+  color: var(--dih-gold);
+  filter: drop-shadow(0 0 18px rgba(237, 201, 76, 0.4));
+}
+
+[data-dihliz="vault"] .gate-icon svg { inline-size: 42px; block-size: 42px; display: block; }
+
+[data-dihliz="vault"] .gate-name {
+  color: var(--dih-ink);
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+[data-dihliz="vault"] .gate-card:hover .gate-name { color: var(--dih-light); text-shadow: 0 0 18px rgba(237, 201, 76, 0.4); }
+[data-dihliz="vault"] .gate-portal-effect { background: radial-gradient(circle, rgba(237, 201, 76, 0.5) 0%, transparent 70%); }
+
+[data-dihliz="vault"] .obour-footer {
+  font-family: inherit;
+  letter-spacing: 0.04em;
+  color: var(--dih-ink-muted);
+  opacity: 0.72;
+}
+
+[data-dihliz="vault"] .obour-viewport::-webkit-scrollbar-track { background: var(--dih-floor); }
+[data-dihliz="vault"] .obour-viewport::-webkit-scrollbar-thumb { background: rgba(164, 184, 255, 0.28); }
+[data-dihliz="vault"] .obour-viewport::-webkit-scrollbar-thumb:hover { background: rgba(246, 226, 164, 0.5); }
+
+/* ── 8. THE POLICIES · السياسات ──────────────────────────────────────────── */
+
+[data-dihliz="policies"] .policy-viewport {
+  padding: 3.2rem 1.25rem 4.5rem;
+  gap: 1.6rem;
+}
+
+[data-dihliz="policies"] .policy-title {
+  font-size: clamp(1.7rem, 3.2vw, 2.35rem);
+  font-weight: 800;
+}
+
+[data-dihliz="policies"] .policy-meta { color: var(--dih-ink-muted); }
+
+[data-dihliz="policies"] .policy-list { gap: 1rem; }
+
+[data-dihliz="policies"] .policy-list-item {
+  border-radius: 20px;
+  padding: 0;
+}
+
+[data-dihliz="policies"] .policy-list-link {
+  padding: 1.25rem 1.4rem;
+  border-radius: 20px;
+}
+
+[data-dihliz="policies"] .policy-list-name { color: var(--dih-light); font-weight: 700; }
+[data-dihliz="policies"] .policy-list-en { color: var(--dih-gold); opacity: 0.85; }
+[data-dihliz="policies"] .policy-list-meta,
+[data-dihliz="policies"] .policy-list-governing { color: var(--dih-ink-muted); }
+
+/* the ratified text: a lit sheet, never a black box */
+[data-dihliz="policies"] .policy-body {
+  padding: 2.1rem 2rem;
+  border-radius: 22px;
+  color: #e8edff;
+  font-size: 1rem;
+  line-height: 2.05;
+  background:
+    linear-gradient(168deg, rgba(24, 34, 99, 0.5) 0%, rgba(8, 12, 40, 0.72) 60%, rgba(3, 5, 18, 0.86) 100%);
+}
+
+[data-dihliz="policies"] .policy-body::first-line { color: var(--dih-light); }
+
+/* ── 9. A DEAD ROUTE · بابٌ لا يفتح على شيء ─────────────────────────────── */
+
+[data-dihliz="notfound"] .creator-access-viewport {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 3rem 1.25rem;
+}
+
+[data-dihliz="notfound"] .creator-access-card {
+  inline-size: min(34rem, 100%);
+  padding: 2.4rem 2rem 2.1rem;
+  border-radius: 26px;
+  text-align: start;
+}
+
+[data-dihliz="notfound"] .creator-access-card::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 20%;
+  block-size: 1px;
+  background: linear-gradient(90deg, transparent, var(--dih-gold), transparent);
+  opacity: 0.8;
+}
+
+[data-dihliz="notfound"] .creator-access-title {
+  font-size: clamp(1.55rem, 3vw, 2rem);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+[data-dihliz="notfound"] .creator-access-subtitle {
+  color: var(--dih-ink-soft);
+  line-height: 1.95;
+  margin-block: 0.9rem 1.5rem;
+}
+
+[data-dihliz="notfound"] .creator-access-submit { display: block; text-align: center; padding: 0.85rem 1.25rem; }
+
+
+/* ── 11. THE PAYMENT REHEARSAL · محاكاةُ الدفع ──────────────────────────────
+   VISUALS ONLY. This is the one surface in this file that sits next to money,
+   and not one line of it is touched: no price, no order id, no button state,
+   no request. It is dressed so a Creator rehearsing a checkout does not walk
+   out of a navy glass platform into a brown room. */
+
+[data-dihliz="payment-sim"] .pay-sim-shell {
+  background: transparent;
+  color: var(--dih-ink);
+}
+
+[data-dihliz="payment-sim"] .pay-sim-card {
+  max-width: 540px;
+  padding: 1.6rem 1.5rem 1.7rem;
+  border-radius: 24px;
+  background:
+    linear-gradient(102deg, transparent 0%, rgba(255, 246, 222, 0.09) 20%, rgba(255, 246, 222, 0.03) 38%, transparent 58%),
+    linear-gradient(168deg, rgba(36, 51, 143, 0.42) 0%, rgba(12, 19, 66, 0.64) 52%, rgba(5, 8, 25, 0.8) 100%);
+  border: 1px solid var(--dih-line);
+  border-block-start-color: var(--dih-line-lit);
+  box-shadow:
+    0 22px 54px rgba(1, 2, 9, 0.55),
+    inset 0 1px 0 rgba(255, 246, 222, 0.16);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  backdrop-filter: blur(18px) saturate(1.15);
+}
+
+[data-dihliz="payment-sim"] .pay-sim-banner {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 111, 94, 0.45);
+  background: linear-gradient(168deg, rgba(120, 30, 22, 0.45), rgba(40, 8, 6, 0.7));
+  color: #ffd9d3;
+}
+
+[data-dihliz="payment-sim"] .pay-sim-title {
+  color: var(--dih-gold);
+  font-size: 1.2rem;
+  letter-spacing: 0.01em;
+}
+
+[data-dihliz="payment-sim"] .pay-sim-summary > div {
+  border-bottom: 1px solid var(--dih-line);
+}
+[data-dihliz="payment-sim"] .pay-sim-summary dt { color: var(--dih-ink-muted); }
+[data-dihliz="payment-sim"] .pay-sim-summary dd { color: var(--dih-ink); }
+[data-dihliz="payment-sim"] .pay-sim-mono { color: var(--dih-ink-soft); }
+[data-dihliz="payment-sim"] .pay-sim-note { color: var(--dih-ink-muted); }
+[data-dihliz="payment-sim"] .pay-sim-loading { color: var(--dih-ink-muted); }
+
+[data-dihliz="payment-sim"] .pay-sim-btn {
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+[data-dihliz="payment-sim"] .pay-sim-btn-pay {
+  color: #281d02;
+  border: 1px solid rgba(255, 246, 222, 0.55);
+  background: linear-gradient(176deg, #fff9e6 0%, var(--dih-gold) 46%, var(--dih-gold-soft) 78%, var(--dih-gold-hi) 100%);
+  box-shadow:
+    0 10px 26px rgba(237, 201, 76, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+[data-dihliz="payment-sim"] .pay-sim-btn-fail {
+  color: #ffd9d3;
+  border: 1px solid rgba(255, 111, 94, 0.5);
+  background: linear-gradient(168deg, rgba(90, 24, 18, 0.55), rgba(30, 6, 4, 0.75));
+}
+
+[data-dihliz="payment-sim"] .pay-sim-btn-cancel {
+  color: var(--dih-ink-soft);
+  border: 1px solid var(--dih-line);
+  background: linear-gradient(168deg, rgba(24, 34, 99, 0.62), rgba(5, 8, 25, 0.82));
+}
+
+[data-dihliz="payment-sim"] .pay-sim-result { border-top: 1px solid var(--dih-line); }
+[data-dihliz="payment-sim"] .pay-sim-ok .pay-sim-result-line { color: #8fe3b4; }
+[data-dihliz="payment-sim"] .pay-sim-no .pay-sim-result-line,
+[data-dihliz="payment-sim"] .pay-sim-error { color: #ffb3a6; }
+
+/* ── 10. SMALL SCREENS, AND THOSE WHO ASK FOR LESS MOTION ───────────────── */
+
+@media (max-width: 560px) {
+  [data-dihliz]::before { opacity: 0.3; }
+  [data-dihliz="balance"] .balance-viewport { padding: 2.4rem 1rem 3.4rem; }
+  [data-dihliz="balance"] .balance-package { border-radius: 22px 22px 16px 16px; }
+  [data-dihliz="balance"] .balance-package-amount { font-size: 2.05rem; }
+  [data-dihliz="policies"] .policy-body { padding: 1.4rem 1.15rem; font-size: 0.96rem; }
+  [data-dihliz="vault"] .gate-card { width: min(320px, 92vw); }
+  [data-dihliz="notfound"] .creator-access-card { padding: 1.9rem 1.35rem 1.7rem; border-radius: 22px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-dihliz] :is(.balance-package, .policy-list-item, .gate-card, .creator-access-card,
+                    .balance-package-buy, .creator-access-submit, .policy-back a,
+                    .balance-exit a, .balance-policy-link a) {
+    transition: none;
+  }
+  [data-dihliz] :is(.balance-package, .policy-list-item, .gate-card):hover { transform: none; }
+}

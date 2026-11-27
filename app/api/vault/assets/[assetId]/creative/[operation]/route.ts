@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifySession } from '@/src/authentication';
+import { checkVaultAccess, VAULT_LOCKED_BODY } from '@/src/vault/vault-access';
 import { getDb } from '@/src/persistent-storage';
 import { CREATIVE_INPUT_SHAPE } from '@/src/vault/creative-operation-runner';
 import type { CreativeOperationId } from '@/src/core/sovereign-ai-integration/adapters/magic-hour-creative-operations';
@@ -45,13 +45,17 @@ export async function POST(
 ) {
   const { assetId, operation } = await context.params;
 
-  const session = verifySession(request.cookies.get(SESSION_COOKIE)?.value ?? '');
-  if (!session) {
+  const access = checkVaultAccess(request);
+
+  if (access.status !== 'ok') {
     return NextResponse.json(
-      { status: 'failed', reason: 'unauthorized', message: 'سجّل دخولك أوّلاً.' },
-      { status: 401 },
+      access.status === 'no-session'
+        ? { status: 'failed', reason: 'unauthorized', message: 'سجّل دخولك أوّلاً.' }
+        : VAULT_LOCKED_BODY,
+      { status: access.status === 'no-session' ? 401 : 403 },
     );
   }
+  const session = access.session;
 
   if (!isCreativeOperation(operation)) {
     return NextResponse.json(
@@ -117,10 +121,14 @@ export async function GET(
   context: { params: Promise<{ assetId: string; operation: string }> },
 ) {
   const { assetId, operation } = await context.params;
-  const session = verifySession(request.cookies.get(SESSION_COOKIE)?.value ?? '');
-  if (!session) {
-    return NextResponse.json({ status: 'failed', reason: 'unauthorized' }, { status: 401 });
+  const access = checkVaultAccess(request);
+  if (access.status !== 'ok') {
+    return NextResponse.json(
+      access.status === 'no-session' ? { status: 'failed', reason: 'unauthorized' } : VAULT_LOCKED_BODY,
+      { status: access.status === 'no-session' ? 401 : 403 },
+    );
   }
+  const session = access.session;
   if (!isCreativeOperation(operation)) {
     return NextResponse.json({ status: 'failed', reason: 'unknown-operation' }, { status: 404 });
   }

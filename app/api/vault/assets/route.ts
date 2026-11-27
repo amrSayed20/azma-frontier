@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifySession } from '../../../../src/authentication';
+import { checkVaultAccess, VAULT_LOCKED_BODY } from '../../../../src/vault/vault-access';
 import { SovereignVaultManager } from '../../../../src/vault/sovereign-vault-manager';
 
 export const dynamic = 'force-dynamic';
@@ -15,12 +15,17 @@ const vaultManager = new SovereignVaultManager();
  * Integration Package I (src/qiyamah-generation); no new business logic.
  */
 export async function GET(request: NextRequest) {
-  const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  const session = sessionId ? verifySession(sessionId) : null;
+  const access = checkVaultAccess(request);
 
-  if (!session) {
-    return NextResponse.json({ status: 'failed', reason: 'unauthorized', message: 'Sign in to see your Vault.' }, { status: 401 });
+  if (access.status !== 'ok') {
+    return NextResponse.json(
+      access.status === 'no-session'
+        ? { status: 'failed', reason: 'unauthorized', message: 'Sign in to see your Vault.' }
+        : VAULT_LOCKED_BODY,
+      { status: access.status === 'no-session' ? 401 : 403 },
+    );
   }
+  const session = access.session;
 
   const assets = await vaultManager.listAssetsForTenant(session.creatorId);
   return NextResponse.json({ status: 'succeeded', assets });

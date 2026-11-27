@@ -891,3 +891,190 @@
   object-fit: cover;
   background: rgba(10, 10, 10, 0.9);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   المَكمن يَدخل الدِّهليز — RESKIN (2026-11-27)
+   The release terminal's black panels become the house's navy glass:
+   the walls and light of the gate the Creator crossed, gold kept for the
+   seals and the acts that commit. Layout untouched; this is dress.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --chamber-bg: #050819;
+  --panel-bg: rgba(12, 19, 66, 0.62);
+}
+
+.makman-viewport {
+  background:
+    radial-gradient(1180px 760px at 50% -14%, rgba(59, 82, 216, 0.5) 0%, rgba(27, 40, 120, 0.32) 32%, transparent 66%),
+    linear-gradient(180deg, #0c1342 0%, #0b1240 30%, #090e30 56%, #06091f 78%, #050819 100%);
+  background-attachment: fixed;
+}
+
+.cyber-grid {
+  background-image:
+    linear-gradient(rgba(131, 85, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(131, 85, 255, 0.045) 1px, transparent 1px);
+}
+
+.neon-layer::after {
+  content: '';
+  position: absolute;
+  inset-block-start: -6vh;
+  inset-inline: 0;
+  margin-inline: auto;
+  inline-size: min(1400px, 100%);
+  block-size: 100vh;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><g fill='none' stroke='rgba(255,246,222,0.6)' stroke-width='0.85'><path d='M46 4 L58 22 L80 22 L68 40 L80 58 L58 58 L46 76 L34 58 L12 58 L24 40 L12 22 L34 22 Z'/><circle cx='46' cy='40' r='10'/><path d='M0 40 L12 22 M92 40 L80 22 M0 40 L12 58 M92 40 L80 58'/></g></svg>");
+  background-size: 92px 92px;
+  -webkit-mask-image: radial-gradient(closest-side at 50% 10%, #000 0%, rgba(0,0,0,0.45) 38%, transparent 66%);
+  mask-image: radial-gradient(closest-side at 50% 10%, #000 0%, rgba(0,0,0,0.45) 38%, transparent 66%);
+}
+
+/* every panel: navy glass with a gold-lit lip */
+.neon-border,
+.makman-constitutional-header,
+.makman-cloud-panel,
+.makman-purpose-section {
+  background: linear-gradient(170deg, rgba(49, 70, 189, 0.38), rgba(24, 34, 99, 0.52) 45%, rgba(6, 9, 28, 0.86));
+  border: 1px solid rgba(164, 184, 255, 0.18);
+  border-block-start-color: rgba(255, 246, 222, 0.38);
+  border-radius: 24px;
+  -webkit-backdrop-filter: blur(14px) saturate(1.45);
+  backdrop-filter: blur(14px) saturate(1.45);
+  box-shadow:
+    0 26px 60px rgba(1, 2, 9, 0.55),
+    inset 0 1px 0 rgba(255, 246, 222, 0.3),
+    inset 0 -30px 48px -30px rgba(131, 85, 255, 0.42);
+}
+
+.neon-tag { color: #f6e2a4; letter-spacing: 0.14em; }
+
+.makman-chamber-title {
+  background: linear-gradient(100deg, #edc94c 8%, #fff6de 40%, #edc94c 78%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+}
+
+.makman-chamber-mandate { color: #a9b6e8; }
+
+.panel-header { border-bottom-color: rgba(164, 184, 255, 0.14); }
+.panel-header h2 { color: #e8edff; }
+
+.makman-cloud-state { color: #c2cdf4; }
+
+/* the acts that commit: poured gold */
+.sovereign-deploy-btn {
+  background: linear-gradient(176deg, #fff9e6 0%, #f9e9b2 9%, #f0d26a 26%, #edc94c 48%, #ab8419 66%, #dbba4b 84%, #f8ebbb 100%) !important;
+  border: 1px solid rgba(255, 249, 230, 0.72) !important;
+  color: #281d02 !important;
+  font-weight: 700 !important;
+  border-radius: 999px !important;
+  box-shadow:
+    0 18px 46px rgba(237, 201, 76, 0.38),
+    0 4px 12px rgba(1, 2, 9, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 -2px 7px rgba(120, 90, 10, 0.42) !important;
+  transition: transform 180ms ease, box-shadow 220ms ease !important;
+}
+.sovereign-deploy-btn:hover:not(:disabled) {
+  box-shadow:
+    0 26px 60px rgba(237, 201, 76, 0.5),
+    0 0 30px rgba(131, 85, 255, 0.28),
+    0 6px 16px rgba(1, 2, 9, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -2px 7px rgba(120, 90, 10, 0.42) !important;
+  transform: translateY(-2px);
+}
+
+/* secondary acts: lit navy glass */
+.import-btn,
+.action-row button:not(.sovereign-deploy-btn) {
+  background: linear-gradient(176deg, rgba(71, 96, 220, 0.4), rgba(36, 51, 143, 0.5) 46%, rgba(12, 19, 66, 0.66));
+  border: 1px solid rgba(176, 196, 255, 0.3);
+  border-block-start-color: rgba(255, 246, 222, 0.3);
+  color: #e8edff;
+  border-radius: 999px;
+  box-shadow: 0 10px 26px rgba(1, 2, 9, 0.45), inset 0 1px 0 rgba(255, 246, 222, 0.22);
+}
+.import-btn:hover,
+.action-row button:not(.sovereign-deploy-btn):hover {
+  border-color: rgba(255, 246, 222, 0.46);
+  color: #fff6de;
+}
+
+/* fields: dark inset glass */
+.cyber-input,
+.cyber-input.textarea,
+textarea.cyber-input,
+input.cyber-input {
+  background: rgba(3, 5, 18, 0.62) !important;
+  border: 1px solid rgba(164, 184, 255, 0.18) !important;
+  border-radius: 14px !important;
+  color: #f6f8ff !important;
+  box-shadow: inset 0 1px 3px rgba(1, 2, 9, 0.6);
+}
+.cyber-input:focus {
+  border-color: #edc94c !important;
+  background: rgba(5, 8, 25, 0.78) !important;
+  box-shadow: inset 0 1px 3px rgba(1, 2, 9, 0.6), 0 0 0 3px rgba(237, 201, 76, 0.22), 0 0 22px rgba(237, 201, 76, 0.14) !important;
+}
+
+/* platform cards: navy glass tiles */
+.platform-card {
+  background: linear-gradient(170deg, rgba(36, 51, 143, 0.45), rgba(12, 19, 66, 0.6));
+  border: 1px solid rgba(164, 184, 255, 0.18);
+  border-block-start-color: rgba(255, 246, 222, 0.24);
+  border-radius: 16px;
+  transition: transform 180ms ease, box-shadow 220ms ease, border-color 220ms ease, background 220ms ease;
+}
+.platform-card:hover {
+  background: linear-gradient(170deg, rgba(71, 96, 220, 0.45), rgba(24, 34, 99, 0.6));
+  border-color: rgba(176, 196, 255, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px rgba(1, 2, 9, 0.5);
+}
+.platform-card.active {
+  background: linear-gradient(176deg, rgba(131, 85, 255, 0.3), rgba(91, 63, 212, 0.28));
+  border-color: #a78bff;
+  box-shadow: 0 0 22px rgba(131, 85, 255, 0.35), inset 0 1px 0 rgba(255, 246, 222, 0.3);
+}
+
+/* tabs */
+.dest-tab { color: #8694cf; border-radius: 10px 10px 0 0; }
+.dest-tab:hover { color: #c2cdf4; }
+.dest-tab.active-tab {
+  color: #281d02;
+  background: linear-gradient(176deg, #fff9e6 0%, #edc94c 52%, #ab8419 80%, #f8ebbb 100%);
+  border-bottom-color: transparent;
+  box-shadow: 0 8px 22px rgba(237, 201, 76, 0.3);
+}
+
+/* the exit pill */
+.sovereign-exit-btn {
+  background: linear-gradient(170deg, rgba(24, 34, 99, 0.85), rgba(5, 8, 25, 0.9));
+  border: 1px solid rgba(164, 184, 255, 0.22);
+  border-block-start-color: rgba(255, 246, 222, 0.32);
+  color: #c2cdf4;
+  border-radius: 999px;
+  font-weight: 500;
+  box-shadow: 0 8px 22px rgba(1, 2, 9, 0.45), inset 0 1px 0 rgba(255, 246, 222, 0.18);
+}
+.sovereign-exit-btn:hover {
+  color: #fff6de;
+  border-color: rgba(246, 226, 164, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 30px rgba(1, 2, 9, 0.5), 0 0 24px rgba(237, 201, 76, 0.18);
+}
+
+.system-clock {
+  background: rgba(3, 5, 18, 0.55);
+  border: 1px dashed rgba(164, 184, 255, 0.3);
+  color: #f6e2a4;
+}
+
+.makman-viewport ::selection { background: rgba(131, 85, 255, 0.4); color: #fff6de; }
+.makman-viewport :focus-visible { outline: 2px solid #fff6de; outline-offset: 2px; }

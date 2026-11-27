@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { join, basename } from 'path';
 import { readFile, unlink } from 'fs/promises';
-import { verifySession } from '@/src/authentication';
+import { checkVaultAccess, VAULT_LOCKED_BODY } from '@/src/vault/vault-access';
 import { getDb, getVaultAsset } from '@/src/persistent-storage';
 import { persistUploadedAsset } from '@/src/vault/vault-asset-upload-storage';
 import { deriveAsset, mutationRejectionSpokenAr } from '@/src/vault/sovereign-asset-mutation';
@@ -90,14 +90,17 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ assetId: string }> },
 ) {
-  const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  const session = sessionId ? verifySession(sessionId) : null;
-  if (!session) {
+  const access = checkVaultAccess(request);
+
+  if (access.status !== 'ok') {
     return NextResponse.json(
-      { status: 'failed', reason: 'unauthorized', message: 'سجّل دخولك أوّلاً.' },
-      { status: 401 },
+      access.status === 'no-session'
+        ? { status: 'failed', reason: 'unauthorized', message: 'سجّل دخولك أوّلاً.' }
+        : VAULT_LOCKED_BODY,
+      { status: access.status === 'no-session' ? 401 : 403 },
     );
   }
+  const session = access.session;
 
   const { assetId } = await context.params;
 

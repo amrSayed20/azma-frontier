@@ -185,7 +185,7 @@ export function relevanceLabelAr(relevance: EvidenceRelevance): string {
  */
 export function interpretationNoteAr(authority: SourceAuthority): string | null {
   if (authority === SourceAuthority.SCRIPTURE) {
-    return 'النص معروض كما ورد. لا تُفتي الحُجّة ولا تُرجّح بين المذاهب، والتفسير مرجعه أهله.';
+    return 'النص معروض كما ورد. لا تُفتي حجرة البحث والمصادر ولا تُرجّح بين المذاهب، والتفسير مرجعه أهله.';
   }
   return null;
 }

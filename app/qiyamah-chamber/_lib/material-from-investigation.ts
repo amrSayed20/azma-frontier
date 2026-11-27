@@ -166,8 +166,8 @@ export function resolveArrival<A extends VaultAssetLike>(
 export function spokenArrival(arrival: MaterialArrival): string | null {
   switch (arrival.kind) {
     case 'arrived':           return null;
-    case 'vault-unreachable': return 'تعذّر الوصول إلى خزانتك الآن — لم نُحضر مادتك من حجّة الدامغة. أعد التحميل.';
-    case 'not-in-vault':      return 'لم نجد مادتك من حجّة الدامغة في خزانتك.';
-    case 'no-usable-text':    return 'مادتك من حجّة الدامغة لا تحمل نصاً تبدأ منه القيامة.';
+    case 'vault-unreachable': return 'تعذّر الوصول إلى خزانتك الآن — لم نُحضر مادتك من البحث والمصادر. أعد التحميل.';
+    case 'not-in-vault':      return 'لم نجد مادتك من البحث والمصادر في خزانتك.';
+    case 'no-usable-text':    return 'مادتك من البحث والمصادر لا تحمل نصاً تبدأ منه الحجرة.';
   }
 }

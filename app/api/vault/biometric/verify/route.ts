@@ -17,6 +17,7 @@ import {
   recordFailedPinAttempt,
   clearPinAttempts,
 } from '../../../../../src/vault/vault-pin-service';
+import { issueVaultUnlock } from '../../../../../src/vault/vault-access';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 
 export const dynamic = 'force-dynamic';
@@ -74,7 +75,10 @@ export async function POST(request: NextRequest) {
   const outcome = await completeEntry(session.creatorId, response);
   if (outcome.status === 'authenticated') {
     clearPinAttempts(session.creatorId);
-    return NextResponse.json({ status: 'authenticated' });
+    // A passed biometric opens the same server-side gate the PIN opens.
+    const authenticated = NextResponse.json({ status: 'authenticated' });
+    issueVaultUnlock(authenticated, session.creatorId);
+    return authenticated;
   }
 
   recordFailedPinAttempt(session.creatorId);

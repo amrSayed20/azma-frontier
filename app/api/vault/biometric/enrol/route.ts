@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '../../../../../src/authentication';
 import { getDb, getCreator } from '../../../../../src/persistent-storage';
+import { checkVaultAccess, VAULT_LOCKED_BODY } from '../../../../../src/vault/vault-access';
 import { beginEnrolment, completeEnrolment } from '../../../../../src/vault/vault-biometric-service';
 import type { RegistrationResponseJSON } from '@simplewebauthn/server';
 
@@ -28,6 +29,10 @@ export async function GET(request: NextRequest) {
   if (!session) {
     return NextResponse.json({ status: 'failed', reason: 'unauthorized' }, { status: 401 });
   }
+  const access = checkVaultAccess(request);
+  if (access.status === 'locked') {
+    return NextResponse.json(VAULT_LOCKED_BODY, { status: 403 });
+  }
 
   const creator = getCreator(getDb(), session.creatorId);
   const options = await beginEnrolment(
@@ -41,6 +46,10 @@ export async function POST(request: NextRequest) {
   const session = creatorFrom(request);
   if (!session) {
     return NextResponse.json({ status: 'failed', reason: 'unauthorized' }, { status: 401 });
+  }
+  const access = checkVaultAccess(request);
+  if (access.status === 'locked') {
+    return NextResponse.json(VAULT_LOCKED_BODY, { status: 403 });
   }
 
   let body: unknown;

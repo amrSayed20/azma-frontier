@@ -186,8 +186,8 @@ function vaultAssetToTreasure(asset: VaultAsset): SovereignTreasure {
     addedAt:   asset.createdAt,
     journey: [
       isUpload
-        ? { actionAr: 'رُفع إلى الخزانة السيادية', chamberAr: 'القيامة', at: asset.createdAt }
-        : { actionAr: 'تولَّد في حجرة القيامة',     chamberAr: 'القيامة', at: asset.createdAt },
+        ? { actionAr: 'رُفع إلى خزانة أصولك', chamberAr: 'إنشاء الصور والمشاهد', at: asset.createdAt }
+        : { actionAr: 'تولَّد في حجرة إنشاء الصور والمشاهد',     chamberAr: 'إنشاء الصور والمشاهد', at: asset.createdAt },
     ],
     isRealAsset:      true,
     mediaUrl:         mapping.mediaUrl,
@@ -249,8 +249,8 @@ function popIncomingTransfer(): SovereignTreasure | null {
       status:  'living',
       addedAt: Date.now(),
       journey: [
-        { actionAr: 'بحث في حجرة المعرفة', chamberAr: 'حجة الدامغة', at: d.timestamp ?? Date.now() },
-        { actionAr: 'إيداع في القصر السيادي',    chamberAr: 'القصر السيادي', at: Date.now() },
+        { actionAr: 'بحث في حجرة المعرفة', chamberAr: 'البحث والمصادر', at: d.timestamp ?? Date.now() },
+        { actionAr: 'إيداع في خزانة أصولك',    chamberAr: 'خزانة أصولك', at: Date.now() },
       ],
     };
   } catch { return null; }
@@ -264,7 +264,7 @@ function findRelatedTreasures(
   selected: SovereignTreasure,
   all:      SovereignTreasure[],
 ): SovereignTreasure[] {
-  const PALACE = 'القصر السيادي';
+  const PALACE = 'خزانة أصولك';
   const selectedChambers = new Set(
     selected.journey.filter(s => s.chamberAr !== PALACE).map(s => s.chamberAr),
   );
@@ -495,7 +495,7 @@ export default function SovereignVaultPalace() {
     try {
       const s = JSON.parse(raw) as { status?: string };
       if (s?.status === 'RESOLVED') {
-        setCompanionMsg('الإمبراطورية أعدّت هذه الجلسة — القصر السيادي يستقبلك');
+        setCompanionMsg('الإمبراطورية أعدّت هذه الجلسة — خزانة أصولك تستقبلك');
       }
     } catch { /* ignore malformed session */ }
   }, []);
@@ -817,7 +817,7 @@ export default function SovereignVaultPalace() {
         id:               t.id,
         titleAr:          t.titleAr,
         preview:          t.preview,
-        origin:           'القصر السيادي',
+        origin:           'خزانة أصولك',
         vaultId:          t.vaultId,
         secureStorageUri: t.mediaUrl,
         assetFamily:      t.assetFamily,
@@ -1014,7 +1014,9 @@ export default function SovereignVaultPalace() {
       {phase === 'gate' && (
         <div className="palace-gate">
           <div className="gate-seal" aria-hidden="true">⬡</div>
-          <h1 className="gate-title">القصر السيادي</h1>
+          {/* الاسم الجديد من البطاقة الأولى — الخزانة السيادية = خزانة أصولك */}
+          <span className="gate-kicker">مُستودَعُ ما تَملِك</span>
+          <h1 className="gate-title">خزانةُ أصولك</h1>
           <p className="gate-subtitle">هذا مكانك</p>
 
           {/* Auth method selector */}
@@ -1092,7 +1094,7 @@ export default function SovereignVaultPalace() {
         <div className="palace-gate palace-pin-setup">
           <div className="gate-seal" aria-hidden="true">⬡</div>
           <h1 className="gate-title">
-            {setupStep === 'enter' ? 'أنشئ رمز القصر السيادي' : 'أكّد الرمز السري'}
+            {setupStep === 'enter' ? 'أنشئ رمز خزانة أصولك' : 'أكّد الرمز السري'}
           </h1>
           <p className="gate-subtitle pin-setup-subtitle">
             {setupStep === 'enter'
@@ -1173,7 +1175,7 @@ export default function SovereignVaultPalace() {
             <LivingCompanion message={companionMsg} visible={companionVisible} textToSpeak={companionMsg} context="sovereign-vault-palace" />
             <div className="palace-crown-identity">
               <span className="palace-crown-seal" aria-hidden="true">⬡</span>
-              <span className="palace-crown-name">القصر السيادي</span>
+              <span className="palace-crown-name">خزانةُ أصولك</span>
               {totalTreasures > 0 && (
                 <span className="palace-crown-count">{totalTreasures} كنز</span>
               )}
@@ -1320,10 +1322,10 @@ export default function SovereignVaultPalace() {
                   <div className="atrium-dispatch">
                     <div className="atrium-section-label">الحجرات المتصلة</div>
                     <div className="atrium-dispatch-row">
-                      <button className="atrium-route-btn route-hujjah"  onClick={() => handleTransfer('/hujjah-al-damighah')}>حجة الدامغة</button>
-                      <button className="atrium-route-btn route-qiyamah" onClick={() => handleTransfer('/qiyamah-chamber')}>القيامة</button>
-                      <button className="atrium-route-btn route-rasamr"  onClick={() => handleTransfer('/ras-amr')}>رأس الأمر</button>
-                      <button className="atrium-route-btn route-makman"  onClick={() => handleTransfer('/makman-al-ghayah')}>مكمن الغاية</button>
+                      <button className="atrium-route-btn route-hujjah"  onClick={() => handleTransfer('/hujjah-al-damighah')}>البحث والمصادر</button>
+                      <button className="atrium-route-btn route-qiyamah" onClick={() => handleTransfer('/qiyamah-chamber')}>إنشاء الصور والمشاهد</button>
+                      <button className="atrium-route-btn route-rasamr"  onClick={() => handleTransfer('/ras-amr')}>المونتاج والإنتاج</button>
+                      <button className="atrium-route-btn route-makman"  onClick={() => handleTransfer('/makman-al-ghayah')}>النشر والتسليم</button>
                     </div>
                   </div>
                 </div>
@@ -1463,7 +1465,7 @@ export default function SovereignVaultPalace() {
                           >
                             <span className="path-icon" aria-hidden="true">✦</span>
                             <div className="path-meta">
-                              <span className="path-name">حجة الدامغة</span>
+                              <span className="path-name">البحث والمصادر</span>
                               <span className="path-desc">بحث معرفي</span>
                             </div>
                           </button>
@@ -1473,7 +1475,7 @@ export default function SovereignVaultPalace() {
                           >
                             <span className="path-icon" aria-hidden="true">◈</span>
                             <div className="path-meta">
-                              <span className="path-name">القيامة</span>
+                              <span className="path-name">إنشاء الصور والمشاهد</span>
                               <span className="path-desc">إنتاج إبداعي</span>
                             </div>
                           </button>
@@ -1483,7 +1485,7 @@ export default function SovereignVaultPalace() {
                           >
                             <span className="path-icon" aria-hidden="true">◎</span>
                             <div className="path-meta">
-                              <span className="path-name">رأس الأمر</span>
+                              <span className="path-name">المونتاج والإنتاج</span>
                               <span className="path-desc">قيادة وقرار</span>
                             </div>
                           </button>
@@ -1493,7 +1495,7 @@ export default function SovereignVaultPalace() {
                           >
                             <span className="path-icon" aria-hidden="true">⬡</span>
                             <div className="path-meta">
-                              <span className="path-name">مكمن الغاية</span>
+                              <span className="path-name">النشر والتسليم</span>
                               <span className="path-desc">استراتيجية وتخطيط</span>
                             </div>
                           </button>
@@ -1515,7 +1517,7 @@ export default function SovereignVaultPalace() {
                         {deleteConfirmId === selectedTreasure.id && (
                           <div className="vault-delete-modal">
                             <div className="vault-delete-modal-body">
-                              <p className="vault-delete-title">حذف نهائي من الخزانة السيادية</p>
+                              <p className="vault-delete-title">حذف نهائي من خزانة أصولك</p>
                               <p className="vault-delete-warning">
                                 هذا الأصل الحقيقي سيُحذف بشكل دائم لا رجعة فيه. أي استخدام له في مشاهد التوجيه سيفقد مصدره.
                               </p>

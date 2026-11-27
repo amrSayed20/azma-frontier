@@ -2,6 +2,7 @@ import { PUBLISHED_POLICIES } from '@/src/policies';
 import { resolveRequestLocale } from '@/src/creator-language/resolve-request-locale';
 import { getDictionary, t } from '@/src/creator-language';
 import './policies.css';
+import '@/src/imperial-experience-engine/dihliz/dihliz-member-surface.css';
 
 /**
  * AZMA OS — the policies a Creator can actually read.
@@ -33,7 +34,7 @@ export default async function PoliciesIndex() {
   const isAr = locale === 'ar';
 
   return (
-    <main className="policy-viewport" dir={isAr ? 'rtl' : 'ltr'} lang={locale}>
+    <main className="policy-viewport" data-dihliz="policies" dir={isAr ? 'rtl' : 'ltr'} lang={locale}>
       <header className="policy-header">
         <p className="policy-kicker">AZMA OS</p>
         <h1 className="policy-title">{t(dict, 'policies.indexTitle')}</h1>

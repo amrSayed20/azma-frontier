@@ -174,7 +174,7 @@ export const WORK_TYPE_OPTIONS: readonly WorkTypeOption[] = [
   { workType: WorkType.SCRIPT, labelAr: 'سكريبت', producesAr: 'سكريبت مشاهد وتعليق صوتي', reachableState: ProductionState.DESIGN_SPECIFICATION },
   { workType: WorkType.STORYBOARD, labelAr: 'ستوري بورد', producesAr: 'مواصفة مشاهد — لا صور', reachableState: ProductionState.DESIGN_SPECIFICATION },
   { workType: WorkType.INFOGRAPHIC, labelAr: 'إنفوجرافيك', producesAr: 'محتوى ومواصفة تصميم ومطالبات — لا صورة نهائية', reachableState: ProductionState.GENERATION_PROMPTS },
-  { workType: WorkType.IMAGE_PROMPTS, labelAr: 'مطالبات صور', producesAr: 'مطالبات جاهزة — والصور تُنتَج في حجرة القيامة', reachableState: ProductionState.GENERATION_PROMPTS },
+  { workType: WorkType.IMAGE_PROMPTS, labelAr: 'مطالبات صور', producesAr: 'مطالبات جاهزة — والصور تُنتَج في حجرة إنشاء الصور والمشاهد', reachableState: ProductionState.GENERATION_PROMPTS },
   { workType: WorkType.VIDEO_PROMPTS, labelAr: 'مطالبات فيديو', producesAr: 'مطالبات جاهزة — ولم يُنتَج فيديو', reachableState: ProductionState.GENERATION_PROMPTS },
   { workType: WorkType.DOCUMENT, labelAr: 'ملف مكتمل', producesAr: 'مستند مجمَّع بمصادره', reachableState: ProductionState.CONTENT_PACKAGE },
   { workType: WorkType.BOOK, labelAr: 'كتاب', producesAr: 'هيكل كتاب وفصوله بمصادرها', reachableState: ProductionState.CONTENT_PACKAGE },
@@ -348,7 +348,7 @@ export function reviewReasonsFor(
   const reasons: string[] = [];
 
   if (domain === 'religious') {
-    reasons.push('مادة دينية — لا تُفتي الحُجّة، والتفسير والترجيح مرجعهما أهل العلم.');
+    reasons.push('مادة دينية — لا تُفتي حجرة البحث والمصادر، والتفسير والترجيح مرجعهما أهل العلم.');
   }
   if (domain === 'medical') {
     reasons.push('مادة تعليمية طبية — لا تُغني عن الطبيب المعالج، والقرار في حالة بعينها له وحده.');

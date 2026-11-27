@@ -60,3 +60,13 @@
 .qiyamah-chamber-experience[data-presence='away'] .qiyamah-chamber-companion {
   animation-play-state: paused;
 }
+
+/* the companion joins the Dihliz: navy glass pill instead of the black forge chip */
+.qiyamah-chamber-companion {
+  background: linear-gradient(170deg, rgba(24, 34, 99, 0.85), rgba(5, 8, 25, 0.92));
+  border: 1px solid rgba(237, 201, 76, 0.4);
+  border-block-start-color: rgba(255, 246, 222, 0.5);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+  box-shadow: 0 14px 36px rgba(1, 2, 9, 0.55), inset 0 1px 0 rgba(255, 246, 222, 0.25), 0 0 22px rgba(237, 201, 76, 0.12);
+}

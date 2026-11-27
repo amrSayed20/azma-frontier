@@ -300,7 +300,7 @@ export const OPERATION_CONSUMPTION: readonly ConsumptionRule[] = [
   //   the 20 is the Founder's commercial figure, not a derived one.
   { capability: 'PLATFORM_REFRAME', balancePerUnit: 20, quantity: 'per-operation',
     pricingBasisCapability: null,
-    note: 'Founder ruling 2026-09-29. One charge per platform reframed. Local ffmpeg scale+crop — no provider is contacted. The only balance transaction in مكمن الغاية.' },
+    note: 'Founder ruling 2026-09-29. One charge per platform reframed. Local ffmpeg scale+crop — no provider is contacted. The only balance transaction in النشر والتسليم.' },
 
   { capability: 'MP4_PRODUCTION', balancePerUnit: 70, quantity: 'per-requested-second',
     pricingBasisCapability: null,

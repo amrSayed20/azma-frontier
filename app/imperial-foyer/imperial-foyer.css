@@ -783,3 +783,219 @@
   .ledger-name  { color: #1a1710; }
   .ledger-role  { color: rgba(26, 23, 16, 0.6); }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   الرواق يَدخل الدِّهليز — RESKIN (2026-11-27)
+   The foyer's pale room was the last surface still outside the house. It
+   now wears the same navy hall the Creator crossed at the gate, in both
+   light and dark schemes: the reference the Founder chose is the gate, and
+   the gate is navy in every light. The chamber cards pour as liquid glass;
+   gold stays for the names and the seals. Layout untouched; this is dress.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.foyer-viewport {
+  background:
+    radial-gradient(1180px 760px at 50% -14%, rgba(59, 82, 216, 0.5) 0%, rgba(27, 40, 120, 0.32) 32%, transparent 66%),
+    linear-gradient(180deg, #0c1342 0%, #0b1240 30%, #090e30 56%, #06091f 78%, #050819 100%);
+  background-attachment: fixed;
+  color: #f6f8ff;
+}
+
+.foyer-grid {
+  background-image:
+    linear-gradient(rgba(131, 85, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(131, 85, 255, 0.045) 1px, transparent 1px);
+}
+
+.foyer-glow-primary {
+  background: radial-gradient(ellipse at center, rgba(59, 82, 216, 0.4) 0%, transparent 70%);
+}
+
+.foyer-glow-secondary {
+  background: radial-gradient(ellipse at center, rgba(131, 85, 255, 0.2) 0%, transparent 70%);
+}
+
+/* the mashrabiya falls where the light falls */
+.foyer-ambient::after {
+  content: '';
+  position: absolute;
+  inset-block-start: -6vh;
+  inset-inline: 0;
+  margin-inline: auto;
+  inline-size: min(1400px, 100%);
+  block-size: 100vh;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><g fill='none' stroke='rgba(255,246,222,0.6)' stroke-width='0.85'><path d='M46 4 L58 22 L80 22 L68 40 L80 58 L58 58 L46 76 L34 58 L12 58 L24 40 L12 22 L34 22 Z'/><circle cx='46' cy='40' r='10'/><path d='M0 40 L12 22 M92 40 L80 22 M0 40 L12 58 M92 40 L80 58'/></g></svg>");
+  background-size: 92px 92px;
+  -webkit-mask-image: radial-gradient(closest-side at 50% 10%, #000 0%, rgba(0,0,0,0.45) 38%, transparent 66%);
+  mask-image: radial-gradient(closest-side at 50% 10%, #000 0%, rgba(0,0,0,0.45) 38%, transparent 66%);
+}
+
+.creator-greeting { color: #fff6de; text-shadow: 0 2px 24px rgba(1, 2, 9, 0.5); }
+
+/* the way-in pills: navy glass; the chosen pours gold */
+.foyer-mode-btn {
+  background: linear-gradient(170deg, rgba(24, 34, 99, 0.8), rgba(5, 8, 25, 0.88));
+  border: 1px solid rgba(164, 184, 255, 0.22);
+  border-block-start-color: rgba(255, 246, 222, 0.3);
+  color: #a9b6e8;
+  box-shadow: 0 8px 22px rgba(1, 2, 9, 0.45), inset 0 1px 0 rgba(255, 246, 222, 0.16);
+}
+.foyer-mode-btn:hover {
+  border-color: rgba(176, 196, 255, 0.42);
+  color: #e8edff;
+}
+.foyer-mode-btn.mode-active {
+  background: linear-gradient(176deg, #fff9e6 0%, #f0d26a 28%, #edc94c 50%, #ab8419 74%, #f8ebbb 100%);
+  border-color: rgba(255, 249, 230, 0.7);
+  color: #281d02;
+  font-weight: 700;
+  box-shadow: 0 12px 32px rgba(237, 201, 76, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* the vault, centred: the house's own glass, its name poured gold */
+.foyer-vault-card {
+  background:
+    linear-gradient(165deg, rgba(49, 70, 189, 0.44), rgba(24, 34, 99, 0.58) 45%, rgba(6, 9, 28, 0.88)) padding-box,
+    linear-gradient(165deg, rgba(255, 246, 222, 0.5), rgba(164, 184, 255, 0.18) 42%, rgba(164, 184, 255, 0.32)) border-box;
+  border: 1px solid transparent;
+  border-radius: 28px;
+  -webkit-backdrop-filter: blur(14px) saturate(1.45);
+  backdrop-filter: blur(14px) saturate(1.45);
+  box-shadow:
+    0 28px 64px rgba(1, 2, 9, 0.6),
+    inset 0 1px 0 rgba(255, 246, 222, 0.34),
+    inset 0 -30px 48px -30px rgba(131, 85, 255, 0.48);
+}
+.foyer-vault-card:hover {
+  box-shadow:
+    0 36px 76px rgba(1, 2, 9, 0.65),
+    0 0 36px rgba(237, 201, 76, 0.18),
+    inset 0 1px 0 rgba(255, 246, 222, 0.44);
+}
+
+.vault-card-name {
+  background: linear-gradient(100deg, #edc94c 8%, #fff6de 40%, #edc94c 78%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+}
+.vault-card-role { color: #a9b6e8; }
+
+/* the four chambers: liquid-glass cards, gold names */
+.foyer-chamber-card {
+  background:
+    linear-gradient(165deg, rgba(49, 70, 189, 0.38), rgba(24, 34, 99, 0.52) 45%, rgba(6, 9, 28, 0.86)) padding-box,
+    linear-gradient(165deg, rgba(255, 246, 222, 0.38), rgba(164, 184, 255, 0.14) 42%, rgba(164, 184, 255, 0.26)) border-box;
+  border: 1px solid transparent;
+  border-radius: 22px;
+  -webkit-backdrop-filter: blur(14px) saturate(1.45);
+  backdrop-filter: blur(14px) saturate(1.45);
+  box-shadow:
+    0 20px 48px rgba(1, 2, 9, 0.55),
+    inset 0 1px 0 rgba(255, 246, 222, 0.28),
+    inset 0 -24px 40px -24px rgba(131, 85, 255, 0.4);
+  transition: transform 200ms ease, box-shadow 240ms ease, background 240ms ease;
+}
+.foyer-chamber-card:hover {
+  box-shadow:
+    0 28px 60px rgba(1, 2, 9, 0.6),
+    0 0 30px rgba(237, 201, 76, 0.16),
+    inset 0 1px 0 rgba(255, 246, 222, 0.4);
+  transform: translateY(-3px);
+}
+
+.chamber-name {
+  background: linear-gradient(100deg, #edc94c 8%, #fff6de 42%, #edc94c 80%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.chamber-role   { color: #f6e2a4; }
+.chamber-action { color: #a9b6e8; }
+.chamber-glyph  { filter: drop-shadow(0 0 10px rgba(237, 201, 76, 0.4)); }
+
+/* the ledger: navy glass slips */
+.foyer-ledger-card {
+  background: linear-gradient(170deg, rgba(24, 34, 99, 0.55), rgba(6, 9, 28, 0.8));
+  border: 1px solid rgba(164, 184, 255, 0.18);
+  border-block-start-color: rgba(255, 246, 222, 0.28);
+  border-radius: 18px;
+}
+.foyer-ledger-card:hover { border-color: rgba(246, 226, 164, 0.45); }
+.ledger-glyph { color: #edc94c; }
+.ledger-name  { color: #e8edff; }
+.ledger-role  { color: #a9b6e8; }
+
+.foyer-logout-btn {
+  background: linear-gradient(170deg, rgba(24, 34, 99, 0.85), rgba(5, 8, 25, 0.9));
+  border: 1px solid rgba(164, 184, 255, 0.22);
+  color: #c2cdf4;
+  border-radius: 999px;
+}
+.foyer-logout-btn:hover:not(:disabled) { color: #fff6de; border-color: rgba(246, 226, 164, 0.5); }
+
+/* the navy hall holds in every light — the gate the Founder chose is navy */
+@media (prefers-color-scheme: light) {
+  .foyer-viewport {
+    background:
+      radial-gradient(1180px 760px at 50% -14%, rgba(59, 82, 216, 0.5) 0%, rgba(27, 40, 120, 0.32) 32%, transparent 66%),
+      linear-gradient(180deg, #0c1342 0%, #0b1240 30%, #090e30 56%, #06091f 78%, #050819 100%);
+    background-attachment: fixed;
+    color: #f6f8ff;
+  }
+  .foyer-grid {
+    background-image:
+      linear-gradient(rgba(131, 85, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(131, 85, 255, 0.045) 1px, transparent 1px);
+  }
+  .foyer-glow-primary { background: radial-gradient(ellipse at center, rgba(59, 82, 216, 0.4) 0%, transparent 70%); }
+  .foyer-ledger-card {
+    background: linear-gradient(170deg, rgba(24, 34, 99, 0.55), rgba(6, 9, 28, 0.8));
+    border-color: rgba(164, 184, 255, 0.18);
+  }
+  .foyer-ledger-card:hover { background: linear-gradient(170deg, rgba(36, 51, 143, 0.55), rgba(12, 19, 66, 0.8)); border-color: rgba(246, 226, 164, 0.45); }
+  .ledger-glyph { color: #edc94c; }
+  .ledger-name  { color: #e8edff; }
+  .ledger-role  { color: #a9b6e8; }
+  .vault-card-role { color: #a9b6e8; }
+  .foyer-logout-btn { border-color: rgba(164, 184, 255, 0.22); color: #c2cdf4; }
+  .foyer-mode-btn { border-color: rgba(164, 184, 255, 0.22); color: #a9b6e8; }
+}
+
+.foyer-viewport ::selection { background: rgba(131, 85, 255, 0.4); color: #fff6de; }
+.foyer-viewport :focus-visible { outline: 2px solid #fff6de; outline-offset: 2px; }
+
+/* the natural-next card keeps the glass; its halo turns gold instead */
+.foyer-chamber-card.chamber-natural-next {
+  background:
+    linear-gradient(165deg, rgba(49, 70, 189, 0.38), rgba(24, 34, 99, 0.52) 45%, rgba(6, 9, 28, 0.86)) padding-box,
+    linear-gradient(165deg, rgba(255, 246, 222, 0.66), rgba(237, 201, 76, 0.3) 42%, rgba(237, 201, 76, 0.44)) border-box;
+  border: 1px solid transparent;
+  box-shadow:
+    0 20px 48px rgba(1, 2, 9, 0.55),
+    0 0 26px rgba(237, 201, 76, 0.22),
+    inset 0 1px 0 rgba(255, 246, 222, 0.4),
+    inset 0 -24px 40px -24px rgba(131, 85, 255, 0.4);
+}
+
+/* the install pill joins the hall */
+.foyer-install-btn {
+  background: linear-gradient(170deg, rgba(24, 34, 99, 0.85), rgba(5, 8, 25, 0.9)) !important;
+  border: 1px solid rgba(164, 184, 255, 0.22) !important;
+  color: #c2cdf4 !important;
+  border-radius: 999px;
+}
+.foyer-install-btn:hover {
+  color: #fff6de !important;
+  border-color: rgba(246, 226, 164, 0.5) !important;
+}
+@media (prefers-color-scheme: light) {
+  .foyer-install-btn { background: linear-gradient(170deg, rgba(24, 34, 99, 0.85), rgba(5, 8, 25, 0.9)) !important; border-color: rgba(164, 184, 255, 0.22) !important; color: #c2cdf4 !important; }
+}
+
+.chamber-action { color: #a9b6e8; font-style: normal; }
+.chamber-presence-state { color: rgba(246, 226, 164, 0.75); }
+.chamber-presence-state.presence-active { color: rgba(246, 226, 164, 0.85); }
+.chamber-presence-state.presence-processing { color: #edc94c; }

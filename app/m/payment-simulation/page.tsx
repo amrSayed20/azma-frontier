@@ -17,6 +17,7 @@
 
 import { Suspense } from 'react';
 import PaymentSimulationClient from './PaymentSimulationClient';
+import '@/src/imperial-experience-engine/dihliz/dihliz-member-surface.css';
 
 export const dynamic = 'force-dynamic';
 
