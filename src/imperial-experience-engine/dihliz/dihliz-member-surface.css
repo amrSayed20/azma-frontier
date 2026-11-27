@@ -575,6 +575,87 @@
 
 [data-dihliz="notfound"] .creator-access-submit { display: block; text-align: center; padding: 0.85rem 1.25rem; }
 
+
+/* ── 11. THE PAYMENT REHEARSAL · محاكاةُ الدفع ──────────────────────────────
+   VISUALS ONLY. This is the one surface in this file that sits next to money,
+   and not one line of it is touched: no price, no order id, no button state,
+   no request. It is dressed so a Creator rehearsing a checkout does not walk
+   out of a navy glass platform into a brown room. */
+
+[data-dihliz="payment-sim"] .pay-sim-shell {
+  background: transparent;
+  color: var(--dih-ink);
+}
+
+[data-dihliz="payment-sim"] .pay-sim-card {
+  max-width: 540px;
+  padding: 1.6rem 1.5rem 1.7rem;
+  border-radius: 24px;
+  background:
+    linear-gradient(102deg, transparent 0%, rgba(255, 246, 222, 0.09) 20%, rgba(255, 246, 222, 0.03) 38%, transparent 58%),
+    linear-gradient(168deg, rgba(36, 51, 143, 0.42) 0%, rgba(12, 19, 66, 0.64) 52%, rgba(5, 8, 25, 0.8) 100%);
+  border: 1px solid var(--dih-line);
+  border-block-start-color: var(--dih-line-lit);
+  box-shadow:
+    0 22px 54px rgba(1, 2, 9, 0.55),
+    inset 0 1px 0 rgba(255, 246, 222, 0.16);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  backdrop-filter: blur(18px) saturate(1.15);
+}
+
+[data-dihliz="payment-sim"] .pay-sim-banner {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 111, 94, 0.45);
+  background: linear-gradient(168deg, rgba(120, 30, 22, 0.45), rgba(40, 8, 6, 0.7));
+  color: #ffd9d3;
+}
+
+[data-dihliz="payment-sim"] .pay-sim-title {
+  color: var(--dih-gold);
+  font-size: 1.2rem;
+  letter-spacing: 0.01em;
+}
+
+[data-dihliz="payment-sim"] .pay-sim-summary > div {
+  border-bottom: 1px solid var(--dih-line);
+}
+[data-dihliz="payment-sim"] .pay-sim-summary dt { color: var(--dih-ink-muted); }
+[data-dihliz="payment-sim"] .pay-sim-summary dd { color: var(--dih-ink); }
+[data-dihliz="payment-sim"] .pay-sim-mono { color: var(--dih-ink-soft); }
+[data-dihliz="payment-sim"] .pay-sim-note { color: var(--dih-ink-muted); }
+[data-dihliz="payment-sim"] .pay-sim-loading { color: var(--dih-ink-muted); }
+
+[data-dihliz="payment-sim"] .pay-sim-btn {
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+[data-dihliz="payment-sim"] .pay-sim-btn-pay {
+  color: #281d02;
+  border: 1px solid rgba(255, 246, 222, 0.55);
+  background: linear-gradient(176deg, #fff9e6 0%, var(--dih-gold) 46%, var(--dih-gold-soft) 78%, var(--dih-gold-hi) 100%);
+  box-shadow:
+    0 10px 26px rgba(237, 201, 76, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+[data-dihliz="payment-sim"] .pay-sim-btn-fail {
+  color: #ffd9d3;
+  border: 1px solid rgba(255, 111, 94, 0.5);
+  background: linear-gradient(168deg, rgba(90, 24, 18, 0.55), rgba(30, 6, 4, 0.75));
+}
+
+[data-dihliz="payment-sim"] .pay-sim-btn-cancel {
+  color: var(--dih-ink-soft);
+  border: 1px solid var(--dih-line);
+  background: linear-gradient(168deg, rgba(24, 34, 99, 0.62), rgba(5, 8, 25, 0.82));
+}
+
+[data-dihliz="payment-sim"] .pay-sim-result { border-top: 1px solid var(--dih-line); }
+[data-dihliz="payment-sim"] .pay-sim-ok .pay-sim-result-line { color: #8fe3b4; }
+[data-dihliz="payment-sim"] .pay-sim-no .pay-sim-result-line,
+[data-dihliz="payment-sim"] .pay-sim-error { color: #ffb3a6; }
+
 /* ── 10. SMALL SCREENS, AND THOSE WHO ASK FOR LESS MOTION ───────────────── */
 
 @media (max-width: 560px) {
