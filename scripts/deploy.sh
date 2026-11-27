@@ -183,16 +183,131 @@ wait_for_http() {
   " || die "service did not come up"
 }
 
+# ── P0-1 · BUILD_SOURCE: THE BUILD MUST PROVE WHAT IT WAS BUILT FROM ─────────
+#
+#   The release label used to come from `git rev-parse HEAD` at SHIPPING time,
+#   while the files in .next came from whatever the tree held at BUILD time.
+#   Nothing tied the two together, and SHA-256 of the archive only proves the
+#   transfer was intact, not which source the archive was built from.
+#
+#   Now the build writes .next/BUILD_SOURCE (it travels inside the archive)
+#   recording the exact source it was built from, and the script refuses to
+#   package or send anything whose source no longer matches that record.
+#   Every refusal below happens before a single ssh or scp call.
+fp_file() {
+  if [ -f "$1" ]; then sha256sum "$1" | cut -d' ' -f1; else echo none; fi
+}
+
+# Every next.config.* file, in a stable order, as one fingerprint.
+fp_next_config() {
+  ( cd "$REPO_ROOT"
+    found=0
+    for f in next.config.*; do
+      [ -f "$f" ] || continue
+      found=1
+      printf '%s  %s\n' "$(sha256sum "$f" | cut -d' ' -f1)" "$f"
+    done | sha256sum | cut -d' ' -f1
+  )
+}
+
+# public/ minus the runtime-written directories (they are .gitignored data).
+fp_public() {
+  ( cd "$REPO_ROOT"
+    if [ ! -d public ]; then echo none; exit 0; fi
+    find public -type f \
+      ! -path 'public/uploads/*' ! -path 'public/generated-assets/*' ! -path 'public/renders/*' \
+      -print0 | LC_ALL=C sort -z | xargs -0 -r sha256sum | sha256sum | cut -d' ' -f1
+  )
+}
+
+# The whole source: HEAD, every tracked change, and every untracked file that
+# is not ignored. Any edit to any source file after the build changes this.
+fp_source() {
+  ( cd "$REPO_ROOT"
+    { git rev-parse HEAD
+      git diff HEAD --binary
+      git ls-files -o --exclude-standard -z | LC_ALL=C sort -z | xargs -0 -r sha256sum
+    } | sha256sum | cut -d' ' -f1
+  )
+}
+
+tree_state() {
+  if [ -n "$(cd "$REPO_ROOT" && git status --porcelain 2>/dev/null)" ]; then echo dirty; else echo clean; fi
+}
+
+bs_get() { grep "^$1=" "$REPO_ROOT/.next/BUILD_SOURCE" 2>/dev/null | head -1 | cut -d= -f2-; }
+
+# The record is taken BEFORE the build and written into .next AFTER it, so it
+# says what the build started from. A source file edited during the build then
+# fails verification instead of being certified.
+BS_TEXT=""
+snapshot_build_source() {
+  local head_full="$1" deployment_id="$2"
+  BS_TEXT="commit=$head_full
+tree=$(tree_state)
+source_fingerprint=$(fp_source)
+lockfile_sha256=$(fp_file "$REPO_ROOT/package-lock.json")
+next_config_sha256=$(fp_next_config)
+public_sha256=$(fp_public)
+deployment_id=$deployment_id
+built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+}
+
+write_build_source() {
+  printf '%s\n' "$BS_TEXT" > "$REPO_ROOT/.next/BUILD_SOURCE"
+}
+
+# Compare the recorded build source with the tree as it is right now.
+# Dies (before any remote call) on the first difference.
+verify_build_source() {
+  local head_full="$1" field recorded current
+  [ -f "$REPO_ROOT/.next/BUILD_SOURCE" ] || die "no .next/BUILD_SOURCE — the build does not say what it was built from"
+  for field in commit source_fingerprint lockfile_sha256 next_config_sha256 public_sha256; do
+    recorded="$(bs_get "$field")"
+    case "$field" in
+      commit)             current="$head_full" ;;
+      source_fingerprint) current="$(fp_source)" ;;
+      lockfile_sha256)    current="$(fp_file "$REPO_ROOT/package-lock.json")" ;;
+      next_config_sha256) current="$(fp_next_config)" ;;
+      public_sha256)      current="$(fp_public)" ;;
+    esac
+    [ -n "$recorded" ] || die "BUILD_SOURCE has no $field — nothing was sent"
+    [ "$recorded" = "$current" ] \
+      || die "the source changed since the build ($field differs) — nothing was sent. Rebuild from the current tree."
+  done
+}
+
 # ── deploy ───────────────────────────────────────────────────────────────────
 cmd_deploy() {
-  local skip_build=0 auto_rollback=1
-  for arg in "$@"; do
-    case "$arg" in
+  local skip_build=0 auto_rollback=1 want_commit="" allow_dirty=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
       --skip-build)      skip_build=1 ;;
       --no-auto-rollback) auto_rollback=0 ;;
-      *) die "unknown option: $arg" ;;
+      --allow-dirty)     allow_dirty=1 ;;
+      --commit)
+        [ "$#" -ge 2 ] || die "--commit needs a full 40-character SHA"
+        want_commit="$2"; shift ;;
+      --commit=*)        want_commit="${1#--commit=}" ;;
+      *) die "unknown option: $1" ;;
     esac
+    shift
   done
+
+  # P0-1 · every refusal in this block happens before any ssh or scp.
+  local head_full
+  head_full="$(cd "$REPO_ROOT" && git rev-parse HEAD 2>/dev/null)" \
+    || die "$REPO_ROOT is not a git work tree — cannot identify the source"
+  if [ -n "$want_commit" ]; then
+    want_commit="$(printf '%s' "$want_commit" | tr 'A-F' 'a-f')"
+    printf '%s' "$want_commit" | grep -Eq '^[0-9a-f]{40}$' \
+      || die "--commit must be the full 40-character SHA, not an abbreviation"
+    [ "$head_full" = "$want_commit" ] \
+      || die "HEAD is $head_full but --commit asked for $want_commit — nothing was built or sent"
+  fi
+  if [ "$(tree_state)" = "dirty" ] && [ "$allow_dirty" -ne 1 ]; then
+    die "the working tree has uncommitted changes — commit or stash them, or pass --allow-dirty to ship them knowingly"
+  fi
 
   # ── D-9 · A RELEASE LABEL MUST IDENTIFY THE CODE IT CARRIES ───────────────
   #
@@ -220,6 +335,7 @@ cmd_deploy() {
   info "target $REMOTE:$APP_DIR"
 
   # 1 ── build
+  [ "$skip_build" -eq 1 ] || snapshot_build_source "$head_full" "$release_id"
   if [ "$skip_build" -eq 1 ]; then
     [ -f "$REPO_ROOT/.next/BUILD_ID" ] || die "--skip-build given but .next/BUILD_ID is missing"
     warn "using the existing build (--skip-build)"
@@ -236,6 +352,23 @@ cmd_deploy() {
   build_id="$(cat "$REPO_ROOT/.next/BUILD_ID")"
   info "BUILD_ID $build_id"
 
+  # 1b ── P0-1 · record what this build was built from, then prove it still is
+  #       the tree on disk before anything is packaged. A --skip-build with no
+  #       record cannot be proven (tightening that is a later item); it is
+  #       labelled unverified in SOURCE_IDENTITY rather than passed off as clean.
+  local source_state="verified"
+  if [ "$skip_build" -eq 0 ]; then
+    write_build_source
+    ok "BUILD_SOURCE written ($head_full)"
+  fi
+  if [ -f "$REPO_ROOT/.next/BUILD_SOURCE" ]; then
+    verify_build_source "$head_full"
+    ok "build source matches the tree"
+  else
+    source_state="unverified"
+    warn "no .next/BUILD_SOURCE in the reused build — its source is UNVERIFIED"
+  fi
+
   # 2 ── package: one archive, so a partial transfer is a broken file rather
   #      than a half-written directory
   step "Packaging one release artifact"
@@ -251,6 +384,10 @@ cmd_deploy() {
   tar "${TAR_FLAGS[@]}" -czf "$ARTIFACT" -C "$REPO_ROOT" \
       --exclude='.next/dev' --exclude='.next/cache' \
       .next package.json package-lock.json
+  # The tree must not have moved while the archive was being written.
+  if [ "$source_state" = "verified" ]; then
+    verify_build_source "$head_full"
+  fi
   local local_sum
   local_sum="$(sha256sum "$ARTIFACT" | cut -d' ' -f1)"
   info "size   $(du -h "$ARTIFACT" | cut -f1)"
@@ -429,16 +566,32 @@ cmd_deploy() {
   # 6 ── move staged into its own immutable release directory (same
   #      filesystem, so this is a real atomic rename)
   step "Installing release"
+  # P0-1 · the identity comes from the recorded build, not from HEAD now.
+  local id_commit id_tree id_fp id_lock id_cfg id_pub id_built id_deployment
+  if [ "$source_state" = "verified" ]; then
+    id_commit="$(bs_get commit)"; id_tree="$(bs_get tree)"; id_fp="$(bs_get source_fingerprint)"
+    id_lock="$(bs_get lockfile_sha256)"; id_cfg="$(bs_get next_config_sha256)"
+    id_pub="$(bs_get public_sha256)"; id_built="$(bs_get built_at)"; id_deployment="$(bs_get deployment_id)"
+  else
+    id_commit="unverified (HEAD at shipping: $head_full)"; id_tree="unknown"; id_fp="unknown"
+    id_lock="unknown"; id_cfg="unknown"; id_pub="unknown"; id_built="unknown"; id_deployment="$release_id"
+  fi
   remote "
     set -e
     rm -rf '$RELEASES_DIR/$release_id'
     mkdir -p '$RELEASES_DIR/$release_id'
     mv -T '$STAGING_DIR/.next' '$RELEASES_DIR/$release_id/.next'
     {
-      echo 'commit=$release_commit'
-      echo 'tree=$release_dirty'
+      echo 'source=$source_state'
+      echo 'commit=$id_commit'
+      echo 'tree=$id_tree'
+      echo 'source_fingerprint=$id_fp'
+      echo 'lockfile_sha256=$id_lock'
+      echo 'next_config_sha256=$id_cfg'
+      echo 'public_sha256=$id_pub'
+      echo 'built_at=$id_built'
       echo 'release_id=$release_id'
-      echo 'deployment_id=$release_id'
+      echo 'deployment_id=$id_deployment'
       echo build_id=\$(cat '$RELEASES_DIR/$release_id/.next/BUILD_ID' 2>/dev/null || echo unknown)
       echo 'build_id_note=BUILD_ID is NOT unique per build in this project - measured identical across five releases with three different source trees. deployment_id is the discriminator; it equals release_id and is baked into the build via NEXT_DEPLOYMENT_ID.'
       echo 'released_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)'
