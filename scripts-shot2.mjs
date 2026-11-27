@@ -6,7 +6,8 @@ const full = process.argv[4] === 'full';
 const closeOverlay = process.argv[5] === '1';
 const browser = await chromium.launch();
 const ctx = await browser.newContext();
-await ctx.addCookies([{ name: 'azma_session', value: '3b2d8a88-5f2b-42ff-9139-e141c4725010', domain: 'localhost', path: '/' }]);
+const session = process.env.AZMA_SESSION;
+if (session) await ctx.addCookies([{ name: 'azma_session', value: session, domain: 'localhost', path: '/' }]);
 for (const r of routes) {
   for (const [name, vp] of [['m', {width: 390, height: 844}], ['d', {width: 1440, height: 900}]]) {
     const page = await ctx.newPage();
