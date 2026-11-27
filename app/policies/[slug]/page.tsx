@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { policyBySlug, PUBLISHED_POLICIES } from '@/src/policies';
 import '../policies.css';
+import '@/src/imperial-experience-engine/dihliz/dihliz-member-surface.css';
 
 /**
  * AZMA OS — one published policy, read by anyone.
@@ -30,7 +31,7 @@ export default async function PolicyPage({ params }: { params: Promise<{ slug: s
   const isArabic = policy.language === 'ar';
 
   return (
-    <main className="policy-viewport" dir={isArabic ? 'rtl' : 'ltr'} lang={policy.language}>
+    <main className="policy-viewport" data-dihliz="policies" dir={isArabic ? 'rtl' : 'ltr'} lang={policy.language}>
       <nav className="policy-back">
         <a href="/policies">{isArabic ? '← كل السياسات' : '← All policies'}</a>
       </nav>
