@@ -1914,7 +1914,9 @@ export function QiyamahChamberClient({
         </button>
 
         <div className="qiyamah-identity">
-          <span className="chamber-label">حجرة القيامة</span>
+          {/* الاسم الجديد من البطاقة الأولى — القيامة = إنشاء الصور والمشاهد */}
+          <span className="chamber-kicker">مِصنَعُ الخَلق</span>
+          <span className="chamber-label">إنشاء الصور والمشاهد</span>
           {chamberVision && (
             <span className="chamber-vision-ar" title={chamberVision.philosophy}>
               {chamberVision.philosophyAr}

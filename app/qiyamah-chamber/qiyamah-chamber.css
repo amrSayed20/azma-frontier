@@ -2408,3 +2408,336 @@
 .creative-act-job--deposited { border-color: rgba(120, 220, 160, 0.45); }
 .creative-act-job--failed { border-color: rgba(230, 110, 90, 0.5); }
 .creative-act-job--unknown { border-style: dashed; color: var(--text-muted); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   الدِّهليز يَدخل الحجرة — RESKIN (2026-11-27)
+   The chamber leaves the maroon forge for the house's own navy glass:
+   the same walls, light and metal the Creator crossed at the gate, with
+   القيامة's own signature kept — a violet aura, so the factory of creation
+   stays a touch distinct, as its Founder asked. Layout rules above are
+   untouched; everything below is dress: colour, light, glass and shine.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --chamber-bg:    #050819;
+  --crimson-neon:  #a78bff;              /* the forge's fire, turned violet */
+  --crimson-dim:   #5b3fd4;
+  --azma-accent:   131, 85, 255;         /* jewel violet, rgba() triple */
+  --gold-neon:     #edc94c;
+  --gold-dim:      #9c7814;
+  --panel-glass:   rgba(12, 19, 66, 0.55);
+  --text-main:     #f6f8ff;
+  --text-muted:    #a9b6e8;
+}
+
+/* ── The room itself: deep navy walls, a violet aura in the corner ────── */
+
+.qiyamah-viewport {
+  background:
+    radial-gradient(1180px 760px at 50% -14%, rgba(59, 82, 216, 0.55) 0%, rgba(27, 40, 120, 0.35) 32%, transparent 66%),
+    linear-gradient(180deg, #0c1342 0%, #0b1240 30%, #090e30 56%, #06091f 78%, #050819 100%);
+  background-attachment: fixed;
+}
+
+.crimson-nebula {
+  background:
+    radial-gradient(720px 520px at 82% 12%, rgba(131, 85, 255, 0.34) 0%, transparent 62%),
+    radial-gradient(680px 500px at 12% 78%, rgba(22, 224, 203, 0.14) 0%, transparent 60%),
+    radial-gradient(closest-side at 50% 108%, rgba(131, 85, 255, 0.2) 0%, transparent 70%);
+}
+
+.cyber-grid-red {
+  background-image:
+    linear-gradient(rgba(131, 85, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(131, 85, 255, 0.05) 1px, transparent 1px);
+  animation-duration: 30s;
+}
+
+/* the mashrabiya — it appears where the light falls, as the real thing */
+.forge-background::after {
+  content: '';
+  position: absolute;
+  inset-block-start: -6vh;
+  inset-inline: 0;
+  margin-inline: auto;
+  inline-size: min(1400px, 100%);
+  block-size: 100vh;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><g fill='none' stroke='rgba(255,246,222,0.6)' stroke-width='0.85'><path d='M46 4 L58 22 L80 22 L68 40 L80 58 L58 58 L46 76 L34 58 L12 58 L24 40 L12 22 L34 22 Z'/><circle cx='46' cy='40' r='10'/><path d='M0 40 L12 22 M92 40 L80 22 M0 40 L12 58 M92 40 L80 58'/></g></svg>");
+  background-size: 92px 92px;
+  -webkit-mask-image: radial-gradient(closest-side at 50% 10%, #000 0%, rgba(0,0,0,0.45) 38%, transparent 66%);
+  mask-image: radial-gradient(closest-side at 50% 10%, #000 0%, rgba(0,0,0,0.45) 38%, transparent 66%);
+}
+
+/* ── Header: navy glass band ───────────────────────────────────────────── */
+
+.qiyamah-header {
+  background: linear-gradient(180deg, rgba(9, 14, 48, 0.9), rgba(5, 8, 25, 0.86));
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+  border-bottom: 1px solid rgba(164, 184, 255, 0.16);
+  box-shadow: 0 12px 34px rgba(1, 2, 9, 0.45);
+}
+
+.sovereign-exit-btn {
+  background: linear-gradient(170deg, rgba(24, 34, 99, 0.85), rgba(5, 8, 25, 0.9));
+  border: 1px solid rgba(164, 184, 255, 0.22);
+  border-block-start-color: rgba(255, 246, 222, 0.32);
+  color: #c2cdf4;
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-weight: 500;
+  box-shadow: 0 8px 22px rgba(1, 2, 9, 0.45), inset 0 1px 0 rgba(255, 246, 222, 0.18);
+  transition: transform 180ms ease, box-shadow 220ms ease, color 220ms ease, border-color 220ms ease;
+}
+.sovereign-exit-btn:hover {
+  transform: translateY(-1px);
+  color: #fff6de;
+  border-color: rgba(246, 226, 164, 0.5);
+  background: linear-gradient(170deg, rgba(36, 51, 143, 0.85), rgba(9, 14, 48, 0.9));
+  box-shadow: 0 12px 30px rgba(1, 2, 9, 0.5), 0 0 24px rgba(237, 201, 76, 0.18), inset 0 1px 0 rgba(255, 246, 222, 0.3);
+}
+
+.chamber-kicker {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: #f6e2a4;
+}
+
+/* the chamber's own name carries its violet, poured into the house's gold */
+.chamber-label {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  background: linear-gradient(100deg, #edc94c 10%, #fff6de 38%, #a78bff 75%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+}
+
+.chamber-vision-ar { color: rgba(194, 205, 244, 0.72); }
+.chamber-vision-en { color: rgba(134, 148, 207, 0.5); }
+
+.creator-name {
+  color: #fff6de;
+  text-shadow: 0 0 24px rgba(255, 246, 222, 0.22);
+}
+
+.generation-status {
+  background: rgba(3, 5, 18, 0.55);
+  border: 1px solid rgba(164, 184, 255, 0.18);
+  border-radius: 999px;
+  padding: 7px 14px;
+}
+.status-text { color: #a9b6e8; }
+
+/* ── Journey indicator: glass pills, the active one lit gold ──────────── */
+
+.stage-step {
+  color: rgba(134, 148, 207, 0.6);
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+.stage-step.is-active {
+  color: #281d02;
+  background: linear-gradient(176deg, #fff9e6 0%, #f0d26a 30%, #edc94c 52%, #ab8419 76%, #f8ebbb 100%);
+  border-color: rgba(255, 249, 230, 0.7);
+  box-shadow: 0 8px 22px rgba(237, 201, 76, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  text-shadow: none;
+}
+.stage-arrow { color: rgba(134, 148, 207, 0.45); }
+
+/* ── The working surfaces: navy glass, an arch where a door is ────────── */
+
+.section-label {
+  color: #f6e2a4;
+  letter-spacing: 0.14em;
+}
+
+.provider-unavailable {
+  background: linear-gradient(170deg, rgba(49, 70, 189, 0.4), rgba(24, 34, 99, 0.55) 45%, rgba(6, 9, 28, 0.85));
+  border: 1px solid rgba(164, 184, 255, 0.18);
+  border-block-start-color: rgba(255, 246, 222, 0.4);
+  border-radius: 48px 48px 16px 16px;
+  box-shadow:
+    0 32px 72px rgba(1, 2, 9, 0.6),
+    inset 0 1px 0 rgba(255, 246, 222, 0.3),
+    inset 0 -34px 52px -34px rgba(131, 85, 255, 0.45);
+}
+.unavailable-icon { color: rgba(246, 226, 164, 0.5); }
+.unavailable-title { color: #e8edff; }
+.unavailable-sub { color: #8694cf; }
+
+.genesis-form {
+  background: linear-gradient(170deg, rgba(49, 70, 189, 0.42), rgba(24, 34, 99, 0.58) 42%, rgba(6, 9, 28, 0.88));
+  border: 1px solid rgba(164, 184, 255, 0.18);
+  border-block-start-color: rgba(255, 246, 222, 0.42);
+  border-radius: 28px;
+  padding: clamp(18px, 3vw, 28px);
+  -webkit-backdrop-filter: blur(14px) saturate(1.45);
+  backdrop-filter: blur(14px) saturate(1.45);
+  box-shadow:
+    0 34px 80px rgba(1, 2, 9, 0.62),
+    0 8px 22px rgba(1, 2, 9, 0.5),
+    inset 0 1px 0 rgba(255, 246, 222, 0.34),
+    inset 0 -40px 60px -40px rgba(131, 85, 255, 0.5);
+}
+
+/* ── Fields: dark inset glass ──────────────────────────────────────────── */
+
+.idea-field-label {
+  color: #a78bff;
+  letter-spacing: 0.1em;
+}
+
+.idea-textarea,
+.prompt-textarea {
+  background: rgba(3, 5, 18, 0.62);
+  border: 1px solid rgba(164, 184, 255, 0.18);
+  border-radius: 14px;
+  color: #f6f8ff;
+  box-shadow: inset 0 1px 3px rgba(1, 2, 9, 0.6);
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+.idea-textarea:hover,
+.prompt-textarea:hover { border-color: rgba(176, 196, 255, 0.36); }
+.idea-textarea:focus,
+.prompt-textarea:focus {
+  border-color: #a78bff;
+  background: rgba(5, 8, 25, 0.78);
+  box-shadow:
+    inset 0 1px 3px rgba(1, 2, 9, 0.6),
+    0 0 0 3px rgba(131, 85, 255, 0.25),
+    0 0 22px rgba(131, 85, 255, 0.18);
+}
+
+/* ── The act of creation: poured gold ──────────────────────────────────── */
+
+.trigger-genesis-btn {
+  background: linear-gradient(176deg, #fff9e6 0%, #f9e9b2 9%, #f0d26a 26%, #edc94c 48%, #ab8419 66%, #dbba4b 84%, #f8ebbb 100%);
+  border: 1px solid rgba(255, 249, 230, 0.72);
+  color: #281d02;
+  font-weight: 700;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  box-shadow:
+    0 18px 46px rgba(237, 201, 76, 0.38),
+    0 4px 12px rgba(1, 2, 9, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 -2px 7px rgba(120, 90, 10, 0.42);
+  transition: transform 180ms ease, box-shadow 220ms ease;
+}
+.trigger-genesis-btn:hover:not(:disabled) {
+  background: linear-gradient(176deg, #fffdf2 0%, #f9e9b2 12%, #f0d26a 30%, #edc94c 52%, #b8903a 74%, #f8ebbb 100%);
+  box-shadow:
+    0 26px 60px rgba(237, 201, 76, 0.52),
+    0 0 34px rgba(131, 85, 255, 0.3),
+    0 6px 16px rgba(1, 2, 9, 0.56),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -2px 7px rgba(120, 90, 10, 0.42);
+  transform: translateY(-2px);
+}
+
+/* ── Secondary ways: lit navy glass ────────────────────────────────────── */
+
+.secondary-btn,
+.back-idea-btn {
+  background: linear-gradient(176deg, rgba(71, 96, 220, 0.4), rgba(36, 51, 143, 0.5) 46%, rgba(12, 19, 66, 0.66));
+  border: 1px solid rgba(176, 196, 255, 0.3);
+  border-block-start-color: rgba(255, 246, 222, 0.3);
+  color: #e8edff;
+  border-radius: 999px;
+  box-shadow: 0 10px 26px rgba(1, 2, 9, 0.45), inset 0 1px 0 rgba(255, 246, 222, 0.22);
+  transition: transform 180ms ease, box-shadow 220ms ease, border-color 220ms ease;
+}
+.secondary-btn:hover,
+.back-idea-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 246, 222, 0.46);
+  color: #fff6de;
+  box-shadow: 0 16px 36px rgba(1, 2, 9, 0.55), inset 0 1px 0 rgba(255, 246, 222, 0.34);
+}
+
+/* ── The gallery: glass frames on the wall ─────────────────────────────── */
+
+.generation-card {
+  background: linear-gradient(170deg, rgba(24, 34, 99, 0.5), rgba(6, 9, 28, 0.8));
+  border: 1px solid rgba(164, 184, 255, 0.16);
+  border-block-start-color: rgba(255, 246, 222, 0.26);
+  border-radius: 16px;
+  box-shadow: 0 14px 34px rgba(1, 2, 9, 0.5), inset 0 1px 0 rgba(255, 246, 222, 0.16);
+  transition: transform 200ms ease, box-shadow 240ms ease, border-color 240ms ease;
+}
+.generation-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(237, 201, 76, 0.4);
+  box-shadow: 0 22px 48px rgba(1, 2, 9, 0.58), 0 0 26px rgba(131, 85, 255, 0.22), inset 0 1px 0 rgba(255, 246, 222, 0.26);
+}
+.generation-prompt { color: #e8edff; }
+.generation-date { color: #8694cf; }
+
+/* ── The upload door: dashed glass that lights when offered a file ─────── */
+
+.asset-door,
+.upload-dropzone {
+  background: rgba(3, 5, 18, 0.5);
+  border: 1.5px dashed rgba(164, 184, 255, 0.3);
+  border-radius: 18px;
+  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
+}
+.asset-door:hover,
+.asset-door:focus-visible,
+.asset-door--over {
+  border-color: #a78bff;
+  background: rgba(131, 85, 255, 0.1);
+  box-shadow: 0 0 30px rgba(131, 85, 255, 0.25), inset 0 1px 0 rgba(255, 246, 222, 0.2);
+}
+.asset-door-icon { color: #edc94c; }
+
+/* ── Small print ───────────────────────────────────────────────────────── */
+
+.cost-line { color: #c2cdf4; }
+.cost-balance { color: #f6e2a4; }
+.genesis-invitation { color: #a9b6e8; }
+
+/* selection + focus in the house's colours */
+.qiyamah-viewport ::selection { background: rgba(131, 85, 255, 0.4); color: #fff6de; }
+.qiyamah-viewport :focus-visible {
+  outline: 2px solid #fff6de;
+  outline-offset: 2px;
+}
+
+/* sections: the maroon seam closes; navy glass with a gold-lit lip */
+.genesis-section,
+.upload-section {
+  border: 1px solid rgba(164, 184, 255, 0.18);
+  border-block-start-color: rgba(255, 246, 222, 0.36);
+  border-radius: 24px;
+  box-shadow:
+    0 26px 60px rgba(1, 2, 9, 0.55),
+    inset 0 1px 0 rgba(255, 246, 222, 0.28),
+    inset 0 -30px 48px -30px rgba(131, 85, 255, 0.4);
+}
+
+/* style tiles: navy glass chips; the chosen one wears violet light */
+.style-tile {
+  background: linear-gradient(176deg, rgba(36, 51, 143, 0.45), rgba(12, 19, 66, 0.6));
+  border: 1px solid rgba(164, 184, 255, 0.2);
+  border-block-start-color: rgba(255, 246, 222, 0.24);
+  border-radius: 14px;
+  color: #c2cdf4;
+}
+.style-tile:hover:not(:disabled) {
+  border-color: rgba(176, 196, 255, 0.42);
+  background: linear-gradient(176deg, rgba(71, 96, 220, 0.4), rgba(24, 34, 99, 0.55));
+}
+.style-tile--selected {
+  border-color: #a78bff !important;
+  background: linear-gradient(176deg, rgba(131, 85, 255, 0.32), rgba(91, 63, 212, 0.3)) !important;
+  box-shadow: 0 0 20px rgba(131, 85, 255, 0.35), inset 0 1px 0 rgba(255, 246, 222, 0.3);
+  color: #fff6de;
+}
