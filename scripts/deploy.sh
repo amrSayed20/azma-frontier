@@ -258,8 +258,8 @@ built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 # target instead). .next/dev and .next/cache are not shipped (see the tar
 # excludes), and BUILD_SOURCE / BUILD_MANIFEST are left out so the record does
 # not depend on itself. Any added, changed or deleted file changes this text.
-next_manifest_lines() {
-  ( cd "$REPO_ROOT/.next" 2>/dev/null || exit 0
+manifest_lines_in() {
+  ( cd "$1" 2>/dev/null || exit 0
     find . \( -path ./dev -o -path ./cache \) -prune -o \
          \( -type f -o -type l \) ! -path ./BUILD_SOURCE ! -path ./BUILD_MANIFEST -print0 \
       | LC_ALL=C sort -z \
@@ -269,6 +269,36 @@ next_manifest_lines() {
         done
   )
 }
+next_manifest_lines() { manifest_lines_in "$REPO_ROOT/.next"; }
+
+# An archive is only unpacked after its member list passes this. Prints the
+# reason and returns 1 on the first unsafe member. Used locally AND on the
+# server (the function text is sent over with the staging script).
+archive_member_check() {
+  local a="$1" names n types
+  names="$(tar -tzf "$a")" || { echo "the archive cannot be listed"; return 1; }
+  [ -n "$names" ] || { echo "the archive is empty"; return 1; }
+  while IFS= read -r n; do
+    case "$n" in /*) echo "absolute path in archive: $n"; return 1 ;; esac
+    case "/$n/" in */../*) echo "path traversal in archive: $n"; return 1 ;; esac
+    printf '%s\n' "$n" | grep -Eq '^(\.next(/.*)?|package\.json|package-lock\.json)$' \
+      || { echo "unexpected member in archive: $n"; return 1; }
+    if printf '%s\n' "$n" | grep -Eq '^\.next/(dev|cache)(/|$)'; then
+      echo "archive carries a path that is never shipped: $n"; return 1
+    fi
+  done <<EOF_NAMES
+$names
+EOF_NAMES
+  types="$(tar -tvzf "$a" | cut -c1)"
+  if printf '%s\n' "$types" | grep -qv '^[-dl]'; then
+    echo "archive has a member that is not a plain file, directory or symlink (hard link, device or other)"; return 1
+  fi
+  if tar -tvzf "$a" | grep -E '^l' | grep -Eq -- ' -> (/|.*\.\.)'; then
+    echo "archive has a symlink that points outside the release"; return 1
+  fi
+  return 0
+}
+
 next_manifest_sha() { next_manifest_lines | sha256sum | cut -d' ' -f1; }
 
 write_build_source() {
@@ -297,6 +327,12 @@ verify_build_source() {
     [ "$recorded" = "$current" ] \
       || die "the source changed since the build ($field differs) — nothing was sent. Rebuild from the current tree."
   done
+  # The rest of the identity must be present too: an incomplete BUILD_SOURCE is
+  # not a valid identity (Decision B).
+  for field in tree built_at deployment_id; do
+    [ -n "$(bs_get "$field")" ] || die "BUILD_SOURCE has no $field — the build identity is incomplete; nothing was sent"
+  done
+  case "$(bs_get tree)" in clean|dirty) ;; *) die "BUILD_SOURCE has an invalid tree state — nothing was sent" ;; esac
   # The build output itself: every file in .next, by content.
   recorded="$(bs_get next_manifest_sha256)"
   [ -n "$recorded" ] || die "BUILD_SOURCE has no next_manifest_sha256 — nothing was sent"
@@ -310,6 +346,40 @@ verify_build_source() {
     die "the build output changed since the build (a file in .next was added, changed or deleted) — nothing was sent. Rebuild."
   fi
 }
+
+# P0-1 repair · verify the ACTUAL archive that will be sent. It is unpacked into
+# a private temporary directory only after its member list is safe, and every
+# file is compared with the BUILD_MANIFEST recorded at build time. Any added,
+# deleted, changed or replaced file, or a forged manifest, refuses the send.
+_vac_fail() { rm -rf "$1"; rm -f "$ARTIFACT"; die "$2 — nothing was sent"; }
+verify_archive_content() {
+  local archive="$1" work reason recorded_man recorded_lock
+  reason="$(archive_member_check "$archive")" || { rm -f "$ARTIFACT"; die "unsafe archive: $reason — nothing was sent"; }
+  work="$(mktemp -d)" || die "cannot create a private temporary directory"
+  tar -xzf "$archive" -C "$work" --no-same-owner --no-same-permissions >/dev/null 2>&1 \
+    || _vac_fail "$work" "the archive does not unpack"
+  recorded_man="$(bs_get next_manifest_sha256)"
+  recorded_lock="$(bs_get lockfile_sha256)"
+  [ -n "$recorded_man" ] || _vac_fail "$work" "BUILD_SOURCE has no next_manifest_sha256"
+  [ "$(sha256sum "$work/.next/BUILD_MANIFEST" 2>/dev/null | cut -d' ' -f1)" = "$recorded_man" ] \
+    || _vac_fail "$work" "the archive's BUILD_MANIFEST is missing or is not the recorded one"
+  if [ "$(manifest_lines_in "$work/.next" | sha256sum | cut -d' ' -f1)" != "$recorded_man" ]; then
+    warn "files in the archive that differ from BUILD_MANIFEST (first 10):"
+    diff <(cat "$work/.next/BUILD_MANIFEST") <(manifest_lines_in "$work/.next") | grep '^[<>]' | head -10 >&2 || true
+    _vac_fail "$work" "the archive content differs from BUILD_MANIFEST (a file was added, deleted, changed or replaced)"
+  fi
+  cmp -s "$work/.next/BUILD_SOURCE" "$REPO_ROOT/.next/BUILD_SOURCE" \
+    || _vac_fail "$work" "the archive's BUILD_SOURCE is missing or differs from the recorded one"
+  [ "$(sha256sum "$work/package-lock.json" 2>/dev/null | cut -d' ' -f1)" = "$recorded_lock" ] \
+    || _vac_fail "$work" "the archive's package-lock.json is not the recorded lockfile"
+  cmp -s "$work/package.json" "$REPO_ROOT/package.json" \
+    || _vac_fail "$work" "the archive's package.json differs from the tree"
+  rm -rf "$work"
+}
+
+# The staging script needs bash (read -d, <<<): send it on stdin to `bash -s`
+# rather than trusting the remote login shell.
+remote_bash() { printf '%s\n' "$1" | ssh -o BatchMode=yes -i "$SSH_KEY" "$REMOTE" "bash -s"; }
 
 # ── deploy ───────────────────────────────────────────────────────────────────
 cmd_deploy() {
@@ -388,20 +458,18 @@ cmd_deploy() {
 
   # 1b ── P0-1 · record what this build was built from, then prove it still is
   #       the tree on disk before anything is packaged. A --skip-build with no
-  #       record cannot be proven (tightening that is a later item); it is
-  #       labelled unverified in SOURCE_IDENTITY rather than passed off as clean.
-  local source_state="verified"
+  #       record is refused (see Decision B below).
+  # Decision B: there is no unverified path. A reused build (--skip-build)
+  # must carry a valid BUILD_SOURCE and BUILD_MANIFEST that match the tree and
+  # the files in .next, or nothing is sent.
+  local source_state
   if [ "$skip_build" -eq 0 ]; then
     write_build_source
-    ok "BUILD_SOURCE written ($head_full)"
+    ok "BUILD_SOURCE and BUILD_MANIFEST written ($head_full)"
   fi
-  if [ -f "$REPO_ROOT/.next/BUILD_SOURCE" ]; then
-    verify_build_source "$head_full"
-    ok "build source matches the tree"
-  else
-    source_state="unverified"
-    warn "no .next/BUILD_SOURCE in the reused build — its source is UNVERIFIED"
-  fi
+  verify_build_source "$head_full"
+  source_state="verified"
+  ok "build source and build output match the record"
 
   # 2 ── package: one archive, so a partial transfer is a broken file rather
   #      than a half-written directory
@@ -418,16 +486,21 @@ cmd_deploy() {
   tar "${TAR_FLAGS[@]}" -czf "$ARTIFACT" -C "$REPO_ROOT" \
       --exclude='.next/dev' --exclude='.next/cache' \
       .next package.json package-lock.json
-  # The tree must not have moved while the archive was being written.
-  if [ "$source_state" = "verified" ]; then
-    verify_build_source "$head_full"
-  fi
-  local local_sum
+  # Nothing untrusted may stay on disk if any check below refuses it.
+  trap 'rc=$?; [ "$rc" -eq 0 ] || rm -f "$ARTIFACT"' EXIT
+  # The tree and .next must not have moved while the archive was being written.
+  verify_build_source "$head_full"
+  # Seal and fingerprint the archive, then verify THAT file's contents. The
+  # fingerprint is taken first and re-taken after, so a swap during the check
+  # is caught, and it is the value the server is held to.
+  chmod 400 "$ARTIFACT"
+  local local_sum sum_after
   local_sum="$(sha256sum "$ARTIFACT" | cut -d' ' -f1)"
-  # Last check before the first byte leaves this machine.
-  if [ "$source_state" = "verified" ]; then
-    verify_build_source "$head_full"
-  fi
+  verify_archive_content "$ARTIFACT"
+  sum_after="$(sha256sum "$ARTIFACT" | cut -d' ' -f1)"
+  [ "$sum_after" = "$local_sum" ] \
+    || { rm -f "$ARTIFACT"; die "the archive changed while it was being verified — nothing was sent"; }
+  verify_build_source "$head_full"
   info "size   $(du -h "$ARTIFACT" | cut -f1)"
   info "sha256 $local_sum"
 
@@ -455,6 +528,9 @@ cmd_deploy() {
   local upload_attempts=4
   local attempt=1
   while :; do
+    # The bytes that leave are the bytes that were verified.
+    [ "$(sha256sum "$ARTIFACT" | cut -d' ' -f1)" = "$local_sum" ] \
+      || { rm -f "$ARTIFACT"; die "the archive changed after it was verified — nothing was sent"; }
     if scp -q -o BatchMode=yes \
          -o ServerAliveInterval=15 -o ServerAliveCountMax=8 \
          -o ConnectTimeout=30 -o TCPKeepAlive=yes \
@@ -487,21 +563,57 @@ cmd_deploy() {
 
   # 5 ── stage on the target filesystem, then validate before it can go live
   step "Staging"
-  remote "
-    set -e
-    rm -rf '$STAGING_DIR'
-    mkdir -p '$STAGING_DIR' '$RELEASES_DIR'
-    tar -xzf /tmp/azma-release.tar.gz -C '$STAGING_DIR'
-    rm -f /tmp/azma-release.tar.gz
-    test -f '$STAGING_DIR/package.json' || { echo '    staged release has no package.json'; exit 1; }
-    test -f '$STAGING_DIR/package-lock.json' || { echo '    staged release has no lockfile'; exit 1; }
-    test -f '$STAGING_DIR/.next/BUILD_ID' || { echo '    staged build has no BUILD_ID'; exit 1; }
-    staged_id=\$(cat '$STAGING_DIR/.next/BUILD_ID')
-    [ \"\$staged_id\" = '$build_id' ] || { echo \"    staged BUILD_ID \$staged_id != '$build_id'\"; exit 1; }
-    chunks=\$(ls '$STAGING_DIR/.next/static/chunks' 2>/dev/null | wc -l)
-    [ \"\$chunks\" -gt 0 ] || { echo '    staged build has no client chunks'; exit 1; }
-    echo \"    ok   BUILD_ID \$staged_id, \$chunks chunks\"
-  " || die "staging failed — the live release was not touched"
+  # Everything below happens BEFORE the live release or node_modules is touched.
+  # The archive is moved into a private directory, its SHA-256 is checked again
+  # there, its members are vetted, and after unpacking every file is compared
+  # with the BUILD_MANIFEST recorded at build time.
+  local bs_sha lock_sha pkg_sha man_sha
+  bs_sha="$(sha256sum "$REPO_ROOT/.next/BUILD_SOURCE" | cut -d' ' -f1)"
+  man_sha="$(bs_get next_manifest_sha256)"
+  lock_sha="$(bs_get lockfile_sha256)"
+  pkg_sha="$(sha256sum "$REPO_ROOT/package.json" | cut -d' ' -f1)"
+  local remote_body staging_script
+  read -r -d '' remote_body <<'REMOTE_BODY' || true
+set -e
+rm -rf "$STAGING_DIR"
+mkdir -p "$STAGING_DIR" "$RELEASES_DIR"
+arch_dir="$(mktemp -d "$APP_DIR/.azma-arch.XXXXXX")"
+reject() { echo "    $1"; rm -rf "$STAGING_DIR" "$arch_dir" /tmp/azma-release.tar.gz; exit 1; }
+[ -f /tmp/azma-release.tar.gz ] || reject "no uploaded archive"
+mv /tmp/azma-release.tar.gz "$arch_dir/artifact.tar.gz"
+arch="$arch_dir/artifact.tar.gz"
+actual="$(sha256sum "$arch" | cut -d' ' -f1)"
+[ "$actual" = "$LOCAL_SUM" ] || reject "archive on the server does not match the verified SHA-256"
+reason="$(archive_member_check "$arch")" || reject "unsafe archive: $reason"
+tar -xzf "$arch" -C "$STAGING_DIR" --no-same-owner --no-same-permissions
+rm -rf "$arch_dir"
+sum_of() { sha256sum "$1" 2>/dev/null | cut -d' ' -f1; }
+[ "$(sum_of "$STAGING_DIR/.next/BUILD_MANIFEST")" = "$EXP_MAN" ] || reject "staged BUILD_MANIFEST is not the approved one"
+[ "$(manifest_lines_in "$STAGING_DIR/.next" | sha256sum | cut -d' ' -f1)" = "$EXP_MAN" ] \
+  || reject "staged files do not match BUILD_MANIFEST (a file was added, deleted, changed or replaced)"
+[ "$(sum_of "$STAGING_DIR/.next/BUILD_SOURCE")" = "$EXP_BS" ] || reject "staged BUILD_SOURCE is not the approved one"
+[ "$(sum_of "$STAGING_DIR/package-lock.json")" = "$EXP_LOCK" ] || reject "staged package-lock.json is not the approved one"
+[ "$(sum_of "$STAGING_DIR/package.json")" = "$EXP_PKG" ] || reject "staged package.json is not the approved one"
+echo "    ok   archive and every staged file verified against BUILD_MANIFEST on the server"
+test -f "$STAGING_DIR/.next/BUILD_ID" || reject "staged build has no BUILD_ID"
+staged_id="$(cat "$STAGING_DIR/.next/BUILD_ID")"
+[ "$staged_id" = "$BUILD_ID_EXPECTED" ] || reject "staged BUILD_ID $staged_id != $BUILD_ID_EXPECTED"
+chunks="$(ls "$STAGING_DIR/.next/static/chunks" 2>/dev/null | wc -l)"
+[ "$chunks" -gt 0 ] || reject "staged build has no client chunks"
+echo "    ok   BUILD_ID $staged_id, $chunks chunks"
+REMOTE_BODY
+  staging_script="$(declare -f archive_member_check manifest_lines_in)
+STAGING_DIR=$(printf '%q' "$STAGING_DIR")
+RELEASES_DIR=$(printf '%q' "$RELEASES_DIR")
+APP_DIR=$(printf '%q' "$APP_DIR")
+LOCAL_SUM=$local_sum
+EXP_MAN=$man_sha
+EXP_BS=$bs_sha
+EXP_LOCK=$lock_sha
+EXP_PKG=$pkg_sha
+BUILD_ID_EXPECTED=$(printf '%q' "$build_id")
+$remote_body"
+  remote_bash "$staging_script" || die "staging failed — the live release was not touched"
 
   # 5b ── SECURITY CLOSURE: install the declared dependencies, from the
   #       lockfile, and prove what landed.
@@ -606,14 +718,9 @@ cmd_deploy() {
   step "Installing release"
   # P0-1 · the identity comes from the recorded build, not from HEAD now.
   local id_commit id_tree id_fp id_lock id_cfg id_man id_pub id_built id_deployment
-  if [ "$source_state" = "verified" ]; then
-    id_commit="$(bs_get commit)"; id_tree="$(bs_get tree)"; id_fp="$(bs_get source_fingerprint)"
-    id_lock="$(bs_get lockfile_sha256)"; id_cfg="$(bs_get next_config_sha256)"; id_man="$(bs_get next_manifest_sha256)"
-    id_pub="$(bs_get public_sha256)"; id_built="$(bs_get built_at)"; id_deployment="$(bs_get deployment_id)"
-  else
-    id_commit="unverified (HEAD at shipping: $head_full)"; id_tree="unknown"; id_fp="unknown"
-    id_lock="unknown"; id_cfg="unknown"; id_man="unknown"; id_pub="unknown"; id_built="unknown"; id_deployment="$release_id"
-  fi
+  id_commit="$(bs_get commit)"; id_tree="$(bs_get tree)"; id_fp="$(bs_get source_fingerprint)"
+  id_lock="$(bs_get lockfile_sha256)"; id_cfg="$(bs_get next_config_sha256)"; id_man="$(bs_get next_manifest_sha256)"
+  id_pub="$(bs_get public_sha256)"; id_built="$(bs_get built_at)"; id_deployment="$(bs_get deployment_id)"
   remote "
     set -e
     rm -rf '$RELEASES_DIR/$release_id'

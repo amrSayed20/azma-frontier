@@ -12,7 +12,7 @@
  */
 
 import { spawnSync } from 'child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, copyFileSync, chmodSync, rmSync } from 'fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, readlinkSync, copyFileSync, chmodSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 
@@ -62,16 +62,54 @@ function makeRig(): Rig {
   const head = sh(repo, 'git rev-parse HEAD');
 
   // Fake tools. Each one logs its call.
+  const realTar = sh(repo, 'command -v tar');
+  const realSha = sh(repo, 'command -v sha256sum');
+  const realDu = sh(repo, 'command -v du');
   write(join(bin, 'ssh'), `#!/bin/bash
 last="\${@: -1}"
-echo "ssh $last" | head -c 200 | head -1 >> "$LOG"
-cmd="$(printf '%s' "$last" | sed "s#/tmp/azma-release#$SIM/tmp/azma-release#g")"
-bash -c "$cmd"
+echo "ssh $last" | head -1 | cut -c1-200 >> "$LOG"
+if [ "$last" = "bash -s" ]; then
+  script="$(cat | sed "s#/tmp/azma-release#$SIM/tmp/azma-release#g")"
+  REMOTE_PHASE=1 bash -c "$script"
+else
+  cmd="$(printf '%s' "$last" | sed "s#/tmp/azma-release#$SIM/tmp/azma-release#g")"
+  REMOTE_PHASE=1 bash -c "$cmd"
+fi
 `, 0o755);
+  // scp copies the archive to the simulated server. MUTATE_TRANSFER changes it
+  // IN TRANSIT: "corrupt" appends garbage, "swap" delivers a different, valid
+  // archive with one file altered.
   write(join(bin, 'scp'), `#!/bin/bash
 src="\${@: -2:1}"
 echo "scp $src" >> "$LOG"
 cp "$src" "$SIM/tmp/azma-release.tar.gz"
+chmod 600 "$SIM/tmp/azma-release.tar.gz"   # scp does not keep the sealed 0400 mode
+${realSha} "$SIM/tmp/azma-release.tar.gz" | cut -d' ' -f1 > "$SIM/orig.sum"
+case "$MUTATE_TRANSFER" in
+  corrupt) echo garbage >> "$SIM/tmp/azma-release.tar.gz" ;;
+  swap)
+    w="$(mktemp -d)"; ${realTar} -xzf "$SIM/tmp/azma-release.tar.gz" -C "$w"
+    echo tampered >> "$w/.next/static/chunks/a.js"
+    ${realTar} -czf "$SIM/tmp/azma-release.tar.gz" -C "$w" .next package.json package-lock.json ;;
+esac
+`, 0o755);
+  // Defence-in-depth probe: SIM_LIE_SHA makes the simulated SERVER report the
+  // original archive's hash for any .tar.gz, i.e. it plays "the hash gate was
+  // defeated", so the server-side manifest check is what has to catch it.
+  write(join(bin, 'sha256sum'), `#!/bin/bash
+if [ -n "$SIM_LIE_SHA" ] && [ "$REMOTE_PHASE" = 1 ]; then
+  for a in "$@"; do case "$a" in *.tar.gz) echo "$(cat "$SIM/orig.sum")  $a"; exit 0 ;; esac; done
+fi
+exec ${realSha} "$@"
+`, 0o755);
+  // du runs right after the archive's hash is taken and before the upload, so
+  // it is the hook for "archive modified after its fingerprint was computed".
+  write(join(bin, 'du'), `#!/bin/bash
+if [ -n "$MUTATE_AFTER_SUM" ]; then
+  f="\${REPO_ROOT_FOR_TEST}/.deploy-artifact.tar.gz"
+  chmod u+w "$f"; echo tampered-after-sum >> "$f"
+fi
+exec ${realDu} "$@"
 `, 0o755);
   write(join(bin, 'npm'), `#!/bin/bash
 echo "npm $*" >> "$LOG"
@@ -86,19 +124,44 @@ elif [ "$1" = "run" ] && [ "$2" = "build" ]; then
   if [ -n "$MUTATE_COMMIT" ]; then git commit -q --allow-empty -m moved; fi
 fi
 `, 0o755);
-  // tar wrapper: optionally alters .next right before the real tar runs, to
-  // play "something touched the build output after the manifest was made".
-  const realTar = sh(repo, 'command -v tar');
+  // tar wrapper. MUTATE_NEXT alters .next right before the archive is written.
+  // MUTATE_ARTIFACT rewrites the finished archive: modify/add/delete/replace a
+  // file, forge the manifest, or craft an unsafe archive.
   write(join(bin, 'tar'), `#!/bin/bash
-if [ -n "$MUTATE_NEXT" ] && [ -d .next ] || [ -n "$MUTATE_NEXT" ] && [ -d "\${REPO_ROOT_FOR_TEST}/.next" ]; then
-  d="\${REPO_ROOT_FOR_TEST:-.}/.next"
+create=0; art=""; prev=""
+for a in "$@"; do if [ "$prev" = "-czf" ]; then create=1; art="$a"; fi; prev="$a"; done
+d="\${REPO_ROOT_FOR_TEST}/.next"
+if [ "$create" = 1 ] && [ -n "$MUTATE_NEXT" ] && [ -d "$d" ]; then
   case "$MUTATE_NEXT" in
     modify) echo tampered >> "$d/static/chunks/a.js" ;;
     delete) rm -f "$d/static/chunks/a.js" ;;
     add)    echo extra > "$d/static/chunks/evil.js" ;;
   esac
 fi
-exec ${realTar} "$@"
+${realTar} "$@"; rc=$?
+if [ "$create" = 1 ] && [ -n "$MUTATE_ARTIFACT" ]; then
+  w="$(mktemp -d)"; ${realTar} -xzf "$art" -C "$w" 2>/dev/null; chmod -R u+w "$w"
+  extra_members=""; flags=""
+  case "$MUTATE_ARTIFACT" in
+    modify)  echo tampered >> "$w/.next/static/chunks/a.js" ;;
+    add)     echo extra > "$w/.next/static/chunks/evil.js" ;;
+    delete)  rm -f "$w/.next/static/chunks/a.js" ;;
+    replace) echo EVIL > "$w/.next/static/chunks/a.js" ;;
+    forged)
+      echo EVIL > "$w/.next/static/chunks/a.js"
+      ( cd "$w/.next" && find . \\( -path ./dev -o -path ./cache \\) -prune -o \\( -type f -o -type l \\) ! -path ./BUILD_SOURCE ! -path ./BUILD_MANIFEST -print0 \
+        | LC_ALL=C sort -z | while IFS= read -r -d '' f; do printf '%s  %s\\n' "$(${realSha} "$f" | cut -d' ' -f1)" "$f"; done > BUILD_MANIFEST ) ;;
+    traversal) flags="--transform=s,^package.json$,../pwned.json," ;;
+    absolute)  flags="-P --transform=s,^package.json$,/tmp/pwned.json," ;;
+    hardlink)  ln "$w/.next/static/chunks/a.js" "$w/.next/static/chunks/b.js" ;;
+    symlink)   ln -s /etc "$w/.next/link" ;;
+    extra)     echo x > "$w/extra.sh"; extra_members="extra.sh" ;;
+    cache)     mkdir -p "$w/.next/cache"; echo x > "$w/.next/cache/x" ;;
+  esac
+  rm -f "$art"
+  ${realTar} -czf "$art" $flags -C "$w" .next package.json package-lock.json $extra_members
+fi
+exit $rc
 `, 0o755);
   write(join(bin, 'curl'), '#!/bin/bash\necho 200\n', 0o755);
   write(join(bin, 'pm2'), '#!/bin/bash\necho "pm2 $*" >> "$LOG"\necho "status online"\n', 0o755);
@@ -115,9 +178,11 @@ exec ${realTar} "$@"
 
 function deploy(rig: Rig, args: string[], extraEnv: NodeJS.ProcessEnv = {}) {
   const r = spawnSync('bash', [join(rig.repo, 'scripts', 'deploy.sh'), 'deploy', ...args], {
-    cwd: rig.repo, env: { ...rig.env, ...extraEnv }, encoding: 'utf8', timeout: 60_000,
+    cwd: rig.repo, env: { ...rig.env, ...extraEnv }, encoding: 'utf8', timeout: Number(process.env.DEPLOY_TEST_TIMEOUT_MS ?? 60_000),
   });
-  return { status: r.status, out: `${r.stdout}\n${r.stderr}` };
+  const out = `${r.stdout}\n${r.stderr}`;
+  if (process.env.DEPLOY_TEST_VERBOSE) console.log(out);
+  return { status: r.status, out };
 }
 
 const calls = (rig: Rig) => readFileSync(rig.log, 'utf8').split('\n').filter(Boolean);
@@ -256,15 +321,15 @@ describe('P0-1 — reusing a build (--skip-build) does not launder its identity'
     expect(remoteCalls(rig).length).toBe(before); // no new ssh/scp
   });
 
-  it('a reused build with no BUILD_SOURCE is shipped only as "unverified", never as clean', () => {
+  it('a reused build with no BUILD_SOURCE is REFUSED, never shipped (Decision B: no unverified path)', () => {
     mkdirSync(join(rig.repo, '.next', 'static', 'chunks'), { recursive: true });
     writeFileSync(join(rig.repo, '.next', 'BUILD_ID'), 'old-build\n');
     writeFileSync(join(rig.repo, '.next', 'static', 'chunks', 'a.js'), 'js\n');
     const r = deploy(rig, ['--skip-build']);
-    expect(r.status).toBe(0);
-    const { text } = sourceIdentities(rig)[0];
-    expect(text).toContain('source=unverified');
-    expect(text).not.toContain('tree=clean');
+    expect(r.status).not.toBe(0);
+    expect(r.out).toMatch(/no \.next\/BUILD_SOURCE/);
+    expect(remoteCalls(rig)).toEqual([]);
+    expect(sourceIdentities(rig)).toEqual([]);
   });
 });
 
@@ -349,5 +414,205 @@ describe('P0-1 supplement — the .next output is sealed by a SHA-256 manifest',
     mkdirSync(join(nextDir(), 'cache'), { recursive: true });
     writeFileSync(join(nextDir(), 'cache', 'x'), 'c\n');
     expect(deploy(rig, ['--skip-build']).status).toBe(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// P0-1 REPAIR: Probe A (--skip-build without identity) and Probe B (the archive
+// itself is never verified). Every refusal below must also prove that the live
+// release on the (simulated) server is exactly as it was.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('P0-1 repair — attacks on the archive, the transfer and --skip-build', () => {
+  const nextDir = () => join(rig.repo, '.next');
+  const app = () => join(rig.sim, 'app');
+  const readLink = () => { try { return readlinkSync(join(app(), '.next')); } catch { return ''; } };
+  const live = () => ({
+    link: readLink(),
+    releases: existsSync(join(app(), 'releases')) ? readdirSync(join(app(), 'releases')).sort() : [],
+    state: existsSync(join(app(), '.deploy-state')) ? readFileSync(join(app(), '.deploy-state'), 'utf8') : '',
+    liveFiles: readLink() ? readFileSync(join(app(), '.next', 'static', 'chunks', 'a.js'), 'utf8') : '',
+    nodeModulesPrevious: existsSync(join(app(), 'node_modules.previous')),
+  });
+  /** Deploy once so a live release exists, and return its state. */
+  const goodBaseline = () => {
+    expect(deploy(rig, ['--commit', rig.head]).status).toBe(0);
+    return live();
+  };
+  const noLeftovers = () => {
+    expect(existsSync(join(app(), '.deploy-staging'))).toBe(false);
+    expect(readdirSync(app()).filter((n) => n.startsWith('.azma-arch.'))).toEqual([]);
+    expect(existsSync(join(rig.sim, 'tmp', 'azma-release.tar.gz'))).toBe(false);
+  };
+  const sleep = (sec: string) => spawnSync('sleep', [sec]);
+
+  describe('Probe B: archive contents are verified before anything is sent', () => {
+    it.each([
+      ['1  modify a file inside the archive after it was created', 'modify'],
+      ['2  add a file to the archive', 'add'],
+      ['3  delete a file from the archive', 'delete'],
+      ['4  replace a file with different content', 'replace'],
+    ])('%s → refused locally: zero ssh/scp, archive removed, live release untouched', (_l, mode) => {
+      const before = goodBaseline();
+      const remoteBefore = remoteCalls(rig).length;
+      const r = deploy(rig, ['--commit', rig.head], { MUTATE_ARTIFACT: mode });
+      expect(r.status).not.toBe(0);
+      expect(r.out).toMatch(/archive content differs from BUILD_MANIFEST/);
+      expect(remoteCalls(rig).length).toBe(remoteBefore);                // no new ssh/scp
+      expect(existsSync(join(rig.repo, '.deploy-artifact.tar.gz'))).toBe(false);
+      expect(live()).toEqual(before);                                     // live untouched
+      expect(sourceIdentities(rig)).toHaveLength(1);                      // nothing new declared verified
+      noLeftovers();
+    });
+
+    it('5  archive modified AFTER its fingerprint was computed → refused before the first byte is uploaded', () => {
+      const before = goodBaseline();
+      const remoteBefore = remoteCalls(rig).length;
+      const r = deploy(rig, ['--commit', rig.head], { MUTATE_AFTER_SUM: '1' });
+      expect(r.status).not.toBe(0);
+      expect(r.out).toMatch(/archive changed after it was verified/);
+      expect(remoteCalls(rig).length).toBe(remoteBefore);
+      expect(existsSync(join(rig.repo, '.deploy-artifact.tar.gz'))).toBe(false);
+      expect(live()).toEqual(before);
+    });
+
+    it.each([
+      ['corrupt', 'bytes appended in transit'],
+      ['swap', 'a different valid archive delivered in place of the verified one'],
+    ])('6  archive changed DURING TRANSFER (%s: %s) → server refuses before staging; live untouched', (mode) => {
+      const before = goodBaseline();
+      const r = deploy(rig, ['--commit', rig.head], { MUTATE_TRANSFER: mode });
+      expect(r.status).not.toBe(0);
+      expect(r.out).toMatch(/SHA-256 MISMATCH/);
+      expect(live()).toEqual(before);
+      expect(sourceIdentities(rig)).toHaveLength(1);
+      noLeftovers();
+    });
+
+    it('6b server-side defence in depth: even if the archive hash gate were defeated, the staged files are checked against BUILD_MANIFEST and nothing is activated', () => {
+      const before = goodBaseline();
+      const r = deploy(rig, ['--commit', rig.head], { MUTATE_TRANSFER: 'swap', SIM_LIE_SHA: '1' });
+      expect(r.status).not.toBe(0);
+      expect(r.out).toMatch(/staged files do not match BUILD_MANIFEST/);
+      expect(r.out).toMatch(/staging failed — the live release was not touched/);
+      expect(live()).toEqual(before);             // .next link, releases, state, live a.js, node_modules.previous
+      expect(sourceIdentities(rig)).toHaveLength(1);
+      noLeftovers();
+    });
+
+    it('10 forged manifest inside the archive (file replaced AND BUILD_MANIFEST regenerated) → refused: its hash is not the recorded one', () => {
+      const before = goodBaseline();
+      const remoteBefore = remoteCalls(rig).length;
+      const r = deploy(rig, ['--commit', rig.head], { MUTATE_ARTIFACT: 'forged' });
+      expect(r.status).not.toBe(0);
+      expect(r.out).toMatch(/BUILD_MANIFEST is missing or is not the recorded one/);
+      expect(remoteCalls(rig).length).toBe(remoteBefore);
+      expect(live()).toEqual(before);
+    });
+
+    it.each([
+      ['path traversal member (../pwned.json)', 'traversal', /path traversal|unexpected member/],
+      ['absolute path member', 'absolute', /absolute path/],
+      ['hard link member', 'hardlink', /hard link/],
+      ['symlink pointing outside the release', 'symlink', /symlink that points outside/],
+      ['unexpected top-level file', 'extra', /unexpected member/],
+      ['member under .next/cache (never shipped)', 'cache', /never shipped/],
+    ])('11 untrusted archive: %s → refused BEFORE it is unpacked, zero ssh/scp', (_l, mode, re) => {
+      const before = goodBaseline();
+      const remoteBefore = remoteCalls(rig).length;
+      const r = deploy(rig, ['--commit', rig.head], { MUTATE_ARTIFACT: mode });
+      expect(r.status).not.toBe(0);
+      expect(r.out).toMatch(/unsafe archive/);
+      expect(r.out).toMatch(re);
+      expect(remoteCalls(rig).length).toBe(remoteBefore);
+      expect(existsSync(join(rig.repo, '.deploy-artifact.tar.gz'))).toBe(false);
+      expect(live()).toEqual(before);
+      expect(existsSync(join(rig.root, 'pwned.json'))).toBe(false);
+      expect(existsSync('/tmp/pwned.json')).toBe(false);
+    });
+  });
+
+  describe('Probe A: --skip-build needs a valid identity', () => {
+    it('7  BUILD_SOURCE deleted → refused, zero new calls', () => {
+      goodBaseline(); const before = calls(rig).length;
+      writeFileSync(join(nextDir(), 'static', 'chunks', 'a.js'), 'EVIL\n');
+      rmSync(join(nextDir(), 'BUILD_SOURCE'));
+      const r = deploy(rig, ['--skip-build']);
+      expect(r.status).not.toBe(0);
+      expect(r.out).toMatch(/no \.next\/BUILD_SOURCE/);
+      expect(calls(rig).length).toBe(before);
+    });
+
+    it('8  BUILD_MANIFEST deleted → refused, zero new calls', () => {
+      goodBaseline(); const before = calls(rig).length;
+      rmSync(join(nextDir(), 'BUILD_MANIFEST'));
+      const r = deploy(rig, ['--skip-build']);
+      expect(r.status).not.toBe(0);
+      expect(r.out).toMatch(/no \.next\/BUILD_MANIFEST/);
+      expect(calls(rig).length).toBe(before);
+    });
+
+    it('7+8 BOTH identity files deleted AND a file tampered (the original Probe A) → refused, nothing is shipped as "unverified"', () => {
+      const base = goodBaseline(); const before = calls(rig).length;
+      writeFileSync(join(nextDir(), 'static', 'chunks', 'a.js'), 'EVIL\n');
+      rmSync(join(nextDir(), 'BUILD_SOURCE')); rmSync(join(nextDir(), 'BUILD_MANIFEST'));
+      const r = deploy(rig, ['--skip-build']);
+      expect(r.status).not.toBe(0);
+      expect(calls(rig).length).toBe(before);
+      expect(live()).toEqual(base);
+      expect(sourceIdentities(rig).every((i) => i.text.includes('source=verified'))).toBe(true);
+      expect(sourceIdentities(rig)).toHaveLength(1);
+    });
+
+    it.each(['commit', 'source_fingerprint', 'lockfile_sha256', 'next_config_sha256', 'public_sha256', 'next_manifest_sha256', 'deployment_id', 'tree', 'built_at'])(
+      '9  --skip-build with an incomplete identity (BUILD_SOURCE has no %s line) → refused, zero new calls',
+      (field) => {
+        goodBaseline(); const before = calls(rig).length;
+        const bs = join(nextDir(), 'BUILD_SOURCE');
+        writeFileSync(bs, readFileSync(bs, 'utf8').split('\n').filter((l) => !l.startsWith(`${field}=`)).join('\n'));
+        const r = deploy(rig, ['--skip-build']);
+        expect(r.status).not.toBe(0);
+        expect(calls(rig).length).toBe(before);
+      });
+
+    it('10 --skip-build with a forged on-disk manifest (regenerated after a tamper) → refused, zero new calls', () => {
+      goodBaseline(); const before = calls(rig).length;
+      writeFileSync(join(nextDir(), 'static', 'chunks', 'a.js'), 'EVIL\n');
+      spawnSync('bash', ['-c', `cd ${nextDir()} && find . -path ./dev -prune -o -type f ! -name BUILD_SOURCE ! -name BUILD_MANIFEST -print | LC_ALL=C sort | while read f; do echo "$(sha256sum "$f" | cut -d' ' -f1)  $f"; done > BUILD_MANIFEST`]);
+      const r = deploy(rig, ['--skip-build']);
+      expect(r.status).not.toBe(0);
+      expect(calls(rig).length).toBe(before);
+    });
+  });
+
+  describe('normal paths still work', () => {
+    it('successful build: archive verified locally and on the server, release activated, live link switched', () => {
+      const r = deploy(rig, ['--commit', rig.head]);
+      expect(r.status).toBe(0);
+      expect(r.out).toMatch(/archive and every staged file verified against BUILD_MANIFEST on the server/);
+      const ids = sourceIdentities(rig);
+      expect(ids).toHaveLength(1);
+      expect(ids[0].text).toContain('source=verified');
+      expect(readLink()).toBe(`releases/${ids[0].id}/.next`);
+      expect(calls(rig).some((l) => l.startsWith('pm2 '))).toBe(true);      // service restarted only after activation
+    });
+
+    it('--skip-build with a sound identity ships and activates a second release', () => {
+      const first = goodBaseline();
+      sleep('1.1');
+      const r = deploy(rig, ['--skip-build']);
+      expect(r.status).toBe(0);
+      const after = live();
+      expect(after.releases.length).toBe(first.releases.length + 1);
+      expect(after.link).not.toBe(first.link);
+      const ids = sourceIdentities(rig);
+      expect(ids).toHaveLength(2);
+      expect(ids.every((i) => i.text.includes('source=verified'))).toBe(true);
+    });
+
+    it('the archive that arrives is exactly what was verified: server hash equals the local hash', () => {
+      expect(deploy(rig, ['--commit', rig.head]).status).toBe(0);
+      const sent = readFileSync(join(rig.sim, 'orig.sum'), 'utf8').trim();
+      expect(sent).toMatch(/^[0-9a-f]{64}$/);
+    });
   });
 });
