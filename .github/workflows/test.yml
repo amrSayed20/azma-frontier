@@ -1,0 +1,21 @@
+# The suite exists (5000+ tests) but nothing ran it automatically: a
+# regression could land on main silently. Every push and every pull request
+# now runs the whole thing on the Node line the runtime actually uses
+# (node:sqlite needs Node >= 22.5; production runs Node 24).
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  jest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
