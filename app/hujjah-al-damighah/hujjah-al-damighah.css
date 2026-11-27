@@ -5259,3 +5259,178 @@
    block ends with clearance for it rather than depending on where the Creator
    happens to stop scrolling. */
 .inv-demand-block { padding-bottom: 72px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   الحُجّة تَدخل الدِّهليز — RESKIN (2026-11-27)
+   The court of knowledge leaves the black forge for the house's navy hall:
+   the walls and light of the gate the Creator crossed, gold kept for the
+   seal and the names, the three tongues poured as liquid-glass cards.
+   Layout untouched; this is dress — colour, light, glass and shine.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --chamber-bg:   #050819;
+  --archives-bg:  #090e30;
+  --court-bg:     #060a22;
+  --panel-bg:     rgba(12, 19, 66, 0.72);
+}
+
+/* the hall */
+.hujjah-viewport {
+  background:
+    radial-gradient(1180px 760px at 50% -14%, rgba(59, 82, 216, 0.52) 0%, rgba(27, 40, 120, 0.34) 32%, transparent 66%),
+    linear-gradient(180deg, #0c1342 0%, #0b1240 30%, #090e30 56%, #06091f 78%, #050819 100%);
+  background-attachment: fixed;
+}
+
+.cyber-grid {
+  background-image:
+    linear-gradient(rgba(131, 85, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(131, 85, 255, 0.045) 1px, transparent 1px);
+}
+
+.ambient-depth-gradient {
+  background:
+    radial-gradient(ellipse 85% 65% at 50% 100%, rgba(131, 85, 255, 0.15), transparent 70%),
+    radial-gradient(ellipse 40% 28% at 50% 102%, rgba(237, 201, 76, 0.06), transparent 70%);
+}
+
+.ambient-secondary-glow {
+  background:
+    radial-gradient(ellipse 55% 45% at 24% 16%, rgba(22, 224, 203, 0.1), transparent 65%),
+    radial-gradient(ellipse 45% 40% at 82% 20%, rgba(131, 85, 255, 0.12), transparent 65%);
+}
+
+/* the mashrabiya appears where the light falls */
+.neon-layer::after {
+  content: '';
+  position: absolute;
+  inset-block-start: -6vh;
+  inset-inline: 0;
+  margin-inline: auto;
+  inline-size: min(1400px, 100%);
+  block-size: 100vh;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92' viewBox='0 0 92 92'><g fill='none' stroke='rgba(255,246,222,0.6)' stroke-width='0.85'><path d='M46 4 L58 22 L80 22 L68 40 L80 58 L58 58 L46 76 L34 58 L12 58 L24 40 L12 22 L34 22 Z'/><circle cx='46' cy='40' r='10'/><path d='M0 40 L12 22 M92 40 L80 22 M0 40 L12 58 M92 40 L80 58'/></g></svg>");
+  background-size: 92px 92px;
+  -webkit-mask-image: radial-gradient(closest-side at 50% 10%, #000 0%, rgba(0,0,0,0.45) 38%, transparent 66%);
+  mask-image: radial-gradient(closest-side at 50% 10%, #000 0%, rgba(0,0,0,0.45) 38%, transparent 66%);
+}
+
+/* the selector: the hall, not a black sheet */
+.tongue-selector {
+  background: transparent;
+}
+
+/* the chamber's new name, from the first card */
+.tongue-chamber-kicker {
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  color: #f6e2a4;
+}
+.tongue-chamber-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: linear-gradient(100deg, #edc94c 10%, #fff6de 42%, #edc94c 80%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.tongue-crown-glyph {
+  background: linear-gradient(160deg, #fff6de 0%, #edc94c 45%, #9c7814 80%, #f6e2a4 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  opacity: 1;
+  filter: drop-shadow(0 0 20px rgba(237, 201, 76, 0.4));
+}
+
+.tongue-title {
+  color: #f6f8ff;
+  letter-spacing: 0.03em;
+  text-shadow: 0 2px 24px rgba(1, 2, 9, 0.5);
+}
+
+.tongue-subtitle { color: #a9b6e8; }
+.tongue-mandate  { color: #c2cdf4; opacity: 0.85; }
+
+/* the three tongues: liquid glass */
+.tongue-option {
+  background:
+    linear-gradient(165deg, rgba(49, 70, 189, 0.42), rgba(24, 34, 99, 0.55) 45%, rgba(6, 9, 28, 0.88)) padding-box,
+    linear-gradient(165deg, rgba(255, 246, 222, 0.45), rgba(164, 184, 255, 0.16) 42%, rgba(164, 184, 255, 0.3)) border-box;
+  border: 1px solid transparent;
+  border-radius: 22px;
+  -webkit-backdrop-filter: blur(14px) saturate(1.45);
+  backdrop-filter: blur(14px) saturate(1.45);
+  box-shadow:
+    0 22px 52px rgba(1, 2, 9, 0.55),
+    inset 0 1px 0 rgba(255, 246, 222, 0.32),
+    inset 0 -24px 40px -24px rgba(131, 85, 255, 0.45);
+  transition: transform 200ms ease, box-shadow 240ms ease, background 240ms ease;
+}
+
+.tongue-option:hover {
+  background:
+    linear-gradient(165deg, rgba(71, 96, 220, 0.48), rgba(36, 51, 143, 0.6) 45%, rgba(12, 19, 66, 0.9)) padding-box,
+    linear-gradient(165deg, rgba(255, 246, 222, 0.62), rgba(164, 184, 255, 0.24) 42%, rgba(164, 184, 255, 0.4)) border-box;
+  box-shadow:
+    0 30px 64px rgba(1, 2, 9, 0.6),
+    0 0 32px rgba(237, 201, 76, 0.18),
+    inset 0 1px 0 rgba(255, 246, 222, 0.45);
+  transform: translateY(-3px);
+}
+
+.tongue-opt-glyph {
+  background: linear-gradient(160deg, #fff6de 0%, #edc94c 50%, #ab8419 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 14px rgba(237, 201, 76, 0.4));
+}
+
+.tongue-opt-name { color: #fff6de; }
+.tongue-opt-desc { color: #a9b6e8; font-style: normal; }
+
+/* the crown bar: navy glass */
+.crown-bar {
+  background: linear-gradient(180deg, rgba(9, 14, 48, 0.88), rgba(5, 8, 25, 0.82));
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+  border-bottom: 1px solid rgba(164, 184, 255, 0.16);
+}
+
+.tongue-switch-btn {
+  background: linear-gradient(170deg, rgba(24, 34, 99, 0.8), rgba(5, 8, 25, 0.88));
+  border: 1px solid rgba(164, 184, 255, 0.2);
+  border-radius: 12px;
+  color: #a9b6e8;
+}
+.tongue-switch-btn:hover { color: #e8edff; border-color: rgba(176, 196, 255, 0.4); }
+.tongue-switch-btn.tsb-active {
+  background: linear-gradient(176deg, #fff9e6 0%, #edc94c 50%, #ab8419 80%, #f8ebbb 100%);
+  color: #281d02;
+  border-color: rgba(255, 249, 230, 0.7);
+  box-shadow: 0 8px 22px rgba(237, 201, 76, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.crown-bar .sovereign-exit-btn,
+.sovereign-exit-btn {
+  background: linear-gradient(170deg, rgba(24, 34, 99, 0.85), rgba(5, 8, 25, 0.9));
+  border: 1px solid rgba(164, 184, 255, 0.22);
+  border-block-start-color: rgba(255, 246, 222, 0.32);
+  color: #c2cdf4;
+  border-radius: 999px;
+  box-shadow: 0 8px 22px rgba(1, 2, 9, 0.45), inset 0 1px 0 rgba(255, 246, 222, 0.18);
+}
+.sovereign-exit-btn:hover {
+  color: #fff6de;
+  border-color: rgba(246, 226, 164, 0.5);
+  box-shadow: 0 12px 30px rgba(1, 2, 9, 0.5), 0 0 24px rgba(237, 201, 76, 0.18);
+}
+
+.hujjah-viewport ::selection { background: rgba(131, 85, 255, 0.4); color: #fff6de; }
+.hujjah-viewport :focus-visible { outline: 2px solid #fff6de; outline-offset: 2px; }
