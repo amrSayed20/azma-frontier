@@ -85,3 +85,22 @@ export {
   listReceiptsForCreator,
   listReceiptsForAsset,
 } from './distribution-receipt-repository';
+
+// VAULT GATE — SERVER-SIDE UNLOCK and SIGN-IN GUARD (security repair,
+// 2026-11-27): the records behind server-enforced Vault PIN and durable
+// sign-in attempt limiting.
+export type { VaultUnlockRecord } from './vault-unlock-repository';
+export {
+  createVaultUnlock,
+  getActiveVaultUnlock,
+  deleteVaultUnlock,
+  deleteVaultUnlocksForCreator,
+} from './vault-unlock-repository';
+export {
+  LOGIN_MAX_FAILED_ATTEMPTS,
+  LOGIN_ATTEMPT_WINDOW_MS,
+  normalizeLoginSubject,
+  isLoginAttemptBlocked,
+  recordFailedLoginAttempt,
+  clearLoginAttempts,
+} from './login-attempt-repository';

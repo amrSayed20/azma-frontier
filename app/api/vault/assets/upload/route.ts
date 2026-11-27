@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifySession } from '../../../../../src/authentication';
+import { checkVaultAccess, VAULT_LOCKED_BODY } from '../../../../../src/vault/vault-access';
 import { SovereignVaultManager } from '../../../../../src/vault/sovereign-vault-manager';
 import { AssetFamily, SourceChamber, DerivationKind } from '../../../../../src/vault/sovereign-vault-types';
 import { CapabilityTarget } from '../../../../../src/core/sovereign-orchestrator/qiyamah-intent-types';
@@ -53,15 +53,17 @@ function resolveCapability(mimeType: string) {
  * ingestion pipeline, no new asset registry.
  */
 export async function POST(request: NextRequest) {
-  const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  const session = sessionId ? verifySession(sessionId) : null;
+  const access = checkVaultAccess(request);
 
-  if (!session) {
+  if (access.status !== 'ok') {
     return NextResponse.json(
-      { status: 'failed', reason: 'unauthorized', message: 'Sign in to upload to your Vault.' },
-      { status: 401 },
+      access.status === 'no-session'
+        ? { status: 'failed', reason: 'unauthorized', message: 'Sign in to upload to your Vault.' }
+        : VAULT_LOCKED_BODY,
+      { status: access.status === 'no-session' ? 401 : 403 },
     );
   }
+  const session = access.session;
 
   const formData = await request.formData();
   const file = formData.get('file');

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '../../../../../src/authentication';
 import { hashPassword } from '../../../../../src/authentication';
 import { getDb, setVaultPinHash } from '../../../../../src/persistent-storage';
+import { issueVaultUnlock } from '../../../../../src/vault/vault-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,5 +35,9 @@ export async function POST(request: NextRequest) {
   const db = getDb();
   setVaultPinHash(db, session.creatorId, pinHash);
 
-  return NextResponse.json({ status: 'succeeded' });
+  // From this moment the gate is engaged for this Creator — open it for the
+  // session that just set it, or the palace would refuse its own owner.
+  const response = NextResponse.json({ status: 'succeeded' });
+  issueVaultUnlock(response, session.creatorId);
+  return response;
 }

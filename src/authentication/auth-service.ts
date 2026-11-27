@@ -16,7 +16,8 @@
  * through this same path.
  */
 
-import { getDb, getCreatorByEmail, getCreator, createSession, getActiveSession, deleteSession } from '../persistent-storage';
+import { getDb, getCreatorByEmail, getCreator, createSession, getActiveSession, deleteSession,
+  normalizeLoginSubject, isLoginAttemptBlocked, recordFailedLoginAttempt, clearLoginAttempts } from '../persistent-storage';
 import { verifyPassword } from './password-hashing';
 import { generateSessionId } from './session-token';
 import type { AuthOutcome, VerifiedSession } from './types';
@@ -57,12 +58,24 @@ export async function logIn(email: string, password: string): Promise<AuthOutcom
     return { status: 'failed', reason: 'invalid-input', message: 'Email and password are required.' };
   }
 
+  // Durable fixed-window guard, keyed by the address itself so attempts
+  // against addresses with no account count exactly the same — the guard
+  // must never reveal which addresses exist. Five failures inside fifteen
+  // minutes close the gate; one success clears the count. Persisted in
+  // SQLite (login_attempts), so a restart does not hand the budget back.
   const db = getDb();
+  const subject = normalizeLoginSubject(email);
+  if (isLoginAttemptBlocked(db, subject)) {
+    return { status: 'failed', reason: 'too-many-attempts', message: 'Too many failed sign-in attempts. Try again in 15 minutes.' };
+  }
+
   const creator = getCreatorByEmail(db, email);
   if (!creator || !creator.passwordHash || !(await verifyPassword(password, creator.passwordHash))) {
+    recordFailedLoginAttempt(db, subject);
     return { status: 'failed', reason: 'invalid-credentials', message: 'Invalid email or password.' };
   }
 
+  clearLoginAttempts(db, subject);
   const sessionId = generateSessionId();
   const session = createSession(db, sessionId, creator.creatorId, SESSION_TTL_MS);
   return { status: 'succeeded', result: { creatorId: creator.creatorId, role: creator.role, sessionId, expiresAt: session.expiresAt } };

@@ -3,6 +3,7 @@ import { verifySession } from '../../../../../src/authentication';
 import { verifyPassword } from '../../../../../src/authentication';
 import { getDb, getVaultPinHash } from '../../../../../src/persistent-storage';
 import { isPinAttemptBlocked, recordFailedPinAttempt, clearPinAttempts } from '../../../../../src/vault/vault-pin-service';
+import { issueVaultUnlock } from '../../../../../src/vault/vault-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,5 +51,10 @@ export async function POST(request: NextRequest) {
   }
 
   clearPinAttempts(session.creatorId);
-  return NextResponse.json({ status: 'authenticated' });
+  // The gate was passed — record it server-side. Without this the PIN was
+  // decoration: this response used to carry nothing the asset routes could
+  // ever check.
+  const response = NextResponse.json({ status: 'authenticated' });
+  issueVaultUnlock(response, session.creatorId);
+  return response;
 }

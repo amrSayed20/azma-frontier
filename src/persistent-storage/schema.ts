@@ -112,6 +112,24 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
     created_at INTEGER NOT NULL,
     expires_at INTEGER NOT NULL
   )`,
+  // VAULT GATE — SERVER-SIDE UNLOCK: one row per recent, successful Vault
+  // gate passage (PIN or biometric). The asset routes require an active row
+  // here when the Creator has a PIN set; without it the PIN existed only in
+  // the interface and any session cookie alone could read or delete assets.
+  `CREATE TABLE IF NOT EXISTS vault_unlocks (
+    unlock_token TEXT PRIMARY KEY,
+    creator_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL
+  )`,
+  // SIGN-IN GUARD: durable fixed-window counting of failed log-in attempts,
+  // keyed by lowercased email. The sign-in path had no attempt limiting at
+  // all; in-process counting would reset on every restart, so it lives here.
+  `CREATE TABLE IF NOT EXISTS login_attempts (
+    subject TEXT PRIMARY KEY,
+    failed_count INTEGER NOT NULL,
+    window_start INTEGER NOT NULL
+  )`,
   // VAULT BIOMETRIC ENTRY: one row per device a Creator has enrolled to open
   // the Vault with their own fingerprint or face. Only the public key is kept
   // — the biometric itself never leaves the Creator's device and is never

@@ -21,7 +21,10 @@ export async function POST(request: NextRequest) {
   const outcome = await logIn(email, password);
 
   if (outcome.status === 'failed') {
-    const httpStatus = outcome.reason === 'invalid-credentials' ? 401 : 400;
+    const httpStatus =
+      outcome.reason === 'invalid-credentials' ? 401 :
+      outcome.reason === 'too-many-attempts'   ? 429 :
+      400;
     return NextResponse.json(outcome, { status: httpStatus });
   }
 
